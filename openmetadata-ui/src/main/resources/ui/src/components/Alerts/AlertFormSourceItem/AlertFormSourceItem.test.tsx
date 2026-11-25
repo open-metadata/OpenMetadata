@@ -10,141 +10,101 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Form } from 'antd';
-import { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
-import { useFqn } from '../../../hooks/useFqn';
-import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
+import { ReactNode, useState } from 'react';
+import { AlertCapabilities } from '../../../generated/events/api/alertCapabilities';
+import {
+  AlertSelection,
+  AlertSelectionProvider,
+} from '../../../hooks/useAlertSelection';
 import AlertFormSourceItem from './AlertFormSourceItem';
 
-jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue({ fqn: '' }),
-}));
+const LISTED = {
+  alertType: 'Notification',
+  filters: [],
+  triggers: [],
+  sources: [
+    { name: 'all', kind: 'all' },
+    { name: 'dashboard', kind: 'entity' },
+  ],
+} as unknown as AlertCapabilities;
 
-const FormWrapper = ({ children }: { children: ReactNode }) => (
-  <MemoryRouter>
-    <Form>{children}</Form>
-  </MemoryRouter>
+// The source list comes from what the server answered, through the page's selection.
+const WithSelection = ({ children }: { children: ReactNode }) => (
+  <AlertSelectionProvider
+    value={
+      {
+        capabilities: {
+          selection: LISTED,
+          knownSources: [],
+          loading: false,
+          settled: true,
+          retry: jest.fn(),
+        },
+      } as unknown as AlertSelection
+    }>
+    {children}
+  </AlertSelectionProvider>
 );
 
 describe('AlertFormSourceItem', () => {
-  beforeEach(() => {
-    (useFqn as jest.Mock).mockReturnValue({ fqn: '' });
-  });
-
-  it('should renders without crashing', () => {
-    render(<AlertFormSourceItem filterResources={MOCK_FILTER_RESOURCES} />, {
-      wrapper: FormWrapper,
-    });
+  it('offers the source picker straight away, with nothing chosen', () => {
+    render(<AlertFormSourceItem />, { wrapper: WithSelection });
 
     expect(screen.getByText('label.source')).toBeInTheDocument();
     expect(
       screen.getByText('message.alerts-source-description')
     ).toBeInTheDocument();
-
-    expect(screen.getByTestId('add-source-button')).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('source-select')).getByRole('combobox')
+    ).toHaveAttribute('placeholder', 'label.select-field');
+    expect(screen.queryByTestId('add-source-button')).not.toBeInTheDocument();
   });
 
-  it('should render the trigger select when fqn is provided', () => {
-    (useFqn as jest.Mock).mockImplementation(() => ({
-      fqn: 'test',
-    }));
-
-    render(<AlertFormSourceItem filterResources={MOCK_FILTER_RESOURCES} />, {
-      wrapper: FormWrapper,
+  it('shows the error under the picker', () => {
+    render(<AlertFormSourceItem error="Source is required" />, {
+      wrapper: WithSelection,
     });
 
-    expect(screen.getByTestId('source-select')).toBeInTheDocument();
+    expect(screen.getByText('Source is required')).toBeInTheDocument();
   });
 
-  it('should display select dropdown when clicked on add trigger button', async () => {
-    render(<AlertFormSourceItem filterResources={MOCK_FILTER_RESOURCES} />, {
-      wrapper: FormWrapper,
-    });
-    const addButton = screen.getByTestId('add-source-button');
-    fireEvent.click(addButton);
+  it('keeps the source selection controlled and reports the previous selection on removal', async () => {
+    const changed = jest.fn();
+    const SourceForm = () => {
+      const [value, setValue] = useState(['all']);
 
-    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
-  });
-
-  it('commits a different source and clears incompatible filters and destinations', async () => {
-    (useFqn as jest.Mock).mockReturnValue({ fqn: 'existing-alert' });
-    const onFinish = jest.fn();
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(
-      <MemoryRouter>
-        <Form
-          initialValues={{
-            resources: ['all'],
-            input: { filters: [{ name: 'filterByOwnerName' }] },
-            destinations: [{ category: 'Admins', type: 'Email' }],
+      return (
+        <AlertFormSourceItem
+          value={value}
+          onChange={(next, previous) => {
+            changed(next, previous);
+            setValue(next);
           }}
-          onFinish={onFinish}>
-          <AlertFormSourceItem
-            filterResources={[{ name: 'all' }, { name: 'dashboard' }]}
-          />
-          <Form.List name={['input', 'filters']}>
-            {(fields) =>
-              fields.map((field) => (
-                <div data-testid="existing-filter" key={field.key}>
-                  Owner
-                </div>
-              ))
-            }
-          </Form.List>
-          <Form.List name="destinations">
-            {(fields) =>
-              fields.map((field) => (
-                <div data-testid="existing-destination" key={field.key}>
-                  Email
-                </div>
-              ))
-            }
-          </Form.List>
-          <button type="submit">Save source</button>
-        </Form>
-      </MemoryRouter>
-    );
-
-    expect(screen.getByTestId('existing-filter')).toBeVisible();
-    expect(screen.getByTestId('existing-destination')).toBeVisible();
-
-    // The source field holds several sources, so switching takes the old one away first.
+        />
+      );
+    };
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<SourceForm />, { wrapper: WithSelection });
     const [removeAll] = within(
       screen.getByTestId('source-select')
     ).getAllByRole('button');
     await user.click(removeAll);
+
+    expect(changed).toHaveBeenLastCalledWith([], ['all']);
+
     await user.click(
       within(screen.getByTestId('source-select')).getByRole('combobox')
     );
     await user.click(screen.getByTestId('dashboard-option'));
     await user.keyboard('{Escape}');
-
     await waitFor(() =>
-      expect(screen.queryByTestId('existing-filter')).not.toBeInTheDocument()
+      expect(changed).toHaveBeenLastCalledWith(['dashboard'], [])
     );
 
-    expect(
-      screen.queryByTestId('existing-destination')
-    ).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Save source' }));
-    await waitFor(() =>
-      expect(onFinish).toHaveBeenCalledWith(
-        expect.objectContaining({
-          resources: ['dashboard'],
-          input: { filters: undefined },
-          destinations: [],
-        })
-      )
+    expect(screen.getByTestId('source-select')).toHaveTextContent(
+      'label.dashboard'
     );
   });
 });

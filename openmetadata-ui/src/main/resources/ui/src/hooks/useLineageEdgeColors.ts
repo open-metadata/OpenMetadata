@@ -12,6 +12,7 @@
  */
 import { useMemo } from 'react';
 import { useTheme } from '../context/UntitledUIThemeProvider/theme-provider';
+import { resolveCssColor } from '../utils/common/cssColor.utils';
 import { LineageEdgeColors } from '../utils/EdgeStyleUtils';
 
 /**
@@ -24,23 +25,19 @@ export const useLineageEdgeColors = (): LineageEdgeColors => {
   const { brandColors, theme } = useTheme();
 
   return useMemo(() => {
-    const rootStyles =
-      typeof globalThis.document === 'undefined'
-        ? undefined
-        : globalThis.getComputedStyle(globalThis.document.documentElement);
-
     return {
       primary: brandColors?.primaryColor ?? '#1570ef',
       columnHighlight: '#444ce7', // It's a replacement to indigo-600 not a theme color
       dqHighlight: brandColors?.errorColor ?? '#d92d20',
-      labelBackground:
-        rootStyles?.getPropertyValue('--color-bg-primary').trim() ||
-        rootStyles?.backgroundColor ||
-        'Canvas',
-      labelText:
-        rootStyles?.getPropertyValue('--color-text-tertiary').trim() ||
-        rootStyles?.color ||
-        'CanvasText',
+      labelBackground: resolveCssColor(
+        'var(--tw-background-color-surface)',
+        '#ffffff'
+      ),
+      labelBorder: resolveCssColor(
+        'var(--tw-border-color-secondary)',
+        '#e9eaeb'
+      ),
+      labelText: resolveCssColor('var(--tw-color-fg-tertiary)', '#535862'),
     };
   }, [brandColors, theme]);
 };

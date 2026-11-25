@@ -18,7 +18,7 @@ import traceback
 
 from sqlalchemy import sql, text, util
 from sqlalchemy.dialects.oracle.base import FLOAT, INTEGER, INTERVAL, NUMBER, TIMESTAMP
-from sqlalchemy.engine import reflection
+from sqlalchemy.engine import Connection, Dialect, Row, reflection
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql import sqltypes
 
@@ -29,22 +29,28 @@ from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES,
     ORACLE_GET_COLUMNS,
     ORACLE_GET_MVIEW_QUERY_BY_NAME,
+    ORACLE_GET_OWNER_ORACLE_MAINTAINED,
     ORACLE_GET_TABLE_NAMES,
+    ORACLE_GET_TEMPORARY_TABLE_NAMES,
     ORACLE_GET_VIEW_DEFINITION_BY_NAME,
     ORACLE_GET_VIEW_TEXT_BY_NAME,
+    ORACLE_GET_VIEW_TEXT_VC_BY_NAME,
     ORACLE_IDENTITY_TYPE,
     ORACLE_TABLE_COMMENTS,
     ORACLE_TABLE_COMMENTS_PRESERVE_CASE,
     ORACLE_VIEW_DEFINITIONS,
+    ORACLE_VIEW_DEFINITIONS_PRE_12C,
     ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE,
+    ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE_PRE_12C,
 )
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
-    get_view_definition_wrapper,
 )
 
 logger = ingestion_logger()
+
+VIEW_DEFINITION_CACHE_KEY = "oracle_schema_view_definitions"
 
 # ALL_TAB_COLS.CHAR_USED is 'C' when a column was declared with character length
 # semantics (VARCHAR2(10 CHAR)) and 'B' for byte semantics (VARCHAR2(10 BYTE), the
@@ -60,6 +66,11 @@ def get_table_prefix_from_connection(service_connection) -> str:
 
 def _get_table_prefix(self) -> str:
     return getattr(self, "table_prefix", "DBA")
+
+
+def _reads_linked_views(self: Dialect) -> bool:
+    """TEXT_VC and ORACLE_MAINTAINED exist from Oracle 12.1. An unknown version keeps the older queries."""
+    return (getattr(self, "server_version_info", None) or ()) >= (12,)
 
 
 @reflection.cache
@@ -81,7 +92,6 @@ def get_table_comment(
     )
 
 
-@reflection.cache
 def get_view_definition(
     self,
     connection,
@@ -91,96 +101,139 @@ def get_view_definition(
     dblink="",
     **kw,
 ):
-    return get_view_definition_wrapper(
-        self,
-        connection,
-        table_name=view_name.lower(),
-        schema=schema.lower() if schema else None,
-        query=ORACLE_VIEW_DEFINITIONS.format(prefix=_get_table_prefix(self)),
-    )
+    owner = self.denormalize_name(schema or self.default_schema_name)
+    preserve_case = getattr(self, "preserve_identifier_case", False)
+    normalize = (lambda value: value) if preserve_case else str.lower
+    prefix = _get_table_prefix(self)
+    scope = (connection.engine, owner, prefix, preserve_case)
+    info_cache = kw.get("info_cache")
+    cached = info_cache.get(VIEW_DEFINITION_CACHE_KEY) if info_cache is not None else None
+    key = (normalize(view_name), normalize(owner))
+    if cached is not None and cached[0] == scope:
+        return cached[1].get(key, "")
+
+    # Release the previous schema before loading its replacement.
+    if info_cache is not None:
+        info_cache.pop(VIEW_DEFINITION_CACHE_KEY, None)
+    cached = None
+    if _reads_linked_views(self):
+        query = ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE if preserve_case else ORACLE_VIEW_DEFINITIONS
+    else:
+        query = ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE_PRE_12C if preserve_case else ORACLE_VIEW_DEFINITIONS_PRE_12C
+    definitions = dict(get_all_view_definitions(self, connection, query.format(prefix=prefix), owner))
+    if info_cache is not None:
+        info_cache[VIEW_DEFINITION_CACHE_KEY] = (scope, definitions)
+    return definitions.get(key, "")
 
 
-@reflection.cache
-def get_all_view_definitions(self, connection, query):
-    """
-    Method to fetch view definition of all available views.
-
-    The bulk query reads the view text from the LONG columns DBA_VIEWS.TEXT /
-    DBA_MVIEWS.QUERY. In Oracle thick mode a view whose definition is larger than
-    OCI's LONG fetch buffer raises ORA-01406 while the row is being fetched,
-    which aborts the whole array fetch and leaves every view without a
-    definition. On that database error, fall back to reading each definition on
-    its own so one oversized or failing view cannot blank out the rest.
-    See https://github.com/open-metadata/OpenMetadata/issues/30319
-    """
-    self.all_view_definitions = {}
-    self.current_db: str = connection.engine.url.database  # type: ignore
+def get_all_view_definitions(self, connection: Connection, query: str, owner: str):
+    """Stream definitions for one schema, isolating failed view reads."""
     try:
-        for view in connection.execute(text(query)):
-            _store_bulk_view_definition(self, view)
+        result = connection.execute(text(query), {"owner": owner})
+        try:
+            for view in result:
+                yield _read_bulk_view_definition(view)
+        finally:
+            result.close()
     except DatabaseError as exc:
-        logger.warning(f"Bulk Oracle view-definition fetch failed ({exc}). Falling back to per-view retrieval.")
+        logger.warning("Bulk Oracle view-definition fetch failed (%s). Falling back to per-view retrieval.", exc)
         logger.debug(traceback.format_exc())
-        _get_view_definitions_individually(self, connection)
+        yield from _get_view_definitions_individually(self, connection, owner)
 
 
-def _store_bulk_view_definition(self, view) -> None:
-    """Store one row of the bulk ORACLE_VIEW_DEFINITIONS result. Thin mode
-    returns lowercase attribute names and thick mode uppercase, so both cases
-    are handled.
-    """
+def _read_bulk_view_definition(view: Row) -> tuple[tuple[str, str], str | None]:
+    """Read a bulk row with either lowercase or uppercase result labels."""
     if hasattr(view, "view_def") and hasattr(view, "schema"):
-        view_definition = view.view_def
-        if not view_definition and hasattr(view, "view_ddl"):
-            view_definition = view.view_ddl
-        else:
-            view_definition = f"CREATE OR REPLACE VIEW {view.view_name} AS {view_definition}"
-        self.all_view_definitions[(view.view_name, view.schema)] = view_definition
-
+        name_label, schema_label, *optional_labels = ("view_name", "schema", "view_def", "view_text_vc", "view_ddl")
     elif hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
-        view_definition = view.VIEW_DEF
-        if not view_definition and hasattr(view, "VIEW_DDL"):
-            view_definition = view.VIEW_DDL
-        else:
-            view_definition = f"CREATE OR REPLACE VIEW {view.VIEW_NAME} AS {view_definition}"
-        self.all_view_definitions[(view.VIEW_NAME, view.SCHEMA)] = view_definition
+        name_label, schema_label, *optional_labels = ("VIEW_NAME", "SCHEMA", "VIEW_DEF", "VIEW_TEXT_VC", "VIEW_DDL")
+    else:
+        raise ValueError("Oracle view-definition row has no definition labels")
+    view_name: str = getattr(view, name_label)
+    schema: str = getattr(view, schema_label)
+    raw_text, text_vc, view_ddl = (getattr(view, label, None) for label in optional_labels)
+    if raw_text or text_vc:
+        return (view_name, schema), f"CREATE OR REPLACE VIEW {view_name} AS {raw_text or text_vc}"
+    if view_ddl is not None and hasattr(view_ddl, "read"):
+        view_ddl = view_ddl.read()
+    return (view_name, schema), view_ddl
 
 
-def _get_view_definitions_individually(self, connection) -> None:
-    """Populate self.all_view_definitions one view at a time. Each fetch is
-    isolated so a view that truncates or errors is skipped instead of aborting
-    the whole run. Used only as the fallback after the bulk fetch fails.
-    """
+def _get_view_definitions_individually(self, connection: Connection, owner: str):
+    """Read each definition in the requested schema independently."""
     # Match the cache-key casing that get_view_definition uses for lookups:
     # lowercased by default, kept verbatim when preserveIdentifierCase is set.
     normalize = (lambda value: value) if getattr(self, "preserve_identifier_case", False) else str.lower
     prefix = _get_table_prefix(self)
-    view_names = connection.execute(text(ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES.format(prefix=prefix))).fetchall()
-    for owner, name, object_type in view_names:
-        try:
-            definition = _fetch_view_definition_by_name(connection, prefix, owner, name, object_type)
-        except DatabaseError as exc:
-            logger.warning(f"Could not fetch view definition for {owner}.{name}: {exc}")
-            logger.debug(traceback.format_exc())
-            continue
-        if definition:
-            self.all_view_definitions[(normalize(name), normalize(owner))] = definition
+    linked_views = _reads_linked_views(self)
+    maintained_owner = linked_views and _is_oracle_maintained_owner(connection, prefix, owner)
+    view_names = connection.execute(text(ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES.format(prefix=prefix)), {"owner": owner})
+    try:
+        for view_owner, name, object_type in view_names:
+            try:
+                definition = _fetch_view_definition_by_name(
+                    connection,
+                    prefix,
+                    view_owner,
+                    name,
+                    object_type,
+                    linked_views=linked_views,
+                    maintained_owner=maintained_owner,
+                )
+            except DatabaseError as exc:
+                logger.warning("Could not fetch view definition for %s.%s: %s", view_owner, name, exc)
+                logger.debug(traceback.format_exc())
+                continue
+            if definition:
+                yield (normalize(name), normalize(view_owner)), definition
+    finally:
+        view_names.close()
 
 
 def _read_scalar(result):
     """Return a scalar result, materializing a LOB locator to str if needed."""
-    value = result.scalar()
-    return value.read() if value is not None and hasattr(value, "read") else value
+    try:
+        value = result.scalar()
+        return value.read() if value is not None and hasattr(value, "read") else value
+    finally:
+        result.close()
 
 
-def _fetch_view_definition_by_name(connection, prefix, owner, name, object_type):
+def _is_oracle_maintained_owner(connection: Connection, prefix: str, owner: str) -> bool:
+    """Whether GET_DDL would refuse the owner's objects.
+
+    An account can be granted the views catalog without the users catalog, which also fails
+    the bulk query, so a denied read keeps GET_DDL as the last resort instead of losing the
+    readable definitions of the whole schema.
+    """
+    try:
+        flag = _read_scalar(
+            connection.execute(text(ORACLE_GET_OWNER_ORACLE_MAINTAINED.format(prefix=prefix)), {"owner": owner})
+        )
+    except DatabaseError:
+        logger.debug("Could not read whether Oracle maintains %s, keeping GET_DDL as the last resort", owner)
+        return False
+    return flag == "Y"
+
+
+def _fetch_view_definition_by_name(
+    connection: Connection,
+    prefix: str,
+    owner: str,
+    name: str,
+    object_type: str,
+    *,
+    linked_views: bool = False,
+    maintained_owner: bool = False,
+):
     """Fetch one view's definition without the bulk LONG array truncation.
 
     Reads the raw text/query with a single-row query first. A single-row fetch is
     not an array fetch, so it does not hit ORA-01406, and it needs no privileges
     beyond the bulk read (this is the same column SQLAlchemy's Oracle dialect
-    reads). Only when the text is NULL or still cannot be read does it fall back
-    to DBMS_METADATA.GET_DDL, mirroring the bulk query's text-else-GET_DDL logic.
+    reads). It then mirrors the bulk query: on 12.1+ a view whose text is NULL is
+    read from a complete TEXT_VC, and DBMS_METADATA.GET_DDL is the last resort,
+    never called for an owner known to be Oracle-maintained since it refuses those objects.
     """
     is_mview = object_type == "MATERIALIZED_VIEW"
     text_query = ORACLE_GET_MVIEW_QUERY_BY_NAME if is_mview else ORACLE_GET_VIEW_TEXT_BY_NAME
@@ -188,10 +241,21 @@ def _fetch_view_definition_by_name(connection, prefix, owner, name, object_type)
         raw_text = _read_scalar(
             connection.execute(text(text_query.format(prefix=prefix)), {"owner": owner, "name": name})
         )
+    except DatabaseError:
+        logger.debug("Single-row text read failed for %s.%s, using GET_DDL", owner, name)
+    else:
         if raw_text:
             return f"CREATE OR REPLACE VIEW {name} AS {raw_text}"
-    except DatabaseError:
-        logger.debug(f"Single-row text read failed for {owner}.{name}, using GET_DDL")
+        if linked_views and not is_mview:
+            text_vc = _read_scalar(
+                connection.execute(
+                    text(ORACLE_GET_VIEW_TEXT_VC_BY_NAME.format(prefix=prefix)), {"owner": owner, "name": name}
+                )
+            )
+            if text_vc:
+                return f"CREATE OR REPLACE VIEW {name} AS {text_vc}"
+    if maintained_owner:
+        return None
     return _read_scalar(
         connection.execute(
             text(ORACLE_GET_VIEW_DEFINITION_BY_NAME),
@@ -370,6 +434,28 @@ def get_table_names(self, connection, schema=None, **kw):
         exclude_tablespace = ", ".join([f"'{ts}'" for ts in self.exclude_tablespaces])
         tablespace = f"nvl(tablespace_name, 'no tablespace') NOT IN ({exclude_tablespace}) AND "
     sql_str = ORACLE_GET_TABLE_NAMES.format(tablespace=tablespace, prefix=_get_table_prefix(self))
+    cursor = connection.execute(sql.text(sql_str), {"owner": schema})
+    return [row[0] for row in cursor]
+
+
+def get_temporary_table_names(dialect, connection, schema=None):
+    """Return Global Temporary Table names in `schema`.
+
+    Oracle GTTs have permanent definitions in the data dictionary
+    (DURATION = 'SYS$SESSION' or 'SYS$TRANSACTION'); only their data is
+    session-scoped. They are excluded from get_table_names() to preserve
+    the historical default and are surfaced separately so callers can tag
+    them (e.g., as TableType.Local).
+    """
+    schema = dialect.denormalize_name(schema or dialect.default_schema_name)
+    if schema is None:
+        schema = dialect.default_schema_name
+
+    tablespace = ""
+    if dialect.exclude_tablespaces:
+        exclude_tablespace = ", ".join([f"'{ts}'" for ts in dialect.exclude_tablespaces])
+        tablespace = f"nvl(tablespace_name, 'no tablespace') NOT IN ({exclude_tablespace}) AND "
+    sql_str = ORACLE_GET_TEMPORARY_TABLE_NAMES.format(tablespace=tablespace, prefix=_get_table_prefix(dialect))
     cursor = connection.execute(sql.text(sql_str), {"owner": schema})
     return [row[0] for row in cursor]
 
@@ -611,29 +697,6 @@ def get_table_comment_preserve_case(
         table_name=table_name,
         schema=schema,
         query=ORACLE_TABLE_COMMENTS_PRESERVE_CASE.format(prefix=_get_table_prefix(self)),
-    )
-
-
-@reflection.cache
-def get_view_definition_preserve_case(
-    self,
-    connection,
-    view_name: str,
-    schema: str = None,  # noqa: RUF013
-    resolve_synonyms=False,
-    dblink="",
-    **kw,
-):
-    """Like get_view_definition but passes names as-is and uses a SQL query
-    without LOWER(), so the dict key built by get_all_view_definitions matches
-    Oracle's native case stored in DBA_VIEWS / DBA_MVIEWS.
-    """
-    return get_view_definition_wrapper(
-        self,
-        connection,
-        table_name=view_name,
-        schema=schema,
-        query=ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE.format(prefix=_get_table_prefix(self)),
     )
 
 

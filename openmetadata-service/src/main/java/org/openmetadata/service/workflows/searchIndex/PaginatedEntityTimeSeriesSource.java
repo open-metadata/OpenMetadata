@@ -36,7 +36,6 @@ public class PaginatedEntityTimeSeriesSource
   private final int batchSize;
   private final String entityType;
   private final List<String> fields;
-  private final List<String> readerErrors = new ArrayList<>();
   private final StepStats stats = new StepStats();
   private String lastFailedCursor = null;
 
@@ -134,7 +133,9 @@ public class PaginatedEntityTimeSeriesSource
       IndexingError indexingError =
           new IndexingError()
               .withErrorSource(READER)
+              .withSubmittedCount(batchSize)
               .withSuccessCount(0)
+              .withFailedCount(batchSize)
               .withMessage(
                   "Issues in Reading A Batch For Entities. No Relationship Issue , Json Processing or DB issue.")
               .withLastFailedCursor(lastFailedCursor)
@@ -263,7 +264,9 @@ public class PaginatedEntityTimeSeriesSource
       IndexingError indexingError =
           new IndexingError()
               .withErrorSource(READER)
+              .withSubmittedCount(batchSize)
               .withSuccessCount(0)
+              .withFailedCount(batchSize)
               .withMessage(
                   String.format(
                       "Failed to read keyset batch for entityType: %s. Error: %s",
@@ -290,12 +293,6 @@ public class PaginatedEntityTimeSeriesSource
       }
     }
     return cursors;
-  }
-
-  @Override
-  public void reset() {
-    cursor.set(null);
-    isDone.set(false);
   }
 
   @Override

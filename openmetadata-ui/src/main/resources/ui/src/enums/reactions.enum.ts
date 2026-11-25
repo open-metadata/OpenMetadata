@@ -15,3 +15,10 @@ export enum ReactionOperation {
   ADD = 'add',
   REMOVE = 'remove',
 }
+
+// How a reaction row is drawn: the classic feed's square chips, or the Inbox's
+// rounded pills with a plain smiley to add one.
+export enum ReactionsVariant {
+  Default = 'default',
+  Pill = 'pill',
+}

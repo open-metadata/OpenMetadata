@@ -18,7 +18,7 @@ import React from 'react';
 const mockShowErrorToast = jest.fn();
 
 jest.mock('utils/ToastUtils', () => ({
-  showErrorToast: mockShowErrorToast,
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
 
 import {
@@ -33,13 +33,13 @@ interface Item {
 
 type FetchPage = (after?: string) => Promise<InboxListPage<Item> | undefined>;
 
-let intersect: (() => void) | undefined;
+let intersect: ((isIntersecting?: boolean) => void) | undefined;
 
 class MockIntersectionObserver {
   constructor(private cb: IntersectionObserverCallback) {
-    intersect = () =>
+    intersect = (isIntersecting = true) =>
       this.cb(
-        [{ isIntersecting: true } as IntersectionObserverEntry],
+        [{ isIntersecting } as IntersectionObserverEntry],
         this as unknown as IntersectionObserver
       );
   }
@@ -133,14 +133,106 @@ describe('useInboxInfiniteList', () => {
     expect(api.hasMore).toBe(false);
   });
 
-  it('shows an error toast when a page fetch rejects', async () => {
-    const fetchPage = jest.fn().mockRejectedValue(new Error('boom'));
+  it('loads the next page on request, without the sentinel', async () => {
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce(page(1, { after: 'c1', total: 2 }))
+      .mockResolvedValueOnce(page(2, { total: 2 }));
+
+    renderHarness(fetchPage);
+    await waitFor(() => expect(api.items).toHaveLength(1));
+
+    await act(async () => {
+      api.loadMore();
+    });
+
+    await waitFor(() => expect(api.items.map((i) => i.id)).toEqual([1, 2]));
+
+    expect(fetchPage).toHaveBeenLastCalledWith('c1');
+  });
+
+  it('exposes a failed first page as an error instead of an empty list', async () => {
+    const failure = new Error('boom');
+    const fetchPage = jest.fn().mockRejectedValue(failure);
 
     renderHarness(fetchPage);
 
+    await waitFor(() => expect(api.error).toBe(failure));
+
+    expect(api.isLoading).toBe(false);
+    expect(api.items).toHaveLength(0);
+    expect(mockShowErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('clears the error once a retry succeeds', async () => {
+    const fetchPage = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce(page(1));
+
+    renderHarness(fetchPage);
+    await waitFor(() => expect(api.error).toBeTruthy());
+
+    await act(async () => {
+      api.refetch();
+    });
+
+    await waitFor(() => expect(api.items).toHaveLength(1));
+
+    expect(api.error).toBeNull();
+  });
+
+  it('toasts a failed later page and keeps the loaded rows', async () => {
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce(page(1, { after: 'c1', total: 5 }))
+      .mockRejectedValueOnce(new Error('boom'));
+
+    renderHarness(fetchPage);
+    await waitFor(() => expect(api.items).toHaveLength(1));
+
+    await act(async () => {
+      intersect?.();
+    });
+
     await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalled());
 
-    expect(api.items).toHaveLength(0);
+    expect(api.items).toHaveLength(1);
+    expect(api.error).toBeNull();
+    expect(api.isLoadMoreError).toBe(true);
+  });
+
+  // A new observer reports the sentinel at once; with it still in view, a
+  // failed page must wait for the sentinel to come back, not loop.
+  it('retries a failed page only once the sentinel comes back into view', async () => {
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce(page(1, { after: 'c1', total: 2 }))
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce(page(2, { total: 2 }));
+
+    renderHarness(fetchPage);
+    await waitFor(() => expect(api.items).toHaveLength(1));
+
+    await act(async () => {
+      intersect?.();
+    });
+    await waitFor(() => expect(api.isLoadMoreError).toBe(true));
+
+    await act(async () => {
+      intersect?.();
+    });
+
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      intersect?.(false);
+      intersect?.();
+    });
+
+    await waitFor(() => expect(api.items.map((i) => i.id)).toEqual([1, 2]));
+
+    expect(api.isLoadMoreError).toBe(false);
   });
 
   // A filter switch must not blank the list: the old rows stay until the new

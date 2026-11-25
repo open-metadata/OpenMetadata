@@ -18,6 +18,7 @@ import i18n from '../i18next/LocalUtil';
 const ENTITY_TYPE_PATH_MAP: Record<string, string> = {
   [EntityType.GLOSSARY]: 'glossaries',
   [EntityType.GLOSSARY_TERM]: 'glossaryTerms',
+  [EntityType.ONTOLOGY_PROPERTY]: 'ontologyProperties',
   [EntityType.POLICY]: 'policies',
   [EntityType.KPI]: EntityType.KPI,
   [EntityType.DASHBOARD_DATA_MODEL]: 'dashboard/datamodels',

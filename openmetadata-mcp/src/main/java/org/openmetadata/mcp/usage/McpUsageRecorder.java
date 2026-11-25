@@ -16,10 +16,9 @@ package org.openmetadata.mcp.usage;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.AbstractNativeApplication;
-import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.slf4j.Logger;
@@ -40,9 +39,7 @@ public final class McpUsageRecorder {
   private McpUsageRecorder() {}
 
   /**
-   * Records a tool invocation with the full Phase 3 payload. The legacy 3-arg overload below is
-   * kept so existing call sites and tests compile unchanged. New call sites should call this one
-   * directly with the latency timer reading + error category + client name they already have.
+   * Records a tool invocation with the full Phase 3 payload.
    *
    * @param toolName name of the tool that was invoked
    * @param userName principal name from the security context
@@ -91,17 +88,12 @@ public final class McpUsageRecorder {
   }
 
   /**
-   * Backwards-compatible overload. New call sites should use the 6-arg variant so the row gets
-   * the full Phase 3 payload.
+   * Read from the repository, not ApplicationContext: Disable takes the app out of the context of
+   * the server that handled it, and Enable never puts it back.
    */
-  public static void record(String toolName, String userName, boolean success) {
-    record(toolName, userName, success, null, null, null);
-  }
-
   private static App resolveMcpApp() {
-    AbstractNativeApplication app =
-        ApplicationContext.getInstance().getAppIfExists(McpAppConstants.MCP_APP_NAME);
-    return app != null ? app.getApp() : null;
+    return Entity.findEntityByNameOrNull(
+        Entity.APPLICATION, McpAppConstants.MCP_APP_NAME, Include.ALL);
   }
 
   private static CollectionDAO.AppExtensionTimeSeries getDao() {

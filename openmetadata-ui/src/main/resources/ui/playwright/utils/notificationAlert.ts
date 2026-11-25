@@ -12,7 +12,10 @@
  */
 
 import { expect, Page } from '@playwright/test';
-import { ALERT_UPDATED_DESCRIPTION } from '../constant/alert';
+import {
+  ALERT_MASKED_SECRET,
+  ALERT_UPDATED_DESCRIPTION,
+} from '../constant/alert';
 import { AlertDetails } from '../constant/alert.interface';
 import { SidebarItem } from '../constant/sidebar';
 import { Domain } from '../support/domain/Domain';
@@ -85,17 +88,13 @@ export const addFilterWithUsersListInput = async ({
   // Open filter dropdown
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
-  // Select filter option - chain :visible selector inline
-  // Wait for dropdown animation to complete and element to be actionable
-  const filterOption = page
-    .locator('.ant-select-dropdown:visible')
-    .getByTestId(filterTestId);
+  const filterOption = page.getByRole('listbox').getByTestId(filterTestId);
   await expect(filterOption).toBeVisible();
   await expect(filterOption).toBeEnabled();
   await filterOption.click();
 
   // Verify dropdown closed
-  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
+  await expect(page.getByRole('listbox')).toHaveCount(0);
 
   // Open user select dropdown
   const userSelectInput = page.locator(
@@ -113,21 +112,22 @@ export const addFilterWithUsersListInput = async ({
   await userSelectInput.fill(updaterName);
   await awaitResponse;
 
-  // Select user from search results - chain :visible selector inline
   const userOption = page
-    .locator('.ant-select-dropdown:visible')
-    .locator(`[title="${updaterName}"]`);
+    .getByRole('listbox')
+    .getByRole('option', { name: updaterName, exact: true });
   await expect(userOption).toBeVisible();
   await userOption.click();
 
   // Verify user is selected
-  await expect(page.getByTestId('user-name-select')).toHaveText(updaterName);
+  await expect(
+    page.getByTestId('user-name-select').getByText(updaterName, { exact: true })
+  ).toBeVisible();
 
   // Manually close dropdown if it doesn't auto-close
   await clickOutside(page);
 
   // Verify dropdown closed
-  await expect(page.locator('.ant-select-dropdown:visible')).not.toBeVisible();
+  await expect(page.getByRole('listbox')).toHaveCount(0);
 
   if (exclude) {
     // Change filter effect
@@ -406,12 +406,11 @@ export const createTaskAlert = async ({
     sourceDisplayName,
   });
 
-  // Select Destination
   await page.click('[data-testid="add-destination-button"]');
   await addInternalDestination({
     page,
     destinationNumber: 0,
-    category: 'Owners',
+    category: 'Mentions',
     type: 'Email',
   });
   await page.click('[data-testid="add-destination-button"]');
@@ -458,7 +457,6 @@ export const createConversationAlert = async ({
 export const checkAlertConfigDetails = async ({
   page,
   sourceName,
-  destinationEndpoint,
 }: {
   page: Page;
   sourceName: string;
@@ -469,21 +467,30 @@ export const checkAlertConfigDetails = async ({
     sourceLabelOf(sourceName)
   );
 
-  await expect(page.getByTestId('filter-select-0')).toHaveText('Event Type');
   await expect(
-    page.getByTestId('event-type-select').getByTitle('Entity Restored')
+    page.getByTestId('filter-select-0').getByRole('button')
+  ).toHaveText('Event Type');
+  await expect(
+    page
+      .getByTestId('event-type-select')
+      .getByText('Entity Restored', { exact: true })
   ).toBeAttached();
   await expect(
-    page.getByTestId('event-type-select').getByTitle('Entity Soft Deleted')
+    page
+      .getByTestId('event-type-select')
+      .getByText('Entity Soft Deleted', { exact: true })
   ).toBeAttached();
 
-  await expect(page.getByTestId('filter-select-1')).toHaveText('Entity FQN');
+  await expect(
+    page.getByTestId('filter-select-1').getByRole('button')
+  ).toHaveText('Entity FQN');
 
   await expect(
     page.getByTestId('destination-category-select-0').getByRole('combobox')
   ).toHaveValue('Webhook');
+  // The endpoint is a credential, so the page shows the mask, never the URL.
   await expect(page.getByTestId('endpoint-input-field-0')).toHaveValue(
-    destinationEndpoint
+    ALERT_MASKED_SECRET
   );
 };
 
@@ -512,6 +519,8 @@ export const checkAlertDetailsForWithPermissionUser = async ({
     activatorBtnDataTestId: 'edit-owner',
     endpoint: EntityTypeEndpoint.NotificationAlert,
     type: 'Users',
+    // The alert header shows owners as avatars only, with no owner-link.
+    resultTestId: 'alert-owners',
   });
 
   // UpdateDescription

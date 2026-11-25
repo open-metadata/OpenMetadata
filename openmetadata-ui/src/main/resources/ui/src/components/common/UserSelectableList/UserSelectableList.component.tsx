@@ -10,16 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip } from 'antd';
+import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+import { Bot, Edit01 } from '@openmetadata/ui-core-components/icons';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as BotIcon } from '../../../assets/svg/bot.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  PAGE_SIZE_MEDIUM,
-  TEXT_GREY_MUTED,
-} from '../../../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -170,23 +166,27 @@ export const UserSelectableList = ({
 
   const botTagRenderer = useCallback(
     (item: EntityReference) => (
-      <div className="d-flex items-center gap-2">
-        {botUserIds.current.has(item.id) && (
-          <Tooltip title={t('label.bot')}>
-            <BotIcon
-              aria-label={t('label.bot')}
-              color={TEXT_GREY_MUTED}
-              data-testid="bot-indicator"
-              height={16}
-              width={16}
-            />
-          </Tooltip>
-        )}
+      <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
         <UserTag
+          truncateName
           avatarType="outlined"
           id={item.name ?? ''}
           name={getEntityName(item)}
         />
+        {botUserIds.current.has(item.id) && (
+          <Tooltip
+            arrow
+            excludeTriggerFromTabOrder
+            title={t('label.bot')}
+            triggerClassName="tw:inline-flex tw:shrink-0">
+            <Bot
+              aria-label={t('label.bot')}
+              className="tw:text-utility-gray-500"
+              data-testid="bot-indicator"
+              size={16}
+            />
+          </Tooltip>
+        )}
       </div>
     ),
     [t]
@@ -223,15 +223,15 @@ export const UserSelectableList = ({
       onOpenChange={handleOpenChange}>
       {children ?? (
         <Tooltip
-          placement="topRight"
-          title={hasPermission ? '' : t(NO_PERMISSION_FOR_ACTION)}>
-          <Button
-            className="p-0 flex-center"
+          arrow
+          isDisabled={hasPermission}
+          placement="top right"
+          title={t(NO_PERMISSION_FOR_ACTION)}>
+          <ButtonUtility
             data-testid="add-user"
-            disabled={!hasPermission}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-            size="small"
-            type="text"
+            icon={Edit01}
+            isDisabled={!hasPermission}
+            size="sm"
           />
         </Tooltip>
       )}

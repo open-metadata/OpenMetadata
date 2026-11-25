@@ -13,14 +13,16 @@
 
 import { Button } from '@openmetadata/ui-core-components';
 import {
-  Building01,
-  GlossaryTerm as GlossaryTermIcon,
+  IntakeForms,
+  KnowledgePanels,
   Policy as GovernanceIcon,
 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import { settingsHashOptions } from '../../../../../../utils/SettingsHistory.utils';
+import DeprecatedFeatureBadge from '../../../../../common/DeprecatedFeatureBadge/DeprecatedFeatureBadge';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { GovernanceView } from './Governance.types';
 import { hashSubPathToView, viewToSubPath } from './Governance.utils';
@@ -52,9 +54,14 @@ const GovernancePanel: FC<GovernancePanelProps> = ({ onHeaderChange }) => {
 
   const onNavigate = useCallback(
     (nextView: GovernanceView) => {
-      setHash(HASH_TAB, viewToSubPath(nextView));
+      setHash(
+        HASH_TAB,
+        viewToSubPath(nextView),
+        undefined,
+        settingsHashOptions(view, nextView)
+      );
     },
-    [setHash]
+    [setHash, view]
   );
 
   // Clear intake-list header actions when navigating away from that view
@@ -133,12 +140,12 @@ const GovernancePanel: FC<GovernancePanelProps> = ({ onHeaderChange }) => {
       FC<{ className?: string }>
     > = {
       landing: GovernanceIcon,
-      [VIEW_GLOSSARY_LIST]: GlossaryTermIcon,
-      'glossary-add': GlossaryTermIcon,
-      'glossary-edit': GlossaryTermIcon,
-      [VIEW_INTAKE_LIST]: Building01,
-      'intake-add': Building01,
-      'intake-edit': Building01,
+      [VIEW_GLOSSARY_LIST]: KnowledgePanels,
+      'glossary-add': KnowledgePanels,
+      'glossary-edit': KnowledgePanels,
+      [VIEW_INTAKE_LIST]: IntakeForms,
+      'intake-add': IntakeForms,
+      'intake-edit': IntakeForms,
     };
 
     const titleByView: Record<GovernanceView['type'], string> = {
@@ -171,7 +178,7 @@ const GovernancePanel: FC<GovernancePanelProps> = ({ onHeaderChange }) => {
           <Button
             color="primary"
             data-testid="add-relation-type"
-            size="sm"
+            size="xs"
             onPress={() => onNavigate({ type: 'glossary-add' })}>
             {addRelType}
           </Button>
@@ -192,6 +199,12 @@ const GovernancePanel: FC<GovernancePanelProps> = ({ onHeaderChange }) => {
       title: titleByView[view.type],
       description: descByView[view.type],
       icon: iconByView[view.type],
+      titleSuffix: view.type.startsWith('intake') ? (
+        <DeprecatedFeatureBadge
+          description={t('message.intake-form-deprecated')}
+          featureName={intakeLabel}
+        />
+      ) : undefined,
       onBreadcrumbAction,
       actions: actionsForView,
     });
@@ -232,6 +245,7 @@ const GovernancePanel: FC<GovernancePanelProps> = ({ onHeaderChange }) => {
       return (
         <GovernanceIntakeFormPage
           entityType={view.entityType}
+          key={view.entityType}
           onNavigate={onNavigate}
         />
       );
@@ -239,7 +253,11 @@ const GovernancePanel: FC<GovernancePanelProps> = ({ onHeaderChange }) => {
 
     if (view.type === 'intake-edit') {
       return (
-        <GovernanceIntakeFormPage editId={view.id} onNavigate={onNavigate} />
+        <GovernanceIntakeFormPage
+          editId={view.id}
+          key={view.id}
+          onNavigate={onNavigate}
+        />
       );
     }
 

@@ -18,6 +18,43 @@ export type ModuleGraph = {
   } | null;
 };
 
+// Vendor families that get a named chunk (stable cache keys across releases).
+// `pinned` families take every module; the rest only their shell modules.
+const VENDOR_FAMILIES: {
+  chunk: string;
+  matches: (packageName: string) => boolean;
+  pinned?: boolean;
+}[] = [
+  {
+    // The shell renders through all of React and the router.
+    chunk: 'vendor-react',
+    pinned: true,
+    matches: (name) =>
+      ['react', 'react-dom', 'scheduler'].includes(name) ||
+      name.startsWith('react-router'),
+  },
+  {
+    // The /silent-callback entry loads only this. Its own chunk keeps the
+    // silent-refresh iframe off every other vendor chunk (SsoScenarios
+    // scenario 7 budget).
+    chunk: 'vendor-oidc-client',
+    pinned: true,
+    matches: (name) => name === 'oidc-client',
+  },
+  {
+    chunk: 'vendor-aria',
+    matches: (name) =>
+      name.startsWith('@react-aria/') ||
+      name.startsWith('@react-stately/') ||
+      name.startsWith('@react-types/') ||
+      ['react-aria', 'react-aria-components', 'react-stately'].includes(name),
+  },
+  {
+    chunk: 'vendor-untitled',
+    matches: (name) => name === '@openmetadata/ui-core-components',
+  },
+];
+
 // Classifier used by both bundlers to assign modules to vendor buckets.
 // Rollup consumes it via `rollupOptions.output.manualChunks`, Rolldown via
 // `rollupOptions.output.advancedChunks.groups[].name`. Same logic, one
@@ -29,41 +66,52 @@ export const createChunkClassifier = ({
 }: {
   isPlaywrightBundle: boolean;
 }) => {
-  const shellReachable = new Map<string, boolean>();
-  // Walks static importers only: a module is on the shell (entry) graph iff
-  // some chain of static imports leads back to an entry.
-  const isShellReachable = (id: string, graph: ModuleGraph): boolean => {
-    const cached = shellReachable.get(id);
-    if (cached !== undefined) {
-      return cached;
-    }
-    const seen = new Set([id]);
-    const queue = [id];
-    let result = false;
-    while (queue.length && !result) {
-      const info = graph.getModuleInfo(queue.pop() as string);
-      if (!info) {
-        continue;
+  // Walks static importers only: a module is on an entry's graph iff some
+  // chain of static imports leads back to an entry matching `isTargetEntry`.
+  const createEntryReachability = (isTargetEntry: (id: string) => boolean) => {
+    const reachable = new Map<string, boolean>();
+
+    return (id: string, graph: ModuleGraph): boolean => {
+      const cached = reachable.get(id);
+      if (cached !== undefined) {
+        return cached;
       }
-      if (info.isEntry) {
-        result = true;
-        break;
-      }
-      for (const importer of info.importers) {
-        if (shellReachable.get(importer)) {
+      const seen = new Set([id]);
+      const queue = [id];
+      let result = false;
+      while (queue.length && !result) {
+        const current = queue.pop() as string;
+        const info = graph.getModuleInfo(current);
+        if (!info) {
+          continue;
+        }
+        if (info.isEntry && isTargetEntry(current)) {
           result = true;
           break;
         }
-        if (!seen.has(importer)) {
-          seen.add(importer);
-          queue.push(importer);
+        for (const importer of info.importers) {
+          if (reachable.get(importer)) {
+            result = true;
+            break;
+          }
+          if (!seen.has(importer)) {
+            seen.add(importer);
+            queue.push(importer);
+          }
         }
       }
-    }
-    shellReachable.set(id, result);
+      reachable.set(id, result);
 
-    return result;
+      return result;
+    };
   };
+  const isShellReachable = createEntryReachability(() => true);
+  const isMainShellReachable = createEntryReachability((id) =>
+    id.endsWith('/index.html')
+  );
+  const isShellReachableFromOtherEntry = createEntryReachability(
+    (id) => !id.endsWith('/index.html')
+  );
   // Type/enum modules by convention. At runtime they are only TS `enum`
   // objects (interfaces/types erase), and each one used by several lazy routes
   // otherwise becomes its own sub-1 KiB chunk.
@@ -71,6 +119,37 @@ export const createChunkClassifier = ({
     id.includes('/src/generated/') ||
     id.includes('/src/enums/') ||
     /(\.enum|\.interface|\/types)\.ts$/.test(id);
+
+  // Rolldown 1.x no longer folds modules shared by the entry and lazy routes
+  // into the entry chunk; each such set becomes its own common chunk, so the
+  // bootstrap grows from a handful of files to dozens. One group restores the
+  // single shell chunk. The entry's own module stays out (an empty entry chunk
+  // is dropped by Vite), and modules /silent-callback also reaches get their
+  // own chunk: a group captures its members' dependencies, so leaving them
+  // unnamed would pull the whole shell into that iframe.
+  // ADR:2026-11-02-ui-bundle-groups-the-entry-graph-and-isolates-silent-callback
+  const appShellChunk = (
+    id: string,
+    graph?: ModuleGraph
+  ): string | undefined => {
+    const info = graph?.getModuleInfo(id);
+    if (
+      !graph ||
+      !info ||
+      isPlaywrightBundle ||
+      info.isEntry ||
+      info.importers.some(
+        (importer) => graph.getModuleInfo(importer)?.isEntry
+      ) ||
+      !isMainShellReachable(id, graph)
+    ) {
+      return undefined;
+    }
+
+    return isShellReachableFromOtherEntry(id, graph)
+      ? 'app-auth-shared'
+      : 'app-shell';
+  };
 
   return (id: string, graph?: ModuleGraph): string | undefined => {
     const normalizedId = id.split('?')[0].replaceAll('\\', '/');
@@ -103,7 +182,7 @@ export const createChunkClassifier = ({
     }
 
     if (!normalizedId.includes('/node_modules/')) {
-      return undefined;
+      return appShellChunk(id, graph);
     }
 
     if (isPlaywrightBundle) {
@@ -131,74 +210,21 @@ export const createChunkClassifier = ({
     const packageName = scopeOrName.startsWith('@')
       ? `${scopeOrName}/${scopedName}`
       : scopeOrName;
+    const family = VENDOR_FAMILIES.find(({ matches }) => matches(packageName));
 
-    if (
-      ['react', 'react-dom', 'scheduler'].includes(packageName) ||
-      packageName.startsWith('react-router')
-    ) {
-      return 'vendor-react';
+    if (!family) {
+      return appShellChunk(id, graph);
     }
 
-    // `oidc-client` is the only vendor the /silent-callback entry path
-    // needs. Pin it into its own chunk so the min-chunk-size merger
-    // cannot fold it into vendor-antd — that merge makes vendor-antd a
-    // static sibling of the entry chunk and pulls a >1 MB Antd chunk
-    // into the silent-refresh iframe, violating the scenario-7 budget
-    // in SsoScenarios.spec.
-    if (packageName === 'oidc-client') {
-      return 'vendor-oidc-client';
+    // A family chunk holds only the modules the shell loads anyway: modules
+    // whose static importers lead back to an entry. Anything only a lazy route
+    // reaches stays with that route; a named group would put it on every
+    // page. A group also captures its members' dependencies, and the
+    // dependencies of a shell module are shell modules too, so this never
+    // drags lazy code onto the entry graph.
+    if (family.pinned || (graph && isShellReachable(id, graph))) {
+      return family.chunk;
     }
-
-    if (
-      packageName.startsWith('@react-aria/') ||
-      packageName.startsWith('@react-stately/') ||
-      packageName.startsWith('@react-types/') ||
-      packageName === 'react-aria' ||
-      packageName === 'react-aria-components' ||
-      packageName === 'react-stately'
-    ) {
-      return 'vendor-aria';
-    }
-
-    // The core charts entry and echarts render only on chart routes. Left
-    // unassigned they stay behind those routes' dynamic imports; inside
-    // vendor-untitled (an entry-graph chunk) they would load on every page.
-    if (
-      normalizedId.includes('/ui-core-components/') &&
-      normalizedId.includes('/dist/charts/')
-    ) {
-      return undefined;
-    }
-    if (
-      ['echarts', 'echarts-for-react', 'zrender', 'size-sensor'].includes(
-        packageName
-      )
-    ) {
-      return undefined;
-    }
-
-    // Antd and the core component library are shared by nearly every route,
-    // so stable cache buckets pay off. Route-specific dependencies are left
-    // to the bundler so they stay behind their dynamic import.
-    if (normalizedId.includes('/node_modules/antd/')) {
-      return 'vendor-antd';
-    }
-    if (
-      normalizedId.includes('/node_modules/@openmetadata/ui-core-components/')
-    ) {
-      return 'vendor-untitled';
-    }
-
-    // NOTE: earlier revisions grouped viz (@antv, three, reactflow, recharts,
-    // elkjs, dagre), editors (@tiptap, prosemirror, codemirror, quill), and
-    // forms (@rjsf, react-hook-form, query-builder) into three named vendor
-    // buckets. That produced a single 4.8 MB vendor-viz chunk (max 1.75 MB)
-    // and pulled 2.55 MB brotli of JS onto index.html because one static
-    // importer forced the whole bucket onto the entry graph. Rollup already
-    // lazy-splits these packages behind their consumers' `import()`
-    // boundaries, so leave the auto-splitter to do its job here. Reintroduce
-    // a bucket only after checking (a) every consumer is behind a dynamic
-    // import and (b) the resulting chunk stays under MAX_SINGLE_JS_BYTES.
 
     return undefined;
   };

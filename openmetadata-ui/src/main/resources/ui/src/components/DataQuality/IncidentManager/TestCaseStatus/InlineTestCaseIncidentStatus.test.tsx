@@ -17,6 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import {
   TestCaseFailureReasonType,
@@ -32,6 +33,7 @@ import { createTask } from '../../../../rest/tasksAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
   ArrowLeft: () => <svg data-testid="icon-arrow-left" />,
   Check: () => <svg data-testid="icon-check" />,
   ChevronDown: () => <svg data-testid="icon-chevron-down" />,
@@ -111,6 +113,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Box: ({
       children,
       className,
@@ -157,14 +160,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
     ),
     ButtonUtility: ({
       icon: Icon,
+      isDisabled,
       onClick,
       ...props
     }: {
       icon?: React.ComponentType<{ className?: string }>;
+      isDisabled?: boolean;
       onClick?: () => void;
       [key: string]: unknown;
     }) => (
-      <button type="button" onClick={onClick} {...props}>
+      <button disabled={isDisabled} type="button" onClick={onClick} {...props}>
         {Icon ? <Icon /> : null}
       </button>
     ),
@@ -346,6 +351,7 @@ jest.mock('../../../../rest/miscAPI', () => ({
             _id: 'user-1',
             _source: {
               name: 'user1',
+              fullyQualifiedName: 'user1',
               displayName: 'User One',
               entityType: 'user',
             },
@@ -361,6 +367,8 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 }));
 
 import InlineTestCaseIncidentStatus from './InlineTestCaseIncidentStatus.component';
+
+const createRange = document.createRange;
 
 const CHIP_TEST_ID = 'test_case_name-status';
 
@@ -404,6 +412,14 @@ const openStatusMenu = async () => {
 describe('InlineTestCaseIncidentStatus', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(document, 'createRange').mockImplementation(() => {
+      const range = createRange();
+      range.getBoundingClientRect = () => new DOMRect();
+
+      return range;
+    });
+    document.elementFromPoint = jest.fn(() => null);
+    document.elementsFromPoint = jest.fn(() => []);
   });
 
   describe('chip rendering', () => {
@@ -489,6 +505,24 @@ describe('InlineTestCaseIncidentStatus', () => {
       expect(screen.getAllByRole('menuitem')).toHaveLength(
         Object.values(TestCaseResolutionStatusTypes).length
       );
+    });
+
+    it('status menu of an assigned incident offers New, Ack and Resolved', async () => {
+      renderComponent({
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+      });
+
+      // An assigned chip opens on the assignee picker; Back leads to the menu.
+      await act(async () => {
+        fireEvent.click(screen.getByTestId(CHIP_TEST_ID));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('incident-status-popover-back'));
+      });
+
+      expect(
+        screen.getAllByRole('menuitem').map((item) => item.textContent)
+      ).toEqual(['label.assigned', 'label.new', 'label.ack', 'label.resolved']);
     });
 
     it('selecting ACK submits directly via API', async () => {
@@ -588,6 +622,25 @@ describe('InlineTestCaseIncidentStatus', () => {
       await waitFor(() => {
         expect(screen.getByTestId('user1')).toBeInTheDocument();
       });
+    });
+
+    it('shows a plain-text empty state when no users match', async () => {
+      (getUserAndTeamSearch as jest.Mock).mockResolvedValueOnce({
+        data: { hits: { hits: [] } },
+      });
+
+      renderComponent({
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId(CHIP_TEST_ID));
+      });
+
+      expect(
+        await screen.findByText('label.no-entity-found')
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/<0>/)).not.toBeInTheDocument();
     });
 
     it('calls getUserAndTeamSearch with query when typing in search', async () => {
@@ -784,6 +837,34 @@ describe('InlineTestCaseIncidentStatus', () => {
       });
     });
 
+    it('selects a user mention and submits its entity link when resolving', async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      renderComponent({
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.ACK,
+      });
+      await user.click(screen.getByTestId(CHIP_TEST_ID));
+      await user.click(
+        screen.getByRole('menuitem', { name: 'label.resolved' })
+      );
+      await user.click(
+        screen.getByTestId(
+          `reason-chip-${TestCaseFailureReasonType.MissingData}`
+        )
+      );
+      await user.type(screen.getByRole('textbox'), '@user');
+      await user.click(await screen.findByText('User One'));
+      await user.click(screen.getByTestId('submit-resolved-popover-button'));
+
+      await waitFor(() =>
+        expect(transitionIncident).toHaveBeenCalledWith(
+          'state-id',
+          expect.objectContaining({
+            comment: expect.stringContaining('<#E::user::user1|'),
+          })
+        )
+      );
+    });
+
     it('shows comment textarea in resolved popover', async () => {
       renderComponent({
         testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
@@ -844,6 +925,29 @@ describe('InlineTestCaseIncidentStatus', () => {
       ).toBeDisabled();
     });
 
+    it.each(['{Enter}{Enter}', '{Shift>}{Enter}{/Shift}', '   '])(
+      'keeps Submit disabled for blank editor input %s',
+      async (input) => {
+        renderComponent({
+          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
+        });
+        fireEvent.click(screen.getByTestId(CHIP_TEST_ID));
+        const reason = await screen.findByTestId(
+          `reason-chip-${TestCaseFailureReasonType.FalsePositive}`
+        );
+        fireEvent.click(reason);
+        const user = userEvent.setup({
+          advanceTimers: jest.advanceTimersByTime,
+        });
+        await user.click(screen.getByRole('textbox'));
+        await user.keyboard(input);
+
+        expect(
+          screen.getByTestId('submit-resolved-popover-button')
+        ).toBeDisabled();
+      }
+    );
+
     it('submit is enabled with both reason and comment', async () => {
       renderComponent({
         testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
@@ -867,9 +971,9 @@ describe('InlineTestCaseIncidentStatus', () => {
         )
       );
 
-      fireEvent.change(screen.getByTestId('resolved-comment-textarea'), {
-        target: { value: 'Test comment' },
-      });
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .type(screen.getByRole('textbox'), 'Test comment');
 
       expect(
         screen.getByTestId('submit-resolved-popover-button')
@@ -899,9 +1003,9 @@ describe('InlineTestCaseIncidentStatus', () => {
         )
       );
 
-      fireEvent.change(screen.getByTestId('resolved-comment-textarea'), {
-        target: { value: 'Test comment' },
-      });
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .type(screen.getByRole('textbox'), 'Test comment');
 
       await act(async () => {
         fireEvent.click(screen.getByTestId('submit-resolved-popover-button'));

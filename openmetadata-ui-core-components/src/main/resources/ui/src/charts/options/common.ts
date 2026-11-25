@@ -133,6 +133,12 @@ export const tooltipConfig = (
   ...(props.formatter ? { formatter: props.formatter } : {}),
 });
 
+// Left out rather than `undefined`: ECharts reads an `undefined` label colour as
+// the axis line's, so a chart that themes its axis line would recolour its
+// labels with it.
+const tickLabelColor = (theme: ChartTheme) =>
+  theme.axisTick ? { color: theme.axisTick } : {};
+
 const axisRest = <A>({
   label: _label,
   formatter: _formatter,
@@ -161,7 +167,7 @@ export const categoryAxis = (
     nameGap: 32,
     nameTextStyle: { color: theme.xAxisTitle, fontSize: 12, fontWeight: 600 },
     axisLabel: {
-      color: theme.axisTick,
+      ...tickLabelColor(theme),
       hideOverlap: true,
       ...(props.formatter ? { formatter: props.formatter } : {}),
     },
@@ -174,9 +180,9 @@ export const categoryAxis = (
 export const valueAxis = (
   theme: ChartTheme,
   props: ChartYAxisProps = {},
-  position: 'left' | 'right' | 'bottom' = 'left'
+  position: 'left' | 'right' | 'bottom' | 'top' = 'left'
 ): YAXisComponentOption => {
-  const vertical = position !== 'bottom';
+  const vertical = position === 'left' || position === 'right';
   const isCategory = props.type === 'category';
   // Category ticks are the values themselves; K/M/B only suits numbers.
   const formatter =
@@ -191,18 +197,21 @@ export const valueAxis = (
     nameRotate: vertical ? (position === 'left' ? 90 : -90) : 0,
     nameTextStyle: { color: theme.axisTitle, fontSize: 12, fontWeight: 500 },
     axisLabel: {
-      color: theme.axisTick,
+      ...tickLabelColor(theme),
       ...(formatter ? { formatter } : {}),
     },
-    // A right-hand axis would draw a second, misaligned set of grid lines.
-    splitLine: { show: position !== 'right', lineStyle: { color: theme.grid } },
+    // A second (right or top) axis would draw another, misaligned set of grid lines.
+    splitLine: {
+      show: position === 'left' || position === 'bottom',
+      lineStyle: { color: theme.grid },
+    },
   } as YAXisComponentOption;
 
   return mergeOption(base, axisRest(props));
 };
 
 export const legendConfig = (
-  names: string[],
+  names: NonNullable<LegendComponentOption['data']>,
   theme: ChartTheme,
   props: ChartLegendProps = {}
 ): LegendComponentOption => ({
@@ -324,7 +333,7 @@ export const referenceLinesToMarkLine = (
     },
     lineStyle: {
       color: line.status ? theme.palette.status[line.status] : theme.axisText,
-      type: 'dashed',
+      type: line.lineType ?? 'dashed',
       width: 1,
     },
   })),

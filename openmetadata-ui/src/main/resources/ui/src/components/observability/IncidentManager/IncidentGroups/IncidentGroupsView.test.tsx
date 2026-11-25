@@ -172,6 +172,10 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+// LocalUtil and LocalUtilClassBase import each other; mocking the latter keeps
+// requireActual below from reading LocalUtil's exports mid-initialization.
+jest.mock('../../../../utils/i18next/LocalUtilClassBase');
+
 jest.mock('../../../../utils/i18next/LocalUtil', () => ({
   ...jest.requireActual('../../../../utils/i18next/LocalUtil'),
   Transi18next: ({
@@ -478,9 +482,37 @@ describe('IncidentGroupsView', () => {
       'label.group-count:5'
     );
     expect(
-      screen.getByTestId('incident-groups-recurring-count')
-    ).toHaveTextContent('label.recurring-count:2');
+      screen.getByTestId('incident-groups-rising-count')
+    ).toHaveTextContent('label.rising-groups-count:2');
     expect(screen.getByTestId('table-group-count')).toHaveTextContent('3');
+  });
+
+  it('should offer no clear-all while nothing is filtered', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    expect(
+      screen.queryByTestId('incident-groups-clear-filters')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should clear every filter from the stats line', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('filter-assignee'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('incident-groups-clear-filters'));
+    });
+
+    expect(screen.getByTestId('filters-state')).not.toHaveTextContent('aaron');
+    expect(
+      screen.queryByTestId('incident-groups-clear-filters')
+    ).not.toBeInTheDocument();
   });
 
   it('should refire the fetch with the ordering the table hands back', async () => {
@@ -505,6 +537,35 @@ describe('IncidentGroupsView', () => {
       sortType: 'asc',
       page: 1,
     });
+  });
+
+  it('should keep the ordering in the URL', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('sort-by-severity'));
+    });
+
+    expect(screen.getByTestId('location-search')).toHaveTextContent(
+      'sortField=severity&sortType=desc'
+    );
+  });
+
+  it('should open on the ordering a link carries', async () => {
+    await act(async () => {
+      renderView(
+        '/observability/incident-manager?sortField=lastSeen&sortType=asc'
+      );
+    });
+
+    expect(screen.getByTestId('table-sort-type')).toHaveTextContent(
+      'lastSeen:asc'
+    );
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sortField: 'lastSeen', sortType: 'asc' })
+    );
   });
 
   it('should order by another field from the first page', async () => {

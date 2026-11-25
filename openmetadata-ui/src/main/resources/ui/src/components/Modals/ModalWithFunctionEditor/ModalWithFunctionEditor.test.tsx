@@ -53,11 +53,11 @@ describe('ModalWithFunctionEditor', () => {
     render(<ModalWithFunctionEditor {...mockProps} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('header')).toBeInTheDocument();
+      expect(screen.getByTestId('dialog-title')).toBeInTheDocument();
       expect(screen.getByTestId('sql-function-input')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('header')).toHaveTextContent('Test Header');
+    expect(screen.getByTestId('dialog-title')).toHaveTextContent('Test Header');
 
     const input = screen.getByTestId('sql-function-input');
 

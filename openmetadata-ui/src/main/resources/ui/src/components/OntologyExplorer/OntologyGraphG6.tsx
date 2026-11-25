@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { GraphEvent } from '@antv/g6';
+import classNames from 'classnames';
 import {
   forwardRef,
   useCallback,
@@ -35,6 +37,17 @@ import {
 } from './OntologyExplorer.interface';
 import PortOverlay from './PortOverlay.component';
 import { isHierarchicalRelationship } from './utils/relationshipTypeUtils';
+
+interface GhostNode {
+  readonly x: number;
+  readonly y: number;
+  readonly label: string;
+}
+
+type OntologyGraphG6Props = OntologyGraphProps & {
+  /** A placeholder drawn at a canvas point, e.g. where a new concept is being created. */
+  readonly ghostNode?: GhostNode;
+};
 
 function writeSearchHighlightIds(
   container: HTMLDivElement | null,
@@ -100,7 +113,7 @@ function writeFitViewInProgress(
   }
 }
 
-const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
+const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphG6Props>(
   (
     {
       nodes: inputNodes,
@@ -114,18 +127,26 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       explorationMode = 'model',
       hierarchyCombos,
       graphSearchHighlight = null,
+      conflictEdgeKeys,
       focusNodeId,
       onNodeClick,
       onNodeDoubleClick,
       onPaneClick,
+      onCanvasDoubleClick,
       onEdgeClick,
       onScrollNearEdge,
       nodePositions,
       relationTypes,
+      relationColors,
+      relationTypeGroups,
+      canCreateRelationType,
       studioMode,
+      keepCanvasOnAdd,
       isAuthoringMode,
       isEditMode,
       onCreateRelation,
+      checkRelation,
+      ghostNode,
     },
     ref
   ) => {
@@ -175,10 +196,12 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       glossaryColorMap,
       hierarchyCombos: hierarchyCombos ?? [],
       graphSearchHighlight,
+      conflictEdgeKeys,
       isEditMode: Boolean(isAuthoringMode || isEditMode),
       layoutType,
       nodePositions,
       relationTypes,
+      relationColors,
       studioMode,
     });
 
@@ -186,6 +209,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       useOntologyGraph({
         containerRef,
         graphData,
+        nodePositions,
         inputNodes,
         mergedEdgesList,
         explorationMode,
@@ -198,6 +222,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
         onNodeClick,
         onNodeDoubleClick,
         onPaneClick,
+        onCanvasDoubleClick,
         onScrollNearEdge,
         setClickedEdgeId,
         neighborSet,
@@ -207,6 +232,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
         hierarchicalRelationTypes,
         isEditMode,
         studioMode,
+        keepCanvasOnAdd,
       });
 
     useImperativeHandle(
@@ -283,6 +309,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           a.click();
           URL.revokeObjectURL(url);
         },
+        clearEdgeSelection: () => setClickedEdgeId(null),
       }),
       [explorationMode, extractNodePositions, graphRef, suppressEdgeCheck]
     );
@@ -312,16 +339,53 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       writeCardinalityMap(containerRef.current, cardinalityLabelMap);
     }, [cardinalityLabelMap]);
 
+    const [ghostAt, setGhostAt] = useState<{ x: number; y: number }>();
+    // Follows pan and zoom, since the ghost is a DOM element over the canvas.
+    useEffect(() => {
+      const graph = graphRef.current;
+      if (!ghostNode || !graph) {
+        setGhostAt(undefined);
+
+        return undefined;
+      }
+      const place = () => {
+        const [x, y] = graph.getViewportByCanvas([ghostNode.x, ghostNode.y]);
+        setGhostAt({ x, y });
+      };
+      place();
+      graph.on(GraphEvent.AFTER_TRANSFORM, place);
+
+      return () => {
+        graph.off(GraphEvent.AFTER_TRANSFORM, place);
+      };
+    }, [ghostNode, graphRef]);
+
     return (
       <div className="tw:relative tw:h-full tw:w-full">
         <div
           className="tw:w-full tw:h-full tw:relative ontology-g6-container"
           ref={containerRef}
         />
+        {ghostNode && ghostAt ? (
+          <div
+            aria-hidden="true"
+            className={classNames(
+              'tw:pointer-events-none tw:absolute tw:z-5 tw:-translate-x-1/2 tw:-translate-y-1/2',
+              'tw:rounded-lg tw:border tw:border-dashed tw:border-brand tw:bg-brand-primary tw:px-4 tw:py-2',
+              'tw:font-body tw:text-sm tw:font-medium tw:text-brand-secondary'
+            )}
+            data-testid="ontology-ghost-node"
+            style={{ left: ghostAt.x, top: ghostAt.y }}>
+            {ghostNode.label}
+          </div>
+        ) : null}
         <PortOverlay
+          canCreateRelationType={canCreateRelationType}
+          checkRelation={checkRelation}
           containerRef={containerRef}
           isEditMode={Boolean(isEditMode)}
           nodeLabels={nodeLabels}
+          relationTypeGroups={relationTypeGroups}
           onCreateRelation={onCreateRelation ?? (() => Promise.resolve())}
         />
       </div>

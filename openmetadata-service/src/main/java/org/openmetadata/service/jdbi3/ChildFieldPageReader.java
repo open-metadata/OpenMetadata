@@ -27,17 +27,17 @@ public final class ChildFieldPageReader {
   /** Per-type enrichment of one page: custom metrics, extensions, profiles, PII masking. */
   public interface ChildPageEnricher {
     List<FieldInterface> enrich(
-        EntityInterface parent, List<FieldInterface> page, String fieldsParam);
+        EntityInterface<?> parent, List<FieldInterface> page, String fieldsParam);
 
     /** For the entity types whose children need nothing beyond tags. */
     ChildPageEnricher NONE = (parent, page, fieldsParam) -> page;
   }
 
-  private final EntityRepository<? extends EntityInterface> repository;
+  private final EntityRepository<? extends EntityInterface<?>> repository;
   private final ChildFieldResolver.ChildContainerSpec spec;
 
   public ChildFieldPageReader(
-      EntityRepository<? extends EntityInterface> repository,
+      EntityRepository<? extends EntityInterface<?>> repository,
       ChildFieldResolver.ChildContainerSpec spec) {
     this.repository = repository;
     this.spec = spec;
@@ -55,7 +55,7 @@ public final class ChildFieldPageReader {
    * always done with an unrecognised value.
    */
   public ResultList<FieldInterface> read(
-      EntityInterface parent,
+      EntityInterface<?> parent,
       int limit,
       int offset,
       String fieldsParam,
@@ -66,7 +66,7 @@ public final class ChildFieldPageReader {
     ChildFieldResolver.ensureChildFqns(parent, entityType);
     List<FieldInterface> allChildren = ChildFieldResolver.childrenOf(parent, entityType);
     return allChildren.isEmpty()
-        ? emptyChildPage(limit, offset)
+        ? emptyChildPage()
         : buildChildPage(
             parent, allChildren, limit, offset, fieldsParam, sortBy, sortOrder, enricher);
   }
@@ -91,16 +91,13 @@ public final class ChildFieldPageReader {
         enricher);
   }
 
-  /**
-   * An entity with no children answers with before "0" and after offset + limit even though there
-   * is nothing to page to. That is what both legacy readers returned and what clients see today.
-   */
-  private ResultList<FieldInterface> emptyChildPage(int limit, int offset) {
-    return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
+  /** No cursors: there is nothing to page to (ADR:2026-11-25-empty-child-page-has-no-cursors). */
+  private ResultList<FieldInterface> emptyChildPage() {
+    return new ResultList<>(new ArrayList<>(), null, null, 0);
   }
 
   private ResultList<FieldInterface> buildChildPage(
-      EntityInterface parent,
+      EntityInterface<?> parent,
       List<FieldInterface> allChildren,
       int limit,
       int offset,

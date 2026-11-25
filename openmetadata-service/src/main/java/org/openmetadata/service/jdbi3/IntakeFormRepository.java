@@ -73,11 +73,6 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
     // No cross-entity relationships for IntakeForm
   }
 
-  @Override
-  protected boolean shouldCleanupFqnDependents() {
-    return false;
-  }
-
   /**
    * Returns the enabled IntakeForm for a given entityType, or null if none is configured or the
    * configured form is disabled. Storage / deserialization errors propagate to the caller —

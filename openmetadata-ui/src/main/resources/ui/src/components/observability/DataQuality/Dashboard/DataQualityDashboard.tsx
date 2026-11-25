@@ -30,6 +30,8 @@ const DQ_SECTION_CLASS_NAMES: Partial<Record<DqDashboardSectionKey, string>> = {
     'data-quality-dashboard-card-section tw:[&_.data-quality-dashboard-pie-chart]:h-full',
   'data-dimensions':
     'tw:[&_.status-card-widget-container]:border-0 tw:[&_.status-card-widget-container]:bg-secondary_subtle',
+  'test-case-status':
+    'tw:[&_.test-case-area-chart-widget-container]:border-0 tw:[&_.test-case-area-chart-widget-container]:bg-secondary_subtle',
   'incident-metrics':
     'tw:[&_.custom-chart-background]:border-0 tw:[&_.custom-chart-background]:bg-secondary_subtle',
 };

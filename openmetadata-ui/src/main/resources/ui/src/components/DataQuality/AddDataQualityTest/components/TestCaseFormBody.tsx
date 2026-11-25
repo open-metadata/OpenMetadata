@@ -13,6 +13,7 @@
 import {
   Alert,
   Button,
+  Card,
   FieldProp,
   FieldTypes,
   FormField,
@@ -22,9 +23,13 @@ import {
   getField,
   HelperTextType,
   useFieldDoc,
-  useFieldDocRegistry,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Column,
+  Dimension,
+  Edit01,
+  Table as TableIcon,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { debounce, isEmpty, snakeCase } from 'lodash';
@@ -39,9 +44,6 @@ import {
 } from 'react';
 import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
-import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
-import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table-test.svg';
 import {
   AGGREGATE_PAGE_SIZE_LARGE,
   MAX_NAME_LENGTH,
@@ -64,6 +66,8 @@ import {
 } from '../../../../generated/tests/testDefinition';
 import { useThresholdProfilerConfig } from '../../../../hooks/observability/data-quality/useThresholdProfilerConfig';
 import { useDataQualityDimensions } from '../../../../hooks/useDataQualityDimensions';
+import { useFormFieldDocs } from '../../../../hooks/useFormFieldDocs';
+import { useSeedFirstFieldDoc } from '../../../../hooks/useSeedFirstFieldDoc';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
@@ -78,13 +82,15 @@ import {
   convertSearchSourceToTable,
   getServiceTypeForTestDefinition,
 } from '../../../../utils/DataQuality/DataQualityPureUtils';
-import { loadFormFieldDocs } from '../../../../utils/DataQuality/FormFieldDocs';
 import { getDimensionSelectOptions } from '../../../../utils/DataQualityDimensionUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
 import {
   DIMENSION_FAILURE_POLICY_PARAM,
   getThresholdPreviewTarget,
+  MIN_ROWS_PER_DIMENSION_PARAM,
+  THRESHOLD_PARAM,
+  THRESHOLD_UNIT_PARAM,
 } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
@@ -94,6 +100,10 @@ import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
 import ThresholdPreview from '../../../observability/data-quality/ThresholdPreview/ThresholdPreview';
 import TagSelector from '../../../Tag/TagSelector/TagSelector';
 import ParameterFields from './ParameterFields';
+import {
+  ROOT_SELECTED_ENTITY_PATH,
+  ROOT_TABLE_PATH,
+} from './TestCaseFormBody.constants';
 import {
   FormValues,
   TablesCache,
@@ -106,7 +116,6 @@ import { toDataQualityDimensionItem } from './transformTestCaseFormData';
 
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
 const TABLES_CACHE_MAX_SIZE = 100;
-const ROOT_TABLE_PATH = 'root/table';
 const ROOT_TEST_TYPE_PATH = 'root/testType';
 
 const fqnFromSelectItem = (
@@ -156,7 +165,10 @@ const getHasTestSuite = (
   selectedTableData?: Table
 ): boolean => Boolean(testSuite?.id || selectedTableData?.testSuite?.id);
 
-const DIMENSION_POLICY_ONLY = [DIMENSION_FAILURE_POLICY_PARAM];
+const DIMENSION_ROLL_UP_PARAMS = [
+  DIMENSION_FAILURE_POLICY_PARAM,
+  MIN_ROWS_PER_DIMENSION_PARAM,
+];
 
 const getShowParameterFields = (
   hasParameterDefinition: boolean,
@@ -181,43 +193,28 @@ const getIsDimensionalTest = (
     ? !isEmpty(unwrapSelectValues(dimensionColumns))
     : testLevel === TestLevel.COLUMN_DIMENSION;
 
-// A dynamic assertion learns the bounds, which hides the parameter inputs, but
-// the dimension roll-up still applies to the learned bounds.
-const getShowDimensionPolicyOnly = (
-  showParameterFields: boolean,
-  isDimensionalTest: boolean,
-  definition: TestDefinition | undefined
-): boolean =>
-  !showParameterFields &&
-  isDimensionalTest &&
-  Boolean(
-    definition?.parameterDefinition?.some(
-      (param) => param.name === DIMENSION_FAILURE_POLICY_PARAM
-    )
-  );
+/**
+ * Parameters that still apply to a learned bound. Ingestion widens bounds by
+ * the failure threshold downstream of bound resolution (`thresholds.py`: the
+ * widening "has to hold in both cases" — static or dynamic), and the dimension
+ * roll-up acts on the learned bounds the same way it acts on static ones. So a
+ * dynamic assertion hides only the static-bound inputs; these stay editable.
+ */
+const DYNAMIC_ASSERTION_PARAMS = [
+  THRESHOLD_PARAM,
+  THRESHOLD_UNIT_PARAM,
+  ...DIMENSION_ROLL_UP_PARAMS,
+];
+
+// Dynamic-assertion mode renders only `DYNAMIC_ASSERTION_PARAMS`, which
+// `ParameterFields` intersects with the definition's declared parameters — the
+// result is empty for a definition that declares none of them.
+const getShowDynamicParams = (
+  hasParameterDefinition: boolean,
+  useDynamicAssertionValue: unknown
+): boolean => hasParameterDefinition && useDynamicAssertionValue === true;
 
 // ─── Sub-sections (kept in-file: JSX helpers for the large form body) ─────────
-
-const DimensionPolicyOnlyField: FC<{
-  show: boolean;
-  definition?: TestDefinition;
-  form: UseFormReturn<FormValues>;
-  table?: Table;
-  fieldDocs: Record<string, string>;
-}> = ({ show, definition, form, table, fieldDocs }) =>
-  show && definition ? (
-    <ParameterFields
-      isDimensionalTest
-      definition={definition}
-      form={form}
-      onlyParams={DIMENSION_POLICY_ONLY}
-      table={table}
-      testDefinitionDoc={getFieldDoc(
-        fieldDocs[definition.name ?? ''],
-        definition.description
-      )}
-    />
-  ) : null;
 
 const TestLevelAndTableCard: FC<{
   isEditMode: boolean;
@@ -251,39 +248,42 @@ const TestLevelAndTableCard: FC<{
     (isEditMode && selectedTestLevel === TestLevel.COLUMN);
 
   return (
-    <div className="form-card-section" data-testid="select-table-card">
-      {!isEditMode && (
-        <div {...testLevelDoc}>
-          <FormField control={form.control} name="testLevel">
-            {({ field }) => (
-              <>
-                <FormItemLabel
-                  required
-                  label={t('message.select-test-level')}
-                />
-                <SelectionCardGroup
-                  layout="vertical"
-                  options={testLevelOptions}
-                  value={field.value}
-                  onChange={(value) => {
-                    field.onChange(value);
-                    handleActiveField('root/testLevel');
-                  }}
-                />
-              </>
-            )}
-          </FormField>
-        </div>
-      )}
+    <Card className="form-card-section" data-testid="select-table-card">
+      <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+        {!isEditMode && (
+          <div id="root/testLevel" {...testLevelDoc}>
+            <FormField control={form.control} name="testLevel">
+              {({ field }) => (
+                <>
+                  <FormItemLabel
+                    required
+                    label={t('message.select-test-level')}
+                  />
+                  <SelectionCardGroup
+                    layout="vertical"
+                    options={testLevelOptions}
+                    value={field.value}
+                    onChange={(value) => {
+                      field.onChange(value);
+                      handleActiveField('root/testLevel');
+                    }}
+                  />
+                </>
+              )}
+            </FormField>
+          </div>
+        )}
 
-      {getField(selectedTableField)}
+        {getField(selectedTableField)}
 
-      {selectedTestLevel === TestLevel.COLUMN && getField(selectedColumnField)}
+        {selectedTestLevel === TestLevel.COLUMN &&
+          getField(selectedColumnField)}
 
-      {showDimensionFields && getField(dimensionColumnsField)}
+        {showDimensionFields && getField(dimensionColumnsField)}
 
-      {showDimensionFields && getField(topDimensionsField)}
-    </div>
+        {showDimensionFields && getField(topDimensionsField)}
+      </Card.Content>
+    </Card>
   );
 };
 
@@ -329,7 +329,7 @@ const TestTypeCard: FC<{
   dataQualityDimensionField: FieldProp;
   thresholdPreview: ReactNode;
   isDimensionalTest: boolean;
-  showDimensionPolicyOnly: boolean;
+  showDynamicParams: boolean;
 }> = ({
   isEditMode,
   selectedTestLevel,
@@ -350,61 +350,63 @@ const TestTypeCard: FC<{
   dataQualityDimensionField,
   thresholdPreview,
   isDimensionalTest,
-  showDimensionPolicyOnly,
+  showDynamicParams,
 }) => (
-  <div
+  <Card
     className="form-card-section test-type-card test-type-section"
     data-testid="test-type-card">
-    {!isEditMode && selectedTestLevel === TestLevel.TABLE && (
-      <CustomQueryToggle
-        handleCustomQueryToggle={handleCustomQueryToggle}
-        isCustomQuery={isCustomQuery}
-        t={t}
-      />
-    )}
-
-    {!isCustomQuery && getField(testTypeField)}
-
-    {additionalFields.map((field) => (
-      <div key={field.name}>{getField(field)}</div>
-    ))}
-
-    {showParameterFields && selectedTestDefinition && (
-      <div
-        className="parameter-fields-wrapper"
-        onFocusCapture={() =>
-          handleActiveField(
-            selectedTestType ? `root/${selectedTestType}` : ROOT_TEST_TYPE_PATH
-          )
-        }>
-        <ParameterFields
-          definition={selectedTestDefinition}
-          form={form}
-          isDimensionalTest={isDimensionalTest}
-          table={selectedTableData}
-          testDefinitionDoc={getFieldDoc(
-            fieldDocs[selectedTestDefinition.name ?? ''],
-            selectedTestDefinition.description
-          )}
+    <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+      {!isEditMode && selectedTestLevel === TestLevel.TABLE && (
+        <CustomQueryToggle
+          handleCustomQueryToggle={handleCustomQueryToggle}
+          isCustomQuery={isCustomQuery}
+          t={t}
         />
-        {thresholdPreview}
-      </div>
-    )}
+      )}
 
-    <DimensionPolicyOnlyField
-      definition={selectedTestDefinition}
-      fieldDocs={fieldDocs}
-      form={form}
-      show={showDimensionPolicyOnly}
-      table={selectedTableData}
-    />
+      {!isCustomQuery && getField(testTypeField)}
 
-    {isComputeRowCountFieldVisible && getField(computeRowCountField)}
+      {additionalFields.map((field) => (
+        <div key={field.name}>{getField(field)}</div>
+      ))}
 
-    {/* Shown in the parameter-only drawer too: the dimension is edited from the parameter box on
+      {/* In dynamic-assertion mode the definition is still rendered, but
+        ParameterFields filters it down to DYNAMIC_ASSERTION_PARAMS — only the
+        threshold and the dimension roll-up, which survive bound learning. */}
+      {(showParameterFields || showDynamicParams) && selectedTestDefinition && (
+        <div
+          className="parameter-fields-wrapper"
+          onFocusCapture={() =>
+            handleActiveField(
+              selectedTestType
+                ? `root/${selectedTestType}`
+                : ROOT_TEST_TYPE_PATH
+            )
+          }>
+          <ParameterFields
+            definition={selectedTestDefinition}
+            form={form}
+            isDimensionalTest={isDimensionalTest}
+            onlyParams={
+              showParameterFields ? undefined : DYNAMIC_ASSERTION_PARAMS
+            }
+            table={selectedTableData}
+            testDefinitionDoc={getFieldDoc(
+              fieldDocs[selectedTestDefinition.name ?? ''],
+              selectedTestDefinition.description
+            )}
+          />
+          {thresholdPreview}
+        </div>
+      )}
+
+      {isComputeRowCountFieldVisible && getField(computeRowCountField)}
+
+      {/* Shown in the parameter-only drawer too: the dimension is edited from the parameter box on
         the test case result page. */}
-    {getField(dataQualityDimensionField)}
-  </div>
+      {getField(dataQualityDimensionField)}
+    </Card.Content>
+  </Card>
 );
 
 const TestDetailsCard: FC<{
@@ -428,66 +430,68 @@ const TestDetailsCard: FC<{
   tagsDoc,
   glossaryTermsDoc,
 }) => (
-  <div
+  <Card
     className="form-card-section test-details-section"
     data-testid="test-details-card">
-    {getField(testNameField)}
+    <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+      {getField(testNameField)}
 
-    {isEditMode && getField(displayNameField)}
+      {isEditMode && getField(displayNameField)}
 
-    <FormField control={form.control} name="description">
-      {({ field }) => (
-        <div
-          className="tw:flex tw:flex-col tw:gap-1"
-          data-testid="description"
-          id="root/description"
-          {...descriptionDoc}>
-          <FormItemLabel label={t('label.description')} />
-          <RichTextEditor
-            initialValue={field.value ?? ''}
-            onFocus={() => handleActiveField('root/description')}
-            onTextChange={field.onChange}
-          />
-        </div>
-      )}
-    </FormField>
+      <FormField control={form.control} name="description">
+        {({ field }) => (
+          <div
+            className="tw:flex tw:flex-col tw:gap-1"
+            data-testid="description"
+            id="root/description"
+            {...descriptionDoc}>
+            <FormItemLabel label={t('label.description')} />
+            <RichTextEditor
+              initialValue={field.value ?? ''}
+              onFocus={() => handleActiveField('root/description')}
+              onTextChange={field.onChange}
+            />
+          </div>
+        )}
+      </FormField>
 
-    <FormField control={form.control} name="tags">
-      {({ field }) => (
-        <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
-          <TagSelector
-            className="tw:w-full"
-            data-testid="tags-input"
-            label={t('label.tag-plural')}
-            placeholder={t('label.select-field', {
-              field: t('label.tag-plural'),
-            })}
-            value={field.value ?? []}
-            onChange={field.onChange}
-          />
-        </div>
-      )}
-    </FormField>
+      <FormField control={form.control} name="tags">
+        {({ field }) => (
+          <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
+            <TagSelector
+              className="tw:w-full"
+              data-testid="tags-input"
+              label={t('label.tag-plural')}
+              placeholder={t('label.select-field', {
+                field: t('label.tag-plural'),
+              })}
+              value={field.value ?? []}
+              onChange={field.onChange}
+            />
+          </div>
+        )}
+      </FormField>
 
-    <FormField control={form.control} name="glossaryTerms">
-      {({ field }) => (
-        <div
-          data-testid="glossary-terms-selector"
-          id="root/glossaryTerms"
-          {...glossaryTermsDoc}>
-          <TagSuggestion
-            label={t('label.glossary-term-plural')}
-            placeholder={t('label.select-field', {
-              field: t('label.glossary-term-plural'),
-            })}
-            tagType={TagSource.Glossary}
-            value={field.value ?? []}
-            onChange={field.onChange}
-          />
-        </div>
-      )}
-    </FormField>
-  </div>
+      <FormField control={form.control} name="glossaryTerms">
+        {({ field }) => (
+          <div
+            data-testid="glossary-terms-selector"
+            id="root/glossaryTerms"
+            {...glossaryTermsDoc}>
+            <TagSuggestion
+              label={t('label.glossary-term-plural')}
+              placeholder={t('label.select-field', {
+                field: t('label.glossary-term-plural'),
+              })}
+              tagType={TagSource.Glossary}
+              value={field.value ?? []}
+              onChange={field.onChange}
+            />
+          </div>
+        )}
+      </FormField>
+    </Card.Content>
+  </Card>
 );
 
 const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
@@ -526,22 +530,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const [currentColumnType, setCurrentColumnType] = useState<string>();
   const [isCustomQuery, setIsCustomQuery] = useState(false);
 
-  // Per-field "Form Hint" text is sourced from the same TestCaseForm.md that
-  // backs the classic documentation panel, so the popover and the doc panel
-  // stay in sync and we don't duplicate the copy as translation strings.
-  const [fieldDocs, setFieldDocs] = useState<Record<string, string>>({});
-  useEffect(() => {
-    let cancelled = false;
-    loadFormFieldDocs(TEST_CASE_FORM).then((docs) => {
-      if (!cancelled) {
-        setFieldDocs(docs);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const fieldDocs = useFormFieldDocs(TEST_CASE_FORM);
 
   const [existingTestCases, setExistingTestCases] = useState<string[]>([]);
   const [canCreatePipeline, setCanCreatePipeline] = useState(false);
@@ -553,8 +542,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   // Dimensions are entities managed in Settings > Preferences > Data Quality; the shared hook
   // owns the fetch so this form, the test definition form and the test case filters all list the
   // same set and degrade the same way.
-  const { dimensions: dataQualityDimensions, isLoading: isDimensionsLoading } =
-    useDataQualityDimensions();
+  const { dimensions: dataQualityDimensions } = useDataQualityDimensions();
 
   const testLevelFieldValue = useWatch({
     control: form.control,
@@ -638,13 +626,14 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     [testCase?.Create, getEntityPermissionByFqn, t]
   );
 
-  // Report the focused field to the doc panel. Rendered controls carry
-  // `root/<fieldName>` ids, so one capture handler covers every field the
-  // same way the legacy antd form's form-level onFocus did.
-  const handleFormFocusCapture = useCallback(
-    (event: React.FocusEvent<HTMLDivElement>) => {
-      const fieldId = (event.target as HTMLElement).closest?.(
-        '[id^="root/"]'
+  // Report the focused or clicked field (`root/<fieldName>` ids). A select
+  // holding a value hides its input, so fall back to the id in its wrapper.
+  const handleFieldActivation = useCallback(
+    (event: React.SyntheticEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement;
+      const fieldId = (
+        target.closest?.('[id^="root/"]') ??
+        target.closest?.('[data-field-doc]')?.querySelector('[id^="root/"]')
       )?.id;
       if (fieldId) {
         handleActiveField(fieldId);
@@ -669,13 +658,13 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         description: t('label.test-applied-on-entity', {
           entity: t('label.column-lowercase'),
         }),
-        icon: <ColumnIcon />,
+        icon: <Column size={24} />,
       },
       {
         value: TestLevel.COLUMN_DIMENSION,
         label: t('label.dimension-level'),
         description: t('label.column-with-dimension'),
-        icon: <DimensionIcon />,
+        icon: <Dimension />,
         isBeta: true,
       },
     ],
@@ -941,25 +930,27 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   useEffect(() => {
     if (selectedTestLevel) {
       fetchTestDefinitions();
-      // Edit mode prefills testTypeId (and selectedColumn) via
-      // form.reset(buildEditDefaults(...)); testLevel is disabled there, so
-      // this effect only fires from that prefill and must not wipe it.
-      // Clearing the derived definition/type here also unmounts the params
-      // section whenever fetchTestDefinitions' identity changes (it depends on
-      // selectedTableData, which loads async on edit open) — making the params
-      // flicker. In edit mode these stay as prefilled and are re-derived by the
-      // [selectedTestTypeFqn, testDefinitions] effect.
-      if (!isEditMode) {
-        form.setValue('testTypeId', undefined as never);
-        if (selectedTestLevel === TestLevel.TABLE) {
-          form.setValue('selectedColumn', undefined as never);
-        }
-        setSelectedTestDefinition(undefined);
-        setSelectedTestType(undefined);
-        setIsCustomQuery(false);
-      }
     }
-  }, [selectedTestLevel, fetchTestDefinitions, form, isEditMode]);
+  }, [selectedTestLevel, fetchTestDefinitions]);
+
+  // Reset the picked type only when the level or the table changes. Keying it
+  // on fetchTestDefinitions' identity wiped a type picked before the selected
+  // table's details finished loading, unmounting its params mid-fill. Edit
+  // mode prefills testTypeId (and selectedColumn) via
+  // form.reset(buildEditDefaults(...)) with level and table disabled, so this
+  // only fires from that prefill and must not wipe it.
+  useEffect(() => {
+    if (!selectedTestLevel || isEditMode) {
+      return;
+    }
+    form.setValue('testTypeId', undefined as never);
+    if (selectedTestLevel === TestLevel.TABLE) {
+      form.setValue('selectedColumn', undefined as never);
+    }
+    setSelectedTestDefinition(undefined);
+    setSelectedTestType(undefined);
+    setIsCustomQuery(false);
+  }, [selectedTestLevel, selectedTableFqn, form, isEditMode]);
 
   useEffect(() => {
     if (
@@ -1102,16 +1093,16 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const isComputeRowCountFieldVisible = Boolean(
     selectedTestDefinition?.supportsRowLevelPassedFailed
   );
+  const hasParameterDefinition = Boolean(
+    selectedTestDefinition?.parameterDefinition
+  );
   const showParameterFields = getShowParameterFields(
-    Boolean(selectedTestDefinition?.parameterDefinition),
+    hasParameterDefinition,
     useDynamicAssertionValue
   );
-  // A dynamic assertion learns the bounds, which hides the parameter inputs,
-  // but the dimension roll-up still applies to the learned bounds.
-  const showDimensionPolicyOnly = getShowDimensionPolicyOnly(
-    showParameterFields,
-    isDimensionalTest,
-    selectedTestDefinition
+  const showDynamicParams = getShowDynamicParams(
+    hasParameterDefinition,
+    useDynamicAssertionValue
   );
 
   useEffect(() => {
@@ -1202,7 +1193,12 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   const selectedTableField = {
     name: 'selectedTable',
-    label: t('label.select-entity', { entity: t('label.table') }),
+    label: t(
+      selectedTableFqn ? 'label.selected-entity' : 'label.select-entity',
+      {
+        entity: t('label.table'),
+      }
+    ),
     type: FieldTypes.ASYNC_SELECT,
     required: true,
     rules: {
@@ -1240,7 +1236,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       // legacy option onclick did.
       onItemInserted: () => {
         form.trigger('selectedTable');
-        handleActiveField('root/selected-entity');
+        handleActiveField(ROOT_SELECTED_ENTITY_PATH);
       },
       // Clearing an unauthorized table must clear the stale permission error
       // and switch the doc panel back to the generic table section.
@@ -1353,7 +1349,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }),
     props: {
       'data-testid': 'data-quality-dimension',
-      isLoading: isDimensionsLoading,
       options: dataQualityDimensionOptions,
       onItemInserted: () => setIsDimensionManuallyEdited(true),
       onItemCleared: () => setIsDimensionManuallyEdited(true),
@@ -1464,29 +1459,10 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     doc: getFieldDoc(fieldDocs.description, t('message.doc-field-description')),
   });
 
-  // Seed the hint panel with the first field actually on screen so it isn't
-  // empty on open and never points at a field the current mode hides (edit
-  // hides the test-level card; params-only edit hides the table/column
-  // selectors). A field's doc registers even when the field is not rendered
-  // (the useFieldDoc hooks are called unconditionally), so query the DOM for
-  // the first rendered `data-field-doc` anchor rather than the registry.
-  // Focusing any field replaces it as usual.
-  const { setActive: setActiveFieldDoc, entries: fieldDocEntries } =
-    useFieldDocRegistry();
+  // Seeds from the DOM, so edit mode (no test-level card) and params-only
+  // edit (no table/column selectors) open on a field that is actually shown.
   const formBodyRef = useRef<HTMLDivElement>(null);
-  const hasSeededFieldDocRef = useRef(false);
-  useEffect(() => {
-    if (hasSeededFieldDocRef.current) {
-      return;
-    }
-    const firstFieldName = formBodyRef.current
-      ?.querySelector('[data-field-doc]')
-      ?.getAttribute('data-field-doc');
-    if (firstFieldName) {
-      setActiveFieldDoc(firstFieldName);
-      hasSeededFieldDocRef.current = true;
-    }
-  }, [fieldDocEntries, setActiveFieldDoc]);
+  useSeedFirstFieldDoc(formBodyRef);
 
   const tableProfilerConfig = useThresholdProfilerConfig(
     selectedTestDefinition,
@@ -1510,7 +1486,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       className="test-case-form-v1 drawer-mode test-case-form-body"
       data-testid="test-case-form-v1"
       ref={formBodyRef}
-      onFocusCapture={handleFormFocusCapture}>
+      onFocusCapture={handleFieldActivation}
+      onPointerDownCapture={handleFieldActivation}>
       {errorMessage && (
         <div className="floating-error-alert">
           <Alert
@@ -1556,7 +1533,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         selectedTestDefinition={selectedTestDefinition}
         selectedTestLevel={selectedTestLevel}
         selectedTestType={selectedTestType}
-        showDimensionPolicyOnly={showDimensionPolicyOnly}
+        showDynamicParams={showDynamicParams}
         showParameterFields={showParameterFields}
         t={t}
         testTypeField={testTypeField}

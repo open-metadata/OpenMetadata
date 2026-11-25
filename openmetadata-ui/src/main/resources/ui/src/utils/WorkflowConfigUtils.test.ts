@@ -11,11 +11,57 @@
  *  limitations under the License.
  */
 
+import { Node } from 'reactflow';
+import { TEST_CASE_RESOLUTION_WORKFLOW_NAME } from '../constants/WorkflowBuilder.constants';
+import { EntityType } from '../enums/entity.enum';
+import { SinkType } from '../generated/governance/workflows/elements/nodes/automatedTask/sinkTask';
+import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
+import { Type } from '../generated/governance/workflows/workflowDefinition';
 import {
   buildEntityFieldGroups,
   buildFieldOptions,
   getFieldDisplayLabel,
+  getGitSinkTriggerConfig,
+  getGitSinkTriggerNodeConfig,
+  getTriggerDataAssets,
+  isGitSinkNode,
+  isIncidentSettingsWorkflow,
 } from './WorkflowConfigUtils';
+
+describe('WorkflowConfigUtils.isIncidentSettingsWorkflow', () => {
+  it.each([
+    {
+      name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+      type: Type.NoOp,
+      expected: true,
+    },
+    {
+      name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+      type: Type.EventBasedEntity,
+      expected: false,
+    },
+    { name: 'GlossaryApproval', type: Type.NoOp, expected: false },
+    { name: 'GlossaryApproval', type: Type.EventBasedEntity, expected: false },
+  ])(
+    'identifies $name with $type trigger as $expected',
+    ({ name, type, expected }) => {
+      expect(
+        isIncidentSettingsWorkflow({ name, description: '', trigger: { type } })
+      ).toBe(expected);
+    }
+  );
+
+  it('does not expose incident settings before a workflow or trigger is loaded', () => {
+    expect(isIncidentSettingsWorkflow()).toBe(false);
+    expect(isIncidentSettingsWorkflow(null)).toBe(false);
+    expect(
+      isIncidentSettingsWorkflow({
+        name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+        description: '',
+      })
+    ).toBe(false);
+  });
+});
 
 describe('WorkflowConfigUtils.getFieldDisplayLabel', () => {
   it('shows a standard field by its bare name', () => {
@@ -143,5 +189,112 @@ describe('buildEntityFieldGroups', () => {
 
   it('ignores selected types missing from the registry', () => {
     expect(buildEntityFieldGroups(entitySpecific, ['unknownType'])).toEqual({});
+  });
+});
+
+const builderNode = (data: Node['data']): Node => ({
+  id: 'node',
+  position: { x: 0, y: 0 },
+  data,
+});
+
+describe('WorkflowConfigUtils.isGitSinkNode', () => {
+  it('treats a sink node saved as git, or not configured yet, as a git sink', () => {
+    expect(
+      isGitSinkNode(
+        builderNode({
+          subType: NodeSubType.SinkTask,
+          config: { sinkType: SinkType.Git },
+        })
+      )
+    ).toBe(true);
+    expect(isGitSinkNode(builderNode({ subType: NodeSubType.SinkTask }))).toBe(
+      true
+    );
+  });
+
+  it('does not treat a webhook sink or another node as a git sink', () => {
+    expect(
+      isGitSinkNode(
+        builderNode({
+          subType: NodeSubType.SinkTask,
+          config: { sinkType: SinkType.Webhook },
+        })
+      )
+    ).toBe(false);
+    expect(
+      isGitSinkNode(
+        builderNode({ subType: NodeSubType.CheckEntityAttributesTask })
+      )
+    ).toBe(false);
+  });
+});
+
+describe('WorkflowConfigUtils.getTriggerDataAssets', () => {
+  const entityTypes = [EntityType.TABLE, EntityType.QUERY, EntityType.TOPIC];
+
+  it('leaves query out for a workflow with a git sink', () => {
+    expect(getTriggerDataAssets(entityTypes, true)).toEqual([
+      EntityType.TABLE,
+      EntityType.TOPIC,
+    ]);
+  });
+
+  it('keeps every entity type for a workflow without a git sink', () => {
+    expect(getTriggerDataAssets(entityTypes, false)).toEqual(entityTypes);
+  });
+});
+
+describe('WorkflowConfigUtils.getGitSinkTriggerNodeConfig', () => {
+  it('drops query from the selected data assets and their filters', () => {
+    const config = {
+      name: 'Trigger',
+      description: '',
+      triggerType: 'Periodic Batch',
+      eventType: [],
+      dataAssets: [EntityType.TABLE, EntityType.QUERY, EntityType.TOPIC],
+      dataAssetFilters: [
+        { id: 1, dataAsset: EntityType.TABLE, filters: 'table-filter' },
+        { id: 2, dataAsset: EntityType.QUERY, filters: 'query-filter' },
+      ],
+    };
+
+    expect(getGitSinkTriggerNodeConfig(config)).toEqual({
+      ...config,
+      dataAssets: [EntityType.TABLE, EntityType.TOPIC],
+      dataAssetFilters: [
+        { id: 1, dataAsset: EntityType.TABLE, filters: 'table-filter' },
+      ],
+    });
+  });
+});
+
+describe('WorkflowConfigUtils.getGitSinkTriggerConfig', () => {
+  it('drops query from entity types and from per-entity-type filters', () => {
+    expect(
+      getGitSinkTriggerConfig({
+        entityTypes: [EntityType.TABLE, EntityType.QUERY],
+        filter: { [EntityType.TABLE]: 'a', [EntityType.QUERY]: 'b' },
+        filters: {
+          [EntityType.QUERY]: 'c',
+          default: 'd',
+        },
+        batchSize: 100,
+      })
+    ).toEqual({
+      entityTypes: [EntityType.TABLE],
+      filter: { [EntityType.TABLE]: 'a' },
+      filters: { default: 'd' },
+      batchSize: 100,
+    });
+  });
+
+  it('keeps a filter applied to every entity type and adds no absent field', () => {
+    expect(
+      getGitSinkTriggerConfig({
+        entityTypes: [EntityType.TABLE],
+        filters: 'shared-filter',
+      })
+    ).toEqual({ entityTypes: [EntityType.TABLE], filters: 'shared-filter' });
   });
 });

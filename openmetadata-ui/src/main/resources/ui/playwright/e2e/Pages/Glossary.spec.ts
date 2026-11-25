@@ -37,20 +37,23 @@ import {
   waitForGlossaryListRefetch,
 } from '../../utils/asyncDelete';
 import {
+  clickIgnoringToasts,
   clickOutside,
+  expectNoErrorToast,
   getAuthContext,
   getRandomLastName,
   getToken,
   redirectToHomePage,
   uuid,
   visitGlossaryPage,
-  waitForAntdPopupToSettle,
 } from '../../utils/common';
+import { switchNavbarDomain } from '../../utils/domain';
 import {
   addMultiOwner,
   assignGlossaryTerm,
   assignGlossaryTermToChildren,
   assignTag,
+  getEncodedFqn,
   updateDescription,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -117,6 +120,7 @@ import {
   openGlossaryPicker,
   toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
+import { loginAsIsolatedAdmin } from '../../utils/isolatedDomainUser';
 import { TaskDetails, waitForTaskResolveResponse } from '../../utils/task';
 import { performUserLogin } from '../../utils/user';
 
@@ -182,9 +186,9 @@ test.describe('Glossary tests', () => {
 
       // Check reviewer's notifications before approval
       await page1.getByTestId('task-notifications').click();
-      await page1.locator('.ant-dropdown').waitFor();
+      await page1.getByTestId('notification-heading').waitFor();
       const firstNotification = page1
-        .locator('.ant-list-items > .ant-list-item')
+        .locator('.notification-box li.notification-dropdown-list-btn')
         .first();
 
       await expect(firstNotification).toContainText(
@@ -655,7 +659,7 @@ test.describe('Glossary tests', () => {
         await openGlossaryPicker(
           page,
           page.locator(
-            '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]'
+            '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] [data-testid="add-tag"]'
           )
         );
 
@@ -738,6 +742,19 @@ test.describe('Glossary tests', () => {
     // Adding both table and its column as glossary term is assigned to both of them
     // and table columns are also count as assets
     const allAssets = [...assetsToBeAddedViaUI, table1, table1.children[0]];
+    // A term on a table is inherited by every one of its columns, nested ones included, so each
+    // column is listed as an asset too. `table` is the only one tagged at the table level, so it is
+    // the only one contributing its whole column tree; `table1` carries the term on a single column,
+    // already counted above. Derived from `children` rather than the hand-curated
+    // `entityLinkColumnsName`, so the two cannot drift apart.
+    const countFlattenedColumns = (columns: TableClass['children']): number =>
+      columns.reduce(
+        (total, column) =>
+          total + 1 + countFlattenedColumns(column.children ?? []),
+        0
+      );
+    const expectedAssetCount =
+      allAssets.length + countFlattenedColumns(table.children);
 
     try {
       await test.step('Assign Glossary Term to table column', async () => {
@@ -780,7 +797,7 @@ test.describe('Glossary tests', () => {
 
         await expect(
           page.getByTestId('assets').getByTestId('filter-count')
-        ).toContainText(`${allAssets.length}`);
+        ).toContainText(`${expectedAssetCount}`);
       });
 
       await test.step('Verify the entity page by clicking on asset', async () => {
@@ -833,7 +850,7 @@ test.describe('Glossary tests', () => {
         await goToAssetsTab(
           page,
           glossaryTerm1.data.displayName,
-          allAssets.length
+          expectedAssetCount
         );
         await renameGlossaryTerm(page, glossaryTerm1, newName);
         await page.click('[data-testid="overview"]');
@@ -848,7 +865,7 @@ test.describe('Glossary tests', () => {
 
         await expect(
           page.getByTestId('assets').getByTestId('filter-count')
-        ).toContainText(`${allAssets.length}`);
+        ).toContainText(`${expectedAssetCount}`);
       });
     } finally {
       await table.delete(apiContext);
@@ -1131,8 +1148,8 @@ test.describe('Glossary tests', () => {
         await page.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
         await selectActiveGlossary(page, glossary2.data.displayName);
 
-        // check .ant-alert-error is not visible
-        await expect(page.getByTestId('alert-bar')).not.toBeVisible();
+        // Other workers' success toasts reach this page too; only an error means a broken relation.
+        await expectNoErrorToast(page);
       });
     } finally {
       await glossary2.delete(apiContext);
@@ -1216,7 +1233,7 @@ test.describe('Glossary tests', () => {
       await createDescriptionTaskForGlossary(page, value, glossary1);
 
       const taskResolve = waitForTaskResolveResponse(page);
-      await page.getByTestId('approve-button').first().click();
+      await clickIgnoringToasts(page.getByTestId('approve-button').first());
       await taskResolve;
 
       await redirectToHomePage(page);
@@ -1259,7 +1276,7 @@ test.describe('Glossary tests', () => {
       await createDescriptionTaskForGlossary(page, value, glossaryTerm1, false);
 
       const taskResolve = waitForTaskResolveResponse(page);
-      await page.getByTestId('approve-button').first().click();
+      await clickIgnoringToasts(page.getByTestId('approve-button').first());
       await taskResolve;
 
       await redirectToHomePage(page);
@@ -1291,8 +1308,14 @@ test.describe('Glossary tests', () => {
     const glossary1 = new Glossary();
     try {
       await glossary1.create(apiContext);
-      await page.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
-      await selectActiveGlossary(page, glossary1.data.displayName);
+      // Open by FQN so the /glossary auto-select redirect cannot replace the request-tags navigation.
+      await page.goto(
+        `/glossary/${encodeURIComponent(
+          glossary1.responseData.fullyQualifiedName
+        )}`,
+        { waitUntil: 'domcontentloaded' }
+      );
+      await waitForAllLoadersToDisappear(page);
 
       const value: TaskDetails = {
         term: glossary1.data.name,
@@ -1900,22 +1923,24 @@ test.describe('Glossary tests', () => {
 
     try {
       await redirectToHomePage(dataConsumerPage);
-      await dataConsumerPage.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
-      await selectActiveGlossary(
-        dataConsumerPage,
-        glossary1.data.displayName,
-        false
+      // Listings leave out rows a deny rule refuses (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read),
+      // so the denied glossary is reachable only by its URL.
+      const fqn = glossary1.responseData.fullyQualifiedName;
+      const deniedResponse = dataConsumerPage.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          decodeURIComponent(new URL(response.url()).pathname) ===
+            `/api/v1/glossaries/name/${fqn}`
       );
+      await dataConsumerPage.goto(`${GLOSSARY_ROUTE}/${getEncodedFqn(fqn)}`, {
+        waitUntil: 'commit',
+      });
+      expect((await deniedResponse).status()).toBe(403);
+      await expect(dataConsumerPage).toHaveURL(/\/403$/);
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
       ).toBeVisible();
-
-      await expect(
-        dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toHaveText(
-        "You don't have necessary permissions. Please check with the admin to get the View Glossary permission."
-      );
     } finally {
       await consumerAfterAction();
       await cleanup(apiContext);
@@ -1928,28 +1953,42 @@ test.describe('Glossary tests', () => {
 
     const { dataConsumerUser, glossary1, glossaryTerm1, cleanup } =
       await setupGlossaryDenyPermissionTest(apiContext, false);
-    glossary1.data.terms = [glossaryTerm1];
 
-    const { page: dataConsumerPage, afterAction: consumerAfterAction } =
-      await performUserLogin(browser, dataConsumerUser);
+    const {
+      page: dataConsumerPage,
+      apiContext: dataConsumerApiContext,
+      afterAction: consumerAfterAction,
+    } = await performUserLogin(browser, dataConsumerUser);
 
     try {
       await redirectToHomePage(dataConsumerPage);
-      await dataConsumerPage.goto(GLOSSARY_ROUTE, { waitUntil: 'commit' });
-      await selectActiveGlossary(dataConsumerPage, glossary1.data.displayName);
-      await dataConsumerPage
-        .getByTestId(glossaryTerm1.data.displayName)
-        .click();
+      // Listings leave out rows a deny rule refuses (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read).
+      const termList = await okJson<{ data: { id: string }[] }>(
+        await dataConsumerApiContext.get(
+          `/api/v1/glossaryTerms?glossary=${glossary1.responseData.id}&limit=50`
+        ),
+        'glossaryTerms list as data consumer'
+      );
+
+      expect(termList.data.map((term) => term.id)).not.toContain(
+        glossaryTerm1.responseData.id
+      );
+      const fqn = glossaryTerm1.responseData.fullyQualifiedName;
+      const deniedResponse = dataConsumerPage.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          decodeURIComponent(new URL(response.url()).pathname) ===
+            `/api/v1/glossaryTerms/name/${fqn}`
+      );
+      await dataConsumerPage.goto(`${GLOSSARY_ROUTE}/${getEncodedFqn(fqn)}`, {
+        waitUntil: 'commit',
+      });
+      expect((await deniedResponse).status()).toBe(403);
+      await expect(dataConsumerPage).toHaveURL(/\/403$/);
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
       ).toBeVisible();
-
-      await expect(
-        dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toHaveText(
-        "You don't have necessary permissions. Please check with the admin to get the  permission."
-      );
     } finally {
       await consumerAfterAction();
       await cleanup(apiContext);
@@ -2066,8 +2105,9 @@ test.describe('Glossary tests', () => {
     test.slow(true);
 
     const { afterAction, apiContext } = await performAdminLogin(browser);
+    // Picks a navbar domain, which is saved per user: use a throwaway admin so it can't leak.
     const { page: page1, afterAction: afterActionUser1 } =
-      await performUserLogin(browser, adminUser);
+      await loginAsIsolatedAdmin(browser);
     const domain = new Domain();
     const glossary = new Glossary();
 
@@ -2090,9 +2130,10 @@ test.describe('Glossary tests', () => {
           .fill(domain.data.name);
         await searchDomain;
 
-        await page1.getByTestId(`tree-node-"${domain.data.name}"`).click();
-
-        await waitForAllLoadersToDisappear(page1);
+        // The pick saves on the user and reloads; wait for both before filling the form.
+        await switchNavbarDomain(page1, () =>
+          page1.getByTestId(`tree-node-"${domain.data.name}"`).click()
+        );
       });
 
       await test.step('Open Add Glossary form', async () => {
@@ -2160,12 +2201,9 @@ test.describe('Glossary tests', () => {
       await test.step('Change application language to German', async () => {
         await waitForAllLoadersToDisappear(page);
 
-        const languageDropdown = page
-          .locator('.nav-bar-side-items button.ant-dropdown-trigger')
-          .filter({ hasText: 'EN' })
-          .first();
+        const languageDropdown = page.getByTestId('language-selector-button');
+        await expect(languageDropdown).toContainText('EN');
         await languageDropdown.click();
-        await waitForAntdPopupToSettle(page);
 
         const germanOption = page.getByRole('menuitem', {
           name: 'Deutsch - DE',
@@ -2203,12 +2241,9 @@ test.describe('Glossary tests', () => {
       await test.step('Change language back to English', async () => {
         await waitForAllLoadersToDisappear(page);
 
-        const languageDropdown = page
-          .locator('.nav-bar-side-items button.ant-dropdown-trigger')
-          .filter({ hasText: 'DE' })
-          .first();
+        const languageDropdown = page.getByTestId('language-selector-button');
+        await expect(languageDropdown).toContainText('DE');
         await languageDropdown.click();
-        await waitForAntdPopupToSettle(page);
 
         const englishOption = page.getByRole('menuitem', {
           name: 'English - EN',
@@ -2690,7 +2725,6 @@ test.describe('Glossary tests', () => {
         .getByRole('menuitem')
         .filter({ has: page.getByTestId('rename-button') });
       await expect(renameItem).toBeVisible();
-      await waitForAntdPopupToSettle(page);
       await renameItem.click();
 
       const renameModal = page.getByRole('dialog');
@@ -2806,6 +2840,165 @@ test.describe('Glossary tests', () => {
       await glossaryTerm.delete(apiContext);
       await glossary.delete(apiContext);
       await afterAction();
+    }
+  });
+
+  test('Expanding a matching parent term in search results renders child term once without crashing', async ({
+    browser,
+  }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
+    const runId = uuid();
+    const glossary = new Glossary(`PWGlossary37909_${runId}`);
+    const parentTerm = new GlossaryTerm(
+      glossary,
+      undefined,
+      `AcmeParent_${runId}`
+    );
+    parentTerm.data.displayName = 'Acme Platform';
+
+    let childTerm: GlossaryTerm | undefined;
+    let siblingTerm: GlossaryTerm | undefined;
+
+    try {
+      await glossary.create(apiContext);
+      await parentTerm.create(apiContext);
+
+      childTerm = new GlossaryTerm(
+        glossary,
+        parentTerm.responseData.fullyQualifiedName,
+        `AcmeChild_${runId}`
+      );
+      childTerm.data.displayName = 'ACME:Platform data';
+      await childTerm.create(apiContext);
+
+      siblingTerm = new GlossaryTerm(
+        glossary,
+        parentTerm.responseData.fullyQualifiedName,
+        `PlatformMetrics_${runId}`
+      );
+      siblingTerm.data.displayName = 'Platform Metrics';
+      await siblingTerm.create(apiContext);
+
+      const parentFqn = parentTerm.responseData.fullyQualifiedName;
+      const childFqn = childTerm.responseData.fullyQualifiedName;
+      const siblingFqn = siblingTerm.responseData.fullyQualifiedName;
+
+      await test.step('Open glossary Terms tab and search for acme', async () => {
+        const initialTermsPromise = page.waitForResponse(
+          (response) =>
+            response.request().method() === 'GET' &&
+            new URL(response.url()).pathname === '/api/v1/glossaryTerms' &&
+            new URL(response.url()).searchParams.get('directChildrenOf') ===
+              glossary.responseData.fullyQualifiedName
+        );
+        await page.goto(
+          `/glossary/${encodeURIComponent(
+            glossary.responseData.fullyQualifiedName
+          )}`,
+          { waitUntil: 'domcontentloaded' }
+        );
+        const initialTermsRes = await initialTermsPromise;
+
+        expect(initialTermsRes.status()).toBe(200);
+
+        await waitForAllLoadersToDisappear(page);
+
+        const searchInput = page.getByTestId('search-glossary-terms-input');
+
+        await expect(searchInput).toBeVisible();
+
+        const searchResponsePromise = page.waitForResponse(
+          (response) =>
+            response.request().method() === 'GET' &&
+            new URL(response.url()).pathname ===
+              '/api/v1/glossaryTerms/search' &&
+            new URL(response.url()).searchParams.get('q') === 'acme'
+        );
+        await searchInput.fill('acme');
+        const searchResponse = await searchResponsePromise;
+
+        expect(searchResponse.status()).toBe(200);
+
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      const parentRow = page.locator(
+        `[data-row-key=${JSON.stringify(parentFqn)}]`
+      );
+      const childRow = page.locator(
+        `[data-row-key=${JSON.stringify(childFqn)}]`
+      );
+      const siblingRow = page.locator(
+        `[data-row-key=${JSON.stringify(siblingFqn)}]`
+      );
+
+      // react-aria overwrites data-level with its own (flat) collection level,
+      // so nesting is asserted through row order: an expanded parent's
+      // children are rendered directly after it.
+      const getRowKeys = () =>
+        page
+          .locator('[role="row"][data-row-key]')
+          .evaluateAll((rows) =>
+            rows.map((row) => row.getAttribute('data-row-key'))
+          );
+
+      await test.step('Verify both matching rows are listed once before expansion', async () => {
+        await expect(parentRow).toHaveCount(1);
+        await expect(childRow).toHaveCount(1);
+        await expect(siblingRow).toHaveCount(0);
+      });
+
+      await test.step('Expand parent term and verify child term renders once under it', async () => {
+        const childrenResponsePromise = page.waitForResponse(
+          (response) =>
+            response.request().method() === 'GET' &&
+            new URL(response.url()).pathname === '/api/v1/glossaryTerms' &&
+            new URL(response.url()).searchParams.get('directChildrenOf') ===
+              parentFqn
+        );
+        await parentRow.getByTestId('expand-icon').click();
+        const childrenResponse = await childrenResponsePromise;
+
+        expect(childrenResponse.status()).toBe(200);
+
+        await expect(siblingRow).toHaveCount(1);
+        await expect(childRow).toHaveCount(1);
+        await expect
+          .poll(async () => {
+            const keys = await getRowKeys();
+            const parentIndex = keys.indexOf(parentFqn);
+
+            return keys.slice(parentIndex + 1, parentIndex + 3).sort();
+          })
+          .toEqual([childFqn, siblingFqn].sort());
+      });
+
+      await test.step('Collapse parent term and verify child term returns to the root list', async () => {
+        await parentRow.getByTestId('expand-icon').click();
+
+        await expect(siblingRow).toHaveCount(0);
+        await expect(childRow).toHaveCount(1);
+        await expect
+          .poll(async () => {
+            const keys = await getRowKeys();
+
+            return keys[keys.indexOf(parentFqn) + 1];
+          })
+          .not.toBe(childFqn);
+      });
+    } finally {
+      try {
+        await Promise.allSettled([
+          ...(siblingTerm ? [siblingTerm.delete(apiContext)] : []),
+          ...(childTerm ? [childTerm.delete(apiContext)] : []),
+        ]);
+        await Promise.allSettled([parentTerm.delete(apiContext)]);
+        await Promise.allSettled([glossary.delete(apiContext)]);
+      } finally {
+        await afterAction();
+      }
     }
   });
 

@@ -69,7 +69,7 @@ public class TaskResourceContext implements ResourceContextInterface {
   }
 
   @Override
-  public EntityInterface getEntity() {
+  public EntityInterface<?> getEntity() {
     return task;
   }
 

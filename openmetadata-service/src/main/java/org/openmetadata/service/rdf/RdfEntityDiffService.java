@@ -38,6 +38,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ontology.RdfBlankNodeCanonicalizer;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
+import org.openmetadata.service.rdf.translator.LiveTagLookup;
+import org.openmetadata.service.rdf.translator.ReferenceScope;
 
 /** Creates deterministic, typed RDF statement diffs from database entity history. */
 public final class RdfEntityDiffService {
@@ -49,7 +51,9 @@ public final class RdfEntityDiffService {
   public RdfEntityDiffService(final String baseUri) {
     this(
         RdfEntityDiffService::readVersion,
-        new JsonLdTranslator(JsonUtils.getObjectMapper(), baseUri)::toRdf,
+        new JsonLdTranslator(
+                JsonUtils.getObjectMapper(), baseUri, LiveTagLookup.database(), ReferenceScope.ALL)
+            ::toRdf,
         new RdfBlankNodeCanonicalizer(),
         RdfEntityTypeValidator::requireKnown);
   }
@@ -104,7 +108,7 @@ public final class RdfEntityDiffService {
   }
 
   private Model versionModel(final String entityType, final UUID entityId, final Double version) {
-    final EntityInterface entity = versionReader.read(entityType, entityId, version);
+    final EntityInterface<?> entity = versionReader.read(entityType, entityId, version);
     final Model source = translator.toRdf(entity);
     try {
       return parseCanonical(canonicalizer.canonicalize(source));
@@ -182,19 +186,19 @@ public final class RdfEntityDiffService {
     }
   }
 
-  private static EntityInterface readVersion(
+  private static EntityInterface<?> readVersion(
       final String entityType, final UUID entityId, final Double version) {
     return Entity.getEntityRepository(entityType).getVersion(entityId, version.toString());
   }
 
   @FunctionalInterface
   interface EntityVersionReader {
-    EntityInterface read(String entityType, UUID entityId, Double version);
+    EntityInterface<?> read(String entityType, UUID entityId, Double version);
   }
 
   @FunctionalInterface
   interface EntityRdfTranslator {
-    Model toRdf(EntityInterface entity);
+    Model toRdf(EntityInterface<?> entity);
   }
 
   private record DiffRequest(

@@ -124,8 +124,9 @@ describe('IncidentGroupDrawer', () => {
       renderDrawer(GROUP);
     });
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText('label.incident-group')).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'label.incident-group' })
+    ).toBeInTheDocument();
     expect(screen.getByTestId('incident-group-drawer-name')).toHaveTextContent(
       'Row count'
     );
@@ -141,6 +142,13 @@ describe('IncidentGroupDrawer', () => {
     expect(
       screen.getByTestId('incident-group-stat-last-seen')
     ).toHaveTextContent(formatDate(GROUP.lastSeen));
+    expect(screen.getByTestId('incident-group-drawer-count')).toHaveTextContent(
+      '5'
+    );
+    // The section counts what the read matched, which the filters can narrow.
+    expect(
+      screen.getByTestId('incident-group-incident-count')
+    ).toHaveTextContent('20');
     expect(screen.getByTestId('incident-row-incident-1')).toBeInTheDocument();
     expect(mockList).toHaveBeenCalledWith(
       expect.objectContaining({

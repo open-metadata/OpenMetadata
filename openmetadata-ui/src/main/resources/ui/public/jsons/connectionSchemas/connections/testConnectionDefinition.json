@@ -4,7 +4,7 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionDefinition",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"
   ],
   "definitions": {
     "testConnectionStep": {

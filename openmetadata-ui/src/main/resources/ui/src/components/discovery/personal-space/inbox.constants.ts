@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { InboxTaskGrouping } from './InboxPage/components/InboxTaskListToolbar';
 
 /**
  * Root key for the sidebar inbox badge's open-task count. Shared so task
@@ -23,6 +24,19 @@ export const INBOX_OPEN_TASK_COUNT_QUERY_KEY = [
 export { INBOX_UNREAD_ACTIVITY_COUNT_QUERY_KEY } from '../../../constants/Inbox.constants';
 
 /**
+ * Cache key for the Tasks tab's All/Open/Closed badge totals. Shared so any
+ * task mutation — the tab's own, or the landing page's bulk resolve — can
+ * invalidate them.
+ */
+export const TASK_STATUS_COUNTS_QUERY_KEY = 'inbox-task-status-counts';
+
+/**
+ * Cache key prefix for the Tasks tab's lists, one entry per scope, status and
+ * search, so switching back to a list reads it from the cache.
+ */
+export const TASK_LIST_QUERY_KEY = 'inbox-task-list';
+
+/**
  * Evaluated `feed` resource permission for the current user (Inbox comment
  * delete gating). Session-stable, so consumers cache it with
  * `staleTime: Infinity`.
@@ -30,3 +44,9 @@ export { INBOX_UNREAD_ACTIVITY_COUNT_QUERY_KEY } from '../../../constants/Inbox.
 export const FEED_DELETE_ACCESS_QUERY_KEY = [
   'feed-resource-delete-access',
 ] as const;
+
+/** The task list's groupings, in menu order, with their labels. */
+export const TASK_GROUPING_LABEL_KEY: Record<InboxTaskGrouping, string> = {
+  type: 'label.type',
+  none: 'label.none',
+};

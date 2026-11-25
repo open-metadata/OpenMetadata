@@ -13,7 +13,7 @@
 Validator for column value to be in set test case
 """
 
-from ast import literal_eval
+from typing import cast
 
 from sqlalchemy import Column, literal
 
@@ -36,6 +36,7 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -57,6 +58,12 @@ class ColumnValuesToBeInSetValidator(
             column: column
         """
         return self.run_query_results(self.runner, metric, column, **kwargs)
+
+    def _run_results_and_row_count(self, metric: Metrics, column: Column, **kwargs) -> dict:
+        """Compute `countInSet` and the table row count in a single query"""
+        self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
+
+        return self.run_query_results_with_row_count(self.runner, metric, column, **kwargs)
 
     def _execute_dimensional_validation(
         self,
@@ -125,11 +132,7 @@ class ColumnValuesToBeInSetValidator(
         return self._compute_row_count(self.runner, column)
 
     def filter(self):
-        items = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "allowedValues",
-            literal_eval,
-        )
+        items = self.get_set_param_value("allowedValues")
         return {
             "filters": [
                 (

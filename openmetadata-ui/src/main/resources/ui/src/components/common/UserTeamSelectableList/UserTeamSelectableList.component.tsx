@@ -10,7 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Popover, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Avatar,
+  ButtonUtility,
+  Popover,
+  Tabs,
+  Tag,
+  TagGroup,
+  TagList,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Users01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
 import React, {
@@ -21,11 +31,8 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import {
   ADD_USER_CONTAINER_HEIGHT,
-  DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -39,17 +46,15 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
-import { UserTag } from '../UserTag/UserTag.component';
-import { UserTagSize } from '../UserTag/UserTag.interface';
 import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
+import { getTabCounts, searchOptions } from './UserTeamSelectableList.utils';
 
 export const TeamListItemRenderer = (props: EntityReference) => {
   return (
     <span className="tw:flex tw:items-center tw:gap-2">
-      <IconTeamsGrey aria-hidden className="tw:size-4" />
-      <span className="tw:text-sm">{getEntityName(props)}</span>
+      <Avatar placeholderIcon={Users01} size="xxs" />
+      <Typography size="text-sm">{getEntityName(props)}</Typography>
     </span>
   );
 };
@@ -69,6 +74,8 @@ export const UserTeamSelectableList = ({
   tooltipText,
   overlayClassName,
   triggerDataTestId = 'edit-owner',
+  triggerClassName,
+  options,
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -111,6 +118,11 @@ export const UserTeamSelectableList = ({
     return EntityType.TEAM;
   }, [owner]);
 
+  // Ids that arrive after the picker opened must re-read the open lists.
+  const optionsKey = options?.map((option) => option.id).join(',');
+
+  const tabCounts = getTabCounts(count, options);
+
   const isMultiUser = multiple.user;
   const isMultiTeam = multiple.team;
 
@@ -124,6 +136,9 @@ export const UserTeamSelectableList = ({
   }, [selectedUsers]);
 
   const fetchUserOptions = async (searchText: string, after?: string) => {
+    if (options) {
+      return searchOptions(options, EntityType.USER, searchText);
+    }
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
     const isInitialPage = !searchText && afterPage <= 1;
 
@@ -167,6 +182,9 @@ export const UserTeamSelectableList = ({
   };
 
   const fetchTeamOptions = async (searchText: string, after?: string) => {
+    if (options) {
+      return searchOptions(options, EntityType.TEAM, searchText);
+    }
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
     const isInitialPage = !searchText && afterPage <= 1;
 
@@ -248,6 +266,9 @@ export const UserTeamSelectableList = ({
   };
 
   const getUserCount = async () => {
+    if (options) {
+      return;
+    }
     const res = await searchQuery({
       query: '',
       pageNumber: 1,
@@ -260,6 +281,9 @@ export const UserTeamSelectableList = ({
   };
 
   const getTeamCount = async () => {
+    if (options) {
+      return;
+    }
     const res = await searchQuery({
       query: '',
       pageNumber: 1,
@@ -377,13 +401,11 @@ export const UserTeamSelectableList = ({
   };
 
   const defaultTrigger = hasPermission ? (
-    <span ref={triggerRef}>
-      <EditIconButton
-        newLook
+    <span className="tw:inline-flex" ref={triggerRef}>
+      <ButtonUtility
         data-testid={triggerDataTestId}
-        icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-        size="small"
-        title={getEditTriggerTitle()}
+        icon={Edit01}
+        tooltip={getEditTriggerTitle()}
         onClick={handleTriggerClick}
       />
     </span>
@@ -403,6 +425,7 @@ export const UserTeamSelectableList = ({
   // swallow the event, so the popover reliably opens for add-owner/edit-owner.
   const triggerElement = children ? (
     <span
+      className={triggerClassName}
       ref={triggerRef}
       onClickCapture={handleTriggerClick}
       onKeyDownCapture={handleTriggerKeyDown}>
@@ -419,28 +442,31 @@ export const UserTeamSelectableList = ({
   const renderPreviewSection = () =>
     previewSelected ? (
       <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:py-3 tw:bg-secondary tw:border-b tw:border-primary">
-        <span className="tw:text-sm tw:text-tertiary">
+        <Typography color="secondary" size="text-sm">
           {t('label.selected-entity', {
             entity: label ?? t('label.owner-plural'),
           })}
-        </span>
-        <div className="tw:flex tw:flex-wrap tw:gap-1 tw:max-h-24 tw:overflow-y-auto">
-          {selectedUsers.map((user) => {
-            return (
-              <UserTag
-                closable
-                avatarType="outlined"
-                className="user-team-pills"
-                id={user.name ?? ''}
-                isTeam={user.type === EntityType.TEAM}
-                key={user.id}
-                name={getEntityName(user)}
-                size={UserTagSize.small}
-                onRemove={() => onRemove(user.id)}
-              />
-            );
-          })}
-        </div>
+        </Typography>
+        <TagGroup label={label ?? t('label.owner-plural')} size="sm">
+          <TagList className="tw:flex tw:max-h-24 tw:flex-wrap tw:gap-1 tw:overflow-y-auto">
+            {selectedUsers.map((user) => (
+              <Tag id={user.id} key={user.id} onClose={() => onRemove(user.id)}>
+                <Avatar
+                  initials={
+                    user.type === EntityType.TEAM
+                      ? undefined
+                      : getEntityName(user).charAt(0).toUpperCase()
+                  }
+                  placeholderIcon={
+                    user.type === EntityType.TEAM ? Users01 : undefined
+                  }
+                  size="xxs"
+                />
+                {getEntityName(user)}
+              </Tag>
+            ))}
+          </TagList>
+        </TagGroup>
       </div>
     ) : null;
 
@@ -448,6 +474,7 @@ export const UserTeamSelectableList = ({
     <SelectableList
       fetchOptions={fetchUserOptions}
       height={listHeight}
+      key={optionsKey}
       multiSelect={isMultiUser}
       searchBarDataTestId="owner-select-users-search-bar"
       searchPlaceholder={t('label.search-for-type', {
@@ -474,10 +501,10 @@ export const UserTeamSelectableList = ({
           selectedKey={activeTab}
           onSelectionChange={(key) => setActiveTab(key as 'teams' | 'users')}>
           <Tabs.List className="tw:px-2 tw:pt-2" size="sm" type="underline">
-            <Tabs.Item badge={count.team} id="teams">
+            <Tabs.Item badge={tabCounts.team} id="teams">
               {t('label.team-plural')}
             </Tabs.Item>
-            <Tabs.Item badge={count.user} id="users">
+            <Tabs.Item badge={tabCounts.user} id="users">
               {t('label.user-plural')}
             </Tabs.Item>
           </Tabs.List>
@@ -486,6 +513,7 @@ export const UserTeamSelectableList = ({
               customTagRenderer={TeamListItemRenderer}
               fetchOptions={fetchTeamOptions}
               height={listHeight}
+              key={optionsKey}
               multiSelect={isMultiTeam}
               searchBarDataTestId="owner-select-teams-search-bar"
               searchPlaceholder={t('label.search-for-type', {
@@ -514,7 +542,7 @@ export const UserTeamSelectableList = ({
       {triggerElement}
       <Popover
         containerClassName={classNames(
-          'tw:overflow-hidden tw:p-0',
+          'tw:max-h-[inherit] tw:overflow-y-auto tw:p-0',
           overlayClassName
         )}
         isOpen={isOpen}

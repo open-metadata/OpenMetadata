@@ -37,9 +37,16 @@
     },
     {
       "name": "DataConsumerPolicy-ExecuteSparqlQuery-Rule",
-      "description" : "Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.",
+      "description" : "Allow authenticated users and bots to run read-only SPARQL queries through the agent SPARQL endpoint and the MCP knowledge-graph tools (sparql_query, entity_neighborhood, find_by_tag, and ontology_describe with a resource). Results are not filtered by asset or domain policies, so remove this rule if viewing is restricted through custom policies.",
       "resources" : ["all"],
       "operations": ["ExecuteSparqlQuery"],
+      "effect": "allow"
+    },
+    {
+      "name": "DataConsumerPolicy-CreateContextMemory-Rule",
+      "description" : "Allow authenticated users to create context memories, including the ones the AI agent saves from their conversations. The creator owns a new memory and can edit or delete it. An Entity memory is shown to everyone who can view its asset, or to everyone when it has no asset, so remove this rule if only admins should create memories.",
+      "resources" : ["contextMemory"],
+      "operations": ["Create"],
       "effect": "allow"
     }
   ]

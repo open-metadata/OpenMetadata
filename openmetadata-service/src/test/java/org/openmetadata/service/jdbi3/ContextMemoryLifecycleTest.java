@@ -23,10 +23,12 @@ import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 
@@ -44,13 +46,14 @@ class ContextMemoryLifecycleTest {
         throw new AssertionError(field + " must not be looked up");
       };
 
-  @Test
-  void leavingDeprecatedDropsTheSuccessorAndStaleReason() {
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"DEPRECATED", "SUPERSEDED"})
+  void leavingSupersededDropsTheSuccessorAndStaleReason(ContextMemoryStatus status) {
     ContextMemory original =
-        memory(EntityStatus.DEPRECATED)
-            .withSupersededBy(memoryRef())
-            .withStatusReason("Duplicate of the keeper");
-    ContextMemory updated = copyOf(original).withEntityStatus(EntityStatus.APPROVED);
+        memory(status).withSupersededBy(memoryRef()).withStatusReason("Duplicate of the keeper");
+    ContextMemory updated = copyOf(original).withEntityStatus(ContextMemoryStatus.APPROVED);
 
     ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
 
@@ -58,13 +61,14 @@ class ContextMemoryLifecycleTest {
     assertNull(updated.getStatusReason());
   }
 
-  @Test
-  void aStatusChangeKeepsItsNewReason() {
-    ContextMemory original = memory(EntityStatus.APPROVED);
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"REJECTED", "INVALIDATED"})
+  void aStatusChangeKeepsItsNewReason(ContextMemoryStatus status) {
+    ContextMemory original = memory(ContextMemoryStatus.APPROVED);
     ContextMemory updated =
-        copyOf(original)
-            .withEntityStatus(EntityStatus.REJECTED)
-            .withStatusReason("Anchor table was deleted");
+        copyOf(original).withEntityStatus(status).withStatusReason("Anchor table was deleted");
 
     ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
 
@@ -72,20 +76,51 @@ class ContextMemoryLifecycleTest {
   }
 
   @Test
-  void supersedingResolvesTheNewSuccessor() {
-    ContextMemory original = memory(EntityStatus.APPROVED);
+  void draftingAConflictKeepsItsExistingReviewReason() {
+    ContextMemory original =
+        memory(ContextMemoryStatus.UNPROCESSED).withStatusReason("contradicts: threshold differs");
+    ContextMemory updated = copyOf(original).withEntityStatus(ContextMemoryStatus.DRAFT);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
+
+    assertEquals(original.getStatusReason(), updated.getStatusReason());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"APPROVED", "REJECTED", "UNPROCESSED"})
+  void leavingDraftClearsTheOldReviewReason(ContextMemoryStatus status) {
+    ContextMemory original =
+        memory(ContextMemoryStatus.DRAFT).withStatusReason("contradicts: threshold differs");
+    ContextMemory updated = copyOf(original).withEntityStatus(status);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
+
+    assertNull(updated.getStatusReason());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"DEPRECATED", "SUPERSEDED"})
+  void supersedingResolvesTheNewSuccessor(ContextMemoryStatus status) {
+    ContextMemory original = memory(ContextMemoryStatus.APPROVED);
     EntityReference keeper = memoryRef();
 
-    ContextMemory updated = supersededBy(original, keeper);
+    ContextMemory updated = supersededBy(original, keeper, status);
     ContextMemoryLifecycle.applyUpdate(original, updated, RESOLVE);
 
     assertEquals("memory-" + keeper.getId(), updated.getSupersededBy().getName());
   }
 
-  @Test
-  void anUnchangedSuccessorKeepsTheStoredReference() {
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"DEPRECATED", "SUPERSEDED"})
+  void anUnchangedSuccessorKeepsTheStoredReference(ContextMemoryStatus status) {
     EntityReference stored = memoryRef().withName("keeper");
-    ContextMemory original = memory(EntityStatus.DEPRECATED).withSupersededBy(stored);
+    ContextMemory original = memory(status).withSupersededBy(stored);
     ContextMemory updated =
         copyOf(original)
             .withSupersededBy(
@@ -96,16 +131,19 @@ class ContextMemoryLifecycleTest {
     assertSame(stored, updated.getSupersededBy());
   }
 
-  @Test
-  void supersededNeedsASuccessorAndOnlyDeprecatedMayHaveOne() {
-    ContextMemory active = memory(EntityStatus.APPROVED);
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"DEPRECATED", "SUPERSEDED"})
+  void supersededNeedsASuccessorAndOtherStagesCannotHaveOne(ContextMemoryStatus status) {
+    ContextMemory active = memory(ContextMemoryStatus.APPROVED);
 
     BadRequestException missing =
         assertThrows(
             BadRequestException.class,
             () ->
                 ContextMemoryLifecycle.applyUpdate(
-                    active, copyOf(active).withEntityStatus(EntityStatus.DEPRECATED), RESOLVE));
+                    active, copyOf(active).withEntityStatus(status), RESOLVE));
     BadRequestException stray =
         assertThrows(
             BadRequestException.class,
@@ -117,26 +155,33 @@ class ContextMemoryLifecycleTest {
     assertTrue(stray.getMessage().contains("only allowed on a Deprecated memory"));
   }
 
-  @Test
-  void aSuccessorMustBeAnotherContextMemory() {
-    ContextMemory active = memory(EntityStatus.APPROVED);
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"DEPRECATED", "SUPERSEDED"})
+  void aSuccessorMustBeAnotherContextMemory(ContextMemoryStatus status) {
+    ContextMemory active = memory(ContextMemoryStatus.APPROVED);
     EntityReference table = new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
     EntityReference self =
         new EntityReference().withId(active.getId()).withType(Entity.CONTEXT_MEMORY);
 
     assertThrows(
         BadRequestException.class,
-        () -> ContextMemoryLifecycle.applyUpdate(active, supersededBy(active, table), RESOLVE));
+        () ->
+            ContextMemoryLifecycle.applyUpdate(
+                active, supersededBy(active, table, status), RESOLVE));
     assertThrows(
         BadRequestException.class,
-        () -> ContextMemoryLifecycle.applyUpdate(active, supersededBy(active, self), RESOLVE));
+        () ->
+            ContextMemoryLifecycle.applyUpdate(
+                active, supersededBy(active, self, status), RESOLVE));
   }
 
   @Test
   void onlyNewDisputesAreResolved() {
     MemoryDispute existing = new MemoryDispute().withMemory(memoryRef()).withReason("Says Q3");
     MemoryDispute added = new MemoryDispute().withMemory(memoryRef()).withReason("Says Q4");
-    ContextMemory original = memory(EntityStatus.APPROVED).withDisputes(List.of(existing));
+    ContextMemory original = memory(ContextMemoryStatus.DRAFT).withDisputes(List.of(existing));
     ContextMemory updated =
         copyOf(original)
             .withDisputes(List.of(JsonUtils.deepCopy(existing, MemoryDispute.class), added));
@@ -154,7 +199,7 @@ class ContextMemoryLifecycleTest {
 
   @Test
   void disputesNeedAnOtherMemoryAndANonBlankReason() {
-    ContextMemory active = memory(EntityStatus.APPROVED);
+    ContextMemory active = memory(ContextMemoryStatus.DRAFT);
     MemoryDispute blankReason = new MemoryDispute().withMemory(memoryRef()).withReason("  ");
     MemoryDispute noMemory = new MemoryDispute().withReason("Contradicts glossary");
     MemoryDispute self =
@@ -171,26 +216,199 @@ class ContextMemoryLifecycleTest {
     }
   }
 
-  @Test
-  void createCannotBeDeprecatedWithoutASuccessor() {
-    assertThrows(
-        BadRequestException.class,
-        () -> ContextMemoryLifecycle.applyCreate(memory(EntityStatus.DEPRECATED), RESOLVE));
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"APPROVED", "UNPROCESSED", "REJECTED"})
+  void aNewDisputeNeedsADraftMemory(ContextMemoryStatus status) {
+    ContextMemory original = memory(status);
+    ContextMemory updated = copyOf(original).withDisputes(List.of(dispute("Says Q4")));
+
+    BadRequestException error =
+        assertThrows(
+            BadRequestException.class,
+            () -> ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP));
+
+    assertTrue(error.getMessage().contains("only a Draft memory"));
   }
 
-  private static ContextMemory memory(EntityStatus status) {
+  @Test
+  void draftingAConflictKeepsItsDisputeAndStampsWhenItWasDetected() {
+    ContextMemory original = memory(ContextMemoryStatus.UNPROCESSED).withUpdatedAt(100L);
+    ContextMemory updated =
+        copyOf(original)
+            .withEntityStatus(ContextMemoryStatus.DRAFT)
+            .withDisputes(List.of(dispute("Says Q4")))
+            .withUpdatedAt(200L);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, RESOLVE);
+
+    MemoryDispute kept = updated.getDisputes().getFirst();
+    assertEquals("memory-" + kept.getMemory().getId(), kept.getMemory().getName());
+    assertEquals(200L, kept.getDetectedAt());
+  }
+
+  @Test
+  void aDetectionTimeTheWriterSuppliesIsKept() {
+    ContextMemory original = memory(ContextMemoryStatus.UNPROCESSED).withUpdatedAt(100L);
+    ContextMemory updated =
+        copyOf(original)
+            .withEntityStatus(ContextMemoryStatus.DRAFT)
+            .withDisputes(List.of(dispute("Says Q4").withDetectedAt(150L)))
+            .withUpdatedAt(200L);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, RESOLVE);
+
+    assertEquals(150L, updated.getDisputes().getFirst().getDetectedAt());
+  }
+
+  /** A detection time after the write would let an approval act on a claim that changed since. */
+  @Test
+  void aConflictCannotBeDetectedAfterTheWriteThatRecordsIt() {
+    ContextMemory original = memory(ContextMemoryStatus.UNPROCESSED).withUpdatedAt(100L);
+    ContextMemory updated =
+        copyOf(original)
+            .withEntityStatus(ContextMemoryStatus.DRAFT)
+            .withDisputes(List.of(dispute("Says Q4").withDetectedAt(4_102_444_800_000L)))
+            .withUpdatedAt(200L);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, RESOLVE);
+
+    assertEquals(200L, updated.getDisputes().getFirst().getDetectedAt());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"APPROVED", "REJECTED", "UNPROCESSED", "ARCHIVED"})
+  void leavingDraftClearsItsDisputes(ContextMemoryStatus status) {
+    ContextMemory original =
+        memory(ContextMemoryStatus.DRAFT).withDisputes(List.of(dispute("Says Q4")));
+    ContextMemory updated = copyOf(original).withEntityStatus(status);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
+
+    assertNull(updated.getDisputes());
+  }
+
+  @Test
+  void aMemoryCanBeDisputedOnlyOnce() {
+    ContextMemory original = memory(ContextMemoryStatus.DRAFT);
+    MemoryDispute first = dispute("Says Q3");
+    MemoryDispute again =
+        new MemoryDispute()
+            .withMemory(JsonUtils.deepCopy(first.getMemory(), EntityReference.class))
+            .withReason("Says Q4");
+    ContextMemory updated = copyOf(original).withDisputes(List.of(first, again));
+
+    BadRequestException error =
+        assertThrows(
+            BadRequestException.class,
+            () -> ContextMemoryLifecycle.applyUpdate(original, updated, RESOLVE));
+
+    assertTrue(error.getMessage().contains("disputed only once"));
+  }
+
+  @Test
+  void creatingADisputedMemoryNeedsTheDraftStage() {
+    ContextMemory approved =
+        memory(ContextMemoryStatus.APPROVED).withDisputes(List.of(dispute("Says Q4")));
+    ContextMemory draft =
+        memory(ContextMemoryStatus.DRAFT)
+            .withDisputes(List.of(dispute("Says Q4")))
+            .withUpdatedAt(300L);
+
+    assertThrows(
+        BadRequestException.class, () -> ContextMemoryLifecycle.applyCreate(approved, RESOLVE));
+    ContextMemoryLifecycle.applyCreate(draft, RESOLVE);
+
+    assertEquals(300L, draft.getDisputes().getFirst().getDetectedAt());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"DEPRECATED", "SUPERSEDED"})
+  void createCannotBeSupersededWithoutASuccessor(ContextMemoryStatus status) {
+    assertThrows(
+        BadRequestException.class,
+        () -> ContextMemoryLifecycle.applyCreate(memory(status), RESOLVE));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"UNPROCESSED", "DRAFT", "REJECTED"})
+  void becomingApprovedRecordsTheReview(ContextMemoryStatus from) {
+    ContextMemory original = memory(from).withUpdatedAt(100L);
+    ContextMemory updated =
+        copyOf(original).withEntityStatus(ContextMemoryStatus.APPROVED).withUpdatedAt(200L);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
+
+    assertEquals(200L, updated.getLastReviewedAt());
+  }
+
+  @Test
+  void aReviewTimeTheCallerSuppliesIsKept() {
+    ContextMemory original = memory(ContextMemoryStatus.UNPROCESSED).withUpdatedAt(100L);
+    ContextMemory updated =
+        copyOf(original)
+            .withEntityStatus(ContextMemoryStatus.APPROVED)
+            .withLastReviewedAt(150L)
+            .withUpdatedAt(200L);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
+
+    assertEquals(150L, updated.getLastReviewedAt());
+  }
+
+  @Test
+  void returningToReviewKeepsTheLastReviewAndTheNewReason() {
+    ContextMemory original =
+        memory(ContextMemoryStatus.APPROVED).withLastReviewedAt(100L).withUpdatedAt(100L);
+    ContextMemory updated =
+        copyOf(original)
+            .withEntityStatus(ContextMemoryStatus.DRAFT)
+            .withStatusReason("contradicted by a newer memory")
+            .withUpdatedAt(200L);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
+
+    assertEquals(100L, updated.getLastReviewedAt());
+    assertEquals("contradicted by a newer memory", updated.getStatusReason());
+  }
+
+  @Test
+  void creatingAnApprovedMemoryRecordsTheReview() {
+    ContextMemory approved = memory(ContextMemoryStatus.APPROVED).withUpdatedAt(300L);
+    ContextMemory pending = memory(ContextMemoryStatus.UNPROCESSED).withUpdatedAt(300L);
+
+    ContextMemoryLifecycle.applyCreate(approved, RESOLVE);
+    ContextMemoryLifecycle.applyCreate(pending, RESOLVE);
+
+    assertEquals(300L, approved.getLastReviewedAt());
+    assertNull(pending.getLastReviewedAt());
+  }
+
+  private static ContextMemory memory(ContextMemoryStatus status) {
     return new ContextMemory()
         .withId(UUID.randomUUID())
         .withName("memory")
         .withEntityStatus(status);
   }
 
-  private static ContextMemory supersededBy(ContextMemory original, EntityReference successor) {
-    return copyOf(original).withEntityStatus(EntityStatus.DEPRECATED).withSupersededBy(successor);
+  private static ContextMemory supersededBy(
+      ContextMemory original, EntityReference successor, ContextMemoryStatus status) {
+    return copyOf(original).withEntityStatus(status).withSupersededBy(successor);
   }
 
   private static EntityReference memoryRef() {
     return new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_MEMORY);
+  }
+
+  private static MemoryDispute dispute(String reason) {
+    return new MemoryDispute().withMemory(memoryRef()).withReason(reason);
   }
 
   private static ContextMemory copyOf(ContextMemory memory) {

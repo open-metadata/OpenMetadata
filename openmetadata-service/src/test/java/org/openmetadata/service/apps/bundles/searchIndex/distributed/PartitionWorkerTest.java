@@ -26,9 +26,11 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -49,6 +51,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
@@ -72,6 +75,9 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.ReindexContext;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.UnrecordedStagedChunkDeleteException;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesSource;
@@ -288,7 +294,7 @@ class PartitionWorkerTest {
   @Test
   void initializeKeysetCursorHandlesRegularAndTimeSeriesEntities() throws Exception {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
     ListFilter reindexFilter = mock(ListFilter.class);
 
     UUID jobId = UUID.randomUUID();
@@ -365,7 +371,7 @@ class PartitionWorkerTest {
   @Test
   void initializeKeysetCursorHitsPrecomputedCacheAndSkipsOffsetFallback() throws Exception {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
 
     UUID jobId = UUID.randomUUID();
     SearchIndexPartition partition =
@@ -453,10 +459,10 @@ class PartitionWorkerTest {
     PartitionWorker batchWorker =
         new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext, failureRecorder);
 
-    EntityInterface entityOne = mock(EntityInterface.class);
-    EntityInterface entityTwo = mock(EntityInterface.class);
+    EntityInterface<?> entityOne = mock(EntityInterface.class);
+    EntityInterface<?> entityTwo = mock(EntityInterface.class);
     UUID errorEntityId = UUID.randomUUID();
-    ResultList<EntityInterface> resultList = new ResultList<>();
+    ResultList<EntityInterface<?>> resultList = new ResultList<>();
     resultList.setData(List.of(entityOne, entityTwo));
     resultList.setErrors(
         List.of(new EntityError().withEntity(errorEntityId).withMessage("reader failure")));
@@ -501,11 +507,11 @@ class PartitionWorkerTest {
         new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext, failureRecorder);
 
     UUID errorEntityId = UUID.randomUUID();
-    EntityInterface failingEntity = mock(EntityInterface.class);
+    EntityInterface<?> failingEntity = mock(EntityInterface.class);
     when(failingEntity.getId()).thenReturn(errorEntityId);
-    EntityInterface successEntity = mock(EntityInterface.class);
+    EntityInterface<?> successEntity = mock(EntityInterface.class);
 
-    ResultList<EntityInterface> resultList = new ResultList<>();
+    ResultList<EntityInterface<?>> resultList = new ResultList<>();
     resultList.setData(List.of(successEntity));
     resultList.setErrors(
         List.of(new EntityError().withEntity(failingEntity).withMessage("reader failure")));
@@ -531,11 +537,11 @@ class PartitionWorkerTest {
     PartitionWorker batchWorker =
         new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext, failureRecorder);
 
-    EntityInterface failingEntity = mock(EntityInterface.class);
+    EntityInterface<?> failingEntity = mock(EntityInterface.class);
     when(failingEntity.getId()).thenReturn(null);
-    EntityInterface successEntity = mock(EntityInterface.class);
+    EntityInterface<?> successEntity = mock(EntityInterface.class);
 
-    ResultList<EntityInterface> resultList = new ResultList<>();
+    ResultList<EntityInterface<?>> resultList = new ResultList<>();
     resultList.setData(List.of(successEntity));
     resultList.setErrors(
         List.of(new EntityError().withEntity(failingEntity).withMessage("reader failure")));
@@ -557,7 +563,7 @@ class PartitionWorkerTest {
   void processBatchWrapsSinkFailuresAsSearchIndexException() throws Exception {
     PartitionWorker batchWorker =
         new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext);
-    ResultList<EntityInterface> resultList = new ResultList<>();
+    ResultList<EntityInterface<?>> resultList = new ResultList<>();
     resultList.setData(List.of(mock(EntityInterface.class)));
 
     try (MockedConstruction<PaginatedEntitiesSource> ignored =
@@ -590,7 +596,7 @@ class PartitionWorkerTest {
     // single-server path. We stub the helper here so the test stays focused on the
     // PartitionWorker invocation contract; ReindexingUtilTest covers the helper's own
     // filter/fallback logic.
-    ResultList<EntityInterface> resultList = new ResultList<>();
+    ResultList<EntityInterface<?>> resultList = new ResultList<>();
     resultList.setData(List.of(mock(EntityInterface.class)));
     AtomicReference<List<?>> constructorArgs = new AtomicReference<>();
     List<String> selectiveFields = List.of("owners", "domains", "tags", "dataModel");
@@ -756,7 +762,7 @@ class PartitionWorkerTest {
         new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext);
     SearchIndexPartition partition = buildPartition("table", 0, 2);
 
-    ResultList<EntityInterface> resultList = new ResultList<>();
+    ResultList<EntityInterface<?>> resultList = new ResultList<>();
     resultList.setData(List.of(mock(EntityInterface.class), mock(EntityInterface.class)));
 
     when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
@@ -789,7 +795,14 @@ class PartitionWorkerTest {
     assertEquals(
         PartitionStatus.PROCESSING,
         progressCaptor.getAllValues().get(progressCaptor.getAllValues().size() - 1).getStatus());
-    verify(coordinator).completePartition(partition.getId(), 2L, 0L, 0L);
+    ArgumentCaptor<StageStatsTracker> retried = ArgumentCaptor.forClass(StageStatsTracker.class);
+    InOrder flushedThenRetriedThenCompleted = inOrder(bulkSink, coordinator);
+    flushedThenRetriedThenCompleted.verify(bulkSink, atLeastOnce()).flushAndAwait(30);
+    flushedThenRetriedThenCompleted.verify(bulkSink).retryMissedChunks(retried.capture());
+    flushedThenRetriedThenCompleted
+        .verify(coordinator)
+        .completePartition(partition.getId(), 2L, 0L, 0L);
+    assertEquals("table", retried.getValue().getEntityType(), "the partition's own tracker");
   }
 
   @Test
@@ -838,7 +851,7 @@ class PartitionWorkerTest {
         new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext);
     SearchIndexPartition partition = buildPartition("table", 0, 2);
 
-    ResultList<EntityInterface> resultList = new ResultList<>();
+    ResultList<EntityInterface<?>> resultList = new ResultList<>();
     resultList.setData(List.of(mock(EntityInterface.class)));
 
     when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
@@ -882,11 +895,11 @@ class PartitionWorkerTest {
         new PartitionWorker(coordinator, bulkSink, 2, stagedIndexContext, failureRecorder);
     SearchIndexPartition partition = buildPartition("table", 0, 4);
 
-    ResultList<EntityInterface> resultList = new ResultList<>();
+    ResultList<EntityInterface<?>> resultList = new ResultList<>();
     resultList.setData(List.of(mock(EntityInterface.class)));
 
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
 
     when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
     when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(searchIndexServerStatsDAO);
@@ -928,12 +941,52 @@ class PartitionWorkerTest {
   }
 
   @Test
+  void aPartitionThatCannotRecordAMissedStagedChunkDeleteFailsWithoutARetry() {
+    PartitionWorker partitionWorker =
+        new PartitionWorker(coordinator, bulkSink, BATCH_SIZE, stagedIndexContext);
+    SearchIndexPartition partition = buildPartition("table", 0, 2);
+    ResultList<EntityInterface<?>> resultList = new ResultList<>();
+    resultList.setData(List.of(mock(EntityInterface.class), mock(EntityInterface.class)));
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    doThrow(new UnrecordedStagedChunkDeleteException("data_asset_embeddings_chunks_g1"))
+        .when(vectorService)
+        .requireStagedChunkFailuresRecorded();
+    when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
+    when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(searchIndexServerStatsDAO);
+    when(bulkSink.flushAndAwait(30)).thenReturn(true);
+    when(bulkSink.getPendingVectorTaskCount()).thenReturn(0);
+    ServerIdentityResolver resolver = mock(ServerIdentityResolver.class);
+    when(resolver.getServerId()).thenReturn("server-a");
+
+    try (MockedStatic<ServerIdentityResolver> resolverMock =
+            mockStatic(ServerIdentityResolver.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedConstruction<PaginatedEntitiesSource> ignored =
+            mockConstruction(
+                PaginatedEntitiesSource.class,
+                (mock, context) -> doReturn(resultList).when(mock).readNextKeyset(null))) {
+      resolverMock.when(ServerIdentityResolver::getInstance).thenReturn(resolver);
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+
+      partitionWorker.processPartition(partition);
+    }
+
+    verify(coordinator)
+        .failPartitionWithoutRetry(
+            eq(partition.getId()), startsWith(VectorIndexService.UNRECORDED_STAGED_DELETE));
+    verify(coordinator, never()).failPartition(any(), any());
+    verify(coordinator, never()).completePartition(any(), anyLong(), anyLong(), anyLong());
+  }
+
+  @Test
   void processPartitionAdjustsSuccessCountsForProcessFailures() {
     PartitionWorker partitionWorker =
         new PartitionWorker(coordinator, bulkSink, 2, stagedIndexContext);
     SearchIndexPartition partition = buildPartition("table", 0, 2);
 
-    ResultList<EntityInterface> resultList = new ResultList<>();
+    ResultList<EntityInterface<?>> resultList = new ResultList<>();
     resultList.setData(List.of(mock(EntityInterface.class), mock(EntityInterface.class)));
     StageCounter processCounter = new StageCounter();
     processCounter.getCumulativeFailed().set(1);
@@ -980,7 +1033,7 @@ class PartitionWorkerTest {
         new PartitionWorker(coordinator, bulkSink, 2, stagedIndexContext);
     SearchIndexPartition partition = buildPartition("table", 0, 1);
 
-    ResultList<EntityInterface> resultList = new ResultList<>();
+    ResultList<EntityInterface<?>> resultList = new ResultList<>();
     resultList.setData(List.of(mock(EntityInterface.class)));
 
     when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
@@ -1014,7 +1067,7 @@ class PartitionWorkerTest {
 
   @Test
   void processBatchReturnsEmptyResultWhenNoEntitiesAreRead() throws Exception {
-    ResultList<EntityInterface> emptyResult = new ResultList<>();
+    ResultList<EntityInterface<?>> emptyResult = new ResultList<>();
     emptyResult.setData(List.of());
 
     try (MockedConstruction<PaginatedEntitiesSource> ignored =
@@ -1033,7 +1086,7 @@ class PartitionWorkerTest {
   @Test
   void initializeKeysetCursorReturnsNullWhenRepositoryCursorMissing() throws Exception {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
 
     SearchIndexPartition partition =
         SearchIndexPartition.builder()

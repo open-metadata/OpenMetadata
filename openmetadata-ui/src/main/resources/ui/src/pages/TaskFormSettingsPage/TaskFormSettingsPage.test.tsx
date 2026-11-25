@@ -24,7 +24,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import TaskFormSettingsPage from './TaskFormSettingsPage';
 
 const mockListTaskFormSchemas = jest.fn();
@@ -134,7 +140,9 @@ describe('TaskFormSettingsPage', () => {
     ).toBeInTheDocument();
 
     await waitFor(() =>
-      expect(screen.getByLabelText('Name')).toHaveValue('DescriptionUpdate')
+      expect(screen.getByTestId('task-form-name-input')).toHaveValue(
+        'DescriptionUpdate'
+      )
     );
 
     expect(screen.getByTestId('task-form-category-input')).toHaveTextContent(
@@ -151,7 +159,9 @@ describe('TaskFormSettingsPage', () => {
   it('updates the selected schema', async () => {
     render(<TaskFormSettingsPage />);
 
-    const displayNameInput = await screen.findByLabelText('Display Name');
+    const displayNameInput = await screen.findByTestId(
+      'task-form-display-name-input'
+    );
 
     fireEvent.change(displayNameInput, {
       target: { value: 'Description Update v2' },
@@ -190,17 +200,37 @@ describe('TaskFormSettingsPage', () => {
     );
   });
 
+  it('clears the optional task category through the None option', async () => {
+    render(<TaskFormSettingsPage />);
+
+    const categorySelect = await screen.findByTestId(
+      'task-form-category-input'
+    );
+
+    fireEvent.click(within(categorySelect).getByRole('button'));
+    fireEvent.click(await screen.findByRole('option', { name: 'label.none' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+
+    await waitFor(() => expect(mockUpdateTaskFormSchema).toHaveBeenCalled());
+
+    expect(
+      mockUpdateTaskFormSchema.mock.calls[0][0].taskCategory
+    ).toBeUndefined();
+  });
+
   it('creates a new schema when add is selected', async () => {
     render(<TaskFormSettingsPage />);
 
     await waitFor(() =>
-      expect(screen.getByLabelText('Name')).toHaveValue('DescriptionUpdate')
+      expect(screen.getByTestId('task-form-name-input')).toHaveValue(
+        'DescriptionUpdate'
+      )
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'label.add' }));
 
-    const nameInput = screen.getByLabelText('Name');
-    const taskTypeInput = screen.getByLabelText('Task Type');
+    const nameInput = screen.getByTestId('task-form-name-input');
+    const taskTypeInput = screen.getByTestId('task-form-type-input');
 
     fireEvent.change(nameInput, { target: { value: 'CustomReview' } });
     fireEvent.change(taskTypeInput, { target: { value: 'Review' } });
@@ -233,7 +263,9 @@ describe('TaskFormSettingsPage', () => {
     render(<TaskFormSettingsPage />);
 
     await waitFor(() =>
-      expect(screen.getByLabelText('Name')).toHaveValue('DescriptionUpdate')
+      expect(screen.getByTestId('task-form-name-input')).toHaveValue(
+        'DescriptionUpdate'
+      )
     );
 
     fireEvent.click(screen.getByRole('tab', { name: 'Advanced JSON' }));

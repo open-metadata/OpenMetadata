@@ -13,12 +13,14 @@
 package org.openmetadata.service.rdf;
 
 import io.micrometer.core.instrument.Timer;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
@@ -58,6 +60,16 @@ public final class RdfLiveWriter implements AutoCloseable {
     wake();
   }
 
+  public void enqueueAll(final List<RdfLiveWrite> commands) {
+    try {
+      store.enqueueAll(commands.stream().map(JsonUtils::pojoToJson).toList());
+    } catch (RuntimeException exception) {
+      RdfProjectionHealth.markDegraded(exception);
+      throw exception;
+    }
+    wake();
+  }
+
   void wake() {
     if (!closed && draining.compareAndSet(false, true)) {
       try {
@@ -77,7 +89,7 @@ public final class RdfLiveWriter implements AutoCloseable {
       RdfProjectionHealth.flushLocalFailures();
       int processed = 0;
       for (; !closed && processed < MAX_WRITES_PER_DRAIN; processed++) {
-        if (!store.processNext(this::apply)) {
+        if (!store.processNext(this::apply, RdfLiveWriter::isEntityRefresh)) {
           break;
         }
       }
@@ -93,14 +105,26 @@ public final class RdfLiveWriter implements AutoCloseable {
     }
   }
 
+  /**
+   * An entity refresh reads the entity when it is applied, so a copy queued after it projects the
+   * same state or a newer one: the earlier copy can be retired unapplied. One profiler run that
+   * stores a profile per column queues one refresh of the table per column.
+   */
+  static boolean isEntityRefresh(final String payload) {
+    try {
+      return JsonUtils.readValue(payload, RdfLiveWrite.class) instanceof RdfLiveWrite.EntityUpdate;
+    } catch (JsonParsingException unreadable) {
+      return false;
+    }
+  }
+
   private void apply(final String payload) {
     // Each queued write is its own unit of work: a read cached by an earlier write in this drain
     // would project a stale entity, so start and leave every write with a clean request context.
     PerRequestContextCleaner.clear();
     final Timer.Sample sample = RequestLatencyContext.startRdfOperation();
     try {
-      RdfProjectionHealth.withDurableRecovery(
-          () -> write.accept(JsonUtils.readValue(payload, RdfLiveWrite.class)));
+      write.accept(JsonUtils.readValue(payload, RdfLiveWrite.class));
     } finally {
       RequestLatencyContext.endRdfOperation(sample);
       PerRequestContextCleaner.clear();

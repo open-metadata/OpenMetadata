@@ -11,42 +11,42 @@
  *  limitations under the License.
  */
 
-import { Col, Progress, Row } from 'antd';
-import classNames from 'classnames';
-import React from 'react';
+import { Box, ProgressBarBase } from '@openmetadata/ui-core-components';
+import { CSSProperties, FC } from 'react';
 import { calculatePercentage } from '../../../../../utils/NumberUtils';
 import { ProfilerProgressWidgetProps } from '../TableProfiler.interface';
 
-const ProfilerProgressWidget: React.FC<ProfilerProgressWidgetProps> = ({
+const ProfilerProgressWidget: FC<ProfilerProgressWidgetProps> = ({
   value,
   strokeColor,
   direction = 'left',
-}) => {
-  const modifiedValue = Math.round(value * 100);
-
-  return (
-    <Row
-      className={classNames('flex-row', {
-        'flex-row-reverse': direction === 'right',
-      })}
-      data-testid="profiler-progress-bar-container"
-      gutter={16}>
-      <Col span={6}>
-        <p className="percent-info" data-testid="percent-info">
-          {calculatePercentage(value, 1, 2, true)}
-        </p>
-      </Col>
-      <Col span={18}>
-        <Progress
-          data-testid="progress-bar"
-          percent={modifiedValue}
-          showInfo={false}
-          size="small"
-          strokeColor={strokeColor}
-        />
-      </Col>
-    </Row>
-  );
-};
+}) => (
+  <Box
+    align="center"
+    data-testid="profiler-progress-bar-container"
+    direction={direction === 'right' ? 'row-reverse' : 'row'}
+    gap={4}
+    // strokeColor is any CSS color, so it reaches the bar through a custom property.
+    style={
+      strokeColor
+        ? ({ '--progress-stroke': strokeColor } as CSSProperties)
+        : undefined
+    }>
+    <p
+      className="percent-info tw:m-0 tw:w-1/4 tw:shrink-0 tw:text-sm tw:text-primary"
+      data-testid="percent-info">
+      {calculatePercentage(value, 1, 2, true)}
+    </p>
+    <div className="tw:flex-1" data-testid="progress-bar">
+      <ProgressBarBase
+        className="tw:h-1.5"
+        progressClassName={
+          strokeColor ? 'tw:bg-(--progress-stroke)' : undefined
+        }
+        value={Math.min(Math.max(Math.round(value * 100), 0), 100)}
+      />
+    </div>
+  </Box>
+);
 
 export default ProfilerProgressWidget;

@@ -41,6 +41,9 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   buildEntityFieldGroups,
+  getGitSinkTriggerNodeConfig,
+  getTriggerDataAssets,
+  isIncidentSettingsWorkflow,
   validateWorkflowConfig,
   withExtensionPrefix,
 } from '../../../utils/WorkflowConfigUtils';
@@ -53,6 +56,16 @@ import {
 import { FormActionButtons } from './forms/FormActionButtons';
 import { WorkflowConfigFormV1 } from './forms/WorkflowConfigFormV1';
 
+// An unset flag means on, matching the workflow definition's default.
+const resolveAutoAssignOwners = (
+  node: Node,
+  workflowDefinition: NodeConfigSidebarProps['workflowDefinition']
+): boolean =>
+  node.data?.autoAssignOwners ??
+  (node.data?.config as NodeConfig | undefined)?.autoAssignOwners ??
+  workflowDefinition?.config?.autoAssignOwners ??
+  true;
+
 const computeStartNodeConfig = (
   node: Node,
   workflowDefinition: NodeConfigSidebarProps['workflowDefinition'],
@@ -60,7 +73,12 @@ const computeStartNodeConfig = (
   localName: string | null,
   localDescription: string | null
 ): NodeConfig => {
-  const baseConfig = getInitialNodeConfig(node, workflowDefinition, null);
+  const baseConfig: NodeConfig = {
+    ...getInitialNodeConfig(node, workflowDefinition, null),
+    ...(isIncidentSettingsWorkflow(workflowDefinition) && {
+      autoAssignOwners: resolveAutoAssignOwners(node, workflowDefinition),
+    }),
+  };
 
   if (workflowMetadata) {
     const configWithMetadata = {
@@ -111,12 +129,15 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   workflowMetadata,
   onWorkflowMetadataUpdate,
   triggerFieldsConfig,
+  hasGitSinkNode = false,
 }) => {
   const {
     allowFullStartNodeConfiguration,
     allowStartNodeFilterScheduleAndBatchEdit,
     allowScheduledTrigger,
+    isNoOp,
   } = useWorkflowModeContext();
+  const isIncidentWorkflow = isIncidentSettingsWorkflow(workflowDefinition);
   const [isUpdating, setIsUpdating] = useState(false);
   const [backendConfig, setBackendConfig] = useState(() =>
     getBackendConfig(node)
@@ -142,7 +163,15 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       : getInitialNodeConfig({} as Node, workflowDefinition, null);
   }, [node, workflowDefinition, workflowMetadata, localName, localDescription]);
 
-  const effectiveConfig = localConfig || config;
+  // A Git sink workflow's trigger keeps only the entity types the sink syncs, whichever order the
+  // trigger and the sink were configured in.
+  const effectiveConfig = useMemo(() => {
+    const currentConfig = localConfig || config;
+
+    return hasGitSinkNode && isStartNode(node)
+      ? getGitSinkTriggerNodeConfig(currentConfig)
+      : currentConfig;
+  }, [localConfig, config, hasGitSinkNode, node]);
 
   const [customPropertyFields, setCustomPropertyFields] = useState<string[]>(
     []
@@ -185,8 +214,12 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
 
   // The trigger-fields registry's entity types are the ones a workflow can be defined on.
   const workflowEntityTypes = useMemo(
-    () => Object.keys(triggerFieldsConfig.entitySpecific),
-    [triggerFieldsConfig]
+    () =>
+      getTriggerDataAssets(
+        Object.keys(triggerFieldsConfig.entitySpecific),
+        hasGitSinkNode
+      ),
+    [triggerFieldsConfig, hasGitSinkNode]
   );
 
   // Group entity-specific fields under their entity type below the common fields
@@ -384,13 +417,15 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     let filterConfig = {};
 
     if (isEventBased) {
-      const eventFilters = serializeEventBasedFilters(
-        effectiveConfig.triggerFilter || '',
-        effectiveConfig.dataAssets
-      );
-      if (Object.keys(eventFilters).length > 0) {
-        filterConfig = { filter: eventFilters };
-      }
+      // Always set filter - even when empty - so clearing the exclude filter overwrites the stale
+      // value the effectiveConfig/backendConfig spread below carries over, instead of leaving the
+      // old filter in place. An empty object deserializes back to "no filter".
+      filterConfig = {
+        filter: serializeEventBasedFilters(
+          effectiveConfig.triggerFilter || '',
+          effectiveConfig.dataAssets
+        ),
+      };
     } else if (isPeriodicBatch) {
       const periodicFilters = serializePeriodicBatchFilters(
         effectiveConfig.dataAssetFilters
@@ -428,7 +463,8 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       setIsUpdating(true);
       const isTriggerNode = isStartNode(node);
 
-      if (isTriggerNode && allowFullStartNodeConfiguration) {
+      // OSS keeps the description editable; name and trigger type are locked in the form.
+      if (isTriggerNode && !isNoOp) {
         updateWorkflowMetadata();
       }
 
@@ -451,12 +487,12 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     }
   }, [
     node,
+    isNoOp,
     updateWorkflowMetadata,
     buildTriggerConfiguration,
     buildTaskConfiguration,
     onSave,
     onClose,
-    allowFullStartNodeConfiguration,
   ]);
 
   const handleCancel = useCallback(() => {
@@ -464,8 +500,10 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   }, [onClose]);
 
   const isWorkflowConfigValid = useMemo(
-    () => validateWorkflowConfig(effectiveConfig, isStartNode(node)),
-    [effectiveConfig, node]
+    () =>
+      (isNoOp && isIncidentWorkflow) ||
+      validateWorkflowConfig(effectiveConfig, isStartNode(node)),
+    [effectiveConfig, node, isNoOp, isIncidentWorkflow]
   );
 
   const renderFormContent = () => {
@@ -489,6 +527,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
         handleEventTypeChange={handleEventTypeChange}
         removeDataAssetFilter={removeDataAssetFilter}
         removeFromArray={removeFromArray}
+        showAutoAssignOwners={isIncidentWorkflow}
         updateConfig={updateConfig}
         onUpdateDataAssetFilter={updateDataAssetFilter}
       />

@@ -97,13 +97,17 @@ public class PermissionDebugService {
       return;
     }
 
+    Set<UUID> visited = new HashSet<>();
     for (EntityReference teamRef : user.getTeams()) {
-      Team team = teamRepository.get(null, teamRef.getId(), teamRepository.getFields("*"));
-      processTeamHierarchy(team, debugInfo, 0);
+      if (visited.add(teamRef.getId())) {
+        Team team = teamRepository.get(null, teamRef.getId(), teamRepository.getFields("*"));
+        processTeamHierarchy(team, debugInfo, 0, visited);
+      }
     }
   }
 
-  private void processTeamHierarchy(Team team, PermissionDebugInfo debugInfo, int level) {
+  private void processTeamHierarchy(
+      Team team, PermissionDebugInfo debugInfo, int level, Set<UUID> visited) {
     TeamPermission teamPermission = new TeamPermission();
     teamPermission.setTeam(team.getEntityReference());
     teamPermission.setTeamType(team.getTeamType().value());
@@ -159,12 +163,14 @@ public class PermissionDebugService {
 
     debugInfo.getTeamPermissions().add(teamPermission);
 
-    // Process parent teams
+    // Process parent teams, each ancestor once
     if (team.getParents() != null && !team.getParents().isEmpty()) {
       for (EntityReference parentRef : team.getParents()) {
-        Team parentTeam =
-            teamRepository.get(null, parentRef.getId(), teamRepository.getFields("*"));
-        processTeamHierarchy(parentTeam, debugInfo, level + 1);
+        if (visited.add(parentRef.getId())) {
+          Team parentTeam =
+              teamRepository.get(null, parentRef.getId(), teamRepository.getFields("*"));
+          processTeamHierarchy(parentTeam, debugInfo, level + 1, visited);
+        }
       }
     }
   }
@@ -320,7 +326,7 @@ public class PermissionDebugService {
     debugInfo.setOperation(operation);
 
     // Get the resource if resourceIdOrFqn is provided
-    EntityInterface resource = null;
+    EntityInterface<?> resource = null;
     if (resourceIdOrFqn != null) {
       try {
         EntityRepository<?> repository = Entity.getEntityRepository(resourceType);

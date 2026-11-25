@@ -12,10 +12,12 @@
  */
 
 import { TFunction } from 'i18next';
-import { isEmpty } from 'lodash';
-import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
+import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import {
-  AlertType,
+  ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH,
+  EXTERNAL_CATEGORY_OPTIONS,
+} from '../../../constants/Alerts.constants';
+import {
   ArgumentsInput,
   Effect,
   EventFilterRule,
@@ -24,17 +26,14 @@ import {
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
 import {
+  AlertAiFormChangeHandler,
+  AlertAiFormValue,
   ModifiedCreateEventSubscription,
   ModifiedDestination,
-  ObservabilityFilterResourceDescriptor,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { getConfigFieldFromDestinationType } from '../../../utils/ObservabilityUtils';
-import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
-import {
-  AlertAiFormFieldsProps,
-  AlertAiFormValue,
+  ModifiedEventSubscription,
   RuleSectionField,
-} from './AlertAiFormFields.interface';
+} from '../../../utils/AlertsClassBase.interface';
+import { getConfigFieldFromDestinationType } from '../../../utils/ObservabilityUtils';
 
 export type WebhookDestinationType =
   | SubscriptionType.Slack
@@ -98,7 +97,7 @@ export const getListValue = (value?: string | string[]) =>
 /** Reads the selected alert source from create/edit form values or existing alert details. */
 export const getAlertAiResources = (
   value: AlertAiFormValue,
-  alert?: AlertAiFormFieldsProps['alert']
+  alert?: ModifiedEventSubscription
 ) => {
   if ('resources' in value && value.resources) {
     return value.resources;
@@ -111,42 +110,67 @@ export const getAlertAiResources = (
   return 'filteringRules' in value ? value.filteringRules?.resources ?? [] : [];
 };
 
+/**
+ * Whether a rule section displays. Once the server has said whether the sources support any rule
+ * of its kind, it displays when they do. Until then, a view keeps the parent's flag, and a form
+ * displays it only for rules the alert already holds, so a saved alert never hides them.
+ */
+const resolveSectionDisplay = (
+  isViewOnly: boolean | undefined,
+  hasSources: boolean,
+  hasRules: boolean | undefined,
+  chosenRules: ArgumentsInput[],
+  shouldShowSection: boolean
+): boolean => {
+  if (!hasSources) {
+    return shouldShowSection;
+  }
+  if (!isUndefined(hasRules)) {
+    return hasRules;
+  }
+
+  return isViewOnly ? shouldShowSection : !isEmpty(chosenRules);
+};
+
 /** Derives the selected rules and section-visibility inputs for the AI alert form fields. */
 export const getAlertAiSectionInputs = ({
   value,
-  selectedSource,
-  selectedFilterResource,
-  supportedFilters,
-  supportedTriggers,
+  isViewOnly,
+  selectedSources,
+  hasFilters,
+  hasTriggers,
   shouldShowActionsSection,
   shouldShowFiltersSection,
 }: {
   value: AlertAiFormValue;
-  selectedSource?: string;
-  selectedFilterResource?: ObservabilityFilterResourceDescriptor;
-  supportedFilters?: EventFilterRule[];
-  supportedTriggers?: EventFilterRule[];
+  isViewOnly?: boolean;
+  selectedSources: string[];
+  hasFilters?: boolean;
+  hasTriggers?: boolean;
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
 }) => {
+  const hasSources = !isEmpty(selectedSources);
   const selectedFilters = value.input?.filters ?? [];
   const selectedTriggers = value.input?.actions ?? [];
-  const selectedSupportedFilters =
-    selectedFilterResource?.supportedFilters ?? supportedFilters;
-  const selectedSupportedTriggers =
-    selectedFilterResource?.supportedActions ?? supportedTriggers;
 
   return {
     selectedFilters,
     selectedTriggers,
-    selectedSupportedFilters,
-    selectedSupportedTriggers,
-    shouldDisplayFiltersSection: selectedSource
-      ? !isEmpty(selectedSupportedFilters)
-      : shouldShowFiltersSection,
-    shouldDisplayActionsSection: selectedSource
-      ? !isEmpty(selectedSupportedTriggers)
-      : shouldShowActionsSection,
+    shouldDisplayFiltersSection: resolveSectionDisplay(
+      isViewOnly,
+      hasSources,
+      hasFilters,
+      selectedFilters,
+      shouldShowFiltersSection
+    ),
+    shouldDisplayActionsSection: resolveSectionDisplay(
+      isViewOnly,
+      hasSources,
+      hasTriggers,
+      selectedTriggers,
+      shouldShowActionsSection
+    ),
   };
 };
 
@@ -154,14 +178,14 @@ export const getAlertAiSectionInputs = ({
 export const getAlertAiSectionVisibility = ({
   isViewOnly,
   selectedFilters,
-  selectedSource,
+  selectedSources,
   selectedTriggers,
   shouldShowActionsSection,
   shouldShowFiltersSection,
 }: {
   isViewOnly?: boolean;
   selectedFilters: ArgumentsInput[];
-  selectedSource?: string;
+  selectedSources: string[];
   selectedTriggers: ArgumentsInput[];
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
@@ -170,8 +194,35 @@ export const getAlertAiSectionVisibility = ({
     shouldShowActionsSection && (!isViewOnly || !isEmpty(selectedTriggers)),
   shouldRenderFiltersSection:
     shouldShowFiltersSection && (!isViewOnly || !isEmpty(selectedFilters)),
-  shouldRenderSourceSection: !isViewOnly || !isEmpty(selectedSource),
+  shouldRenderSourceSection: !isViewOnly || !isEmpty(selectedSources),
 });
+
+/**
+ * A saved alert that is switched off keeps its fields read-only until it is switched back on; the
+ * switch itself and Save/Cancel stay active. A new alert stays editable when switched off, so it
+ * can still be filled in and saved disabled. A view-only form is read-only whatever the state.
+ */
+export const getAlertFieldAccess = ({
+  alert,
+  isEditMode = false,
+  isViewOnly,
+  value,
+}: {
+  alert?: ModifiedEventSubscription;
+  isEditMode?: boolean;
+  isViewOnly?: boolean;
+  value: AlertAiFormValue;
+}) => {
+  const isAlertEnabled = value.enabled !== false;
+  const isFieldDisabled =
+    Boolean(isViewOnly) || (isEditMode && !isAlertEnabled);
+
+  return {
+    isAlertEnabled,
+    isFieldDisabled,
+    areRulesReadOnly: isFieldDisabled || alert?.hasRulesWithoutSelections,
+  };
+};
 
 /**
  * Returns a copy of `source` with `path` set to `nextValue`, cloning only the nodes along the path
@@ -221,7 +272,7 @@ export const setValueAtPath = (
  */
 export const updateAlertAiValue = (
   _value: AlertAiFormValue,
-  onChange: AlertAiFormFieldsProps['onChange'] | undefined,
+  onChange: AlertAiFormChangeHandler | undefined,
   path: (string | number)[],
   nextValue: unknown
 ) => {
@@ -296,37 +347,35 @@ export const getTextArgumentCopy = (argument: string, t: TFunction) => {
 };
 
 /** Computes add-rule affordance flags for a filter or trigger rule section. */
+// Each rule on offer can be chosen once, as in the classic form. A trigger applies to the sources
+// it names, so an alert on several sources needs one trigger for each of them.
 export const getRuleSectionFlags = ({
-  field,
   isViewOnly,
   selectedRules,
-  selectedSource,
+  selectedSources,
   supportedRules,
 }: {
-  field: RuleSectionField;
   isViewOnly?: boolean;
   selectedRules: ArgumentsInput[];
-  selectedSource?: string;
+  selectedSources?: string[];
   supportedRules?: EventFilterRule[];
-}) => {
-  const maxRules = field === 'actions' ? 1 : supportedRules?.length ?? 0;
+}) => ({
+  canAddRule: selectedRules.length < (supportedRules?.length ?? 0),
+  isAddDisabled: isEmpty(selectedSources),
+  showAddButton: !isViewOnly,
+});
 
-  return {
-    canAddRule:
-      Boolean(supportedRules?.length) && selectedRules.length < maxRules,
-    isAddDisabled: isEmpty(selectedSource),
-    showAddButton:
-      !isViewOnly && (field === 'filters' || selectedRules.length === 0),
-  };
-};
-
-/** Builds rule dropdown items and disables rules that are already selected. */
+/**
+ * Builds rule dropdown items and disables rules that are already selected. A saved rule the sources
+ * no longer offer, or that the server has not described yet, is still listed by its name, disabled,
+ * so the dropdown never shows it blank.
+ */
 export const getRuleItems = (
   supportedRules: EventFilterRule[] | undefined,
   selectedRules: ArgumentsInput[]
-) =>
-  supportedRules
-    ?.filter((rule): rule is EventFilterRule & { name: string } =>
+) => {
+  const offered = (supportedRules ?? [])
+    .filter((rule): rule is EventFilterRule & { name: string } =>
       Boolean(rule.name)
     )
     .map((rule) => ({
@@ -335,7 +384,17 @@ export const getRuleItems = (
         (selectedRule) => selectedRule.name === rule.name
       ),
       label: rule.displayName ?? rule.name,
-    })) ?? [];
+    }));
+  const unknown = uniqBy(
+    selectedRules.filter(
+      (rule): rule is ArgumentsInput & { name: string } =>
+        Boolean(rule.name) && !offered.some((item) => item.id === rule.name)
+    ),
+    'name'
+  ).map((rule) => ({ id: rule.name, isDisabled: true, label: rule.name }));
+
+  return [...offered, ...unknown];
+};
 
 /** Returns translated copy used by filter and trigger rule sections. */
 export const getRuleCopy = (field: RuleSectionField, t: TFunction) => {
@@ -472,16 +531,3 @@ export const getDestinationWithNotifyDownstream = (
     : undefined,
   notifyDownstream,
 });
-
-/**
- * Event types offered by the event-type filter. Only the Settings → Notifications
- * flow narrows them to the source's supported types (classic
- * `AddNotificationPage`); the Observability flow always offered every type.
- */
-export const getRuleEventTypes = (
-  alertType: AlertType | undefined,
-  resource?: ObservabilityFilterResourceDescriptor
-) =>
-  alertType === AlertType.Notification
-    ? resource?.supportedEventTypes
-    : undefined;

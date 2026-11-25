@@ -13,6 +13,7 @@
 package org.openmetadata.service.aicontext;
 
 import java.util.regex.Pattern;
+import org.apache.commons.text.StringEscapeUtils;
 import org.openmetadata.service.util.DescriptionSanitizer;
 import org.owasp.html.HtmlPolicyBuilder;
 import org.owasp.html.PolicyFactory;
@@ -94,9 +95,19 @@ public final class PromptText {
    */
   private static final Pattern HTML_TAG =
       Pattern.compile(
-          "(?i)<\\s*/?\\s*(?:a|b|blockquote|br|caption|code|col|colgroup|dd|del|details|div|dl|dt"
-              + "|em|h[1-6]|hr|i|img|ins|li|mark|ol|p|pre|s|section|small|span|strong|sub|summary"
-              + "|sup|table|tbody|td|tfoot|th|thead|tr|u|ul)\\b[^>]*>");
+          "(?i)<\\s*+/?+\\s*+(?:a|b|blockquote|br|caption|code|col|colgroup|dd|del|details|div|dl"
+              + "|dt|em|h[1-6]|hr|i|img|ins|li|mark|ol|p|pre|s|section|small|span|strong|sub"
+              + "|summary|sup|table|tbody|td|tfoot|th|thead|tr|u|ul)\\b[^>]*+>");
+
+  /**
+   * An image the decode exposes: a tag the editor stored as encoded text, or a Markdown body's
+   * {@code ![alt](data:...)} diagram. Each attempt stops at the next {@code <} or {@code [}, so many
+   * unclosed openings cost one pass, not one pass each.
+   */
+  private static final Pattern DECODED_IMAGE =
+      Pattern.compile(
+          "(?i)<img\\b(?:[^<>\"']|\"[^\"<]*+\"|'[^'<]*+')*+>"
+              + "|!\\[[^\\]\\[\\n]*+\\]\\(\\s*+data:[^()!\\[\\]]*+\\)");
 
   private PromptText() {}
 
@@ -106,9 +117,25 @@ public final class PromptText {
    * checks.
    */
   public static String forPrompt(String description) {
-    if (description == null || description.isBlank() || !HTML_TAG.matcher(description).find()) {
+    if (description == null || description.isBlank() || !hasHtmlTag(description)) {
       return description;
     }
     return DescriptionSanitizer.sanitizeWith(PROMPT_POLICY, description);
+  }
+
+  /**
+   * The text cleaned like {@link #forPrompt} and decoded once, so it reads as written ({@code x >=
+   * 1}, {@code 'a'}, {@code a & b}) as the content read did before images were stripped. Images the
+   * decode exposes are cut by pattern, not by a second clean and decode, so text stored
+   * double-encoded stays encoded and no markup is rebuilt from it.
+   */
+  public static String forContentRead(String richText) {
+    final String decoded = StringEscapeUtils.unescapeHtml4(forPrompt(richText));
+    return decoded == null ? null : DECODED_IMAGE.matcher(decoded).replaceAll("");
+  }
+
+  private static boolean hasHtmlTag(String description) {
+    // A tag cannot close beyond the final delimiter.
+    return HTML_TAG.matcher(description).region(0, description.lastIndexOf('>') + 1).find();
   }
 }

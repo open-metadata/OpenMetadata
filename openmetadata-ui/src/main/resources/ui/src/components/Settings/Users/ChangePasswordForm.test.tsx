@@ -122,20 +122,9 @@ describe('ChangePasswordForm', () => {
 
   it('displays loading state during submission', async () => {
     render(<ChangePasswordForm {...MOCK_PROPS} isLoading />);
-    const submitButton = await screen.findByText('label.update-entity');
-
-    const newPasswordInput = await screen.findByTestId('input-oldPassword');
-    const confirmPasswordInput = await screen.findByTestId('input-newPassword');
-
-    fireEvent.change(newPasswordInput, { target: { value: 'oldPassword' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'Test@123' } });
-
-    await waitFor(async () => {
-      await userEvent.click(submitButton);
-    });
 
     expect(
-      await screen.findByRole('img', { name: 'loading' })
-    ).toBeInTheDocument();
+      (await screen.findByText('label.update-entity')).closest('button')
+    ).toHaveAttribute('data-loading');
   });
 });

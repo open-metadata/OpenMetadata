@@ -12,6 +12,7 @@
  */
 package org.openmetadata.service.secrets;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -24,8 +25,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
 
 /**
@@ -281,6 +284,37 @@ class ExternalSecretsManagerUnitTest {
     assertEquals(List.of(SECRET_NAME), manager.stored, "the backend write must still happen");
     assertEquals(
         0, throttleCalls.get(), "a manager built with noOp must not touch the recording limiter");
+  }
+
+  @Test
+  void hardDeleteOfAServiceToleratesASecretThatIsAlreadyAbsent() {
+    RecordingExternalSecretsManager manager = new RecordingExternalSecretsManager(recordingLimiter);
+    manager.deleteFailure = new SecretNotFoundException("/prefix/database/fabric/authtype");
+
+    assertDoesNotThrow(
+        () ->
+            manager.deleteSecretsFromServiceConnectionConfig(
+                fabricConnection(), "MicrosoftFabric", "fabric", ServiceType.DATABASE));
+  }
+
+  @Test
+  void hardDeleteOfAServiceFailsWhenTheBackendRefusesTheDelete() {
+    RecordingExternalSecretsManager manager = new RecordingExternalSecretsManager(recordingLimiter);
+    manager.deleteFailure = new RuntimeException("AccessDenied: cannot delete the secret");
+
+    assertThrows(
+        InvalidServiceConnectionException.class,
+        () ->
+            manager.deleteSecretsFromServiceConnectionConfig(
+                fabricConnection(), "MicrosoftFabric", "fabric", ServiceType.DATABASE));
+  }
+
+  private static Map<String, Object> fabricConnection() {
+    return Map.of(
+        "hostPort", "fabric.datawarehouse.fabric.microsoft.com",
+        "clientId", "client-id",
+        "tenantId", "tenant-id",
+        "authType", Map.of("clientSecret", "secret:/shared/vault/fabric-client-secret"));
   }
 
   private static SecretsManager.SecretsConfig configWithRate(String value) {

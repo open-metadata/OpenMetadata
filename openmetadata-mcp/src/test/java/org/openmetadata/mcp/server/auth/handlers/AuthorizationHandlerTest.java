@@ -3,17 +3,22 @@ package org.openmetadata.mcp.server.auth.handlers;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.mcp.auth.InvalidRedirectUriException;
@@ -21,6 +26,8 @@ import org.openmetadata.mcp.auth.InvalidScopeException;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.auth.exception.AuthorizeException;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @ExtendWith(MockitoExtension.class)
 class AuthorizationHandlerTest {
@@ -35,6 +42,9 @@ class AuthorizationHandlerTest {
     handler = new AuthorizationHandler(provider);
   }
 
+  // A desktop or IDE client: errors are still redirected straight back to it.
+  private static final String LOOPBACK_CALLBACK = "http://127.0.0.1:33418/callback";
+
   private Map<String, String> validParams() {
     Map<String, String> params = new HashMap<>();
     params.put("client_id", "test-client");
@@ -44,6 +54,37 @@ class AuthorizationHandlerTest {
     params.put("state", "state123");
     params.put("redirect_uri", "https://example.com/callback");
     return params;
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "http://127.0.0.1:33418/callback",
+        "cursor://callback",
+        "https://blocked.example/callback"
+      })
+  void policyRejectionNeverReturnsAnErrorCallback(String callback) throws Exception {
+    OAuthClientInformation registered = new OAuthClientInformation();
+    registered.setRedirectUris(List.of(URI.create(callback)));
+    when(provider.getClient("test-client"))
+        .thenReturn(CompletableFuture.completedFuture(registered));
+    when(provider.authorize(eq(registered), any()))
+        .thenThrow(new AuthorizeException("invalid_request", "Redirect rejected by policy"));
+    Map<String, String> params = validParams();
+    params.put("redirect_uri", callback);
+    try (var config = mockStatic(SecurityConfigurationManager.class)) {
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(
+              new MCPConfiguration()
+                  .withAllowLoopbackRedirects(false)
+                  .withAllowNativeRedirects(false)
+                  .withAllowedRedirectHosts(Set.of("trusted.example")));
+      var response = handler.handle(params).join();
+      assertThat(response.isRedirect()).isFalse();
+      assertThat(response.getRedirectUrl()).isNull();
+      assertThat(response.getError().getError()).isEqualTo("invalid_request");
+    }
   }
 
   @Test
@@ -130,7 +171,7 @@ class AuthorizationHandlerTest {
   @Test
   void testInvalidScope_returnsInvalidScopeWithRedirect()
       throws InvalidRedirectUriException, InvalidScopeException {
-    URI redirectUri = URI.create("https://example.com/callback");
+    URI redirectUri = URI.create(LOOPBACK_CALLBACK);
     when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
     when(client.validateRedirectUri(any())).thenReturn(redirectUri);
     when(client.validateScope("admin")).thenThrow(new InvalidScopeException("Not allowed"));
@@ -257,7 +298,7 @@ class AuthorizationHandlerTest {
   @Test
   void testAuthorizeException_returnsErrorWithRedirect()
       throws InvalidRedirectUriException, InvalidScopeException, AuthorizeException {
-    URI redirectUri = URI.create("https://example.com/callback");
+    URI redirectUri = URI.create(LOOPBACK_CALLBACK);
     when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
     when(client.validateRedirectUri(any())).thenReturn(redirectUri);
     when(client.validateScope(any())).thenReturn(null);
@@ -277,7 +318,7 @@ class AuthorizationHandlerTest {
   @Test
   void testUnexpectedException_returnsServerError()
       throws InvalidRedirectUriException, InvalidScopeException, AuthorizeException {
-    URI redirectUri = URI.create("https://example.com/callback");
+    URI redirectUri = URI.create(LOOPBACK_CALLBACK);
     when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
     when(client.validateRedirectUri(any())).thenReturn(redirectUri);
     when(client.validateScope(any())).thenReturn(null);
@@ -289,5 +330,27 @@ class AuthorizationHandlerTest {
     assertThat(response.isSuccess()).isFalse();
     assertThat(response.getError().getError()).isEqualTo("server_error");
     assertThat(response.isRedirect()).isTrue();
+  }
+
+  @Test
+  void testErrorForRemoteWebCallback_isALinkNotARedirect()
+      throws InvalidRedirectUriException, InvalidScopeException {
+    // Any client can register an https callback, so redirecting errors to one made
+    // /mcp/authorize an open redirect. The URL is kept so the page can link to it.
+    URI redirectUri = URI.create("https://example.com/callback");
+    when(provider.getClient("test-client")).thenReturn(CompletableFuture.completedFuture(client));
+    when(client.validateRedirectUri(any())).thenReturn(redirectUri);
+    when(client.validateScope("admin")).thenThrow(new InvalidScopeException("Not allowed"));
+
+    Map<String, String> params = validParams();
+    params.put("scope", "admin");
+
+    AuthorizationHandler.AuthorizationResponse response = handler.handle(params).join();
+
+    assertThat(response.isRedirect()).isFalse();
+    assertThat(response.getRedirectUrl())
+        .startsWith("https://example.com/callback?")
+        .contains("error=invalid_scope")
+        .contains("state=state123");
   }
 }

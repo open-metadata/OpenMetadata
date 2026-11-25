@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { DefaultOptionType } from 'antd/lib/select';
-import { isString, toLower } from 'lodash';
+import { toLower } from 'lodash';
 
 /**
  * @param searchValue search input
@@ -79,16 +78,4 @@ export const getEntityTypeExploreQueryFilter = (entityType: string) => {
       },
     },
   });
-};
-
-export const filterSelectOptions = (
-  input: string,
-  option?: DefaultOptionType
-) => {
-  return (
-    toLower(option?.labelValue).includes(toLower(input)) ||
-    toLower(isString(option?.value) ? option?.value : '').includes(
-      toLower(input)
-    )
-  );
 };

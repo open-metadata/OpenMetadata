@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -40,6 +41,7 @@ import org.openmetadata.service.jdbi3.QuartzConnectionProvider;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.TimezoneUtil;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
@@ -290,6 +292,13 @@ public class AppScheduler {
   }
 
   public static CronScheduleBuilder getCronSchedule(AppSchedule scheduleInfo) {
+    CronScheduleBuilder schedule = cronScheduleFor(scheduleInfo);
+    TimezoneUtil.zoneOf(scheduleInfo.getTimezone())
+        .ifPresent(zone -> schedule.inTimeZone(TimeZone.getTimeZone(zone)));
+    return schedule;
+  }
+
+  private static CronScheduleBuilder cronScheduleFor(AppSchedule scheduleInfo) {
     switch (scheduleInfo.getScheduleTimeline()) {
       case HOURLY:
         return CronScheduleBuilder.cronSchedule("0 0 * ? * *");
@@ -361,8 +370,7 @@ public class AppScheduler {
                   && context.getJobDetail().getKey().equals(jobDetailScheduled.getKey()))
               || (jobDetailOnDemand != null
                   && context.getJobDetail().getKey().equals(jobDetailOnDemand.getKey()))) {
-            throw new UnhandledServerException(
-                "Job is already running, please wait for it to complete.");
+            throw new AppAlreadyRunningException();
           }
         }
       }
@@ -389,7 +397,7 @@ public class AppScheduler {
               .build();
       scheduleOnDemandJob(application, newJobDetail, trigger, triggerIdentity, concurrentJob);
     } catch (ObjectAlreadyExistsException ex) {
-      throw new UnhandledServerException("Job is already running, please wait for it to complete.");
+      throw new AppAlreadyRunningException(ex);
     } catch (SchedulerException | ClassNotFoundException ex) {
       LOG.error("Failed in running job", ex);
       throw new UnhandledServerException(

@@ -14,13 +14,15 @@ for the profiler
 """
 
 import hashlib
-from typing import cast
+from collections.abc import Callable
+from typing import Any, cast
 
-from sqlalchemy import Column, inspect, select, text
+from sqlalchemy import Column, false, inspect, select, text
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
-from sqlalchemy.sql.selectable import TableSample
+from sqlalchemy.sql.selectable import CTE, TableSample
 from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
@@ -52,6 +54,7 @@ from metadata.utils.ssl_manager import get_ssl_connection
 logger = profiler_interface_registry_logger()
 
 RANDOM_LABEL = "random"
+ORIGINAL_COLUMN_NAME = "openmetadata_original_column_name"
 
 # Default maximum number of elements to extract from array columns to prevent OOM
 DEFAULT_MAX_ARRAY_ELEMENTS = 10
@@ -165,6 +168,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         """
         return column
 
+    def _process_sample_value(self, column: Column, value: Any) -> Any:
+        """Convert one fetched sample cell, before truncation, for drivers that return encoded values.
+        Child classes override this method.
+        """
+        return value
+
     def _base_sample_query(
         self,
         selectable: Table | TableSample,
@@ -270,7 +279,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             )
             return query.limit(static.profileSample if static else None).cte(f"{self.get_sampler_table_name()}_rnd")
 
-    def get_dataset(self, column=None, **__) -> type | AliasedClass:
+    def get_dataset(self, column=None, **__) -> type | AliasedClass | CTE:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
@@ -304,8 +313,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         else:
             # we can't directly use columns as it is bound to self.raw_dataset and not the rnd table.
             # If we use it, it will result in a cross join between self.raw_dataset and rnd table
-            names = [col.name for col in columns]
-            sqa_columns = [col for col in inspect(ds).c if col.name != RANDOM_LABEL and col.name in names]
+            requested_names = {col.name for col in columns}
+            sqa_columns = [
+                col
+                for col in inspect(ds, raiseerr=True).c
+                if col.name != RANDOM_LABEL and col.info.get(ORIGINAL_COLUMN_NAME, col.name) in requested_names
+            ]
 
         with self.session_factory() as client:
             # Handle array columns with special query modification
@@ -334,12 +347,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 value = row[i]
                 if has_array_columns and self._handle_array_column(col):
                     value = self._process_array_value(value)
-                processed_row.append(self._truncate_cell(value))
+                processed_row.append(self._truncate_cell(self._process_sample_value(col, value)))
             processed_rows.append(processed_row)
         if self.partition_details and not sqa_sample:
             self._warn_empty_partition()
         return TableData(
-            columns=[column.name for column in sqa_columns],
+            columns=[column.info.get(ORIGINAL_COLUMN_NAME, column.name) for column in sqa_columns],
             rows=processed_rows,
         )
 
@@ -386,14 +399,65 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
         with self.session_factory() as client:
             rnd = client.execute(text(f"{self.sample_query}"))
+            dialect = client.get_bind().dialect
         try:
             columns = [col.name for col in rnd.cursor.description]
         except AttributeError:
             columns = list(rnd.keys())
+        try:
+            type_codes = [entry[1] for entry in rnd.cursor.description]
+        except (AttributeError, IndexError, TypeError):
+            type_codes = [None] * len(columns)
+        # The query returns raw driver values. A result named like a table column converts through that
+        # column's dialect type, as a regular sample does, and a computed column stays as returned.
+        table_columns = {column.name: column for column in self.get_columns()}
+        row_columns = [self._matching_column(str(name), table_columns) for name in columns]
+        processors = [
+            None if column is None else self._result_processor(column, dialect, type_code)
+            for column, type_code in zip(row_columns, type_codes, strict=True)
+        ]
         return TableData(
             columns=columns,
-            rows=[[self._truncate_cell(cell) for cell in row] for row in rnd.fetchmany(100)],
+            rows=[
+                [
+                    self._user_query_cell(column, processor, cell)
+                    for column, processor, cell in zip(row_columns, processors, row, strict=True)
+                ]
+                for row in rnd.fetchmany(self.sample_limit)
+            ],
         )
+
+    @staticmethod
+    def _matching_column(name: str, table_columns: dict[str, Column]) -> Column | None:
+        """An exact name match wins, since a table can hold columns whose names differ only in case."""
+        if name in table_columns:
+            return table_columns[name]
+        folded = name.lower()
+        return next((column for column in table_columns.values() if column.name.lower() == folded), None)
+
+    @staticmethod
+    def _result_processor(column: Column, dialect: Dialect, type_code: Any) -> Callable[[Any], Any] | None:
+        """The dialect's own processor, which a regular sample also uses, or None when it cannot be built.
+
+        A generic type can fail to build one for a dialect, as JSON does without a JSON deserializer.
+        """
+        try:
+            return column.type.dialect_impl(dialect).result_processor(dialect, type_code)
+        except Exception as exc:
+            logger.debug("Keeping raw %s values, its type has no processor for this dialect: %r", column.name, exc)
+            return None
+
+    def _user_query_cell(self, column: Column | None, processor: Callable[[Any], Any] | None, cell: Any) -> Any:
+        if column is None:
+            return self._truncate_cell(cell)
+        if processor is not None:
+            # Processors include custom types that fail with their own errors (rowversion unpacking raises
+            # struct.error), and a cell the column type cannot convert is still a valid sample.
+            try:
+                cell = processor(cell)
+            except Exception as exc:
+                logger.debug("Keeping the raw %s value the column type cannot convert: %r", column.name, exc)
+        return self._truncate_cell(self._process_sample_value(column, cell))
 
     def _rdn_sample_from_user_query(self) -> Query:
         """Returns sql alchemy object to use when running profiling"""
@@ -412,12 +476,63 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         Build the CTE using Core select() so it does not require an active Session.
         """
         self.partition_details = cast(PartitionProfilerConfig, self.partition_details)  # noqa: TC006
+        raw_dataset = self.raw_dataset
+        assert raw_dataset is not None
+        raw_table = raw_dataset.__table__
         partition_filter = build_partition_predicate(
             self.partition_details,
-            self.raw_dataset.__table__.c,
+            raw_table.c,
         )
-        stmt = select(self.raw_dataset).where(partition_filter)
-        return stmt.cte(f"{self.get_sampler_table_name()}_partitioned")
+        if partition_filter is None:
+            partition_filter = false()
+        cte_name = f"{self.get_sampler_table_name()}_partitioned"
+
+        column_names = [column.name for column in raw_table.c]
+        safe_names = []
+        used_names = {
+            column.name for column in raw_table.c if self._partition_cte_column_name(column.name) == column.name
+        }
+        for column in raw_table.c:
+            safe_name = self._partition_cte_column_name(column.name)
+            if safe_name != column.name:
+                base_name = safe_name
+                suffix = 1
+                while safe_name in used_names:
+                    safe_name = f"{base_name}_{suffix}"
+                    suffix += 1
+            used_names.add(safe_name)
+            safe_names.append(safe_name)
+
+        if column_names == safe_names:
+            stmt = select(raw_dataset).where(partition_filter)
+            return stmt.cte(cte_name)
+
+        inner_columns = []
+        for column, safe_name in zip(raw_table.c, safe_names, strict=True):
+            if column.name == safe_name:
+                inner_columns.append(column)
+                continue
+
+            safe_column = column.label(safe_name)
+            # Keep the profiler's logical key while giving the CTE the
+            # connector-specific alias it needs.
+            safe_column.key = column.key
+            inner_columns.append(safe_column)
+
+        cte = select(*inner_columns).where(partition_filter).cte(cte_name)
+        for column, logical_name in zip(cte.c, column_names, strict=True):
+            column.key = logical_name
+            if column.name != logical_name:
+                column.info[ORIGINAL_COLUMN_NAME] = logical_name
+        return cte
+
+    def _partition_cte_column_name(self, column_name: str) -> str:
+        """Return the CTE label for a physical column name.
+
+        Connectors can override this hook when their SQL dialect requires a
+        transformed identifier. The shared sampler preserves physical names.
+        """
+        return column_name
 
     def get_partitioned_query(self, query=None) -> Query:
         """Return the partitioned query"""

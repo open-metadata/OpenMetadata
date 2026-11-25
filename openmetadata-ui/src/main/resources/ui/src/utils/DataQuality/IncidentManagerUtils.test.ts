@@ -57,43 +57,40 @@ describe('reopenResolvedIncident', () => {
     expect(postTestCaseIncidentStatus).not.toHaveBeenCalled();
   });
 
-  it.each([
-    TestCaseResolutionStatusTypes.ACK,
-    TestCaseResolutionStatusTypes.Assigned,
-    TestCaseResolutionStatusTypes.Resolved,
-  ])(
-    '%s reopens the same incident via postTestCaseIncidentStatus, not createTask',
-    async (status) => {
-      await reopenResolvedIncident({ ...BASE, targetStatus: status });
-
-      expect(postTestCaseIncidentStatus).toHaveBeenCalledWith(
-        expect.objectContaining({
-          testCaseReference: BASE.testCaseFqn,
-          testCaseResolutionStatusType: status,
-        })
-      );
-      expect(createTask).not.toHaveBeenCalled();
-    }
-  );
-
-  it('carries the assignee when reopening as Assigned', async () => {
-    const assignee = { id: 'user-1', type: 'user', name: 'user1' };
+  it('Resolved updates the same incident via postTestCaseIncidentStatus', async () => {
     await reopenResolvedIncident({
       ...BASE,
-      targetStatus: TestCaseResolutionStatusTypes.Assigned,
-      details: { assignee },
+      targetStatus: TestCaseResolutionStatusTypes.Resolved,
     });
 
     expect(postTestCaseIncidentStatus).toHaveBeenCalledWith(
       expect.objectContaining({
-        testCaseResolutionStatusDetails: expect.objectContaining({
-          assignee: expect.objectContaining({ id: 'user-1', type: 'user' }),
-        }),
+        testCaseReference: BASE.testCaseFqn,
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
       })
     );
+    expect(createTask).not.toHaveBeenCalled();
   });
 
-  it('carries reason and comment when reopening as Resolved', async () => {
+  it.each([
+    TestCaseResolutionStatusTypes.ACK,
+    TestCaseResolutionStatusTypes.Assigned,
+  ])(
+    'propagates the backend rejection of %s on a resolved incident without creating a new task',
+    async (targetStatus) => {
+      jest
+        .mocked(postTestCaseIncidentStatus)
+        .mockRejectedValueOnce(new Error('Incident is resolved'));
+
+      await expect(
+        reopenResolvedIncident({ ...BASE, targetStatus })
+      ).rejects.toThrow('Incident is resolved');
+      expect(createTask).not.toHaveBeenCalled();
+      expect(getListTestCaseIncidentByStateId).not.toHaveBeenCalled();
+    }
+  );
+
+  it('carries reason and comment when updating a resolved incident', async () => {
     await reopenResolvedIncident({
       ...BASE,
       targetStatus: TestCaseResolutionStatusTypes.Resolved,
@@ -116,10 +113,12 @@ describe('reopenResolvedIncident', () => {
   it('returns the latest resolution-status record for the reopened stateId', async () => {
     const result = await reopenResolvedIncident({
       ...BASE,
-      targetStatus: TestCaseResolutionStatusTypes.ACK,
+      targetStatus: TestCaseResolutionStatusTypes.Resolved,
     });
 
-    expect(getListTestCaseIncidentByStateId).toHaveBeenCalledWith('state-1');
+    expect(getListTestCaseIncidentByStateId).toHaveBeenCalledWith('state-1', {
+      limit: 1,
+    });
     expect(result).toEqual({ id: 'latest-id', stateId: 'state-1' });
   });
 });

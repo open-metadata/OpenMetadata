@@ -12,9 +12,8 @@
  */
 import { FieldErrorProps } from '@rjsf/utils';
 import { isEmpty } from 'lodash';
-import { FC } from 'react';
 
-export const FieldErrorTemplate: FC<FieldErrorProps> = (props) => {
+export const FieldErrorTemplate = <T,>(props: FieldErrorProps<T>) => {
   const errorList = [...new Set(props.errors ?? [])];
 
   if (isEmpty(errorList)) {
@@ -26,7 +25,7 @@ export const FieldErrorTemplate: FC<FieldErrorProps> = (props) => {
       <ul>
         {errorList.map((error) => (
           <li
-            className="ant-form-item-explain-error"
+            className="form-field-error"
             key={`${props.schema.$id}-${props.idSchema.$id}`}>
             {error}
           </li>

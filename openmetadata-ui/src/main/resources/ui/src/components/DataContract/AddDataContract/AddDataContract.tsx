@@ -11,20 +11,27 @@
  *  limitations under the License.
  */
 
-import { Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, RadioChangeEvent } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  ClockStopwatch,
+  Contract,
+  FileLock02,
+  FileSemantics,
+  Policy,
+  Table as TableIcon,
+  TestSuite,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
-import { ReactComponent as SecurityIcon } from '../../../assets/svg/ic-security.svg';
-import { ReactComponent as TermsIcon } from '../../../assets/svg/icon-test-suite.svg';
-import { ReactComponent as QualityIcon } from '../../../assets/svg/policies.svg';
-import { ReactComponent as SemanticsIcon } from '../../../assets/svg/semantics.svg';
-import { ReactComponent as TableIcon } from '../../../assets/svg/table-outline.svg';
-import { ReactComponent as SLAIcon } from '../../../assets/svg/timeout.svg';
 import {
   DataContractMode,
   EDataContractTab,
@@ -145,7 +152,8 @@ const AddDataContract: React.FC<{
   contract?: DataContract;
 }> = ({ onCancel, onSave, contract }) => {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<DataContractMode>(DataContractMode.UI);
+  // The UI has no control to switch modes yet, so the YAML branch below is unreachable.
+  const [mode] = useState<DataContractMode>(DataContractMode.UI);
   const [yaml, setYaml] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: entityData } = useGenericContext<Table>();
@@ -366,7 +374,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <ContractIcon className="contract-tab-icon" />
+            <Contract className="contract-tab-icon" />
             <span>{t('label.contract-detail-plural')}</span>
           </div>
         ),
@@ -386,7 +394,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <TermsIcon className="contract-tab-icon" />
+            <TestSuite className="contract-tab-icon" />
             <span>{t('label.terms-of-service')}</span>
           </div>
         ),
@@ -430,7 +438,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <SemanticsIcon className="contract-tab-icon" />
+            <FileSemantics className="contract-tab-icon" />
             <span>{t('label.semantic-plural')}</span>
           </div>
         ),
@@ -452,7 +460,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <SecurityIcon className="contract-tab-icon" />
+            <FileLock02 className="contract-tab-icon" />
             <span>{t('label.security')}</span>
           </div>
         ),
@@ -474,7 +482,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <QualityIcon className="contract-tab-icon" />
+            <Policy className="contract-tab-icon" />
             <span>{t('label.quality')}</span>
           </div>
         ),
@@ -486,6 +494,7 @@ const AddDataContract: React.FC<{
               nextLabel: currentTabInfo.nextTabLabel,
               prevLabel: currentTabInfo.prevTabLabel,
             }}
+            initialValues={filteredContract}
             selectedQuality={
               filteredContract?.qualityExpectations?.map(
                 (quality) => quality.id ?? ''
@@ -500,7 +509,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <SLAIcon className="contract-tab-icon" />
+            <ClockStopwatch className="contract-tab-icon" />
             <span>{t('label.sla')}</span>
           </div>
         ),
@@ -530,58 +539,44 @@ const AddDataContract: React.FC<{
     currentTabInfo,
   ]);
 
-  const handleModeChange = useCallback((e: RadioChangeEvent) => {
-    setMode(e.target.value);
-  }, []);
-
-  const cardTitle = useMemo(() => {
-    return (
-      <div className="add-contract-card-header d-flex items-center justify-between">
-        <div>
-          <Typography className="add-contract-card-title">
-            {t('label.add-contract-detail-plural')}
-          </Typography>
-          <Typography as="p" className="add-contract-card-description">
-            {t('message.add-contract-detail-description')}
-          </Typography>
-        </div>
-        <div>
-          <Button
-            className="add-contract-cancel-button"
-            type="default"
-            onClick={onCancel}>
+  const cardHeader = (
+    <Card.Header
+      className="tw:items-center"
+      extra={
+        <Box gap={2}>
+          <Button color="secondary" size="md" onPress={onCancel}>
             {t('label.cancel')}
           </Button>
           <Button
-            className="add-contract-save-button"
             data-testid="save-contract-btn"
-            disabled={isSaveDisabled}
-            loading={isSubmitting}
-            type="primary"
-            onClick={handleSave}>
+            isDisabled={isSaveDisabled}
+            isLoading={isSubmitting}
+            size="md"
+            onPress={handleSave}>
             {t('label.save')}
           </Button>
-        </div>
-      </div>
-    );
-  }, [
-    mode,
-    isSubmitting,
-    isSaveDisabled,
-    handleModeChange,
-    onCancel,
-    handleSave,
-  ]);
+        </Box>
+      }
+      subtitle={t('message.add-contract-detail-description')}
+      title={
+        <Typography className="tw:block" size="text-lg" weight="semibold">
+          {t('label.add-contract-detail-plural')}
+        </Typography>
+      }
+    />
+  );
 
   const cardContent = useMemo(() => {
     if (mode === DataContractMode.YAML) {
       return (
         <Card>
-          <SchemaEditor
-            mode={{ name: CSMode.YAML }}
-            value={yaml}
-            onChange={setYaml}
-          />
+          <Card.Content>
+            <SchemaEditor
+              mode={{ name: CSMode.YAML }}
+              value={yaml}
+              onChange={setYaml}
+            />
+          </Card.Content>
         </Card>
       );
     }
@@ -613,11 +608,9 @@ const AddDataContract: React.FC<{
   }, [mode, items, handleTabChange, activeTab, visitedTabs, yaml]);
 
   return (
-    <Card
-      className="add-contract-card"
-      data-testid="add-contract-card"
-      title={cardTitle}>
-      {cardContent}
+    <Card className="add-contract-card" data-testid="add-contract-card">
+      {cardHeader}
+      <Card.Content>{cardContent}</Card.Content>
     </Card>
   );
 };

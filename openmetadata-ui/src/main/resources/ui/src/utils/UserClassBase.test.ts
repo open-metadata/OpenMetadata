@@ -22,4 +22,10 @@ describe('UserClassBase', () => {
 
     expect(result).toBeUndefined();
   });
+
+  it('returns no bot icon for names inherited from Object.prototype', () => {
+    expect(userClassBase.getBotIcon('constructor')).toBeUndefined();
+    expect(userClassBase.getBotIcon('toString')).toBeUndefined();
+    expect(userClassBase.getBotIcon('unknown')).toBeUndefined();
+  });
 });

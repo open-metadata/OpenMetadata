@@ -51,13 +51,14 @@ export interface TriggerConfiguration {
 /**
  * Entity-specific filters with optional default
  */
-export interface FiltersObject {
+export type FiltersObject = {
     /**
      * Default filter for entity types not explicitly configured
      */
     default?: string;
+} & {
     [property: string]: string;
-}
+};
 
 export interface AppScheduleClass {
     /**
@@ -65,6 +66,11 @@ export interface AppScheduleClass {
      */
     cronExpression?:  string;
     scheduleTimeline: ScheduleTimeline;
+    /**
+     * IANA timezone the schedule runs in, for example Europe/Berlin. When unset the server
+     * timezone applies, which is UTC in the official images.
+     */
+    timezone?: string;
 }
 
 /**

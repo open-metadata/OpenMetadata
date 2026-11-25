@@ -17,7 +17,10 @@ import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AnnouncementForm from './AnnouncementForm.component';
-import { toAnnouncementTypeFields } from './announcementFormUtils';
+import {
+  toAnnouncementTypeFields,
+  toPlainDescription,
+} from './announcementFormUtils';
 import {
   AnnouncementFormValues,
   EditableAnnouncement,
@@ -44,7 +47,7 @@ const EditAnnouncementModal: FC<Props> = ({
     mode: 'onChange',
     defaultValues: {
       title: announcementTitle,
-      description: announcement.description,
+      description: toPlainDescription(announcement.description),
       type: announcement.type ?? AnnouncementType.Notice,
       color: announcement.color,
       customTypeName: announcement.customTypeName,

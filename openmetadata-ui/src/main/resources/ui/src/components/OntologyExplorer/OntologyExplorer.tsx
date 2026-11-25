@@ -14,7 +14,6 @@
 import {
   Button,
   Card,
-  EmptyPlaceholder,
   Input,
   Tabs,
   Typography,
@@ -27,7 +26,6 @@ import {
   NoSearch,
   Search,
 } from '@openmetadata/ui-core-components/icons';
-import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, {
   Fragment,
@@ -40,48 +38,32 @@ import React, {
 } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { EntityType } from '../../enums/entity.enum';
-import { UpdateTermRelation } from '../../generated/api/data/updateTermRelation';
+import { ROUTES } from '../../constants/constants';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { Provenance } from '../../generated/type/termRelation';
-import {
-  addTermRelation,
-  removeTermRelationById,
-  updateTermRelationById,
-} from '../../rest/glossaryAPI';
-import { getGlossaryPath } from '../../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import FeaturesPlaceholder from '../common/EmptyPlaceholder/FeaturesPlaceholder';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import SomethingWentWrongPlaceholder from '../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import { useGenericContext } from '../Customization/GenericProvider/GenericContext';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
 import ExportGraphPanel from './ExportGraphPanel';
 import GraphSettingsPanel from './GraphSettingsPanel';
 import { useOntologyExplorer } from './hooks/useOntologyExplorer';
 import OntologyAuthoringInspector from './OntologyAuthoringInspector';
-import OntologyConceptDraftInspector from './OntologyConceptDraftInspector';
 import OntologyControlButtons from './OntologyControlButtons';
 import OntologyDataGraph from './OntologyDataGraph';
 import { OntologyEntityPanel } from './OntologyEntityPanel';
-import {
-  ONTOLOGY_HEALTH_PREVIEW_SIZE,
-  withoutOntologyAutocompleteAll,
-} from './OntologyExplorer.constants';
+import { withoutOntologyAutocompleteAll } from './OntologyExplorer.constants';
 import {
   MergedEdge,
   OntologyExplorerProps,
   OntologyNode,
 } from './OntologyExplorer.interface';
 import OntologyGraph from './OntologyGraphG6';
-import OntologyHealthPanel from './OntologyHealthPanel';
 import { OntologyNodeRelationsContent } from './OntologyNodeRelationsContent';
 import { OntologyRelationDetailsPanel } from './OntologyRelationDetailsPanel';
-import {
-  buildOntologyTreeGroups,
-  getOntologyHealthSummary,
-  resolveOntologyTermLabel,
-} from './OntologyStudio.utils';
-import OntologyTermEditor from './OntologyTermEditor';
-import OntologyTreeView from './OntologyTreeView';
+import OntologySearchClearButton from './OntologySearchClearButton';
 import {
   ASSET_NODE_TYPE,
   ASSET_RELATION_TYPE,
@@ -93,17 +75,10 @@ const SearchInputIcon = ({ className }: { className?: string }) => (
   <Search aria-hidden="true" className={className} />
 );
 const DEFAULT_GRAPH_BACKDROP_CLASS =
-  'tw:absolute tw:inset-0 tw:z-0 tw:bg-primary tw:[background-image:radial-gradient(circle,var(--color-border-secondary)_1px,transparent_1px)] tw:[background-size:14px_14px]';
-const STUDIO_GRAPH_BACKDROP_CLASS =
-  'tw:absolute tw:inset-0 tw:z-0 tw:bg-primary tw:[background-image:radial-gradient(circle,var(--color-border-secondary)_1px,transparent_1px)] tw:[background-size:22px_22px]';
+  'tw:absolute tw:inset-0 tw:z-0 tw:bg-canvas tw:[background-image:radial-gradient(circle,var(--tw-color-border-secondary)_1px,transparent_1px)] tw:[background-size:14px_14px]';
 
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
   'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:shadow-md';
-
-interface GraphEmptyStateProps {
-  readonly message: string;
-  readonly testId: string;
-}
 
 type GraphEmptyStateKind =
   | 'fetch-error'
@@ -114,31 +89,19 @@ type GraphEmptyStateKind =
   | 'filtered-active-empty'
   | 'onboarding-empty'
   | 'no-terms-empty'
+  | 'data-empty'
   | 'null-state'
   | 'no-matching-relation'
   | 'content';
 
-function GraphEmptyState({ message, testId }: GraphEmptyStateProps) {
-  return (
-    <div
-      className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:flex-col tw:items-center tw:justify-center"
-      data-testid={testId}>
-      <Typography as="p" className="tw:text-center tw:text-tertiary">
-        {message}
-      </Typography>
-    </div>
-  );
-}
-
 function OntologyOnboardingEmptyState() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
 
   return (
     <div
       className="tw:absolute tw:inset-0 tw:z-3 tw:overflow-hidden tw:rounded-lg tw:bg-primary"
       data-testid="ontology-graph-onboarding">
-      <EmptyPlaceholder
+      <FeaturesPlaceholder
         description={t('message.ontology-empty-description')}
         features={[
           {
@@ -165,13 +128,12 @@ function OntologyOnboardingEmptyState() {
         footer={
           <Button
             color="primary"
-            data-testid="ontology-browse-glossary"
-            onPress={() => navigate(getGlossaryPath())}>
-            {t('label.browse-glossary')}
+            data-testid="ontology-onboarding-view-glossary"
+            href={ROUTES.GLOSSARY}>
+            {t('label.view-entity', { entity: t('label.glossary') })}
           </Button>
         }
         title={t('message.ontology-empty-title')}
-        variant="features"
       />
     </div>
   );
@@ -190,11 +152,10 @@ function FilteredGraphEmptyState({
     <div
       className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
       data-testid={testId}>
-      <EmptyPlaceholder
+      <NoFilteredResultsPlaceholder
         description={description}
-        icon={<NoFilterFunnel className="tw:text-secondary" />}
+        icon={<NoFilterFunnel />}
         title={t('label.no-result-for-these-filter-plural')}
-        variant="blank"
       />
     </div>
   );
@@ -207,11 +168,10 @@ function SearchGraphEmptyState() {
     <div
       className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
       data-testid="ontology-graph-search-empty">
-      <EmptyPlaceholder
+      <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-shorter-term')}
-        icon={<NoSearch className="tw:text-secondary" />}
+        icon={<NoSearch />}
         title={t('label.no-matching-result-plural')}
-        variant="blank"
       />
     </div>
   );
@@ -226,9 +186,10 @@ function FetchErrorGraphEmptyState() {
   const { t } = useTranslation();
 
   return (
-    <GraphEmptyState
-      message={t('server.entity-fetch-error', { entity: t('label.graph') })}
-      testId="ontology-graph-error"
+    <SomethingWentWrongPlaceholder
+      className="tw:z-3"
+      data-testid="ontology-graph-error"
+      description={t('server.entity-fetch-error', { entity: t('label.graph') })}
     />
   );
 }
@@ -242,7 +203,7 @@ function LoadingGraphEmptyState() {
       data-testid="ontology-graph-loading">
       <div
         aria-label={t('label.loading')}
-        className="tw:h-10 tw:w-10 tw:animate-spin tw:rounded-full tw:border-2 tw:border-secondary tw:border-t-(--color-bg-brand-solid)"
+        className="tw:h-10 tw:w-10 tw:animate-spin tw:rounded-full tw:border-2 tw:border-secondary tw:border-t-(--tw-color-bg-brand-solid)"
         role="status"
       />
       <Typography as="p" className="tw:mt-4 tw:text-tertiary">
@@ -287,6 +248,22 @@ function FilteredActiveGraphEmptyState() {
   );
 }
 
+function DataLayerGraphEmptyState() {
+  const { t } = useTranslation();
+
+  return (
+    <div
+      className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:items-center tw:justify-center tw:bg-primary"
+      data-testid="ontology-data-empty">
+      <NoDataPlaceholder
+        description={t('message.ontology-data-empty-hint')}
+        icon={<Cube02 className="tw:text-fg-brand-primary" />}
+        title={t('label.no-assets-linked-yet')}
+      />
+    </div>
+  );
+}
+
 function NoTermsGraphEmptyState() {
   const { t } = useTranslation();
 
@@ -294,7 +271,7 @@ function NoTermsGraphEmptyState() {
     <div
       className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:items-center tw:justify-center tw:bg-primary"
       data-testid="ontology-graph-empty">
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         description={t('message.no-glossary-terms-found')}
         icon={<Cube02 className="tw:text-fg-brand-primary" />}
         title={t('message.ontology-empty-title')}
@@ -303,28 +280,37 @@ function NoTermsGraphEmptyState() {
   );
 }
 
+// The global explorer inspects a concept in place; embedded graphs and data
+// assets open the entity slideout.
+function getSelectionPanels(
+  scope: OntologyExplorerProps['scope'],
+  selectedNode: OntologyNode | null,
+  selectedEdge: MergedEdge | null
+) {
+  const isDataAssetSelected = Boolean(
+    selectedNode && isDataAssetLikeNode(selectedNode)
+  );
+
+  return {
+    showConceptInspector:
+      scope === 'global' &&
+      Boolean(selectedNode) &&
+      !isDataAssetSelected &&
+      !selectedEdge,
+    showEntityPanel: Boolean(
+      selectedNode && (isDataAssetSelected || scope !== 'global')
+    ),
+  };
+}
+
 const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   scope,
   entityId: propEntityId,
   glossaryId,
   className,
   height = 'calc(100vh - 200px)',
-  isAuthoringMode = false,
-  isEditMode = false,
-  surface = 'graph',
-  showHealth = false,
-  globalGlossaryIds,
-  conceptDraftId,
-  defaultConceptGlossaryId,
-  onConceptCreated,
-  onConceptDraftClose,
   onStatsChange,
   onLoadingChange,
-  onGlossariesChange,
-  onGraphDataChange,
-  onRelationTypesChange,
-  onSelectedNodeChange,
-  onRequestEdit,
 }) => {
   const { t } = useTranslation();
   const contextData = useGenericContext<GlossaryTerm>();
@@ -347,7 +333,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     expandedTermIds,
     rdfEnabled,
     graphDataToShow,
-    combinedGraphData,
     filteredGraphData,
     hierarchyGraphData,
     hierarchyBakedPositions,
@@ -356,8 +341,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     isHierarchyView,
     exportableGlossaryId,
     hasMoreDataTerms,
-    ontologySummary,
-    isolatedTermDetails,
     setFilters,
     setSelectedNode,
     handleZoomIn,
@@ -388,53 +371,16 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
   const [searchInput, setSearchInput] = useState(filters.searchQuery);
   const [selectedEdge, setSelectedEdge] = useState<MergedEdge | null>(null);
-  const [isSavingRelation, setIsSavingRelation] = useState(false);
-  const [localConceptNode, setLocalConceptNode] = useState<OntologyNode | null>(
-    null
-  );
-  const handledConceptDraftIdRef = useRef<string>();
   const lastSelectedNodeRef = useRef(selectedNode);
   if (selectedNode) {
     lastSelectedNodeRef.current = selectedNode;
   }
   const activeNode = selectedNode ?? lastSelectedNodeRef.current;
-  // Derives the two mutually-relevant "what floats over the graph" flags in one
-  // pass; kept as a single IIFE so the branch count is scoped here rather than
-  // inflating the surrounding component's cyclomatic complexity.
-  const { showConceptInspector, showEntityPanel } = (() => {
-    const isDataAssetSelected = Boolean(
-      selectedNode && isDataAssetLikeNode(selectedNode)
-    );
-    const isTermConcept = Boolean(selectedNode) && !isDataAssetSelected;
-    // Edit mode authors concepts in the inspector; a metric or asset has no
-    // concept to author, so it keeps its details panel and entity-page link.
-    const showsAnyNodeDetails = scope !== 'global' && !isAuthoringMode;
-
-    return {
-      showConceptInspector:
-        scope === 'global' &&
-        surface === 'graph' &&
-        isTermConcept &&
-        !selectedEdge,
-      showEntityPanel: Boolean(
-        surface !== 'term' &&
-          selectedNode &&
-          (isDataAssetSelected || showsAnyNodeDetails)
-      ),
-    };
-  })();
-  // Editing authors concepts, not the read-only data projection. Entering Edit
-  // while viewing Data returns the graph to the concept Model view. Guarded on
-  // the false->true transition so mid-edit filter changes (which re-create
-  // handleModeChange) don't clobber the user's selection or loop.
-  const wasAuthoringModeRef = useRef(isAuthoringMode);
-  useEffect(() => {
-    const justEnteredEditMode = isAuthoringMode && !wasAuthoringModeRef.current;
-    wasAuthoringModeRef.current = isAuthoringMode;
-    if (justEnteredEditMode && explorationMode === 'data') {
-      handleModeChange('model');
-    }
-  }, [isAuthoringMode, explorationMode, handleModeChange]);
+  const { showConceptInspector, showEntityPanel } = getSelectionPanels(
+    scope,
+    selectedNode,
+    selectedEdge
+  );
   const pageableTermNodes = useMemo(
     () =>
       explorationMode === 'data'
@@ -450,205 +396,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   searchInputRef.current = searchInput;
 
   useEffect(() => {
-    if (
-      !conceptDraftId ||
-      handledConceptDraftIdRef.current === conceptDraftId
-    ) {
-      return;
-    }
-
-    handledConceptDraftIdRef.current = conceptDraftId;
-    const draftNode: OntologyNode = {
-      glossaryId: defaultConceptGlossaryId,
-      id: conceptDraftId,
-      isDraft: true,
-      label: t('label.new-entity', { entity: t('label.concept') }),
-      type: 'glossaryTermIsolated',
-    };
-    setSelectedEdge(null);
-    setSearchInput('');
-    setFilters((previousFilters) => ({
-      ...previousFilters,
-      relationTypes: [],
-      searchQuery: '',
-      showCrossGlossaryOnly: false,
-      viewMode: 'overview',
-    }));
-    if (explorationMode === 'data') {
-      handleModeChange('model');
-    }
-    setLocalConceptNode(draftNode);
-    setSelectedNode(draftNode);
-  }, [
-    conceptDraftId,
-    defaultConceptGlossaryId,
-    explorationMode,
-    handleModeChange,
-    setFilters,
-    setSelectedNode,
-    t,
-  ]);
-
-  const graphDataWithLocalConcept = useMemo(() => {
-    if (!localConceptNode) {
-      return graphDataToShow;
-    }
-
-    const currentGraphData = graphDataToShow ?? { edges: [], nodes: [] };
-    if (
-      currentGraphData.nodes.some((node) => node.id === localConceptNode.id)
-    ) {
-      return currentGraphData;
-    }
-
-    return {
-      ...currentGraphData,
-      nodes: [...currentGraphData.nodes, localConceptNode],
-    };
-  }, [graphDataToShow, localConceptNode]);
-
-  useEffect(() => {
-    if (!localConceptNode?.isOptimistic) {
-      return;
-    }
-
-    const persistedNode = graphDataToShow?.nodes.find(
-      (node) => node.id === localConceptNode.id
-    );
-    if (!persistedNode) {
-      return;
-    }
-
-    setLocalConceptNode(null);
-    setSelectedNode((currentNode) =>
-      currentNode?.id === persistedNode.id ? persistedNode : currentNode
-    );
-  }, [
-    graphDataToShow,
-    localConceptNode?.id,
-    localConceptNode?.isOptimistic,
-    setSelectedNode,
-  ]);
-
-  useEffect(() => {
-    if (conceptDraftId || !localConceptNode?.isDraft) {
-      return;
-    }
-
-    setLocalConceptNode(null);
-    setSelectedNode((currentNode) =>
-      currentNode?.isDraft ? null : currentNode
-    );
-  }, [conceptDraftId, localConceptNode?.isDraft, setSelectedNode]);
-
-  const handleConceptDraftChange = useCallback(
-    (update: Partial<OntologyNode>) => {
-      setLocalConceptNode((currentNode) =>
-        currentNode?.isDraft ? { ...currentNode, ...update } : currentNode
-      );
-      setSelectedNode((currentNode) =>
-        currentNode?.isDraft ? { ...currentNode, ...update } : currentNode
-      );
-    },
-    [setSelectedNode]
-  );
-
-  const handleConceptDraftCancel = useCallback(() => {
-    setLocalConceptNode((currentNode) =>
-      currentNode?.isDraft ? null : currentNode
-    );
-    setSelectedNode((currentNode) =>
-      currentNode?.isDraft ? null : currentNode
-    );
-    onConceptDraftClose?.();
-  }, [onConceptDraftClose, setSelectedNode]);
-
-  const handleConceptCreated = useCallback(
-    (concept: GlossaryTerm) => {
-      const createdNode: OntologyNode = {
-        description: concept.description,
-        fullyQualifiedName: concept.fullyQualifiedName,
-        glossaryId: concept.glossary?.id,
-        group: concept.glossary?.displayName ?? concept.glossary?.name,
-        id: concept.id,
-        isOptimistic: true,
-        label: concept.displayName ?? concept.name,
-        type: 'glossaryTermIsolated',
-      };
-      setLocalConceptNode(createdNode);
-      setSelectedNode(createdNode);
-      onConceptCreated?.(concept);
-      onConceptDraftClose?.();
-      handleRefresh();
-    },
-    [handleRefresh, onConceptCreated, onConceptDraftClose, setSelectedNode]
-  );
-
-  const derivedHealthSummary = useMemo(
-    () => getOntologyHealthSummary(combinedGraphData, filters),
-    [combinedGraphData, filters]
-  );
-  const healthSummary = useMemo(() => {
-    const graphNodeById = new Map(
-      derivedHealthSummary.isolatedTerms.map((term) => [term.id, term])
-    );
-    if (!ontologySummary) {
-      const termDetailsById = new Map(
-        isolatedTermDetails.map((term) => [term.id, term])
-      );
-
-      return {
-        ...derivedHealthSummary,
-        isolatedTerms: derivedHealthSummary.isolatedTerms
-          .slice(0, ONTOLOGY_HEALTH_PREVIEW_SIZE)
-          .map((term) => {
-            const details = termDetailsById.get(term.id);
-
-            return {
-              ...term,
-              label: resolveOntologyTermLabel({
-                displayName: details?.displayName,
-                fullyQualifiedName:
-                  details?.fullyQualifiedName ?? term.fullyQualifiedName,
-                id: term.id,
-                label: term.label,
-                name: details?.name,
-              }),
-            };
-          }),
-      };
-    }
-
-    return {
-      connectedPercent: ontologySummary.connectedPercentage,
-      connectedTermCount:
-        ontologySummary.totalTerms - ontologySummary.isolatedTerms,
-      isolatedTerms: ontologySummary.isolatedPreview.map((term) => ({
-        id: term.id,
-        fullyQualifiedName: term.fullyQualifiedName,
-        label: resolveOntologyTermLabel({
-          ...graphNodeById.get(term.id),
-          ...term,
-        }),
-        type: 'glossaryTermIsolated',
-      })),
-      totalTermCount: ontologySummary.totalTerms,
-    };
-  }, [derivedHealthSummary, isolatedTermDetails, ontologySummary]);
-  const isolatedTermCount =
-    ontologySummary?.isolatedTerms ?? derivedHealthSummary.isolatedTerms.length;
-  const treeGroups = useMemo(
-    () =>
-      buildOntologyTreeGroups(
-        combinedGraphData,
-        filters,
-        glossaries,
-        relationTypes
-      ),
-    [combinedGraphData, filters, glossaries, relationTypes]
-  );
-
-  useEffect(() => {
     const timer = setTimeout(() => {
       setFilters((prev) => ({ ...prev, searchQuery: searchInput }));
     }, 300);
@@ -661,69 +408,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       setSearchInput(filters.searchQuery);
     }
   }, [filters.searchQuery]);
-
-  useEffect(() => {
-    if (scope !== 'global' || !globalGlossaryIds) {
-      return;
-    }
-
-    setFilters((previousFilters) => {
-      if (
-        previousFilters.glossaryIds.length === globalGlossaryIds.length &&
-        previousFilters.glossaryIds.every(
-          (glossaryId, index) => glossaryId === globalGlossaryIds[index]
-        )
-      ) {
-        return previousFilters;
-      }
-
-      return { ...previousFilters, glossaryIds: globalGlossaryIds };
-    });
-  }, [globalGlossaryIds, scope, setFilters]);
-
-  useEffect(() => {
-    onGlossariesChange?.(glossaries);
-  }, [glossaries, onGlossariesChange]);
-
-  useEffect(() => {
-    if (surface !== 'graph') {
-      setSelectedEdge(null);
-    }
-  }, [surface]);
-
-  useEffect(() => {
-    if (combinedGraphData) {
-      onGraphDataChange?.(combinedGraphData);
-    }
-  }, [combinedGraphData, onGraphDataChange]);
-
-  useEffect(() => {
-    onRelationTypesChange?.(relationTypes);
-  }, [onRelationTypesChange, relationTypes]);
-
-  useEffect(() => {
-    onSelectedNodeChange?.(selectedNode);
-  }, [onSelectedNodeChange, selectedNode]);
-
-  const handleCreateRelation = useCallback(
-    async (fromId: string, toId: string, relationType: string) => {
-      try {
-        await addTermRelation(fromId, {
-          relationType,
-          term: { id: toId, type: EntityType.GLOSSARY_TERM },
-        });
-        showSuccessToast(
-          t('server.create-entity-success', {
-            entity: t('label.relationship'),
-          })
-        );
-        handleRefresh();
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    },
-    [handleRefresh, t]
-  );
 
   const handleExplorationModeSelection = useCallback(
     (key: Key) => {
@@ -751,77 +435,28 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     [setSelectedNode]
   );
 
-  const handleRelationUpdate = useCallback(
-    async (edge: MergedEdge, update: UpdateTermRelation) => {
-      if (edge.id) {
-        setIsSavingRelation(true);
-        try {
-          await updateTermRelationById(edge.from, edge.id, update);
-          setSelectedEdge(null);
-          showSuccessToast(
-            t('server.update-entity-success', {
-              entity: t('label.relationship'),
-            })
-          );
-          handleRefresh();
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        } finally {
-          setIsSavingRelation(false);
-        }
-      }
-    },
-    [handleRefresh, t]
-  );
-
-  const handleRelationDelete = useCallback(
-    async (edge: MergedEdge) => {
-      if (edge.id) {
-        setIsSavingRelation(true);
-        try {
-          await removeTermRelationById(edge.from, edge.id);
-          setSelectedEdge(null);
-          showSuccessToast(
-            t('server.entity-deleted-success', {
-              entity: t('label.relationship'),
-            })
-          );
-          handleRefresh();
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        } finally {
-          setIsSavingRelation(false);
-        }
-      }
-    },
-    [handleRefresh, t]
-  );
-
   const renderGraphContent = () => {
     const hasNoVisibleNodes =
-      !graphDataWithLocalConcept ||
-      graphDataWithLocalConcept.nodes.length === 0;
+      !graphDataToShow || graphDataToShow.nodes.length === 0;
     const relationTypeFilterIds = withoutOntologyAutocompleteAll(
       filters.relationTypes
     );
     const hasRelationFilter = relationTypeFilterIds.length > 0;
 
     const nodeTypeMap = new Map(
-      (graphDataWithLocalConcept?.nodes ?? []).map((n) => [n.id, n.type])
+      (graphDataToShow?.nodes ?? []).map((n) => [n.id, n.type])
     );
-    const termToTermEdges = (graphDataWithLocalConcept?.edges ?? []).filter(
-      (e) => {
-        const fromType = nodeTypeMap.get(e.from);
-        const toType = nodeTypeMap.get(e.to);
+    const termToTermEdges = (graphDataToShow?.edges ?? []).filter((e) => {
+      const fromType = nodeTypeMap.get(e.from);
+      const toType = nodeTypeMap.get(e.to);
 
-        return (
-          fromType !== ASSET_NODE_TYPE &&
-          fromType !== METRIC_NODE_TYPE &&
-          toType !== ASSET_NODE_TYPE &&
-          toType !== METRIC_NODE_TYPE
-        );
-      }
-    );
+      return (
+        fromType !== ASSET_NODE_TYPE &&
+        fromType !== METRIC_NODE_TYPE &&
+        toType !== ASSET_NODE_TYPE &&
+        toType !== METRIC_NODE_TYPE
+      );
+    });
     const hasNoMatchingRelationEdges =
       hasRelationFilter && termToTermEdges.length === 0;
     const hasNoSearchMatches = Boolean(
@@ -848,6 +483,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       if (hasActiveFilter) {
         return 'filtered-active-empty';
       }
+      if (explorationMode === 'data') {
+        return 'data-empty';
+      }
 
       return scope === 'global' ? 'onboarding-empty' : 'no-terms-empty';
     };
@@ -856,9 +494,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     // neither one's operator count folds into resolveEmptyStateKind's own
     // cyclomatic complexity.
     const resolvePrimaryEmptyStateFlags = () => ({
-      isFetchError: Boolean(
-        fetchError && !loading && !graphDataWithLocalConcept
-      ),
+      isFetchError: Boolean(fetchError && !loading && !graphDataToShow),
       isLoadingState: loading && hasNoVisibleNodes,
       isHierarchyEmpty: Boolean(
         isHierarchyView &&
@@ -870,8 +506,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
     const resolveSecondaryEmptyStateFlags = () => ({
       isVisibleNodesEmpty:
-        hasNoVisibleNodes && !loading && graphDataWithLocalConcept !== null,
-      isNullState: !graphDataWithLocalConcept,
+        hasNoVisibleNodes && !loading && graphDataToShow !== null,
+      isNullState: !graphDataToShow,
       isNoMatchingRelation: hasNoMatchingRelationEdges && !loading,
     });
 
@@ -918,6 +554,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       'filtered-active-empty': FilteredActiveGraphEmptyState,
       'onboarding-empty': OntologyOnboardingEmptyState,
       'no-terms-empty': NoTermsGraphEmptyState,
+      'data-empty': DataLayerGraphEmptyState,
       'no-matching-relation': NoRelationsForFilterGraphEmptyState,
     };
 
@@ -954,11 +591,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     });
 
     const renderGraphCanvas = () => {
-      // graphDataWithLocalConcept is guaranteed non-null here: every kind
+      // graphDataToShow is guaranteed non-null here: every kind
       // other than 'content' (which returns above) covers the null case.
-      const graphData = graphDataWithLocalConcept as NonNullable<
-        typeof graphDataWithLocalConcept
-      >;
+      const graphData = graphDataToShow as NonNullable<typeof graphDataToShow>;
       const graphView = computeGraphViewProps();
 
       // Every drag on the graph pans it or moves a node, so it must not also
@@ -967,11 +602,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         <div className="tw:relative tw:z-1 tw:h-full tw:w-full tw:min-h-0 tw:select-none">
           <ErrorBoundary
             fallback={
-              <GraphEmptyState
-                message={t('server.entity-fetch-error', {
+              <SomethingWentWrongPlaceholder
+                className="tw:z-3"
+                data-testid="ontology-graph-render-error"
+                description={t('server.entity-fetch-error', {
                   entity: t('label.graph'),
                 })}
-                testId="ontology-graph-render-error"
               />
             }>
             {scope === 'global' && explorationMode === 'data' ? (
@@ -1008,8 +644,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 glossaryColorMap={glossaryColorMap}
                 graphSearchHighlight={graphSearchHighlight}
                 hierarchyCombos={graphView.hierarchyCombos}
-                isAuthoringMode={isAuthoringMode}
-                isEditMode={isEditMode}
                 nodePositions={hierarchyBakedPositions}
                 nodes={graphData.nodes}
                 ref={graphRef}
@@ -1017,7 +651,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 selectedNodeId={graphView.selectedNodeIdForGraph}
                 settings={settings}
                 studioMode={scope === 'global'}
-                onCreateRelation={handleCreateRelation}
                 onEdgeClick={handleGraphEdgeClick}
                 onNodeClick={(node, position, meta) => {
                   setSelectedEdge(null);
@@ -1039,7 +672,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-full tw:border tw:border-utility-gray-blue-100 tw:bg-primary tw:px-4 tw:py-2 tw:shadow-md">
                   <div
                     aria-label={t('label.loading')}
-                    className="tw:h-4 tw:w-4 tw:animate-spin tw:rounded-full tw:border-2 tw:border-secondary tw:border-t-(--color-bg-brand-solid)"
+                    className="tw:h-4 tw:w-4 tw:animate-spin tw:rounded-full tw:border-2 tw:border-secondary tw:border-t-(--tw-color-bg-brand-solid)"
                     role="status"
                   />
                   <Typography size="text-sm" weight="medium">
@@ -1076,10 +709,13 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   // the toolbar + graph; isolated as an IIFE so its && chains don't add to the
   // component's own complexity.
   const showOnboardingEmptyState = (() => {
+    // An empty data layer only means no term has linked assets yet; it must
+    // keep the toolbar, or the layer switch back to the model goes with it.
     const hasEmptyConceptGraph =
+      explorationMode === 'model' &&
       !loading &&
-      graphDataWithLocalConcept !== null &&
-      graphDataWithLocalConcept.nodes.length === 0;
+      graphDataToShow !== null &&
+      graphDataToShow.nodes.length === 0;
     const hasNoActiveOntologyFilters =
       withoutOntologyAutocompleteAll(filters.relationTypes).length === 0 &&
       withoutOntologyAutocompleteAll(filters.glossaryIds).length === 0 &&
@@ -1092,10 +728,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const renderDataModeEdgeLegend = () => (
     <Card
       className={classNames(
-        scope === 'global'
-          ? 'tw:bottom-3.5 tw:left-3.5'
-          : 'tw:right-4 tw:top-4',
-        'tw:absolute tw:flex tw:items-center tw:gap-4 tw:px-3 tw:py-2',
+        'tw:absolute tw:right-4 tw:top-4 tw:flex tw:items-center tw:gap-4 tw:px-3 tw:py-2',
         ONTOLOGY_TOOLBAR_CARD_CLASS
       )}
       data-testid="ontology-data-edge-legend">
@@ -1108,61 +741,47 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     </Card>
   );
 
+  const clearSearchButton = (
+    <OntologySearchClearButton
+      value={searchInput}
+      onClear={() => setSearchInput('')}
+    />
+  );
+
+  const renderConceptSearch = () => (
+    <Input
+      aria-label={t('label.find-concept')}
+      autoComplete="off"
+      icon={SearchInputIcon}
+      inputDataTestId="ontology-graph-search"
+      placeholder={`${t('label.find-concept')}…`}
+      size="sm"
+      trailingSlot={clearSearchButton}
+      value={searchInput}
+      wrapperClassName="tw:absolute tw:left-3.5 tw:top-3.5 tw:z-6 tw:w-[216px]"
+      onChange={setSearchInput}
+    />
+  );
+
   const renderGlobalScopeToolbar = () => (
     <>
-      {explorationMode === 'model' ? (
-        <Input
-          aria-label={t('label.find-concept')}
-          icon={SearchInputIcon}
-          inputClassName="tw:text-xs"
-          inputDataTestId="ontology-graph-search"
-          placeholder={`${t('label.find-concept')}…`}
-          size="sm"
-          value={searchInput}
-          wrapperClassName="tw:absolute tw:left-3.5 tw:top-3.5 tw:z-6 tw:w-[216px]"
-          onChange={setSearchInput}
-        />
-      ) : null}
-      {isAuthoringMode ? null : (
-        <Tabs
-          className="tw:absolute tw:right-3.5 tw:top-3.5 tw:z-6 tw:w-fit!"
-          data-testid="ontology-layer-switch"
-          selectedKey={explorationMode}
-          onSelectionChange={handleExplorationModeSelection}>
-          <Tabs.List
-            className="tw:gap-0! tw:rounded-[9px]! tw:bg-primary! tw:p-[3px]! tw:shadow-xs tw:outline-1 tw:outline-secondary!"
-            size="sm"
-            type="button-border">
-            <Tabs.Item
-              className={(state) =>
-                classNames(
-                  'tw:rounded-md! tw:px-4! tw:py-1.5! tw:font-body tw:text-[11px]! tw:leading-normal tw:font-semibold!',
-                  state.isSelected
-                    ? 'tw:bg-brand-primary! tw:text-brand-secondary! tw:shadow-none!'
-                    : 'tw:bg-transparent! tw:text-quaternary! tw:shadow-none!'
-                )
-              }
-              id="model"
-              label={t('label.model')}
-            />
-            <Tabs.Item
-              className={(state) =>
-                classNames(
-                  'tw:rounded-md! tw:px-4! tw:py-1.5! tw:font-body tw:text-[11px]! tw:leading-normal tw:font-semibold!',
-                  state.isSelected
-                    ? 'tw:bg-brand-primary! tw:text-brand-secondary! tw:shadow-none!'
-                    : 'tw:bg-transparent! tw:text-quaternary! tw:shadow-none!'
-                )
-              }
-              id="data"
-              isDisabled={loading || isLoadingMore}
-              label={t('label.data')}
-            />
-          </Tabs.List>
-          <Tabs.Panel className="tw:hidden" id="model" />
-          <Tabs.Panel className="tw:hidden" id="data" />
-        </Tabs>
-      )}
+      {explorationMode === 'model' ? renderConceptSearch() : null}
+      <Tabs
+        className="tw:absolute tw:right-3.5 tw:top-3.5 tw:z-6 tw:w-fit!"
+        data-testid="ontology-layer-switch"
+        selectedKey={explorationMode}
+        onSelectionChange={handleExplorationModeSelection}>
+        <Tabs.List size="sm" type="button-border">
+          <Tabs.Item id="model" label={t('label.model')} />
+          <Tabs.Item
+            id="data"
+            isDisabled={loading || isLoadingMore}
+            label={t('label.data')}
+          />
+        </Tabs.List>
+        <Tabs.Panel className="tw:hidden" id="model" />
+        <Tabs.Panel className="tw:hidden" id="data" />
+      </Tabs>
     </>
   );
 
@@ -1176,35 +795,35 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             'tw:absolute tw:bottom-4 tw:left-1/2 tw:flex tw:-translate-x-1/2 tw:items-center tw:gap-2 tw:px-3 tw:py-1.5',
             ONTOLOGY_TOOLBAR_CARD_CLASS
           )}>
-          {isAuthoringMode ? null : (
-            <Tabs
-              className="tw:w-fit!"
-              selectedKey={explorationMode}
-              onSelectionChange={handleExplorationModeSelection}>
-              <Tabs.List size="sm" type="button-border">
-                <Tabs.Item id="model" label={t('label.model')} />
-                <Tabs.Item
-                  className={(state) =>
-                    state.isDisabled ? 'tw:cursor-not-allowed!' : ''
-                  }
-                  id="data"
-                  isDisabled={loading || isLoadingMore}
-                  label={t('label.data')}
-                />
-              </Tabs.List>
-              <Tabs.Panel className="tw:hidden" id="model" />
-              <Tabs.Panel className="tw:hidden" id="data" />
-            </Tabs>
-          )}
+          <Tabs
+            className="tw:w-fit!"
+            selectedKey={explorationMode}
+            onSelectionChange={handleExplorationModeSelection}>
+            <Tabs.List size="sm" type="button-border">
+              <Tabs.Item id="model" label={t('label.model')} />
+              <Tabs.Item
+                className={(state) =>
+                  state.isDisabled ? 'tw:cursor-not-allowed!' : ''
+                }
+                id="data"
+                isDisabled={loading || isLoadingMore}
+                label={t('label.data')}
+              />
+            </Tabs.List>
+            <Tabs.Panel className="tw:hidden" id="model" />
+            <Tabs.Panel className="tw:hidden" id="data" />
+          </Tabs>
           <div className="tw:relative">
             <Search
               aria-hidden="true"
               className="tw:pointer-events-none tw:absolute tw:left-3 tw:top-1/2 tw:z-1 tw:size-5 tw:-translate-y-1/2 tw:text-fg-quaternary"
             />
             <Input
+              autoComplete="off"
               data-testid="ontology-graph-search"
               inputClassName="tw:pl-10"
               placeholder={t('label.search-in-graph')}
+              trailingSlot={clearSearchButton}
               value={searchInput}
               onChange={setSearchInput}
             />
@@ -1228,10 +847,11 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const renderGraphControls = () => (
     <Card
       className={classNames(
-        'tw:absolute tw:bottom-4 tw:right-4 tw:flex tw:items-center tw:gap-1 tw:p-1',
-        ONTOLOGY_TOOLBAR_CARD_CLASS
+        'tw:absolute tw:bottom-4 tw:z-6 tw:flex tw:items-center tw:rounded-lg',
+        scope === 'global' ? 'tw:left-4' : 'tw:right-4'
       )}
-      data-testid="ontology-graph-controls">
+      data-testid="ontology-graph-controls"
+      variant="elevated">
       <OntologyControlButtons
         isLoading={loading}
         onFitToScreen={handleFitToScreen}
@@ -1269,7 +889,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
   const renderGraphToolbar = () => (
     <Fragment>
-      {explorationMode === 'data' ? renderDataModeEdgeLegend() : null}
+      {explorationMode === 'data' && scope !== 'global'
+        ? renderDataModeEdgeLegend()
+        : null}
       {scope === 'global'
         ? renderGlobalScopeToolbar()
         : renderTermScopeToolbar()}
@@ -1287,9 +909,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       {!showOnboardingEmptyState ? renderGraphToolbar() : null}
       <div
         className={classNames(
-          scope === 'global'
-            ? STUDIO_GRAPH_BACKDROP_CLASS
-            : DEFAULT_GRAPH_BACKDROP_CLASS,
+          DEFAULT_GRAPH_BACKDROP_CLASS,
           'tw:overflow-hidden'
         )}>
         {renderGraphContent()}
@@ -1303,7 +923,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         edges={(filteredGraphData?.edges ?? []).filter(
           (e) => e.relationType !== ASSET_RELATION_TYPE
         )}
-        isEditMode={isEditMode}
         node={selectedNode}
         nodes={filteredGraphData?.nodes ?? []}
         relationTypes={relationTypes}
@@ -1345,25 +964,19 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   };
 
   const renderRelationDetailsPanel = () => {
-    if (surface !== 'graph' || !selectedEdge) {
+    if (!selectedEdge) {
       return null;
     }
 
     return (
       <OntologyRelationDetailsPanel
         edge={selectedEdge}
-        isEditable={Boolean(
-          isEditMode &&
-            selectedEdge?.id &&
-            selectedEdge.provenance !== Provenance.Inferred
-        )}
-        isSaving={isSavingRelation}
+        isEditable={false}
+        isSaving={false}
         key={selectedEdge.id}
-        nodes={graphDataWithLocalConcept?.nodes ?? []}
+        nodes={graphDataToShow?.nodes ?? []}
         relationshipTypes={relationTypes}
         onClose={() => setSelectedEdge(null)}
-        onDelete={handleRelationDelete}
-        onUpdate={handleRelationUpdate}
       />
     );
   };
@@ -1373,89 +986,26 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       return null;
     }
 
-    if (selectedNode.isDraft) {
-      return (
-        <OntologyConceptDraftInspector
-          glossaries={glossaries}
-          isLeaseOwned={isEditMode}
-          key={selectedNode.id}
-          node={selectedNode}
-          onCancel={handleConceptDraftCancel}
-          onChange={handleConceptDraftChange}
-          onCreated={handleConceptCreated}
-        />
-      );
-    }
-
     return (
       <OntologyAuthoringInspector
         edges={(filteredGraphData?.edges ?? []).filter(
           (edge) => edge.relationType !== ASSET_RELATION_TYPE
         )}
-        isEditable={isEditMode}
+        isEditable={false}
         key={selectedNode.id}
         node={selectedNode}
         nodes={filteredGraphData?.nodes ?? []}
         relationTypes={relationTypes}
         onAssetsChange={handleRefresh}
-        onCreateRelation={handleCreateRelation}
-        onRequestEdit={isEditMode ? undefined : onRequestEdit}
-        onShowFullDetails={() => {
-          if (selectedNode) {
-            handleGraphNodeDoubleClick(selectedNode);
-          }
+        onClose={() => {
+          setSelectedEdge(null);
+          handleGraphPaneClick();
         }}
-      />
-    );
-  };
-
-  const renderHealthPanel = () => {
-    if (!showHealth || showConceptInspector || selectedEdge) {
-      return null;
-    }
-
-    return (
-      <OntologyHealthPanel
-        health={healthSummary}
-        isolatedTermCount={isolatedTermCount}
-        onConnect={(node) => {
-          setSelectedNode(node);
-          onRequestEdit?.();
+        onSelectNode={(relatedNode) => {
+          setSelectedEdge(null);
+          setSelectedNode(relatedNode);
         }}
-      />
-    );
-  };
-
-  const renderSurfaceContent = () => {
-    if (surface === 'graph') {
-      return renderGraphSurfaceSection();
-    }
-
-    if (surface === 'tree') {
-      return (
-        <OntologyTreeView
-          groups={treeGroups}
-          selectedNodeId={selectedNode?.id}
-          onSelect={setSelectedNode}
-        />
-      );
-    }
-
-    return (
-      <OntologyTermEditor
-        edges={(filteredGraphData?.edges ?? []).filter(
-          (edge) => edge.relationType !== ASSET_RELATION_TYPE
-        )}
-        isEditable={isEditMode}
-        nodes={filteredGraphData?.nodes ?? []}
-        relationTypes={relationTypes}
-        selectedNode={selectedNode}
-        onCreateRelation={handleCreateRelation}
-        onDeleteTerm={() => {
-          setSelectedNode(null);
-          handleRefresh();
-        }}
-        onSelectNode={setSelectedNode}
+        onShowFullDetails={() => handleGraphNodeDoubleClick(selectedNode)}
       />
     );
   };
@@ -1465,7 +1015,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       className={classNames(
         'tw:flex tw:flex-col tw:overflow-hidden',
         {
-          'ontology-slideout-open': Boolean(selectedNode && !isAuthoringMode),
+          'ontology-slideout-open': Boolean(selectedNode),
         },
         className
       )}
@@ -1476,16 +1026,14 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           className={classNames(
             'tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden',
             scope === 'global'
-              ? 'tw:border-0'
+              ? 'tw:rounded-lg tw:border-0'
               : 'tw:rounded-lg tw:border tw:border-utility-gray-blue-100'
           )}>
-          {renderSurfaceContent()}
-
+          {renderGraphSurfaceSection()}
           {renderEntityPanel()}
         </div>
         {renderRelationDetailsPanel()}
         {renderConceptInspector()}
-        {renderHealthPanel()}
       </div>
     </div>
   );

@@ -40,7 +40,7 @@ public interface ServiceBackedIndex extends SearchIndex {
 
   default void applyServiceFields(Map<String, Object> doc, DocBuildContext ctx) {
     Object entity = getEntity();
-    if (entity instanceof EntityInterface ei) {
+    if (entity instanceof EntityInterface<?> ei) {
       EntityReference service = ei.getService();
       if (service != null) {
         // Always a Map so the field has one shape regardless of style.

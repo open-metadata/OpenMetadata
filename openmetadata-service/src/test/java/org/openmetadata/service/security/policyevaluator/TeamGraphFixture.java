@@ -103,7 +103,7 @@ public final class TeamGraphFixture {
   }
 
   /** Answers {@code Entity.getEntityReferencesByIds} from the graph registered here. */
-  public static <T extends EntityInterface> void stubReferences(
+  public static <T extends EntityInterface<?>> void stubReferences(
       final EntityRepository<T> repository, final String entityType) {
     when(repository.getReferences(anyList(), any(Include.class)))
         .thenAnswer(

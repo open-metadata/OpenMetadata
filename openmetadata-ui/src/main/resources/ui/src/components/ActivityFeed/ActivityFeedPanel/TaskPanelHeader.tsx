@@ -11,16 +11,19 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space } from 'antd';
+import {
+  Box,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TASK_ENTITY_TYPES } from '../../../constants/Task.constant';
 import { Task, TaskEntityStatus } from '../../../rest/tasksAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getTaskDisplayId } from '../../../utils/TaskNavigationUtils';
+import { getTaskTypeMessageKey } from '../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import './feed-panel-header.less';
 
 interface TaskPanelHeaderProps {
@@ -36,14 +39,14 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const taskTypeLabel = TASK_ENTITY_TYPES[task.type] ?? 'label.task';
+  const taskTypeLabel = getTaskTypeMessageKey(task) ?? 'label.task';
   const isOpen = task.status === TaskEntityStatus.Open;
   const isGranted = task.status === TaskEntityStatus.Granted;
 
   return (
     <div className={classNames('feed-panel-header', className)}>
-      <Space className="w-full justify-between">
-        <Space direction="vertical" size={0}>
+      <Box align="center" className="w-full" gap={2} justify="between">
+        <Box direction="col">
           <Typography className="font-semibold text-md">
             {`#${getTaskDisplayId(task.taskId)} `}
             {t(taskTypeLabel)}
@@ -53,8 +56,8 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
               {getEntityName(task.about)}
             </Typography>
           )}
-        </Space>
-        <Space>
+        </Box>
+        <Box align="center" gap={2}>
           <Typography
             className={classNames('task-status-badge', {
               open: isOpen,
@@ -64,15 +67,16 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
             {task.status}
           </Typography>
           {onCancel && (
-            <Button
+            <ButtonUtility
               data-testid="close-drawer-button"
-              icon={<CloseOutlined />}
-              type="text"
+              icon={XClose}
+              size="lg"
+              tooltip={t('label.close')}
               onClick={onCancel}
             />
           )}
-        </Space>
-      </Space>
+        </Box>
+      </Box>
     </div>
   );
 };

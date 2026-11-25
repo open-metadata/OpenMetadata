@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { load } from 'js-yaml';
 import { ACTION_TIMEOUT } from '../../constant/common';
 import {
   generateODCSContract,
@@ -24,6 +25,7 @@ import {
   ODCS_INVALID_SCHEMA_FIELDS_YAML,
   ODCS_INVALID_WRONG_APIVERSION_YAML,
   ODCS_INVALID_WRONG_KIND_YAML,
+  ODCS_SLA_TIMEZONE,
   ODCS_VALID_BASIC_JSON,
   ODCS_VALID_BASIC_YAML,
   ODCS_VALID_DRAFT_STATUS_YAML,
@@ -43,9 +45,12 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import { fillContractName } from '../../utils/dataContracts';
+import { selectDropdownOption } from '../../utils/destination';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   clickImportODCSButton,
+  confirmODCSExport,
   getContractForTable,
   importODCSYaml,
   navigateToContractTab,
@@ -437,9 +442,10 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
         'Cannot Import',
         { timeout: 10000 }
       );
+      // The published-schema check names the failing path, not the rejected value
       await expect(
         page.getByTestId('odcs-report-blocking-issues')
-      ).toContainText('WrongKind');
+      ).toContainText('/kind');
     } finally {
       await table.delete(apiContext);
     }
@@ -511,6 +517,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
 
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const filename = download.suggestedFilename();
@@ -551,6 +558,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
 
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
 
@@ -616,6 +624,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/merge-verify-${Date.now()}.yaml`;
@@ -694,6 +703,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/replace-verify-${Date.now()}.yaml`;
@@ -705,11 +715,14 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       // Name is preserved (identity field preserved in replace mode)
       expect(replacedYaml).toContain('Customer Analytics Full Contract');
 
-      // Verify replaced contract does NOT have SLA (content was replaced)
-      expect(replacedYaml).toContain('slaProperties: []');
+      // Replace dropped the SLA and roles; the v3.1.0 export omits empty sections
+      const replaced = load(replacedYaml) as {
+        slaProperties?: unknown[];
+        roles?: unknown[];
+      };
 
-      // Verify replaced contract does NOT have roles (content was replaced)
-      expect(replacedYaml).toContain('roles: []');
+      expect(replaced.slaProperties ?? []).toHaveLength(0);
+      expect(replaced.roles ?? []).toHaveLength(0);
 
       // Cleanup
       fsModule.unlinkSync(tempPath);
@@ -929,6 +942,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const odcsDownloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const odcsDownload = await odcsDownloadPromise;
       const odcsTempPath = `/tmp/odcs-roundtrip-${Date.now()}.yaml`;
@@ -1033,6 +1047,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/timezone-export-${Date.now()}.yaml`;
@@ -1041,11 +1056,11 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const fsModule = await import('fs');
       const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
 
-      // Verify SLA properties are in the export
-      // Note: timezone field is not yet exported by backend, but SLA properties should be preserved
       expect(exportedYaml).toContain('freshness');
       expect(exportedYaml).toContain('latency');
       expect(exportedYaml).toContain('slaProperties');
+      expect(exportedYaml).toContain('availabilityTime');
+      expect(exportedYaml).toContain(ODCS_SLA_TIMEZONE);
 
       // Cleanup
       fsModule.unlinkSync(tempPath);
@@ -1075,6 +1090,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/security-export-${Date.now()}.yaml`;
@@ -1118,6 +1134,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/quality-export-${Date.now()}.yaml`;
@@ -1157,6 +1174,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/quality-between-export-${Date.now()}.yaml`;
@@ -1201,6 +1219,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/team-export-${Date.now()}.yaml`;
@@ -1754,22 +1773,26 @@ version: "1.0.0"`;
       await page.getByRole('tab', { name: 'SLA' }).click();
 
       // Add refresh frequency
-      await page.getByTestId('refresh-frequency-interval-input').fill('24');
-      await page.getByTestId('refresh-frequency-unit-select').click();
-      await expect(
-        page.locator(".refresh-frequency-unit-select [title*='Hour']")
-      ).toBeVisible();
       await page
-        .locator(".refresh-frequency-unit-select [title*='Hour']")
-        .click();
+        .getByTestId('refresh-frequency-interval-input')
+        .locator('input')
+        .fill('24');
+      await selectDropdownOption({
+        page,
+        testId: 'refresh-frequency-unit-select',
+        optionName: 'Hour',
+      });
 
       // Add max latency
-      await page.getByTestId('max-latency-value-input').fill('2');
-      await page.getByTestId('max-latency-unit-select').click();
-      await expect(
-        page.locator(".max-latency-unit-select [title*='Hour']")
-      ).toBeVisible();
-      await page.locator(".max-latency-unit-select [title*='Hour']").click();
+      await page
+        .getByTestId('max-latency-value-input')
+        .locator('input')
+        .fill('2');
+      await selectDropdownOption({
+        page,
+        testId: 'max-latency-unit-select',
+        optionName: 'Hour',
+      });
 
       // Save the contract
       const saveContractResponse = page.waitForResponse(
@@ -1787,6 +1810,7 @@ version: "1.0.0"`;
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/import-modify-export-${Date.now()}.yaml`;
@@ -1851,12 +1875,24 @@ version: "1.0.0"`;
       await page.getByRole('tab', { name: 'SLA' }).click();
 
       // Update refresh frequency from 12 to 48 hours
-      await page.getByTestId('refresh-frequency-interval-input').clear();
-      await page.getByTestId('refresh-frequency-interval-input').fill('48');
+      await page
+        .getByTestId('refresh-frequency-interval-input')
+        .locator('input')
+        .clear();
+      await page
+        .getByTestId('refresh-frequency-interval-input')
+        .locator('input')
+        .fill('48');
 
       // Update max latency from 2 to 4 hours
-      await page.getByTestId('max-latency-value-input').clear();
-      await page.getByTestId('max-latency-value-input').fill('4');
+      await page
+        .getByTestId('max-latency-value-input')
+        .locator('input')
+        .clear();
+      await page
+        .getByTestId('max-latency-value-input')
+        .locator('input')
+        .fill('4');
 
       // Save the contract
       const saveContractResponse = page.waitForResponse(
@@ -1869,6 +1905,7 @@ version: "1.0.0"`;
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/sla-modified-${Date.now()}.yaml`;
@@ -1878,12 +1915,17 @@ version: "1.0.0"`;
       const fsModule = await import('fs');
       const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
 
-      // Verify updated SLA values
-      expect(exportedYaml).toContain('slaProperties');
-      expect(exportedYaml).toContain('freshness');
-      expect(exportedYaml).toContain('"48"');
-      expect(exportedYaml).toContain('latency');
-      expect(exportedYaml).toContain('"4"');
+      // Verify updated SLA values; ODCS v3.1.0 exports whole-number SLA values as numbers
+      const exported = load(exportedYaml) as {
+        slaProperties?: { property: string; value: unknown }[];
+      };
+
+      expect(exported.slaProperties).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ property: 'freshness', value: 48 }),
+          expect.objectContaining({ property: 'latency', value: 4 }),
+        ])
+      );
 
       // Cleanup
       fsModule.unlinkSync(tempPath);
@@ -1983,9 +2025,7 @@ version: "1.0.0"`;
         await page.getByTestId('create-contract-button').click();
         await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-        await page
-          .getByTestId('contract-name')
-          .fill('OM Merge Round Trip Contract');
+        await fillContractName(page, 'OM Merge Round Trip Contract');
         await page.fill(
           '.om-block-editor[contenteditable="true"]',
           'Original contract description'
@@ -1994,21 +2034,25 @@ version: "1.0.0"`;
         const contractCard = page.getByTestId('add-contract-card');
         await contractCard.getByRole('tab', { name: 'SLA' }).click();
 
-        await page.getByTestId('refresh-frequency-interval-input').fill('12');
-        await page.getByTestId('refresh-frequency-unit-select').click();
-        await expect(
-          page.locator(".refresh-frequency-unit-select [title*='Hour']")
-        ).toBeVisible();
         await page
-          .locator(".refresh-frequency-unit-select [title*='Hour']")
-          .click();
+          .getByTestId('refresh-frequency-interval-input')
+          .locator('input')
+          .fill('12');
+        await selectDropdownOption({
+          page,
+          testId: 'refresh-frequency-unit-select',
+          optionName: 'Hour',
+        });
 
-        await page.getByTestId('max-latency-value-input').fill('3');
-        await page.getByTestId('max-latency-unit-select').click();
-        await expect(
-          page.locator(".max-latency-unit-select [title*='Hour']")
-        ).toBeVisible();
-        await page.locator(".max-latency-unit-select [title*='Hour']").click();
+        await page
+          .getByTestId('max-latency-value-input')
+          .locator('input')
+          .fill('3');
+        await selectDropdownOption({
+          page,
+          testId: 'max-latency-unit-select',
+          optionName: 'Hour',
+        });
 
         const saveContractResponse = page.waitForResponse(
           '/api/v1/dataContracts*'
@@ -2256,9 +2300,10 @@ version: "1.0.0"`;
       await expect(rules).toContainText('columnValuesToBeNotNull');
       await expect(rules).toContainText('tableRowCountToBeBetween');
       await expect(rules).toContainText('Not Run');
-      await expect(
-        page.getByTestId('odcs-report-not-imported-schema')
-      ).toContainText('businessName');
+      // Fields without an OpenMetadata equivalent are kept for export, not dropped
+      await expect(page.getByTestId('odcs-report-info')).toContainText(
+        'businessName'
+      );
       await expect(
         page.getByRole('checkbox', {
           name: 'Create Test Cases from Quality Rules',

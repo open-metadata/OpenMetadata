@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -48,7 +47,6 @@ import {
   TopicSource,
   WorksheetSource,
 } from '../../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SearchIndex } from '../../enums/search.enum';
 import { ContainerSearchSource } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
@@ -81,7 +79,6 @@ const Suggestions = ({
   onSearchTextUpdate,
 }: SuggestionProp) => {
   const { t } = useTranslation();
-  const { isTourOpen } = useTourProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [options, setOptions] = useState<Array<Option>>([]);
   const [suggestions, setSuggestions] = useState<SuggestionsObject>({
@@ -394,12 +391,12 @@ const Suggestions = ({
   }, [isNLPActive, quickFilter, searchText, searchCriteria]);
 
   useEffect(() => {
-    if (searchText && !isTourOpen) {
+    if (searchText) {
       fetchSearchData();
     } else {
       setIsLoading(false);
     }
-  }, [fetchSearchData, searchText, isTourOpen]);
+  }, [fetchSearchData, searchText]);
 
   // Add a function to render AI query suggestions
   const renderAIQuerySuggestions = () => {
@@ -418,17 +415,17 @@ const Suggestions = ({
         </Typography>
         {aiQueries.map((query) => (
           <Button
-            block
-            className="m-b-md w-100 text-left d-flex items-center p-0"
+            className="tw:mb-2 tw:w-full tw:justify-start"
+            color="tertiary"
             data-testid="nlp-suggestions-button"
-            icon={
-              <div className="nlp-button w-6 h-6 flex-center m-r-md">
+            iconLeading={
+              <div className="nlp-button w-6 h-6 flex-center">
                 <IconSuggestionsBlue />
               </div>
             }
             key={query}
-            type="text"
-            onClick={() => onSearchTextUpdate?.(query)}>
+            size="sm"
+            onPress={() => onSearchTextUpdate?.(query)}>
             {query}
           </Button>
         ))}
@@ -445,7 +442,7 @@ const Suggestions = ({
     return renderAIQuerySuggestions();
   }
 
-  if (options.length === 0 && !isTourOpen && !isEmpty(searchText)) {
+  if (options.length === 0 && !isEmpty(searchText)) {
     return (
       <Typography>
         <Transi18next

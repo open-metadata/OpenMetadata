@@ -27,6 +27,7 @@ import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  waitForToastToDisappear,
 } from '../../utils/common';
 import {
   mockClipboardApi,
@@ -219,7 +220,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         state: 'visible',
       });
       await page.click('[data-testid="import-button-title"]');
-      const fileInput = page.getByTestId('upload-file-widget');
+      const fileInput = page.getByTestId('upload-file-input');
       await fileInput?.setInputFiles([
         'downloads/' + dbService.entity.name + '.csv',
       ]);
@@ -910,7 +911,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
     });
 
     await test.step('should verify the removed value from entity', async () => {
-      await page.getByTestId('alert-bar').waitFor({ state: 'detached' });
+      await waitForToastToDisappear(page, /details updated successfully/);
       await waitForAllLoadersToDisappear(page);
       const columnNameLink = page
         .getByTestId('column-name')

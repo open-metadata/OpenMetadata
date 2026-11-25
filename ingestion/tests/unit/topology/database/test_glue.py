@@ -51,6 +51,7 @@ from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.glue.metadata import GlueSource
 from metadata.ingestion.source.database.glue.models import (
     Column as GlueColumn,
@@ -175,8 +176,7 @@ EXPECTED_LOCATION_PATHS = [
 
 class GlueUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
         self.glue_source = GlueSource.create(
@@ -710,6 +710,82 @@ class TestGlueDecimalColumns:
         assert column.dataTypeDisplay == "array<decimal(10,2)>"
 
 
+class TestGlueUnparseableColumnType:
+    """A type outside the Hive grammar, like the unnamed [...] group in a DynamoDB-sourced table,
+    must cost that one column its type, not drop the table with every other column (#37023)."""
+
+    BAD_STRUCT = "struct<first:string,last:string,[X:string,y:string>,other:string>"
+
+    @staticmethod
+    def _request(source, columns, partition_keys=()):
+        table = GlueTable(
+            Name="dynamo_export",
+            TableType="EXTERNAL_TABLE",
+            StorageDescriptor=StorageDetails(Columns=[GlueColumn(Name=n, Type=t) for n, t in columns]),
+            PartitionKeys=[GlueColumn(Name=n, Type=t) for n, t in partition_keys],
+        )
+        source.context.get().__dict__["table_data"] = table
+        # Step.run attaches this handler in a real run, so status.warnings is the run summary's count.
+        source._activate_handler()
+        try:
+            with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+                mock_fqn.build = mock_fqn_build
+                return next(source.yield_table((table.Name, TableType.External))).right
+        finally:
+            source._deactivate_handler()
+
+    def test_bad_column_degrades_and_the_rest_of_the_table_is_ingested(self, glue_source):
+        request = self._request(
+            glue_source,
+            [("good_a", "string"), ("bad_struct", self.BAD_STRUCT), ("good_b", "int")],
+        )
+
+        assert [column.name.root for column in request.columns] == ["good_a", "bad_struct", "good_b"]
+        bad = request.columns[1]
+        assert bad.dataType is DataType.UNKNOWN
+        assert bad.dataTypeDisplay == self.BAD_STRUCT
+        assert bad.children is None
+        assert [column.dataType for column in (request.columns[0], request.columns[2])] == [
+            DataType.STRING,
+            DataType.INT,
+        ]
+        assert glue_source.status.failures == []
+        assert len(glue_source.status.warnings) == 1
+        [reason] = glue_source.status.warnings[0].values()
+        assert "Table [dynamo_export]" in reason
+        assert "Column [bad_struct]" in reason
+
+    def test_bad_partition_key_degrades(self, glue_source):
+        request = self._request(glue_source, [("id", "string")], partition_keys=[("bad_key", self.BAD_STRUCT)])
+
+        assert [(column.name.root, column.dataType) for column in request.columns] == [
+            ("id", DataType.STRING),
+            ("bad_key", DataType.UNKNOWN),
+        ]
+
+    def test_union_with_a_bad_member_degrades(self, glue_source):
+        request = self._request(glue_source, [("u", "uniontype<int, struct<[x:string]>>")])
+
+        assert request.columns[0].dataType is DataType.UNKNOWN
+        assert request.columns[0].dataTypeDisplay == "uniontype<int,struct<[x:string]>>"
+
+    def test_a_degraded_column_is_still_deduplicated(self, glue_source):
+        request = self._request(glue_source, [("dt", self.BAD_STRUCT)], partition_keys=[("dt", self.BAD_STRUCT)])
+
+        assert [column.name.root for column in request.columns] == ["dt"]
+        assert len(glue_source.status.warnings) == 1
+
+    def test_a_valid_struct_still_parses(self, glue_source):
+        request = self._request(
+            glue_source, [("parent", "struct<first:string,last:string,emails:array<string>,other:string>")]
+        )
+        column = request.columns[0]
+
+        assert column.dataType is DataType.STRUCT
+        assert [child.name.root for child in column.children] == ["first", "last", "emails", "other"]
+        assert glue_source.status.warnings == []
+
+
 class TestGlueViewModel:
     """The view text has to survive parsing before anything downstream can use it.
 
@@ -976,8 +1052,7 @@ class TestGlueIcebergView:
 
 
 class TestGlueIncludeFlags:
-    """Glue ingested every table and view whatever these flags said, unlike the generic path and
-    unlike Delta Lake, which is the other source that hand-builds its requests."""
+    """Glue ingested every table and view whatever these flags said, unlike the generic path."""
 
     @staticmethod
     def _tables() -> list[GlueTable]:
@@ -1467,6 +1542,45 @@ class TestGlueExternalTableColumnLineage:
 
         assert edges == {_edge("Region", "region")}
 
+    def test_a_column_whose_display_name_differs_from_name_matches_by_name(self, glue_source):
+        """A container column may carry a displayName that diverges from its name (e.g. a JSON
+        schema "title", or the raw name preserved by truncate_column_name). The table column names
+        the container column by name, so the edge must be emitted rather than dropped when
+        displayName is set but does not equal the table column's name."""
+        edges = self._edges_for(
+            glue_source,
+            [_container_column("event_id", "Event Identifier")],
+            ["event_id"],
+        )
+
+        assert edges == {_edge("event_id")}
+
+    def test_a_truncated_container_column_matches_its_truncated_table_name(self, glue_source):
+        """truncate_column_name sets name=raw[:256] and displayName=raw, so a column whose raw name
+        exceeds 256 characters reaches the container with name != displayName. Glue truncates the
+        table column the same way, so the table column's name equals the container's truncated name
+        and the column-lineage edge must still be emitted."""
+        raw = "x" * 300
+        truncated = truncate_column_name(raw)
+        edges = self._edges_for(
+            glue_source,
+            [_container_column(truncated, raw)],
+            [truncated],
+        )
+
+        assert edges == {_edge(truncated)}
+
+    def test_a_display_name_match_still_resolves_when_name_differs(self, glue_source):
+        """The displayName branch must keep working when it is the one that matches: a table column
+        named with the container's displayName resolves even though the container's name differs."""
+        edges = self._edges_for(
+            glue_source,
+            [_container_column("internal_id", "Event Identifier")],
+            ["Event Identifier"],
+        )
+
+        assert edges == {_edge("internal_id", "Event Identifier")}
+
     def test_an_unresolvable_column_costs_only_its_own_edge(self, glue_source):
         edges = self._edges_for(
             glue_source,
@@ -1620,3 +1734,99 @@ class TestGlueExternalTableContainerMatch:
         table_request = self._ingest(glue_source, "s3a://bucket/events/")
 
         assert table_request.locationPath == "s3a://bucket/events/"
+
+
+class TestGlueDeltaDetection:
+    """Delta Lake tables carry a marker in Glue Parameters: table_type=DELTA (Athena DDL) or
+    spark.sql.sources.provider=delta (Spark/crawler). Producers disagree on case, so both keys are
+    compared case-insensitively. The Iceberg branch is checked first, so a table carrying both
+    markers stays Iceberg.
+
+    These run the real detection through GlueSource.get_tables_name_and_type, so they exercise
+    production code rather than reimplementing the condition on mocks. The Parameters fed in are the
+    exact shapes used in the live Glue ingestion run."""
+
+    @staticmethod
+    def _table(params: dict | None, table_type: str = "EXTERNAL_TABLE", **extra) -> GlueTable:
+        return GlueTable(
+            Name="probe",
+            TableType=table_type,
+            Parameters=TableParameters(**params) if params is not None else None,
+            StorageDescriptor=StorageDetails(Columns=[GlueColumn(Name="id", Type="int")]),
+            **extra,
+        )
+
+    @staticmethod
+    def _detect(source, table: GlueTable) -> TableType:
+        source._get_glue_tables = lambda: [TablePage(TableList=[table])]
+        with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+            mock_fqn.build = mock_fqn_build
+            ((_, table_type),) = list(source.get_tables_name_and_type())
+        return table_type
+
+    @pytest.mark.parametrize(
+        "params",
+        [
+            {"table_type": "DELTA"},  # (a) Athena DDL, upper case
+            {"table_type": "delta"},  # (b) lower case
+            {"spark.sql.sources.provider": "delta"},  # (c) Spark/crawler, lower case
+            {"spark.sql.sources.provider": "DELTA"},  # (d) upper case
+        ],
+        ids=["table_type_upper", "table_type_lower", "provider_lower", "provider_upper"],
+    )
+    def test_delta_marker_types_the_table_deltalake(self, glue_source, params):
+        assert self._detect(glue_source, self._table(params)) is TableType.DeltaLake
+
+    def test_spark_registered_placeholder_is_deltalake(self, glue_source):
+        """(e) A Spark-registered Delta table carries the placeholder schema Glue stores: a single
+        col array<string> and empty PartitionKeys. Detection is right; the column list is not."""
+        table = GlueTable(
+            Name="probe",
+            TableType="EXTERNAL_TABLE",
+            Parameters=TableParameters(
+                **{"spark.sql.sources.provider": "delta", "spark.sql.sources.schema.numParts": "1"}
+            ),
+            StorageDescriptor=StorageDetails(Columns=[GlueColumn(Name="col", Type="array<string>")]),
+            PartitionKeys=[],
+        )
+
+        assert self._detect(glue_source, table) is TableType.DeltaLake
+
+    def test_plain_external_table_stays_external(self, glue_source):
+        """(f) No Delta or Iceberg marker: the Glue TableType decides, as before."""
+        assert self._detect(glue_source, self._table({"EXTERNAL": "TRUE"})) is TableType.External
+
+    def test_iceberg_table_stays_iceberg(self, glue_source):
+        """(g) The Iceberg branch is untouched and still wins for a table_type=ICEBERG table."""
+        assert self._detect(glue_source, self._table({"table_type": "ICEBERG"})) is TableType.Iceberg
+
+    def test_iceberg_view_stays_iceberg(self, glue_source):
+        """(h) An Iceberg VIRTUAL_VIEW keeps its Iceberg type; the Delta branch does not touch it."""
+        table = self._table(
+            {"table_type": "ICEBERG"},
+            table_type="VIRTUAL_VIEW",
+            ViewOriginalText="SELECT id FROM events",
+        )
+
+        assert self._detect(glue_source, table) is TableType.Iceberg
+
+    def test_delta_marked_view_stays_view(self, glue_source):
+        """A VIRTUAL_VIEW is never typed DeltaLake, even if a producer stamps a Delta marker on it."""
+        table = self._table(
+            {"spark.sql.sources.provider": "delta"},
+            table_type="VIRTUAL_VIEW",
+            ViewOriginalText="SELECT id FROM events",
+        )
+
+        assert self._detect(glue_source, table) is TableType.View
+
+    def test_iceberg_wins_when_both_markers_present(self, glue_source):
+        """(i) A UniForm table can carry table_type=ICEBERG and spark.sql.sources.provider=delta.
+        The Iceberg check runs first, so precedence stays with Iceberg."""
+        table = self._table({"table_type": "ICEBERG", "spark.sql.sources.provider": "delta"})
+
+        assert self._detect(glue_source, table) is TableType.Iceberg
+
+    def test_no_parameters_stays_regular_or_external(self, glue_source):
+        """A table with no Parameters must not trip the Delta branch."""
+        assert self._detect(glue_source, self._table(None)) is TableType.External

@@ -80,6 +80,7 @@ export const AssetSelectionDrawer = ({
           <AssetSelectionContentBody
             aggregations={state.aggregations}
             assetJobResponse={state.assetJobResponse}
+            assetsFilter={state.assetsFilter}
             cancelDomainAssetMove={state.cancelDomainAssetMove}
             clearFilters={state.clearFilters}
             confirmDomainAssetMove={state.confirmDomainAssetMove}
@@ -92,6 +93,7 @@ export const AssetSelectionDrawer = ({
             handleCardClick={state.handleCardClick}
             handleQuickFiltersValueSelect={state.handleQuickFiltersValueSelect}
             infoBannerText={infoBannerText}
+            isExactName={state.isExactName}
             isLoading={state.isLoading}
             isSaveLoading={state.isSaveLoading}
             items={state.items}
@@ -100,6 +102,7 @@ export const AssetSelectionDrawer = ({
             selectedItems={state.selectedItems}
             setSearch={state.setSearch}
             totalCount={state.totalCount}
+            onExactNameChange={state.onExactNameChange}
             onScroll={state.onScroll}
             onSelectAll={state.onSelectAll}
           />
@@ -109,7 +112,7 @@ export const AssetSelectionDrawer = ({
         <AssetSelectionFooter
           errorCount={state.failedStatus?.failedRequest?.length ?? 0}
           hasAssetJobResponse={!isUndefined(state.assetJobResponse)}
-          isLoading={state.isLoading}
+          isLoading={state.isLoading || isUndefined(state.activeEntity)}
           isSaveLoading={state.isSaveLoading}
           selectedCount={state.selectedItems?.size ?? 0}
           onCancel={onCancel}

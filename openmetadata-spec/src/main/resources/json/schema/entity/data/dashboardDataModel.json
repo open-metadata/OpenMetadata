@@ -7,7 +7,7 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.DashboardDataModel",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
     "org.openmetadata.schema.ColumnsEntityInterface",
     "org.openmetadata.schema.CreationAudited"
   ],
@@ -38,7 +38,8 @@
         "SsrsDataModel",
         "RillModel",
         "RillMetricsView",
-        "OmniDataModel"
+        "OmniDataModel",
+        "HexDataModel"
       ],
       "javaEnums": [
         {
@@ -103,6 +104,9 @@
         },
         {
           "name": "OmniDataModel"
+        },
+        {
+          "name": "HexDataModel"
         }
       ]
     }

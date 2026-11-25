@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 import APIClient from './axiosClient';
-import { getContextMemoryByName } from './contextMemoryAPI';
+import {
+  approveExtractedMemories,
+  getContextMemoryByName,
+  getExtractedMemoryApproval,
+  getExtractionAvailability,
+  getMemoryDerivations,
+  MAX_DERIVATION_ENTITIES,
+} from './contextMemoryAPI';
 
-jest.mock('./axiosClient', () => ({ get: jest.fn() }));
+jest.mock('./axiosClient', () => ({ get: jest.fn(), put: jest.fn() }));
 
 const mockedApiClient = APIClient as jest.Mocked<typeof APIClient>;
 
@@ -26,6 +33,81 @@ describe('contextMemoryAPI', () => {
     expect(mockedApiClient.get).toHaveBeenCalledWith(
       '/contextCenter/memories/name/%22metrics.md-f02e2a5c%22',
       { params: { fields: 'owners' } }
+    );
+  });
+
+  it('asks for the derivations of at most the ids the server reads', async () => {
+    const derivation = {
+      entity: { id: 'term-1', type: 'glossaryTerm' },
+      memory: { id: 'memory-1', type: 'contextMemory' },
+      evidence: { confidence: 0.92, reasons: ['Defines a metric'] },
+    };
+    mockedApiClient.get.mockResolvedValue({ data: { data: [derivation] } });
+    const ids = Array.from(
+      { length: MAX_DERIVATION_ENTITIES + 5 },
+      (_, index) => `term-${index}`
+    );
+
+    expect(await getMemoryDerivations('glossaryTerm', ids)).toEqual([
+      derivation,
+    ]);
+    expect(mockedApiClient.get).toHaveBeenCalledWith(
+      '/contextCenter/memories/derivations',
+      {
+        params: {
+          entityType: 'glossaryTerm',
+          entityIds: ids.slice(0, MAX_DERIVATION_ENTITIES).join(','),
+        },
+      }
+    );
+  });
+
+  it('does not call the server without ids', async () => {
+    mockedApiClient.get.mockClear();
+
+    expect(await getMemoryDerivations('glossaryTerm', [])).toEqual([]);
+    expect(mockedApiClient.get).not.toHaveBeenCalled();
+  });
+
+  it('previews the approval of a document’s extracted memories', async () => {
+    const approval = { approved: 2, needsDecision: [], failed: 0 };
+    mockedApiClient.get.mockResolvedValue({ data: approval });
+
+    expect(await getExtractedMemoryApproval('file-1', 'contextFile')).toEqual(
+      approval
+    );
+    expect(mockedApiClient.get).toHaveBeenCalledWith(
+      '/contextCenter/memories/extractedApproval',
+      { params: { sourceId: 'file-1', sourceType: 'contextFile' } }
+    );
+  });
+
+  it('approves the memories a document’s preview listed', async () => {
+    const approval = {
+      approved: 1,
+      needsDecision: [{ id: 'memory-2', type: 'contextMemory' }],
+      failed: 0,
+    };
+    const request = {
+      source: { id: 'page-1', type: 'page' },
+      approvable: [{ id: 'memory-1', contentUpdatedAt: 1767225600000 }],
+    };
+    mockedApiClient.put.mockResolvedValue({ data: approval });
+
+    expect(await approveExtractedMemories(request)).toEqual(approval);
+    expect(mockedApiClient.put).toHaveBeenCalledWith(
+      '/contextCenter/memories/extractedApproval',
+      request
+    );
+  });
+
+  it('reads whether memories can be extracted, and why not', async () => {
+    const availability = { available: false, reason: 'ExtractionDisabled' };
+    mockedApiClient.get.mockResolvedValue({ data: availability });
+
+    expect(await getExtractionAvailability()).toEqual(availability);
+    expect(mockedApiClient.get).toHaveBeenCalledWith(
+      '/contextCenter/memories/extractionAvailability'
     );
   });
 });

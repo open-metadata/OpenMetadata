@@ -129,6 +129,43 @@ describe('DataQualityIndicator', () => {
 
     openCard();
 
+    expect(
+      screen.getByText('message.dq-upstream-failing-test', { exact: true })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.dq-upstream-failing-test-plural', {
+        exact: true,
+      })
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('dq-indicator-action')).toHaveTextContent(
+      'label.view-upstream-issue'
+    );
+  });
+
+  it('pluralises the upstream description while keeping the title and action label singular for multiple upstream-only issues', () => {
+    renderIndicator({ upstreamIssues: 3 });
+
+    const indicator = screen.getByTestId('dq-indicator');
+
+    expect(indicator).toHaveAttribute('data-level', 'upstream');
+    expect(
+      screen.getByTestId('dq-indicator-upstream-icon')
+    ).toBeInTheDocument();
+    expect(indicator.getAttribute('href')).toContain('lineage');
+
+    openCard();
+
+    expect(
+      screen.getByText('message.dq-upstream-failing-test-plural', {
+        exact: true,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.dq-upstream-failing-test', { exact: true })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('label.upstream-data-quality-issue', { exact: true })
+    ).toBeInTheDocument();
     expect(screen.getByTestId('dq-indicator-action')).toHaveTextContent(
       'label.view-upstream-issue'
     );

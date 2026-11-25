@@ -23,8 +23,7 @@
           "pattern": "^[A-Za-z][A-Za-z0-9._-]*$"
         },
         "namespace": {
-          "type": "string",
-          "format": "uri"
+          "$ref": "ontologyIri.json"
         }
       },
       "required": ["prefix", "namespace"],
@@ -34,8 +33,7 @@
   "properties": {
     "baseIri": {
       "description": "Absolute base IRI used when minting governed concepts.",
-      "type": "string",
-      "format": "uri"
+      "$ref": "ontologyIri.json"
     },
     "layer": {
       "$ref": "#/definitions/layer"

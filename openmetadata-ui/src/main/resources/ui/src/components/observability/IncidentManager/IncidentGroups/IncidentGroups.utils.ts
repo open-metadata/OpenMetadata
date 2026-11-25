@@ -32,6 +32,7 @@ import {
   DEFAULT_INCIDENT_LIST_DATE_FIELD,
   INCIDENT_GROUP_BY_OPTIONS,
   INCIDENT_GROUP_SEPARATOR,
+  INCIDENT_GROUP_SORTABLE_COLUMNS,
   INCIDENT_GROUP_STATUS_OPTIONS,
   INCIDENT_SEVERITY_FILTER_OPTIONS,
   INCIDENT_TREND_COLORS,
@@ -219,26 +220,20 @@ export const getIncidentGroupStatusSegments = (
   }));
 };
 
-/**
- * A group counts as recurring when its incidents keep coming back faster than
- * they did: the server compares the second half of the trend buckets against
- * the first and reports `Rising`. The header's `recurring` chip is built on the
- * same field as the row's arrow, so the two always agree.
- */
-export const isRecurring = (group: TestCaseIncidentGroup): boolean =>
+export const isRising = (group: TestCaseIncidentGroup): boolean =>
   group.trendDirection === IncidentTrendDirection.Rising;
 
 /**
- * Recurring groups among the ones currently loaded. The endpoint reports no
- * recurring total, so this only ever describes the page in hand — the chip
+ * Rising groups among the ones currently loaded. The endpoint reports no
+ * rising total, so this only ever describes the page in hand — the chip
  * built on it says so.
  */
-export const countRecurringIncidentGroups = (
+export const countRisingIncidentGroups = (
   groups: TestCaseIncidentGroup[]
-): number => groups.filter(isRecurring).length;
+): number => groups.filter(isRising).length;
 
 /**
- * Tone of the trend. Falling incident creation is good news and steady is
+ * Tone of the trend. A falling open-incident count is good news and steady is
  * neither, so only a rising trend is graded — by the severity the group
  * carries, since a rising `Severity1` group is the one to look at first.
  */
@@ -263,9 +258,9 @@ export const getIncidentTrendColor = (
   INCIDENT_TREND_COLORS[getIncidentTrendTone(trendDirection, severity)];
 
 /**
- * Bucket counts to `x,y` pairs for an SVG polyline. Buckets are equally spaced
- * across the width and scaled against the tallest bucket, so the line shows the
- * shape of the group's incident creation rather than its absolute volume — a
+ * Open-count samples to `x,y` pairs for an SVG polyline, scaled against the
+ * largest sample so the line shows changes in the unresolved count rather than
+ * comparing absolute volume across groups — a
  * group with 40 incidents and one with 4 are equally readable. An all-zero
  * trend has no shape to scale, so it draws flat through the middle.
  */
@@ -302,6 +297,21 @@ export const getPageAfterEmptyRead = (
   rowCount === 0 && page > 1
     ? Math.min(page - 1, Math.max(1, computeTotalPages(pageSize, total)))
     : undefined;
+
+/**
+ * The groups' order out of the query string. An unknown field or direction
+ * falls back to the default order.
+ */
+export const parseIncidentGroupSort = (
+  field: unknown,
+  type: unknown
+): IncidentGroupSort => ({
+  field:
+    INCIDENT_GROUP_SORTABLE_COLUMNS.find((column) => column === field) ??
+    DEFAULT_INCIDENT_GROUP_SORT.field,
+  type:
+    type === 'asc' || type === 'desc' ? type : DEFAULT_INCIDENT_GROUP_SORT.type,
+});
 
 /**
  * Sort params for the groups request. The endpoint's own default field is

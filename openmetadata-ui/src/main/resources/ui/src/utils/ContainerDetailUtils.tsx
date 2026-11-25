@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from './common/layout.utils';
+
 import { get } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -20,14 +22,13 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { ContainerWidget } from '../components/Container/ContainerWidget/ContainerWidget';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/uiCustomization';
@@ -51,6 +52,12 @@ const EntityLineageTab = lazy(() =>
   )
 );
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import(
@@ -139,11 +146,13 @@ export const getContainerDetailPageTabs = ({
             ),
             key: EntityTabs.CHILDREN,
             children: (
-              <Row className="p-md" gutter={[0, 16]}>
-                <Col span={24}>
+              <Grid
+                className="layout-row layout-grid p-md"
+                style={{ ...getLayoutGutter(0, 16) }}>
+                <Grid.Item className="layout-column" span={24}>
                   <ContainerChildren />
-                </Col>
-              </Row>
+                </Grid.Item>
+              </Grid>
             ),
           },
         ]),
@@ -163,13 +172,14 @@ export const getContainerDetailPageTabs = ({
             ),
             key: EntityTabs.SAMPLE_DATA,
             children: !viewSampleDataPermission ? (
-              <ErrorPlaceHolder
-                className="border-none"
-                permissionValue={t('label.view-entity', {
-                  entity: t('label.sample-data'),
-                })}
-                type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-              />
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <PermissionPlaceholder
+                  data-testid="permission-error-placeholder"
+                  permissionValue={t('label.view-entity', {
+                    entity: t('label.sample-data'),
+                  })}
+                />
+              </div>
             ) : (
               <SampleDataTableComponent
                 entityType={EntityType.CONTAINER}
@@ -185,8 +195,9 @@ export const getContainerDetailPageTabs = ({
 
     {
       label: (
-        <TabsLabel
+        <ActivityFeedTabLabel
           count={feedCount.totalCount}
+          entityType={EntityType.CONTAINER}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={tab === EntityTabs.ACTIVITY_FEED}
           name={t('label.activity-feed-and-task-plural')}

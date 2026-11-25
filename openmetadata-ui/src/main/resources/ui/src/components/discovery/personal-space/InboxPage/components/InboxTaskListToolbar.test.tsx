@@ -75,6 +75,35 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   SearchInputIcon: () => <span />,
 }));
 
+// A core Dropdown with its own suite; each option is a button here.
+jest.mock('./ActivityToolbarMenu', () => ({
+  __esModule: true,
+  default: ({
+    options,
+    value,
+    triggerLabel,
+    onChange,
+    'data-testid': testId,
+  }: {
+    options: { value: string; label: string }[];
+    value: string;
+    triggerLabel?: string;
+    onChange: (value: string) => void;
+    'data-testid'?: string;
+  }) => (
+    <div data-selected={value} data-testid={testId} data-trigger={triggerLabel}>
+      {options.map((option) => (
+        <button
+          data-testid={`${testId}-${option.value}`}
+          key={option.value}
+          onClick={() => onChange(option.value)}>
+          {option.label}
+        </button>
+      ))}
+    </div>
+  ),
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: { value?: string }) =>
@@ -82,6 +111,7 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+import { SORT_ORDER } from '../../../../../enums/common.enum';
 import { Task, TaskType } from '../../../../../generated/entity/tasks/task';
 import { TaskStatusBucket } from '../taskList.utils';
 import InboxTaskListToolbar from './InboxTaskListToolbar';
@@ -103,6 +133,8 @@ const props = {
   onGroupingChange: jest.fn(),
   typeFilter: [],
   onTypeFilterChange: jest.fn(),
+  sortOrder: SORT_ORDER.DESC,
+  onSortOrderChange: jest.fn(),
   tasks: TASKS,
 };
 
@@ -195,10 +227,26 @@ describe('InboxTaskListToolbar', () => {
   it('names the grouping on the trigger', () => {
     render(<InboxTaskListToolbar {...props} />);
 
-    expect(screen.getByTestId('inbox-tasks-group-by-type')).toHaveAttribute(
-      'data-text',
+    expect(screen.getByTestId('inbox-tasks-group-by')).toHaveAttribute(
+      'data-trigger',
       'label.group-with-value:label.type'
     );
+    expect(screen.getByTestId('inbox-tasks-group-by-type')).toHaveTextContent(
+      'label.type'
+    );
+  });
+
+  it('names the sort order on the trigger and reports a change', () => {
+    render(<InboxTaskListToolbar {...props} />);
+
+    expect(screen.getByTestId('inbox-tasks-sort')).toHaveAttribute(
+      'data-trigger',
+      'label.sort-colon-value:label.newest-first'
+    );
+
+    fireEvent.click(screen.getByTestId(`inbox-tasks-sort-${SORT_ORDER.ASC}`));
+
+    expect(props.onSortOrderChange).toHaveBeenCalledWith(SORT_ORDER.ASC);
   });
 
   // Switching tab can unload every task of a chosen type; it must stay

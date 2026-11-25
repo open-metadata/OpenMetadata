@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { WorkflowType } from '../../../../constants/WorkflowBuilder.constants';
+import {
+  TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+  WorkflowType,
+} from '../../../../constants/WorkflowBuilder.constants';
 import { WorkflowModeProvider } from '../../../../contexts/WorkflowModeContext';
+import { ApprovalMode } from '../../../../generated/governance/workflows/elements/triggers/eventBasedEntityTrigger';
+import { Type } from '../../../../generated/governance/workflows/workflowDefinition';
 import { NodeConfig } from '../../../../interface/workflow-builder-components.interface';
 
 jest.mock('./TriggerConfigSection', () => ({
@@ -71,6 +76,16 @@ jest.mock('./EventTriggerFilterSection', () => ({
   ),
 }));
 
+jest.mock('./ApprovalModeSection', () => ({
+  ApprovalModeSection: ({ approvalMode }: { approvalMode?: string }) => (
+    <div
+      data-approval-mode={approvalMode ?? ''}
+      data-testid="approval-mode-section-mock"
+    />
+  ),
+}));
+
+import { FormActionButtons } from './FormActionButtons';
 import { WorkflowConfigFormV1 } from './WorkflowConfigFormV1';
 
 const noop = () => {
@@ -102,6 +117,84 @@ const renderWithWorkflowMode = (ui: React.ReactElement) =>
   );
 
 describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
+  it.each([
+    { mode: 'view', autoAssignOwners: true },
+    { mode: 'view', autoAssignOwners: false },
+    { mode: 'edit', autoAssignOwners: true },
+    { mode: 'edit', autoAssignOwners: false },
+  ])(
+    'allows changing owner assignment in $mode mode from $autoAssignOwners while showing the other configuration fields',
+    ({ mode, autoAssignOwners }) => {
+      const updateConfig = jest.fn();
+      render(
+        <MemoryRouter initialEntries={[`/?mode=${mode}`]}>
+          <WorkflowModeProvider
+            workflowDefinition={{
+              name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+              description: '',
+              trigger: { type: Type.NoOp, config: {} },
+            }}
+            workflowFqn={TEST_CASE_RESOLUTION_WORKFLOW_NAME}>
+            <WorkflowConfigFormV1
+              {...baseHandlers}
+              showAutoAssignOwners
+              allowFullStartNodeConfiguration={false}
+              allowScheduledTrigger={false}
+              allowStartNodeFilterScheduleAndBatchEdit={false}
+              availableDataAssets={[]}
+              availableEventTypes={[]}
+              availableExcludeFields={[]}
+              config={{
+                name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+                description: '',
+                triggerType: '',
+                eventType: [],
+                dataAssets: [],
+                dataAssetFilters: [],
+                autoAssignOwners,
+              }}
+              updateConfig={updateConfig}
+            />
+            <FormActionButtons onCancel={noop} onSave={noop} />
+          </WorkflowModeProvider>
+        </MemoryRouter>
+      );
+
+      const toggle = screen.getByRole('switch', {
+        name: /^label\.auto-assign-owners/,
+      });
+
+      expect(screen.getByTestId('trigger-config-section')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('data-asset-form-section-mock')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('metadata-form-section-mock')
+      ).toBeInTheDocument();
+      expect(toggle).toBeEnabled();
+
+      if (mode === 'edit') {
+        expect(
+          screen.getByTestId('save-node-configuration-button')
+        ).toBeEnabled();
+      } else {
+        expect(
+          screen.queryByTestId('save-node-configuration-button')
+        ).not.toBeInTheDocument();
+      }
+
+      fireEvent.click(toggle);
+
+      expect(updateConfig).toHaveBeenCalledWith(
+        'autoAssignOwners',
+        !autoAssignOwners
+      );
+      expect(
+        screen.getByTestId('save-node-configuration-button')
+      ).toBeEnabled();
+    }
+  );
+
   it('OSS: locks metadata, data assets, and trigger type but allows filters and periodic schedule/batch when allowStartNodeFilterScheduleAndBatchEdit', () => {
     const config: NodeConfig = {
       name: 'W',
@@ -119,6 +212,7 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
 
     renderWithWorkflowMode(
       <WorkflowConfigFormV1
+        allowScheduledTrigger
         {...baseHandlers}
         allowStartNodeFilterScheduleAndBatchEdit
         allowFullStartNodeConfiguration={false}
@@ -168,6 +262,7 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
 
     renderWithWorkflowMode(
       <WorkflowConfigFormV1
+        allowScheduledTrigger
         {...baseHandlers}
         allowFullStartNodeConfiguration={false}
         allowStartNodeFilterScheduleAndBatchEdit={false}
@@ -204,6 +299,7 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
 
     renderWithWorkflowMode(
       <WorkflowConfigFormV1
+        allowScheduledTrigger
         {...baseHandlers}
         allowFullStartNodeConfiguration
         allowStartNodeFilterScheduleAndBatchEdit
@@ -229,5 +325,111 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
     expect(
       screen.getByTestId('event-trigger-filter-section-mock')
     ).toHaveAttribute('data-lock-fields', 'false');
+  });
+
+  describe('approval mode', () => {
+    const eventConfig: NodeConfig = {
+      name: 'W',
+      description: '',
+      dataAssets: ['glossary'],
+      triggerType: WorkflowType.EVENT_BASED,
+      eventType: ['Updated'],
+      dataAssetFilters: [],
+      approvalMode: ApprovalMode.Enforce,
+    };
+
+    const renderForm = (config: NodeConfig) =>
+      renderWithWorkflowMode(
+        <WorkflowConfigFormV1
+          {...baseHandlers}
+          allowFullStartNodeConfiguration
+          allowScheduledTrigger
+          allowStartNodeFilterScheduleAndBatchEdit
+          availableDataAssets={[]}
+          availableEventTypes={[]}
+          availableExcludeFields={[]}
+          config={config}
+        />
+      );
+
+    it('shows the saved approval mode for an event based trigger', () => {
+      renderForm(eventConfig);
+
+      expect(screen.getByTestId('approval-mode-section-mock')).toHaveAttribute(
+        'data-approval-mode',
+        ApprovalMode.Enforce
+      );
+    });
+
+    it('hides the approval mode for a periodic batch trigger', () => {
+      renderForm({ ...eventConfig, triggerType: WorkflowType.PERIODIC_BATCH });
+
+      expect(
+        screen.queryByTestId('approval-mode-section-mock')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('auto-assign owners', () => {
+    const incidentConfig: NodeConfig = {
+      name: 'W',
+      description: '',
+      dataAssets: ['testCase'],
+      triggerType: WorkflowType.EVENT_BASED,
+      eventType: ['Updated'],
+      dataAssetFilters: [],
+    };
+
+    const renderForm = (
+      config: NodeConfig,
+      updateConfig: jest.Mock = jest.fn(),
+      showAutoAssignOwners = true
+    ) =>
+      renderWithWorkflowMode(
+        <WorkflowConfigFormV1
+          {...baseHandlers}
+          allowFullStartNodeConfiguration
+          allowScheduledTrigger
+          allowStartNodeFilterScheduleAndBatchEdit
+          availableDataAssets={[]}
+          availableEventTypes={[]}
+          availableExcludeFields={[]}
+          config={config}
+          showAutoAssignOwners={showAutoAssignOwners}
+          updateConfig={updateConfig}
+        />
+      );
+
+    const getAutoAssignToggle = () =>
+      screen.getByRole('switch', { name: /^label\.auto-assign-owners/ });
+
+    it('is on when the workflow has no saved flag', () => {
+      renderForm(incidentConfig);
+
+      expect(getAutoAssignToggle()).toBeChecked();
+    });
+
+    it('stays off when the saved flag is false', () => {
+      renderForm({ ...incidentConfig, autoAssignOwners: false });
+
+      expect(getAutoAssignToggle()).not.toBeChecked();
+    });
+
+    it('writes the toggled value back to the config', () => {
+      const updateConfig = jest.fn();
+      renderForm({ ...incidentConfig, autoAssignOwners: true }, updateConfig);
+
+      fireEvent.click(getAutoAssignToggle());
+
+      expect(updateConfig).toHaveBeenCalledWith('autoAssignOwners', false);
+    });
+
+    it('is not shown for workflows other than the incident workflow', () => {
+      renderForm(incidentConfig, jest.fn(), false);
+
+      expect(
+        screen.queryByRole('switch', { name: /^label\.auto-assign-owners/ })
+      ).not.toBeInTheDocument();
+    });
   });
 });

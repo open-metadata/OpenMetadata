@@ -35,7 +35,7 @@
       "additionalProperties": false
     },
     "incidentTrendDirection": {
-      "description": "Direction of the group's incident-creation trend, comparing the second half of the `trend` buckets against the first half.",
+      "description": "Change in the group's open-incident count from the first to the last sample of the trend window.",
       "javaType": "org.openmetadata.schema.tests.type.IncidentTrendDirection",
       "type": "string",
       "enum": ["Rising", "Falling", "Steady"],
@@ -113,15 +113,25 @@
       "$ref": "../type/basic.json#/definitions/timestamp"
     },
     "trend": {
-      "description": "Number of incidents opened in each of 8 equal time buckets spanning `firstSeen` to `lastSeen`.",
+      "description": "Open-incident counts at 9 equally spaced instants from trendStart to trendEnd (the last 7 days). Includes incidents resolved since the start and incidents already open at the start. Uses current group membership, domain, test, assignee and severity filters; status and incident-date filters select rows but do not narrow this history. Retained history of non-deleted test cases only.",
       "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
       "items": {
         "type": "integer"
       }
     },
     "trendDirection": {
-      "description": "Direction of the incident-creation trend for the group.",
+      "description": "Change from the first to the last open-incident count: Rising, Falling or Steady.",
       "$ref": "#/definitions/incidentTrendDirection"
+    },
+    "trendStart": {
+      "description": "Beginning of the open-incident history window, in milliseconds since epoch.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "trendEnd": {
+      "description": "End of the open-incident history window, in milliseconds since epoch.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
     },
     "tableCount": {
       "description": "Number of distinct tables the group's open incidents were raised on.",

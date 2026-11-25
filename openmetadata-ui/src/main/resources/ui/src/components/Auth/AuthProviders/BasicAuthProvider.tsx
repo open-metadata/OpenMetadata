@@ -83,9 +83,16 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
           // reset web analytic session
           resetWebAnalyticSession();
         } catch (error) {
-          const err = error as AxiosError<{ code: number; message: string }>;
+          // The login servlet reports failures as `error`, the REST API as
+          // `message`. Showing either keeps a lockout from reading as a wrong
+          // password.
+          const err = error as AxiosError<{ message?: string; error?: string }>;
 
-          showErrorToast(err.response?.data.message ?? LOGIN_FAILED_ERROR);
+          showErrorToast(
+            err.response?.data?.message ??
+              err.response?.data?.error ??
+              LOGIN_FAILED_ERROR
+          );
           handleFailedLogin();
         }
       } catch (err) {

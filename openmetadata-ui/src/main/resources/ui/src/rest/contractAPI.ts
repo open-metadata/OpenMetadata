@@ -13,6 +13,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { ODCSExportVersion } from '../constants/DataContract.constants';
 import { EntityType } from '../enums/entity.enum';
 import { CreateDataContract } from '../generated/api/data/createDataContract';
 import {
@@ -26,6 +27,7 @@ import {
   ContractAllResult,
   ContractResultFilter,
 } from '../interface/data-contract/contract.interface';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 
 const BASE_URL = '/dataContracts';
@@ -70,7 +72,7 @@ export const searchContracts = async (
 
 export const getContract = async (fqn: string) => {
   const response = await APIClient.get<CreateDataContract>(
-    `/dataContracts/name/${fqn}`
+    `/dataContracts/name/${getEncodedFqn(fqn)}`
   );
 
   return response.data;
@@ -203,7 +205,7 @@ export interface ODCSDataContract {
   quality?: ODCSQualityRule[];
   support?: ODCSSupportChannel[];
   price?: ODCSPricing;
-  team?: ODCSTeamMember[];
+  team?: ODCSTeam;
   roles?: ODCSRole[];
   slaProperties?: ODCSSlaProperty[];
   servers?: ODCSServer[];
@@ -290,18 +292,22 @@ export interface ODCSTeamMember {
   dateOut?: string;
 }
 
+export interface ODCSTeam {
+  members?: ODCSTeamMember[];
+}
+
 export interface ODCSRole {
   role: string;
   description?: string;
   access?: string;
-  firstLevelApprovers?: string[];
-  secondLevelApprovers?: string[];
+  firstLevelApprovers?: string;
+  secondLevelApprovers?: string;
 }
 
 export interface ODCSSlaProperty {
   property: string;
-  value: string;
-  valueExt?: string;
+  value?: unknown;
+  valueExt?: unknown;
   unit?: string;
   element?: string;
   driver?: string;
@@ -320,7 +326,7 @@ export interface ODCSServer {
 
 export interface ODCSCustomProperty {
   property?: string;
-  value?: string;
+  value?: unknown;
 }
 
 /**
@@ -339,16 +345,17 @@ export const exportContractToODCS = async (
 };
 
 /**
- * Export a data contract to ODCS v3.1.0 YAML format
+ * Export YAML for the selected ODCS version, or the server default when omitted.
  */
 export const exportContractToODCSYaml = async (
   contractId: string,
-  fields?: string
+  fields?: string,
+  odcsVersion?: ODCSExportVersion
 ): Promise<string> => {
   const response = await APIClient.get<string>(
     `${BASE_URL}/${contractId}/odcs/yaml`,
     {
-      params: { fields },
+      params: { fields, odcsVersion },
       headers: { Accept: APPLICATION_YAML_CONTENT_TYPE },
       responseType: 'text',
     }

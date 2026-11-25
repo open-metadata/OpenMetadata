@@ -30,7 +30,7 @@ public final class QueryShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new Query()
         .withId(ctx.id())
         .withName("query")
@@ -46,7 +46,7 @@ public final class QueryShapeProfile implements EntityShapeProfile {
         .build();
   }
 
-  private EntityInterface queryText(final EntityInterface entity, final Rung rung) {
+  private EntityInterface<?> queryText(final EntityInterface<?> entity, final Rung rung) {
     final Query query = (Query) entity;
     query.setQuery("SELECT " + "a".repeat(rung.magnitude()));
     return query;

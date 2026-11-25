@@ -93,7 +93,10 @@ final class PersonaContextMarkdown {
     appendManifest(body, manifest);
 
     boolean truncated =
-        knowledgeOverflowed || mandatoryKnowledgeChars > contentBudget || !manifest.isEmpty();
+        knowledgeOverflowed
+            || mandatoryKnowledgeChars > contentBudget
+            || !manifest.isEmpty()
+            || rules.stream().anyMatch(rule -> rule.matched() == null);
     context.withRules(ruleResults).withManifest(manifest).withTruncated(truncated);
 
     String definitionHash = PersonaContextHash.definitionHash(definition);
@@ -173,7 +176,7 @@ final class PersonaContextMarkdown {
     if (!nullOrEmpty(item.getFullyQualifiedName())) {
       markdown.append('`').append(item.getFullyQualifiedName()).append("`\n");
     }
-    EntityInterface entity = selected.knowledgeEntity();
+    EntityInterface<?> entity = selected.knowledgeEntity();
     if (entity == null) {
       String content = PromptText.forPrompt(item.getContent());
       if (!nullOrEmpty(content)) {
@@ -187,7 +190,7 @@ final class PersonaContextMarkdown {
 
   private static void appendKnowledgeSections(
       StringBuilder markdown,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       Set<ContextSection> sections,
       boolean fullyRendered) {
     if (entity instanceof Page page) {
@@ -590,8 +593,12 @@ final class PersonaContextMarkdown {
 
   private static String frontmatter(
       PersonaContext context, int characterBudget, int tokensEstimate) {
-    int matched =
-        listOrEmpty(context.getRules()).stream().mapToInt(rule -> value(rule.getMatched())).sum();
+    Long matched =
+        listOrEmpty(context.getRules()).stream().anyMatch(rule -> rule.getMatched() == null)
+            ? null
+            : listOrEmpty(context.getRules()).stream()
+                .mapToLong(rule -> value(rule.getMatched()))
+                .sum();
     int rendered =
         listOrEmpty(context.getRules()).stream()
             .mapToInt(rule -> value(rule.getRenderedFull()) + value(rule.getRenderedCompact()))
@@ -646,8 +653,9 @@ final class PersonaContextMarkdown {
         + " ("
         + rule.rule().getEntityType()
         + ") — "
-        + rule.matched()
-        + " matched, "
+        + (rule.matched() == null
+            ? "selection limited; total matches unavailable, "
+            : rule.matched() + " matched, ")
         + renderedCount
         + " rendered\n";
   }

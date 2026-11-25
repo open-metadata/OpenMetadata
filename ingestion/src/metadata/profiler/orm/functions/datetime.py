@@ -93,6 +93,14 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     return f"DATE('now', 'localtime', '-{interval} {interval_unit}')"
 
 
+@compiles(DateAddFn, Dialects.Impala)
+@compiles(DateAddFn, Dialects.Impala4)
+def _(elements, compiler, **kwargs):
+    """Impala date function. Bare CURRENT_TIMESTAMP is not a function there (#35590)."""
+    interval, interval_unit = [compiler.process(element, **kwargs) for element in elements.clauses]
+    return f"CAST(NOW() - INTERVAL {interval} {interval_unit} AS DATE)"
+
+
 # ------------------
 # Datetime Functions
 # ------------------
@@ -107,6 +115,7 @@ def _(elements, compiler, **kwargs):
 
 
 @compiles(DatetimeAddFn, Dialects.Doris)
+@compiles(DatetimeAddFn, Dialects.StarRocks)
 def _(elements, compiler, **kwargs):
     """Doris date and datetime function"""
     return doris_function(elements, compiler, **kwargs)
@@ -160,6 +169,13 @@ def _(elements, compiler, **kwargs):
     return sqlite_function(elements, compiler, **kwargs)
 
 
+@compiles(DatetimeAddFn, Dialects.Impala)
+@compiles(DatetimeAddFn, Dialects.Impala4)
+def _(elements, compiler, **kwargs):
+    """Impala datetime function"""
+    return impala_function(elements, compiler, **kwargs)
+
+
 # -------------------
 # Timestamp Functions
 # -------------------
@@ -192,6 +208,7 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
 
 
 @compiles(TimestampAddFn, Dialects.Doris)
+@compiles(TimestampAddFn, Dialects.StarRocks)
 def _(elements, compiler, **kwargs):
     """Doris timestamp function"""
     return doris_function(elements, compiler, **kwargs)
@@ -234,6 +251,13 @@ def _(elements, compiler, **kwargs):
 def _(elements, compiler, **kwargs):
     """SQLite timestamp function"""
     return sqlite_function(elements, compiler, **kwargs)
+
+
+@compiles(TimestampAddFn, Dialects.Impala)
+@compiles(TimestampAddFn, Dialects.Impala4)
+def _(elements, compiler, **kwargs):
+    """Impala timestamp function"""
+    return impala_function(elements, compiler, **kwargs)
 
 
 # -----------------------------------
@@ -283,6 +307,16 @@ def clickhouse_function(elements, compiler, **kwargs):
     """ClickHouse timestamp and datetime function"""
     interval, interval_unit = [compiler.process(element, **kwargs) for element in elements.clauses]
     return f"(NOW() - interval {interval} {interval_unit})"
+
+
+def impala_function(elements, compiler, **kwargs):
+    """Impala timestamp and datetime function.
+
+    Impala resolves bare CURRENT_TIMESTAMP as a column reference. Use NOW() and
+    unquoted INTERVAL literals instead (#35590).
+    """
+    interval, interval_unit = [compiler.process(element, **kwargs) for element in elements.clauses]
+    return f"(NOW() - INTERVAL {interval} {interval_unit})"
 
 
 def db2_function(elements, compiler, **kwargs):

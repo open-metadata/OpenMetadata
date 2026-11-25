@@ -19,6 +19,8 @@ import {
 } from '../../../../../rest/tableAPI';
 import TableProfilerChart from './TableProfilerChart';
 
+import { Table, TableType } from '../../../../../generated/entity/data/table';
+
 const MOCK_START_TS = 1640995200000;
 const MOCK_END_TS = 1641081600000;
 
@@ -88,7 +90,6 @@ jest.mock('../../../../../rest/tableAPI', () => ({
 }));
 
 jest.mock('../../../../../utils/RouterUtils', () => ({
-  getAddCustomMetricPath: jest.fn(),
   getAddDataQualityTableTestPath: jest.fn(),
 }));
 
@@ -111,6 +112,10 @@ jest.mock('../../../../../utils/DocumentationLinksClassBase', () => {
     })),
   };
 });
+// LocalUtil and LocalUtilClassBase import each other; mocking the latter keeps
+// requireActual below from reading LocalUtil's exports mid-initialization.
+jest.mock('../../../../../utils/i18next/LocalUtilClassBase');
+
 jest.mock('../../../../../utils/i18next/LocalUtil', () => ({
   ...jest.requireActual('../../../../../utils/i18next/LocalUtil'),
   Transi18next: jest
@@ -150,6 +155,38 @@ jest.mock('../../ProfilerStateWrapper/ProfilerStateWrapper.component', () => ({
 }));
 
 describe('TableProfilerChart component test', () => {
+  it('keeps row profiles and recorded scope without unsupported system metrics', async () => {
+    (getSystemProfileList as jest.Mock).mockClear();
+    (getTableProfilesList as jest.Mock).mockResolvedValueOnce({
+      data: [
+        {
+          timestamp: MOCK_START_TS,
+          rowCount: 2,
+          executionSource: {
+            databaseName: 'demo_project',
+            schemaName: 'demo_dataset',
+            tableName: 'events_20260101',
+          },
+        },
+      ],
+    });
+    await act(async () => {
+      render(
+        <TableProfilerChart
+          tableDetails={{ tableType: TableType.Sharded } as Table}
+        />
+      );
+    });
+
+    expect(
+      screen.queryByText('message.sharding-system-metrics-unsupported')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('row-metrics')).toBeInTheDocument();
+    expect(screen.queryByTestId('operation-metrics')).not.toBeInTheDocument();
+    expect(screen.getByText(/events_20260101/)).toBeInTheDocument();
+    expect(getSystemProfileList).not.toHaveBeenCalled();
+  });
+
   it('Component should render', async () => {
     const mockGetSystemProfileList = getSystemProfileList as jest.Mock;
     const mockGetTableProfilesList = getTableProfilesList as jest.Mock;
@@ -214,3 +251,28 @@ describe('TableProfilerChart component test', () => {
     });
   });
 });
+
+it.each([TableType.Regular, TableType.Sharded])(
+  'shows missing profile provenance only for sharded tables (%s)',
+  async (tableType) => {
+    jest.mocked(getTableProfilesList).mockResolvedValueOnce({
+      data: [{ timestamp: MOCK_START_TS, rowCount: 2 }],
+      paging: { total: 1 },
+    });
+    await act(async () => {
+      render(<TableProfilerChart tableDetails={{ tableType } as Table} />);
+    });
+
+    expect(screen.getByTestId('row-metrics')).toBeInTheDocument();
+
+    if (tableType === TableType.Sharded) {
+      expect(
+        screen.getByText(/message.execution-source-unavailable/)
+      ).toBeInTheDocument();
+    } else {
+      expect(
+        screen.queryByText(/message.execution-source-unavailable/)
+      ).not.toBeInTheDocument();
+    }
+  }
+);

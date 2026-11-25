@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { migratedTo } from '../../constant/migration';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  expectNoErrorToast,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -65,68 +71,55 @@ test.describe(
     // use the admin user to login
     test.use({ storageState: 'playwright/.auth/admin.json' });
 
-    test('searching for a metric with a long multi-word name should not cause clause explosion', async ({
-      page,
-    }) => {
-      test.slow();
+    test(
+      'searching for a metric with a long multi-word name should not cause clause explosion',
+      migratedTo.javaIT(
+        'MetricResourceIT#test_searchMetricWithLongName_doesNotCauseClauseExplosion'
+      ),
+      async ({ page }) => {
+        test.slow();
 
-      await redirectToHomePage(page);
+        await redirectToHomePage(page);
 
-      await sidebarClick(page, SidebarItem.EXPLORE);
+        await sidebarClick(page, SidebarItem.EXPLORE);
 
-      await test.step('Select Metric search index and search', async () => {
-        await page.getByTestId('global-search-selector').click();
+        await test.step('Select Metric search index and search', async () => {
+          await page.getByTestId('global-search-selector').click();
 
-        // Wait for dropdown to be visible
-        await page.getByTestId('global-search-select-dropdown').waitFor({
-          state: 'visible',
+          await page.getByTestId('global-search-select-option-Metric').click();
+
+          const searchQuery = `AcceleratedConnection WBA Ethernet ${metricSuffix}`;
+
+          const searchResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/search/query') &&
+              response.url().includes('metric')
+          );
+
+          await page
+            .getByTestId('navbar-search-container')
+            .getByTestId('searchBox')
+            .fill(searchQuery);
+
+          await page.keyboard.press('Enter');
+
+          const response = await searchResponse;
+
+          expect(response.status()).toBe(200);
         });
 
-        // Scroll within the dropdown to find Metric option
-        const dropdownMenu = page.locator(
-          '.global-search-select-menu .rc-virtual-list-holder'
-        );
-        await dropdownMenu.evaluate((el) => {
-          el.scrollTop = el.scrollHeight;
+        await test.step('Verify no error toast and results are shown', async () => {
+          await waitForAllLoadersToDisappear(
+            page.getByTestId('search-container')
+          );
+
+          await page.getByTestId('search-results').waitFor({
+            state: 'visible',
+          });
+
+          await expectNoErrorToast(page);
         });
-
-        const metricOption = page.getByTestId(
-          'global-search-select-option-Metric'
-        );
-        await metricOption.waitFor({ state: 'visible' });
-        await metricOption.click();
-
-        const searchQuery = `AcceleratedConnection WBA Ethernet ${metricSuffix}`;
-
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.url().includes('metric')
-        );
-
-        await page
-          .getByTestId('navbar-search-container')
-          .getByTestId('searchBox')
-          .fill(searchQuery);
-
-        await page.keyboard.press('Enter');
-
-        const response = await searchResponse;
-
-        expect(response.status()).toBe(200);
-      });
-
-      await test.step('Verify no error toast and results are shown', async () => {
-        await waitForAllLoadersToDisappear(
-          page.getByTestId('search-container')
-        );
-
-        await page.getByTestId('search-results').waitFor({
-          state: 'visible',
-        });
-
-        await expect(page.getByTestId('alert-bar')).not.toBeVisible();
-      });
-    });
+      }
+    );
   }
 );

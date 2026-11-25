@@ -25,6 +25,11 @@ where comments is not null and owner not in ('SYSTEM', 'SYS')
 """
 )
 
+# In a pluggable database, a view the dictionary keeps as a link to the root container
+# (every Oracle-maintained view of SYSTEM, XDB, DVSYS, ...) has a NULL TEXT, while TEXT_VC
+# holds the first 4000 bytes. DBMS_METADATA.GET_DDL refuses Oracle-maintained objects with
+# ORA-31603, and one refused row aborts the whole bulk fetch. So TEXT_VC is read when it
+# is complete, and GET_DDL is only called for objects of owners Oracle does not maintain.
 ORACLE_VIEW_DEFINITIONS = textwrap.dedent(
     """
 SELECT
@@ -32,26 +37,29 @@ SELECT
     LOWER(v.owner) AS "schema",
     text AS "view_def",
     CASE
+        WHEN text IS NULL AND text_length <= 4000 THEN text_vc
+    END AS "view_text_vc",
+    CASE
         WHEN text IS NOT NULL THEN NULL
+        WHEN text_length <= 4000 THEN NULL
+        WHEN v.owner IN (SELECT username FROM {prefix}_USERS WHERE oracle_maintained = 'Y') THEN NULL
         ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
     END AS "view_ddl"
 FROM {prefix}_VIEWS v
-JOIN {prefix}_USERS u
-    ON v.owner = u.username
-WHERE u.oracle_maintained = 'N'
+WHERE v.owner = :owner
 UNION ALL
 SELECT
     LOWER(m.mview_name) AS "view_name",
     LOWER(m.owner) AS "schema",
     query AS "view_def",
+    CAST(NULL AS VARCHAR2(4000)) AS "view_text_vc",
     CASE
         WHEN query IS NOT NULL THEN NULL
+        WHEN m.owner IN (SELECT username FROM {prefix}_USERS WHERE oracle_maintained = 'Y') THEN NULL
         ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
     END AS "view_ddl"
 FROM {prefix}_MVIEWS m
-JOIN {prefix}_USERS u
-    ON m.owner = u.username
-WHERE u.oracle_maintained = 'N'
+WHERE m.owner = :owner
 """
 )
 
@@ -74,13 +82,73 @@ SELECT
     v.owner AS "schema",
     text AS "view_def",
     CASE
+        WHEN text IS NULL AND text_length <= 4000 THEN text_vc
+    END AS "view_text_vc",
+    CASE
+        WHEN text IS NOT NULL THEN NULL
+        WHEN text_length <= 4000 THEN NULL
+        WHEN v.owner IN (SELECT username FROM {prefix}_USERS WHERE oracle_maintained = 'Y') THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
+    END AS "view_ddl"
+FROM {prefix}_VIEWS v
+WHERE v.owner = :owner
+UNION ALL
+SELECT
+    m.mview_name AS "view_name",
+    m.owner AS "schema",
+    query AS "view_def",
+    CAST(NULL AS VARCHAR2(4000)) AS "view_text_vc",
+    CASE
+        WHEN query IS NOT NULL THEN NULL
+        WHEN m.owner IN (SELECT username FROM {prefix}_USERS WHERE oracle_maintained = 'Y') THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
+    END AS "view_ddl"
+FROM {prefix}_MVIEWS m
+WHERE m.owner = :owner
+"""
+)
+
+# TEXT_VC and ORACLE_MAINTAINED were added in Oracle 12.1, and an older server rejects the
+# two queries above with ORA-00904. Before 12.1 there are no pluggable databases and no
+# linked views, so these keep reading TEXT and calling GET_DDL for every other view.
+ORACLE_VIEW_DEFINITIONS_PRE_12C = textwrap.dedent(
+    """
+SELECT
+    LOWER(v.view_name) AS "view_name",
+    LOWER(v.owner) AS "schema",
+    text AS "view_def",
+    CASE
         WHEN text IS NOT NULL THEN NULL
         ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
     END AS "view_ddl"
 FROM {prefix}_VIEWS v
-JOIN {prefix}_USERS u
-    ON v.owner = u.username
-WHERE u.oracle_maintained = 'N'
+WHERE v.owner = :owner
+UNION ALL
+SELECT
+    LOWER(m.mview_name) AS "view_name",
+    LOWER(m.owner) AS "schema",
+    query AS "view_def",
+    CASE
+        WHEN query IS NOT NULL THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
+    END AS "view_ddl"
+FROM {prefix}_MVIEWS m
+WHERE m.owner = :owner
+"""
+)
+
+ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE_PRE_12C = textwrap.dedent(
+    """
+SELECT
+    v.view_name AS "view_name",
+    v.owner AS "schema",
+    text AS "view_def",
+    CASE
+        WHEN text IS NOT NULL THEN NULL
+        ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
+    END AS "view_ddl"
+FROM {prefix}_VIEWS v
+WHERE v.owner = :owner
 UNION ALL
 SELECT
     m.mview_name AS "view_name",
@@ -91,9 +159,7 @@ SELECT
         ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
     END AS "view_ddl"
 FROM {prefix}_MVIEWS m
-JOIN {prefix}_USERS u
-    ON m.owner = u.username
-WHERE u.oracle_maintained = 'N'
+WHERE m.owner = :owner
 """
 )
 
@@ -108,17 +174,14 @@ ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES = textwrap.dedent(
     """
 SELECT v.owner AS "owner", v.view_name AS "name", 'VIEW' AS "object_type"
 FROM {prefix}_VIEWS v
-JOIN {prefix}_USERS u
-    ON v.owner = u.username
-WHERE u.oracle_maintained = 'N'
+WHERE v.owner = :owner
 UNION ALL
 SELECT m.owner AS "owner", m.mview_name AS "name", 'MATERIALIZED_VIEW' AS "object_type"
 FROM {prefix}_MVIEWS m
-JOIN {prefix}_USERS u
-    ON m.owner = u.username
-WHERE u.oracle_maintained = 'N'
+WHERE m.owner = :owner
 """
 )
+
 
 # Per-view read of the LONG text. Fetching a single row is not an array fetch,
 # so it does not hit the ORA-01406 truncation, and it needs no privileges beyond
@@ -132,6 +195,21 @@ SELECT text FROM {prefix}_VIEWS WHERE owner = :owner AND view_name = :name
 ORACLE_GET_MVIEW_QUERY_BY_NAME = textwrap.dedent(
     """
 SELECT query FROM {prefix}_MVIEWS WHERE owner = :owner AND mview_name = :name
+"""
+)
+
+# 12.1+ only, the per-view counterparts of the bulk query's linked-view handling: the complete
+# TEXT_VC of a view whose TEXT is NULL, and whether Oracle maintains the owner, in which case
+# GET_DDL refuses its objects with ORA-31603.
+ORACLE_GET_VIEW_TEXT_VC_BY_NAME = textwrap.dedent(
+    """
+SELECT text_vc FROM {prefix}_VIEWS WHERE owner = :owner AND view_name = :name AND text_length <= 4000
+"""
+)
+
+ORACLE_GET_OWNER_ORACLE_MAINTAINED = textwrap.dedent(
+    """
+SELECT oracle_maintained FROM {prefix}_USERS WHERE username = :owner
 """
 )
 
@@ -159,6 +237,18 @@ SELECT table_name FROM {prefix}_TABLES WHERE
 OWNER = :owner
 AND IOT_NAME IS NULL
 AND DURATION IS NULL
+AND TABLE_NAME NOT IN
+(SELECT mview_name FROM {prefix}_MVIEWS WHERE owner = :owner)
+"""
+)
+
+ORACLE_GET_TEMPORARY_TABLE_NAMES = textwrap.dedent(
+    """
+SELECT table_name FROM {prefix}_TABLES WHERE
+{tablespace}
+OWNER = :owner
+AND IOT_NAME IS NULL
+AND DURATION IS NOT NULL
 AND TABLE_NAME NOT IN
 (SELECT mview_name FROM {prefix}_MVIEWS WHERE owner = :owner)
 """

@@ -11,22 +11,22 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { Form } from 'antd';
-import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { ReactNode } from 'react';
+import { FormProvider, useForm, useWatch } from 'react-hook-form';
+import { CURATED_ASSETS_LIST } from '../../../../../constants/AdvancedSearch.constants';
+import { EntityType } from '../../../../../enums/entity.enum';
+import { CuratedAssetsConfig } from '../CuratedAssetsModal/CuratedAssetsModal.interface';
 import { SelectAssetTypeField } from './SelectAssetTypeField.component';
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn(),
-}));
+const mockOnChangeSearchIndex = jest.fn();
 
 jest.mock(
   '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
   () => ({
-    useAdvanceSearch: jest.fn().mockReturnValue({
+    useAdvanceSearch: jest.fn().mockImplementation(() => ({
       config: {},
-      onChangeSearchIndex: jest.fn(),
-    }),
+      onChangeSearchIndex: mockOnChangeSearchIndex,
+    })),
   })
 );
 
@@ -34,248 +34,158 @@ jest.mock('../../../../../utils/SearchClassBase', () => ({
   __esModule: true,
   default: {
     getEntityTypeSearchIndexMapping: jest.fn().mockReturnValue({
-      table: 'table',
-      dashboard: 'dashboard',
+      all: 'all',
+      table: 'table_search_index',
+      dashboard: 'dashboard_search_index',
     }),
+    getEntityIconWithBg: jest.fn().mockReturnValue(null),
   },
 }));
 
-jest.mock('../../../../../utils/Alerts/AlertsUtil', () => ({
-  getSourceOptionsFromResourceList: jest.fn().mockReturnValue([
-    { label: 'Table', value: 'table' },
-    { label: 'Dashboard', value: 'dashboard' },
-  ]),
-}));
+const mockFetchEntityCount = jest.fn().mockResolvedValue(undefined);
 
-jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
-  AlertMessage: jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="alert-message">Alert Message</div>
-    )),
-  getSimpleExploreURLForAssetTypes: jest.fn().mockReturnValue('test-url'),
-}));
+const ResourcesValue = () => {
+  const resources = useWatch<CuratedAssetsConfig, 'resources'>({
+    name: 'resources',
+  });
 
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  const MockTreeSelect = ({
-    treeData = [],
-    onChange,
-  }: {
-    treeData?: { value: string; title?: React.ReactNode }[];
-    onChange: (value: string[]) => void;
-  }) => {
-    return (
-      <div data-testid="mock-tree-select">
-        {treeData.map((opt) => (
-          <button
-            data-testid={`${opt.value}-option`}
-            key={opt.value}
-            onClick={() => onChange([opt.value])}>
-            {typeof opt.title === 'string' ? opt.title : opt.value}
-          </button>
-        ))}
-      </div>
-    );
-  };
-
-  return {
-    ...actual,
-    TreeSelect: MockTreeSelect,
-    Skeleton: jest
-      .fn()
-      .mockImplementation(() => <div data-testid="skeleton">Skeleton</div>),
-  };
-});
-
-const mockFetchEntityCount = jest.fn();
-const mockSelectedAssetsInfo = {
-  resourceCount: 0,
-  resourcesWithNonZeroCount: [],
+  return <span data-testid="resources-value">{JSON.stringify(resources)}</span>;
 };
 
-const defaultProps = {
-  fetchEntityCount: mockFetchEntityCount,
-  selectedAssetsInfo: mockSelectedAssetsInfo,
-};
-
-const TestWrapper = ({ children }: { children: React.ReactNode }) => {
-  const [form] = Form.useForm();
+const Wrapper = ({
+  children,
+  resources,
+}: {
+  children: ReactNode;
+  resources: string[];
+}) => {
+  const form = useForm<CuratedAssetsConfig>({ defaultValues: { resources } });
 
   return (
-    <Form
-      form={form}
-      initialValues={{
-        resources: ['table'],
-      }}>
+    <FormProvider {...form}>
       {children}
-    </Form>
+      <ResourcesValue />
+    </FormProvider>
   );
 };
 
+const renderField = (resources: string[] = [EntityType.TABLE]) =>
+  render(
+    <Wrapper resources={resources}>
+      <SelectAssetTypeField
+        fetchEntityCount={mockFetchEntityCount}
+        selectedAssetsInfo={{ resourceCount: 0, resourcesWithNonZeroCount: [] }}
+      />
+    </Wrapper>
+  );
+
+const openTree = async () => {
+  fireEvent.click(screen.getByTestId('asset-type-select'));
+  await screen.findByTestId(`tree-node-${EntityType.ALL}`);
+};
+
+const clickNode = async (id: string) => {
+  await act(async () => {
+    fireEvent.click(screen.getByTestId(`tree-node-${id}`));
+  });
+};
+
+const getResources = () =>
+  JSON.parse(screen.getByTestId('resources-value').textContent ?? '[]');
+
 describe('SelectAssetTypeField', () => {
-  beforeEach(() => {
-    (useTranslation as jest.Mock).mockReturnValue({
-      t: (key: string) => key,
-    });
+  beforeAll(() => {
+    global.ResizeObserver = class {
+      observe() {
+        return;
+      }
+
+      unobserve() {
+        return;
+      }
+
+      disconnect() {
+        return;
+      }
+    };
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders component with correct label and placeholder', () => {
-    render(
-      <TestWrapper>
-        <SelectAssetTypeField {...defaultProps} />
-      </TestWrapper>
-    );
+  it('renders the asset type label', () => {
+    renderField();
 
-    expect(screen.getByText('label.select-asset-type')).toBeInTheDocument();
+    expect(screen.getAllByText('label.select-asset-type')).not.toHaveLength(0);
   });
 
-  it('handles asset type selection', async () => {
-    render(
-      <TestWrapper>
-        <SelectAssetTypeField {...defaultProps} />
-      </TestWrapper>
-    );
-
-    const dashboardOption = await screen.findByTestId('dashboard-option');
-
-    await act(async () => {
-      fireEvent.click(dashboardOption);
-    });
-
-    expect(dashboardOption).toBeInTheDocument();
-  });
-
-  // The asset-type count banner and its loading skeleton were removed: the
-  // modal showed two separate counts and neither is rendered any more.
-  it.each([0, 5])(
-    'should not render a count banner or skeleton for resourceCount %s',
-    (resourceCount) => {
-      render(
-        <TestWrapper>
-          <SelectAssetTypeField
-            {...defaultProps}
-            selectedAssetsInfo={{ ...mockSelectedAssetsInfo, resourceCount }}
-          />
-        </TestWrapper>
-      );
-
-      expect(screen.queryByTestId('alert-message')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
-    }
-  );
-
-  it('does not display alert message when no resource count', () => {
-    render(
-      <TestWrapper>
-        <SelectAssetTypeField {...defaultProps} />
-      </TestWrapper>
-    );
-
-    expect(screen.queryByTestId('alert-message')).not.toBeInTheDocument();
-  });
-
-  it('calls fetchEntityCount when component mounts with resources', () => {
-    render(
-      <TestWrapper>
-        <SelectAssetTypeField {...defaultProps} />
-      </TestWrapper>
-    );
+  it('counts the selected resources and points the search index at them on mount', () => {
+    renderField();
 
     expect(mockFetchEntityCount).toHaveBeenCalledWith({
       countKey: 'resourceCount',
-      selectedResource: ['table'],
+      selectedResource: [EntityType.TABLE],
       shouldUpdateResourceList: false,
     });
+    expect(mockOnChangeSearchIndex).toHaveBeenCalledWith([
+      'table_search_index',
+    ]);
   });
 
-  it('handles empty resources array', () => {
-    const TestWrapperWithEmptyResources = ({
-      children,
-    }: {
-      children: React.ReactNode;
-    }) => {
-      const [form] = Form.useForm();
+  it('does not count when nothing is selected', () => {
+    renderField([]);
 
-      return (
-        <Form
-          form={form}
-          initialValues={{
-            resources: [],
-          }}>
-          {children}
-        </Form>
-      );
-    };
-
-    render(
-      <TestWrapperWithEmptyResources>
-        <SelectAssetTypeField {...defaultProps} />
-      </TestWrapperWithEmptyResources>
-    );
-
-    expect(screen.getByTestId('asset-type-select')).toBeInTheDocument();
+    expect(mockFetchEntityCount).not.toHaveBeenCalled();
   });
 
-  it('renders select with correct options', () => {
-    render(
-      <TestWrapper>
-        <SelectAssetTypeField {...defaultProps} />
-      </TestWrapper>
-    );
+  it('adds a picked asset type to the form value', async () => {
+    renderField();
+    await openTree();
+    await clickNode(EntityType.DASHBOARD);
 
-    const select = screen.getByTestId('asset-type-select');
-
-    expect(select).toBeInTheDocument();
+    expect(getResources()).toEqual([EntityType.TABLE, EntityType.DASHBOARD]);
   });
 
-  it('handles resource change correctly', async () => {
-    const setFieldValue = jest.fn();
-    const TestWrapperWithMockForm = ({
-      children,
-    }: {
-      children: React.ReactNode;
-    }) => {
-      const [form] = Form.useForm();
-      form.setFieldValue = setFieldValue;
+  it('stores "all" when the All node is picked', async () => {
+    renderField([]);
+    await openTree();
+    await clickNode(EntityType.ALL);
 
-      return (
-        <Form
-          form={form}
-          initialValues={{
-            resources: ['table'],
-          }}>
-          {children}
-        </Form>
-      );
-    };
-
-    render(
-      <TestWrapperWithMockForm>
-        <SelectAssetTypeField {...defaultProps} />
-      </TestWrapperWithMockForm>
-    );
-
-    const select = screen.getByTestId('asset-type-select');
-    await act(async () => {
-      fireEvent.click(select);
-    });
-
-    expect(select).toBeInTheDocument();
+    expect(getResources()).toEqual([EntityType.ALL]);
   });
 
-  it('shows correct placeholder text', () => {
-    render(
-      <TestWrapper>
-        <SelectAssetTypeField {...defaultProps} />
-      </TestWrapper>
-    );
+  it('expands "all" to the remaining types when one child is unchecked', async () => {
+    renderField([EntityType.ALL]);
+    await openTree();
+    await clickNode(EntityType.TABLE);
 
-    expect(screen.getByText('label.select-asset-type')).toBeInTheDocument();
+    expect(getResources()).toEqual(
+      CURATED_ASSETS_LIST.filter(
+        (type) => type !== EntityType.ALL && type !== EntityType.TABLE
+      )
+    );
+  });
+
+  it('collapses to "all" once the last unchecked type is picked', async () => {
+    renderField(
+      CURATED_ASSETS_LIST.filter(
+        (type) => type !== EntityType.ALL && type !== EntityType.TABLE
+      )
+    );
+    await openTree();
+    await clickNode(EntityType.TABLE);
+
+    expect(getResources()).toEqual([EntityType.ALL]);
+  });
+
+  it('shows a single chip when every type is selected', async () => {
+    renderField([EntityType.ALL]);
+    await openTree();
+
+    expect(screen.getByTestId(`${EntityType.ALL}-selected`)).toBeVisible();
+    expect(
+      screen.queryByTestId(`${EntityType.TABLE}-selected`)
+    ).not.toBeInTheDocument();
   });
 });

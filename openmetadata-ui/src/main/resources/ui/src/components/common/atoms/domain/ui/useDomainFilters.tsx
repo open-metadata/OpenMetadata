@@ -21,21 +21,29 @@ import { useQuickFiltersWithComponent } from '../../filters/useQuickFiltersWithC
 
 interface UseDomainFiltersConfig {
   isSubDomain?: boolean;
+  baseFilter?: string;
   aggregations?: Aggregations;
   parsedFilters?: ExploreQuickFilterField[];
   onFilterChange: (filters: ExploreQuickFilterField[]) => void;
 }
 
 export const useDomainFilters = (config: UseDomainFiltersConfig) => {
-  const { isSubDomain = false, parsedFilters } = config;
+  const { isSubDomain = false, baseFilter, parsedFilters } = config;
 
   const defaultFilters = useMemo(
     () => domainClassBase.getListingFilters(isSubDomain),
     [isSubDomain]
   );
 
+  // Keyed on the string: listings rebuild an equal filter every render.
+  const defaultQueryFilter = useMemo(
+    () => (baseFilter ? JSON.parse(baseFilter) : undefined),
+    [baseFilter]
+  );
+
   const { quickFilters, selectedFilters } = useQuickFiltersWithComponent({
     defaultFilters,
+    defaultQueryFilter,
     aggregations: config.aggregations,
     parsedFilters,
     searchIndex: SearchIndex.DOMAIN,

@@ -32,7 +32,7 @@ import { TagLabel } from '../../../../generated/type/tagLabel';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
-import { omitDimensionFailurePolicy } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
+import { omitInapplicableDimensionParams } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import {
   getParamPrefillKind,
   normalizeParamsForPayload,
@@ -51,7 +51,10 @@ import {
   getTagsWithoutTier,
 } from '../../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../../utils/TableTags/TableTags.utils';
-import { normalizeSelectedTestProp } from '../../AddTestCaseList/AddTestCaseListForm.utils';
+import {
+  isSelectAllPayload,
+  normalizeSelectedTestProp,
+} from '../../AddTestCaseList/AddTestCaseListForm.utils';
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
 import {
   KEY_COLUMNS,
@@ -172,7 +175,7 @@ export const transformTestCaseFormData = (
     values,
     ctx.selectedDefinition
   );
-  normalizedValues.params = omitDimensionFailurePolicy(
+  normalizedValues.params = omitInapplicableDimensionParams(
     normalizedValues.params,
     isDimensionalTest
   );
@@ -212,6 +215,11 @@ export const buildTestSuitePipelinePayload = (
   ctx: PipelinePayloadContext
 ): CreateIngestionPipeline => {
   const selectedTestCases = normalizeSelectedTestProp(values.testCases);
+  // A picker "Select all N test cases" payload (`selectAll: true`) is
+  // semantically "run every test case" — the same as the top-level
+  // selectAllTestCases switch — so it must not collapse to just the newly
+  // created test case.
+  const isPickerSelectAll = isSelectAllPayload(values.testCases);
 
   const tableFqn = ctx.selectedTable ?? ctx.table?.fullyQualifiedName;
 
@@ -241,7 +249,7 @@ export const buildTestSuitePipelinePayload = (
         // falls through to the logical-suite path.
         entityFullyQualifiedName: tableFqn,
         testCases:
-          values.selectAllTestCases === false
+          values.selectAllTestCases === false && !isPickerSelectAll
             ? [ctx.createdTestCaseName, ...selectedTestCases]
             : undefined,
       },

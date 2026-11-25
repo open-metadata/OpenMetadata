@@ -14,16 +14,80 @@ package org.openmetadata.mcp.tools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 
+import jakarta.validation.constraints.DecimalMin;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.schema.entity.teams.Persona;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.PersonaContext;
+import org.openmetadata.schema.type.PersonaContextDefinition;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.aicontext.PersonaContextAccess;
 import org.openmetadata.service.aicontext.PersonaContextBuilder.MaterializedPersonaContext;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class GetPersonaContextToolTest {
+
+  @Test
+  void omittedPersonaNameUsesSharedContextForTheCaller() throws Exception {
+    Persona shared =
+        new Persona()
+            .withId(UUID.randomUUID())
+            .withName("company")
+            .withFullyQualifiedName("company")
+            .withContextDefinition(
+                new PersonaContextDefinition().withPrompt("Use company context"));
+    CatalogSecurityContext caller = mock(CatalogSecurityContext.class);
+    Authorizer authorizer = mock(Authorizer.class);
+    GetPersonaContextTool tool = new GetPersonaContextTool();
+    try (var entities = mockStatic(Entity.class);
+        var subjects = mockStatic(DefaultAuthorizer.class)) {
+      entities
+          .when(() -> Entity.getEntityRepository(Entity.USER))
+          .thenReturn(mock(UserRepository.class));
+      subjects
+          .when(() -> DefaultAuthorizer.getSubjectContext(caller))
+          .thenReturn(new SubjectContext(new User().withName("member"), null));
+
+      assertThrows(EntityNotFoundException.class, () -> tool.execute(authorizer, caller, Map.of()));
+      PersonaContextAccess.setMissingActivePersonaFallback(() -> shared);
+      Map<String, Object> result = tool.execute(authorizer, caller, Map.of("format", "json"));
+      assertEquals("json", result.get("format"));
+      assertEquals("Use company context", result.get("instructions"));
+      assertEquals(
+          shared.getId().toString(),
+          JsonUtils.readTree((String) result.get("content")).at("/persona/id").asText());
+
+      entities
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.PERSONA, "missing", "contextDefinition,users", Include.NON_DELETED))
+          .thenThrow(EntityNotFoundException.byMessage("Named persona is missing"));
+      assertThrows(
+          EntityNotFoundException.class,
+          () -> tool.execute(authorizer, caller, Map.of("personaName", "missing")));
+    } finally {
+      PersonaContextAccess.setMissingActivePersonaFallback(null);
+    }
+  }
 
   @Test
   void splitsLargeDocumentsDeterministicallyAtLineBoundaries() {
@@ -39,6 +103,29 @@ class GetPersonaContextToolTest {
                     McpResponseTrim.serializedLength(Map.of("content", part))
                         <= McpResponseTrim.MAX_RESPONSE_CHARS - 10_000));
     assertTrue(parts.getFirst().endsWith("\n"));
+  }
+
+  @Test
+  void splitsIntoFullSizedPartsAtTheLowestAllowedCap() throws NoSuchFieldException {
+    // Read from the schema, so lowering the minimum below what the part budget needs fails here.
+    int minimumCap =
+        Integer.parseInt(
+            MCPConfiguration.class
+                .getDeclaredField("maxResponseChars")
+                .getAnnotation(DecimalMin.class)
+                .value());
+    SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+    MCPConfiguration previous = SecurityConfigurationManager.getCurrentMcpConfig();
+    manager.setCurrentMcpConfig(new MCPConfiguration().withMaxResponseChars(minimumCap));
+    try {
+      String content = "a".repeat(10_000);
+
+      List<String> parts = GetPersonaContextTool.split(content);
+
+      assertEquals(List.of(content), parts);
+    } finally {
+      manager.setCurrentMcpConfig(previous);
+    }
   }
 
   @Test

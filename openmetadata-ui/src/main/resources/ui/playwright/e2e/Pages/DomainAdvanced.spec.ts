@@ -36,6 +36,7 @@ import {
   waitForDomainAssetsRemoveDryRun,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForDomainAssetCount } from '../../utils/search';
 import { sidebarClick } from '../../utils/sidebar';
 import { performUserLogin } from '../../utils/user';
 
@@ -615,12 +616,20 @@ test.describe('Bulk Domain Asset Operations', () => {
         await page
           .locator(`[data-testid="table-data-card_${fqn}"]`)
           .getByTestId('asset-checkbox')
-          .check();
+          .click();
       }
 
-      const removeRes = page.waitForResponse('/api/v1/domains/*/assets/remove');
+      // A dry-run PUT precedes the commit on the same URL; reloading after
+      // only the dry-run can abort the commit and leave every asset in place.
+      const removeRes = waitForDomainAssetsRemoveCommit(page);
       await page.getByTestId('delete-all-button').click();
       await removeRes;
+      // The badge reads the count once per load; reload only once it is 0.
+      await waitForDomainAssetCount(
+        page,
+        domain.responseData.fullyQualifiedName ?? domain.data.name,
+        0
+      );
 
       await page.reload({ waitUntil: 'domcontentloaded' });
       await checkAssetsCount(page, 0);
@@ -907,7 +916,7 @@ test.describe('Data Product Asset Management', () => {
       await page
         .locator(`[data-testid="table-data-card_${tableFqn}"]`)
         .getByTestId('asset-checkbox')
-        .check();
+        .click();
 
       const addRes = page.waitForResponse('/api/v1/dataProducts/*/assets/add');
       await page.getByTestId('save-btn').click();
@@ -1052,7 +1061,7 @@ test.describe('Domain asset dryRun — remove confirmation', () => {
     await page
       .locator(`[data-testid="table-data-card_${fqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
   };
 
   test('single-asset remove with linked data product shows preview and commits on Remove Anyway', async ({

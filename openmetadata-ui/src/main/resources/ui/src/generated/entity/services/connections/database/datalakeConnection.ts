@@ -25,6 +25,11 @@ export interface DatalakeConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Escape character for CSV and TSV files. Defaults to backslash. Set to an empty string for
+     * files that use doubled quotes and literal backslashes.
+     */
+    csvEscapeChar?: string;
+    /**
      * Regex to only include/exclude databases that matches the pattern.
      */
     databaseFilterPattern?: FilterPattern;
@@ -218,6 +223,11 @@ export interface GCPCredentialsConfiguration {
      * Google Cloud Platform ADC ( Application Default Credentials )
      */
     type?: string;
+    /**
+     * Google Cloud service domain, used to override the default `googleapis.com` domain for
+     * sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).
+     */
+    universeDomain?: string;
     /**
      * Path of the file containing the GCP credentials info
      */

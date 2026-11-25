@@ -28,6 +28,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import Language
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
@@ -54,8 +55,12 @@ from metadata.ingestion.source.database.mssql.lineage import MssqlLineageSource
 from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
 from metadata.ingestion.source.database.mssql.queries import (
+    MSSQL_GET_DATABASE_COMMENTS,
     MSSQL_GET_FOREIGN_KEY,
     MSSQL_GET_INDEXED_VIEWS,
+    MSSQL_GET_SCHEMA_COMMENTS,
+    MSSQL_GET_STORED_PROCEDURE_COMMENTS,
+    MSSQL_GET_STORED_PROCEDURES,
     MSSQL_SQL_STATEMENT,
     MSSQL_SQL_STATEMENT_CURRENT_DB,
     MSSQL_SQL_STATEMENT_FROM_QUERY_STORE,
@@ -227,12 +232,7 @@ class MssqlUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        test_connection,
-    ) -> None:
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_mssql_config)
         self.mssql = MssqlSource.create(
@@ -252,9 +252,6 @@ class MssqlUnitTest(TestCase):
     def test_yield_database(self):
         assert [either.right for either in self.mssql.yield_database(MOCK_DATABASE.name.root)] == EXPECTED_DATABASE
 
-        self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-
     @mssql_dialet.db_plus_owner
     def mock_function(self, connection, tablename, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
         # Mock function for testing
@@ -270,13 +267,14 @@ class MssqlUnitTest(TestCase):
         self.assertEqual(result, "[your.schema]")
 
     def test_yield_schema(self):
+        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
         assert EXPECTED_DATABASE_SCHEMA == [  # noqa: SIM300
             either.right for either in self.mssql.yield_database_schema(model_str(MOCK_DATABASE_SCHEMA.name))
         ]
 
-        self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
-
     def test_yield_table(self):
+        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
         assert [either.right for either in self.mssql.yield_table(("sample_table", "Regular"))] == EXPECTED_TABLE
 
     def test_get_stored_procedures(self):
@@ -394,6 +392,25 @@ class MssqlUnitTest(TestCase):
                 "schema_name": apostrophe_schema,
             },
         )
+
+    def test_get_stored_procedures_degrades_gracefully_on_query_failure(self):
+        """A permission/syntax failure listing stored procedures for one schema
+        is reported as a warning, not a hard failure that tanks the workflow's
+        success percentage - the rest of ingestion is unaffected."""
+        self.mssql.source_config.includeStoredProcedures = True
+        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        self.mssql.status = MagicMock()
+
+        mock_engine = MagicMock()
+        mock_engine.connect.side_effect = Exception("The SELECT permission was denied on sql_modules")
+        self.mssql.engine = mock_engine
+
+        results = list(self.mssql.get_stored_procedures())
+
+        self.assertEqual(results, [])
+        self.mssql.status.warning.assert_called_once()
+        self.mssql.status.failed.assert_not_called()
 
 
 class TestUpdateMssqlIschemaNames:
@@ -599,6 +616,22 @@ class TestUpdateMssqlIschemaNames:
         assert yielded == []
         self.mssql.status.failed.assert_called_once()
 
+    def test_failed_single_database_recorded_in_status(self):
+        """In single-database mode a connection failure is recorded in status and not
+        yielded, matching the ingest-all-databases branch instead of aborting the run."""
+        self.mssql.config.serviceConnection.root.config.ingestAllDatabases = False
+        self.mssql.config.serviceConnection.root.config.database = "only_db"
+        self.mssql.status = MagicMock()
+
+        with (
+            patch.object(MssqlSource, "_load_description_maps"),
+            patch.object(MssqlSource, "set_inspector", side_effect=Exception("cannot connect")),
+        ):
+            yielded = list(self.mssql.get_database_names())
+
+        assert yielded == []
+        self.mssql.status.failed.assert_called_once()
+
     def _record_which_database_each_load_reads(self):
         """
         Stand in for the connection: `set_inspector` moves it, the description
@@ -690,6 +723,119 @@ class TestUpdateMssqlIschemaNames:
         """That index is what makes a view indexed, and nothing else must match."""
         assert "i.type = 1" in MSSQL_GET_INDEXED_VIEWS
         assert "i.is_unique = 1" in MSSQL_GET_INDEXED_VIEWS
+
+
+class TestMssqlClrStoredProcedures:
+    """CLR (assembly) stored procedures -- ``sys.objects.type = 'PC'`` -- have
+    no row in ``sys.sql_modules`` (their definition lives in
+    ``sys.assembly_modules``), so an INNER JOIN to ``sys.sql_modules`` silently
+    drops them from the catalogue. The stored-procedure query must LEFT JOIN
+    ``sys.sql_modules`` so CLR procedures survive with ``definition = NULL`` and
+    ``ROUTINE_BODY = 'EXTERNAL'``, which maps to ``Language.External``.
+
+    Regression guard for the data loss introduced when the 4000-char
+    truncation fix (PR #16002) swapped ``ROUTINE_DEFINITION`` for an INNER JOIN
+    to ``sys.sql_modules``.
+    """
+
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
+    def setup_method(self, _method, test_connection):
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_mssql_config)
+        self.mssql = MssqlSource.create(
+            mock_mssql_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+    def _setup_stored_procedure_context(self):
+        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.mssql.stored_procedure_desc_map = {}
+        self.mssql.encrypted_procedures_cache = {}
+
+    def test_get_stored_procedures_query_keeps_clr_procedures(self):
+        """The stored-procedure query must LEFT JOIN sys.sql_modules so CLR
+        procedures (sys.objects.type='PC', absent from sys.sql_modules) survive
+        with definition=NULL instead of being dropped by an INNER JOIN."""
+        assert "LEFT JOIN sys.sql_modules" in MSSQL_GET_STORED_PROCEDURES
+        # Every JOIN to sys.sql_modules must be a LEFT JOIN. A bare INNER JOIN
+        # would silently drop CLR (type PC) procedures which have no
+        # sys.sql_modules row. "LEFT JOIN sys.sql_modules" also contains the
+        # substring "JOIN sys.sql_modules", so equality proves each join is a
+        # LEFT join rather than an INNER one.
+        all_joins = MSSQL_GET_STORED_PROCEDURES.count("JOIN sys.sql_modules")
+        left_joins = MSSQL_GET_STORED_PROCEDURES.count("LEFT JOIN sys.sql_modules")
+        assert all_joins == left_joins
+
+    def test_get_stored_procedures_yields_clr_row_as_external(self):
+        """A CLR procedure surfaces from INFORMATION_SCHEMA.ROUTINES with
+        ROUTINE_BODY='EXTERNAL' and, thanks to the LEFT JOIN, definition=NULL.
+        The producer must parse and yield that row -- it must not be silently
+        dropped before reaching Python."""
+        self._setup_stored_procedure_context()
+        row = MagicMock()
+        row._asdict.return_value = {
+            "name": "sp_clr_proc",
+            "definition": None,
+            "language": "EXTERNAL",
+            "owner": None,
+        }
+
+        self.mssql.source_config.includeStoredProcedures = True
+        self.mssql.source_config.storedProcedureFilterPattern = None
+
+        mock_engine = MagicMock()
+        self.mssql.engine = mock_engine
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = [row]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        results = list(self.mssql.get_stored_procedures())
+
+        assert len(results) == 1
+        assert results[0].name == "sp_clr_proc"
+        assert results[0].language == "EXTERNAL"
+        assert results[0].definition is None
+
+    def test_yield_stored_procedure_external_language_keeps_none_code(self):
+        """A CLR (EXTERNAL) stored procedure carries no T-SQL definition, so its
+        code is None and its language is Language.External -- the now-live
+        EXTERNAL arm of STORED_PROC_LANGUAGE_MAP. A CLR procedure is never
+        encrypted (OBJECTPROPERTY IsEncrypted is only true for T-SQL WITH
+        ENCRYPTION), so the encrypted branch must not substitute a placeholder
+        and code stays None."""
+        self._setup_stored_procedure_context()
+        cache_key = (MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root)
+        self.mssql.encrypted_procedures_cache[cache_key] = set()
+
+        sp = MssqlStoredProcedure(name="sp_clr_proc", language="EXTERNAL", definition=None)
+        results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
+
+        assert len(results) == 1
+        assert results[0].storedProcedureCode.language == Language.External
+        assert results[0].storedProcedureCode.code is None
+
+    def test_yield_stored_procedure_external_language_not_substituted_by_encrypted_cache(self):
+        """An EXTERNAL procedure whose name is not in the encrypted cache keeps
+        code=None. This guards the boundary between the encrypted placeholder
+        path (T-SQL WITH ENCRYPTION) and the CLR path: a CLR procedure must
+        never pick up the encrypted-procedure placeholder."""
+        self._setup_stored_procedure_context()
+        cache_key = (MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root)
+        # The encrypted cache holds a *different* procedure name.
+        self.mssql.encrypted_procedures_cache[cache_key] = {"sp_encrypted_sql"}
+
+        sp = MssqlStoredProcedure(name="sp_clr_proc", language="EXTERNAL", definition=None)
+        results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
+
+        assert len(results) == 1
+        assert results[0].storedProcedureCode.language == Language.External
+        assert results[0].storedProcedureCode.code is None
+        assert results[0].storedProcedureCode.code != (
+            "-- Unable to fetch code as this is an encrypted stored procedure"
+        )
 
 
 class MssqlIdentityColumnTest(TestCase):
@@ -959,6 +1105,27 @@ class TestMssqlQueryStoreSelection:
         assert "sys.dm_exec_procedure_stats" in statement
 
 
+class TestMssqlDateformatProbe:
+    """get_sqlalchemy_engine_dateformat: falls back to the caller's documented
+    default instead of crashing source/usage/lineage construction when the
+    DBCC USEROPTIONS probe itself fails (e.g. a transient connection issue)."""
+
+    def test_returns_dateformat_value(self):
+        engine = MagicMock()
+        conn = engine.connect.return_value.__enter__.return_value
+        row = MagicMock()
+        row._asdict.return_value = {"Set Option": "dateformat", "Value": "ymd"}
+        conn.execute.return_value.all.return_value = [row]
+
+        assert mssql_dialet.get_sqlalchemy_engine_dateformat(engine) == "ymd"
+
+    def test_returns_none_when_probe_errors(self):
+        engine = MagicMock()
+        engine.connect.side_effect = Exception("connection reset")
+
+        assert mssql_dialet.get_sqlalchemy_engine_dateformat(engine) is None
+
+
 class TestMssqlPerDatabaseQueryStore:
     """Per-database Query Store engine iteration for ingest-all-databases runs."""
 
@@ -1060,6 +1227,39 @@ class TestMssqlPerDatabaseQueryStore:
 
         assert list(source._databases_to_scan()) == ["SalesDW", "Inventory"]
 
+    def test_falls_back_to_single_engine_when_database_enumeration_fails(self):
+        """A transient failure listing databases (network blip, timeout) must not
+        crash the whole ingest-all-databases run - it falls back to the single,
+        already-connected engine instead."""
+        source = self._source(query_store_enabled=True, ingest_all_databases=True)
+        source.engine.connect.side_effect = Exception("connection reset")
+
+        assert list(source.get_engine()) == [source.engine]
+
+    def test_skips_database_when_engine_construction_fails(self):
+        """A database whose engine cannot be built (e.g. login denied on that specific
+        database) is skipped; the remaining databases are still processed - one bad
+        database must not kill query history for the rest of the ingest-all-databases run."""
+        source = self._source(query_store_enabled=True, ingest_all_databases=True)
+        source._databases_to_scan = lambda: iter(["BadDb", "GoodDb"])
+        good_engine = MagicMock()
+
+        def build(database):
+            if database == "BadDb":
+                raise RuntimeError("login failed for user on BadDb")
+            return good_engine
+
+        source._engine_for_database = build
+
+        with patch(
+            "metadata.ingestion.source.database.mssql.query_parser.is_query_store_enabled",
+            return_value=True,
+        ):
+            engines = list(source.get_engine())
+
+        assert engines == [good_engine]
+        good_engine.dispose.assert_called_once()
+
     def test_falls_back_to_dmv_when_no_user_databases_scanned(self):
         source = self._source(query_store_enabled=True, ingest_all_databases=True)
         source._databases_to_scan = lambda: iter([])
@@ -1144,3 +1344,307 @@ class TestMssqlUniqueConstraints:
         assert "[CONSTRAINT_TYPE] = N'UNIQUE'" in compiled
         assert "[C].[TABLE_NAME] = N'orders'" in compiled
         assert "[C].[TABLE_SCHEMA] = N'sales'" in compiled
+
+
+class TestMssqlDescriptionCasing:
+    """Only the database name is case-folded in the description maps.
+
+    In single-database mode ``get_database_names`` yields the user-configured
+    database name verbatim into ``context.database``, while the description maps
+    are keyed by ``DB_NAME()`` (the server-stored casing). On a case-insensitive
+    collation the connection succeeds even when those casings differ, but Python
+    dict lookups are case-sensitive, so without folding the database name every
+    description from extended properties is silently dropped.
+
+    Schema and stored-procedure names are *not* folded: both the map keys and the
+    lookup values come from the server catalogue (``sys.schemas.name``,
+    ``sys.procedures.name``), so they already match, and a case-sensitive
+    collation can hold two distinct objects that differ only in casing — folding
+    them would silently drop one of the two descriptions.
+    """
+
+    SERVER_DB = "northwind"
+    SERVER_SCHEMA = "Sales"
+    SERVER_PROC = "GetOrders"
+    DB_DESC = "Northwind database description"
+    SCHEMA_DESC = "Sales schema description"
+    PROC_DESC = "Fetch the order identifiers"
+
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
+    def setup_method(self, _method, test_connection):
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_mssql_config)
+        self.mssql = MssqlSource.create(
+            mock_mssql_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+    @staticmethod
+    def _row(**fields):
+        return types.SimpleNamespace(**fields)
+
+    def _engine_with_description_rows(
+        self,
+        *,
+        database_name=SERVER_DB,
+        schema_name=SERVER_SCHEMA,
+        stored_procedure=SERVER_PROC,
+        db_desc=DB_DESC,
+        schema_desc=SCHEMA_DESC,
+        proc_desc=PROC_DESC,
+    ):
+        """Engine mock that returns the right rows for each description query.
+
+        ``set_*`` methods each call ``conn.execute(text(QUERY)).all()``, so the
+        side-effect dispatches on the SQL text to give each the rows it expects.
+        """
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+
+        def execute(query, *args, **kwargs):
+            result = MagicMock()
+            sql_text = str(query)
+            if MSSQL_GET_DATABASE_COMMENTS in sql_text:
+                result.all.return_value = [self._row(DATABASE_NAME=database_name, COMMENT=db_desc)]
+            elif MSSQL_GET_SCHEMA_COMMENTS in sql_text:
+                result.all.return_value = [
+                    self._row(DATABASE_NAME=database_name, SCHEMA_NAME=schema_name, COMMENT=schema_desc)
+                ]
+            elif MSSQL_GET_STORED_PROCEDURE_COMMENTS in sql_text:
+                result.all.return_value = [
+                    self._row(
+                        DATABASE_NAME=database_name,
+                        SCHEMA_NAME=schema_name,
+                        STORED_PROCEDURE=stored_procedure,
+                        COMMENT=proc_desc,
+                    )
+                ]
+            else:
+                result.all.return_value = []
+            return result
+
+        mock_conn.execute.side_effect = execute
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.mssql.engine = mock_engine
+        return mock_engine
+
+    def test_database_desc_map_keys_are_casefolded_on_load(self):
+        """``set_database_description_map`` folds ``DB_NAME()`` casing so any
+        lookup casing can match, not just the exact server-stored one."""
+        self._engine_with_description_rows(database_name="MyDatabase", db_desc="db desc")
+        self.mssql.set_database_description_map()
+        assert self.mssql.database_desc_map == {"mydatabase": "db desc"}
+
+    def test_schema_desc_map_database_key_is_casefolded_on_load(self):
+        """Only the database name is folded; the schema name keeps its server casing."""
+        self._engine_with_description_rows(
+            database_name="MyDatabase", schema_name="MySchema", schema_desc="schema desc"
+        )
+        self.mssql.set_schema_description_map()
+        assert self.mssql.schema_desc_map == {("mydatabase", "MySchema"): "schema desc"}
+
+    def test_stored_procedure_desc_map_database_key_is_casefolded_on_load(self):
+        """Only the database name is folded; schema and procedure names keep their server casing."""
+        self._engine_with_description_rows(
+            database_name="MyDatabase",
+            schema_name="MySchema",
+            stored_procedure="GetOrders",
+            proc_desc="proc desc",
+        )
+        self.mssql.set_stored_procedure_description_map()
+        assert self.mssql.stored_procedure_desc_map == {("mydatabase", "MySchema", "GetOrders"): "proc desc"}
+
+    def test_schema_desc_map_does_not_fold_distinct_schemas(self):
+        """A case-sensitive collation can hold two schemas that differ only in
+        casing; folding would silently drop one description. Both must survive."""
+        engine = MagicMock()
+        conn = MagicMock()
+
+        def execute(query, *args, **kwargs):
+            result = MagicMock()
+            if MSSQL_GET_SCHEMA_COMMENTS in str(query):
+                result.all.return_value = [
+                    self._row(DATABASE_NAME="MyDatabase", SCHEMA_NAME="MySchema", COMMENT="upper desc"),
+                    self._row(DATABASE_NAME="MyDatabase", SCHEMA_NAME="myschema", COMMENT="lower desc"),
+                ]
+            else:
+                result.all.return_value = []
+            return result
+
+        conn.execute.side_effect = execute
+        engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+        engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.mssql.engine = engine
+
+        self.mssql.set_schema_description_map()
+        assert self.mssql.schema_desc_map == {
+            ("mydatabase", "MySchema"): "upper desc",
+            ("mydatabase", "myschema"): "lower desc",
+        }
+
+    def test_stored_procedure_desc_map_does_not_fold_distinct_procedures(self):
+        """A case-sensitive collation can hold two procedures that differ only in
+        casing; folding would silently drop one description. Both must survive."""
+        engine = MagicMock()
+        conn = MagicMock()
+
+        def execute(query, *args, **kwargs):
+            result = MagicMock()
+            if MSSQL_GET_STORED_PROCEDURE_COMMENTS in str(query):
+                result.all.return_value = [
+                    self._row(
+                        DATABASE_NAME="MyDatabase",
+                        SCHEMA_NAME="Sales",
+                        STORED_PROCEDURE="GetOrders",
+                        COMMENT="upper proc desc",
+                    ),
+                    self._row(
+                        DATABASE_NAME="MyDatabase",
+                        SCHEMA_NAME="Sales",
+                        STORED_PROCEDURE="getorders",
+                        COMMENT="lower proc desc",
+                    ),
+                ]
+            else:
+                result.all.return_value = []
+            return result
+
+        conn.execute.side_effect = execute
+        engine.connect.return_value.__enter__ = MagicMock(return_value=conn)
+        engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.mssql.engine = engine
+
+        self.mssql.set_stored_procedure_description_map()
+        assert self.mssql.stored_procedure_desc_map == {
+            ("mydatabase", "Sales", "GetOrders"): "upper proc desc",
+            ("mydatabase", "Sales", "getorders"): "lower proc desc",
+        }
+
+    def test_get_database_description_resolves_across_casing(self):
+        """Any casing of the database name must resolve to the description, not
+        only the exact casing ``DB_NAME()`` reported."""
+        self._engine_with_description_rows()
+        self.mssql.set_database_description_map()
+        for lookup_casing in ["Northwind", "NORTHWIND", "northwind", "NoRtHwInD"]:
+            assert self.mssql.get_database_description(lookup_casing) == self.DB_DESC, (
+                f"get_database_description({lookup_casing!r}) should resolve"
+            )
+
+    def test_get_database_description_returns_none_for_unknown(self):
+        self._engine_with_description_rows()
+        self.mssql.set_database_description_map()
+        assert self.mssql.get_database_description("other_db") is None
+
+    def test_get_schema_description_resolves_across_database_casing(self):
+        """``context.database`` carries the user-configured casing; the getter
+        must still resolve against the server-cased map key because the database
+        component is folded. Schema names are exact (both sides come from the
+        server), so the server casing must be used."""
+        self._engine_with_description_rows()
+        self.mssql.set_schema_description_map()
+        self.mssql.context.get().__dict__["database"] = "Northwind"
+        assert self.mssql.get_schema_description("Sales") == self.SCHEMA_DESC
+        # Database casing also varies on the context side
+        self.mssql.context.get().__dict__["database"] = "NORTHWIND"
+        assert self.mssql.get_schema_description("Sales") == self.SCHEMA_DESC
+
+    def test_get_schema_description_returns_none_for_unknown_schema(self):
+        """Schema names are matched exactly, so a differently-cased schema name does not resolve."""
+        self._engine_with_description_rows()
+        self.mssql.set_schema_description_map()
+        self.mssql.context.get().__dict__["database"] = "Northwind"
+        assert self.mssql.get_schema_description("SALES") is None
+
+    def test_get_stored_procedure_description_resolves_across_database_casing(self):
+        """The database component of the key is folded, so a database casing
+        mismatch resolves. Schema and procedure names are exact (both sides come
+        from the server), so the server casing must be used."""
+        self._engine_with_description_rows()
+        self.mssql.set_stored_procedure_description_map()
+        self.mssql.context.get().__dict__["database"] = "Northwind"
+        self.mssql.context.get().__dict__["database_schema"] = "Sales"
+        assert self.mssql.get_stored_procedure_description("GetOrders") == Markdown(self.PROC_DESC)
+        # Database casing also varies on the context side
+        self.mssql.context.get().__dict__["database"] = "NORTHWIND"
+        assert self.mssql.get_stored_procedure_description("GetOrders") == Markdown(self.PROC_DESC)
+
+    def test_get_stored_procedure_description_returns_none_for_mismatched_casing(self):
+        """Schema and procedure names are matched exactly, so a differently-cased
+        schema or procedure name does not resolve (and does not collide with the
+        server-cased entry)."""
+        self._engine_with_description_rows()
+        self.mssql.set_stored_procedure_description_map()
+        self.mssql.context.get().__dict__["database"] = "Northwind"
+        self.mssql.context.get().__dict__["database_schema"] = "SALES"
+        assert self.mssql.get_stored_procedure_description("GetOrders") is None
+        self.mssql.context.get().__dict__["database_schema"] = "Sales"
+        assert self.mssql.get_stored_procedure_description("getorders") is None
+
+    def test_get_stored_procedure_description_returns_none_for_unknown(self):
+        self._engine_with_description_rows()
+        self.mssql.set_stored_procedure_description_map()
+        self.mssql.context.get().__dict__["database"] = "Northwind"
+        self.mssql.context.get().__dict__["database_schema"] = "Sales"
+        assert self.mssql.get_stored_procedure_description("other_proc") is None
+
+    def test_single_database_mode_attaches_descriptions_despite_casing_mismatch(self):
+        """The exact bug scenario: ``ingestAllDatabases=False`` with a configured
+        database name whose casing differs from the server-stored name. The
+        description maps are keyed by ``DB_NAME()`` (server casing) while the
+        single-database path yields the user-configured casing, which the topology
+        writes into ``context.database``. All three description types must resolve
+        despite the mismatch."""
+        self.mssql.config.serviceConnection.root.config.ingestAllDatabases = False
+        user_cased_db = "Northwind"
+        self.mssql.config.serviceConnection.root.config.database = user_cased_db
+
+        # Server stores the database name in a different casing
+        self._engine_with_description_rows(database_name=self.SERVER_DB)
+
+        with patch.object(MssqlSource, "set_inspector"):
+            yielded = list(self.mssql.get_database_names())
+
+        assert yielded == [user_cased_db]
+
+        # The topology sets context from the yielded name (user casing)
+        self.mssql.context.get().__dict__["database"] = user_cased_db
+        self.mssql.context.get().__dict__["database_schema"] = self.SERVER_SCHEMA
+        self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+
+        # All three description types resolve despite the casing mismatch
+        assert self.mssql.get_database_description(user_cased_db) == self.DB_DESC
+        assert self.mssql.get_schema_description(self.SERVER_SCHEMA) == self.SCHEMA_DESC
+        assert self.mssql.get_stored_procedure_description(self.SERVER_PROC) == Markdown(self.PROC_DESC)
+
+    def test_matching_casing_still_resolves(self):
+        """No regression: when the configured casing matches the server casing,
+        descriptions still attach exactly as before the case-folding fix."""
+        self._engine_with_description_rows()
+        self.mssql.set_database_description_map()
+        self.mssql.set_schema_description_map()
+        self.mssql.set_stored_procedure_description_map()
+
+        self.mssql.context.get().__dict__["database"] = self.SERVER_DB
+        self.mssql.context.get().__dict__["database_schema"] = self.SERVER_SCHEMA
+
+        assert self.mssql.get_database_description(self.SERVER_DB) == self.DB_DESC
+        assert self.mssql.get_schema_description(self.SERVER_SCHEMA) == self.SCHEMA_DESC
+        assert self.mssql.get_stored_procedure_description(self.SERVER_PROC) == Markdown(self.PROC_DESC)
+
+    def test_multi_database_names_match_yields_server_casing(self):
+        """In multi-database mode the names come from ``master.sys.databases``
+        (same source/casing as ``DB_NAME()``), so the case-folding is a no-op and
+        must not change resolution behaviour."""
+        self._engine_with_description_rows(database_name="TestDB")
+        self.mssql.set_database_description_map()
+        self.mssql.set_schema_description_map()
+        self.mssql.set_stored_procedure_description_map()
+
+        # Name yielded by get_database_names in multi-database mode
+        self.mssql.context.get().__dict__["database"] = "TestDB"
+        self.mssql.context.get().__dict__["database_schema"] = self.SERVER_SCHEMA
+
+        assert self.mssql.get_database_description("TestDB") == self.DB_DESC
+        assert self.mssql.get_schema_description(self.SERVER_SCHEMA) == self.SCHEMA_DESC
+        assert self.mssql.get_stored_procedure_description(self.SERVER_PROC) == Markdown(self.PROC_DESC)

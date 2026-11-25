@@ -15,15 +15,12 @@ import {
   Avatar,
   Box,
   Card,
-  EmptyPlaceholder,
   Input,
-  PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Globe01,
+  DataProduct as DataProductIcon,
   NoSearch,
-  Package,
   Plus,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -37,28 +34,31 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA, ROUTES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { PageViewMode } from '../../generated/type/personaPreferences';
+import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import dataProductClassBase from '../../utils/DataProduct/DataProductClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { getVisibleStatusColumns } from '../../utils/EntityStatusUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
+import { getViewPageSizeOptions } from '../../utils/PaginationUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import {
   CLIPPED_NAME_CLASS,
-  COMPACT_CELL_CLIP_CLASS,
   NAME_CELL_CLIP_CLASS,
   renderDomainClassificationTagsCell,
   renderDomainExpertsCell,
   renderDomainGlossaryTagsCell,
   renderDomainOwnersCell,
+  renderDomainsCell,
 } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -67,10 +67,13 @@ import { useListSearchInput } from '../common/atoms/navigation/useListSearchInpu
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
 import ViewToggle from '../common/ViewToggle/ViewToggle';
 import MarketplaceSearchInput from '../DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
@@ -121,39 +124,32 @@ const renderDataProductNameCell = (
   );
 };
 
-const renderDataProductDomainCell = (entity: DataProduct): ReactNode => {
-  const domains = entity.domains;
-  if (!domains?.length) {
-    return <Typography size="text-sm">{NO_DATA}</Typography>;
-  }
-  const domain = domains[0];
-
-  return (
-    <Box
-      align="center"
-      className={COMPACT_CELL_CLIP_CLASS}
-      direction="row"
-      gap={1}>
-      <Globe01 size={16} style={{ flexShrink: 0 }} />
-      <Typography
-        className={CLIPPED_NAME_CLASS}
-        ellipsis={{
-          tooltip: renderBreakableTooltip(domain.displayName || domain.name),
-        }}
-        size="text-sm">
-        {domain.displayName || domain.name}
-      </Typography>
-    </Box>
-  );
-};
-
 const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
-  const dataProductListing = useDataProductListingData({ enableNlq: isAiMode });
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.DataProducts);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
+  const listingPageSizeOptions = getViewPageSizeOptions(view);
+  const { savedPageSize: listingPageSize } = useSavedPageSize(
+    listingPageSizeOptions
+  );
+  const dataProductListing = useDataProductListingData({
+    enableNlq: isAiMode,
+    pageSize: listingPageSize,
+    pageSizeOptions: listingPageSizeOptions,
+  });
+  const { resetPaging } = dataProductListing;
+  const handleViewChange = useCallback(
+    (nextView: PageViewMode) => {
+      setView(nextView);
+      resetPaging?.();
+    },
+    [resetPaging]
+  );
   const { permissions } = usePermissionProvider();
   const { quickFilters, defaultFilters } = useDataProductFilters({
     aggregations: dataProductListing.aggregations || undefined,
@@ -233,12 +229,16 @@ const DataProductListPage = ({
     loading: dataProductListing.loading,
   });
 
-  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.DataProducts);
-  const [selectedView, setView] = useState<PageViewMode>();
-  const view = selectedView ?? personaView;
   const { renderDataProductCard } = useDomainCardTemplates();
 
-  const extraColumns = dataProductClassBase.getListingExtraColumns();
+  const extraColumns = useMemo(
+    () =>
+      getVisibleStatusColumns(
+        dataProductClassBase.getListingExtraColumns(),
+        dataProductListing.entities
+      ),
+    [dataProductListing.entities]
+  );
 
   const dataProductColumns: ColumnDef[] = useMemo(
     () => [
@@ -268,7 +268,7 @@ const DataProductListPage = ({
         case 'glossaryTerms':
           return renderDomainGlossaryTagsCell(entity);
         case 'domains':
-          return renderDataProductDomainCell(entity);
+          return renderDomainsCell(entity);
         case 'tags':
           return renderDomainClassificationTagsCell(entity);
         case 'experts':
@@ -314,7 +314,7 @@ const DataProductListPage = ({
       if (isSearchOrFilterActive()) {
         return (
           <div className="tw:relative tw:min-h-70 tw:h-full">
-            <EmptyPlaceholder
+            <NoSearchResultsPlaceholder
               actions={[
                 {
                   color: 'primary',
@@ -324,7 +324,7 @@ const DataProductListPage = ({
                 },
               ]}
               description={t('message.check-spelling-or-try-different-term')}
-              icon={<NoSearch className="tw:text-quaternary" />}
+              icon={<NoSearch />}
               title={t('label.no-matching-results')}
             />
           </div>
@@ -335,7 +335,7 @@ const DataProductListPage = ({
         <div
           className="tw:relative tw:min-h-70"
           data-testid="no-data-placeholder">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             actions={
               permissions.dataProduct?.Create
                 ? [
@@ -352,13 +352,28 @@ const DataProductListPage = ({
                 : undefined
             }
             description={t('label.no-data-products-yet-description')}
-            icon={<Package className="tw:text-fg-brand-primary" />}
+            icon={<DataProductIcon className="tw:text-fg-brand-primary" />}
             title={t('label.no-data-products-yet')}
-            variant="blank"
           />
         </div>
       );
     }
+
+    const pagination = dataProductListing.totalEntities > 0 && (
+      <Box
+        className="tw:border-t tw:border-secondary tw:p-3 tw:shrink-0"
+        justify="center">
+        <NextPrevious
+          isNumberBased
+          currentPage={dataProductListing.currentPage}
+          pageSize={dataProductListing.pageSize}
+          paging={{ total: dataProductListing.totalEntities }}
+          pagingHandler={({ currentPage }) =>
+            dataProductListing.handlePageChange(currentPage)
+          }
+        />
+      </Box>
+    );
 
     if (view === PageViewMode.Table) {
       return (
@@ -375,11 +390,7 @@ const DataProductListPage = ({
             onSelect={dataProductListing.handleSelect}
             onSelectAll={dataProductListing.handleSelectAll}
           />
-          <PaginationCardDefault
-            page={dataProductListing.currentPage}
-            total={dataProductListing.totalPages}
-            onPageChange={dataProductListing.handlePageChange}
-          />
+          {pagination}
         </>
       );
     }
@@ -393,11 +404,7 @@ const DataProductListPage = ({
           renderCard={renderDataProductCard}
           onEntityClick={dataProductListing.actionHandlers.onEntityClick}
         />
-        <PaginationCardDefault
-          page={dataProductListing.currentPage}
-          total={dataProductListing.totalPages}
-          onPageChange={dataProductListing.handlePageChange}
-        />
+        {pagination}
       </>
     );
   }, [
@@ -406,7 +413,8 @@ const DataProductListPage = ({
     dataProductListing.selectedEntities,
     dataProductListing.actionHandlers,
     dataProductListing.currentPage,
-    dataProductListing.totalPages,
+    dataProductListing.pageSize,
+    dataProductListing.totalEntities,
     dataProductListing.handlePageChange,
     dataProductListing.handleClearAll,
     isSearchOrFilterActive,
@@ -457,7 +465,7 @@ const DataProductListPage = ({
             )}
             {quickFilters}
             <Box className="tw:ml-auto" />
-            <ViewToggle value={view} onChange={setView} />
+            <ViewToggle value={view} onChange={handleViewChange} />
             {deleteIconButton}
           </Box>
           {filterSelectionDisplay}

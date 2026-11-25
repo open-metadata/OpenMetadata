@@ -22,7 +22,7 @@ import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { useExploreCache } from '../hooks/useExploreCache';
 import { QueryFieldInterface } from '../pages/ExplorePage/ExplorePage.interface';
-import * as miscAPI from '../rest/miscAPI';
+import { postAggregateFieldOptions } from '../rest/miscAPI';
 import {
   nlqSearch,
   searchEntityTypeCounts,
@@ -39,6 +39,10 @@ import {
 } from './ExplorePureUtils';
 import { fetchEntityData, getAggregationOptions } from './ExploreUtils';
 
+jest.mock('../rest/miscAPI', () => ({
+  ...jest.requireActual('../rest/miscAPI'),
+  postAggregateFieldOptions: jest.fn(),
+}));
 jest.mock('../rest/searchAPI');
 jest.mock('./ToastUtils');
 
@@ -48,9 +52,9 @@ const mockEntityTypeCounts = searchEntityTypeCounts as jest.Mock;
 
 describe('Explore Utils', () => {
   it('passes search text to independent aggregation requests', async () => {
-    const postAggregateSpy = jest
-      .spyOn(miscAPI, 'postAggregateFieldOptions')
-      .mockResolvedValue({ data: {} } as never);
+    const postAggregateSpy = (
+      postAggregateFieldOptions as jest.Mock
+    ).mockResolvedValue({ data: {} });
 
     await getAggregationOptions(
       SearchIndex.DATA_ASSET,

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Modal } from 'antd';
+import { SimpleModal, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,22 +51,20 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
   };
 
   return (
-    <Modal
-      destroyOnClose
+    <SimpleModal
       cancelText={t('label.cancel')}
-      closable={false}
-      confirmLoading={isLoading}
       data-testid="kill-modal"
-      maskClosable={false}
+      isDismissable={false}
+      isOkLoading={isLoading}
+      isOpen={isModalOpen}
       okText={t('label.confirm')}
-      open={isModalOpen}
       title={`${t('label.kill')} ${pipelineName} ?`}
       onCancel={onClose}
       onOk={handleConfirm}>
       <Typography data-testid="kill-modal-body">
         {t('message.kill-ingestion-warning')}
       </Typography>
-    </Modal>
+    </SimpleModal>
   );
 };
 

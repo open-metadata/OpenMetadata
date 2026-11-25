@@ -190,15 +190,16 @@ const collapseNestedColumn = async (
 
 export const verifyExpandCollapseForSummaryPanel = async (page: Page) => {
   // Check expand/collapse inside summary panel
+  // The expander's label and the field name make up the name cell's name.
   const getExpandButton = (rowKey: string) =>
     page
-      .getByRole('cell', { name: `Expand row ${rowKey}` })
-      .getByRole('button', { name: 'Expand row' });
+      .getByRole('rowheader', { name: `Expand ${rowKey}`, exact: true })
+      .getByRole('button', { name: 'Expand', exact: true });
 
   const getCollapseButton = (rowKey: string) =>
     page
-      .getByRole('cell', { name: `Collapse row ${rowKey}` })
-      .getByRole('button', { name: 'Collapse row' });
+      .getByRole('rowheader', { name: `Collapse ${rowKey}`, exact: true })
+      .getByRole('button', { name: 'Collapse', exact: true });
 
   // 1. Expand Level 0
   await getExpandButton('default').click();

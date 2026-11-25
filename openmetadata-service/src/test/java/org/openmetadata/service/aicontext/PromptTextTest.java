@@ -14,12 +14,80 @@ package org.openmetadata.service.aicontext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class PromptTextTest {
+
+  @Test
+  void contentReadRemovesEncodedImagesAndReadsTextAsWritten() {
+    assertEquals(
+        "Before  after",
+        PromptText.forContentRead(
+            "Before &lt;img src=&quot;data:image/png;base64,AAAA&quot;&gt; after"));
+    String stored =
+        "<p>x &lt;&#61; 1 &amp; y &gt;&#61; 2 &#43; tax, &quot;orders&quot; by owner&#64;corp.com,"
+            + " &#39;a&#39; &#61; &#96;b&#96;</p>";
+    assertEquals(
+        "<p>x <= 1 & y >= 2 + tax, \"orders\" by owner@corp.com, 'a' = `b`</p>",
+        PromptText.forContentRead(stored));
+    assertEquals(
+        "<p>Write &lt;script&gt; as text.</p>",
+        PromptText.forContentRead(
+            "<p>Write &amp;lt;script&amp;gt; as text.</p>"
+                + "&lt;img src=&quot;data:image/png;base64,AAAA&quot;&gt;"));
+    assertEquals(
+        "Before  after",
+        PromptText.forContentRead(
+            "Before &lt;img alt=&quot;x &gt; y&quot; src=&quot;data:image/png;base64,AAAA&quot;&gt;"
+                + " after"));
+    assertEquals(
+        "Diagram  end.",
+        PromptText.forContentRead("Diagram ![architecture](data:image/png;base64,AAAA) end."));
+    assertEquals(
+        "Diagram  end.",
+        PromptText.forContentRead("Diagram ![Wow! diagram](data:image/png;base64,AAAA) end."));
+  }
+
+  @Test
+  void contentReadStaysLinearOnManyUnclosedImages() {
+    // Timed against plain text of the same length, so a slow runner slows both sides alike: the
+    // linear scan measures 1.2-1.5x plain text, a backtracking pattern 400-800x.
+    String run = "A".repeat(200);
+    Stream<String> unclosed =
+        Stream.of(
+            ("&lt;img &quot;" + run).repeat(5_000),
+            (" ![x](data:" + run).repeat(5_000),
+            ("![" + run).repeat(10_000));
+    assertTimeoutPreemptively(
+        Duration.ofSeconds(60), () -> unclosed.forEach(PromptTextTest::assertReadsInLinearTime));
+  }
+
+  private static void assertReadsInLinearTime(String unclosed) {
+    long plainNanos = fastestContentRead("A".repeat(unclosed.length()));
+    long unclosedNanos = fastestContentRead(unclosed);
+    assertTrue(
+        unclosedNanos < 20 * plainNanos + Duration.ofMillis(50).toNanos(),
+        unclosedNanos / 1_000_000 + " ms against " + plainNanos / 1_000_000 + " ms for plain text");
+  }
+
+  private static long fastestContentRead(String text) {
+    long fastest = Long.MAX_VALUE;
+    for (int attempt = 0; attempt < 3; attempt++) {
+      long start = System.nanoTime();
+      assertNotNull(PromptText.forContentRead(text));
+      fastest = Math.min(fastest, System.nanoTime() - start);
+    }
+    return fastest;
+  }
 
   @Test
   void inlineBase64ImagesAreRemoved() {
@@ -154,6 +222,23 @@ class PromptTextTest {
 
     assertFalse(prompt.contains("base64"));
     assertTrue(prompt.contains("Column is Map"));
+  }
+
+  @ParameterizedTest(name = "{index}")
+  @MethodSource("incompleteMarkup")
+  void incompleteMarkupIsPreserved(String description) {
+    assertEquals(description, PromptText.forPrompt(description));
+  }
+
+  private static Stream<String> incompleteMarkup() {
+    return Stream.of("<", "< >", "text <a", "a > b <a");
+  }
+
+  @Test
+  void angleBracketsInAttributesDoNotHideMarkup() {
+    String prompt = PromptText.forPrompt("<img alt=\"x < y\" src=\"data:image/png;base64,AAAA\">");
+
+    assertEquals("", prompt);
   }
 
   @Test

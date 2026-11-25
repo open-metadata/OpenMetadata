@@ -10,24 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Modal, Space, Tooltip } from 'antd';
-import classNames from 'classnames';
+
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  SimpleModal,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import {
+  Download01,
+  MinusCircle,
+  Plus,
+  Upload01,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ExportIcon } from '../../../../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../../../../assets/svg/ic-import.svg';
-import { ReactComponent as IconRemove } from '../../../../../assets/svg/ic-remove.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { ExportTypes } from '../../../../../constants/Export.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../../../constants/GlobalSettings.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import {
   EntityAction,
   EntityType,
@@ -50,15 +57,17 @@ import { getEntityReferenceFromEntity } from '../../../../../utils/EntityReferen
 import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';
+import CreatePlaceholder from '../../../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { ManageButtonItemLabel } from '../../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import { ColumnsType } from '../../../../common/Table/Table.interface';
 import Table from '../../../../common/Table/TableV2';
 import { UserSelectableList } from '../../../../common/UserSelectableList/UserSelectableList.component';
 import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { TEAM_TAB_EMPTY_STATE_CLASS } from '../TeamDetailsV1.constants';
 import { UserTabProps } from './UserTab.interface';
 
 export const UserTab = ({
@@ -73,6 +82,7 @@ export const UserTab = ({
   const [deletingUser, setDeletingUser] = useState<EntityReference>();
   const { showModal } = useEntityExportModalProvider();
   const [isLoading, setIsLoading] = useState(true);
+  const latestUsersRequest = useRef(0);
   const [users, setUsers] = useState<User[]>([]);
   const [searchText, setSearchText] = useState('');
   const {
@@ -121,8 +131,8 @@ export const UserTab = ({
   const editUserPermission = useMemo(() => can(Operation.EditUsers), [can]);
 
   // The one site that must ignore deleted-gating (Task 8 Batch 3 review round, Finding 3):
-  // the ASSIGN ErrorPlaceHolder's `permission` prop hard-branches
-  // (`if (!permission) return <PermissionErrorPlaceholder />`), replacing the whole
+  // the assign placeholder's `permission` prop hard-branches
+  // (CreatePlaceholder renders PermissionPlaceholder when it is false), replacing the whole
   // assign-users UI (including the Add button, which is separately disabled via its own
   // `disabled={!editUserPermission || isTeamDeleted}`) with a misleading "no access" message
   // for a deleted team's admin. Old code read the raw, ungated `permission.EditAll ||
@@ -143,6 +153,8 @@ export const UserTab = ({
    * Make API call to fetch current team user data
    */
   const getCurrentTeamUsers = (team: string, paging: Partial<Paging> = {}) => {
+    const requestId = ++latestUsersRequest.current;
+    const isLatest = () => requestId === latestUsersRequest.current;
     setIsLoading(true);
     getUsers({
       fields: `${TabSpecificField.ROLES}`,
@@ -151,21 +163,27 @@ export const UserTab = ({
       ...paging,
     })
       .then((res) => {
-        if (res.data) {
+        if (isLatest() && res.data) {
           setUsers(res.data);
           handlePagingChange(res.paging);
         }
       })
       .catch(() => {
-        setUsers([]);
-        handlePagingChange({ total: 0 });
+        if (isLatest()) {
+          setUsers([]);
+          handlePagingChange({ total: 0 });
+        }
       })
       .finally(() => {
-        setIsLoading(false);
+        if (isLatest()) {
+          setIsLoading(false);
+        }
       });
   };
 
   const searchUsers = (text: string, currentPage: number) => {
+    const requestId = ++latestUsersRequest.current;
+    const isLatest = () => requestId === latestUsersRequest.current;
     setIsLoading(true);
     searchQuery({
       query: text,
@@ -196,6 +214,9 @@ export const UserTab = ({
       searchIndex: SearchIndex.USER,
     })
       .then((res) => {
+        if (!isLatest()) {
+          return;
+        }
         const data = formatUsersResponse(res.hits.hits);
         setUsers(data);
         handlePagingChange({
@@ -203,9 +224,15 @@ export const UserTab = ({
         });
       })
       .catch(() => {
-        setUsers([]);
+        if (isLatest()) {
+          setUsers([]);
+        }
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        if (isLatest()) {
+          setIsLoading(false);
+        }
+      });
   };
 
   const userPagingHandler = ({
@@ -214,11 +241,7 @@ export const UserTab = ({
   }: PagingHandlerParams) => {
     if (searchText) {
       handlePageChange(currentPage);
-      searchUsers(searchText, currentPage);
     } else if (cursorType) {
-      getCurrentTeamUsers(currentTeam.name, {
-        [cursorType]: paging[cursorType],
-      });
       handlePageChange(
         currentPage,
         { cursorType, cursorValue: paging[cursorType] },
@@ -227,31 +250,36 @@ export const UserTab = ({
     }
   };
 
-  const handleCurrentUserPage = (value?: number) => {
-    handlePageChange(value ?? INITIAL_PAGING_VALUE);
-  };
-
   const handleUsersSearchAction = (text: string) => {
     setSearchText(text);
-    handleCurrentUserPage(INITIAL_PAGING_VALUE);
-    if (text) {
-      searchUsers(text, INITIAL_PAGING_VALUE);
-    } else {
-      getCurrentTeamUsers(currentTeam.name);
-    }
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
   };
 
   useEffect(() => {
-    const { cursorType, cursorValue } = pagingCursor ?? {};
+    const {
+      cursorType,
+      cursorValue,
+      currentPage: cursorPage,
+    } = pagingCursor ?? {};
 
-    if (cursorType && cursorValue) {
+    // A search reset updates local paging before the router transition commits.
+    if (Number(cursorPage ?? currentPage) !== currentPage) {
+      return;
+    }
+
+    if (searchText) {
+      searchUsers(searchText, currentPage);
+    } else if (cursorType && cursorValue) {
       getCurrentTeamUsers(currentTeam.name, {
         [cursorType]: cursorValue,
       });
     } else {
       getCurrentTeamUsers(currentTeam.name);
     }
-  }, [currentTeam, pageSize, pagingCursor]);
+  }, [currentTeam, pageSize, pagingCursor, searchText, currentPage]);
 
   const columns: ColumnsType<User> = useMemo(() => {
     const tabColumns: ColumnsType<User> = [
@@ -263,28 +291,26 @@ export const UserTab = ({
         key: 'actions',
         width: 90,
         render: (_, record) => (
-          <Space
+          <Box
+            inline
             align="center"
-            className="w-full justify-center remove-icon"
-            size={8}>
-            <Tooltip
-              placement="left"
-              title={
+            className="layout-space layout-space-horizontal w-full justify-center remove-icon"
+            gap={2}
+            itemClassName="layout-space-item">
+            <ButtonUtility
+              data-testid="remove-user-btn"
+              icon={MinusCircle}
+              isDisabled={!editUserPermission}
+              size="lg"
+              tooltip={
                 editUserPermission
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
-              }>
-              <Button
-                data-testid="remove-user-btn"
-                disabled={!editUserPermission}
-                icon={
-                  <IconRemove height={16} name={t('label.remove')} width={16} />
-                }
-                type="text"
-                onClick={() => handleRemoveClick(record.id)}
-              />
-            </Tooltip>
-          </Space>
+              }
+              tooltipPlacement="left"
+              onClick={() => handleRemoveClick(record.id)}
+            />
+          </Box>
         ),
       },
     ];
@@ -326,7 +352,7 @@ export const UserTab = ({
             description={t('message.export-entity-help', {
               entity: t('label.user-lowercase'),
             })}
-            icon={ExportIcon}
+            icon={Download01}
             id="export"
             name={t('label.export')}
           />
@@ -345,7 +371,7 @@ export const UserTab = ({
             description={t('message.import-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={ImportIcon}
+            icon={Upload01}
             id="import-button"
             name={t('label.import')}
           />
@@ -378,66 +404,77 @@ export const UserTab = ({
 
   const renderEmptyState = () =>
     isGroupType ? (
-      <ErrorPlaceHolder
-        button={
-          <Space>
-            <UserSelectableList
-              hasPermission
-              includeBot
-              selectedUsers={currentTeam?.users ?? []}
-              onUpdate={onAddUser}>
-              <Tooltip placement="topRight" title={addUserButtonTitle}>
-                <Button
-                  ghost
-                  className={classNames({
-                    'p-x-lg': editUserPermission && !isTeamDeleted,
-                  })}
-                  data-testid="add-new-user"
-                  disabled={!editUserPermission || isTeamDeleted}
-                  icon={<PlusOutlined />}
-                  type="primary">
-                  {t('label.add')}
-                </Button>
-              </Tooltip>
-            </UserSelectableList>
-            {!isTeamDeleted && (
-              <ManageButton
-                canDelete={false}
-                displayName={getEntityName(currentTeam)}
-                entityName={currentTeam.name}
-                entityType={EntityType.USER}
-                extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
-              />
-            )}
-          </Space>
-        }
-        className="mt-0-important border-none"
-        heading={t('label.user')}
-        permission={ungatedFlags.can(Operation.EditUsers)}
-        permissionValue={t('label.edit-entity', {
-          entity: t('label.user'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
-      />
+      <div className={TEAM_TAB_EMPTY_STATE_CLASS}>
+        <CreatePlaceholder
+          data-testid={`assign-error-placeholder-${t('label.user')}`}
+          footer={
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              <UserSelectableList
+                hasPermission
+                includeBot
+                selectedUsers={currentTeam?.users ?? []}
+                onUpdate={onAddUser}>
+                <Tooltip arrow placement="top right" title={addUserButtonTitle}>
+                  <Button
+                    color="primary"
+                    data-testid="add-new-user"
+                    iconLeading={Plus}
+                    isDisabled={!editUserPermission || isTeamDeleted}
+                    size="sm">
+                    {t('label.add')}
+                  </Button>
+                </Tooltip>
+              </UserSelectableList>
+              {!isTeamDeleted && (
+                <ManageButton
+                  canDelete={false}
+                  displayName={getEntityName(currentTeam)}
+                  entityName={currentTeam.name}
+                  entityType={EntityType.USER}
+                  extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
+                />
+              )}
+            </Box>
+          }
+          heading={t('label.user')}
+          permission={ungatedFlags.can(Operation.EditUsers)}
+          permissionValue={t('label.edit-entity', {
+            entity: t('label.user'),
+          })}
+        />
+      </div>
     ) : (
-      <ErrorPlaceHolder
-        placeholderText={t('message.no-user-part-of-team', {
-          team: getEntityName(currentTeam),
-        })}
-      />
+      <div className={TEAM_TAB_EMPTY_STATE_CLASS}>
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={t('message.no-user-part-of-team', {
+            team: getEntityName(currentTeam),
+          })}
+        />
+      </div>
     );
 
   const renderExtraTableFilters = () =>
     !currentTeam.deleted && (
-      <Col>
-        <Space>
+      <Box className="layout-column tw:block">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           {isGroupType && users.length > 0 && editUserPermission && (
             <UserSelectableList
               hasPermission
               includeBot
               selectedUsers={currentTeam?.users ?? []}
               onUpdate={onAddUser}>
-              <Button data-testid="add-new-user" type="primary">
+              <Button color="primary" data-testid="add-new-user">
                 {t('label.add-entity', { entity: t('label.user') })}
               </Button>
             </UserSelectableList>
@@ -449,8 +486,8 @@ export const UserTab = ({
             entityType={EntityType.USER}
             extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
           />
-        </Space>
-      </Col>
+        </Box>
+      </Box>
     );
 
   if (isEmpty(users) && !searchText && !isLoading) {
@@ -476,7 +513,11 @@ export const UserTab = ({
         extraTableFilters={renderExtraTableFilters()}
         loading={isLoading}
         locale={{
-          emptyText: <FilterTablePlaceHolder />,
+          emptyText: (
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+            </div>
+          ),
         }}
         pagination={false}
         rowKey="name"
@@ -490,11 +531,11 @@ export const UserTab = ({
         }}
         size="small"
       />
-      <Modal
+      <SimpleModal
         cancelText={t('label.cancel')}
         data-testid="confirmation-modal"
+        isOpen={Boolean(deletingUser)}
         okText={t('label.confirm')}
-        open={Boolean(deletingUser)}
         title={t('label.removing-user')}
         onCancel={() => setDeletingUser(undefined)}
         onOk={handleRemoveUser}>
@@ -503,7 +544,7 @@ export const UserTab = ({
             entity: getEntityName(deletingUser),
           }),
         })}
-      </Modal>
+      </SimpleModal>
     </div>
   );
 };

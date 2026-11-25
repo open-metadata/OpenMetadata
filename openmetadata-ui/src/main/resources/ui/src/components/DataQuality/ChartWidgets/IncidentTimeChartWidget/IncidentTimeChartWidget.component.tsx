@@ -27,6 +27,7 @@ const IncidentTimeChartWidget = ({
   incidentMetricType,
   name,
   title,
+  description,
   chartFilter,
   height,
   redirectPath,
@@ -114,6 +115,15 @@ const IncidentTimeChartWidget = ({
         name={name}
         valueFormatter={convertMillisecondsToHumanReadableFormat}
       />
+      <div className="tw:mt-4">
+        <Typography
+          as="p"
+          color="secondary"
+          data-testid="widget-description"
+          size="text-xs">
+          {description}
+        </Typography>
+      </div>
     </Card>
   );
 };

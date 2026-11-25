@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  EditOutlined,
-  MoreOutlined,
-} from '@ant-design/icons';
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import {
+  CheckCircle,
+  DotsVertical,
+  Edit01,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import React, { Key, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { useTranslation } from 'react-i18next';
@@ -65,19 +65,19 @@ export const TabItem = ({
           {
             label: t('label.edit-widget-plural'),
             key: 'edit',
-            icon: CheckCircleOutlined,
+            icon: CheckCircle,
           },
         ]
       : []),
     {
       label: t('label.rename'),
       key: 'rename',
-      icon: EditOutlined,
+      icon: Edit01,
     },
     {
       label: shouldHide ? t('label.hide') : t('label.delete'),
       key: 'delete',
-      icon: CloseCircleOutlined,
+      icon: XCircle,
     },
   ];
 
@@ -121,7 +121,7 @@ export const TabItem = ({
           className="draggable-tab-item tw:cursor-move tw:hover:cursor-grab tw:active:cursor-grabbing"
           color="secondary"
           data-testid={`tab-${item.name}`}
-          iconTrailing={MoreOutlined}
+          iconTrailing={DotsVertical}
           onPress={() => {
             onItemClick?.(item.id);
             setIsMenuOpen(true);

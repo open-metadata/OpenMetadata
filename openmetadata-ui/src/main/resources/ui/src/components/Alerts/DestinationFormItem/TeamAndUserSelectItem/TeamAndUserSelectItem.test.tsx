@@ -158,7 +158,7 @@ function renderValidationHarness() {
 
 describe('TeamAndUserSelectItem', () => {
   beforeEach(() => {
-    jest.useFakeTimers('modern');
+    jest.useFakeTimers();
     jest.clearAllMocks();
   });
 

@@ -25,7 +25,7 @@ export interface EntityLifecycleStages {
      * Every lifecycle stage an entity can be in. Each entity type uses the stages its own entry
      * lists.
      */
-    stages: EntityStatus[];
+    stages: string[];
 }
 
 /**
@@ -41,7 +41,7 @@ export interface EntityTypeLifecycle {
      * lifecycle of its own uses the stages it declares, which can include stages no other type
      * has.
      */
-    stages: EntityStatus[];
+    stages: string[];
     /**
      * Active governance workflows that own this entity type's lifecycle stage. While one of
      * them applies to an entity, its stage changes only through that workflow and a direct
@@ -55,32 +55,15 @@ export interface EntityTypeLifecycle {
 }
 
 /**
- * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
- * property. Entity types without that property have no lifecycle. When a create request
- * omits the stage, the server assigns the entity type's initial stage.
- *
- * Stage the entity is in.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Archived = "Archived",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
-    Unprocessed = "Unprocessed",
-}
-
-/**
  * The stages an entity can move to from one stage.
  */
 export interface StageTransition {
     /**
      * Stage the entity is in.
      */
-    from: EntityStatus;
+    from: string;
     /**
      * Stages the entity can move to from it.
      */
-    to: EntityStatus[];
+    to: string[];
 }

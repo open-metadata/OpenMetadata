@@ -812,17 +812,18 @@ public class S3LogStorage implements LogStorageInterface {
     }
   }
 
+  /**
+   * Whether any of the run's logs can be read: the stream this server holds open, logs.txt, or the
+   * partial.txt a run keeps until its stream is closed. A run reports its final status before it
+   * closes its stream, and that close is best effort, so a finished run can have readable logs and
+   * no logs.txt yet.
+   */
   @Override
   public boolean logsExist(String pipelineFQN, UUID runId) throws IOException {
-    String key = buildS3Key(pipelineFQN, runId);
-
     try {
-      HeadObjectRequest request = HeadObjectRequest.builder().bucket(bucketName).key(key).build();
-
-      s3Client.headObject(request);
-      return true;
-    } catch (NoSuchKeyException e) {
-      return false;
+      return activeStreams.containsKey(pipelineFQN + "/" + runId)
+          || objectExists(buildS3Key(pipelineFQN, runId))
+          || objectExists(buildPartialS3Key(pipelineFQN, runId));
     } catch (Exception e) {
       throw new IOException("Failed to check if logs exist in S3", e);
     }

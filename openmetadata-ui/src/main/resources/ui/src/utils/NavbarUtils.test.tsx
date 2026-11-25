@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../constants/constants';
 import { HELP_ITEMS_ENUM } from '../constants/Navbar.constants';
 import { URL_OM_RELEASE_UPDATES } from '../constants/URL.constants';
+import { useProductTourStore } from '../hooks/useProductTourStore';
 import { getHelpDropdownItems } from './NavbarUtils';
 
 describe('NavbarUtils test', () => {
@@ -129,15 +129,6 @@ describe('NavbarUtils test', () => {
     it('should render internal links with correct attributes', () => {
       const helpDropdownItems = getHelpDropdownItems();
 
-      // Test TOUR item (internal)
-      const tourItem = helpDropdownItems.find(
-        (item) => item.key === HELP_ITEMS_ENUM.TOUR
-      );
-
-      expect(tourItem?.label.type).toBe(Link);
-      expect(tourItem?.label.props.to).toBe(ROUTES.TOUR);
-      expect(tourItem?.label.props.className).toBe('no-underline');
-
       // Test API item (internal)
       const apiItem = helpDropdownItems.find(
         (item) => item.key === HELP_ITEMS_ENUM.API
@@ -148,13 +139,48 @@ describe('NavbarUtils test', () => {
       expect(apiItem?.label.props.className).toBe('no-underline');
     });
 
+    it('should colour every item icon the same, link or not', () => {
+      getHelpDropdownItems().forEach((item) => {
+        const row =
+          item.key === HELP_ITEMS_ENUM.TOUR
+            ? item.label
+            : item.label.props.children;
+        const icon = row.props.children[0].props.children;
+
+        expect(icon.props.className.split(/\s+/)).toContain(
+          'tw:text-brand-secondary'
+        );
+      });
+    });
+
+    it('should give the tour item an action that opens the product tour', () => {
+      const tourItem = getHelpDropdownItems().find(
+        (item) => item.key === HELP_ITEMS_ENUM.TOUR
+      );
+
+      expect(tourItem?.label.type).not.toBe(Link);
+
+      tourItem?.onAction?.();
+
+      expect(useProductTourStore.getState().isOpen).toBe(true);
+
+      useProductTourStore.getState().close();
+    });
+
     it('should render label content with correct structure', () => {
       const helpDropdownItems = getHelpDropdownItems();
 
       helpDropdownItems.forEach((item) => {
-        const labelContent = item.label.props.children;
+        // The tour opens a popup rather than a page, so its row is not
+        // wrapped in a link.
+        const labelContent =
+          item.key === HELP_ITEMS_ENUM.TOUR
+            ? item.label
+            : item.label.props.children;
 
-        expect(labelContent.props.className).toBe('cursor-pointer');
+        expect(labelContent.props.className.split(/\s+/)).toContain(
+          'cursor-pointer'
+        );
 
         // Should have two columns
         const columns = labelContent.props.children;
@@ -166,7 +192,9 @@ describe('NavbarUtils test', () => {
 
         // Second column should have text and optional external link icon
         expect(columns[1].props.span).toBe(20);
-        expect(columns[1].props.className).toBe('flex items-center');
+        expect(columns[1].props.className.split(/\s+/)).toEqual(
+          expect.arrayContaining(['flex', 'items-center'])
+        );
       });
     });
 
@@ -190,16 +218,17 @@ describe('NavbarUtils test', () => {
         // Second child should be the external link icon
         const externalIcon = secondColumn.props.children[1];
 
-        expect(externalIcon.type).toBe(Icon);
-        expect(externalIcon.props.className).toBe('m-l-xss text-base-color');
-        expect(externalIcon.props.style).toEqual({ fontSize: '16px' });
+        expect(externalIcon.props.className).toBe(
+          'tw:ml-1 tw:text-secondary tw:shrink-0'
+        );
+        expect(externalIcon.props.size).toBe(16);
       });
     });
 
     it('should not include external link icon for internal items', () => {
       const helpDropdownItems = getHelpDropdownItems();
 
-      const internalItems = [HELP_ITEMS_ENUM.TOUR, HELP_ITEMS_ENUM.API];
+      const internalItems = [HELP_ITEMS_ENUM.API];
 
       internalItems.forEach((key) => {
         const item = helpDropdownItems.find((item) => item.key === key);

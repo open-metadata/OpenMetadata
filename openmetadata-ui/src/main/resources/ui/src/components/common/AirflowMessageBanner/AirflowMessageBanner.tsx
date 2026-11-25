@@ -10,17 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, SpaceProps } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Retry } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC } from 'react';
-import { ReactComponent as IconRetry } from '../../../assets/svg/ic-retry-icon.svg';
 import { AIRFLOW_HYBRID, DISABLED } from '../../../constants/constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './airflow-message-banner.less';
 
-interface AirflowMessageBannerProps extends SpaceProps {
+interface AirflowMessageBannerProps {
+  className?: string;
   /**
    * Shown when the service is unreachable but the status call carried no `reason` — a thrown call
    * has none. Opt-in and caller-supplied, because what to say depends on what the caller left on
@@ -77,18 +78,22 @@ const AirflowMessageBanner: FC<AirflowMessageBannerProps> = ({
   }
 
   return (
-    <Space
+    <Box
+      inline
       align="center"
       className={classNames('airflow-message-banner', className)}
       data-testid="no-airflow-placeholder"
-      role="status"
-      size={16}>
-      <IconRetry className="align-middle" height={24} width={24} />
+      gap={4}
+      role="status">
+      <Retry
+        className="align-middle tw:shrink-0 tw:text-utility-warning-400"
+        size={24}
+      />
       <RichTextEditorPreviewerV1
         enableSeeMoreVariant={false}
         markdown={message ?? ''}
       />
-    </Space>
+    </Box>
   );
 };
 

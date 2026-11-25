@@ -27,6 +27,12 @@ const ACTIVE_BUTTON_COLOR: Record<
   failed: 'secondary-destructive',
 };
 
+const ACTIVE_BACKGROUND: Record<DataQualityType, string> = {
+  success: 'tw:bg-success-primary',
+  aborted: 'tw:bg-warning-primary',
+  failed: 'tw:bg-error-primary',
+};
+
 export const DataQualityStatCard: React.FC<DataQualityStatCardProps> = ({
   count,
   label,
@@ -35,9 +41,11 @@ export const DataQualityStatCard: React.FC<DataQualityStatCardProps> = ({
   onClick,
 }) => (
   <Button
+    aria-pressed={isActive}
     className={classNames(
       `data-quality-stat-card ${type}-card`,
       'tw:m-2 tw:flex-1',
+      isActive && ACTIVE_BACKGROUND[type],
       {
         active: isActive,
       }

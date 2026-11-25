@@ -1,9 +1,12 @@
 package org.openmetadata.it.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 
@@ -43,37 +46,41 @@ public class EntityRulesUtil {
    */
   public static Settings toggleRule(
       OpenMetadataClient client, String ruleName, boolean enableRule) {
+    return patchRule(
+        client,
+        ruleName,
+        "[{\"op\":\"replace\",\"path\":\"/enabled\",\"value\":" + enableRule + "}]");
+  }
+
+  /**
+   * Apply a JSON Patch to one rule, found by name, through the per-rule endpoint. Paths are
+   * relative to the rule, so a concurrent test's change to another rule is never overwritten.
+   */
+  public static Settings patchRule(OpenMetadataClient client, String ruleName, String jsonPatch) {
     try {
-      // Get current entity rules settings
-      Settings currentSettings = getEntityRulesSettings(client);
-
-      // Extract EntityRulesSettings from configValue
-      EntityRulesSettings entityRulesSettings =
-          MAPPER.convertValue(currentSettings.getConfigValue(), EntityRulesSettings.class);
-
-      // Find and toggle the specific rule
-      boolean ruleFound = false;
-      if (entityRulesSettings.getEntitySemantics() != null) {
-        for (var rule : entityRulesSettings.getEntitySemantics()) {
-          if (ruleName.equals(rule.getName())) {
-            rule.setEnabled(enableRule);
-            ruleFound = true;
-            break;
-          }
-        }
-      }
-
-      if (!ruleFound) {
-        throw new IllegalArgumentException("Rule not found: " + ruleName);
-      }
-
-      // Update the settings
-      currentSettings.setConfigValue(entityRulesSettings);
-      return updateSettings(client, currentSettings);
-
+      String responseJson =
+          client
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.PATCH,
+                  ruleEndpoint(ruleName),
+                  jsonPatch,
+                  RequestOptions.builder()
+                      .header("Content-Type", "application/json-patch+json")
+                      .build());
+      return MAPPER.readValue(responseJson, Settings.class);
+    } catch (OpenMetadataException e) {
+      throw e;
     } catch (Exception e) {
-      throw new RuntimeException("Failed to toggle rule: " + ruleName, e);
+      throw new RuntimeException("Failed to patch rule: " + ruleName, e);
     }
+  }
+
+  /** Path params decode "%20" but keep "+" literal, so spaces go out as encodeURIComponent sends them. */
+  private static String ruleEndpoint(String ruleName) {
+    return SETTINGS_ENDPOINT
+        + "/entityRulesSettings/rules/"
+        + URLEncoder.encode(ruleName, StandardCharsets.UTF_8).replace("+", "%20");
   }
 
   /**

@@ -33,16 +33,34 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
+import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 
 class ContextMemoryIndexTest {
+  @Test
+  void anOrdinaryMemoryRewritePreservesExistingVectorFields() {
+    Map<String, Object> doc = new HashMap<>();
+    ContextMemoryIndex.VECTOR_FIELDS.forEach(field -> doc.put(field, "current-vector-value"));
+
+    new ContextMemoryIndex(baseMemory()).buildSearchIndexDocInternal(doc);
+
+    for (String field : ContextMemoryIndex.VECTOR_FIELDS) {
+      assertEquals("current-vector-value", doc.get(field), field);
+    }
+    assertTrue(
+        SearchClient.FIELDS_TO_REMOVE_WHEN_NULL.containsAll(ContextMemoryIndex.VECTOR_FIELDS));
+  }
 
   private static MockedStatic<Entity> entityStaticMock;
 
@@ -67,7 +85,7 @@ class ContextMemoryIndexTest {
             .withSummary("Quick guide on Certification filtering")
             .withMemoryType(ContextMemoryType.FAQ)
             .withMemoryScope(ContextMemoryScope.USER_GLOBAL)
-            .withEntityStatus(EntityStatus.APPROVED)
+            .withEntityStatus(ContextMemoryStatus.APPROVED)
             .withPinned(true)
             .withSourceType(ContextMemorySourceType.CHAT_PROMOTION)
             .withUsageCount(7)
@@ -128,6 +146,36 @@ class ContextMemoryIndexTest {
     assertNull(doc.get("sourceAssistantMessage"));
   }
 
+  /**
+   * A write carries a memory's source as its source entity alone, so the index names that file as
+   * the source a filter can read; an article is no file.
+   */
+  @Test
+  void buildSearchIndexDoc_namesTheFileAWriteCarriesAsItsSource() {
+    EntityReference file =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.CONTEXT_FILE)
+            .withName("Published handbook");
+    entityStaticMock
+        .when(() -> Entity.getEntity(file, "", Include.NON_DELETED))
+        .thenReturn(new ContextFile().withId(file.getId()));
+    EntityReference page = new EntityReference().withId(UUID.randomUUID()).withType(Entity.PAGE);
+
+    Map<String, Object> fromFile =
+        new ContextMemoryIndex(baseMemory().withSourceEntity(file))
+            .buildSearchIndexDocInternal(new HashMap<>());
+    Map<String, Object> fromPage =
+        new ContextMemoryIndex(baseMemory().withSourceEntity(page))
+            .buildSearchIndexDocInternal(new HashMap<>());
+
+    assertNotNull(fromFile.get("sourceFile"));
+    assertEquals(file.getId(), ((EntityReference) fromFile.get("sourceFile")).getId());
+    assertEquals(
+        "Published handbook", ((EntityReference) fromFile.get("sourceFile")).getDisplayName());
+    assertNull(fromPage.get("sourceFile"), "an article is no file");
+  }
+
   @Test
   void buildSearchIndexDoc_nullUsageCountDefaultsToZero() {
     ContextMemory memory = baseMemory().withUsageCount(null);
@@ -135,6 +183,76 @@ class ContextMemoryIndexTest {
         new ContextMemoryIndex(memory).buildSearchIndexDocInternal(new HashMap<>());
 
     assertEquals(0, doc.get("usageCount"));
+  }
+
+  @Test
+  void aPrivateDocumentIsIndexedByIdRatherThanName() {
+    EntityReference file =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.CONTEXT_FILE)
+            .withName("Private handbook")
+            .withFullyQualifiedName("Private handbook")
+            .withDisplayName("Private handbook");
+    entityStaticMock
+        .when(() -> Entity.getEntity(file, "", Include.NON_DELETED))
+        .thenReturn(
+            new ContextFile()
+                .withId(file.getId())
+                .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE)));
+    ContextMemory memory =
+        baseMemory()
+            .withPrimaryEntity(file)
+            .withSourceEntity(file)
+            .withSourceFile(file)
+            .withRelatedEntities(List.of(file));
+
+    Map<String, Object> doc =
+        new ContextMemoryIndex(memory).buildSearchIndexDocInternal(JsonUtils.getMap(memory));
+
+    String indexed = JsonUtils.pojoToJson(doc);
+    assertFalse(indexed.contains("Private handbook"), indexed);
+    assertEquals(file.getId().toString(), doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
+    assertEquals(file.getId(), ((EntityReference) doc.get("sourceFile")).getId());
+    assertEquals("Private handbook", memory.getSourceFile().getName());
+  }
+
+  @Test
+  void buildSearchIndexDoc_aMemoryNeverCountedIndexesNoOutcomes() {
+    ContextMemory memory = baseMemory().withUsageCount(37);
+    Map<String, Object> doc =
+        new ContextMemoryIndex(memory).buildSearchIndexDocInternal(JsonUtils.getMap(memory));
+
+    assertFalse(
+        doc.containsKey("outcomes"),
+        "a list read from search must fall back to usage, not show zero citations");
+    assertEquals(37, doc.get("usageCount"));
+  }
+
+  @Test
+  void buildSearchIndexDoc_indexesTheStoredOutcomes() {
+    ContextMemory memory =
+        baseMemory()
+            .withOutcomes(
+                new MemoryOutcomes()
+                    .withAppliedCount(12)
+                    .withPositiveCount(3)
+                    .withNegativeCount(1)
+                    .withCorrectedCount(2)
+                    .withLastAppliedAt(1_700_000_000_000L)
+                    .withLastCorrectedAt(1_690_000_000_000L)
+                    .withCountedAt(1_700_000_500_000L));
+    Map<String, Object> doc =
+        new ContextMemoryIndex(memory).buildSearchIndexDocInternal(JsonUtils.getMap(memory));
+
+    Map<?, ?> outcomes = (Map<?, ?>) doc.get("outcomes");
+    assertEquals(12, outcomes.get("appliedCount"));
+    assertEquals(3, outcomes.get("positiveCount"));
+    assertEquals(1, outcomes.get("negativeCount"));
+    assertEquals(2, outcomes.get("correctedCount"));
+    assertEquals(1_700_000_000_000L, outcomes.get("lastAppliedAt"));
+    assertEquals(1_690_000_000_000L, outcomes.get("lastCorrectedAt"));
+    assertEquals(1_700_000_500_000L, outcomes.get("countedAt"));
   }
 
   @Test

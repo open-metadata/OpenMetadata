@@ -1,17 +1,28 @@
 package org.openmetadata.service.governance.workflows;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.util.concurrent.Uninterruptibles;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.governance.workflows.LifecycleConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -30,6 +41,24 @@ class EntityStatusWorkflowsTest {
     assertTrue(EntityStatusWorkflows.ownsStage(workflow));
     assertTrue(EntityStatusWorkflows.startsOn(workflow, Entity.METRIC));
     assertFalse(EntityStatusWorkflows.startsOn(workflow, Entity.TABLE));
+  }
+
+  @Test
+  void anEnforceWorkflowsApprovalPublishesTheHeldChangeAndOwnsNoStage() throws IOException {
+    ObjectNode json = metricApprovalWorkflow();
+    ArrayNode nodes = (ArrayNode) json.get("nodes");
+    ArrayNode approvalOnly = nodes.arrayNode();
+    for (JsonNode node : nodes) {
+      if (!"setEntityAttributeTask".equals(node.path("subType").asText())) {
+        approvalOnly.add(node);
+      }
+    }
+    json.set("nodes", approvalOnly);
+    ((ObjectNode) json.path("trigger").path("config")).put("approvalMode", "Enforce");
+
+    assertFalse(EntityStatusWorkflows.ownsStage(workflow(json)));
+    ((ObjectNode) json.path("trigger").path("config")).put("approvalMode", "Default");
+    assertTrue(EntityStatusWorkflows.ownsStage(workflow(json)));
   }
 
   @Test
@@ -96,6 +125,33 @@ class EntityStatusWorkflowsTest {
   }
 
   @Test
+  void aLoadStillRunningWhenTheWorkflowsChangeIsNeverServedAfterIt()
+      throws InterruptedException, ExecutionException, TimeoutException {
+    final CountDownLatch loading = new CountDownLatch(1);
+    final CountDownLatch release = new CountDownLatch(1);
+    final AtomicInteger loads = new AtomicInteger();
+    final EntityStatusWorkflows.InvalidatingCache<String> cache =
+        new EntityStatusWorkflows.InvalidatingCache<>(
+            Duration.ofMinutes(1),
+            () -> {
+              if (loads.getAndIncrement() > 0) {
+                return "after";
+              }
+              loading.countDown();
+              Uninterruptibles.awaitUninterruptibly(release);
+              return "before";
+            });
+
+    final CompletableFuture<String> inFlight = CompletableFuture.supplyAsync(cache::get);
+    assertTrue(loading.await(5, SECONDS));
+    cache.invalidate();
+    release.countDown();
+
+    assertEquals("before", inFlight.get(5, SECONDS));
+    assertEquals("after", cache.get());
+  }
+
+  @Test
   void nothingOwnsAStageWhileTheWorkflowEngineIsDown() {
     EntityStatusWorkflows.invalidate();
 
@@ -104,6 +160,68 @@ class EntityStatusWorkflowsTest {
         EntityStatusWorkflows.ACTIVE
             .owningStageOf(Entity.METRIC, new Metric().withName("weekly"))
             .isEmpty());
+  }
+
+  @Test
+  void aLifecyclePlaybookOwnsTheStageOnlyWhenItIsTheApplicableOwner() throws IOException {
+    WorkflowDefinition approval = workflow(metricApprovalWorkflow()).withName("B_MetricApproval");
+    WorkflowDefinition playbook = playbook("C_MetricLifecycle");
+    Metric metric = new Metric().withName("weekly_active_users");
+
+    assertTrue(EntityStatusWorkflows.playbookOwnsStage(List.of(playbook), Entity.METRIC, metric));
+    assertFalse(EntityStatusWorkflows.playbookOwnsStage(List.of(approval), Entity.METRIC, metric));
+    assertFalse(
+        EntityStatusWorkflows.playbookOwnsStage(
+            List.of(playbook, approval), Entity.METRIC, metric));
+    assertTrue(
+        EntityStatusWorkflows.playbookOwnsStage(
+            List.of(approval, playbook("A_MetricLifecycle")), Entity.METRIC, metric));
+    assertFalse(
+        EntityStatusWorkflows.playbookOwnsStage(List.of(playbook), Entity.GLOSSARY_TERM, metric));
+  }
+
+  @Test
+  void aPlaybookOwnsNoStageForEntitiesItsTriggerFilterExcludes() throws IOException {
+    ObjectNode json = metricApprovalWorkflow();
+    ((ObjectNode) json.get("trigger").get("config"))
+        .putObject("filter")
+        .put(Entity.METRIC, "{\"==\":[{\"var\":\"name\"},\"" + EXCLUDED_METRIC + "\"]}");
+    WorkflowDefinition playbook = asPlaybook(workflow(json).withName("MetricLifecycle"));
+
+    assertFalse(
+        EntityStatusWorkflows.playbookOwnsStage(
+            List.of(playbook), Entity.METRIC, new Metric().withName(EXCLUDED_METRIC)));
+  }
+
+  @Test
+  void onlyWorkflowsThatSetTheStageInANodeWriteItThemselves() throws IOException {
+    ObjectNode approvalOnly = metricApprovalWorkflow();
+    ArrayNode nodes = (ArrayNode) approvalOnly.get("nodes");
+    ArrayNode withoutSetSteps = nodes.arrayNode();
+    for (JsonNode node : nodes) {
+      if (!"setEntityAttributeTask".equals(node.path("subType").asText())) {
+        withoutSetSteps.add(node);
+      }
+    }
+    approvalOnly.set("nodes", withoutSetSteps);
+
+    assertTrue(EntityStatusWorkflows.writesStageInANode(workflow(metricApprovalWorkflow())));
+    assertFalse(EntityStatusWorkflows.writesStageInANode(workflow(approvalOnly)));
+  }
+
+  private static WorkflowDefinition playbook(String name) throws IOException {
+    return asPlaybook(workflow(metricApprovalWorkflow()).withName(name));
+  }
+
+  private static WorkflowDefinition asPlaybook(WorkflowDefinition workflow) {
+    return workflow.withConfig(
+        workflow
+            .getConfig()
+            .withLifecycle(
+                new LifecycleConfiguration()
+                    .withVersion(LifecycleConfiguration.Version._1)
+                    .withEntityType(LifecycleConfiguration.EntityType.METRIC)
+                    .withGates(List.of())));
   }
 
   private static ObjectNode metricApprovalWorkflow() throws IOException {

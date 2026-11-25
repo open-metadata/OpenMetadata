@@ -11,19 +11,20 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import globalSettingsClassBase from '../../utils/GlobalSettingsClassBase';
@@ -32,7 +33,6 @@ import {
   SettingMenuItem,
 } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import './global-setting-page.style.less';
 
 const GlobalSettingPage = () => {
   const navigate = useNavigate();
@@ -80,18 +80,21 @@ const GlobalSettingPage = () => {
 
   if (isEmpty(settingItems)) {
     return (
-      <ErrorPlaceHolder
-        className="border-none h-min-80"
-        permissionValue={t('label.setting-plural')}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.setting-plural')}
+        />
+      </div>
     );
   }
 
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>
-      <Row className="m-t-xs" gutter={[0, 20]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid m-t-xs"
+        style={{ ...getLayoutGutter(0, 20) }}>
+        <Grid.Item className="layout-column" span={24}>
           <PageHeader
             data={{
               header: t(PAGE_HEADERS.SETTING.header),
@@ -100,22 +103,26 @@ const GlobalSettingPage = () => {
             learningPageId={LEARNING_PAGE_IDS.SETTINGS}
             title={t('label.setting-plural')}
           />
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
-          <Row className="setting-items-container" gutter={[20, 20]}>
+        <Grid.Item className="layout-column" span={24}>
+          <Grid
+            className="layout-row layout-grid setting-items-container"
+            style={{ ...getLayoutGutter(20, 20) }}>
             {settingItems.map((setting) => (
-              <Col key={setting?.key} lg={8} md={12} sm={24}>
+              <Grid.Item
+                className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12 tw:min-[992px]:col-span-8"
+                key={setting?.key}>
                 <SettingItemCard
                   className="global-setting-card"
                   data={setting}
                   onClick={handleSettingItemClick}
                 />
-              </Col>
+              </Grid.Item>
             ))}
-          </Row>
-        </Col>
-      </Row>
+          </Grid>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

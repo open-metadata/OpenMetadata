@@ -11,18 +11,34 @@
  *  limitations under the License.
  */
 
-import { ROUTES } from '../../../constants/constants';
-
 /**
- * Route constants for the personal-space surfaces (Inbox / My Data). The
- * Inbox is a routed full page (Activity / Tasks feed) with two deep-linkable
- * sub-tabs; My Data reuses the same shell but derives its own tab from the
- * path. `MY_DATA` aliases the core `ROUTES.MY_DATA` so both mode trees agree
- * on a single path for the owned-data surface.
+ * Route constants for the personal-space Inbox: a routed full page (Activity /
+ * Tasks feed) with two deep-linkable sub-tabs. My Data is modal-only.
  */
 export const PERSONAL_SPACE_ROUTES = {
   INBOX: '/inbox',
   INBOX_ACTIVITY: '/inbox/activity',
   INBOX_TASKS: '/inbox/tasks',
-  MY_DATA: ROUTES.MY_DATA,
 } as const;
+
+/**
+ * Query parameter that opens the inbox's Tasks tab on one task:
+ * `/inbox/tasks?taskId=<id>`. Links from outside the inbox (the landing page's
+ * My Tasks card) use it, since the inbox has no per-task route.
+ */
+export const INBOX_TASK_ID_PARAM = 'taskId';
+
+/**
+ * Query parameter that opens the inbox's Activity tab on one of its sub-tabs:
+ * `/inbox/activity?filter=my-assets`. The landing page's Team Activity card
+ * uses it, since that card shows the My Assets feed.
+ * ADR:2026-10-28-inbox-activity-opens-on-the-filter-a-link-names
+ */
+export const INBOX_ACTIVITY_FILTER_PARAM = 'filter';
+
+/**
+ * The inbox's Activity tab on My Assets (`ActivityFilter.MyAssets`). Spelled
+ * here rather than built from the enum so landing-page links don't pull the
+ * inbox utilities into their chunk.
+ */
+export const INBOX_MY_ASSETS_ACTIVITY_PATH = `${PERSONAL_SPACE_ROUTES.INBOX_ACTIVITY}?${INBOX_ACTIVITY_FILTER_PARAM}=my-assets`;

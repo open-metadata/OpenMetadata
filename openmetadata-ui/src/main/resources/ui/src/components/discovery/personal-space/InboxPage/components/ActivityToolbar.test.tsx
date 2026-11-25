@@ -19,6 +19,7 @@ import ActivityToolbar from './ActivityToolbar';
 interface MockOption {
   value: string;
   label: ReactNode;
+  count?: string;
 }
 
 jest.mock('@openmetadata/ui-core-components', () => {
@@ -39,22 +40,20 @@ jest.mock('@openmetadata/ui-core-components', () => {
   Tabs.List = ({ children }: { children?: ReactNode }) => <>{children}</>;
   Tabs.Item = ({
     id,
+    badge,
     children,
   }: {
     id: string;
-    children: (state: { isSelected: boolean }) => ReactNode;
+    badge?: string;
+    children: ReactNode;
   }) => (
     <span data-testid={`tab-${id}`}>
-      {children({ isSelected: id === 'all' })}
+      {children}
+      {badge !== undefined && <span data-testid="tab-count">{badge}</span>}
     </span>
   );
 
   return {
-    Badge: ({ children, color }: { children?: ReactNode; color?: string }) => (
-      <span data-color={color} data-testid="tab-count">
-        {children}
-      </span>
-    ),
     Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
     Tabs,
     FilterSelect: ({
@@ -96,8 +95,8 @@ jest.mock('./ActivityToolbarMenu', () => ({
       <span data-testid={`${props['data-testid']}-trigger`}>
         {triggerLabel}
       </span>
-      {options.map(({ value, label }) => (
-        <button key={value} onClick={() => onChange(value)}>
+      {options.map(({ value, label, count }) => (
+        <button data-count={count} key={value} onClick={() => onChange(value)}>
           {label}
         </button>
       ))}
@@ -118,6 +117,7 @@ const renderToolbar = (
     counts,
     datePreset: 'last30days',
     filter: ActivityFilter.All,
+    filters: Object.values(ActivityFilter),
     grouping: ActivityGrouping.Day,
     typeKeys: [],
     onDatePresetChange: jest.fn(),
@@ -143,7 +143,7 @@ describe('ActivityToolbar', () => {
     expect(onFilterChange).toHaveBeenCalledWith(ActivityFilter.Mentions);
   });
 
-  // Zero reads as no badge; the chosen tab's count is brand-tinted.
+  // Zero reads as no badge.
   it('badges each sub-tab with its count', () => {
     renderToolbar({
       [ActivityFilter.All]: exact(3),
@@ -158,9 +158,7 @@ describe('ActivityToolbar', () => {
     expect(screen.getByTestId('tab-following')).toHaveTextContent(
       /^label.following$/
     );
-    expect(
-      screen.getAllByTestId('tab-count').map((badge) => badge.dataset.color)
-    ).toEqual(['brand', 'gray']);
+    expect(screen.getAllByTestId('tab-count')).toHaveLength(2);
   });
 
   // The lists are capped, so a full page reads as a floor.
@@ -198,15 +196,56 @@ describe('ActivityToolbar', () => {
     expect(onTypeKeysChange).toHaveBeenCalledWith(['label.owner-plural']);
   });
 
+  // Every window runs to now, so a one-day preset is today, not yesterday.
   it('offers the date presets up to 30 days and reports the one picked', () => {
     const { onDatePresetChange } = renderToolbar();
     const dates = screen.getByTestId('activity-date-filter');
 
-    expect(dates).toHaveTextContent('label.yesterday');
+    expect(dates).toHaveTextContent('label.today');
+    expect(dates).not.toHaveTextContent('label.yesterday');
     expect(dates).not.toHaveTextContent('60');
 
-    fireEvent.click(screen.getByText('label.yesterday'));
+    fireEvent.click(screen.getByText('label.today'));
 
-    expect(onDatePresetChange).toHaveBeenCalledWith('yesterday');
+    expect(onDatePresetChange).toHaveBeenCalledWith('today');
+  });
+
+  // An entity's feed puts its Activity / Tasks switch on the left, so its two
+  // feeds move into a Show menu, and it has no grouping.
+  it('moves the feeds into a Show menu beside a host control', () => {
+    const onFilterChange = jest.fn();
+    render(
+      <ActivityToolbar
+        counts={{
+          [ActivityFilter.All]: exact(5),
+          [ActivityFilter.Mentions]: exact(1),
+        }}
+        datePreset="last30days"
+        filter={ActivityFilter.All}
+        filters={[ActivityFilter.All, ActivityFilter.Mentions]}
+        leading={<span data-testid="host-switch" />}
+        typeKeys={[]}
+        onFilterChange={onFilterChange}
+        onTypeKeysChange={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('host-switch')).toBeInTheDocument();
+    expect(screen.queryByTestId('tab-all')).not.toBeInTheDocument();
+    expect(screen.getByText('label.all-activity')).toHaveAttribute(
+      'data-count',
+      '5'
+    );
+    expect(screen.getByText('label.mention-plural')).toHaveAttribute(
+      'data-count',
+      '1'
+    );
+    expect(
+      screen.queryByTestId('activity-group-filter')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.mention-plural'));
+
+    expect(onFilterChange).toHaveBeenCalledWith(ActivityFilter.Mentions);
   });
 });

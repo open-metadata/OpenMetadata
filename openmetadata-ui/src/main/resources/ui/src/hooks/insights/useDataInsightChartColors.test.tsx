@@ -20,6 +20,12 @@ import {
 import { BrandColors } from '../../context/UntitledUIThemeProvider/theme-provider.interface';
 import { useDataInsightChartColors } from './useDataInsightChartColors';
 
+// Dark mode applies only in AI mode; classic is light-only.
+jest.mock('../useAppMode', () => ({
+  ...jest.requireActual('../useAppMode'),
+  useIsAiMode: () => true,
+}));
+
 const TEST_THEME_STORAGE_KEY = 'data-insight-chart-colors-test';
 let activeBrandColors: BrandColors | undefined;
 let setActiveTheme: ReturnType<typeof useTheme>['setTheme'];
@@ -34,7 +40,6 @@ const ThemeController = ({ children }: { children: ReactNode }) => {
 const TestThemeProvider = ({ children }: { children: ReactNode }) => (
   <ThemeProvider
     brandColors={activeBrandColors}
-    defaultTheme="light"
     storageKey={TEST_THEME_STORAGE_KEY}>
     <ThemeController>{children}</ThemeController>
   </ThemeProvider>

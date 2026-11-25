@@ -1,0 +1,75 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyReleaseStructureReport.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyReleaseStructureReport",
+  "description": "Declaration, reference-kind and axiom-shape checks over a sealed release and its pinned imports. This is not a complete OWL 2 DL profile check, a logical consistency result, or publication approval.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyReleaseStructureReport",
+  "definitions": {
+    "issue": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.OntologyReleaseStructureIssue",
+      "properties": {
+        "releaseId": {
+          "description": "Owning release when validating captured content; absent for a working definition.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "memberId": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "memberKind": {
+          "type": "string",
+          "existingJavaType": "org.openmetadata.schema.type.OntologyReleaseMember.MemberKind",
+          "allOf": [
+            {
+              "$ref": "../../type/ontologyReleaseMember.json#/properties/memberKind"
+            }
+          ]
+        },
+        "violation": {
+          "$ref": "../../type/ontologyProfileViolation.json"
+        }
+      },
+      "required": [
+        "memberId",
+        "memberKind",
+        "violation"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "releaseId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "contentDigest": {
+      "$ref": "../../entity/data/ontologyRelease.json#/properties/contentDigest"
+    },
+    "valid": {
+      "description": "True only when these structural checks find no violations. Other required publication checks are independent.",
+      "type": "boolean"
+    },
+    "violationCount": {
+      "description": "Total findings, including those beyond the response limit.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "violations": {
+      "description": "At most 1000 findings in release/member order. Compare the length with violationCount to detect truncation.",
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "$ref": "#/definitions/issue"
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "releaseId",
+    "contentDigest",
+    "valid",
+    "violationCount",
+    "violations"
+  ],
+  "additionalProperties": false
+}

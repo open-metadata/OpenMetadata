@@ -50,8 +50,12 @@ describe('resolveCellValue rawValue branch', () => {
 describe('sticky column background', () => {
   it('leaves body cells to the class so dark hover/selected can repaint them', () => {
     expect(getColumnStickyStyle('left', 1)).not.toHaveProperty('background');
-    expect(getStickyBodyCellClass('right')).toContain(
-      'tw:dark:group-hover:bg-secondary'
+    expect(getStickyBodyCellClass('right').split(' ')).toEqual(
+      expect.arrayContaining([
+        'tw:bg-surface',
+        'tw:group-hover:bg-secondary',
+        'tw:group-data-[selected]:bg-secondary',
+      ])
     );
     expect(getStickyBodyCellClass(undefined)).toBe('');
   });

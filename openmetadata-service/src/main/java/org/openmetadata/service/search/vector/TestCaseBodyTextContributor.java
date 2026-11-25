@@ -47,7 +47,7 @@ public final class TestCaseBodyTextContributor implements VectorBodyTextContribu
     return TestCaseBodyTextContributor::extractBodyText;
   }
 
-  static String extractBodyText(EntityInterface entity) {
+  static String extractBodyText(EntityInterface<?> entity) {
     if (!(entity instanceof TestCase testCase)) {
       return null;
     }

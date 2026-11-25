@@ -15,17 +15,17 @@ import {
   Box,
   Button,
   Dropdown,
-  EmptyPlaceholder,
   PaginationCardWithControls,
 } from '@openmetadata/ui-core-components';
-import { Download01, Upload01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  Upload01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Table from '../../../../../common/Table/TableV2';
 import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import type { MembersUsersTabProps } from './MembersTeamDetail.types';
@@ -55,18 +55,19 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
     <Box direction="col" gap={3}>
       <Table
         columns={userColumns}
+        containerClassName="tw:rounded-none tw:border-0"
         data-testid="team-users-table"
         dataSource={filteredTeamUsers}
         extraTableFilters={
           <Box align="center" direction="row" gap={2}>
-            {canEditAll && !team.deleted && (
+            {isGroupType && canEditAll && !team.deleted && (
               <UserTeamSelectableList
                 hasPermission
                 multiple={{ user: true, team: false }}
                 owner={team.users ?? []}
                 showTeamsTab={false}
                 onUpdate={(users) => onAddUsers(users ?? [])}>
-                <Button color="primary" data-testid="add-user" size="sm">
+                <Button color="primary" data-testid="add-user" size="xs">
                   {t('label.add-entity', { entity: t('label.user') })}
                 </Button>
               </UserTeamSelectableList>
@@ -111,11 +112,12 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
               align="center"
               className="tw:min-h-32 tw:relative"
               justify="center">
-              <EmptyPlaceholder
+              <NoDataPlaceholder
                 description={t(
                   'message.adding-new-entity-is-easy-just-give-it-a-spin',
                   { entity: t('label.user') }
                 )}
+                icon={<User01 />}
                 title={t('label.no-entity-found', {
                   entity: t('label.user-plural'),
                 })}
@@ -134,12 +136,13 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
           typingInterval: 500,
         }}
         size="small"
+        variant="muted"
       />
       {showUsersPagination && (
         <PaginationCardWithControls
           page={usersPage}
           pageSize={usersPageSize}
-          pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
+          pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
           total={Math.max(
             1,
             Math.ceil((usersPaging.total ?? 0) / usersPageSize)

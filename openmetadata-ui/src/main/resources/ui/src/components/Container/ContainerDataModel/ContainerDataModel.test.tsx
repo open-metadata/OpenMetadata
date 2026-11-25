@@ -173,18 +173,15 @@ jest.mock('../../Database/TableTags/TableTags.component', () =>
     ))
 );
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="error-placeholder">ErrorPlaceHolder</div>
-    ))
-);
-
 jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest
     .fn()
     .mockImplementation((_entityType, fqn) => `/container/${fqn}`),
+  getEntityDetailsUrl: jest
+    .fn()
+    .mockImplementation(
+      (_entityType, fqn) => `http://localhost/container/${fqn}`
+    ),
 }));
 
 jest.mock(

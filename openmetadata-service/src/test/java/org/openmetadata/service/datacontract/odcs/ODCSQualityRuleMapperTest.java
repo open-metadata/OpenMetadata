@@ -363,6 +363,85 @@ class ODCSQualityRuleMapperTest {
   }
 
   @Test
+  void subsumedStrictLowerBoundBelowInclusiveLowerIsKept() {
+    CreateTestCase test =
+        mapToTestCase(
+            legacy("Positive ids", "valuesBetween", "id")
+                .withMustBeGreaterOrEqualTo(5.0)
+                .withMustBeGreaterThan(0.0));
+
+    assertEquals("columnValuesToBeBetween", test.getTestDefinition());
+    assertEquals("5", parameter(test, "minValue"));
+    assertNull(parameter(test, "maxValue"));
+  }
+
+  @Test
+  void subsumedStrictUpperBoundAboveInclusiveUpperIsKept() {
+    CreateTestCase test =
+        mapToTestCase(
+            legacy("Bounded region", "valuesBetween", "status")
+                .withMustBeLessOrEqualTo(10.0)
+                .withMustBeLessThan(100.0));
+
+    assertEquals("columnValuesToBeBetween", test.getTestDefinition());
+    assertNull(parameter(test, "minValue"));
+    assertEquals("10", parameter(test, "maxValue"));
+  }
+
+  @Test
+  void strictLowerBoundEqualToInclusiveLowerIsNotExecutable() {
+    UnsupportedOutcome outcome =
+        mapToUnsupported(
+            legacy("Equal lower bound", "valuesBetween", "id")
+                .withMustBeGreaterOrEqualTo(5.0)
+                .withMustBeGreaterThan(5.0));
+
+    assertTrue(outcome.reason().contains("no equivalent"));
+  }
+
+  @Test
+  void strictUpperBoundEqualToInclusiveUpperIsNotExecutable() {
+    UnsupportedOutcome outcome =
+        mapToUnsupported(
+            legacy("Equal upper bound", "valuesBetween", "id")
+                .withMustBeLessOrEqualTo(10.0)
+                .withMustBeLessThan(10.0));
+
+    assertTrue(outcome.reason().contains("no equivalent"));
+  }
+
+  @Test
+  void strictLowerBoundAloneOnContinuousRangeIsNotExecutable() {
+    UnsupportedOutcome outcome =
+        mapToUnsupported(
+            legacy("Strict lower alone", "valuesBetween", "id").withMustBeGreaterThan(5.0));
+
+    assertTrue(outcome.reason().contains("no equivalent"));
+  }
+
+  @Test
+  void strictUpperBoundAloneOnContinuousRangeIsNotExecutable() {
+    UnsupportedOutcome outcome =
+        mapToUnsupported(
+            legacy("Strict upper alone", "valuesBetween", "id").withMustBeLessThan(100.0));
+
+    assertTrue(outcome.reason().contains("no equivalent"));
+  }
+
+  @Test
+  void strictBoundOnWholeNumberLengthMeasureIsKept() {
+    CreateTestCase test =
+        mapToTestCase(
+            legacy("Short status with guard", "textLength", "status")
+                .withMustBeBetween(List.of(5.0, 10.0))
+                .withMustBeGreaterThan(0.0));
+
+    assertEquals("columnValueLengthsToBeBetween", test.getTestDefinition());
+    assertEquals("5", parameter(test, "minLength"));
+    assertEquals("10", parameter(test, "maxLength"));
+  }
+
+  @Test
   void sqlRuleBecomesCustomSqlTestWithPlaceholdersResolved() {
     CreateTestCase test =
         mapToTestCase(

@@ -17,14 +17,14 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, sortBy } from 'lodash';
 import { Heading } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { CommonWidgetType } from '../../../../constants/CustomizeWidgets.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { DetailPageWidgetKeys } from '../../../../enums/CustomizeDetailPage.enum';
 import type { WidgetConfig } from '../../../../interface/customization.interface';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { AddCustomPropertiesWidgetTabContent } from './AddCustomPropertiesWidgetTabContent';
 import { AddDetailsPageWidgetTabContent } from './AddDetailsPageWidgetTabContent';
 
@@ -85,12 +85,13 @@ function AddDetailsPageWidgetModal({
   const renderBody = () => {
     if (isEmpty(widgetsList)) {
       return (
-        <ErrorPlaceHolder
-          className="h-min-480"
-          data-testid="no-widgets-placeholder"
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          {t('message.no-widgets-to-add')}
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            icon={<Database01 />}
+            title={t('message.no-widgets-to-add')}
+          />
+        </div>
       );
     }
 

@@ -26,7 +26,7 @@ public final class MetricShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new Metric()
         .withId(ctx.id())
         .withName("metric")

@@ -39,6 +39,7 @@ export enum SettingType {
     EntityRulesSettings = "entityRulesSettings",
     EventHandlerConfiguration = "eventHandlerConfiguration",
     FernetConfiguration = "fernetConfiguration",
+    GlossarySettings = "glossarySettings",
     GlossaryTermRelationSettings = "glossaryTermRelationSettings",
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
@@ -112,10 +113,14 @@ export enum SettingType {
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
  *
+ * Catalog-wide preferences for glossary terms.
+ *
  * Administrator-managed SPARQL query templates available across the installation.
  *
- * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
- * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
+ * App-wide UI configuration. It exists both in the server configuration (yaml/env) and in
+ * the database, and configSource.app (APP_CONFIG_SOURCE, default DB) decides which one
+ * wins. In DB mode the stored value wins, and the server configuration only fills values
+ * the stored setting lacks.
  *
  * Fingerprints of bundled resources successfully applied during server startup.
  */
@@ -341,7 +346,8 @@ export interface PipelineServiceClientConfiguration {
      */
     defaultOAuthRole?: string;
     /**
-     * Enable Secure Socket Connection.
+     * Deprecated — has no effect (ADR:2026-10-26-push-feed-handshakes-always-authenticate).
+     * Socket handshakes are always authenticated under every configuration.
      */
     enableSecureSocketConnection?: boolean;
     /**
@@ -518,6 +524,11 @@ export interface PipelineServiceClientConfiguration {
      */
     openMetadataUrl?: string;
     /**
+     * App-level token (xapp-*) required for Socket Mode. Generate from Slack app settings under
+     * App-Level Tokens with connections:write scope.
+     */
+    appToken?: string;
+    /**
      * Bot Token
      */
     botToken?: string;
@@ -525,6 +536,13 @@ export interface PipelineServiceClientConfiguration {
      * Client Secret of the Application.
      */
     clientSecret?: string;
+    /**
+     * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+     * for production) receives events on a public HTTP endpoint and scales horizontally behind
+     * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+     * deployments that cannot expose a public endpoint (on-prem/firewalled).
+     */
+    connectionMode?: ConnectionMode;
     /**
      * Signing Secret of the Application. Confirm that each request comes from Slack by
      * verifying its unique signature.
@@ -667,6 +685,21 @@ export interface PipelineServiceClientConfiguration {
      */
     allowedOrigins?: string[];
     /**
+     * Exact HTTPS redirect host allowlist, case-insensitive. Empty allows any HTTPS host. No
+     * wildcards or suffix matching. Loopback and native redirects are controlled separately.
+     * Applies to new registration and new authorization flows.
+     */
+    allowedRedirectHosts?: string[];
+    /**
+     * Allow HTTP or HTTPS loopback callbacks for desktop clients.
+     */
+    allowLoopbackRedirects?: boolean;
+    /**
+     * Allow private-use URI scheme callbacks for native clients. Disable to require HTTPS or
+     * enabled loopback callbacks.
+     */
+    allowNativeRedirects?: boolean;
+    /**
      * Base URL for MCP OAuth endpoints. Used for OAuth metadata (issuer, endpoints). If not
      * set, falls back to system settings. For clustered deployments, set this to the
      * external-facing URL.
@@ -678,11 +711,30 @@ export interface PipelineServiceClientConfiguration {
      */
     connectTimeout?: number;
     /**
-     * Name of the MCP server
+     * Names of MCP tools to turn off for every user, admins included. A change applies right
+     * away to tool calls and to the next tools/list, on each server as it reloads the setting;
+     * an MCP client that already listed the tools sees the change when it lists them again. A
+     * name that matches no tool is ignored.
+     */
+    disabledTools?: string[];
+    /**
+     * Allow anonymous OAuth client registration. Disabling it stops new registrations but
+     * preserves existing clients and grants.
+     */
+    dynamicClientRegistrationEnabled?: boolean;
+    /**
+     * Largest MCP tool response, in characters. Tools return fewer items to stay under it, so
+     * it bounds how much of the MCP client's context one call can use. A saved change applies
+     * right away on the server that handled the save; other servers in a cluster pick it up on
+     * restart.
+     */
+    maxResponseChars?: number;
+    /**
+     * Name of the MCP server, reported to clients in initialize. Applies after a restart.
      */
     mcpServerName?: string;
     /**
-     * Version of the MCP server
+     * Version of the MCP server, reported to clients in initialize. Applies after a restart.
      */
     mcpServerVersion?: string;
     /**
@@ -698,6 +750,13 @@ export interface PipelineServiceClientConfiguration {
      */
     path?: string;
     /**
+     * Expose only the MCP tools that do not change metadata (annotated readOnlyHint), for every
+     * user including admins. A change applies right away to tool calls and to the next
+     * tools/list, on each server as it reloads the setting; an MCP client that already listed
+     * the tools sees the change when it lists them again.
+     */
+    readOnly?: boolean;
+    /**
      * HTTP read timeout in milliseconds for SSO provider metadata fetching. Default: 30000ms
      * (30 seconds)
      */
@@ -706,6 +765,11 @@ export interface PipelineServiceClientConfiguration {
      * List of configured glossary term relation types.
      */
     relationTypes?: GlossaryTermRelationType[];
+    /**
+     * Apply classification tags from glossary terms to their associated assets. Changes to
+     * existing search results require reindexing.
+     */
+    enableTagPropagation?: boolean;
     /**
      * Installation query templates visible to SPARQL console users.
      */
@@ -716,6 +780,16 @@ export interface PipelineServiceClientConfiguration {
      * Null means no tenant default is configured.
      */
     defaultAppMode?: DefaultAppMode | null;
+    /**
+     * Tenant-wide default order of columns in table schema views. Users can still change the
+     * order per page from the Sort menu; that choice is not saved. Null means no tenant default
+     * is configured, and columns are ordered alphabetically.
+     */
+    defaultColumnOrder?: DefaultColumnOrder | null;
+    /**
+     * Tenant-wide default time format for UI display.
+     */
+    defaultTimeFormat?: DefaultTimeFormat;
     /**
      * Timestamp when the fingerprints were last persisted.
      */
@@ -1630,12 +1704,9 @@ export interface OidcClientConfig {
      */
     discoveryUri: string;
     /**
-     * End the OpenMetadata session when the identity provider ends its own. OpenMetadata then
-     * renews the provider's tokens on the provider's schedule while the user is active, and
-     * signs the user out once the provider rejects its refresh token: after the provider's idle
-     * or maximum session lifetime, or a sign-out on providers that revoke refresh tokens with
-     * the session (Keycloak does; Microsoft Entra ID does not). When off, a session lasts the
-     * configured session expiry whatever the provider does. Applies to confidential clients.
+     * [DEPRECATED: ignored] Confidential OIDC sessions always end with the identity provider's:
+     * each refresh redeems the provider's refresh token for the browser's next ID token, and a
+     * refresh token the provider rejects ends the OpenMetadata session too.
      */
     endSessionWithProvider?: boolean;
     /**
@@ -1688,7 +1759,9 @@ export interface OidcClientConfig {
      */
     tenant: string;
     /**
-     * Lifetime in seconds of the OpenMetadata JWT issued after OIDC authentication.
+     * [DEPRECATED: ignored] OpenMetadata no longer issues its own token after OIDC
+     * authentication: the browser presents the identity provider's ID token, whose lifetime the
+     * provider sets.
      */
     tokenValidity?: number;
     /**
@@ -1754,7 +1827,10 @@ export interface Idp {
      */
     entityId: string;
     /**
-     * X509 Certificate
+     * IdP signing certificate(s): a PEM certificate or concatenated PEM bundle; a single base64
+     * DER certificate is also accepted. Saving requires at least one currently valid
+     * certificate. At runtime every configured certificate is trusted, including expired and
+     * future rollover ones, so remove a retired key explicitly.
      */
     idpX509Certificate?: string;
     /**
@@ -1796,7 +1872,8 @@ export interface Security {
      */
     signSpMetadata?: boolean;
     /**
-     * Only accept valid signed and encrypted assertions if the relevant flags are set
+     * Enable strict SAML protocol checks and the Want Messages Signed / Want Assertions Signed
+     * policies. Require Encrypted Assertions applies independently of strict mode.
      */
     strictMode?: boolean;
     /**
@@ -1808,7 +1885,9 @@ export interface Security {
      */
     validateXml?: boolean;
     /**
-     * SP requires the assertion received to be encrypted.
+     * Reject plaintext assertions even when Strict Mode is off. Optional and disabled by
+     * default. Requires an SP private key and matching certificate; configure token encryption
+     * at the IdP too. Providing an SP key alone does not require encryption.
      */
     wantAssertionEncrypted?: boolean;
     /**
@@ -1908,7 +1987,8 @@ export interface AuthorizerConfiguration {
      */
     defaultOAuthRole?: string;
     /**
-     * Enable Secure Socket Connection.
+     * Deprecated — has no effect (ADR:2026-10-26-push-feed-handshakes-always-authenticate).
+     * Socket handshakes are always authenticated under every configuration.
      */
     enableSecureSocketConnection: boolean;
     /**
@@ -1949,9 +2029,33 @@ export interface Aws {
     [property: string]: any;
 }
 
+/**
+ * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+ * for production) receives events on a public HTTP endpoint and scales horizontally behind
+ * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+ * deployments that cannot expose a public endpoint (on-prem/firewalled).
+ */
+export enum ConnectionMode {
+    SocketMode = "SocketMode",
+    Webhook = "Webhook",
+}
+
 export enum DefaultAppMode {
     AI = "ai",
     Classic = "classic",
+}
+
+export enum DefaultColumnOrder {
+    Alphabetical = "alphabetical",
+    SourceOrder = "sourceOrder",
+}
+
+/**
+ * Tenant-wide default time format for UI display.
+ */
+export enum DefaultTimeFormat {
+    The12H = "12h",
+    The24H = "24h",
 }
 
 /**
@@ -2213,7 +2317,8 @@ export interface LogStorageConfiguration {
      */
     earlyFlushWatermarkBytes?: number;
     /**
-     * Enable it for pipelines deployed in the server
+     * Deprecated and ignored. Pipelines store their logs in S3 whenever the type is s3
+     * (ADR:2026-11-10-s3-log-storage-drives-streamable-logs).
      */
     enabled?: boolean;
     /**
@@ -2512,8 +2617,8 @@ export interface NaturalLanguageSearch {
     keywordWeight?: number;
     /**
      * Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector
-     * search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the
-     * cost of latency. Defaults to 2.
+     * search. num_candidates = max(k * multiplier, 100), clamped to Elasticsearch's engine
+     * maximum of 10,000. Higher values improve recall at the cost of latency. Defaults to 2.
      */
     knnNumCandidatesMultiplier?: number;
     /**
@@ -2799,6 +2904,11 @@ export interface SavedSparqlQuery {
      */
     name: string;
     /**
+     * Ontology the query was saved in. Ontology Studio lists a query only in its own ontology;
+     * absent for a query saved outside one.
+     */
+    ontologyId?: string;
+    /**
      * SPARQL query body.
      */
     query: string;
@@ -2991,6 +3101,7 @@ export interface SampleDataIngestionConfig {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ko = "KO",
     Ru = "RU",
     Zh = "ZH",
 }

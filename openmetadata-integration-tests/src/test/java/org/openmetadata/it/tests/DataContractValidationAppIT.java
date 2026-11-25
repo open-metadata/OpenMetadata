@@ -1,11 +1,14 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -25,13 +28,17 @@ import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
+import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.system.Stats;
+import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 
 /**
@@ -57,6 +64,28 @@ public class DataContractValidationAppIT {
   @BeforeAll
   static void setup() {
     server = OssTestServer.defaultHandle();
+  }
+
+  /** The app stores no configuration, so a trigger payload has nothing to be merged into. */
+  @Test
+  void aTriggerWithAConfigurationPayloadRunsTheApp() {
+    assumeFalse(TestSuiteBootstrap.isK8sEnabled(), "App trigger needs the embedded scheduler");
+    awaitNoRunInProgress();
+    long triggeredAt = System.currentTimeMillis();
+    // Only a run still holding the app's lock is retried; any other failure fails the test.
+    Awaitility.await(APP + " trigger with a payload to be accepted")
+        .atMost(RUN_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreException(ConflictException.class)
+        .until(
+            () -> {
+              ReindexHelpers.triggerAppWithConfig(server, APP, Map.of());
+              return true;
+            });
+
+    AppRunRecord run = awaitRunTriggeredAfter(triggeredAt);
+
+    assertEquals(AppRunRecord.Status.SUCCESS, run.getStatus(), "run should succeed");
   }
 
   @Test
@@ -90,6 +119,34 @@ public class DataContractValidationAppIT {
             .getLatestResult(materialized.getId())
             .getContractExecutionStatus(),
         "The second run must still check the Data Product's rule the asset breaks");
+  }
+
+  @Test
+  void successRunStatsIncludeTheDataProductPhaseTwoMaterialization(TestNamespace ns) {
+    assumeFalse(TestSuiteBootstrap.isK8sEnabled(), "App trigger needs the embedded scheduler");
+
+    assetOfDataProductWithContract(ns, EntityStatus.APPROVED);
+    int existingContracts = SdkClients.adminClient().dataContracts().list().getTotal();
+
+    AppRunRecord run = runApp();
+    assertEquals(AppRunRecord.Status.SUCCESS, run.getStatus(), "run should succeed");
+
+    Stats stats = run.getSuccessContext().getStats();
+    assertNotNull(stats, "success context must carry stats");
+    StepStats jobStats = stats.getJobStats();
+    assertNotNull(jobStats, "stats must carry job stats");
+    int processed = jobStats.getSuccessRecords() + jobStats.getFailedRecords();
+
+    assertTrue(
+        processed >= existingContracts + 1,
+        "SUCCESS stats must include the Phase 2 materialization of the inherited contract (Phase 1"
+            + " validates "
+            + existingContracts
+            + " contracts, so processed must be >= "
+            + (existingContracts + 1)
+            + ", got "
+            + processed
+            + ")");
   }
 
   /** A table in a Data Product whose contract requires one owner; the table has none. */
@@ -126,15 +183,8 @@ public class DataContractValidationAppIT {
     return SdkClients.adminClient().tables().update(table.getId().toString(), withProduct);
   }
 
-  private static void runApp() {
-    Awaitility.await("previous " + APP + " run to finish")
-        .atMost(RUN_TIMEOUT)
-        .pollInterval(Duration.ofSeconds(1))
-        .ignoreExceptions()
-        .until(
-            () ->
-                ReindexHelpers.latestRunStatus(server, APP) == null
-                    || ReindexHelpers.latestRunIsTerminal(server, APP));
+  private static AppRunRecord runApp() {
+    awaitNoRunInProgress();
     long triggeredAt = System.currentTimeMillis();
     Awaitility.await(APP + " trigger to be accepted")
         .atMost(RUN_TIMEOUT)
@@ -145,10 +195,26 @@ public class DataContractValidationAppIT {
               ReindexHelpers.triggerApp(server, APP);
               return true;
             });
+    return awaitRunTriggeredAfter(triggeredAt);
+  }
+
+  private static void awaitNoRunInProgress() {
+    Awaitility.await("previous " + APP + " run to finish")
+        .atMost(RUN_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () ->
+                ReindexHelpers.latestRunStatus(server, APP) == null
+                    || ReindexHelpers.latestRunIsTerminal(server, APP));
+  }
+
+  private static AppRunRecord awaitRunTriggeredAfter(long triggeredAt) {
     Awaitility.await(APP + " run to finish")
         .atMost(RUN_TIMEOUT)
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
         .until(() -> ReindexHelpers.freshRunIsTerminal(server, APP, triggeredAt));
+    return ReindexHelpers.fetchLatestRun(server, APP);
   }
 }

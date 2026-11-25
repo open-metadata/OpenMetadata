@@ -11,26 +11,30 @@
  *  limitations under the License.
  */
 import {
-  ClockCircleOutlined,
-  LeftOutlined,
-  StopOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
+  Box,
+  Button,
+  Card,
+  Tabs,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  ChevronLeft,
+  Clock,
+  LinkExternal01,
+  Restore,
+  SlashCircle01,
+  Trash01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import { Button, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
-import { ICON_DIMENSION } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { TabSpecificField } from '../../../../enums/entity.enum';
@@ -61,6 +65,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   ManageMenu,
   ManageMenuItem,
@@ -70,6 +75,7 @@ import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/M
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
+import McpClientsTable from '../../../platform/settings/mcp/McpClientsTable/McpClientsTable';
 import { useApplicationsProvider } from '../ApplicationsProvider/ApplicationsProvider';
 import AppLiveIndexing from '../AppLiveIndexing/AppLiveIndexing.component';
 import AppLogo from '../AppLogo/AppLogo.component';
@@ -89,15 +95,8 @@ import applicationsClassBase from './ApplicationsClassBase';
 const getShowMcpConfigTab = (
   appData: App | undefined,
   isAdminUser: boolean | undefined,
-  jsonSchema: RJSFSchema | undefined,
-  isRuntimeDisabled: boolean
-) =>
-  Boolean(
-    isMcpApplication(appData?.name) &&
-      isAdminUser &&
-      jsonSchema &&
-      !isRuntimeDisabled
-  );
+  jsonSchema: RJSFSchema | undefined
+) => Boolean(isMcpApplication(appData?.name) && isAdminUser && jsonSchema);
 
 const getShowAppConfigTab = (
   appData: App | undefined,
@@ -121,6 +120,7 @@ const AppDetails = () => {
   const [showActions, setShowActions] = useState(false);
   const [showDeleteModel, setShowDeleteModel] = useState(false);
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
+  const [isSchemaLoadFailed, setIsSchemaLoadFailed] = useState(false);
   const [action, setAction] = useState<AppAction | null>(null);
   const [loadingState, setLoadingState] = useState<Record<string, boolean>>({
     isFetchLoading: true,
@@ -159,8 +159,10 @@ const AppDetails = () => {
       try {
         const schema = await applicationsClassBase.importSchema(fqn);
         setJsonSchema(schema);
+        setIsSchemaLoadFailed(false);
       } catch {
         setJsonSchema(undefined);
+        setIsSchemaLoadFailed(true);
         showErrorToast(
           t('server.no-application-schema-found', { appName: fqn })
         );
@@ -198,7 +200,7 @@ const AppDetails = () => {
     try {
       setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
       if (action === AppAction.ENABLE) {
-        handleRestore();
+        await handleRestore();
       } else {
         await uninstallApp(
           appData?.fullyQualifiedName ?? '',
@@ -241,7 +243,7 @@ const AppDetails = () => {
                   description={t('message.restore-action-description', {
                     entityType: getEntityName(appData),
                   })}
-                  icon={IconRestore}
+                  icon={Restore}
                   id="restore-button"
                   name={t('label.restore')}
                 />
@@ -262,7 +264,7 @@ const AppDetails = () => {
                   description={t('message.disable-app', {
                     app: getEntityName(appData),
                   })}
-                  icon={StopOutlined as SvgComponent}
+                  icon={SlashCircle01 as SvgComponent}
                   id="disable-button"
                   name={t('label.disable')}
                 />
@@ -284,7 +286,7 @@ const AppDetails = () => {
                   description={t('message.uninstall-app', {
                     app: getEntityName(appData),
                   })}
-                  icon={DeleteIcon}
+                  icon={Trash01}
                   id="uninstall-button"
                   name={t('label.uninstall')}
                 />
@@ -338,7 +340,7 @@ const AppDetails = () => {
   );
 
   const onAppScheduleSave = useCallback(
-    async (cron: string) => {
+    async (cron: string, timezone?: string) => {
       if (appData) {
         const updatedData = {
           ...appData,
@@ -347,6 +349,7 @@ const AppDetails = () => {
               ? ScheduleTimeline.None
               : ScheduleTimeline.Custom,
             ...(cron ? { cronExpression: cron } : {}),
+            ...(timezone ? { timezone } : {}),
           },
         };
 
@@ -417,8 +420,7 @@ const AppDetails = () => {
     const showMcpConfigTab = getShowMcpConfigTab(
       appData,
       isAdminUser,
-      jsonSchema,
-      isRuntimeDisabled
+      jsonSchema
     );
     const showAppConfigTab = getShowAppConfigTab(
       appData,
@@ -461,6 +463,25 @@ const AppDetails = () => {
               onConfigSave={onConfigSave}
             />
           ),
+        },
+      ];
+    };
+
+    const buildMcpClientsTab = () => {
+      if (!showMcpConfigTab) {
+        return [];
+      }
+
+      return [
+        {
+          label: (
+            <TabsLabel
+              id={ApplicationTabs.REGISTERED_CLIENTS}
+              name={t('label.mcp-registered-clients')}
+            />
+          ),
+          key: ApplicationTabs.REGISTERED_CLIENTS,
+          children: <McpClientsTable />,
         },
       ];
     };
@@ -548,6 +569,7 @@ const AppDetails = () => {
     return [
       ...buildScheduleTab(),
       ...buildConfigurationTab(),
+      ...buildMcpClientsTab(),
       ...buildRecentRunsTab(),
       ...buildLiveIndexingTab(),
     ];
@@ -594,11 +616,15 @@ const AppDetails = () => {
     }
 
     return (
-      <Tooltip title={runtimeDisabledReason}>
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title={runtimeDisabledReason}
+        triggerClassName="tw:inline-flex">
         <div
           className="deleted-badge-button text-xs flex-center app-runtime-disabled-badge"
           data-testid="runtime-disabled-badge">
-          <StopOutlined className="d-flex m-r-xss font-medium text-xs" />
+          <SlashCircle01 className="tw:flex tw:mr-1 tw:shrink-0" size={12} />
           {t('label.disabled')}
         </div>
       </Tooltip>
@@ -612,14 +638,21 @@ const AppDetails = () => {
 
     return (
       <div className="flex-center gap-2">
-        <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+        <LinkExternal01 className="tw:shrink-0" size={14} />
         <Typography>
           <a
             className="text-xs"
             href={appData?.developerUrl}
             rel="noopener noreferrer"
             target="_blank">
-            <Space>{t('label.visit-developer-website')}</Space>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              {t('label.visit-developer-website')}
+            </Box>
           </a>
         </Typography>
       </div>
@@ -630,6 +663,27 @@ const AppDetails = () => {
     if (pluginAppDetailsComponent) {
       // Render plugin's custom app details component
       return React.createElement(pluginAppDetailsComponent);
+    }
+
+    // An app with no schedule and no editable configuration (e.g. AIChatApplication) has
+    // no tabs; without this the empty tab-list card renders as a blank strip. A schema that
+    // failed to load also leaves no configuration tab, so say that rather than claim the app
+    // has nothing to manage.
+    if (isEmpty(tabs)) {
+      return (
+        <Card className="tw:relative tw:min-h-60">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={
+              isSchemaLoadFailed
+                ? t('server.no-application-schema-found', { appName: fqn })
+                : t('message.app-no-settings-to-manage', {
+                    app: getEntityName(appData),
+                  })
+            }
+          />
+        </Card>
+      );
     }
 
     // Render default tabs interface
@@ -665,10 +719,9 @@ const AppDetails = () => {
       <Box>
         <div className="d-flex tw:min-w-0 tw:flex-auto">
           <Button
-            className="p-0"
-            icon={<LeftOutlined />}
-            size="small"
-            type="text"
+            color="tertiary"
+            iconLeading={ChevronLeft}
+            size="xs"
             onClick={onBrowseAppsClick}>
             <Typography className="font-medium">
               {t('label.browse-app-plural')}
@@ -691,7 +744,12 @@ const AppDetails = () => {
       </Box>
       <Box direction="col">
         <div>
-          <Space className="app-details-header w-full" size={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal app-details-header w-full"
+            gap={6}
+            itemClassName="layout-space-item">
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
             <div className="w-full">
@@ -699,28 +757,38 @@ const AppDetails = () => {
               {renderRuntimeDisabledBadge()}
 
               <div className="d-flex items-center flex-wrap gap-6">
-                <Space size={8}>
-                  <ClockCircleOutlined />
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={2}
+                  itemClassName="layout-space-item">
+                  <Clock className="tw:shrink-0" size={14} />
                   <Typography className="text-xs" color="secondary">
                     {`${t('label.installed')} ${getRelativeTime(
                       appData?.updatedAt
                     )}`}
                   </Typography>
-                </Space>
+                </Box>
 
-                <Space size={8}>
-                  <UserOutlined />
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={2}
+                  itemClassName="layout-space-item">
+                  <User01 className="tw:shrink-0" size={14} />
                   <Typography className="text-xs" color="secondary">
                     {t('label.developed-by-developer', {
                       developer: appData?.developer,
                     })}
                   </Typography>
-                </Space>
+                </Box>
 
                 {renderDeveloperUrl()}
               </div>
             </div>
-          </Space>
+          </Box>
         </div>
         <div>{renderAppDetailsBody()}</div>
       </Box>

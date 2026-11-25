@@ -14,14 +14,11 @@
 import { render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
-jest.mock('react-router-dom', () => ({
-  Link: ({ children, to }: { children?: ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
-  ),
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+  Button: ({ children, href }: { children?: ReactNode; href?: string }) => (
+    <a href={href}>{children}</a>
+  ),
   Box: ({
     children,
     className,
@@ -102,16 +99,19 @@ describe('TaskStatTileGrid', () => {
     );
   });
 
-  // A named property reads label-first; a figure reads value-first.
-  it('puts the label of a field tile before its value', () => {
-    render(
-      <TaskStatTileGrid
-        tiles={[{ key: 'k', label: 'LABEL', value: 'VALUE', layout: 'field' }]}
-      />
-    );
+  // Every tile reads value over label, a named property as a figure does.
+  it.each(['field', 'metric'] as const)(
+    'puts the value of a %s tile over its label',
+    (layout) => {
+      render(
+        <TaskStatTileGrid
+          tiles={[{ key: 'k', label: 'LABEL', value: 'VALUE', layout }]}
+        />
+      );
 
-    expect(screen.getByTestId('task-stat-k')).toHaveTextContent('LABELVALUE');
-  });
+      expect(screen.getByTestId('task-stat-k')).toHaveTextContent('VALUELABEL');
+    }
+  );
 
   it('renders a linked value as a link', () => {
     render(

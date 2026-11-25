@@ -56,18 +56,22 @@ interface AvatarColorEntry {
   outlined: AvatarColorClass;
 }
 
+// Outlined tints sit over an opaque base: dark 50-step tints are translucent
+// and would show the previous avatar through a stack overlap.
 const AVATAR_COLOR_CLASSES: AvatarColorEntry[] = [
   {
     solid: { container: 'tw:bg-utility-blue-500', text: TW_TEXT_FG_WHITE },
     outlined: {
-      container: 'tw:bg-utility-blue-50 tw:border tw:border-utility-blue-200',
+      container:
+        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-blue-50 tw:to-utility-blue-50 tw:border tw:border-utility-blue-200',
       text: 'tw:text-utility-blue-700',
     },
   },
   {
     solid: { container: 'tw:bg-utility-pink-500', text: TW_TEXT_FG_WHITE },
     outlined: {
-      container: 'tw:bg-utility-pink-50 tw:border tw:border-utility-pink-200',
+      container:
+        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-pink-50 tw:to-utility-pink-50 tw:border tw:border-utility-pink-200',
       text: 'tw:text-utility-pink-700',
     },
   },
@@ -75,7 +79,7 @@ const AVATAR_COLOR_CLASSES: AvatarColorEntry[] = [
     solid: { container: 'tw:bg-utility-purple-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
-        'tw:bg-utility-purple-50 tw:border tw:border-utility-purple-200',
+        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-purple-50 tw:to-utility-purple-50 tw:border tw:border-utility-purple-200',
       text: 'tw:text-utility-purple-700',
     },
   },
@@ -83,7 +87,7 @@ const AVATAR_COLOR_CLASSES: AvatarColorEntry[] = [
     solid: { container: 'tw:bg-utility-indigo-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
-        'tw:bg-utility-indigo-50 tw:border tw:border-utility-indigo-200',
+        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-indigo-50 tw:to-utility-indigo-50 tw:border tw:border-utility-indigo-200',
       text: 'tw:text-utility-indigo-700',
     },
   },
@@ -91,14 +95,15 @@ const AVATAR_COLOR_CLASSES: AvatarColorEntry[] = [
     solid: { container: 'tw:bg-utility-orange-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
-        'tw:bg-utility-orange-50 tw:border tw:border-utility-orange-200',
+        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-orange-50 tw:to-utility-orange-50 tw:border tw:border-utility-orange-200',
       text: 'tw:text-utility-orange-700',
     },
   },
   {
     solid: { container: 'tw:bg-utility-green-500', text: TW_TEXT_FG_WHITE },
     outlined: {
-      container: 'tw:bg-utility-green-50 tw:border tw:border-utility-green-200',
+      container:
+        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-green-50 tw:to-utility-green-50 tw:border tw:border-utility-green-200',
       text: 'tw:text-utility-green-700',
     },
   },
@@ -106,7 +111,7 @@ const AVATAR_COLOR_CLASSES: AvatarColorEntry[] = [
     solid: { container: 'tw:bg-utility-fuchsia-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
-        'tw:bg-utility-fuchsia-50 tw:border tw:border-utility-fuchsia-200',
+        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-fuchsia-50 tw:to-utility-fuchsia-50 tw:border tw:border-utility-fuchsia-200',
       text: 'tw:text-utility-fuchsia-700',
     },
   },
@@ -114,7 +119,7 @@ const AVATAR_COLOR_CLASSES: AvatarColorEntry[] = [
     solid: { container: 'tw:bg-utility-yellow-500', text: TW_TEXT_FG_WHITE },
     outlined: {
       container:
-        'tw:bg-utility-yellow-50 tw:border tw:border-utility-yellow-200',
+        'tw:bg-primary tw:bg-linear-to-r tw:from-utility-yellow-50 tw:to-utility-yellow-50 tw:border tw:border-utility-yellow-200',
       text: 'tw:text-utility-yellow-700',
     },
   },

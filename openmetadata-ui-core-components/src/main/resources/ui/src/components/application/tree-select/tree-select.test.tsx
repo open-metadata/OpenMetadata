@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { TreeSelectNode } from './tree-select.types';
 import { TreeSelect } from './tree-select';
@@ -44,6 +45,51 @@ const renderCustomTrigger = (
     />
   );
 
+// A mutually-exclusive (radio) group: `PII` is the group parent and each child
+// is a radio sibling. Select All and per-row toggles must keep these radio
+// siblings from being co-selected.
+const PII_EMAIL: TreeSelectNode = {
+  id: 'PII.Email',
+  label: 'Email',
+  value: 'PII.Email',
+  isLeaf: true,
+  isParentMutuallyExclusive: true,
+  parentId: 'PII',
+};
+const PII_SSN: TreeSelectNode = {
+  id: 'PII.SSN',
+  label: 'SSN',
+  value: 'PII.SSN',
+  isLeaf: true,
+  isParentMutuallyExclusive: true,
+  parentId: 'PII',
+};
+const PII_PHONE: TreeSelectNode = {
+  id: 'PII.Phone',
+  label: 'Phone',
+  value: 'PII.Phone',
+  isLeaf: true,
+  isParentMutuallyExclusive: true,
+  parentId: 'PII',
+};
+const PII_RADIO_IDS = [PII_EMAIL.id, PII_SSN.id, PII_PHONE.id];
+
+// A plain (checkbox) node beside the exclusive group, so "Select All" still
+// has something to select and is not silently a no-op.
+const FINANCE: TreeSelectNode = {
+  id: 'Finance',
+  label: 'Finance',
+  value: 'Finance',
+  isLeaf: true,
+};
+
+// `useCoreTranslation` returns keys literally in the test environment, so the
+// Select All control reads as its i18n key.
+const SELECT_ALL_LABEL = 'label.select-all';
+
+const emittedAt = (onChange: ReturnType<typeof vi.fn>, call: number) =>
+  onChange.mock.calls[call][0] as TreeSelectNode[];
+
 describe('TreeSelect', () => {
   it('does not fetch while a custom-trigger picker stays closed', () => {
     const fetchData = fetchNodes();
@@ -52,6 +98,40 @@ describe('TreeSelect', () => {
 
     expect(screen.getByText('trigger')).toBeInTheDocument();
     expect(fetchData).not.toHaveBeenCalled();
+  });
+
+  it('focuses the search box and keeps its keys from the host when opened', async () => {
+    const onHostKeyDown = vi.fn();
+    render(
+      <div onKeyDown={onHostKeyDown}>
+        <TreeSelect
+          isOpen
+          searchable
+          data-testid="picker"
+          fetchData={fetchNodes()}
+          renderTrigger={() => <span>trigger</span>}
+        />
+      </div>
+    );
+
+    const search = await screen.findByTestId('picker-search');
+    await waitFor(() => expect(search).toHaveFocus());
+
+    fireEvent.keyDown(search, { key: 'ArrowDown' });
+
+    expect(onHostKeyDown).not.toHaveBeenCalled();
+  });
+
+  it('shows the empty state when nothing matches', async () => {
+    render(
+      <TreeSelect
+        isOpen
+        fetchData={vi.fn().mockResolvedValue({ nodes: [] })}
+        renderTrigger={() => <span>trigger</span>}
+      />
+    );
+
+    expect(await screen.findByTestId('tree-select-empty')).toBeInTheDocument();
   });
 
   it('fetches the root when the picker first opens', async () => {
@@ -95,6 +175,125 @@ describe('TreeSelect', () => {
     expect(fetchData).toHaveBeenCalledTimes(1);
   });
 
+  it('reopens on the controlled value after an immediate pick the parent never echoed', async () => {
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        { id: 'a', label: 'Node A', value: 'a', isLeaf: true },
+        { id: 'b', label: 'Node B', value: 'b', isLeaf: true },
+      ],
+    });
+    const value: TreeSelectNode = { id: 'a', label: 'Node A', value: 'a' };
+    // A parent whose save failed: it gets the pick but keeps passing `a`.
+    const renderPicker = (isOpen: boolean) => (
+      <TreeSelect
+        fetchData={fetchData}
+        isOpen={isOpen}
+        renderTrigger={() => <span>trigger</span>}
+        value={value}
+        onChange={vi.fn()}
+      />
+    );
+    const { rerender } = render(renderPicker(true));
+
+    fireEvent.click(await screen.findByText('Node B'));
+
+    expect(screen.getByTestId('tree-node-b')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+
+    rerender(renderPicker(false));
+    rerender(renderPicker(true));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('tree-node-a')).toHaveAttribute(
+        'data-selected',
+        'true'
+      )
+    );
+
+    expect(screen.getByTestId('tree-node-b')).toHaveAttribute(
+      'data-selected',
+      'false'
+    );
+  });
+
+  it('keeps a staged pick when the parent re-renders with an equal value', async () => {
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [{ id: 'a', label: 'Node A', value: 'a', isLeaf: true }],
+    });
+    const onChange = vi.fn();
+    // An entity refetch rebuilds the parent's array: same ids, new identity.
+    const renderPicker = () => (
+      <TreeSelect
+        isOpen
+        multiple
+        commitMode="staged"
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+        value={[]}
+        onChange={onChange}
+      />
+    );
+    const { rerender } = render(renderPicker());
+
+    fireEvent.click(await screen.findByText('Node A'));
+    rerender(renderPicker());
+    fireEvent.click(screen.getByTestId('update-btn'));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(emittedAt(onChange, 0).map((node) => node.id)).toEqual(['a']);
+  });
+
+  it("shows a selected node's new label when the parent renames it", async () => {
+    const fetchData = vi.fn().mockResolvedValue({ nodes: [] });
+    const renderPicker = (label: string) => (
+      <TreeSelect
+        multiple
+        fetchData={fetchData}
+        value={[{ id: 'a', label, value: 'a' }]}
+        onChange={vi.fn()}
+      />
+    );
+    const { rerender } = render(renderPicker('Old name'));
+
+    expect(await screen.findByText('Old name')).toBeInTheDocument();
+
+    rerender(renderPicker('New name'));
+
+    expect(await screen.findByText('New name')).toBeInTheDocument();
+    expect(screen.queryByText('Old name')).not.toBeInTheDocument();
+  });
+
+  it('opens the dropdown below the trigger by default', async () => {
+    renderCustomTrigger(fetchNodes(), true);
+
+    const node = await screen.findByText('Node A');
+
+    expect(node.closest('[data-placement]')).toHaveAttribute(
+      'data-placement',
+      'bottom'
+    );
+  });
+
+  it('opens the dropdown at a fixed placement when one is given', async () => {
+    render(
+      <TreeSelect
+        isOpen
+        fetchData={fetchNodes()}
+        placement="right top"
+        renderTrigger={() => <span>trigger</span>}
+      />
+    );
+
+    const node = await screen.findByText('Node A');
+
+    expect(node.closest('[data-placement]')).toHaveAttribute(
+      'data-placement',
+      'right'
+    );
+  });
+
   it('walks defaultExpandedKeys down a lazy tree to reveal a nested selection', async () => {
     // 'a.b.c' is selected, so the ancestor chain is ['a', 'a.b']. 'a.b' does not
     // exist until 'a' is expanded *and* fetched, so this only passes if default
@@ -125,6 +324,89 @@ describe('TreeSelect', () => {
     );
 
     expect(await screen.findByText('Node C')).toBeInTheDocument();
+  });
+
+  it.each([
+    [false, '2'],
+    [true, '1'],
+  ])(
+    'counts a selected root in the badge only outside cascade mode (cascade=%s)',
+    async (cascadeSelection, expected) => {
+      const root = (id: string): TreeSelectNode => ({
+        id,
+        label: id,
+        value: id,
+        isLeaf: false,
+      });
+      const child: TreeSelectNode = {
+        id: 'Banking.Retail',
+        label: 'Retail',
+        value: 'Banking.Retail',
+        isLeaf: true,
+        parentId: 'Banking',
+      };
+      const fetchData = vi.fn().mockResolvedValue({
+        nodes: [root('Banking'), root('Clinical')],
+      });
+
+      render(
+        <TreeSelect
+          multiple
+          cascadeSelection={cascadeSelection}
+          fetchData={fetchData}
+          label="Domain"
+          triggerVariant="button"
+          value={
+            cascadeSelection
+              ? [root('Banking'), child]
+              : [root('Banking'), root('Clinical')]
+          }
+        />
+      );
+
+      await waitFor(() => expect(fetchData).toHaveBeenCalled());
+
+      expect(await screen.findByTestId('filter-count-badge')).toHaveTextContent(
+        expected
+      );
+    }
+  );
+
+  it('counts only the selected terms under unselectable glossary roots', async () => {
+    const term = (id: string): TreeSelectNode => ({
+      id,
+      label: id,
+      value: id,
+      isLeaf: true,
+      parentId: 'Glossary',
+    });
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        {
+          id: 'Glossary',
+          label: 'Glossary',
+          value: 'Glossary',
+          isLeaf: false,
+          allowSelection: false,
+        },
+      ],
+    });
+
+    render(
+      <TreeSelect
+        multiple
+        fetchData={fetchData}
+        label="Glossary"
+        triggerVariant="button"
+        value={[term('Glossary.A'), term('Glossary.B')]}
+      />
+    );
+
+    await waitFor(() => expect(fetchData).toHaveBeenCalled());
+
+    expect(await screen.findByTestId('filter-count-badge')).toHaveTextContent(
+      '2'
+    );
   });
 
   it('fetches on mount for the button variant, whose badge needs the roots', async () => {
@@ -266,5 +548,539 @@ describe('TreeSelect', () => {
     expect(screen.getByTestId('tree-node-d').className).toContain(
       'cursor-not-allowed'
     );
+  });
+});
+
+describe('TreeSelect Select All and mutual exclusivity', () => {
+  it('cascade + lazyLoad: Select All skips mutually-exclusive radio siblings', async () => {
+    const fetchData = vi
+      .fn()
+      .mockImplementation(async ({ parentId }: { parentId?: string }) => {
+        if (!parentId) {
+          return {
+            nodes: [
+              {
+                id: 'PII',
+                label: 'PII',
+                value: 'PII',
+                allowSelection: true,
+                lazyLoad: true,
+                isLeaf: false,
+                hasExclusiveChildren: true,
+              },
+              FINANCE,
+            ],
+          };
+        }
+
+        if (parentId === 'PII') {
+          return { nodes: [PII_EMAIL, PII_SSN, PII_PHONE] };
+        }
+
+        return { nodes: [] };
+      });
+
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        cascadeSelection
+        isOpen
+        lazyLoad
+        multiple
+        showSelectAll
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+        onChange={onChange}
+      />
+    );
+
+    await screen.findByText('PII');
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+
+    const emitted = emittedAt(onChange, 0);
+    const piiSelected = emitted.filter((n) => PII_RADIO_IDS.includes(n.id));
+
+    // Mutually-exclusive (radio) siblings must never be co-selected by Select All.
+    expect(piiSelected).toHaveLength(0);
+    // The exclusive-group parent carries no checkbox, so it is excluded too.
+    expect(emitted.some((n) => n.id === 'PII')).toBe(false);
+    // Every regular node is still selected.
+    expect(emitted.some((n) => n.id === FINANCE.id)).toBe(true);
+  });
+
+  it('non-cascade: Select All skips mutually-exclusive radio siblings nested inline', async () => {
+    const fetchData = vi
+      .fn()
+      .mockImplementation(async ({ parentId }: { parentId?: string }) => {
+        if (!parentId) {
+          return {
+            nodes: [
+              {
+                id: 'PII',
+                label: 'PII',
+                value: 'PII',
+                allowSelection: true,
+                isLeaf: false,
+                hasExclusiveChildren: true,
+                children: [PII_EMAIL, PII_SSN, PII_PHONE],
+              },
+              FINANCE,
+            ],
+          };
+        }
+
+        return { nodes: [] };
+      });
+
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        showSelectAll
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+        onChange={onChange}
+      />
+    );
+
+    // `selectableNodes` is derived from the data model, not the rendered DOM,
+    // so the radio children are present while PII is collapsed.
+    await screen.findByText('PII');
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+
+    const emitted = emittedAt(onChange, 0);
+    const piiSelected = emitted.filter((n) => PII_RADIO_IDS.includes(n.id));
+
+    expect(piiSelected).toHaveLength(0);
+    expect(emitted.some((n) => n.id === 'PII')).toBe(false);
+    expect(emitted.some((n) => n.id === FINANCE.id)).toBe(true);
+  });
+
+  it('Select All still selects every regular (non-exclusive) node', async () => {
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        {
+          id: 'Glossary',
+          label: 'Glossary',
+          value: 'Glossary',
+          isLeaf: false,
+          children: [
+            {
+              id: 'TermA',
+              label: 'Term A',
+              value: 'TermA',
+              isLeaf: true,
+              parentId: 'Glossary',
+            },
+            {
+              id: 'TermB',
+              label: 'Term B',
+              value: 'TermB',
+              isLeaf: true,
+              parentId: 'Glossary',
+            },
+          ],
+        },
+        FINANCE,
+      ],
+    });
+
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        showSelectAll
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+        onChange={onChange}
+      />
+    );
+
+    await screen.findByText('Glossary');
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+
+    const ids = emittedAt(onChange, 0)
+      .map((n) => n.id)
+      .sort();
+
+    expect(ids).toEqual(['Finance', 'Glossary', 'TermA', 'TermB']);
+  });
+
+  it('Select All skips an unselectable container but still selects its normal children', async () => {
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        {
+          id: 'Container',
+          label: 'Container',
+          value: 'Container',
+          allowSelection: false,
+          isLeaf: false,
+          children: [
+            {
+              id: 'SelectableChild',
+              label: 'Selectable',
+              value: 'SelectableChild',
+              isLeaf: true,
+              parentId: 'Container',
+            },
+          ],
+        },
+        FINANCE,
+      ],
+    });
+
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        showSelectAll
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+        onChange={onChange}
+      />
+    );
+
+    await screen.findByText('Container');
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+
+    const ids = emittedAt(onChange, 0).map((n) => n.id);
+    const expected = ['SelectableChild', 'Finance'].sort();
+
+    expect(ids).not.toContain('Container');
+    expect([...ids].sort()).toEqual(expected);
+  });
+
+  it('Select All reads fully checked once every selectable node is selected (radio group excluded)', async () => {
+    // FINANCE is the only selectable node once the PII radio group is excluded,
+    // so seeding it must leave the Select All checkbox fully checked. Clicking
+    // a checked box clears the selection rather than adding the radio group back.
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        {
+          id: 'PII',
+          label: 'PII',
+          value: 'PII',
+          isLeaf: false,
+          hasExclusiveChildren: true,
+          children: [PII_EMAIL, PII_SSN, PII_PHONE],
+        },
+        FINANCE,
+      ],
+    });
+
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        showSelectAll
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+        value={[FINANCE]}
+        onChange={onChange}
+      />
+    );
+
+    await screen.findByText('Finance');
+
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+
+    // The box was checked, so toggling it cleared the selection — it did not
+    // emit the radio siblings the buggy `allSelected` count would have demanded.
+    const emitted = emittedAt(onChange, 0);
+    const piiSelected = emitted.filter((n) => PII_RADIO_IDS.includes(n.id));
+
+    expect(emitted).toEqual([]);
+    expect(piiSelected).toHaveLength(0);
+  });
+
+  it('Select All skips a radio group nested under a regular parent', async () => {
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        {
+          id: 'Glossary',
+          label: 'Glossary',
+          value: 'Glossary',
+          isLeaf: false,
+          children: [
+            {
+              id: 'PII',
+              label: 'PII',
+              value: 'PII',
+              allowSelection: true,
+              isLeaf: false,
+              hasExclusiveChildren: true,
+              children: [PII_EMAIL, PII_SSN],
+            },
+            {
+              id: 'TermA',
+              label: 'Term A',
+              value: 'TermA',
+              isLeaf: true,
+              parentId: 'Glossary',
+            },
+          ],
+        },
+        FINANCE,
+      ],
+    });
+
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        showSelectAll
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+        onChange={onChange}
+      />
+    );
+
+    await screen.findByText('Glossary');
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+
+    const ids = emittedAt(onChange, 0).map((n) => n.id);
+    const piiSelected = ids.filter((id) => PII_RADIO_IDS.includes(id));
+
+    // The nested radio group and the radio siblings beneath it are skipped.
+    expect(piiSelected).toHaveLength(0);
+    expect(ids).not.toContain('PII');
+    // The surrounding regular nodes are still selected (order reflects the walk).
+    expect([...ids].sort()).toEqual(['Finance', 'Glossary', 'TermA']);
+  });
+});
+
+// A disabled node is locked: a click on its row was never the only way in, so
+// every other control must leave it as it is too, ticked or not.
+describe('TreeSelect disabled nodes', () => {
+  const LOCKED: TreeSelectNode = {
+    id: 'locked',
+    label: 'Locked',
+    value: 'locked',
+    isLeaf: true,
+    disabled: true,
+  };
+  const BLOCKED: TreeSelectNode = {
+    id: 'blocked',
+    label: 'Blocked',
+    value: 'blocked',
+    isLeaf: true,
+    disabled: true,
+  };
+  const FREE: TreeSelectNode = {
+    id: 'free',
+    label: 'Free',
+    value: 'free',
+    isLeaf: true,
+  };
+
+  const fetchLockedTree = () =>
+    vi.fn().mockResolvedValue({ nodes: [LOCKED, BLOCKED, FREE] });
+
+  // A pick as a consumer passes it, so only the tree says it is disabled.
+  const pick = ({ id, label, value }: TreeSelectNode): TreeSelectNode => ({
+    id,
+    label,
+    value,
+  });
+
+  const emittedIds = (onChange: ReturnType<typeof vi.fn>, call: number) =>
+    emittedAt(onChange, call).map((node) => node.id);
+
+  const rowOf = (id: string) =>
+    screen
+      .getByTestId(`tree-node-${id}`)
+      .closest('[role="row"]') as HTMLElement;
+
+  // Enter is the row's action key. Space is react-aria's selection key, and the
+  // tree has no selection mode, so Space never toggled a row.
+  it.each(['staged', 'immediate'] as const)(
+    'keeps a locked radio sibling selected when another is picked (%s)',
+    async (commitMode) => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(
+        <TreeSelect
+          isOpen
+          multiple
+          commitMode={commitMode}
+          defaultExpandedKeys={['PII']}
+          fetchData={vi.fn().mockResolvedValue({
+            nodes: [
+              {
+                id: 'PII',
+                label: 'PII',
+                value: 'PII',
+                children: [{ ...PII_EMAIL, disabled: true }, PII_SSN],
+              },
+            ],
+          })}
+          renderTrigger={() => <span>trigger</span>}
+          value={[PII_EMAIL]}
+          onChange={onChange}
+        />
+      );
+      await screen.findByTestId('tree-node-PII.SSN');
+      rowOf(PII_SSN.id).focus();
+      await user.keyboard('{Enter}');
+
+      expect(screen.getByTestId('tree-node-PII.Email')).toHaveAttribute(
+        'data-selected',
+        'true'
+      );
+      expect(screen.getByTestId('tree-node-PII.SSN')).toHaveAttribute(
+        'data-selected',
+        'false'
+      );
+      expect(onChange).not.toHaveBeenCalled();
+      if (commitMode === 'staged') {
+        fireEvent.click(screen.getByTestId('update-btn'));
+        expect(emittedIds(onChange, 0)).toEqual([PII_EMAIL.id]);
+      }
+    }
+  );
+
+  it('ignores Enter on a disabled row, ticked or not', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        fetchData={fetchLockedTree()}
+        renderTrigger={() => <span>trigger</span>}
+        value={[pick(LOCKED)]}
+        onChange={onChange}
+      />
+    );
+    await screen.findByText('Free');
+
+    rowOf(LOCKED.id).focus();
+    await user.keyboard('{Enter}');
+    rowOf(BLOCKED.id).focus();
+    await user.keyboard('{Enter}');
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByTestId('tree-node-locked')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('tree-node-blocked')).toHaveAttribute(
+      'data-selected',
+      'false'
+    );
+
+    // The same key still toggles an enabled row.
+    rowOf(FREE.id).focus();
+    await user.keyboard('{Enter}');
+
+    expect(emittedIds(onChange, 0)).toEqual(['locked', 'free']);
+  });
+
+  it.each(['staged', 'immediate'] as const)(
+    'keeps a ticked disabled node through Clear (%s)',
+    async (commitMode) => {
+      const onChange = vi.fn();
+      render(
+        <TreeSelect
+          isOpen
+          multiple
+          commitMode={commitMode}
+          fetchData={fetchLockedTree()}
+          renderTrigger={() => <span>trigger</span>}
+          value={[pick(LOCKED), pick(FREE)]}
+          onChange={onChange}
+        />
+      );
+      await screen.findByText('Free');
+
+      fireEvent.click(screen.getByTestId('clear-filter-btn'));
+      if (commitMode === 'staged') {
+        fireEvent.click(screen.getByTestId('update-btn'));
+      }
+
+      expect(emittedIds(onChange, 0)).toEqual(['locked']);
+      // Only the locked node is left, so there is nothing more to clear.
+      expect(screen.getByTestId('clear-filter-btn')).toBeDisabled();
+    }
+  );
+
+  it('shows no remove button on the chip of a disabled pick', () => {
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        multiple
+        fetchData={fetchLockedTree()}
+        value={[LOCKED, FREE]}
+        onChange={onChange}
+      />
+    );
+
+    expect(screen.getByText('Locked')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.remove Locked' })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.remove Free' }));
+
+    expect(emittedIds(onChange, 0)).toEqual(['locked']);
+  });
+
+  it('lets Backspace skip a disabled chip to remove the last removable one', () => {
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        multiple
+        fetchData={fetchLockedTree()}
+        value={[FREE, LOCKED]}
+        onChange={onChange}
+      />
+    );
+    const input = screen.getByRole('combobox');
+
+    fireEvent.keyDown(input, { key: 'Backspace' });
+    // Only the locked chip is left, so this press removes nothing.
+    fireEvent.keyDown(input, { key: 'Backspace' });
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(emittedIds(onChange, 0)).toEqual(['locked']);
+  });
+
+  it('keeps Select all from ticking or clearing a disabled node', async () => {
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        showSelectAll
+        fetchData={fetchLockedTree()}
+        renderTrigger={() => <span>trigger</span>}
+        value={[pick(LOCKED)]}
+        onChange={onChange}
+      />
+    );
+    await screen.findByText('Free');
+
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+
+    expect(emittedIds(onChange, 0)).toEqual(['locked', 'free']);
+    expect(emittedIds(onChange, 1)).toEqual(['locked']);
   });
 });

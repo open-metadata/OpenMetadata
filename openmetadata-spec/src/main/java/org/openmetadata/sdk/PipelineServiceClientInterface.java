@@ -78,9 +78,10 @@ public interface PipelineServiceClientInterface {
           Map.entry(PipelineType.DATA_INSIGHT.toString(), "data_insight_task"),
           Map.entry(PipelineType.ELASTIC_SEARCH_REINDEX.toString(), "elasticsearch_reindex_task"),
           Map.entry(PipelineType.APPLICATION.toString(), "application_task"),
-          // The UI reads policy agent logs from `ingestion_task`
-          // (see agentsDataMapper.ts PIPELINE_TYPE_TO_LOG_TASK_FIELD).
-          Map.entry(PipelineType.POLICY_AGENT.toString(), INGESTION_TASK_KEY));
+          // The UI reads policy agent and reverse metadata logs from `ingestion_task`
+          // (see IngestionLogsUtils.ts PIPELINE_TYPE_TO_LOG_TASK_FIELD).
+          Map.entry(PipelineType.POLICY_AGENT.toString(), INGESTION_TASK_KEY),
+          Map.entry(PipelineType.REVERSE_METADATA.toString(), INGESTION_TASK_KEY));
 
   /** Resolves the log task key for a pipeline type, falling back to {@link #DEFAULT_TASK_KEY}. */
   static String taskKeyOf(String pipelineType) {
@@ -185,6 +186,15 @@ public interface PipelineServiceClientInterface {
    * run spec from the IngestionPipeline on every run carry the current token by construction, so the
    * default is false and re-deploying them to refresh a token is pure churn. */
   default boolean pinsCredentialsAtDeployTime() {
+    return false;
+  }
+
+  /* Whether the runner knows a pipeline by its name alone, so two same-named pipelines of different
+   * services reach one runner object. Airflow does (the dag_id), and so does Kubernetes (the CronJob,
+   * ConfigMap and Secret names). The server then refuses runner calls for a pipeline whose name a
+   * deployed pipeline of another service already holds. Runners that tell pipelines apart by more
+   * than the name keep the default. */
+  default boolean addressesPipelinesByName() {
     return false;
   }
 

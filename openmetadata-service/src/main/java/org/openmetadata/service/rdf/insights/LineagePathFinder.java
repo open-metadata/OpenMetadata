@@ -105,7 +105,7 @@ public final class LineagePathFinder {
     String sparql = LineagePathBuilder.frontierQuery(frontier, direction);
     String json;
     try {
-      json = repository.executeSparqlQuery(sparql, "application/sparql-results+json");
+      json = repository.executeAssertedSparqlQuery(sparql, "application/sparql-results+json");
     } catch (Exception e) {
       LOG.warn("Path finder frontier query failed: {}", e.getMessage());
       return Map.of();
@@ -163,7 +163,7 @@ public final class LineagePathFinder {
     String sparql = LineagePathBuilder.typesQuery(nodes);
     String json;
     try {
-      json = repository.executeSparqlQuery(sparql, "application/sparql-results+json");
+      json = repository.executeAssertedSparqlQuery(sparql, "application/sparql-results+json");
     } catch (Exception e) {
       LOG.debug("Type decoration failed (non-fatal): {}", e.getMessage());
       return;

@@ -21,10 +21,6 @@ const PersonalSpaceGate = withSuspenseFallback(
   React.lazy(() => import('./PersonalSpaceGate/PersonalSpaceGate'))
 );
 
-const MyData = withSuspenseFallback(
-  React.lazy(() => import('./MyData/MyData'))
-);
-
 const InboxContent = withSuspenseFallback(
   React.lazy(() => import('./InboxPage/InboxContent'))
 );
@@ -35,24 +31,18 @@ const gatedInbox = (
   </PersonalSpaceGate>
 );
 
-// My Data is no longer an inbox tab: the inbox is Activity and Triage. Its own
-// route stays because `/` redirects here in AI mode, making it the landing
-// page; the user menu also opens it in the personal-space modal.
-const gatedMyData = (
-  <PersonalSpaceGate>
-    <MyData />
-  </PersonalSpaceGate>
-);
-
 /**
- * Personal-space app-mode module (Inbox + My Data).
+ * Personal-space app-mode module (Inbox).
  *
  * Icon-less: the Inbox surface is reached from a header entry point (not a
  * top-level sidebar item), so the sidebar derivation skips this module — but
  * its routes still flatten into the app-mode route table. `/inbox` and its
- * `activity` / `tasks` sub-tabs plus `/my-data` all render the shared
- * {@link InboxPage} shell behind the {@link PersonalSpaceGate} view-permission
- * gate; the active tab is derived from the path.
+ * `activity` / `tasks` sub-tabs render the shared {@link InboxPage} shell
+ * behind the {@link PersonalSpaceGate} view-permission gate; the active tab is
+ * derived from the path. My Data has no route here: the user menu opens it in
+ * the personal-space modal, and `/my-data` falls through to the shell's page
+ * table, which renders the home landing page. It is not a redirect, so
+ * hash-link modals such as `/my-data#notification/alerts` still open.
  *
  * The Inbox is a single tabbed page, so it is registered as ONE `/inbox/*`
  * route rather than one route per sub-tab. Separate per-tab routes would each
@@ -67,17 +57,11 @@ export const personalSpaceModule: AppModule = {
   navOrder: 90,
   labelKey: 'label.inbox',
   prefix: PERSONAL_SPACE_ROUTES.INBOX,
-  additionalPrefixes: [PERSONAL_SPACE_ROUTES.MY_DATA],
   defaultPath: PERSONAL_SPACE_ROUTES.INBOX,
   routes: [
     {
       path: `${PERSONAL_SPACE_ROUTES.INBOX}/*`,
       element: gatedInbox,
-      position: RoutePosition.APP,
-    },
-    {
-      path: PERSONAL_SPACE_ROUTES.MY_DATA,
-      element: gatedMyData,
       position: RoutePosition.APP,
     },
   ],

@@ -23,11 +23,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
@@ -41,6 +44,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
+import org.openmetadata.it.factories.TopicTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
@@ -48,19 +52,26 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.services.CreateMessagingService;
+import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -96,6 +107,17 @@ public class OpenLineageLineageResolutionIT {
       List.of(
           new Column().withName("id").withDataType(ColumnDataType.BIGINT),
           new Column().withName("name").withDataType(ColumnDataType.VARCHAR).withDataLength(255));
+
+  private static final List<Column> COLUMNS_WITH_SPECIAL_NAMES =
+      List.of(
+          new Column().withName("a__reserved__arrow__b").withDataType(ColumnDataType.INT),
+          new Column().withName("c.d").withDataType(ColumnDataType.INT),
+          new Column().withName("e.__reserved__arrow__f").withDataType(ColumnDataType.INT),
+          new Column()
+              .withName("s")
+              .withDataType(ColumnDataType.STRUCT)
+              .withDataTypeDisplay("struct<x:int>")
+              .withChildren(List.of(new Column().withName("x").withDataType(ColumnDataType.INT))));
 
   private static final String EVENT_TIME = "2024-01-15T10:00:00Z";
   private static final long EVENT_TIME_MS = 1705312800000L;
@@ -1079,6 +1101,97 @@ public class OpenLineageLineageResolutionIT {
         () -> SdkClients.adminClient().databases().getByName(serviceName + "." + database));
   }
 
+  /**
+   * Spark Structured Streaming names a Kafka source {@code kafka://host:port}; the topic resolves
+   * through the bootstrapServers of its messaging service even when the event carries another
+   * listener port of the same broker host.
+   */
+  @Test
+  @Order(29)
+  void kafkaDataset_resolvesToTheTopicOfTheServiceListingItsBroker(TestNamespace ns)
+      throws Exception {
+    String suffix = uniqueSuffix();
+    String brokerHost = "ol-kafka-" + suffix;
+    MessagingService kafka =
+        ns.trackRoot(
+            Entity.MESSAGING_SERVICE,
+            SdkClients.adminClient()
+                .messagingServices()
+                .create(
+                    new CreateMessagingService()
+                        .withName(ns.prefix("ol_kafka_" + suffix))
+                        .withServiceType(MessagingServiceType.Kafka)
+                        .withConnection(
+                            new MessagingConnection()
+                                .withConfig(
+                                    new KafkaConnection()
+                                        .withBootstrapServers(brokerHost + ":9092")))));
+    Topic topic = TopicTestFactory.createSimple(ns, kafka.getFullyQualifiedName());
+    String outputName = "ol_kafka_out_" + suffix;
+    Tables.create().name(outputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+
+    JsonNode response =
+        send(
+            completeEvent("ol_kafka_ns", "ol_kafka_job_" + suffix)
+                .addInput(topic.getName(), "kafka://" + brokerHost + ":9093")
+                .addOutput("ecommerce_db.shopify." + outputName, serviceName));
+
+    assertEquals("success", response.get("status").asText(), response.toString());
+    assertEquals(1, response.get("lineageEdgesCreated").asInt(), response.toString());
+    assertNotNull(
+        fetchOpenLineageEdgeDetailsByFqn(
+            Entity.TOPIC, topic.getFullyQualifiedName(), schemaFqn + "." + outputName));
+  }
+
+  @Test
+  @Order(30)
+  @ResourceLock(
+      value = SharedResourceLocks.OPEN_LINEAGE_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void columnLineage_reachesStoredColumnsOfSpecialFieldNames() throws Exception {
+    String namespace = uniqueDatasetNamespace();
+    String inputName = "ol_special_in_" + uniqueSuffix();
+    String outputName = "ol_special_out_" + uniqueSuffix();
+    String inputDataset = "ecommerce_db.shopify." + inputName;
+    Table input =
+        Tables.create()
+            .name(inputName)
+            .inSchema(schemaFqn)
+            .withColumns(COLUMNS_WITH_SPECIAL_NAMES)
+            .execute();
+
+    JsonNode response =
+        withOpenLineageSettings(
+            autoCreateUnder(namespace),
+            () ->
+                send(
+                    completeEvent("ol_special_ns", "ol_special_job_" + uniqueSuffix())
+                        .addInput(inputDataset, namespace)
+                        .addOutput(
+                            outputWithFieldLineage(
+                                namespace,
+                                "ecommerce_db.shopify." + outputName,
+                                inputDataset,
+                                Map.of("a>b", "a>b", "c.d", "c.d", "e.>f", "e.>f", "x", "s.x")))));
+
+    assertEquals("success", response.get("status").asText(), response.toString());
+    Table output =
+        SdkClients.adminClient().tables().getByName(schemaFqn + "." + outputName, "columns");
+    assertEquals(
+        Set.of("a__reserved__arrow__b", "c.d", "e.__reserved__arrow__f", "x"),
+        output.getColumns().stream().map(Column::getName).collect(Collectors.toSet()));
+    String inputFqn = input.getFullyQualifiedName();
+    String outputFqn = output.getFullyQualifiedName();
+    assertEquals(
+        Map.of(
+            outputFqn + ".a__reserved__arrow__b", List.of(inputFqn + ".a__reserved__arrow__b"),
+            outputFqn + ".\"c.d\"", List.of(inputFqn + ".\"c.d\""),
+            outputFqn + ".\"e.__reserved__arrow__f\"",
+                List.of(inputFqn + ".\"e.__reserved__arrow__f\""),
+            outputFqn + ".x", List.of(inputFqn + ".s.x")),
+        fromColumnsByToColumn(fetchOpenLineageEdgeDetails(inputName, outputName)));
+  }
+
   // ====================================================================================
   // Helpers
   // ====================================================================================
@@ -1087,7 +1200,7 @@ public class OpenLineageLineageResolutionIT {
    * Entity audit fields follow the entity contract, not the edge one: the principal that posted the
    * event and the moment OpenMetadata created the entity, never the OpenLineage eventTime.
    */
-  private static void assertAuditFieldsStamped(EntityInterface entity, long notBefore) {
+  private static void assertAuditFieldsStamped(EntityInterface<?> entity, long notBefore) {
     String fqn = entity.getFullyQualifiedName();
     assertEquals("admin", entity.getUpdatedBy(), "updatedBy of auto-created " + fqn);
     assertNotNull(entity.getUpdatedAt(), "updatedAt of auto-created " + fqn);
@@ -1098,16 +1211,17 @@ public class OpenLineageLineageResolutionIT {
 
   private static OpenMetadataClient clientWithRole(TestNamespace ns, Role role) {
     String name = "ol_caller_" + uniqueSuffix();
-    ns.trackRoot(
-        Entity.USER,
-        SdkClients.adminClient()
-            .users()
-            .create(
-                new CreateUser()
-                    .withName(name)
-                    .withEmail(name + "@test.openmetadata.org")
-                    .withRoles(List.of(role.getId()))));
-    return SdkClients.createClient(name, name, new String[] {});
+    User user =
+        ns.trackRoot(
+            Entity.USER,
+            SdkClients.adminClient()
+                .users()
+                .create(
+                    new CreateUser()
+                        .withName(name)
+                        .withEmail(name + "@test.openmetadata.org")
+                        .withRoles(List.of(role.getId()))));
+    return SdkClients.createClient(user.getName(), user.getEmail(), new String[] {});
   }
 
   private static Rule allowRule(String name, MetadataOperation operation, String resource) {
@@ -1161,6 +1275,43 @@ public class OpenLineageLineageResolutionIT {
   private static Map<String, Object> datasetWithColumns(String namespace, String name) {
     return Map.of(
         "namespace", namespace, "name", name, "facets", Map.of("schema", Map.of("fields", FIELDS)));
+  }
+
+  private static Map<String, Object> outputWithFieldLineage(
+      String namespace,
+      String name,
+      String inputDataset,
+      Map<String, String> inputFieldByOutputField) {
+    List<Map<String, Object>> schemaFields = new ArrayList<>();
+    Map<String, Object> lineageFields = new HashMap<>();
+    inputFieldByOutputField.forEach(
+        (outputField, inputField) -> {
+          schemaFields.add(Map.of("name", outputField, "type", "int"));
+          lineageFields.put(
+              outputField,
+              Map.of(
+                  "inputFields",
+                  List.of(
+                      Map.of("namespace", namespace, "name", inputDataset, "field", inputField))));
+        });
+    return Map.of(
+        "namespace",
+        namespace,
+        "name",
+        name,
+        "facets",
+        Map.of("schema", Map.of("fields", schemaFields)),
+        "outputFacets",
+        Map.of("columnLineage", Map.of("fields", lineageFields)));
+  }
+
+  private static Map<Object, Object> fromColumnsByToColumn(Map<?, ?> edgeDetails) {
+    return ((List<?>) edgeDetails.get("columnsLineage"))
+        .stream()
+            .map(Map.class::cast)
+            .collect(
+                Collectors.toMap(
+                    entry -> entry.get("toColumn"), entry -> entry.get("fromColumns")));
   }
 
   private static String uniqueDatasetNamespace() {
@@ -1278,6 +1429,11 @@ public class OpenLineageLineageResolutionIT {
   }
 
   private static Map<?, ?> fetchOpenLineageEdgeDetailsByFqn(String inputFqn, String outputFqn) {
+    return fetchOpenLineageEdgeDetailsByFqn(Entity.TABLE, inputFqn, outputFqn);
+  }
+
+  private static Map<?, ?> fetchOpenLineageEdgeDetailsByFqn(
+      String inputType, String inputFqn, String outputFqn) {
     Map<?, ?>[] holder = new Map<?, ?>[1];
     Awaitility.await("OpenLineage edge from " + inputFqn + " to " + outputFqn)
         .atMost(Duration.ofSeconds(60))
@@ -1285,7 +1441,7 @@ public class OpenLineageLineageResolutionIT {
         .ignoreExceptions()
         .until(
             () -> {
-              holder[0] = findOpenLineageEdge(inputFqn, outputFqn);
+              holder[0] = findOpenLineageEdge(inputType, inputFqn, outputFqn);
               return holder[0] != null;
             });
     return holder[0];
@@ -1300,13 +1456,14 @@ public class OpenLineageLineageResolutionIT {
         .during(Duration.ofSeconds(3))
         .atMost(Duration.ofSeconds(10))
         .pollInterval(Duration.ofSeconds(1))
-        .until(() -> findOpenLineageEdge(inputFqn, outputFqn) == null);
+        .until(() -> findOpenLineageEdge(Entity.TABLE, inputFqn, outputFqn) == null);
   }
 
   @SuppressWarnings("unchecked")
-  private static Map<?, ?> findOpenLineageEdge(String inputFqn, String outputFqn) throws Exception {
+  private static Map<?, ?> findOpenLineageEdge(String inputType, String inputFqn, String outputFqn)
+      throws Exception {
     LineageAPI.LineageGraph graph =
-        LineageAPI.forName$("table", inputFqn).upstream(0).downstream(1).fetch();
+        LineageAPI.forName$(inputType, inputFqn).upstream(0).downstream(1).fetch();
     Map<String, Object> lineage = MAPPER.readValue(graph.getRaw(), Map.class);
     List<?> edges = (List<?>) lineage.get("downstreamEdges");
     if (edges == null) {

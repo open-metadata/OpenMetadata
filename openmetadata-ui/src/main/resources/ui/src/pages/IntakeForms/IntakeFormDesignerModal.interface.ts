@@ -21,7 +21,8 @@ export interface IntakeFormDesignerModalProps {
   open: boolean;
   /** Pre-selected entity type. Required for create; derived from initialValue for edit. */
   entityType: TargetEntityType;
-  initialValue: IntakeForm | null;
+  /** May contain a proposed creation form without a persisted id. */
+  initialValue: (Omit<IntakeForm, 'id'> & { id?: string }) | null;
   onCancel: () => void;
   onSubmit: (payload: CreateIntakeForm) => Promise<void> | void;
 }

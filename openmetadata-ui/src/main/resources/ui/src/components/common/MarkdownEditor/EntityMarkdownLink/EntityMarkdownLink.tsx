@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 
-import React, { useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useMemo } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import { safeDecodeURIComponent } from '../../../../utils/SettingsHashUtils';
 import EntityPopOverCard from '../../PopOverCard/EntityPopOverCard';
 import DocumentMarkdownLink from './DocumentMarkdownLink';
 import {
+  EntityLinkInfo,
   EntityMarkdownLinkProps,
   ParsedEntityLink,
 } from './EntityMarkdownLink.interface';
@@ -29,6 +31,10 @@ import {
  * resolved before the entity-type check rather than made to pass it.
  */
 export const DOCUMENT_LINK_PREFIX = '#document/';
+
+// An external link (docs, GitHub, …) opens in a new tab so the page it sits on,
+// such as a chat conversation, stays put.
+const EXTERNAL_LINK_PATTERN = /^https?:\/\//i;
 
 const parseEntityLink = (href: string): ParsedEntityLink => {
   if (!href || !href.startsWith('#')) {
@@ -56,8 +62,8 @@ const parseEntityLink = (href: string): ParsedEntityLink => {
       return { isEntityLink: false };
     }
     const [serviceCategory, encodedServiceFqn, ...fqnParts] = parts;
-    const serviceFqn = decodeURIComponent(encodedServiceFqn);
-    const fullyQualifiedName = decodeURIComponent(fqnParts.join('/'));
+    const serviceFqn = safeDecodeURIComponent(encodedServiceFqn);
+    const fullyQualifiedName = safeDecodeURIComponent(fqnParts.join('/'));
 
     return {
       isEntityLink: true,
@@ -74,61 +80,43 @@ const parseEntityLink = (href: string): ParsedEntityLink => {
     isEntityLink: true,
     entityInfo: {
       entityType: entityType as EntityType,
-      fullyQualifiedName: decodeURIComponent(rest),
+      fullyQualifiedName: safeDecodeURIComponent(rest),
     },
   };
 };
 
-const ResolvedEntityLink: React.FC<EntityMarkdownLinkProps> = ({
-  href,
-  children,
-  className,
-}) => {
-  const { parsedLink, entityPath } = useMemo(() => {
-    const parsed = parseEntityLink(href || '');
-    const path =
-      parsed.isEntityLink && parsed.entityInfo
-        ? entityUtilClassBase.getEntityLink(
-            parsed.entityInfo.entityType,
-            parsed.entityInfo.fullyQualifiedName,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            parsed.entityInfo.serviceCategory,
-            parsed.entityInfo.serviceFqn
-          )
-        : '';
-
-    return { parsedLink: parsed, entityPath: path };
-  }, [href]);
-
-  const handleClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (!parsedLink.isEntityLink || !parsedLink.entityInfo) {
-        return;
-      }
-
-      if (e.metaKey || e.ctrlKey) {
-        e.preventDefault();
-        window.open(entityPath, '_blank');
-      }
-    },
-    [parsedLink, entityPath]
+// Settings links (team, role, bot, …) carry the page's query string in AI mode,
+// so the link is built on every render and re-rendered on navigation rather
+// than memoized with the query string it first saw. Only entity links read the
+// location: they render a router Link, so they already need a Router.
+const EntityLinkAnchor: React.FC<{
+  entityInfo: EntityLinkInfo;
+  className?: string;
+  children?: React.ReactNode;
+}> = ({ entityInfo, className, children }) => {
+  useLocation();
+  const entityPath = entityUtilClassBase.getEntityLink(
+    entityInfo.entityType,
+    entityInfo.fullyQualifiedName,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    entityInfo.serviceCategory,
+    entityInfo.serviceFqn
   );
 
-  if (!parsedLink.isEntityLink || !parsedLink.entityInfo) {
-    return (
-      <a className={className} href={href}>
-        {children}
-      </a>
-    );
-  }
+  const handleClick = (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey) {
+      e.preventDefault();
+      window.open(entityPath, '_blank');
+    }
+  };
 
   return (
     <EntityPopOverCard
-      entityFQN={parsedLink.entityInfo.fullyQualifiedName}
-      entityType={parsedLink.entityInfo.entityType}>
+      entityFQN={entityInfo.fullyQualifiedName}
+      entityType={entityInfo.entityType}>
       <Link
         className={`entity-markdown-link ${className || ''}`}
         to={entityPath}
@@ -136,6 +124,33 @@ const ResolvedEntityLink: React.FC<EntityMarkdownLinkProps> = ({
         {children}
       </Link>
     </EntityPopOverCard>
+  );
+};
+
+const ResolvedEntityLink: React.FC<EntityMarkdownLinkProps> = ({
+  href,
+  children,
+  className,
+}) => {
+  const parsedLink = useMemo(() => parseEntityLink(href || ''), [href]);
+
+  if (!parsedLink.isEntityLink || !parsedLink.entityInfo) {
+    const isExternal = EXTERNAL_LINK_PATTERN.test(href ?? '');
+
+    return (
+      <a
+        className={className}
+        href={href}
+        {...(isExternal && { rel: 'noopener noreferrer', target: '_blank' })}>
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <EntityLinkAnchor className={className} entityInfo={parsedLink.entityInfo}>
+      {children}
+    </EntityLinkAnchor>
   );
 };
 
@@ -147,7 +162,9 @@ const EntityMarkdownLink: React.FC<EntityMarkdownLinkProps> = ({
   if (href?.startsWith(DOCUMENT_LINK_PREFIX)) {
     return (
       <DocumentMarkdownLink
-        assetId={decodeURIComponent(href.slice(DOCUMENT_LINK_PREFIX.length))}
+        assetId={safeDecodeURIComponent(
+          href.slice(DOCUMENT_LINK_PREFIX.length)
+        )}
         className={className}
         documentsRoute={ROUTES.CONTEXT_CENTER_DOCUMENTS}>
         {children}

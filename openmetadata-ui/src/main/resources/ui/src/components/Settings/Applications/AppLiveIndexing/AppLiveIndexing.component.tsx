@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
+import {
+  LIST_PAGE_SIZE_OPTIONS,
+  NO_DATA_PLACEHOLDER,
+} from '../../../../constants/constants';
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -23,7 +27,9 @@ import {
   getLiveIndexingQueue,
   SearchIndexRetryRecord,
 } from '../../../../rest/applicationAPI';
+import { shouldShowPager } from '../../../../utils/PaginationUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
@@ -40,11 +46,10 @@ const STATUS_TYPE_MAP: Record<string, StatusType> = {
   FAILED: StatusType.Failure,
 };
 
-const PAGE_SIZE = 15;
-
-const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
+const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
   const { t } = useTranslation();
-  const { fqn } = useFqn();
+  const { fqn: routeFqn } = useFqn();
+  const fqn = appData?.fullyQualifiedName ?? routeFqn;
   const [isLoading, setIsLoading] = useState(true);
   const [records, setRecords] = useState<SearchIndexRetryRecord[]>([]);
 
@@ -55,7 +60,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
     handlePagingChange,
     handlePageChange,
     handlePageSizeChange,
-  } = usePaging(PAGE_SIZE);
+  } = usePaging();
 
   const fetchRetryQueue = useCallback(
     async (offset = 0) => {
@@ -76,7 +81,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         setIsLoading(false);
       }
     },
-    [fqn, pageSize]
+    [fqn, handlePagingChange, pageSize]
   );
 
   const handlePageChangeHandler = useCallback(
@@ -84,14 +89,15 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
       handlePageChange(page);
       fetchRetryQueue((page - 1) * pageSize);
     },
-    [fetchRetryQueue, pageSize]
+    [fetchRetryQueue, handlePageChange, pageSize]
   );
 
+  // Also refetches after a page-size change, since fetchRetryQueue depends on it.
   useEffect(() => {
     if (fqn) {
       fetchRetryQueue();
     }
-  }, [fqn]);
+  }, [fetchRetryQueue, fqn]);
 
   const columns: ColumnsType<SearchIndexRetryRecord> = useMemo(
     () => [
@@ -162,37 +168,36 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
 
   return (
     <Table
-      bordered
       columns={columns}
-      currentPage={currentPage}
       dataSource={records}
       loading={isLoading}
       locale={{
         emptyText: (
-          <div className="tw:py-8 tw:text-center">
-            <Typography className="tw:text-text-secondary">
-              {t('message.no-retry-queue-records')}
-            </Typography>
-          </div>
+          <Box className="tw:relative tw:min-h-60">
+            <NoDataPlaceholder
+              description={t('message.no-retry-queue-records')}
+              icon={CheckCircle}
+            />
+          </Box>
         ),
       }}
-      pageSize={pageSize}
-      pagination={{
-        total: paging.total,
-        pageSize,
-        current: currentPage,
-        showSizeChanger: true,
-        pageSizeOptions: ['10', '15', '25', '50'],
-        onChange: (page) =>
-          handlePageChangeHandler({ currentPage: page, cursorType: '' }),
-        onShowSizeChange: (_, size) => {
-          handlePageSizeChange(size);
-          fetchRetryQueue(0);
-        },
-      }}
-      paginationVisible={records.length > 0 && paging.total > pageSize}
+      pagination={
+        shouldShowPager(records)
+          ? {
+              total: paging.total,
+              pageSize,
+              current: currentPage,
+              showSizeChanger: true,
+              pageSizeOptions: LIST_PAGE_SIZE_OPTIONS,
+              onChange: (page) =>
+                handlePageChangeHandler({ currentPage: page }),
+              onShowSizeChange: (_, size) => handlePageSizeChange(size),
+            }
+          : false
+      }
       rowKey={(record) => `${record.entityId}-${record.entityFqn}`}
       size="small"
+      variant="muted"
     />
   );
 };

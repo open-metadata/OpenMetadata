@@ -58,6 +58,10 @@ public class AssetRepository {
             CatalogExceptionMessage.entityNotFound(ENTITY_TYPE, fqn));
       }
       return JsonUtils.readObjects(json, Asset.class);
+    } catch (EntityNotFoundException e) {
+      // No attachments is an expected 404: the attachments widget asks on every page view, and
+      // ERROR logs are reported to Sentry, so logging it here turns each view into an alert.
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to read asset with FQN {}: {}", fqn, e.getMessage(), e);
       throw e;
@@ -72,6 +76,9 @@ public class AssetRepository {
             CatalogExceptionMessage.entityNotFound(ENTITY_TYPE, id));
       }
       return JsonUtils.readValue(json, Asset.class);
+    } catch (EntityNotFoundException e) {
+      // Expected 404, see getByFQN.
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to get asset with id {}: {}", id, e.getMessage(), e);
       throw e;
@@ -86,6 +93,9 @@ public class AssetRepository {
             CatalogExceptionMessage.entityNotFound(ENTITY_TYPE, fqnPrefix));
       }
       return JsonUtils.readObjects(jsonList, Asset.class);
+    } catch (EntityNotFoundException e) {
+      // Expected 404, see getByFQN.
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to get assets with fqnPrefix {}: {}", fqnPrefix, e.getMessage(), e);
       throw e;
@@ -107,14 +117,9 @@ public class AssetRepository {
     return asset;
   }
 
-  public void markDeleted(String fqnPrefix) {
-    try {
-      dao.markDeletedByFqnPrefix(fqnPrefix);
-      LOG.info("Marked asset {} as deleted", fqnPrefix);
-    } catch (Exception e) {
-      LOG.error("Failed to mark asset {} as deleted: {}", fqnPrefix, e.getMessage(), e);
-      throw e;
-    }
+  /** Marks this attachment deleted; other attachments of its entity are left as they are. */
+  public Asset markDeleted(Asset asset) {
+    return update(asset.withDeleted(true));
   }
 
   public void delete(String id) {

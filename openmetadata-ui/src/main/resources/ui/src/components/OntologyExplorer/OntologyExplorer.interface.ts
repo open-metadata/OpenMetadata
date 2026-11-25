@@ -12,7 +12,6 @@
  */
 
 import { Glossary } from '../../generated/entity/data/glossary';
-import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { EntityReference } from '../../generated/entity/type';
 import { EntityStatus, Provenance } from '../../generated/type/termRelation';
@@ -20,9 +19,9 @@ import {
   LayoutType,
   type LayoutEngineType,
 } from './OntologyExplorer.constants';
+import { RelationTypeOptionGroup } from './RelationshipTypePicker.interface';
 
 export type OntologyScope = 'global' | 'glossary' | 'term';
-export type OntologyStudioSurface = 'graph' | 'tree' | 'term';
 
 export interface OntologyExplorerProps {
   scope: OntologyScope;
@@ -30,22 +29,23 @@ export interface OntologyExplorerProps {
   glossaryId?: string;
   className?: string;
   height?: string | number;
-  isAuthoringMode?: boolean;
-  isEditMode?: boolean;
-  surface?: OntologyStudioSurface;
-  showHealth?: boolean;
-  globalGlossaryIds?: string[];
   onStatsChange?: (stats: string[]) => void;
   onLoadingChange?: (loading: boolean) => void;
-  onGlossariesChange?: (glossaries: Glossary[]) => void;
-  onGraphDataChange?: (graphData: OntologyGraphData) => void;
-  onRelationTypesChange?: (relationTypes: RelationshipType[]) => void;
-  onSelectedNodeChange?: (node: OntologyNode | null) => void;
-  conceptDraftId?: string;
-  defaultConceptGlossaryId?: string;
-  onConceptCreated?: (concept: GlossaryTerm) => void;
-  onConceptDraftClose?: () => void;
-  onRequestEdit?: () => void;
+}
+
+/** Points a canvas node or edge at the AI draft operation that proposes it. */
+export interface OntologyProposalRef {
+  changeSetId: string;
+  operationId: string;
+}
+
+/** A column of a bound asset, with the property it is bound to. */
+export interface BoundColumn {
+  path: string[];
+  type?: string;
+  propertyLabel: string;
+  /** False when the exact column or the property is gone. */
+  isResolved: boolean;
 }
 
 export interface OntologyNode {
@@ -56,6 +56,7 @@ export interface OntologyNode {
   loadedAssetCount?: number;
   isLoadingAssets?: boolean;
   columnCount?: number;
+  boundColumns?: BoundColumn[];
   serviceLabel?: string;
   type: string;
   fullyQualifiedName?: string;
@@ -72,6 +73,19 @@ export interface OntologyNode {
   isDraft?: boolean;
   isOptimistic?: boolean;
   isDataModeSeed?: boolean;
+  lineageNotes?: LineageNote[];
+  proposal?: OntologyProposalRef;
+  hasConflict?: boolean;
+}
+
+export interface LineageNote {
+  direction: 'upstream' | 'downstream';
+  label: string;
+}
+
+export interface LineageEnd {
+  nodeId: string;
+  label: string;
 }
 
 export interface OntologyEdge {
@@ -87,12 +101,15 @@ export interface OntologyEdge {
   createdBy?: string;
   createdAt?: number;
   relationshipType?: EntityReference;
+  proposal?: OntologyProposalRef;
+  lineage?: { from: LineageEnd; to: LineageEnd };
 }
 
 export type OntologyEdgeKind =
   | 'ontology'
   | 'assetBinding'
-  | 'semanticProjection';
+  | 'semanticProjection'
+  | 'observedLineage';
 
 export interface OntologyGraphData {
   nodes: OntologyNode[];
@@ -128,6 +145,8 @@ export interface OntologyGraphHandle {
   getNodePositions: () => Record<string, { x: number; y: number }>;
   exportAsPng: () => Promise<void>;
   exportAsSvg: () => Promise<void>;
+  /** Forget the clicked edge, so the next click on it is reported again. */
+  clearEdgeSelection: () => void;
 }
 
 export interface HierarchyComboInfo {
@@ -152,15 +171,27 @@ export interface OntologyGraphProps {
   hierarchyCombos?: HierarchyComboInfo[];
   focusNodeId?: string | null;
   graphSearchHighlight?: GraphSearchHighlightInput | null;
+  conflictEdgeKeys?: ReadonlySet<string>;
   isAuthoringMode?: boolean;
   isEditMode?: boolean;
   relationTypes?: RelationshipType[];
+  /** Edge colours for relation types that are not glossary relationship types. */
+  relationColors?: Record<string, string>;
+  relationTypeGroups?: RelationTypeOptionGroup[];
+  canCreateRelationType?: boolean;
   studioMode?: boolean;
+  keepCanvasOnAdd?: boolean;
   onCreateRelation?: (
     fromId: string,
     toId: string,
     relationType: string
   ) => Promise<void>;
+  /** The reason a relation cannot be written, or undefined; asked before any write. */
+  checkRelation?: (
+    fromId: string,
+    toId: string,
+    relationType: string
+  ) => string | undefined;
   onEdgeClick?: (edge: MergedEdge | null) => void;
   onNodeClick: (
     node: OntologyNode,
@@ -172,23 +203,9 @@ export interface OntologyGraphProps {
   ) => void;
   onNodeDoubleClick: (node: OntologyNode) => void;
   onPaneClick: () => void;
+  /** Canvas-space point of a double-click on empty canvas while the studio is being edited. */
+  onCanvasDoubleClick?: (point: { x: number; y: number }) => void;
   onScrollNearEdge?: () => void;
-}
-
-export interface FilterToolbarProps {
-  filters: GraphFilters;
-  glossaries: Glossary[];
-  relationTypes: RelationshipType[];
-  onFiltersChange: (filters: GraphFilters) => void;
-  onViewModeChange?: (viewMode: GraphViewMode) => void;
-  onClearAll?: () => void;
-  onLoadMore?: () => void;
-  viewModeDisabled?: boolean;
-  isLoading?: boolean;
-  isLoadingMore?: boolean;
-  hasMoreTerms?: boolean;
-  loadedTermCount?: number;
-  totalTermCount?: number;
 }
 
 export interface GraphSettingsPanelProps {
@@ -217,6 +234,7 @@ export interface MergedEdge {
   createdBy?: string;
   createdAt?: number;
   relationshipType?: EntityReference;
+  proposal?: OntologyProposalRef;
 }
 
 export interface LayoutConfig {
@@ -274,7 +292,9 @@ export interface BuildGraphDataProps {
   layoutType: LayoutEngineType;
   hierarchyCombos?: HierarchyComboInfo[];
   graphSearchHighlight?: GraphSearchHighlightInput | null;
+  conflictEdgeKeys?: ReadonlySet<string>;
   isEditMode?: boolean;
   relationTypes?: RelationshipType[];
+  relationColors?: Record<string, string>;
   studioMode?: boolean;
 }

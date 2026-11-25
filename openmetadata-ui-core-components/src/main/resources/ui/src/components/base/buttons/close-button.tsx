@@ -1,4 +1,4 @@
-import { X as CloseIcon } from '../../../icons';
+import { XClose } from '../../../icons';
 import {
   Button as AriaButton,
   type ButtonProps as AriaButtonProps,
@@ -40,13 +40,13 @@ export const CloseButton = ({
       aria-label={label || t('label.close')}
       className={(state) =>
         cx(
-          'tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:p-2 tw:transition tw:duration-100 tw:ease-linear tw:focus:outline-hidden',
+          'tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:p-2 tw:transition tw:duration-100 tw:ease-linear',
           sizes[size].root,
           themes[theme],
           typeof className === 'function' ? className(state) : className
         )
       }>
-      <CloseIcon
+      <XClose
         aria-hidden="true"
         className={cx(
           'tw:shrink-0 tw:transition-inherit-all',

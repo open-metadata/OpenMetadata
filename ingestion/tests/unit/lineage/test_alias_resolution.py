@@ -12,10 +12,10 @@
 
 from unittest.mock import MagicMock, patch
 
+from metadata.entity_resolution.table_binding import service_resolves_aliases
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.sql_lineage import (
     search_table_entities,
-    service_resolves_aliases,
 )
 
 
@@ -29,7 +29,7 @@ def test_canonical_match_does_not_consult_aliases():
     metadata = MagicMock()
     metadata.es_search_from_fqn.return_value = [_table("svc.analytics_master.dbo.orders")]
 
-    with patch("metadata.ingestion.lineage.sql_lineage.search_cache", MagicMock(get=lambda _: None)):
+    with patch("metadata.entity_resolution.table_search.search_cache", MagicMock(get=lambda _: None)):
         result = search_table_entities(
             metadata=metadata,
             service_names="svc",
@@ -49,8 +49,8 @@ def test_alias_match_resolves_to_the_canonical_table():
     metadata.es_search_from_alias.return_value = [_table("svc.analytics_master.dbo.orders")]
 
     with (
-        patch("metadata.ingestion.lineage.sql_lineage.search_cache", MagicMock(get=lambda _: None)),
-        patch("metadata.ingestion.lineage.sql_lineage.service_resolves_aliases", return_value=True),
+        patch("metadata.entity_resolution.table_search.search_cache", MagicMock(get=lambda _: None)),
+        patch("metadata.entity_resolution.table_binding.service_resolves_aliases", return_value=True),
     ):
         result = search_table_entities(
             metadata=metadata,
@@ -71,8 +71,8 @@ def test_no_match_returns_none():
     metadata.es_search_from_alias.return_value = None
 
     with (
-        patch("metadata.ingestion.lineage.sql_lineage.search_cache", MagicMock(get=lambda _: None)),
-        patch("metadata.ingestion.lineage.sql_lineage.service_resolves_aliases", return_value=True),
+        patch("metadata.entity_resolution.table_search.search_cache", MagicMock(get=lambda _: None)),
+        patch("metadata.entity_resolution.table_binding.service_resolves_aliases", return_value=True),
     ):
         result = search_table_entities(
             metadata=metadata,
@@ -89,9 +89,9 @@ class TestAliasOptInGate:
     """The alias lookup must be per-service opt-in, not paid by every connector."""
 
     def setup_method(self):
-        from metadata.ingestion.lineage import sql_lineage
+        from metadata.entity_resolution import table_binding
 
-        sql_lineage.alias_resolution_cache.clear()
+        table_binding.alias_resolution_cache.clear()
 
     def _service(self, **connection_fields):
         service = MagicMock()
@@ -140,7 +140,7 @@ class TestAliasOptInGate:
         metadata.get_by_name.return_value = None
         metadata.es_search_from_alias.return_value = [_table("svc.master.dbo.orders")]
 
-        with patch("metadata.ingestion.lineage.sql_lineage.search_cache", MagicMock(get=lambda _: None)):
+        with patch("metadata.entity_resolution.table_search.search_cache", MagicMock(get=lambda _: None)):
             result = search_table_entities(
                 metadata=metadata,
                 service_names="svc",
@@ -151,3 +151,11 @@ class TestAliasOptInGate:
 
         assert result is None
         metadata.es_search_from_alias.assert_not_called()
+
+
+def test_alias_opt_in_cache_is_isolated_between_services():
+    first, second = MagicMock(), MagicMock()
+    first.get_by_name.return_value.connection.config.includeSynonyms = True
+    second.get_by_name.return_value.connection.config.includeSynonyms = False
+    assert service_resolves_aliases(first, "enabled_service") is True
+    assert service_resolves_aliases(second, "disabled_service") is False

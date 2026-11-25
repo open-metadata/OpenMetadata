@@ -159,20 +159,33 @@ describe('widget style', () => {
     ).toEqual(settingsWith({ size: 'large', propertyLayout: layout }));
   });
 
-  it('makes every property a full row in the one-column preview', () => {
+  it('preserves the chosen widths when switching to preview', () => {
+    const layout = [{ name: 'a', width: 'half' as const }];
+
     expect(
       withWidgetStyle(
-        settingsWith({
-          size: 'large',
-          propertyLayout: [{ name: 'a', width: 'half' }],
-        }),
+        settingsWith({ size: 'large', propertyLayout: layout }),
         'preview'
       )
-    ).toEqual(
-      settingsWith({
-        size: 'small',
-        propertyLayout: [{ name: 'a', width: 'full' }],
-      })
+    ).toEqual(settingsWith({ size: 'small', propertyLayout: layout }));
+  });
+
+  it('restores the chosen widths after a preview round trip', () => {
+    const layout = [
+      { name: 'a', width: 'half' as const },
+      { name: 'b', width: 'full' as const },
+    ];
+
+    const roundTrip = withWidgetStyle(
+      withWidgetStyle(
+        settingsWith({ size: 'large', propertyLayout: layout }),
+        'preview'
+      ),
+      'fullWidth'
+    );
+
+    expect(roundTrip).toEqual(
+      settingsWith({ size: 'large', propertyLayout: layout })
     );
   });
 });

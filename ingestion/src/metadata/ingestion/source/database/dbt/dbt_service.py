@@ -39,7 +39,6 @@ from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
@@ -92,10 +91,8 @@ class DbtServiceTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=OMetaTagAndClassification,
-                context="tags",
                 processor="yield_dbt_tags",
                 nullable=True,
-                store_all_in_context=True,
             ),
             NodeStage(
                 type_=DataModelLink,
@@ -108,6 +105,8 @@ class DbtServiceTopology(ServiceTopology):
     process_dbt_entities: Annotated[TopologyNode, Field(description="Process dbt entities")] = TopologyNode(
         producer="get_data_model",
         stages=[
+            # Must stay ahead of create_dbt_query_lineage, or its override delete would remove the
+            # compiled-SQL edges. ADR:2026-11-09-dbt-override-lineage-deletes-when-the-manifest-declares-no-parent
             NodeStage(
                 type_=AddLineageRequest,
                 processor="create_dbt_lineage",
@@ -201,7 +200,6 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     """
 
     topology = DbtServiceTopology()
-    context = TopologyContextManager(topology)
     source_config: DbtPipeline
 
     @property

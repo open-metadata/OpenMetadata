@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button, Typography } from '@openmetadata/ui-core-components';
 
-import { Button } from 'antd';
 import classNames from 'classnames';
 import { Change } from 'diff';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -146,49 +146,46 @@ export const DiffViewNew = ({
       style={{
         ...(showDescTitle
           ? {
-              background: 'rgba(239, 244, 250, 0.25)',
               borderRadius: '12px',
             }
           : {
               padding: '20px',
               borderRadius: '8px',
-              background: 'white',
               margin: '16px 0px',
             }),
       }}>
       {showDescTitle && (
-        <span className="task-tab-description-header">
+        <Typography className="task-tab-description-header">
           {t('label.description')}
-        </span>
+        </Typography>
       )}
       <pre
         className="whitespace-pre-wrap m-b-0"
         data-testid="diff-container"
         style={showDescTitle ? { marginTop: '14px' } : {}}>
         {diffArr.length ? (
-          <>
-            <div
-              className={classNames('relative', contentClassName)}
-              ref={contentRef}>
-              {elements}
-            </div>
-            {shouldShowViewMore && (
-              <div className="mt-2">
-                <Button
-                  className="view-more-less-button cursor-pointer remove-button-default-styling"
-                  data-testid="view-more-button"
-                  onClick={() => setExpanded(!expanded)}>
-                  {expanded ? t('label.view-less') : t('label.view-more')}
-                </Button>
-              </div>
-            )}
-          </>
+          <div
+            className={classNames('relative', contentClassName)}
+            ref={contentRef}>
+            {elements}
+          </div>
         ) : (
-          <span className="text-grey-muted" data-testid="noDiff-placeholder">
+          <Typography color="secondary" data-testid="noDiff-placeholder">
             {t('label.no-diff-available')}
-          </span>
+          </Typography>
         )}
       </pre>
+      {/* Outside the <pre>, which made it monospace; a link like the
+          description preview's View more, not a bordered button. */}
+      {diffArr.length > 0 && shouldShowViewMore && (
+        <Button
+          color="link-color"
+          data-testid="view-more-button"
+          size="sm"
+          onClick={() => setExpanded(!expanded)}>
+          {expanded ? t('label.view-less') : t('label.view-more')}
+        </Button>
+      )}
     </div>
   );
 };

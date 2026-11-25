@@ -137,7 +137,7 @@ export const getCustomizeDetailsDefaultTabs = (
 
 export const openPlaceholderWidgetPicker = async (page: Page) => {
   await page.getByRole('dialog').waitFor({ state: 'hidden' });
-  await page.locator('.ant-modal-wrap').waitFor({ state: 'detached' });
+
   // The new tab's grid is still re-laying out, so pointerdown can focus the
   // button while pointerup lands elsewhere and no click fires. Opening the
   // modal is idempotent, so retry until it shows.

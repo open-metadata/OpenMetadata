@@ -24,6 +24,7 @@ import org.mockito.quality.Strictness;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
@@ -146,7 +147,7 @@ class OpenSearchEntitiesProcessorTest {
     return resultList;
   }
 
-  static class MockEntity implements EntityInterface {
+  static class MockEntity implements EntityInterface<EntityStatus> {
     private final UUID id = UUID.randomUUID();
     private final String fqn = "test.entity." + id;
 
@@ -239,7 +240,7 @@ class OpenSearchEntitiesProcessorTest {
     public void setHref(URI href) {}
 
     @Override
-    public <T extends EntityInterface> T withHref(URI href) {
+    public <T extends EntityInterface<?>> T withHref(URI href) {
       return (T) this;
     }
   }

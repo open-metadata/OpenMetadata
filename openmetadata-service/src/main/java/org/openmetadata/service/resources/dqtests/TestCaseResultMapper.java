@@ -32,8 +32,12 @@ public class TestCaseResultMapper
         .withIncidentId(create.getIncidentId())
         .withMaxBound(create.getMaxBound())
         .withMinBound(create.getMinBound())
+        .withConfiguredMaxBound(create.getConfiguredMaxBound())
+        .withConfiguredMinBound(create.getConfiguredMinBound())
+        .withAppliedThreshold(create.getAppliedThreshold())
         .withDimensionResults(create.getDimensionResults())
         .withDuration(create.getDuration())
-        .withErrorDetails(create.getErrorDetails());
+        .withErrorDetails(create.getErrorDetails())
+        .withEvaluationScope(create.getEvaluationScope());
   }
 }

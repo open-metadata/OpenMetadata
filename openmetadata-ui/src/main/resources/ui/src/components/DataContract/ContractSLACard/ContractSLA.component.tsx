@@ -10,19 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
 import {
-  FailedTests,
+  Box,
+  Divider,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Inherit,
   MinusCircle,
   SuccessfulTests,
+  TotalOccurrences,
+  XCircle,
 } from '@openmetadata/ui-core-components/icons';
-import { Col, Tooltip } from 'antd';
 import { isEmpty, lowerCase } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
-import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { DATA_CONTRACT_SLA } from '../../../constants/DataContract.constants';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
@@ -184,7 +188,7 @@ const ContractSLA: React.FC<{
   const renderOutcomeIcon = (key: string): ReactNode => {
     const outcomeOf = SLA_CHECK_OUTCOME[key];
     if (!slaValidation || !outcomeOf) {
-      return <Icon className="sla-icon" component={DefaultIcon} />;
+      return <TotalOccurrences className="sla-icon" size={SLA_ICON_SIZE} />;
     }
     const met = outcomeOf(slaValidation);
     if (met === true) {
@@ -201,7 +205,7 @@ const ContractSLA: React.FC<{
     }
 
     return met === false ? (
-      <FailedTests
+      <XCircle
         aria-hidden={false}
         aria-label={t('label.failed')}
         className="sla-icon tw:text-fg-error-primary"
@@ -227,16 +231,22 @@ const ContractSLA: React.FC<{
 
   const inheritedIcon = contract.sla?.inherited ? (
     <Tooltip
+      arrow
+      excludeTriggerFromTabOrder
       title={t('label.inherited-entity', {
         entity: t('label.service-level-agreement'),
-      })}>
-      <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+      })}
+      triggerClassName="tw:inline-flex">
+      <Inherit
+        className="inherit-icon tw:cursor-pointer tw:text-utility-blue-700"
+        size={14}
+      />
     </Tooltip>
   ) : null;
 
   return (
-    <Col
-      className="contract-card-items"
+    <Grid.Item
+      className="layout-column contract-card-items"
       data-testid="contract-sla-card"
       span={24}>
       <div className="contract-card-header-container">
@@ -301,7 +311,7 @@ const ContractSLA: React.FC<{
           )}
         </Box>
       )}
-    </Col>
+    </Grid.Item>
   );
 };
 

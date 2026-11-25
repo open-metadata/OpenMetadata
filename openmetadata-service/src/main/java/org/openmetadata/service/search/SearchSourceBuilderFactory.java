@@ -2,15 +2,19 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.service.search.SearchUtils.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataQualityIndex;
+import static org.openmetadata.service.search.SearchUtils.isOntologyIndex;
 import static org.openmetadata.service.search.SearchUtils.isServiceIndex;
 import static org.openmetadata.service.search.SearchUtils.isTimeSeriesIndex;
 import static org.openmetadata.service.search.SearchUtils.mapEntityTypesToIndexNames;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 
 /**
@@ -81,7 +85,7 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
       return buildDataQualitySearchBuilderV2(indexName, searchQuery, fromOffset, size);
     }
 
-    if (isDataAssetIndex(indexName)) {
+    if (isDataAssetIndex(indexName) || isOntologyIndex(indexName)) {
       return buildDataAssetSearchBuilderV2(
           indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
@@ -177,11 +181,44 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
   default AssetTypeConfiguration findAssetTypeConfig(
       String indexName, SearchSettings searchSettings) {
-    String assetType = mapEntityTypesToIndexNames(indexName);
+    return assetTypeConfiguration(indexName, searchSettings);
+  }
+
+  /**
+   * The asset type configuration of {@code searchSettings} that applies to {@code indexName}, or the
+   * default configuration when no asset type matches. Needs no engine factory, so callers that hold
+   * none can use it.
+   */
+  static AssetTypeConfiguration assetTypeConfiguration(
+      String indexName, SearchSettings searchSettings) {
+    final var repository = Entity.getSearchRepository();
+    final String index =
+        repository == null ? indexName : repository.getIndexNameWithoutAlias(indexName);
+    final boolean ontology = isOntologyIndex(index);
+    final String assetType = mapEntityTypesToIndexNames(ontology ? index : indexName);
     return searchSettings.getAssetTypeConfigurations().stream()
         .filter(config -> config.getAssetType().equals(assetType))
         .findFirst()
-        .orElse(searchSettings.getDefaultConfiguration());
+        .orElseGet(
+            () ->
+                ontology
+                    ? ontologySearchConfiguration(searchSettings.getDefaultConfiguration())
+                    : searchSettings.getDefaultConfiguration());
+  }
+
+  private static AssetTypeConfiguration ontologySearchConfiguration(
+      AssetTypeConfiguration defaults) {
+    final var config = JsonUtils.deepCopy(defaults, AssetTypeConfiguration.class);
+    final var fields = new ArrayList<>(config.getSearchFields());
+    for (var field : List.of("synonyms", "domainLabels", "rangeLabels")) {
+      fields.add(
+          new FieldBoost()
+              .withField(field)
+              .withBoost(2.0)
+              .withMatchType(FieldBoost.MatchType.STANDARD));
+    }
+    // Derive the default ranking stages from the ontology fields.
+    return config.withSearchFields(fields).withRanking(null);
   }
 
   /**

@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card } from 'antd';
+import {
+  ButtonUtility,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions-coloured.svg';
@@ -43,7 +46,7 @@ const SuggestionsAlert = ({
 
   return (
     <Card
-      className={classNames('suggested-card card-padding-0', {
+      className={classNames('suggested-card', {
         'card-inline-flex': showInlineCard,
       })}
       data-testid={`suggested-${suggestion.type}-card`}>
@@ -80,21 +83,21 @@ const SuggestionsAlert = ({
 
         {hasEditAccess && (
           <div className="d-flex justify-end gap-2">
-            <Button
-              ghost
+            <ButtonUtility
               data-testid="reject-suggestion"
-              icon={<CloseOutlined />}
-              size="small"
-              type="primary"
+              icon={XClose}
+              size="lg"
+              tooltip={t('label.reject')}
               onClick={() =>
                 acceptRejectSuggestion(suggestion, SuggestionAction.Reject)
               }
             />
-            <Button
+            <ButtonUtility
+              color="primary"
               data-testid="accept-suggestion"
-              icon={<CheckOutlined />}
-              size="small"
-              type="primary"
+              icon={Check}
+              size="lg"
+              tooltip={t('label.accept')}
               onClick={() =>
                 acceptRejectSuggestion(suggestion, SuggestionAction.Accept)
               }

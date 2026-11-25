@@ -12,7 +12,8 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { listMyVisibleTasks, TaskStatusGroup } from '../../../../rest/tasksAPI';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { openTaskCountQuery } from '../openTaskCount';
 import { ActivityFilter, InboxCount, InboxDateRange } from './inbox.utils';
 import { useInboxActivity } from './useInboxActivity';
 
@@ -22,36 +23,22 @@ export interface InboxCounts {
   isLoading: boolean;
 }
 
-export const INBOX_COUNTS_QUERY_KEY = 'inbox-counts';
-
-const INBOX_COUNTS_STALE_TIME = 30 * 1000;
-
 /**
  * Activity + task badge totals. The activity count reuses the shared
  * `useInboxActivity` query (deduped with the tab's list, so the badge equals the
- * list); tasks are the user's visible-open total — undated, like the Triage
- * queue and the sidebar bubble it must agree with — keyed on
- * `INBOX_COUNTS_QUERY_KEY` so a mutation elsewhere can invalidate it.
+ * list); tasks are the viewer's open total (`openTaskCountQuery`).
  */
 export const useInboxCounts = (dateRange?: InboxDateRange): InboxCounts => {
+  const { currentUser } = useApplicationStore();
   const {
     total,
     isCapped,
     isLoading: isActivityLoading,
   } = useInboxActivity(ActivityFilter.All, dateRange);
 
-  const { data: taskCount = 0, isFetching: isTaskFetching } = useQuery({
-    queryKey: [INBOX_COUNTS_QUERY_KEY],
-    // Only Open tasks, so the badge matches the sidebar red bubble.
-    queryFn: () =>
-      listMyVisibleTasks({
-        limit: 1,
-        statusGroup: TaskStatusGroup.Open,
-      })
-        .then((res) => res.paging?.total ?? 0)
-        .catch(() => 0),
-    staleTime: INBOX_COUNTS_STALE_TIME,
-  });
+  const { data: taskCount = 0, isFetching: isTaskFetching } = useQuery(
+    openTaskCountQuery(currentUser?.id)
+  );
 
   return {
     activityCount: { total, isCapped },

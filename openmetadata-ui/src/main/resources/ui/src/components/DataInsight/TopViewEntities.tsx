@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import {
+  Card,
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -119,27 +123,35 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
   return (
     <Card
       className="data-insight-card"
-      data-testid="entity-summary-card-percentage"
-      loading={isLoading}
-      title={
-        <PageHeader
-          data={{
-            header: t('label.data-insight-top-viewed-entity-summary'),
-            subHeader: t('message.most-viewed-data-assets'),
-          }}
-        />
-      }>
-      <Table
-        className="data-insight-table-wrapper"
-        columns={columns}
-        dataSource={mostViewedEntities}
-        loading={isLoading}
-        locale={{
-          emptyText: <EmptyGraphPlaceholder />,
-        }}
-        pagination={false}
-        size="small"
+      data-testid="entity-summary-card-percentage">
+      <Card.Header
+        title={
+          <PageHeader
+            data={{
+              header: t('label.data-insight-top-viewed-entity-summary'),
+              subHeader: t('message.most-viewed-data-assets'),
+            }}
+          />
+        }
       />
+      <Card.Content>
+        {isLoading ? (
+          <SkeletonParagraph rows={4} />
+        ) : (
+          <Table
+            className="data-insight-table-wrapper"
+            columns={columns}
+            dataSource={mostViewedEntities}
+            loading={isLoading}
+            locale={{
+              emptyText: <EmptyGraphPlaceholder />,
+            }}
+            pagination={false}
+            size="small"
+            tableLayout="auto"
+          />
+        )}
+      </Card.Content>
     </Card>
   );
 };

@@ -1,5 +1,6 @@
 package org.openmetadata.service.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,5 +44,48 @@ public class LoginAttemptCacheTest {
     // Check Eviction
     Awaitility.await().pollDelay(Duration.ofSeconds(2L)).untilAsserted(() -> assertTrue(true));
     assertFalse(cache.isLoginBlocked(testKey));
+  }
+
+  @Test
+  void failuresCountTowardsOneKeyWhateverTheCaseTheyArriveIn() {
+    LoginAttemptCache cache = new LoginAttemptCache(3, 60);
+
+    cache.recordFailedLogin("Alice@Example.com");
+    cache.recordFailedLogin("ALICE@EXAMPLE.COM");
+    cache.recordFailedLogin("alice@example.com");
+
+    assertEquals(3, cache.getUserFailedLoginCount("alice@example.com"));
+    assertTrue(cache.isLoginBlocked("Alice@example.com"));
+  }
+
+  /**
+   * Failed logins for unknown identities must not evict a real account's counter: a flood of
+   * made-up emails would otherwise reset the account's lockout and allow unlimited guessing.
+   */
+  @Test
+  void unknownIdentitiesCannotEvictARealAccountsCounter() {
+    LoginAttemptCache cache = new LoginAttemptCache(3, 600);
+    cache.recordFailedLogin("real@example.com");
+    cache.recordFailedLogin("real@example.com");
+
+    for (int i = 0; i < 2000; i++) {
+      cache.recordFailedUnknownLogin("made-up-" + i + "@example.com");
+    }
+
+    assertEquals(2, cache.getUserFailedLoginCount("real@example.com"));
+    cache.recordFailedLogin("real@example.com");
+    assertTrue(cache.isLoginBlocked("real@example.com"));
+  }
+
+  @Test
+  void anUnknownIdentityLocksOutAfterTheSameNumberOfAttempts() {
+    LoginAttemptCache cache = new LoginAttemptCache(3, 600);
+    cache.recordFailedUnknownLogin("nobody@example.com");
+    cache.recordFailedUnknownLogin("nobody@example.com");
+    assertFalse(cache.isLoginBlocked("nobody@example.com"));
+
+    cache.recordFailedUnknownLogin("NOBODY@example.com");
+
+    assertTrue(cache.isLoginBlocked("nobody@example.com"));
   }
 }
