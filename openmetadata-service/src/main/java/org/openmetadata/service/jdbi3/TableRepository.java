@@ -2616,7 +2616,7 @@ public class TableRepository extends EntityRepository<Table> {
 
       // manage table ER relationship based on table constraints
       addConstraintRelationship(origTable, added);
-      deleteConstraintRelationship(origTable, deleted);
+      deleteConstraintRelationship(origTable, deleted, referredTables(updatedConstraints));
     }
 
     /**
@@ -2691,12 +2691,28 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  private void deleteConstraintRelationship(Table table, List<TableConstraint> constraints) {
+  // Tables the constraints refer to. A constraint replaced by one that still refers to the same
+  // table, such as a foreign key whose column pairing was corrected, keeps the link to it.
+  private static Set<String> referredTables(List<TableConstraint> constraints) {
+    Set<String> tables = new HashSet<>();
+    for (TableConstraint constraint : listOrEmpty(constraints)) {
+      for (String column : listOrEmpty(constraint.getReferredColumns())) {
+        tables.add(FullyQualifiedName.getParentFQN(column));
+      }
+    }
+    return tables;
+  }
+
+  private void deleteConstraintRelationship(
+      Table table, List<TableConstraint> constraints, Set<String> stillReferredTables) {
     if (!nullOrEmpty(constraints)) {
       for (TableConstraint constraint : constraints) {
         if (!nullOrEmpty(constraint.getReferredColumns())) {
           for (String column : constraint.getReferredColumns()) {
             String toParent = FullyQualifiedName.getParentFQN(column);
+            if (stillReferredTables.contains(toParent)) {
+              continue;
+            }
             try {
               EntityReference toTable = Entity.getEntityReferenceByName(TABLE, toParent, ALL);
               deleteRelationship(
@@ -3607,6 +3623,8 @@ public class TableRepository extends EntityRepository<Table> {
     return nameMatches || displayNameMatches;
   }
 
+  // The UI mirrors this order to find a deep-linked column's page (getColumnPageForFqn); change
+  // both together. ADR:2026-11-24-column-deep-link-page-mirrors-server-column-sort
   private Comparator<Column> columnComparator(String sortBy, String sortOrder) {
     Comparator<Column> comparator;
     if ("ordinalPosition".equals(sortBy)) {

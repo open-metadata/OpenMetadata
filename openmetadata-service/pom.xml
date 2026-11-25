@@ -12,6 +12,7 @@
   <name>OpenMetadata Service</name>
 
   <properties>
+    <unitTests.forkCount>1C</unitTests.forkCount>
     <dropwizard.swagger.version>4.0.5-1</dropwizard.swagger.version>
     <azure-identity.version>1.19.0</azure-identity.version>
     <azure-kv.version>4.13.1</azure-kv.version>
@@ -901,24 +902,8 @@
       <artifactId>junit-platform-commons</artifactId>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>testcontainers</artifactId>
-      <version>1.21.4</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <version>1.21.4</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>localstack</artifactId>
-      <version>1.21.4</version>
-      <scope>test</scope>
-    </dependency>
+    <!-- No Testcontainers here: unit tests are mock-only, and a test that needs a database, search
+         engine, Redis or AWS service is an IT in openmetadata-integration-tests. -->
     <dependency>
       <groupId>info.picocli</groupId>
       <artifactId>picocli</artifactId>
@@ -1292,6 +1277,9 @@
             <include>**/*Tests.java</include>
             <include>**/*TestCase.java</include>
           </includes>
+          <!-- Separate JVMs, so the static Entity registry and per-fork test containers stay isolated. -->
+          <forkCount>${unitTests.forkCount}</forkCount>
+          <reuseForks>true</reuseForks>
           <!--
             Entity schema used only by SchemaFieldExtractorTest to prove that schema lookup follows
             the directory layout. Kept out of src/test/resources so that it stays out of the

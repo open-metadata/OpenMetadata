@@ -159,6 +159,18 @@ jest.mock('../../../components/common/NextPrevious/NextPrevious', () =>
   jest.fn().mockImplementation(() => <div data-testid="next-previous" />)
 );
 
+jest.mock(
+  '../../../components/Alerts/AlertStatusBadge/AlertStatusBadge',
+  () => ({
+    __esModule: true,
+    default: ({ enabled }: { enabled?: boolean }) => (
+      <span data-testid="alert-status-badge">
+        {enabled === false ? 'label.disabled' : 'label.active'}
+      </span>
+    ),
+  })
+);
+
 jest.mock('./ObservabilityAlertActions', () =>
   jest.fn().mockImplementation(() => <div data-testid="alert-actions" />)
 );
@@ -220,6 +232,22 @@ describe('ObservabilityAlertsTable component', () => {
     fireEvent.click(screen.getByRole('button', { name: 'alert-test' }));
 
     expect(onViewAlert).toHaveBeenCalledWith(mockAlerts[0]);
+  });
+
+  it('shows a Disabled status for an alert that is switched off', () => {
+    renderTable({ alerts: [{ ...mockAlerts[0], enabled: false }] });
+
+    expect(screen.getByTestId('alert-status-badge')).toHaveTextContent(
+      'label.disabled'
+    );
+  });
+
+  it('shows an Active status for an enabled alert', () => {
+    renderTable({ alerts: [{ ...mockAlerts[0], enabled: true }] });
+
+    expect(screen.getByTestId('alert-status-badge')).toHaveTextContent(
+      'label.active'
+    );
   });
 
   it('should render the table with alert rows when data is present', () => {
