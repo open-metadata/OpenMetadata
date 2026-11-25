@@ -402,8 +402,10 @@ const TagsPage = () => {
   );
 
   const handleClassificationDomainsUpdate = useCallback(
-    (domains?: EntityReference[]) =>
-      setCurrentClassification((prev) => prev && { ...prev, domains }),
+    (id: string, domains?: EntityReference[]) =>
+      setCurrentClassification((prev) =>
+        prev?.id === id ? { ...prev, domains } : prev
+      ),
     []
   );
 

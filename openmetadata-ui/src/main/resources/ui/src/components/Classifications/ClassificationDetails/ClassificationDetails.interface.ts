@@ -31,7 +31,10 @@ export interface ClassificationDetailsProps {
   handleUpdateClassification?: (
     updatedClassification: Classification
   ) => Promise<void>;
-  handleClassificationDomainsUpdate?: (domains?: EntityReference[]) => void;
+  handleClassificationDomainsUpdate?: (
+    id: string,
+    domains?: EntityReference[]
+  ) => void;
   handleToggleDisable?: (tag: Tag) => void;
   handleEditClassificationClick?: () => void;
 }

@@ -24,6 +24,7 @@ import { DOMAINS, serveDomains } from '../../test/browser/fixtures/domains';
 import { many, named } from '../../test/browser/fixtures/entities';
 import { serveEntity } from '../../test/browser/fixtures/entityPage';
 import { EMPTY_LIST, worker } from '../../test/browser/msw';
+import { networkIdle } from '../../test/browser/network';
 import { describePaginatedList } from '../../test/browser/paginationContract';
 import { renderApp } from '../../test/browser/renderWithApp';
 
@@ -188,6 +189,83 @@ describe('Classification › Domains', () => {
       .element(domainChip(other.fullyQualifiedName))
       .not.toBeInTheDocument();
     expect(server.current().domains?.map((d) => d.id)).toEqual([assigned.id]);
+  });
+
+  test('a domain save that lands after switching classification leaves the new one unchanged', async () => {
+    const sibling: Classification = {
+      ...governed,
+      id: '00000000-0000-4000-8000-0000000000c5',
+      name: 'PwSibling',
+      fullyQualifiedName: 'PwSibling',
+      domains: [],
+    };
+    const stored = [governed, sibling];
+    let releasePatch = () => undefined as void;
+    const patchHeld = new Promise<void>((resolve) => {
+      releasePatch = resolve;
+    });
+    let patches = 0;
+
+    serveDomains();
+    worker.use(
+      http.get('/api/v1/classifications', () =>
+        HttpResponse.json({ data: stored, paging: { total: stored.length } })
+      ),
+      http.get('/api/v1/classifications/name/:name', ({ params }) =>
+        HttpResponse.json(stored.find((c) => c.name === params.name))
+      ),
+      http.get('/api/v1/tags', () => HttpResponse.json(EMPTY_LIST)),
+      http.patch('/api/v1/classifications/:id', async () => {
+        patches++;
+        await patchHeld;
+
+        return HttpResponse.json({
+          ...governed,
+          domains: [
+            {
+              id: other.id,
+              type: 'domain',
+              name: other.name,
+              fullyQualifiedName: other.fullyQualifiedName,
+              displayName: other.displayName,
+            },
+          ],
+        });
+      })
+    );
+
+    await replaceAssignedDomain();
+
+    await expect.poll(() => patches).toBe(1);
+
+    await userEvent.click(
+      page
+        .getByTestId('side-panel-classification')
+        .filter({ hasText: sibling.name })
+    );
+
+    await expect
+      .element(page.getByTestId('entity-header-name'))
+      .toHaveTextContent(sibling.name);
+
+    releasePatch();
+    await networkIdle();
+
+    await expect.element(page.getByTestId('add-domain')).toBeVisible();
+    await expect
+      .element(domainChip(other.fullyQualifiedName))
+      .not.toBeInTheDocument();
+
+    await userEvent.click(page.getByTestId('manage-button'));
+    await userEvent.click(page.getByTestId('edit-classification'));
+    const drawer = page.getByTestId('classification-form-drawer');
+
+    await expect
+      .element(drawer.getByTestId('name').getByRole('textbox'))
+      .toHaveValue(sibling.name);
+    await expect
+      .element(drawer.getByTestId('domain-select'))
+      .not.toHaveTextContent(other.displayName ?? '');
   });
 });
 

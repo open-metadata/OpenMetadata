@@ -810,13 +810,17 @@ const ClassificationDetails = forwardRef(
                 multiple
                 showDomainHeading
                 afterDomainUpdateAction={(updated) =>
-                  handleClassificationDomainsUpdate?.(updated.domains)
+                  handleClassificationDomainsUpdate?.(
+                    updated.id,
+                    updated.domains
+                  )
                 }
                 domains={currentClassification.domains}
                 entityFqn={currentClassification.fullyQualifiedName ?? ''}
                 entityId={currentClassification.id}
                 entityType={EntityType.CLASSIFICATION}
                 hasPermission={!isVersionView && editDomainPermission}
+                key={currentClassification.id}
                 variant="widget"
               />
               <WidgetCard
