@@ -367,6 +367,20 @@ public class OpenSearchVectorService implements VectorIndexService {
       String parentId = entity.getId().toString();
       String currentFingerprint = fingerprint(entity, ontologyBody);
       final var type = entity.getEntityReference().getType();
+      if (OntologyTermSearch.isTerm(type) && ontologyBody == null) {
+        // The 2-arg overload cannot safely publish a term. The release-aware writer needs the
+        // release-snapshot body, and embedding from the mutable working (draft) row would
+        // publish unpublished / not-in-active-release / deprecated terms straight into the
+        // searchable ontology chunk index with no publication check. Manual term reindexing
+        // must go through the release-aware bulk writer (reindex), which passes the published
+        // body into the 3-arg overload — see VectorEmbeddingHandler.refreshOntologyEmbedding
+        // and OntologyTermBulkWrite.
+        LOG.warn(
+            "Skipping embedding for ontology term {} without a release body; rebuild term "
+                + "embeddings via the release-aware reindex path",
+            entity.getId());
+        return;
+      }
       String chunkIndexName = chunkTargetForWrite(type);
       boolean entityDocStale =
           !currentFingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
@@ -378,7 +392,7 @@ public class OpenSearchVectorService implements VectorIndexService {
                 ? rebuildChunksReusingEmbeddings(
                     entity, chunkIndexName, parentId, header, ontologyBody)
                 : VectorDocBuilder.fromEntity(entity, embeddingClient, ontologyBody);
-        if (ontologyBody == null) {
+        if (!OntologyTermSearch.isTerm(type)) {
           if (refresh != ChunkRefresh.NONE) {
             replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
             mirrorToStagedGeneration(parentId, chunkDocs);

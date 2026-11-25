@@ -1855,6 +1855,13 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       for (String entityType :
           org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
+        if (!isReembedableEntityType(entityType)) {
+          // Ontology term embeddings are rebuilt only via the release-aware reindex path, which
+          // publishes terms through the gated writer that keeps drafts out of search. See
+          // calculateReembedTotalBatches, which also excludes term types, and the ADR
+          // 2026-11-23.
+          continue;
+        }
         int totalRecords = entityTotals.getOrDefault(entityType, 0);
         int batches = calculateReembedNumberOfBatches(totalRecords, batchSize);
         if (batches == 0) {
@@ -2062,6 +2069,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
     int totalBatches = 0;
     for (String entityType :
         org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
+      if (!isReembedableEntityType(entityType)) {
+        // Ontology term embeddings are rebuilt only via the release-aware reindex path, which
+        // publishes terms through the gated writer that keeps drafts out of search (see ADR
+        // 2026-11-23). The reembed CLI embeds raw working rows, so it must skip term types.
+        LOG.info(
+            "Skipping ontology term type {} in re-embed; rebuild its embeddings via reindex",
+            entityType);
+        continue;
+      }
       try {
         int totalRecords = Entity.getEntityRepository(entityType).getDao().listTotalCount();
         entityTotals.put(entityType, totalRecords);
@@ -2072,6 +2088,17 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
     }
     return totalBatches;
+  }
+
+  /**
+   * Whether the {@code reembed} CLI may embed an entity type from its raw working row. Ontology
+   * terms are excluded: their embeddings are rebuilt only via the release-aware reindex path,
+   * which publishes terms through the gated writer that keeps drafts out of search (ADR
+   * 2026-11-23). The 2-arg {@code updateEntityEmbeddings} overload refuses terms defensively as
+   * well, so a term that reached {@code reembed} would be skipped at write time regardless.
+   */
+  static boolean isReembedableEntityType(String entityType) {
+    return !org.openmetadata.service.search.OntologyTermSearch.isTerm(entityType);
   }
 
   private int calculateReembedNumberOfBatches(int totalRecords, int batchSize) {

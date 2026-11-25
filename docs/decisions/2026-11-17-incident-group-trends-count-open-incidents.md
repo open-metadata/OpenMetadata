@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-17 (initial)
 - **Deciders:** Observability
-- **Guard:** IncidentGroupTrendTest, IncidentGroupTrendSqlTest, IncidentGroupsIT
+- **Guard:** IncidentGroupTrendTest, IncidentGroupTrendSqlIT, IncidentGroupsIT
 
 ## Context
 
