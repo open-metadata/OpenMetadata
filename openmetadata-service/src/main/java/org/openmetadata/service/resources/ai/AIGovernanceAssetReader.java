@@ -4,6 +4,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.ai.AuditReport;
 import org.openmetadata.schema.entity.teams.User;
@@ -46,31 +47,49 @@ public final class AIGovernanceAssetReader {
   }
 
   public List<EntityInterface<?>> list(final String entityType, final String fields) {
-    return list(entityType, fields, Integer.MAX_VALUE);
+    final List<EntityInterface<?>> result = new ArrayList<>();
+    forEach(entityType, fields, result::add);
+    return result;
+  }
+
+  List<EntityInterface<?>> list(final String entityType, final String fields, final int limit) {
+    final List<EntityInterface<?>> result = new ArrayList<>();
+    visit(entityType, fields, limit, result::add);
+    return result;
+  }
+
+  public void forEach(
+      final String entityType, final String fields, final Consumer<EntityInterface<?>> visitor) {
+    visit(entityType, fields, Integer.MAX_VALUE, visitor);
   }
 
   @SuppressWarnings("unchecked")
-  List<EntityInterface<?>> list(final String entityType, final String fields, final int limit) {
+  private void visit(
+      final String entityType,
+      final String fields,
+      final int limit,
+      final Consumer<EntityInterface<?>> visitor) {
     final EntityRepository<EntityInterface<?>> repository =
         (EntityRepository<EntityInterface<?>>) Entity.getEntityRepository(entityType);
     final Fields projection =
         ResourceContext.authorizationFields(repository, repository.getFields(fields));
     final ListFilter filter = new ListFilter(Include.NON_DELETED);
-    final List<EntityInterface<?>> result = new ArrayList<>();
+    int permitted = 0;
     String after = null;
     do {
       final ResultList<EntityInterface<?>> page =
           repository.listAfter(
-              null, projection, filter, Math.min(PAGE_SIZE, limit - result.size()), after);
-      result.addAll(
+              null, projection, filter, Math.min(PAGE_SIZE, limit - permitted), after);
+      final List<EntityInterface<?>> readable =
           permissions.retainPermitted(
               securityContext,
               entityType,
               repository,
               page.getData(),
-              List.of(MetadataOperation.VIEW_ALL)));
+              List.of(MetadataOperation.VIEW_ALL));
+      readable.forEach(visitor);
+      permitted += readable.size();
       after = page.getPaging() == null ? null : page.getPaging().getAfter();
-    } while (after != null && result.size() < limit);
-    return result;
+    } while (after != null && permitted < limit);
   }
 }

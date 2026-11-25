@@ -89,9 +89,7 @@ final class DashboardRollup {
       String fields,
       List<RolledAsset> out) {
     try {
-      for (EntityInterface<?> entity : reader.list(entityType, fields)) {
-        out.add(RolledAsset.from(entityType, entity));
-      }
+      reader.forEach(entityType, fields, entity -> out.add(RolledAsset.from(entityType, entity)));
     } catch (Exception error) {
       LOG.warn("Dashboard rollup: failed to list {}", entityType, error);
     }

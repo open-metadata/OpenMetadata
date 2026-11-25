@@ -12,6 +12,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -58,6 +59,28 @@ class AIGovernanceAssetReaderTest {
     try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
       entities.when(() -> Entity.getEntityRepository(Entity.AI_APPLICATION)).thenReturn(repository);
       assertEquals(List.of(allowed), reader(authorizer).list(Entity.AI_APPLICATION, "", 1));
+    }
+  }
+
+  @Test
+  void visitorProcessesEachPageBeforeLoadingTheNext() {
+    final AIApplication first = application("first");
+    final AIApplication second = application("second");
+    final List<UUID> visited = new ArrayList<>();
+    final AIApplicationRepository repository = repository();
+    final ResultList<AIApplication> firstPage = new ResultList<>(List.of(first), null, "next", 2);
+    when(repository.listAfter(any(), any(), any(), anyInt(), eq(null))).thenReturn(firstPage);
+    when(repository.listAfter(any(), any(), any(), anyInt(), eq(firstPage.getPaging().getAfter())))
+        .thenAnswer(
+            invocation -> {
+              assertEquals(List.of(first.getId()), visited);
+              return new ResultList<>(List.of(second), null, null, 2);
+            });
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(() -> Entity.getEntityRepository(Entity.AI_APPLICATION)).thenReturn(repository);
+      reader(mock(Authorizer.class))
+          .forEach(Entity.AI_APPLICATION, "", entity -> visited.add(entity.getId()));
+      assertEquals(List.of(first.getId(), second.getId()), visited);
     }
   }
 

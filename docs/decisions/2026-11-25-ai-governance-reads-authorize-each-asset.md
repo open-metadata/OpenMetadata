@@ -20,6 +20,8 @@ reader loads authorization attributes with each page and uses ViewPermissionFilt
 including its on-demand bulk tag hydration. Pages contain at most 500 assets, matching
 the existing activity, violations, and audit-pack walkers. A result limit counts permitted
 assets; a page of denied assets does not exhaust it.
+The dashboard consumes a page visitor so full governance metadata is released after
+each page rather than retained for the entire estate alongside its rollup snapshots.
 
 Audit reports record an immutable requestedBy user reference. Workers resolve that
 user by id and evaluate their current permissions, including after restart. Missing or

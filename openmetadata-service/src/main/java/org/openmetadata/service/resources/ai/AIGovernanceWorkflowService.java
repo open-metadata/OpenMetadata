@@ -228,7 +228,12 @@ final class AIGovernanceWorkflowService {
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-        new ResourceContext<>(entityType));
+        new ResourceContext<>(entityType) {
+          @Override
+          public boolean isEntityTypeLevel() {
+            return true;
+          }
+        });
   }
 
   private void authorizePatch(

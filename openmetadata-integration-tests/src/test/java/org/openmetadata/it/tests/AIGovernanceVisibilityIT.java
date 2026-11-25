@@ -218,6 +218,7 @@ public class AIGovernanceVisibilityIT {
     final OpenMetadataClient reader = domainReader(ns, List.of(allowed.getFullyQualifiedName()));
     final AuditReport report = createReport(reader, ns.prefix("scoped_pack"));
     assertNotNull(report.getRequestedBy());
+    assertNotNull(report.getRequestedBy().getId());
     final AuditReport completed = completedReport(reader, report.getId());
     final String pack = decodedPack(completed);
     assertTrue(pack.contains(visible.getId().toString()));
