@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
@@ -20,6 +21,25 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 class ChunkSecurityMetadataTest {
+  @Test
+  void domainChunksCarryTheirOwnDomainIdentityForConditionalPolicies() {
+    Domain domain =
+        new Domain()
+            .withId(UUID.randomUUID())
+            .withName("Finance")
+            .withFullyQualifiedName("Finance");
+    assertEquals(
+        List.of(
+            Map.of(
+                "id",
+                domain.getId().toString(),
+                "name",
+                "Finance",
+                "fullyQualifiedName",
+                "Finance")),
+        ChunkSecurityMetadata.fields(domain).get("domains"));
+  }
+
   @Test
   void everyChunkCarriesParentPolicyFieldsIncludingInlineChildTags() {
     Table table = table();
