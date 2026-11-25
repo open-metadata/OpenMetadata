@@ -99,6 +99,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.cache.CacheConfig;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.config.source.ConfigSources;
 import org.openmetadata.service.config.source.ConfigTemplateKind;
@@ -147,6 +148,7 @@ import org.openmetadata.service.search.fitness.FitnessVerdict;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -1757,8 +1759,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   @Command(
       name = "reembed",
-      description =
-          "Drop the vector index, recreate it, and fully re-embed all entities using the configured embedding provider.")
+      description = "Refresh catalog entity embeddings using the configured embedding provider.")
   public Integer reembed(
       @Option(
               names = {"-b", "--batch-size"},
@@ -1823,9 +1824,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
 
       repo.prepareForReindex();
-      org.openmetadata.service.search.vector.OpenSearchVectorService vecService =
-          org.openmetadata.service.search.vector.OpenSearchVectorService.getInstance();
-      if (vecService == null || vecService.getEmbeddingClient() == null) {
+      VectorIndexService vecService = repo.getVectorIndexService();
+      if (vecService == null || repo.getEmbeddingClient() == null) {
         LOG.warn("Vector embeddings are disabled or not initialized. Skipping re-embedding.");
         return 1;
       }
@@ -1950,7 +1950,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       java.util.concurrent.ExecutorService consumerExecutor,
       java.util.concurrent.BlockingQueue<ReembedTask> taskQueue,
       java.util.concurrent.atomic.AtomicBoolean producersDone,
-      org.openmetadata.service.search.vector.OpenSearchVectorService vecService,
+      VectorIndexService vecService,
       Map<String, java.util.concurrent.atomic.AtomicInteger> processedCounts,
       Map<String, java.util.concurrent.atomic.AtomicInteger> failedCounts) {
     java.util.concurrent.CountDownLatch consumerLatch =
@@ -1974,7 +1974,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       int consumerId,
       java.util.concurrent.BlockingQueue<ReembedTask> taskQueue,
       java.util.concurrent.atomic.AtomicBoolean producersDone,
-      org.openmetadata.service.search.vector.OpenSearchVectorService vecService,
+      VectorIndexService vecService,
       Map<String, java.util.concurrent.atomic.AtomicInteger> processedCounts,
       Map<String, java.util.concurrent.atomic.AtomicInteger> failedCounts) {
     LOG.debug("Consumer {} started", consumerId);
@@ -3591,6 +3591,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
                     new FileConfigurationSourceProvider(), ConfigTemplateKind.SERVER),
                 new EnvironmentVariableSubstitutor(false, true)),
             configFilePath);
+    LlmConfigHolder.initialize(config.getLlmConfiguration());
     IndexMappingLoader.init(config.getElasticSearchConfiguration());
     Fernet.getInstance().setFernetKey(config);
     DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
