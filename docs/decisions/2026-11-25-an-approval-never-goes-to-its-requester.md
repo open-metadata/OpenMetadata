@@ -15,9 +15,10 @@ then removes the requester, the user whose edit started the run. For workflows n
 task workflow, an emptied list was given back to the requester when the node's empty-assignee
 strategy was `none`, to keep the task "actionable". It was not actionable: the task is filed by the
 requester, and `TaskAuthorPolicy` denies a task's filer `ResolveTask`. The requester was the only
-assignee and could not approve, so the run waited on a task nobody could resolve. This hit any
-workflow whose approval node kept the default strategy, for example a reviewers-only approval of a
-data contract edited by its only reviewer.
+assignee and could not approve, so the run waited until an admin, who bypasses the policy, found
+and resolved a task assigned to someone else. This hit any workflow whose approval node kept the
+default strategy, for example a reviewers-only approval of a data contract edited by its only
+reviewer.
 
 ## Decision
 
@@ -35,3 +36,7 @@ A workflow that must never approve an edit on its own when the editor is the onl
 configures `assignAdmins` or `wait`; lifecycle playbooks and the data access request workflow
 already do. Under `none`, an edit by an entity's only approver is approved without review, which is
 the documented meaning of `none`. Revisit only if `none` itself should stop approving automatically.
+
+On upgrade, an existing workflow under `none` stops opening these tasks: an edit by the entity's
+only approver, which used to wait for an admin to step in, is approved automatically. A workflow
+that relied on that wait switches the node to `wait` or `assignAdmins`.

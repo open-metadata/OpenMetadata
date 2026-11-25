@@ -210,8 +210,8 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       // global `updatedBy`. Both are checked because each variable is authoritative for its own
       // workflow family — reading only one silently leaves the other's requester on the list. The
       // requester is never given back their own approval, even when no one else is left: the task
-      // would be filed by them, and TaskAuthorPolicy denies a filer ResolveTask, so nobody could
-      // act on it. An emptied list goes to the empty-assignee strategy below instead.
+      // would be filed by them, and TaskAuthorPolicy denies a filer ResolveTask, so only an admin
+      // could act on it. An emptied list goes to the empty-assignee strategy below instead.
       // ADR:2026-11-25-an-approval-never-goes-to-its-requester
       // A stored definition may carry the key with a null value; it means the default, none.
       final EmptyAssigneeStrategy emptyAssigneeStrategy =
