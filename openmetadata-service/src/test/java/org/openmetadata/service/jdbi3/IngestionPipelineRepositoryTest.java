@@ -88,6 +88,9 @@ class IngestionPipelineRepositoryTest {
     SecretsManagerFactory.setSecretsManager(null);
     SecretsManagerConfiguration smConfig = new SecretsManagerConfiguration();
     smConfig.setSecretsManager(SecretsManagerProvider.DB);
+    // createSecretsManager keeps whatever manager an earlier test in this JVM left behind.
+    previousSecretsManager = SecretsManagerFactory.getSecretsManager();
+    SecretsManagerFactory.setSecretsManager(null);
     SecretsManagerFactory.createSecretsManager(smConfig, "test");
   }
 
@@ -791,6 +794,18 @@ class IngestionPipelineRepositoryTest {
     boolean requiresRedeployment = repository.hasScheduleChanged(original, updated);
 
     assertFalse(requiresRedeployment, "Same schedule should not require redeployment");
+  }
+
+  @Test
+  @DisplayName("requiresRedeployment should detect a timezone-only change")
+  void testRequiresRedeployment_TimezoneChange_ShouldReturnTrue() {
+    IngestionPipeline original = createPipelineWithSchedule("0 0 * * *");
+    IngestionPipeline updated = createPipelineWithSchedule("0 0 * * *");
+    updated.getAirflowConfig().setPipelineTimezone("Europe/Tallinn");
+
+    assertTrue(
+        repository.hasScheduleChanged(original, updated),
+        "A new timezone moves every run, so the CronJob must be redeployed");
   }
 
   @Test

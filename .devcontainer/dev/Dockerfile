@@ -12,7 +12,6 @@
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-22.04
 
 # System libraries required for building OpenMetadata connectors
-# Mirrors: .github/actions/prepare-for-docker-build/action.yml
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get install -y --no-install-recommends \
         unixodbc-dev \

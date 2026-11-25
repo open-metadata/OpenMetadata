@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.util.UriTestUtils.assertHttpStatus;
@@ -405,7 +406,7 @@ public class ChildFieldEdgeMatrixIT {
   }
 
   @Test
-  void emptyChildArray_paginatedReadReturnsFrozenEmptyShape(TestNamespace ns) throws Exception {
+  void emptyChildArray_paginatedReadHasNoCursors(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     MessagingService service = MessagingServiceTestFactory.createKafka(ns);
     Topic topic =
@@ -429,9 +430,13 @@ public class ChildFieldEdgeMatrixIT {
     JsonNode root = OBJECT_MAPPER.readTree(response);
     assertEquals(0, root.get("data").size());
     assertEquals(0, root.get("paging").get("total").asInt());
-    // Same empty-collection quirk the two pre-existing endpoints have always returned.
-    assertEquals(cursor(0), root.get("paging").get("before").asText());
-    assertEquals(cursor(50), root.get("paging").get("after").asText());
+    // ADR:2026-11-25-empty-child-page-has-no-cursors
+    assertFalse(
+        root.get("paging").hasNonNull("before"),
+        "an empty collection must not advertise a before cursor");
+    assertFalse(
+        root.get("paging").hasNonNull("after"),
+        "an empty collection must not advertise an after cursor");
   }
 
   @Test
@@ -507,10 +512,5 @@ public class ChildFieldEdgeMatrixIT {
         .withId(container.getId())
         .withType("container")
         .withFullyQualifiedName(container.getFullyQualifiedName());
-  }
-
-  private static String cursor(int index) {
-    return java.util.Base64.getUrlEncoder()
-        .encodeToString(String.valueOf(index).getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
 }

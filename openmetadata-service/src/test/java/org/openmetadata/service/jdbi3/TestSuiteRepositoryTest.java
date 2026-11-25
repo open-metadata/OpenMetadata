@@ -102,6 +102,31 @@ class TestSuiteRepositoryTest {
   }
 
   @Test
+  void softDeletedFailingCaseDoesNotAffectInMemorySuiteSummary() {
+    final String liveFqn = "service.db.schema.table.live";
+    final String softDeletedFqn = "service.db.schema.table.deleted";
+    final TestCase live =
+        new TestCase()
+            .withFullyQualifiedName(liveFqn)
+            .withEntityLink("<#E::table::service.db.schema.table>");
+    final List<ResultSummary> historicResults =
+        List.of(
+            new ResultSummary().withTestCaseName(liveFqn).withStatus(TestCaseStatus.Success),
+            new ResultSummary().withTestCaseName(softDeletedFqn).withStatus(TestCaseStatus.Failed));
+    final TestCaseRepository testCases = mock(TestCaseRepository.class);
+    when(testCases.findByNames(anyList(), eq(Include.NON_DELETED))).thenReturn(List.of(live));
+
+    try (final MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(TEST_CASE)).thenReturn(testCases);
+
+      final TestSummary summary = TestSuiteRepository.getTestSummary(historicResults);
+
+      assertEquals(1, summary.getSuccess());
+      assertEquals(0, summary.getFailed());
+    }
+  }
+
+  @Test
   void summaryLeavesOutResultsOfTestCasesDeletedAfterTheyWereListed() {
     String tableTestFqn = "svc.db.schema.orders.row_count";
     String columnTestFqn = "svc.db.schema.orders.id.not_null";
@@ -120,7 +145,7 @@ class TestSuiteRepositoryTest {
             new ResultSummary().withTestCaseName(columnTestFqn).withStatus(TestCaseStatus.Failed),
             new ResultSummary().withTestCaseName(deletedTestFqn).withStatus(TestCaseStatus.Failed));
     TestCaseRepository testCaseRepository = mock(TestCaseRepository.class);
-    when(testCaseRepository.findByNames(anyList(), eq(Include.ALL)))
+    when(testCaseRepository.findByNames(anyList(), eq(Include.NON_DELETED)))
         .thenReturn(List.of(tableTest, columnTest));
 
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {

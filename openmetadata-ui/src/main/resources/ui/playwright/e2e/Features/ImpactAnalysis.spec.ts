@@ -104,7 +104,7 @@ test.describe('Impact Analysis', () => {
   let table2Columns: string[] = [];
 
   test.beforeAll(async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
     const { apiContext, afterAction } = await getDefaultAdminAPIContext(
       browser
     );
