@@ -4163,6 +4163,7 @@
     "value-count": "Wertanzahl",
     "value-plural": "Werte",
     "value-type-or-target": "Werttyp oder Ziel",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "Varianz",
     "variant": "Variante",
     "variant-plural": "Varianten",

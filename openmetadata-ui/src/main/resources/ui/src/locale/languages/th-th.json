@@ -4163,6 +4163,7 @@
     "value-count": "จำนวนค่า",
     "value-plural": "ค่าหลายรายการ",
     "value-type-or-target": "ชนิดค่าหรือเป้าหมาย",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "ความแปรปรวน",
     "variant": "รูปแบบย่อย",
     "variant-plural": "รูปแบบย่อยหลายรายการ",

@@ -176,6 +176,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskAboutServiceCondition());
     conditions.add(getTaskAccessTypeCondition());
     conditions.add(getTaskCreatedAtRangeCondition(tableName));
+    conditions.add(getTaskUpdatedSinceCondition(tableName));
     conditions.add(getTaskSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition());
@@ -1995,6 +1996,15 @@ public class ListFilter extends Filter<ListFilter> {
       clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
     }
     return String.join(" AND ", clauses);
+  }
+
+  private String getTaskUpdatedSinceCondition(String tableName) {
+    String since = queryParams.get("taskUpdatedSince");
+    if (nullOrEmpty(since)) {
+      return "";
+    }
+    String column = tableName == null ? "updatedAt" : tableName + ".updatedAt";
+    return "%s >= %d".formatted(column, Long.parseLong(since));
   }
 
   private String getTaskApproverCondition() {

@@ -1,10 +1,10 @@
 # A resolved incident is final and a subsequent test failure opens a new incident
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-17 (initial) · v2 2026-11-17 (link the clarified return-to-triage assignment rule)
+- **Revisions:** v1 2026-11-17 (initial) · v2 2026-11-17 (link the clarified return-to-triage assignment rule) · v3 2026-11-25 (a Resolved record keeps the assignee at resolution)
 - **Deciders:** Teddy Crepineau
 - **Guard:** `IncidentTaskIntegrationIT`, `AutoAssignIncidentIT`, `TestCaseResourceIT`
-- **Related:** [Issue #36717](https://github.com/open-metadata/OpenMetadata/issues/36717), [PR #37613](https://github.com/open-metadata/OpenMetadata/pull/37613)
+- **Related:** [Issue #36717](https://github.com/open-metadata/OpenMetadata/issues/36717), [PR #37613](https://github.com/open-metadata/OpenMetadata/pull/37613), [PR #38233](https://github.com/open-metadata/OpenMetadata/pull/38233)
 
 ## Context
 
@@ -36,3 +36,13 @@ instead report a subsequent failure when there is one.
 The assignment recomputation described above is superseded by
 ADR:2026-11-17-returning-incidents-to-triage-clears-assignees. Assigned incidents can also return
 to Ack. Both return paths clear the current assignee while retaining all earlier Assigned records.
+
+## Amendment — 2026-11-25
+
+A Resolved record carries the incident's assignee at resolution in
+`testCaseResolutionStatusDetails.assignee` (`resolved.json`), the task's first assignee when it
+resolves. It is a frozen snapshot: later task edits append no record for it, and deleting a user
+cleans up only the latest Assigned record of the current incident, never a Resolved one. Readers of
+`testCaseResolutionStatusDetails.assignee`, including the incident index and
+ADR:2026-10-29-incident-assignee-filter-lists-aggregated-assignees, therefore see that assignee on
+Resolved records too.

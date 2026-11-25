@@ -4163,6 +4163,7 @@
     "value-count": "Değer Sayısı",
     "value-plural": "Değerler",
     "value-type-or-target": "Değer türü veya hedef",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "Varyans",
     "variant": "Varyant",
     "variant-plural": "Varyantlar",
