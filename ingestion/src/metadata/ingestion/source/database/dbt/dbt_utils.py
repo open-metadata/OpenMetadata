@@ -817,12 +817,12 @@ def _resolve_upstream_fqn(upstream_list, upstream_by_name, reference) -> str | N
     return resolved
 
 
-def _resolve_by_excluding_referenced_table(upstream_list, upstream_by_name, kwargs) -> str | None:
-    """Last resort for ``relationships`` tests: the ``to:`` upstream is the referenced
-    parent, so if removing it leaves exactly one candidate that must be the tested table."""
+def _first_upstream_except_referenced(upstream_list, upstream_by_name, kwargs) -> str | None:
+    """Last resort: the ``to:`` upstream of a ``relationships`` test is the referenced parent,
+    never the tested table. When it is the only upstream left, the tested model's table was
+    not found in OpenMetadata, so there is no table to attach the test to."""
     referenced_fqn = _resolve_upstream_fqn(upstream_list, upstream_by_name, kwargs.get("to"))
-    candidates = [fqn for fqn in upstream_list if fqn != referenced_fqn] if referenced_fqn else []
-    return candidates[0] if len(candidates) == 1 else None
+    return next((fqn for fqn in upstream_list if fqn != referenced_fqn), None)
 
 
 def get_dbt_test_primary_table_fqn(dbt_test) -> str | None:
@@ -843,9 +843,14 @@ def get_dbt_test_primary_table_fqn(dbt_test) -> str | None:
 
     primary_table_fqn = _resolve_upstream_fqn(upstream_list, upstream_by_name, kwargs.get("model"))
     if not primary_table_fqn:
-        primary_table_fqn = _resolve_by_excluding_referenced_table(upstream_list, upstream_by_name, kwargs)
+        primary_table_fqn = _first_upstream_except_referenced(upstream_list, upstream_by_name, kwargs)
     if not primary_table_fqn and upstream_list:
-        primary_table_fqn = upstream_list[0]
+        logger.warning(
+            "Skipping dbt test [%s]: its model %s was not found in OpenMetadata, and it cannot be"
+            " attached to the table it references",
+            getattr(manifest_node, "name", None),
+            kwargs.get("model"),
+        )
 
     return primary_table_fqn
 

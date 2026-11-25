@@ -796,6 +796,32 @@ class DbtUnitTest(TestCase):
         }
         self.assertEqual("svc.db.sch.ORDERS", get_dbt_test_primary_table_fqn(dbt_test))
 
+    def test_dbt_relationships_test_skipped_when_tested_table_not_in_openmetadata(self):
+        """A tested model whose table is not in OpenMetadata is dropped from the upstreams,
+        leaving only the `to:` table; attaching the test there sends a column it does not
+        have and the server rejects it with "Invalid column name"."""
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.CUSTOMERS"],
+            "upstream_by_name": {"customers": "svc.db.sch.CUSTOMERS"},
+            "results": "",
+        }
+        assert get_dbt_test_primary_table_fqn(dbt_test) is None
+        assert generate_entity_link(dbt_test=dbt_test) == []
+
+    def test_dbt_relationships_test_never_falls_back_to_referenced_table(self):
+        """With several unresolved candidates the fallback must still skip the `to:` table,
+        even though dbt lists it first in depends_on."""
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.CUSTOMERS", "svc.db.sch.STG_A", "svc.db.sch.STG_B"],
+            "upstream_by_name": {"customers": "svc.db.sch.CUSTOMERS"},
+            "results": "",
+        }
+        assert get_dbt_test_primary_table_fqn(dbt_test) == "svc.db.sch.STG_A"
+
     def test_build_upstream_name_map_marks_duplicate_names_ambiguous(self):
         """A model and a source table can share a dbt name; the bare name must not
         silently resolve to whichever happened to be indexed last."""
