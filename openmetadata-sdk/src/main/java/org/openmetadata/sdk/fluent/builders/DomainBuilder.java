@@ -51,6 +51,7 @@ public class DomainBuilder {
    * Set custom extension data.
    */
   public DomainBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

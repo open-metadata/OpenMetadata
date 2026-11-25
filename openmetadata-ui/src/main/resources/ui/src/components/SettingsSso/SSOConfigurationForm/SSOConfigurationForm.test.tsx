@@ -2707,7 +2707,7 @@ describe('SSOConfigurationForm', () => {
       }
     );
 
-    it('should show the SAML IdP and SP fields, with the generated SP values read-only', async () => {
+    it('should show the SAML IdP and SP fields, with editable default SP values', async () => {
       const container = await renderProviderForm(AuthProvider.Saml);
 
       for (const path of [
@@ -2725,16 +2725,16 @@ describe('SSOConfigurationForm', () => {
 
       expect(
         container.querySelector(`[id="root/${SAML}/sp/entityId"]`)
-      ).toHaveAttribute('readonly');
+      ).not.toHaveAttribute('readonly');
       expect(
         container.querySelector(`[id="root/${SAML}/sp/entityId__help"]`)
-      ).toHaveTextContent(/auto-generated service provider entity id/i);
+      ).toHaveTextContent('message.saml-sp-entity-id-help');
       expect(
         container.querySelector(`[id="root/${SAML}/sp/acs"]`)
-      ).toHaveAttribute('readonly');
+      ).not.toHaveAttribute('readonly');
       expect(
         container.querySelector(`[id="root/${SAML}/sp/acs__help"]`)
-      ).toHaveTextContent(/auto-generated assertion consumer service url/i);
+      ).toHaveTextContent('message.saml-acs-url-help');
 
       for (const path of [
         `${SAML}/sp/callback`,

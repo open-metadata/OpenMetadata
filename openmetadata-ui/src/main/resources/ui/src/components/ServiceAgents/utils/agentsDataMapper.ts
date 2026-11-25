@@ -73,6 +73,7 @@ const AGENT_STATUS_TO_UI_STATUS: Record<AgentStatus, UiAgentStatus> = {
   [AgentStatus.Running]: 'running',
   [AgentStatus.Successful]: 'success',
   [AgentStatus.Failed]: 'failed',
+  [AgentStatus.Stopped]: 'stopped',
   [AgentStatus.Pending]: 'queued',
 };
 

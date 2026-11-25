@@ -108,6 +108,42 @@ class MemoryConflictResolutionTest {
         () -> MemoryConflictResolution.requireNoneArchived(disputed.values()));
   }
 
+  /**
+   * A value that replaced a disputed memory and was then archived with its document comes back in
+   * its stage on restore, so the decision waits; one a person deleted is gone, and the decision
+   * goes on.
+   */
+  @Test
+  void aLaterValueInTheArchiveMakesTheDecisionWait() {
+    UUID disputedId = UUID.randomUUID();
+    ContextMemory archived =
+        new ContextMemory()
+            .withId(UUID.randomUUID())
+            .withEntityStatus(ContextMemoryStatus.APPROVED)
+            .withDeleted(true);
+    ContextMemory live =
+        new ContextMemory()
+            .withId(UUID.randomUUID())
+            .withEntityStatus(ContextMemoryStatus.APPROVED);
+
+    TaskStateConflictException refused =
+        assertThrows(
+            TaskStateConflictException.class,
+            () ->
+                MemoryConflictResolution.laterValuesInUse(
+                    Map.of(disputedId, archived), archived.getId()::equals));
+
+    assertEquals(409, refused.getResponse().getStatus());
+    assertEquals(MemoryConflictResolution.REPLACED_IN_THE_ARCHIVE, refused.getMessage());
+    assertTrue(
+        MemoryConflictResolution.laterValuesInUse(Map.of(disputedId, archived), id -> false)
+            .isEmpty(),
+        "a value a person deleted is no later value");
+    assertEquals(
+        Map.of(disputedId, live),
+        MemoryConflictResolution.laterValuesInUse(Map.of(disputedId, live), id -> false));
+  }
+
   /** A decision retried after its memory left Draft reads the disputes the task recorded. */
   @Test
   void aRetryReadsTheDisputesTheTaskRecorded() {

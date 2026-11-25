@@ -20,7 +20,7 @@ import {
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Alert, Copy01 } from '@openmetadata/ui-core-components/icons';
+import { Alert } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,10 +37,8 @@ import {
   getTokenIssuedAtMs,
 } from '../../../../../../utils/BotsUtils';
 import { formatDateTimeLong } from '../../../../../../utils/date-time/DateTimeUtils';
-import {
-  showErrorToast,
-  showSuccessToast,
-} from '../../../../../../utils/ToastUtils';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import CopyButton from '../../../../../common/CopyButton/CopyButton';
 import { TOKEN_EXPIRY_OPTIONS } from './BotToken.constants';
 
 interface BotTokenSectionProps {
@@ -93,13 +91,6 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
       })),
     [t]
   );
-
-  const handleCopy = useCallback(() => {
-    if (jwtToken) {
-      void navigator.clipboard.writeText(jwtToken);
-      showSuccessToast(t('message.copied-to-clipboard'));
-    }
-  }, [jwtToken, t]);
 
   const handleGenerate = useCallback(async () => {
     setIsUpdating(true);
@@ -205,14 +196,12 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
                 type="password"
                 value={jwtToken}
               />
-              <Button
-                color="secondary"
-                data-testid="copy-token"
-                iconLeading={Copy01}
-                size="md"
-                onPress={handleCopy}>
-                {t('label.copy')}
-              </Button>
+              <CopyButton
+                label={t('label.copy')}
+                labelSize="md"
+                testId="copy-token"
+                value={jwtToken}
+              />
             </Box>
             <Box className="tw:gap-1.5" direction="col">
               <Box

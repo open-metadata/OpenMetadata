@@ -149,7 +149,7 @@ const TestCaseResultTab = ({ showSidePanel }: TestCaseTabProps) => {
   const { t } = useTranslation();
   const {
     testCase: testCaseData,
-    setTestCase,
+    mergeTestCase,
     isVersionPage,
     testDefinition,
     showComputeRowCount,
@@ -293,7 +293,7 @@ const TestCaseResultTab = ({ showSidePanel }: TestCaseTabProps) => {
                 showDocPanel={false}
                 testCase={testCaseData}
                 onClose={handleCancelParameter}
-                onUpdate={setTestCase}
+                onUpdate={mergeTestCase}
               />
             )}
         </Box>

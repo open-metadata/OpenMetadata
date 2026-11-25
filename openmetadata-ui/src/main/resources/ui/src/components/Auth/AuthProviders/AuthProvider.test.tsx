@@ -1248,6 +1248,56 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     );
   });
 
+  it('stores the deep link an unauthenticated user opened even after the router has moved to /signin', async () => {
+    const useCustomLocationMock = jest.requireMock<jest.Mock>(
+      '../../../hooks/useCustomLocation/useCustomLocation'
+    );
+    useCustomLocationMock.mockImplementation(() => ({
+      pathname: '/table/sample.ecommerce.shopify.orders',
+      search: '?tab=schema',
+    }));
+    let resolveToken: ((token: string) => void) | undefined;
+    mockGetOidcToken.mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveToken = resolve;
+        })
+    );
+
+    try {
+      const { rerender } = render(<WrapperComponent />);
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      useCustomLocationMock.mockImplementation(() => ({
+        pathname: '/signin',
+        search: '',
+      }));
+
+      await act(async () => {
+        rerender(<WrapperComponent />);
+      });
+
+      await act(async () => {
+        resolveToken?.('');
+      });
+
+      expect(mockCookieSetItem).toHaveBeenCalledWith(
+        REDIRECT_PATHNAME,
+        '/table/sample.ecommerce.shopify.orders?tab=schema',
+        expect.anything()
+      );
+    } finally {
+      useCustomLocationMock.mockImplementation(() => ({
+        pathname: 'pathname',
+        search: '',
+      }));
+      mockGetOidcToken.mockResolvedValue('');
+    }
+  });
+
   it('disposes the interceptor and event subscriptions on unmount', async () => {
     let unmount: () => void = () => undefined;
 

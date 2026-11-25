@@ -45,6 +45,10 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
     # The user's query is executed as written, so the sampler never sees it.
     BYPASSES_SAMPLER = True
 
+    # `threshold` here is the result the query is expected to return, compared through the test
+    # case's own `operator`, not a deviation the verdict tolerates.
+    THRESHOLD_IS_TOLERANCE = False
+
     def _run_validation(self) -> TestCaseResult:
         """Execute the specific test validation logic
 
@@ -228,11 +232,11 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             passed_rows = len_rows
             failed_rows = (row_count - len_rows) if row_count else 0
         elif operator in ("<", "<="):
-            passed_rows = row_count - len_rows
+            passed_rows = (row_count - len_rows) if row_count else 0
             failed_rows = len_rows
         elif operator == "==":
             passed_rows = len_rows
-            failed_rows = row_count - len_rows
+            failed_rows = (row_count - len_rows) if row_count else 0
         else:
             passed_rows = len_rows
             failed_rows = 0
@@ -262,7 +266,7 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
     def _calculate_less_than_failure(self, len_rows: int, row_count: int) -> tuple[int, int]:
         """Calculate rows for < or <= operator failure (expected fewer rows)"""
         failed_rows = len_rows
-        passed_rows = row_count - failed_rows
+        passed_rows = (row_count - failed_rows) if row_count else 0
 
         return max(0, passed_rows), max(0, failed_rows)
 

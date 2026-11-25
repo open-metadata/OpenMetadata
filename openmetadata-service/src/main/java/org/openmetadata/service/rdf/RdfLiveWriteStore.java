@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -35,6 +36,8 @@ public final class RdfLiveWriteStore {
   // Bounds how long one enqueue holds the producer lock while a cascade enqueues its writes
   // (ADR:2026-10-26-the-rdf-graph-projects-the-live-catalog-only).
   private static final int MAX_WRITES_PER_ENQUEUE = 500;
+  private static final int LATER_COPY_WINDOW = 100;
+  private static final long MAX_REFRESH_RETIRE_AGE_MILLIS = Duration.ofSeconds(60).toMillis();
   private static final String WRITER_LOCK =
       "SELECT id FROM rdf_live_write_guard WHERE id = 'drain-v2' FOR UPDATE";
   private static final String RECORD_ENQUEUED =
@@ -185,18 +188,43 @@ public final class RdfLiveWriteStore {
                 .one());
   }
 
-  public boolean processNext(final Consumer<String> write) {
+  /**
+   * As {@link #processNext(Consumer)}, except that a head write {@code supersededByALaterCopy}
+   * accepts is retired without being applied when the same payload is queued again shortly after
+   * it and the head is younger than the retirement age cap.
+   */
+  public boolean processNext(
+      final Consumer<String> write, final Predicate<String> supersededByALaterCopy) {
     return jdbi.inTransaction(
         TransactionIsolationLevel.READ_COMMITTED,
-        handle -> {
-          final boolean ownsWriter =
-              handle
-                  .createQuery(WRITER_LOCK + " SKIP LOCKED")
-                  .mapTo(String.class)
-                  .findOne()
-                  .isPresent();
-          return ownsWriter && processHead(handle, write);
-        });
+        handle -> ownsWriter(handle) && processHead(handle, write, supersededByALaterCopy));
+  }
+
+  public boolean processNext(final Consumer<String> write) {
+    return processNext(write, payload -> false);
+  }
+
+  private static boolean ownsWriter(final Handle handle) {
+    return handle
+        .createQuery(WRITER_LOCK + " SKIP LOCKED")
+        .mapTo(String.class)
+        .findOne()
+        .isPresent();
+  }
+
+  /** Whether {@code entry}'s payload is queued again within the next {@value #LATER_COPY_WINDOW} rows. */
+  private static boolean hasLaterCopy(final Handle handle, final Entry entry) {
+    return handle
+            .createQuery(
+                "SELECT COUNT(*) FROM (SELECT payload FROM rdf_live_write_queue WHERE id > :id "
+                    + "ORDER BY id LIMIT "
+                    + LATER_COPY_WINDOW
+                    + ") upcoming WHERE upcoming.payload = :payload")
+            .bind("id", entry.id())
+            .bind("payload", entry.payload())
+            .mapTo(Long.class)
+            .one()
+        > 0;
   }
 
   /** Excludes queued writes from the projection read through its replacement during a rebuild. */
@@ -209,13 +237,23 @@ public final class RdfLiveWriteStore {
         });
   }
 
-  private boolean processHead(final Handle handle, final Consumer<String> write) {
+  private boolean processHead(
+      final Handle handle,
+      final Consumer<String> write,
+      final Predicate<String> supersededByALaterCopy) {
     final Entry entry = head(handle);
-    if (entry == null || entry.nextAttemptAt() > clock.millis()) {
+    final long now = clock.millis();
+    if (entry == null || entry.nextAttemptAt() > now) {
       return false;
     }
-    OntologyMetrics.recordRdfQueueLag(
-        Duration.ofMillis(Math.max(0, clock.millis() - entry.createdAt())));
+    final long ageMillis = Math.max(0, now - entry.createdAt());
+    if (ageMillis < MAX_REFRESH_RETIRE_AGE_MILLIS
+        && supersededByALaterCopy.test(entry.payload())
+        && hasLaterCopy(handle, entry)) {
+      retire(handle, entry.id());
+      return true;
+    }
+    OntologyMetrics.recordRdfQueueLag(Duration.ofMillis(ageMillis));
     try {
       write.accept(entry.payload());
     } catch (RuntimeException exception) {

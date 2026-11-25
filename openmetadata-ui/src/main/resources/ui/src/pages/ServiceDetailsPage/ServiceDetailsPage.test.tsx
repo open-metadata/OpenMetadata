@@ -516,10 +516,17 @@ jest.mock('../../components/common/TestConnection/TestConnection', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ serviceCategory, extraInfo }: TestConnectionProps) => (
+      ({
+        serviceCategory,
+        extraInfo,
+        isTestingDisabled,
+      }: TestConnectionProps) => (
         <div data-testid="test-connection">
           <span data-testid="test-connection-category">{serviceCategory}</span>
           <span data-testid="test-connection-extra-info">{extraInfo}</span>
+          <span data-testid="test-connection-disabled">
+            {String(isTestingDisabled)}
+          </span>
         </div>
       )
     )
@@ -1739,6 +1746,45 @@ describe('ServiceDetailsPage', () => {
         expect(
           screen.getByTestId('test-connection-extra-info')
         ).toHaveTextContent(ingestionRunnerName);
+      });
+    });
+
+    it('should pass the ingestion runner when extra info loads after the service', async () => {
+      const ingestionRunnerName = 'IngestionRunner1';
+      let isExtraInfoLoaded = false;
+      let finishExtraInfo: () => void = noop;
+      (mockServiceUtil.getExtraInfo as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finishExtraInfo = () => {
+              isExtraInfoLoaded = true;
+              resolve();
+            };
+          })
+      );
+      (mockServiceUtil.getServiceExtraInfo as jest.Mock).mockImplementation(
+        () => (isExtraInfoLoaded ? { name: ingestionRunnerName } : null)
+      );
+      (useRequiredParams as jest.Mock).mockImplementation(() => ({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        tab: EntityTabs.CONNECTION,
+      }));
+
+      await renderComponent();
+
+      expect(screen.getByTestId('test-connection-disabled')).toHaveTextContent(
+        'true'
+      );
+
+      await act(async () => finishExtraInfo());
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('test-connection-extra-info')
+        ).toHaveTextContent(ingestionRunnerName);
+        expect(
+          screen.getByTestId('test-connection-disabled')
+        ).toHaveTextContent('false');
       });
     });
   });

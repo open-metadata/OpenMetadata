@@ -77,6 +77,7 @@ import {
   useCursorPageJump,
 } from '../../../../../../hooks/paging/useCursorPageJump';
 import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
+import { getUserIdentifier } from '../../../../../../utils/UsersPureUtils';
 import type { MembersUsersPanelProps } from './Members.types';
 import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
 import { profileHash } from './profileHash.utils';
@@ -348,22 +349,22 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   }, [canCreateUser, isAdmin, onNavigate, onSetHeader, t]);
 
   const columns: ColumnsType<User> = useMemo(() => {
-    const usernameColumn = {
-      title: t('label.username'),
-      dataIndex: 'username',
-      key: 'username',
+    const nameColumn = {
+      title: t('label.name'),
+      dataIndex: 'name',
+      key: 'name',
       ellipsis: true,
       render: (_: unknown, record: User) => (
         <UserNameCell goTo={goTo} record={record} />
       ),
     };
 
-    const nameColumn = {
-      title: t('label.name'),
-      dataIndex: 'name',
-      key: 'name',
+    const emailColumn = {
+      title: t('label.email'),
+      dataIndex: 'email',
+      key: 'email',
       ellipsis: true,
-      render: (_: unknown, record: User) => getEntityName(record),
+      render: (_: unknown, record: User) => getUserIdentifier(record),
     };
 
     const teamsColumn = {
@@ -455,7 +456,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       ),
     };
 
-    const baseColumns = [usernameColumn, nameColumn, teamsColumn];
+    const baseColumns = [nameColumn, emailColumn, teamsColumn];
 
     if (!isAdmin) {
       baseColumns.push(rolesColumn);

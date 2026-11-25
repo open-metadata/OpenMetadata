@@ -4,6 +4,7 @@ from typing import cast
 import pytest
 from testcontainers.mysql import MySqlContainer
 
+from _openmetadata_testutils.helpers.database_images import mysql_source_image
 from _openmetadata_testutils.postgres.conftest import postgres_container, try_bind
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -31,7 +32,7 @@ __all__ = [
 
 @pytest.fixture(scope="package")
 def mysql_container():
-    with try_bind(MySqlContainer("mysql:8.4.5"), 3306, 3307) as container:
+    with try_bind(MySqlContainer(mysql_source_image()), 3306, 3307) as container:
         yield container
 
 

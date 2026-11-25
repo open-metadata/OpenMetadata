@@ -20,6 +20,15 @@ SHOW FULL COLUMNS FROM {table_name}
     """
 )
 
+# DISTINCT: Doris master returns one row per partition here, released versions one row per table
+DORIS_GET_TABLE_KEY_MODELS = textwrap.dedent(
+    """
+SELECT DISTINCT TABLE_NAME, TABLE_MODEL, TABLE_MODEL_KEY
+FROM information_schema.table_options
+WHERE TABLE_SCHEMA = :schema
+    """
+)
+
 # Async materialized views of a schema: SHOW FULL TABLES and information_schema.tables list them as base tables
 DORIS_GET_MATERIALIZED_VIEW_NAMES = textwrap.dedent(
     """
@@ -40,8 +49,17 @@ SHOW CREATE MATERIALIZED VIEW {table_name}
     """
 )
 
-DORIS_PARTITION_DETAILS = textwrap.dedent(
+# information_schema.partitions has one row per partition, or a single UNPARTITIONED row for a table
+# without partition columns. A table whose partitions are yet to be created has no row, nor has a view.
+DORIS_GET_PARTITIONS = textwrap.dedent(
     """
-SHOW PARTITIONS FROM {table_name}
+SELECT t.TABLE_NAME, t.ENGINE, p.PARTITION_METHOD, p.PARTITION_EXPRESSION
+FROM information_schema.tables t
+LEFT JOIN (
+    SELECT DISTINCT TABLE_NAME, PARTITION_METHOD, PARTITION_EXPRESSION
+    FROM information_schema.partitions
+    WHERE TABLE_SCHEMA = :schema
+) p ON p.TABLE_NAME = t.TABLE_NAME
+WHERE t.TABLE_SCHEMA = :schema
     """
 )

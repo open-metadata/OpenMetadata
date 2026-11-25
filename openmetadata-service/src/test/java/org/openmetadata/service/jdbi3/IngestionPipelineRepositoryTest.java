@@ -18,6 +18,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -25,34 +26,49 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.logstorage.LogStorageInterface;
+import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 class IngestionPipelineRepositoryTest {
 
   private static IngestionPipelineRepository repository;
+  private static SecretsManager previousSecretsManager;
 
   @BeforeAll
   static void setup() {
@@ -66,9 +82,21 @@ class IngestionPipelineRepositoryTest {
             org.mockito.ArgumentMatchers.any(IngestionPipeline.class)))
         .thenCallRealMethod();
 
+    // createSecretsManager returns whatever manager an earlier test in this fork left behind;
+    // clear it so these tests run against the DB manager they configure.
+    previousSecretsManager = SecretsManagerFactory.getSecretsManager();
+    SecretsManagerFactory.setSecretsManager(null);
     SecretsManagerConfiguration smConfig = new SecretsManagerConfiguration();
     smConfig.setSecretsManager(SecretsManagerProvider.DB);
+    // createSecretsManager keeps whatever manager an earlier test in this JVM left behind.
+    previousSecretsManager = SecretsManagerFactory.getSecretsManager();
+    SecretsManagerFactory.setSecretsManager(null);
     SecretsManagerFactory.createSecretsManager(smConfig, "test");
+  }
+
+  @AfterAll
+  static void restoreSecretsManager() {
+    SecretsManagerFactory.setSecretsManager(previousSecretsManager);
   }
 
   @Test
@@ -371,6 +399,257 @@ class IngestionPipelineRepositoryTest {
         Arguments.of("snowflake_metadata_Ab12", "snowflake_metadata_Cd34"));
   }
 
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("logStorageSettings")
+  void deployFollowsTheServerLogStorageSetting(
+      String scenario, LogStorageConfiguration logStorage, boolean stored, boolean expected) {
+    IngestionPipeline pipeline =
+        pipelineWithConfig(new HashMap<>(Map.of("type", "DatabaseMetadata")))
+            .withEnableStreamableLogs(stored);
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+    deploymentRepository.setLogStorage(mock(LogStorageInterface.class));
+    deploymentRepository.setLogStorageConfiguration(logStorage);
+
+    deploymentRepository.deployIngestionPipeline(pipeline, mock(ServiceEntityInterface.class));
+
+    assertEquals(expected, pipeline.getEnableStreamableLogs(), scenario);
+    verify(pipelineServiceClient).deployPipeline(any(), any());
+  }
+
+  private static Stream<Arguments> logStorageSettings() {
+    LogStorageConfiguration s3 =
+        new LogStorageConfiguration()
+            .withType(LogStorageConfiguration.Type.S_3)
+            .withBucketName("logs");
+    LogStorageConfiguration s3NoBucket =
+        new LogStorageConfiguration().withType(LogStorageConfiguration.Type.S_3);
+    LogStorageConfiguration defaultStorage =
+        new LogStorageConfiguration().withType(LogStorageConfiguration.Type.DEFAULT);
+    return Stream.of(
+        Arguments.of("S3 turns it on", s3, false, true),
+        Arguments.of("S3 keeps it on", s3, true, true),
+        Arguments.of("S3 without a bucket leaves it off", s3NoBucket, false, false),
+        Arguments.of("default storage leaves it off", defaultStorage, false, false),
+        Arguments.of("default storage keeps a pipeline's own value", defaultStorage, true, true));
+  }
+
+  @Test
+  void deployWithoutLogStorageConfigurationKeepsThePipelinesOwnValue() {
+    IngestionPipeline pipeline =
+        pipelineWithConfig(new HashMap<>(Map.of("type", "DatabaseMetadata")))
+            .withEnableStreamableLogs(true);
+    IngestionPipelineRepository deploymentRepository =
+        repositoryWithClient(mock(PipelineServiceClientInterface.class));
+
+    deploymentRepository.deployIngestionPipeline(pipeline, mock(ServiceEntityInterface.class));
+
+    assertTrue(pipeline.getEnableStreamableLogs());
+  }
+
+  private static final String RUN_ID = "11111111-1111-1111-1111-111111111111";
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("runsAndWhereTheirLogsAre")
+  void runLogsAreReadFromWhereTheRunWroteThem(
+      String scenario,
+      LogStorageConfiguration.Type storageType,
+      String runId,
+      boolean runGoing,
+      boolean pipelineShipsLogs,
+      boolean logsStored,
+      boolean expected)
+      throws IOException {
+    LogStorageInterface storage = mock(LogStorageInterface.class);
+    when(storage.logsExist(any(), any())).thenReturn(logsStored);
+    IngestionPipelineRepository logRepository =
+        repositoryWithClient(mock(PipelineServiceClientInterface.class));
+    logRepository.setLogStorage(storage);
+    logRepository.setLogStorageConfiguration(
+        new LogStorageConfiguration().withType(storageType).withBucketName("logs"));
+    IngestionPipeline pipeline =
+        new IngestionPipeline()
+            .withFullyQualifiedName("svc.agent")
+            .withEnableStreamableLogs(pipelineShipsLogs);
+
+    assertEquals(
+        expected, logRepository.readsRunLogsFromStorage(pipeline, runId, runGoing), scenario);
+  }
+
+  private static Stream<Arguments> runsAndWhereTheirLogsAre() {
+    LogStorageConfiguration.Type s3 = LogStorageConfiguration.Type.S_3;
+    return Stream.of(
+        Arguments.of("finished run with stored logs", s3, RUN_ID, false, true, true, true),
+        Arguments.of(
+            "finished run whose logs were stored by a flag the pipeline lost",
+            s3,
+            RUN_ID,
+            false,
+            false,
+            true,
+            true),
+        Arguments.of(
+            "finished run that stored nothing, e.g. one from before S3",
+            s3,
+            RUN_ID,
+            false,
+            true,
+            false,
+            false),
+        Arguments.of("going run of a pipeline that ships", s3, RUN_ID, true, true, false, true),
+        Arguments.of(
+            "going run of a pipeline that does not ship", s3, RUN_ID, true, false, false, false),
+        Arguments.of("run not named by a UUID", s3, "scheduled__2026", false, true, true, false),
+        Arguments.of("no run", s3, null, true, true, true, false),
+        Arguments.of(
+            "default storage reads nothing from S3",
+            LogStorageConfiguration.Type.DEFAULT,
+            RUN_ID,
+            true,
+            true,
+            true,
+            false));
+  }
+
+  @ParameterizedTest(name = "pipeline ships logs: {0}")
+  @ValueSource(booleans = {true, false})
+  void withoutS3ThePipelinesFlagDecidesAsBefore(boolean pipelineShipsLogs) {
+    IngestionPipelineRepository logRepository =
+        repositoryWithClient(mock(PipelineServiceClientInterface.class));
+    logRepository.setLogStorage(mock(LogStorageInterface.class));
+    logRepository.setLogStorageConfiguration(
+        new LogStorageConfiguration().withType(LogStorageConfiguration.Type.DEFAULT));
+    IngestionPipeline pipeline =
+        new IngestionPipeline()
+            .withFullyQualifiedName("svc.agent")
+            .withEnableStreamableLogs(pipelineShipsLogs);
+
+    assertEquals(
+        pipelineShipsLogs, logRepository.readsRunLogsThroughLogStorage(pipeline, RUN_ID, false));
+  }
+
+  @Test
+  void aRunWhoseStoredLogsCannotBeCheckedIsReadFromTheRunner() throws IOException {
+    LogStorageInterface storage = mock(LogStorageInterface.class);
+    when(storage.logsExist(any(), any())).thenThrow(new IOException("S3 unreachable"));
+    IngestionPipelineRepository logRepository =
+        repositoryWithClient(mock(PipelineServiceClientInterface.class));
+    logRepository.setLogStorage(storage);
+    logRepository.setLogStorageConfiguration(
+        new LogStorageConfiguration()
+            .withType(LogStorageConfiguration.Type.S_3)
+            .withBucketName("logs"));
+    IngestionPipeline pipeline =
+        new IngestionPipeline().withFullyQualifiedName("svc.agent").withEnableStreamableLogs(true);
+
+    assertFalse(logRepository.readsRunLogsFromStorage(pipeline, RUN_ID, false));
+  }
+
+  private static final String NEWER_RUN_ID = "22222222-2222-2222-2222-222222222222";
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("runsAndWhetherTheyAreGoing")
+  void aRunIsJudgedByItsOwnStatus(
+      String scenario, PipelineStatus latestRun, PipelineStatus ownRow, boolean expected) {
+    IngestionPipelineRepository logRepository =
+        repositoryWithClient(mock(PipelineServiceClientInterface.class));
+    doReturn(ownRow).when(logRepository).getPipelineStatus("svc.agent", RUN_ID);
+
+    assertEquals(expected, logRepository.isRunGoing("svc.agent", RUN_ID, latestRun), scenario);
+  }
+
+  private static Stream<Arguments> runsAndWhetherTheyAreGoing() {
+    return Stream.of(
+        Arguments.of(
+            "the latest run, going", runStatus(RUN_ID, PipelineStatusType.RUNNING), null, true),
+        Arguments.of(
+            "the latest run, finished", runStatus(RUN_ID, PipelineStatusType.SUCCESS), null, false),
+        Arguments.of(
+            "an earlier run still going after a newer one started",
+            runStatus(NEWER_RUN_ID, PipelineStatusType.RUNNING),
+            runStatus(RUN_ID, PipelineStatusType.RUNNING),
+            true),
+        Arguments.of(
+            "an earlier run that finished",
+            runStatus(NEWER_RUN_ID, PipelineStatusType.RUNNING),
+            runStatus(RUN_ID, PipelineStatusType.FAILED),
+            false),
+        Arguments.of("a run just triggered, with no status yet", null, null, true));
+  }
+
+  private static PipelineStatus runStatus(String runId, PipelineStatusType state) {
+    return new PipelineStatus().withRunId(runId).withPipelineState(state);
+  }
+
+  @Test
+  void redeployBeforeUpdateKeepsTheFlagTheDeployDecided() {
+    IngestionPipeline pipeline = deployedPipelineScheduledAt("0 * * * *");
+    IngestionPipelineRepository deploymentRepository = repositoryDeployingWithS3LogStorage();
+
+    runDeploy(() -> deploymentRepository.deployPipelineBeforeUpdate(pipeline));
+
+    assertTrue(pipeline.getEnableStreamableLogs());
+  }
+
+  @Test
+  void editThatRedeploysRecordsTheFlagTheDeployDecided() {
+    IngestionPipeline original = deployedPipelineScheduledAt("0 * * * *");
+    IngestionPipeline updated = deployedPipelineScheduledAt("0 0 * * *");
+    IngestionPipelineRepository.IngestionPipelineUpdater updater =
+        repositoryDeployingWithS3LogStorage()
+        .new IngestionPipelineUpdater(original, updated, EntityRepository.Operation.PUT);
+    updater.changeDescription = new ChangeDescription();
+
+    runDeploy(() -> updater.entitySpecificUpdate(false));
+
+    assertTrue(updated.getEnableStreamableLogs());
+    assertEquals(
+        List.of(true),
+        updater.changeDescription.getFieldsUpdated().stream()
+            .filter(change -> "enableStreamableLogs".equals(change.getName()))
+            .map(FieldChange::getNewValue)
+            .toList());
+  }
+
+  private static IngestionPipeline deployedPipelineScheduledAt(String schedule) {
+    return createBasicPipeline()
+        .withUpdatedBy("admin")
+        .withAirflowConfig(new AirflowConfig().withScheduleInterval(schedule))
+        .withSourceConfig(
+            new SourceConfig().withConfig(new HashMap<>(Map.of("type", "DatabaseMetadata"))))
+        .withEnableStreamableLogs(false);
+  }
+
+  private IngestionPipelineRepository repositoryDeployingWithS3LogStorage() {
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    when(pipelineServiceClient.deployPipeline(any(), any()))
+        .thenReturn(new PipelineServiceClientResponse().withCode(200));
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+    deploymentRepository.setLogStorage(mock(LogStorageInterface.class));
+    deploymentRepository.setLogStorageConfiguration(
+        new LogStorageConfiguration()
+            .withType(LogStorageConfiguration.Type.S_3)
+            .withBucketName("logs"));
+    return deploymentRepository;
+  }
+
+  private static void runDeploy(Runnable deploy) {
+    try (MockedConstruction<OpenMetadataConnectionBuilder> connectionBuilder =
+            Mockito.mockConstruction(
+                OpenMetadataConnectionBuilder.class,
+                (builder, context) ->
+                    when(builder.build()).thenReturn(new OpenMetadataConnection()));
+        MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      entity
+          .when(() -> Entity.getEntity(any(EntityReference.class), any(), any(Include.class)))
+          .thenReturn(mock(ServiceEntityInterface.class));
+
+      deploy.run();
+    }
+  }
+
   @Test
   void deployPipelineWithoutSourceConfigTypeRejectsBeforeCallingRunner() {
     IngestionPipeline pipeline = pipelineWithConfig(Map.of());
@@ -515,6 +794,18 @@ class IngestionPipelineRepositoryTest {
     boolean requiresRedeployment = repository.hasScheduleChanged(original, updated);
 
     assertFalse(requiresRedeployment, "Same schedule should not require redeployment");
+  }
+
+  @Test
+  @DisplayName("requiresRedeployment should detect a timezone-only change")
+  void testRequiresRedeployment_TimezoneChange_ShouldReturnTrue() {
+    IngestionPipeline original = createPipelineWithSchedule("0 0 * * *");
+    IngestionPipeline updated = createPipelineWithSchedule("0 0 * * *");
+    updated.getAirflowConfig().setPipelineTimezone("Europe/Tallinn");
+
+    assertTrue(
+        repository.hasScheduleChanged(original, updated),
+        "A new timezone moves every run, so the CronJob must be redeployed");
   }
 
   @Test

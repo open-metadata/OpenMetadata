@@ -757,7 +757,6 @@ pipelineServiceClientConfiguration:
     certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
   logStorageConfiguration:
     type: ${PIPELINE_SERVICE_CLIENT_LOG_TYPE:-"default"} # Possible values are "default", "s3"
-    enabled: ${PIPELINE_SERVICE_CLIENT_LOG_ENABLED:-false} # Enable it for pipelines deployed in the server
     # if type is s3, provide the following configuration
     bucketName: ${PIPELINE_SERVICE_CLIENT_LOG_BUCKET_NAME:-""}
     # optional path within the bucket to store the logs
@@ -810,6 +809,9 @@ pipelineServiceClientConfiguration:
     runAsGroup: ${K8S_RUN_AS_GROUP:-1000}
     fsGroup: ${K8S_FS_GROUP:-1000}
     runAsNonRoot: ${K8S_RUN_AS_NON_ROOT:-"true"}
+    # Set K8S_SECCOMP to '{"type":"RuntimeDefault"}' for restricted PodSecurity,
+    # or '{"type":"Localhost","localhostProfile":"profiles/ingestion.json"}' for a local profile.
+    seccomp: ${K8S_SECCOMP:-null}
     extraEnvVars: ${K8S_EXTRA_ENV_VARS:-[]}
     podAnnotations: ${K8S_POD_ANNOTATIONS:-""}
     podLabels: ${K8S_POD_LABELS:-""}

@@ -114,6 +114,10 @@ import CustomPropertiesSection from './CustomPropertiesSection/CustomPropertiesS
 import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
 import {
+  TRANSPARENT_PANEL_PATHS,
+  USER_ASSETS_PANEL_PATH,
+} from './EntitySummaryPanel.constants';
+import {
   EntitySummaryPanelProps,
   SearchSourceDetails,
 } from './EntitySummaryPanel.interface';
@@ -1013,11 +1017,22 @@ export default function EntitySummaryPanel({
     );
   };
 
+  // Drawers and personal-space lists sit on their host's surface; the asset
+  // lists in personal space draw the panel's cards like their own (primary_alt).
+  const containerBgClass = TRANSPARENT_PANEL_PATHS.has(panelPath ?? '')
+    ? 'tw:bg-transparent'
+    : 'tw:bg-canvas';
+  const panelSurfaceClass =
+    panelPath === USER_ASSETS_PANEL_PATH
+      ? 'tw:bg-primary_alt'
+      : 'tw:bg-surface';
+  const titleSectionClassName = classNames('title-section', panelSurfaceClass);
+
   const renderOverviewTab = () => (
     <>
       {!isSideDrawer && (
         <EntityTitleSection
-          className="title-section"
+          className={titleSectionClassName}
           entityDetails={entityDetails.details}
           entityDisplayName={entityData?.displayName}
           entityLink={entityLink}
@@ -1035,7 +1050,7 @@ export default function EntitySummaryPanel({
     <>
       {!isSideDrawer && (
         <EntityTitleSection
-          className="title-section"
+          className={titleSectionClassName}
           entityDetails={entityDetails.details}
           entityLink={entityLink}
         />
@@ -1057,7 +1072,7 @@ export default function EntitySummaryPanel({
     <>
       {!isSideDrawer && (
         <EntityTitleSection
-          className="title-section"
+          className={titleSectionClassName}
           entityDetails={entityDetails.details}
           entityLink={entityLink}
           entityType={entityType}
@@ -1075,7 +1090,7 @@ export default function EntitySummaryPanel({
     <>
       {!isSideDrawer && (
         <EntityTitleSection
-          className="title-section"
+          className={titleSectionClassName}
           entityDetails={entityDetails.details}
           entityLink={entityLink}
         />
@@ -1091,7 +1106,7 @@ export default function EntitySummaryPanel({
     <>
       {!isSideDrawer && (
         <EntityTitleSection
-          className="title-section"
+          className={titleSectionClassName}
           entityDetails={entityDetails.details}
           entityLink={entityLink}
         />
@@ -1142,7 +1157,7 @@ export default function EntitySummaryPanel({
         <>
           {!isSideDrawer && (
             <EntityTitleSection
-              className="title-section"
+              className={titleSectionClassName}
               entityDetails={entityDetails.details}
               entityDisplayName={entityData?.displayName}
               entityLink={entityLink}
@@ -1168,12 +1183,16 @@ export default function EntitySummaryPanel({
 
   return (
     <div
-      className={classNames('entity-summary-panel-container', {
-        explore: panelPath === 'explore',
-        lineage: panelPath === 'lineage',
-        [GLOSSARY_TERM_ASSETS_TAB]: panelPath === GLOSSARY_TERM_ASSETS_TAB,
-        [ONTOLOGY_EXPLORER]: panelPath === ONTOLOGY_EXPLORER,
-      })}
+      className={classNames(
+        'entity-summary-panel-container',
+        containerBgClass,
+        {
+          explore: panelPath === 'explore',
+          lineage: panelPath === 'lineage',
+          [GLOSSARY_TERM_ASSETS_TAB]: panelPath === GLOSSARY_TERM_ASSETS_TAB,
+          [ONTOLOGY_EXPLORER]: panelPath === ONTOLOGY_EXPLORER,
+        }
+      )}
       data-testid="entity-summary-panel-container">
       {isSideDrawer && (
         <div className="d-flex items-center justify-between">
@@ -1201,7 +1220,7 @@ export default function EntitySummaryPanel({
       )}
       <div className="d-flex gap-2 w-full h-full">
         <div
-          className={classNames('summary-panel-container tw:bg-surface', {
+          className={classNames('summary-panel-container', panelSurfaceClass, {
             'drawer-summary-panel-container': isSideDrawer,
           })}>
           <div
@@ -1211,6 +1230,7 @@ export default function EntitySummaryPanel({
             <div
               className={classNames(
                 'content-area tw:relative tw:block tw:border tw:border-utility-gray-blue-100 tw:dark:border-subtle',
+                panelSurfaceClass,
                 { 'drawer-content-area': isSideDrawer }
               )}>
               <div className="tw:relative">{renderTabContent()}</div>
@@ -1224,6 +1244,7 @@ export default function EntitySummaryPanel({
             entityType={entityType}
             isSideDrawer={isSideDrawer}
             ontologyExplorerNav={ontologyExplorerMinimalTwoTabNav}
+            verticalNavConatinerclassName={panelSurfaceClass}
             onTabChange={handleTabChange}
           />
         )}

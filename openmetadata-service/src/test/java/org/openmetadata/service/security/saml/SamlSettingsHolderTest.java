@@ -13,10 +13,13 @@
 
 package org.openmetadata.service.security.saml;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.onelogin.saml2.authn.SamlResponse;
 import com.onelogin.saml2.settings.Saml2Settings;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -26,15 +29,115 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
+import java.security.cert.CertificateException;
+import java.util.Base64;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.IdentityProviderConfig;
 import org.openmetadata.catalog.type.SamlSecurityConfig;
 import org.openmetadata.catalog.type.ServiceProviderConfig;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
+@Isolated
 class SamlSettingsHolderTest {
   private static final char[] KEYSTORE_PASSWORD = "changeit".toCharArray();
+
+  @Test
+  void rejectsMalformedAdditionalSigningCertificates() throws Exception {
+    String bundle =
+        resource("/saml/mock-idp.crt")
+            + "\n-----BEGIN CERTIFICATE-----\ninvalid\n-----END CERTIFICATE-----";
+    assertThrows(CertificateException.class, () -> SamlCertificates.parse(bundle));
+  }
+
+  @Test
+  void deduplicatesCertificatesAndAcceptsLegacyBase64() throws Exception {
+    String pem = resource("/saml/mock-idp.crt");
+    assertEquals(1, SamlCertificates.parse(pem + "\n" + pem).size());
+    String base64 =
+        pem.replace("-----BEGIN CERTIFICATE-----", "").replace("-----END CERTIFICATE-----", "");
+    assertEquals(SamlCertificates.parse(pem), SamlCertificates.parse(base64));
+  }
+
+  @Test
+  void acceptsResponsesSignedByTheSecondMetadataCertificate() throws Exception {
+    MockSamlIdp idp = new MockSamlIdp("https://idp.example/metadata");
+    SamlSSOClientConfig config = samlConfig();
+    config
+        .getIdp()
+        .withEntityId(idp.idpEntityId())
+        .setIdpX509Certificate(resource("/saml/other-idp.crt") + "\n" + idp.idpCertificatePem());
+    Saml2Settings settings = SamlSettingsHolder.buildSettings(config);
+    String response =
+        idp.signedResponse(
+            "alice@example.com", config.getSp().getAcs(), config.getSp().getEntityId());
+    assertEquals(2, settings.getIdpx509certMulti().size());
+    assertTrue(new SamlResponse(settings, config.getSp().getAcs(), response).isValid());
+    config.getIdp().setIdpX509Certificate(resource("/saml/other-idp.crt"));
+    assertFalse(
+        new SamlResponse(
+                SamlSettingsHolder.buildSettings(config), config.getSp().getAcs(), response)
+            .isValid());
+  }
+
+  @Test
+  void retainsRolloverKeysWhileStaticValidationRequiresAnActiveCertificate() throws Exception {
+    for (String inactive : List.of("expired", "future")) {
+      String inactivePem = resource("/saml/" + inactive + "-idp.crt");
+      SamlSSOClientConfig config = samlConfig();
+      config.getIdp().setIdpX509Certificate(inactivePem + "\n" + resource("/saml/mock-idp.crt"));
+      assertEquals(
+          SamlCertificates.parse(inactivePem + "\n" + resource("/saml/mock-idp.crt")),
+          SamlSettingsHolder.buildSettings(config).getIdpx509certMulti());
+      assertThrows(
+          CertificateException.class,
+          () -> SamlCertificates.parseValidIdpCertificates(inactivePem));
+    }
+  }
+
+  @Test
+  void preservesExplicitlyConfiguredKeysAtRuntime() throws Exception {
+    final SamlSSOClientConfig config = samlConfig();
+    final String expired = resource("/saml/expired-idp.crt");
+    final String active = resource("/saml/mock-idp.crt");
+    config.getIdp().setIdpX509Certificate(expired + "\n" + active);
+    assertEquals(
+        SamlCertificates.parse(expired + "\n" + active),
+        SamlSettingsHolder.buildSettings(config).getIdpx509certMulti());
+    assertThrows(
+        CertificateException.class, () -> SamlCertificates.parseValidIdpCertificates(expired));
+  }
+
+  @Test
+  void initializesLiveSettingsWhenAllSavedIdpCertificatesHaveExpired() throws Exception {
+    final AuthenticationConfiguration previousAuth =
+        SecurityConfigurationManager.getCurrentAuthConfig();
+    Saml2Settings previousSettings;
+    try {
+      previousSettings = SamlSettingsHolder.getSaml2Settings();
+    } catch (IllegalStateException ignored) {
+      previousSettings = null;
+    }
+    final String expired = resource("/saml/expired-idp.crt");
+    final SamlSSOClientConfig config = samlConfig();
+    config.getIdp().setIdpX509Certificate(expired);
+    try {
+      SecurityConfigurationManager.getInstance()
+          .setCurrentAuthConfig(new AuthenticationConfiguration().withSamlConfiguration(config));
+      SamlSettingsHolder.getInstance().initDefaultSettings(new OpenMetadataApplicationConfig());
+      assertEquals(
+          SamlCertificates.parse(expired),
+          SamlSettingsHolder.getSaml2Settings().getIdpx509certMulti());
+    } finally {
+      SecurityConfigurationManager.getInstance().setCurrentAuthConfig(previousAuth);
+      SamlSettingsHolder.setSaml2Settings(previousSettings);
+    }
+  }
 
   @Test
   void loadKeyStoreClosesInputStream() throws Exception {
@@ -81,6 +184,37 @@ class SamlSettingsHolderTest {
 
     samlConfig.getSecurity().setKeyStorePassword("not-the-password");
     assertThrows(IOException.class, () -> SamlSettingsHolder.buildSettings(samlConfig));
+  }
+
+  /**
+   * Keycloak's default role mapper sends one Attribute element per role, all named "Role". They
+   * must merge into one multi-valued attribute instead of failing the sign-in with "Found an
+   * Attribute element with duplicated Name".
+   */
+  @Test
+  void buildSettingsMergesRepeatedAttributeNames() throws Exception {
+    String response =
+        "<samlp:Response xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\""
+            + " xmlns:saml=\"urn:oasis:names:tc:SAML:2.0:assertion\" ID=\"_r\" Version=\"2.0\""
+            + " IssueInstant=\"2026-11-18T00:00:00Z\">"
+            + "<saml:Assertion ID=\"_a\" Version=\"2.0\" IssueInstant=\"2026-11-18T00:00:00Z\">"
+            + "<saml:AttributeStatement>"
+            + "<saml:Attribute Name=\"email\"><saml:AttributeValue>user@example.com"
+            + "</saml:AttributeValue></saml:Attribute>"
+            + "<saml:Attribute Name=\"Role\"><saml:AttributeValue>offline_access"
+            + "</saml:AttributeValue></saml:Attribute>"
+            + "<saml:Attribute Name=\"Role\"><saml:AttributeValue>uma_authorization"
+            + "</saml:AttributeValue></saml:Attribute>"
+            + "</saml:AttributeStatement></saml:Assertion></samlp:Response>";
+
+    SamlResponse samlResponse =
+        new SamlResponse(
+            SamlSettingsHolder.buildSettings(samlConfig()),
+            "https://sp.example.com/api/v1/saml/acs",
+            Base64.getEncoder().encodeToString(response.getBytes(StandardCharsets.UTF_8)));
+
+    assertEquals(
+        List.of("offline_access", "uma_authorization"), samlResponse.getAttributes().get("Role"));
   }
 
   private static SamlSSOClientConfig samlConfig() {
