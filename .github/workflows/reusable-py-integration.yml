@@ -20,6 +20,10 @@ on:
         description: Git commit SHA to test; must match the shared backend image
         type: string
         required: true
+      source-database-version:
+        description: Connector source database version to test, newest or oldest
+        type: string
+        required: true
       collect-coverage:
         description: Collect and upload coverage from MySQL shards
         type: boolean
@@ -103,6 +107,7 @@ jobs:
         id: tests
         uses: ./.github/actions/python-suite
         env:
+          SOURCE_DATABASE_VERSION: ${{ inputs.source-database-version }}
           TESTCONTAINERS_RYUK_DISABLED: 'true'
         with:
           suite: integration

@@ -142,6 +142,7 @@ jobs:
     with:
       python-version: ${{ matrix.python }}
       ref: ${{ needs.plan.outputs.ref }}
+      source-database-version: oldest
       collect-coverage: ${{ github.ref == 'refs/heads/main' && matrix.python == needs.plan.outputs.python-lowest }}
 
   python-cli-e2e:

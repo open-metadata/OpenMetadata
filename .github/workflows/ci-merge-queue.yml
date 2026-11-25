@@ -126,6 +126,7 @@ jobs:
     with:
       python-version: ${{ needs.plan.outputs.python-highest }}
       ref: ${{ needs.plan.outputs.ref }}
+      source-database-version: newest
       collect-coverage: false
 
   airflow-apis:
