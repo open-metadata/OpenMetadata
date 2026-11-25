@@ -441,7 +441,7 @@ Before renaming or removing any of the following, search `openmetadata-collate` 
 - an enum constant in a schema Collate copies;
 - a dependency major.
 
-Then ship a companion Collate PR, or keep a deprecated overload or no-op. `maven-collate-ci` breaks
+Then ship a companion Collate PR, or keep a deprecated overload or no-op. `Collate CI` breaks
 whichever repo merges first, and Collate's strict `tsc` fails on the next submodule bump. Provider
 rules stay behind their SPI, not keyed on a Collate provider in OSS core. A method whose only
 callers are in Collate says so in one line, so nobody deletes it as unused.
