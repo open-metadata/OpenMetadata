@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
@@ -32,6 +33,14 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 class SearchLineagePermissionFilterTest {
   private static final String ROOT = "svc.db.schema.root";
   private static final String HIDDEN = "svc.db.schema.hidden";
+
+  @Test
+  void wholeGraphRequestRetainsTheRootEntityType() {
+    var page = new EntityCountLineageRequest().withFqn("Metabase.375").withEntityType("dashboard");
+
+    assertEquals(
+        "dashboard", SearchLineagePermissionFilter.wholeGraphRequest(page).getEntityType());
+  }
 
   @Test
   void aCallersViewKeepsOnlyTheNodesAndEdgesItCanView() {

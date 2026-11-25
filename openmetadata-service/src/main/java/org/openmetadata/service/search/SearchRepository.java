@@ -5275,6 +5275,10 @@ public class SearchRepository {
     return searchClient.getLineageRoot(fqn);
   }
 
+  public EntityReference getLineageRoot(SearchLineageRequest request) throws IOException {
+    return searchClient.getLineageRoot(request);
+  }
+
   public LineagePaginationInfo getLineagePaginationInfo(
       String fqn,
       int upstreamDepth,
@@ -5374,6 +5378,7 @@ public class SearchRepository {
         searchClient.searchLineage(
             new SearchLineageRequest()
                 .withFqn(fqn)
+                .withEntityType(entityType)
                 .withUpstreamDepth(upstreamDepth)
                 .withDownstreamDepth(downstreamDepth)
                 .withQueryFilter(queryFilter)

@@ -1,6 +1,6 @@
 # A missing search lineage root returns 404
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-18-search-lineage-roots-use-type-and-uuid
 - **Revisions:** v1 2026-10-27 (initial)
 - **Deciders:** Pere Brull
 - **Guard:** `EsUtilsTest`, `OsUtilsTest`, `ESLineageGraphBuilderTest`,
