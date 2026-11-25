@@ -298,6 +298,46 @@ class OpenSearchBulkProcessorConnectionPoolTest {
     }
   }
 
+  @Test
+  void itemsRejectedForIndexingCapacityAreReSentInsteadOfRecordedAsFailed() throws Exception {
+    BulkCircuitBreaker breaker = new BulkCircuitBreaker(5, 30_000, 10_000);
+    try (FakeSearchCluster cluster = FakeSearchCluster.start(20);
+        ProcessorRun run =
+            ProcessorRun.start(
+                cluster.configuration(searchType(), 20, 5), 2, breaker, retries(5, 50))) {
+      // HTTP 200 with every item carrying its own 429: the request reached the cluster, but it had
+      // no indexing-pressure budget left for the documents.
+      cluster.rejectItemsInNextBulks(2);
+      run.index(2);
+
+      assertTrue(run.processor().flushAndWait(30, TimeUnit.SECONDS));
+      assertEquals(2, cluster.rejectedItems());
+      assertEquals(
+          0,
+          run.failed().get(),
+          "an item the cluster had no capacity for is not a document that failed to index");
+      assertEquals(2, run.succeeded().get());
+      assertEquals(2, cluster.indexedDocuments());
+    }
+  }
+
+  @Test
+  void itemsStillRejectedWhenTheRetryBudgetRunsOutAreRecordedAsFailed() throws Exception {
+    BulkCircuitBreaker breaker = new BulkCircuitBreaker(5, 30_000, 10_000);
+    try (FakeSearchCluster cluster = FakeSearchCluster.start(20);
+        ProcessorRun run =
+            ProcessorRun.start(
+                cluster.configuration(searchType(), 20, 5), 2, breaker, retries(2, 50))) {
+      cluster.rejectItemsInNextBulks(Integer.MAX_VALUE);
+      run.index(1);
+
+      assertTrue(run.processor().flushAndWait(30, TimeUnit.SECONDS));
+      assertEquals(1, run.failed().get(), "a run must still end when the cluster never recovers");
+      assertEquals(0, cluster.indexedDocuments());
+      assertEquals(3, cluster.rejectedItems(), "the first send plus two retries");
+    }
+  }
+
   private static BulkRetryPolicy retries(int maxRetries, long initialBackoffMillis) {
     return new BulkRetryPolicy(maxRetries, initialBackoffMillis, 1_000L);
   }
