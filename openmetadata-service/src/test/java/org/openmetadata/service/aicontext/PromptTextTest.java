@@ -59,6 +59,8 @@ class PromptTextTest {
 
   @Test
   void contentReadStaysLinearOnManyUnclosedImages() {
+    // Timed against plain text of the same length, so a slow runner slows both sides alike: the
+    // linear scan measures 1.2-1.5x plain text, a backtracking pattern 400-800x.
     String run = "A".repeat(200);
     Stream<String> unclosed =
         Stream.of(
@@ -66,8 +68,25 @@ class PromptTextTest {
             (" ![x](data:" + run).repeat(5_000),
             ("![" + run).repeat(10_000));
     assertTimeoutPreemptively(
-        Duration.ofSeconds(2),
-        () -> unclosed.forEach(text -> assertNotNull(PromptText.forContentRead(text))));
+        Duration.ofSeconds(60), () -> unclosed.forEach(PromptTextTest::assertReadsInLinearTime));
+  }
+
+  private static void assertReadsInLinearTime(String unclosed) {
+    long plainNanos = fastestContentRead("A".repeat(unclosed.length()));
+    long unclosedNanos = fastestContentRead(unclosed);
+    assertTrue(
+        unclosedNanos < 20 * plainNanos + Duration.ofMillis(50).toNanos(),
+        unclosedNanos / 1_000_000 + " ms against " + plainNanos / 1_000_000 + " ms for plain text");
+  }
+
+  private static long fastestContentRead(String text) {
+    long fastest = Long.MAX_VALUE;
+    for (int attempt = 0; attempt < 3; attempt++) {
+      long start = System.nanoTime();
+      assertNotNull(PromptText.forContentRead(text));
+      fastest = Math.min(fastest, System.nanoTime() - start);
+    }
+    return fastest;
   }
 
   @Test
