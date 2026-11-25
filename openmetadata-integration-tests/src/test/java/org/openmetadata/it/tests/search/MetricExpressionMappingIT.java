@@ -2,12 +2,14 @@ package org.openmetadata.it.tests.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.InputStream;
 import java.util.Locale;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.search.SearchClient;
@@ -39,6 +41,13 @@ class MetricExpressionMappingIT {
   private static final String LEGACY_CODE = "SUM(" + LEGACY_AMOUNT + ")";
   private static final String CURRENT_CODE = "SUM(current_amount)";
   private static final String FRESH_CODE = "SUM(fresh_amount)";
+
+  @BeforeAll
+  static void requireEmbeddedSearch() {
+    assumeTrue(
+        !OssTestServer.defaultHandle().isExternal(),
+        "Mapping tests write directly to embedded search");
+  }
 
   @Test
   void explicitMappingAcceptsExistingDynamicAndLegacyExpressionDocuments(

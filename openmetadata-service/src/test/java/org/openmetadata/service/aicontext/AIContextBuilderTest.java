@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.MetricDimension;
@@ -129,7 +130,8 @@ class AIContextBuilderTest {
                         .withAssetType(Entity.DASHBOARD)
                         .withAssetFqn("svc.sales")));
 
-    final GenericAssetContext context = AIContextBuilder.buildMetricContext(metric, concept);
+    final GenericAssetContext context =
+        AIContextBuilder.buildMetricContext(metric, concept, true, false);
 
     assertEquals("SUM(amount)", context.getDefinition());
     assertEquals(List.of(dimension), context.getDimensions());
@@ -150,7 +152,7 @@ class AIContextBuilderTest {
                 .withMeasures(List.of())
                 .withRelatedMetrics(List.of()))) {
       final GenericAssetContext context =
-          AIContextBuilder.buildMetricContext(metric, new ConceptContext());
+          AIContextBuilder.buildMetricContext(metric, new ConceptContext(), true, false);
 
       assertNull(context.getDefinition());
       assertNull(context.getDimensions());
@@ -161,7 +163,7 @@ class AIContextBuilderTest {
     }
     assertNull(
         AIContextBuilder.buildMetricContext(
-                new Metric(), new ConceptContext().withFilters(List.of()))
+                new Metric(), new ConceptContext().withFilters(List.of()), true, false)
             .getFilters());
   }
 
@@ -171,7 +173,7 @@ class AIContextBuilderTest {
         new Metric().withDimensions(List.of(new MetricDimension().withName("region")));
     final GenericAssetContext generic =
         AIContextBuilder.buildMetricContext(
-            metric, new ConceptContext().withFilters(List.of("status = 'paid'")));
+            metric, new ConceptContext().withFilters(List.of("status = 'paid'")), true, false);
     final KnowledgeItem attached = knowledgeItem("related", "x".repeat(4000));
     final AIContext context =
         new AIContext()
@@ -207,11 +209,13 @@ class AIContextBuilderTest {
                     new KnowledgeItem().withFullyQualifiedName("visible"),
                     new KnowledgeItem().withFullyQualifiedName("attached_only")));
 
-    final GenericAssetContext context = AIContextBuilder.buildMetricContext(metric, concept);
+    final GenericAssetContext context =
+        AIContextBuilder.buildMetricContext(metric, concept, true, false);
 
     assertEquals(List.of("visible"), context.getRelatedMetrics());
     assertNull(
-        AIContextBuilder.buildMetricContext(metric, new ConceptContext()).getRelatedMetrics());
+        AIContextBuilder.buildMetricContext(metric, new ConceptContext(), true, false)
+            .getRelatedMetrics());
   }
 
   @Test
@@ -225,7 +229,7 @@ class AIContextBuilderTest {
     }
     final Metric metric = new Metric().withDimensions(dimensions);
     final GenericAssetContext generic =
-        AIContextBuilder.buildMetricContext(metric, new ConceptContext());
+        AIContextBuilder.buildMetricContext(metric, new ConceptContext(), true, false);
     final KnowledgeItem attached = knowledgeItem("attached", "x".repeat(4000));
     final AIContext context =
         new AIContext()
@@ -241,7 +245,10 @@ class AIContextBuilderTest {
     assertTrue(generic.getDimensions().size() < dimensions.size());
     assertEquals(dimensions.getFirst(), generic.getDimensions().getFirst());
     final int contentChars = attached.getContent() == null ? 0 : attached.getContent().length();
-    assertTrue(AIContextBuilder.metricSemanticChars(generic) + contentChars <= 800);
+    final String projectedFields =
+        JsonUtils.pojoToJson(
+            Map.of("dimensions", generic.getDimensions(), "semanticFieldsTruncated", true));
+    assertTrue(projectedFields.length() + contentChars <= 800);
     assertEquals(60, metric.getDimensions().size());
   }
 
@@ -254,7 +261,8 @@ class AIContextBuilderTest {
     final List<String> filters = List.of("status = '" + "x".repeat(600) + "'", "amount > 0");
     final ConceptContext concept = new ConceptContext().withFilters(filters);
     final GenericAssetContext generic =
-        AIContextBuilder.buildMetricContext(new Metric().withDimensions(dimensions), concept);
+        AIContextBuilder.buildMetricContext(
+            new Metric().withDimensions(dimensions), concept, true, false);
     final AIContext context =
         new AIContext()
             .withAssetContext(new AssetContext().withGeneric(generic).withConceptContext(concept));
@@ -285,7 +293,9 @@ class AIContextBuilderTest {
             new Metric()
                 .withDimensions(List.of(oversized))
                 .withMeasures(List.of(new MetricMeasure().withName("amount"))),
-            new ConceptContext());
+            new ConceptContext(),
+            true,
+            false);
     final AIContext context =
         new AIContext().withAssetContext(new AssetContext().withGeneric(generic));
 
@@ -309,7 +319,9 @@ class AIContextBuilderTest {
                 .withDimensions(
                     List.of(
                         new MetricDimension().withName("region").withExpression("x".repeat(400)))),
-            new ConceptContext());
+            new ConceptContext(),
+            true,
+            false);
     final KnowledgeItem attached = knowledgeItem("related", "x".repeat(600));
     final AIContext context =
         new AIContext()
@@ -321,6 +333,88 @@ class AIContextBuilderTest {
         .applyKnowledgeBudget(context);
 
     assertEquals("x".repeat(600), attached.getContent());
+    assertNull(generic.getDimensions());
+    assertNull(generic.getSemanticFieldsTruncated());
+  }
+
+  @Test
+  void upstreamRelatedMetricsLimitMarksTheProjectionIncomplete() {
+    assertRelatedMetricScan(50, null);
+    assertRelatedMetricScan(51, Boolean.TRUE);
+  }
+
+  private static void assertRelatedMetricScan(final int count, final Boolean expectedTruncation) {
+    final List<EntityReference> references =
+        IntStream.range(0, count)
+            .mapToObj(index -> new EntityReference().withFullyQualifiedName("metric_" + index))
+            .toList();
+    final AIContextBuilder.ResolvedMetrics resolved =
+        AIContextBuilder.resolveBoundedMetrics(
+            references,
+            ref -> new KnowledgeItem().withFullyQualifiedName(ref.getFullyQualifiedName()));
+    final GenericAssetContext generic =
+        AIContextBuilder.buildMetricContext(
+            new Metric().withRelatedMetrics(references),
+            new ConceptContext().withMetrics(resolved.items()),
+            true,
+            resolved.scanCapped());
+    final AIContext context =
+        new AIContext().withAssetContext(new AssetContext().withGeneric(generic));
+    new AIContextBuilder(Entity.METRIC, "revenue")
+        .withMetricSemantics(true)
+        .applyKnowledgeBudget(context);
+
+    assertEquals(50, generic.getRelatedMetrics().size());
+    assertEquals(expectedTruncation, generic.getSemanticFieldsTruncated());
+    assertFalse(generic.getRelatedMetrics().contains("metric_50"));
+  }
+
+  @Test
+  void cutoffIsReportedWithoutExposingFilteredReferences() {
+    final List<EntityReference> references =
+        IntStream.range(0, 51)
+            .mapToObj(index -> new EntityReference().withFullyQualifiedName("metric_" + index))
+            .toList();
+    final AIContextBuilder.ResolvedMetrics resolved =
+        AIContextBuilder.resolveBoundedMetrics(references, ref -> null);
+    final GenericAssetContext generic =
+        AIContextBuilder.buildMetricContext(
+            new Metric().withRelatedMetrics(references),
+            new ConceptContext().withMetrics(resolved.items()),
+            true,
+            resolved.scanCapped());
+
+    assertNull(generic.getRelatedMetrics());
+    assertTrue(generic.getSemanticFieldsTruncated());
+  }
+
+  @Test
+  void keepsTheCompleteFilterWhenItsSerializedProjectionFits() {
+    final List<String> filters = List.of("x".repeat(750));
+    final GenericAssetContext generic = new GenericAssetContext().withFilters(filters);
+    final AIContext context =
+        new AIContext().withAssetContext(new AssetContext().withGeneric(generic));
+
+    new AIContextBuilder(Entity.METRIC, "revenue")
+        .withMetricSemantics(true)
+        .withKnowledgeBudget(800)
+        .applyKnowledgeBudget(context);
+
+    assertEquals(filters, generic.getFilters());
+    assertEquals(766, JsonUtils.pojoToJson(Map.of("filters", generic.getFilters())).length());
+    assertNull(generic.getSemanticFieldsTruncated());
+  }
+
+  @Test
+  void legacyMetricContextOmitsProjectionOnlyDeclarations() {
+    final Metric metric =
+        new Metric()
+            .withMetricExpression(new MetricExpression().withCode("SUM(amount)"))
+            .withDimensions(List.of(new MetricDimension().withName("region")));
+    final GenericAssetContext generic =
+        AIContextBuilder.buildMetricContext(metric, new ConceptContext(), false, true);
+
+    assertEquals("SUM(amount)", generic.getDefinition());
     assertNull(generic.getDimensions());
     assertNull(generic.getSemanticFieldsTruncated());
   }

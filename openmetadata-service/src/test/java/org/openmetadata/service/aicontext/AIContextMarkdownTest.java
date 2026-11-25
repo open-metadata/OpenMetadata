@@ -73,7 +73,9 @@ class AIContextMarkdownTest {
             .withMetricExpression(new MetricExpression().withCode("SUM(amount)"))
             .withDimensions(List.of(new MetricDimension().withName("region")))
             .withMeasures(List.of(new MetricMeasure().withName("amount").withAggregation("sum")));
-    context.getAssetContext().withGeneric(AIContextBuilder.buildMetricContext(metric, concept));
+    context
+        .getAssetContext()
+        .withGeneric(AIContextBuilder.buildMetricContext(metric, concept, true, false));
 
     assertEquals(original, AIContextMarkdown.render(context));
     assertTrue(original.contains("(status = 'paid')\nAND (amount > 0)"));
