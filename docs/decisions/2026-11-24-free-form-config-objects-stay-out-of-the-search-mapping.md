@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-24 (initial)
 - **Deciders:** Mohit Yadav
-- **Guard:** `TopicConfigIndexMappingTest` reads every language's `topic_index_mapping.json` and fails unless `topicConfig` is declared with `"enabled": false`
+- **Guard:** `FreeFormObjectIndexMappingTest` walks every entity schema for object fields with no declared properties and fails unless each one is excluded from its search document or declared non-dynamic in every language's index mapping
 - **Related:** [#35796](https://github.com/open-metadata/OpenMetadata/issues/35796) (the same failure on `searchIndexSettings`)
 
 ## Context
@@ -28,20 +28,36 @@ every later document in that index rather than one.
 
 ## Decision
 
-Declare each such field in the index mapping as `{"type": "object", "enabled": false}`, in every
-language's copy. The value is stored in `_source` and returned by search as before; the engine does
-not map, index or analyse anything inside it.
+Every object field with no declared properties is either kept out of the search document, or
+declared in the index mapping — in every language's copy — as
+`{"type": "object", "enabled": false}`. The value is then stored in `_source` and returned by search
+as before; the engine does not map, index or analyse anything inside it.
 
-This is only correct for a field that nothing searches, filters or aggregates on. `topicConfig` is
-read from the entity API and rendered as JSON in the topic's Config tab, and is not in any search
-query or aggregation.
+Keeping it out of the document is the existing mechanism, and most such fields already use it:
+`SearchIndex.DEFAULT_EXCLUDED_FIELDS` drops `changeDescription`, `incrementalChangeDescription`,
+`connection` and `changeSummary` everywhere, and an index's own `getExcludedFields()` drops
+`profile.subscription` on users and teams, `odcsPreservedFields` on data contracts, and
+`openMetadataServerConnection` on ingestion pipelines. The mapping declaration is for the rest —
+fields the UI reads out of the document: `topicConfig`, `searchIndexSettings`,
+`pipelineStatus.parameters`, `promptTemplate`'s `examples.variables`, the MCP server's
+`connectionConfig.env`, `tools.inputSchema`, `tools.outputSchema` and `prompts.examples.arguments`,
+and the MCP execution's `metadata`, `toolCalls.parameters` and `promptUses.arguments`.
+
+The declaration goes on the free-form node itself, not on an ancestor, so a parent that is mapped
+today keeps the mapping it has. This is only correct for a field that nothing searches, filters or
+aggregates on, which holds for all of the above: `topicConfig`, for instance, is read from the
+entity API and rendered as JSON in the topic's Config tab, and appears in no search query or
+aggregation.
 
 ## Consequences
 
-The field cannot be searched or filtered. It never could in practice — the mapping it got depended
-on whichever document the engine saw first, so a query against it matched inconsistently or failed
-the whole document. Making one searchable later means declaring the keys that matter, not turning
-dynamic mapping back on.
+These fields cannot be searched or filtered. They never could in practice — the mapping each one got
+depended on whichever document the engine saw first, so a query against it matched inconsistently
+or failed the whole document. Making one searchable later means declaring the keys that matter, not
+turning dynamic mapping back on.
+
+A new free-form field added to a schema fails `FreeFormObjectIndexMappingTest` until it is excluded
+or declared, so the class cannot grow back silently.
 
 Existing indexes keep the mapping they were created with; the fix reaches a cluster when the index
 is recreated, which `IndexMappingVersionTracker` schedules on upgrade because the mapping's hash
