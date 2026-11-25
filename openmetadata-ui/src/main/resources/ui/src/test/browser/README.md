@@ -57,9 +57,9 @@ keys select the tests whose code names them.
 Everything runs when the map is missing, or when a change touches test setup,
 the Vitest/Vite config or dependencies. Changed code that no browser test
 executes is listed in the PR comment, along with how many of the changed lines
-the tests that ran executed. Every push to main that touches this UI runs every
-test file, which refreshes the map and surfaces anything a selection missed
-(the merge queue does the same before main, when it is on). To
+the tests that ran executed. Main runs every test file every 6 hours (and by
+hand from the Actions tab), which refreshes the map and surfaces anything a
+selection missed (the merge queue does the same before main, when it is on). To
 see what a branch would run:
 
 ```bash
@@ -74,7 +74,7 @@ The static import graph alone cannot do this here: lazy imports tie about
 **Core components are treated like a library on pull requests.** A change to
 `openmetadata-ui-core-components` runs core's own tests and build (the
 `core components` job), not the browser tests: core guards its components with
-its own tests, and this suite tests the app. The full run on main still runs
-every browser test for a core change, so one that breaks the app is caught. A core change that alters behaviour
+its own tests, and this suite tests the app. The scheduled full run on main
+still runs every browser test, so a core change that breaks the app is caught. A core change that alters behaviour
 the app depends on needs a core test for that behaviour. A change touching both
 core and this UI selects browser tests for the UI part only.

@@ -3,10 +3,11 @@
 #
 # A pull request runs only the test files that execute the code it changes
 # (scripts/select-browser-tests.mjs), using the map of what each test file
-# executes from the latest passing full run: a push to main, a merge-queue
-# entry, or a pull request that ran everything. The map is an artifact, never
-# committed. A push to main and the merge queue run every test file, so a
-# selection miss surfaces on main (or, with the queue on, before it). A missing
+# executes from the latest passing full run: the scheduled or manual run on
+# main, a merge-queue entry, or a pull request that ran everything. The map is
+# an artifact, never committed. The scheduled run and the merge queue run every
+# test file, so a selection miss surfaces on main within hours (or, with the
+# queue on, before it). A missing
 # map, or a change to test setup, configs or dependencies, runs everything on
 # the pull request too.
 #
@@ -21,15 +22,10 @@ on:
       - "openmetadata-ui-core-components/src/main/resources/ui/**"
       - ".github/workflows/ui-browser-tests.yml"
       - ".github/actions/ui-browser-setup/**"
-  # Without the merge queue, the full run after each merge keeps the map fresh.
-  push:
-    branches:
-      - main
-    paths:
-      - "openmetadata-ui/src/main/resources/ui/**"
-      - "openmetadata-ui-core-components/src/main/resources/ui/**"
-      - ".github/workflows/ui-browser-tests.yml"
-      - ".github/actions/ui-browser-setup/**"
+  # Without the merge queue, a full run on main every 6 hours (or run by hand)
+  # keeps the map fresh and catches what a selection missed.
+  schedule:
+    - cron: "0 */6 * * *"
   merge_group:
   workflow_dispatch:
 
@@ -109,8 +105,8 @@ jobs:
           echo '{"private": true}' > package.json
           yarn add --silent "esbuild@$version"
           echo "ESBUILD_PATH=$RUNNER_TEMP/esbuild/node_modules/esbuild/lib/main.js" >> "$GITHUB_ENV"
-      # The map travels as an artifact of the latest passing full run (push to
-      # main, merge queue, or a pull request that ran everything). Only runs
+      # The map travels as an artifact of the latest passing full run (scheduled
+      # or manual on main, merge queue, or a pull request that ran everything). Only runs
       # from this repository's own branches count: a fork's map comes from
       # unreviewed code and could hide tests from every later pull request.
       - name: Download the impact map from the latest full run
@@ -119,7 +115,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ui-browser-tests.yml/runs?status=success&per_page=50" \
+          for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ui-browser-tests.yml/runs?status=success&per_page=100" \
               --jq ".workflow_runs[] | select(.head_repository.full_name == \"$GITHUB_REPOSITORY\") | .id"); do
             if gh run download "$run" -R "$GITHUB_REPOSITORY" -n browser-impact-map -D "$UI_DIR" 2>/dev/null; then
               echo "Impact map from run $run" >> "$GITHUB_STEP_SUMMARY"
