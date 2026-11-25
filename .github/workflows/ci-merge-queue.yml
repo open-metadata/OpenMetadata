@@ -103,11 +103,18 @@ jobs:
       - plan
       - prepare-classification-models
     if: ${{ needs.plan.outputs.python == 'true' }}
-    uses: ./.github/workflows/reusable-py-unit.yml
-    with:
-      python-version: ${{ needs.plan.outputs.python-highest }}
-      ref: ${{ needs.plan.outputs.ref }}
-      collect-coverage: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Run Python unit tests
+        uses: ./.github/actions/python-unit
+        with:
+          python-version: ${{ needs.plan.outputs.python-highest }}
 
   python-integration:
     needs:
@@ -124,11 +131,19 @@ jobs:
   airflow-apis:
     needs: [plan, backend]
     if: ${{ needs.plan.outputs.airflow-apis == 'true' }}
-    uses: ./.github/workflows/reusable-py-airflow-apis.yml
-    with:
-      ref: ${{ needs.plan.outputs.ref }}
-      use-backend-image: true
-      python-version: ${{ needs.plan.outputs.python-lowest }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Run Airflow API tests
+        uses: ./.github/actions/python-airflow-apis
+        with:
+          python-version: ${{ needs.plan.outputs.python-lowest }}
+          use-backend-image: 'true'
 
   py-tests-status:
     name: py-tests-status

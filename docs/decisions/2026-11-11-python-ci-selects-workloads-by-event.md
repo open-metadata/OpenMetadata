@@ -1,7 +1,7 @@
 # Python CI selects workloads by event and shares preparation across runners
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-11 (initial); v2 2026-11-20 (entrypoint ownership); v3 2026-11-23 (runner consolidation)
+- **Revisions:** v1 2026-11-11 (initial); v2 2026-11-20 (entrypoint ownership); v3 2026-11-23 (runner consolidation); v4 2026-11-25 (single PR Python job)
 - **Deciders:** Pablo Takara
 - **Guard:** reviewer; `actionlint`; `ingestion/tests/cli_e2e_v2/meta/test_ci_workflow.py`
 - **Related:** ADR:2026-11-09-python-classification-models-use-explicit-profiles-and-caches; https://github.com/open-metadata/OpenMetadata/issues/35889; https://github.com/open-metadata/OpenMetadata/pull/37562; https://github.com/open-metadata/OpenMetadata/pull/38105
@@ -42,16 +42,19 @@ runs; CI does not preinstall it. Static-check logs are uploaded only for a faile
 with an available log, and upload failures do not alter the check result. Ruff targets Python 3.10
 independently of its host interpreter.
 
-PR and merge-queue Airflow API tests are selected only by changes to the API module or its reusable
-workflow. Shared SDK, schema, backend and tooling changes are covered by the full nightly API run.
+PR and merge-queue Airflow API tests are selected only by changes to the API module or its composite
+action. Shared SDK, schema, backend and tooling changes are covered by the full nightly API run.
 Backend-only paths select Python workloads in the merge queue. PRs select ingestion workloads
 from Python paths, including model-generation inputs and shared Python build tools.
 
 `ci-pr.yml`, `ci-merge-queue.yml` and `ci-nightly.yml` own their respective triggers, workload
 selection, Python matrices, dependencies, permissions and required `py-tests-status` check.
-The `py-static-checks` job also stays in the entrypoints. Reusable workflows execute
-the supplied Python version and source revision. The nightly entrypoint enables tooling checks
-on its highest Python version through the unit runner's `run-tooling-tests` input. Shared
+Unit and Airflow API suites are composite actions (`python-unit`, `python-airflow-apis`) that
+run on the caller's checkout; each entrypoint owns the job, checkout and source revision. In
+`ci-pr.yml`, static checks, unit tests and Airflow API tests run as conditional steps of one
+`python` job, and later suites still run after an earlier step fails. Merge-queue and nightly
+keep separate jobs. The nightly entrypoint enables tooling checks on its highest Python version
+through the unit action's `run-tooling-tests` input. Shared
 backend construction uses a complete reusable job. Aggregate jobs run on `ubuntu-slim`, verify
 the selected results without checking out the repository, and retain the required
 `py-tests-status` aggregate check. Other Python CI jobs run on `ubuntu-latest`. Playwright

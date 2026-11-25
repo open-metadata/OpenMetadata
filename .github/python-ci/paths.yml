@@ -23,7 +23,7 @@ python:
   - .github/actions/prepare-python-build/**
   - openmetadata-spec/**
   - .github/workflows/ci-pr.yml
-  - .github/workflows/reusable-py-unit.yml
+  - .github/actions/python-unit/**
   - .github/python-ci/**
   - .github/actions/python-static-checks/**
   - .github/actions/python-suite/**
@@ -63,7 +63,7 @@ backend:
   - .github/scripts/python_ci_diagnostics.sh
 airflow-apis:
   - openmetadata-airflow-apis/**/!(*.md)
-  - .github/workflows/reusable-py-airflow-apis.yml
+  - .github/actions/python-airflow-apis/**
 static:
   - scripts/update_version.py
   - .github/scripts/tests/test_python_ci.py

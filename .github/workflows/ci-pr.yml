@@ -57,12 +57,14 @@ jobs:
         id: versions
         run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
 
-  py-static-checks:
-    name: py-static-checks
+  # Static checks, unit tests and Airflow API tests share one runner. Later suites still run
+  # after an earlier one fails so a single push reports every selected failure.
+  python:
+    name: python
     needs: plan
     if: ${{ needs.plan.outputs.static == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -74,32 +76,23 @@ jobs:
         with:
           python-version: ${{ needs.plan.outputs.python-lowest }}
           check-types: ${{ needs.plan.outputs.python }}
-
-  python-unit:
-    needs: plan
-    if: ${{ needs.plan.outputs.python == 'true' }}
-    uses: ./.github/workflows/reusable-py-unit.yml
-    with:
-      python-version: ${{ needs.plan.outputs.python-highest }}
-      ref: ${{ needs.plan.outputs.ref }}
-      collect-coverage: false
-      prepare-models: true
-
-  airflow-apis:
-    needs: plan
-    if: ${{ needs.plan.outputs.airflow-apis == 'true' }}
-    uses: ./.github/workflows/reusable-py-airflow-apis.yml
-    with:
-      ref: ${{ needs.plan.outputs.ref }}
-      python-version: ${{ needs.plan.outputs.python-lowest }}
+      - name: Run Python unit tests
+        if: ${{ !cancelled() && needs.plan.outputs.python == 'true' }}
+        uses: ./.github/actions/python-unit
+        with:
+          python-version: ${{ needs.plan.outputs.python-highest }}
+          prepare-models: 'true'
+      - name: Run Airflow API tests
+        if: ${{ !cancelled() && needs.plan.outputs.airflow-apis == 'true' }}
+        uses: ./.github/actions/python-airflow-apis
+        with:
+          python-version: ${{ needs.plan.outputs.python-lowest }}
 
   py-tests-status:
     name: py-tests-status
     needs:
       - plan
-      - airflow-apis
-      - py-static-checks
-      - python-unit
+      - python
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-slim
     timeout-minutes: 2
@@ -110,9 +103,7 @@ jobs:
           EXPECTED_RESULTS: |
             {
               "plan": "success",
-              "airflow-apis": "${{ needs.plan.outputs.airflow-apis == 'true' && 'success' || 'skipped' }}",
-              "py-static-checks": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
-              "python-unit": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}"
+              "python": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}"
             }
         run: |
           jq -e -n --argjson needs "$NEEDS_JSON" --argjson expected "$EXPECTED_RESULTS" '
