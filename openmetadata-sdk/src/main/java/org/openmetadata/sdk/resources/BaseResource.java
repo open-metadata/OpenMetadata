@@ -1,8 +1,10 @@
 package org.openmetadata.sdk.resources;
 
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -123,8 +125,13 @@ public abstract class BaseResource<T> {
   }
 
   public ListResponse<T> list(ListParams params) throws OpenMetadataException {
-    RequestOptions options = RequestOptions.builder().queryParams(params.toQueryParams()).build();
-    return httpClient.execute(HttpMethod.GET, basePath, null, getListResponseClass(), options);
+    RequestOptions options =
+        params == null
+            ? null
+            : RequestOptions.builder().queryParams(params.toQueryParams()).build();
+    JavaType responseType =
+        TypeFactory.defaultInstance().constructParametricType(ListResponse.class, getEntityClass());
+    return httpClient.executeForType(HttpMethod.GET, basePath, null, responseType, options);
   }
 
   public T update(UUID id, T entity) throws OpenMetadataException {
@@ -210,6 +217,8 @@ public abstract class BaseResource<T> {
 
   protected abstract Class<T> getEntityClass();
 
+  // Retained for Collate and external subclass compatibility; list() now uses executeForType.
+  @Deprecated
   @SuppressWarnings("unchecked")
   protected Class<ListResponse<T>> getListResponseClass() {
     return (Class<ListResponse<T>>) (Class<?>) ListResponse.class;

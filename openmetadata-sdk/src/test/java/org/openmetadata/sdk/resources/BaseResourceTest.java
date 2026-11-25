@@ -1,7 +1,9 @@
 package org.openmetadata.sdk.resources;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -10,14 +12,25 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.openmetadata.sdk.config.OpenMetadataConfig;
+import org.openmetadata.sdk.models.ListParams;
+import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.OpenMetadataHttpClient;
 
 class BaseResourceTest {
 
@@ -99,6 +112,86 @@ class BaseResourceTest {
     assertTrue(hasPatchOp(patch, "replace", "/description"));
     verify(httpClient, times(1))
         .execute(eq(HttpMethod.GET), eq("/v1/test-entities/" + id), isNull(), eq(TestEntity.class));
+  }
+
+  @Test
+  void listDeserializesConcreteSubclassElementsOverHttp() throws IOException {
+    String body =
+        """
+        {
+          "data": [
+            {
+              "id": "entity-10",
+              "name": "orders",
+              "tags": ["PII.Sensitive"],
+              "description": "Orders table",
+              "unknownFutureField": "ignored"
+            },
+            {
+              "id": "entity-11",
+              "name": "customers",
+              "tags": [],
+              "description": "Customers table"
+            }
+          ],
+          "paging": {
+            "total": 2,
+            "after": "next-cursor"
+          }
+        }
+        """;
+    AtomicReference<String> capturedQuery = new AtomicReference<>();
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/api/v1/test-entities",
+        exchange -> {
+          capturedQuery.set(exchange.getRequestURI().getRawQuery());
+          byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().add("Content-Type", "application/json");
+          exchange.sendResponseHeaders(200, bytes.length);
+          try (OutputStream out = exchange.getResponseBody()) {
+            out.write(bytes);
+          }
+        });
+    server.start();
+    try {
+      OpenMetadataHttpClient realClient =
+          new OpenMetadataHttpClient(
+              OpenMetadataConfig.builder()
+                  .baseUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/api")
+                  .build());
+      BaseResource<TestEntity> realResource =
+          new BaseResource<TestEntity>(realClient, "/v1/test-entities") {
+            @Override
+            protected Class<TestEntity> getEntityClass() {
+              return TestEntity.class;
+            }
+          };
+
+      ListResponse<TestEntity> response = realResource.list(new ListParams().setLimit(25));
+
+      assertEquals("limit=25", capturedQuery.get());
+      assertNotNull(response);
+      assertEquals(2, response.getTotal());
+      assertEquals("next-cursor", response.getPaging().getAfter());
+      List<String> names = new ArrayList<>();
+      for (TestEntity entity : response.getData()) {
+        assertNotNull(entity.getId());
+        names.add(entity.getName());
+      }
+      assertEquals(List.of("orders", "customers"), names);
+      assertEquals(List.of("PII.Sensitive"), response.getData().getFirst().getTags());
+
+      ListResponse<TestEntity> defaultListResponse = realResource.list();
+      assertEquals(2, defaultListResponse.getData().size());
+      assertEquals("entity-10", defaultListResponse.getData().getFirst().getId());
+
+      ListResponse<TestEntity> nullParamsResponse = realResource.list(null);
+      assertNull(capturedQuery.get());
+      assertEquals("entity-11", nullParamsResponse.getData().getLast().getId());
+    } finally {
+      server.stop(0);
+    }
   }
 
   private static boolean hasPatchOp(JsonNode patch, String op, String path) {
