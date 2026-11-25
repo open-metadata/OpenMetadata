@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
+import org.openmetadata.service.search.security.AuditReportSearchVisibility;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 
 public class ElasticSearchRequestBuilder {
@@ -36,9 +37,12 @@ public class ElasticSearchRequestBuilder {
   private List<String> searchAfter;
   private String preference;
   private boolean contextMemoryVisibilityResolved;
+  private boolean auditReportVisibilityResolved;
 
   private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
       new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory());
+  private static final AuditReportSearchVisibility REPORT_VISIBILITY =
+      new AuditReportSearchVisibility(new ElasticQueryBuilderFactory());
 
   public ElasticSearchRequestBuilder() {}
 
@@ -76,6 +80,11 @@ public class ElasticSearchRequestBuilder {
    */
   public ElasticSearchRequestBuilder contextMemoryVisibilityResolved() {
     this.contextMemoryVisibilityResolved = true;
+    return this;
+  }
+
+  public ElasticSearchRequestBuilder auditReportVisibilityResolved() {
+    this.auditReportVisibilityResolved = true;
     return this;
   }
 
@@ -253,6 +262,10 @@ public class ElasticSearchRequestBuilder {
    * search path that forgets to evaluate the subject must fail closed rather than leak.
    */
   public SearchRequest build(String... indices) {
+    if (!auditReportVisibilityResolved) {
+      filter(((ElasticQueryBuilder) REPORT_VISIBILITY.buildVisibilityFilter(null)).buildV2());
+      auditReportVisibilityResolved = true;
+    }
     if (!contextMemoryVisibilityResolved) {
       filter(((ElasticQueryBuilder) MEMORY_VISIBILITY.buildOrgWideOnlyFilter()).buildV2());
       contextMemoryVisibilityResolved = true;

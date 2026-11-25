@@ -51,9 +51,9 @@ class AIGovernanceAssetReaderTest {
         .when(authorizer)
         .authorize(any(), any(), any());
     final AIApplicationRepository repository = repository();
-    when(repository.listAfter(any(), any(), any(), anyInt(), eq(null)))
-        .thenReturn(new ResultList<>(List.of(denied), null, "next", 2));
-    when(repository.listAfter(any(), any(), any(), anyInt(), eq("next")))
+    final ResultList<AIApplication> deniedPage = new ResultList<>(List.of(denied), null, "next", 2);
+    when(repository.listAfter(any(), any(), any(), anyInt(), eq(null))).thenReturn(deniedPage);
+    when(repository.listAfter(any(), any(), any(), anyInt(), eq(deniedPage.getPaging().getAfter())))
         .thenReturn(new ResultList<>(List.of(allowed), null, null, 2));
     try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
       entities.when(() -> Entity.getEntityRepository(Entity.AI_APPLICATION)).thenReturn(repository);
@@ -162,6 +162,7 @@ class AIGovernanceAssetReaderTest {
             invocation ->
                 new Fields(
                     Arrays.stream(invocation.<String>getArgument(0).split(","))
+                        .map(String::trim)
                         .filter(field -> !field.isEmpty())
                         .collect(Collectors.toSet())));
     return repository;

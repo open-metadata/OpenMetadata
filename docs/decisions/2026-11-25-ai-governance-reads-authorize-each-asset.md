@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-25 (initial)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** AIGovernanceVisibilityIT, AIGovernanceAssetReaderTest, AuditReportAccessTest
+- **Guard:** AIGovernanceVisibilityIT, AIGovernanceAssetReaderTest, AuditReportAccessTest, AuditReportSearchVisibilityTest
 - **Related:** https://github.com/open-metadata/OpenMetadata/issues/36761
 
 ## Context
@@ -30,6 +30,9 @@ Saved artifacts represent the requester's scope. Only that requester or an admin
 may access the report; ordinary report policies still apply. Report listings always
 perform this row check. Legacy reports without a requester are administrator-only and
 cannot be regenerated automatically; submit a new report to establish its requester.
+Both search engines apply the same requester restriction before computing hits, counts,
+or aggregations, independently of the optional search-policy setting. Searches with no
+resolved caller exclude audit reports, including legacy indexed copies.
 
 ## Consequences
 

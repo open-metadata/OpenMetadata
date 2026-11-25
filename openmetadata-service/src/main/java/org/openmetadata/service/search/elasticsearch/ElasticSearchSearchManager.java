@@ -100,6 +100,7 @@ import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.AuditReportSearchVisibility;
 import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.PrivateSearchFields;
@@ -121,6 +122,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final ContextMemorySearchVisibility contextMemoryVisibility =
       new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory());
+  private final AuditReportSearchVisibility auditReportVisibility =
+      new AuditReportSearchVisibility(new ElasticQueryBuilderFactory());
   private final NLQService nlqService;
   private static final String SORT_FIELD_SCORE = "_score";
   private static final String SORT_TYPE_KEYWORD = "keyword";
@@ -808,7 +811,14 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
    */
   private Query restrictToOrgWideMemories(Query query) {
     Query memoryFilter =
-        ((ElasticQueryBuilder) contextMemoryVisibility.buildOrgWideOnlyFilter()).buildV2();
+        ((ElasticQueryBuilder)
+                new ElasticQueryBuilderFactory()
+                    .boolQuery()
+                    .must(
+                        List.of(
+                            contextMemoryVisibility.buildOrgWideOnlyFilter(),
+                            auditReportVisibility.buildVisibilityFilter(null))))
+            .buildV2();
     return query == null
         ? memoryFilter
         : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
@@ -834,6 +844,11 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       SubjectContext subjectContext,
       ElasticSearchRequestBuilder requestBuilder,
       OMQueryBuilder visibilityBuilder) {
+    requestBuilder
+        .filter(
+            ((ElasticQueryBuilder) auditReportVisibility.buildVisibilityFilter(subjectContext))
+                .buildV2())
+        .auditReportVisibilityResolved();
     if (visibilityBuilder != null) {
       requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
     }
@@ -1520,7 +1535,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
             .trackTotalHits(false)
             .timeout("30s")
             .preference(SearchUtils.searchPreferenceFor(subjectContext))
-            .contextMemoryVisibilityResolved();
+            .contextMemoryVisibilityResolved()
+            .auditReportVisibilityResolved();
     body.path("aggs")
         .fields()
         .forEachRemaining(

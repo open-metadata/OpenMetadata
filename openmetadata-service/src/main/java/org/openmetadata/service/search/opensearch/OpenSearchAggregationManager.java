@@ -33,6 +33,7 @@ import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsB
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.AuditReportSearchVisibility;
 import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.PrivateSearchFields;
@@ -51,6 +52,8 @@ import os.org.opensearch.client.opensearch.core.SearchResponse;
 public class OpenSearchAggregationManager implements AggregationManagementClient {
   private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
       new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
+  private static final AuditReportSearchVisibility REPORT_VISIBILITY =
+      new AuditReportSearchVisibility(new OpenSearchQueryBuilderFactory());
   private static final String MATCH_ALL_TEXT = "*";
 
   private final OpenSearchClient client;
@@ -79,6 +82,11 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
    */
   private void applyContextMemoryVisibility(
       SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder, String queryFilter) {
+    requestBuilder
+        .filter(
+            ((OpenSearchQueryBuilder) REPORT_VISIBILITY.buildVisibilityFilter(subjectContext))
+                .buildV2())
+        .auditReportVisibilityResolved();
     OMQueryBuilder visibilityBuilder =
         MEMORY_VISIBILITY.buildVisibilityFilter(
             subjectContext,
