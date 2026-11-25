@@ -1710,6 +1710,24 @@ class ElasticSearchRBACConditionEvaluatorTest {
    * and must not contain an empty must/should clause.
    */
   @Test
+  void testMatchAnyCertificationWithNoArgumentsDoesNotGrantAccess() {
+    setupMockPolicies("matchAnyCertification()", "ALLOW");
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must_not[?(@.match_all)]",
+        "an ALLOW rule with an empty matchAnyCertification() must fail closed to a never-matching query");
+    assertFalse(
+        generatedQuery.contains("\"should\":[]"),
+        "no empty bool clause may be emitted, it is treated as match_all by Elasticsearch");
+  }
+
+  @Test
   void testMatchAnyDomainWithNoArgumentsDoesNotGrantAccess() {
     setupMockPolicies("matchAnyDomain()", "ALLOW");
 
