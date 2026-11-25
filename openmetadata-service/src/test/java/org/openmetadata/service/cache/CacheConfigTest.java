@@ -70,7 +70,7 @@ class CacheConfigTest {
   @Test
   void defaultsAreSafeAndBackwardCompatible() {
     final CacheConfig config = new CacheConfig();
-    assertEquals(2048, config.compressionThresholdBytes);
+    assertEquals(0, config.compressionThresholdBytes);
     assertEquals(0, config.maxEntrySizeBytes);
     assertFalse(config.populateOnUpsert);
     assertEquals(CacheConfig.SessionStoreMode.auto, config.sessionStore);
