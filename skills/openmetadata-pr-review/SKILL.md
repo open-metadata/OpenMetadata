@@ -238,7 +238,7 @@ Repo-specific gates worth knowing:
 | `ui-checkstyle` | ESLint + Prettier + the Apache-2.0 UI header |
 | `Java checkstyle` | spotless |
 | `generate-types` | schema ↔ generated model drift |
-| `maven-collate-ci` | the private Collate build against this OSS commit. A `cannot find symbol` on an `org.openmetadata.*` class means the branch is behind main, not that the PR broke Collate |
+| `Collate CI` | the private Collate build against this OSS commit. A `cannot find symbol` on an `org.openmetadata.*` class means the branch is behind main, not that the PR broke Collate |
 | `harness-integrity` | warnings only — never a blocker |
 
 ## Duplicate detection

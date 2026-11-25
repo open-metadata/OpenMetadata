@@ -30,7 +30,7 @@ export interface AppScheduleProps {
   canDeploy?: boolean;
   /** Table variant for the latest-run history. */
   runsHistoryVariant?: TableCardVariant;
-  onSave: (cron: string) => Promise<void>;
+  onSave: (cron: string, timezone?: string) => Promise<void>;
   onDemandTrigger: () => Promise<void>;
   onDeployTrigger: () => Promise<void>;
   /** Opens schedule editing as a page instead of the built-in dialog. */

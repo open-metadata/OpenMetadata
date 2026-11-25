@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-11 (initial) · v2 2026-11-12 (Elasticsearch topics refresh on the
-  next reindex, not only when edited)
+  next reindex, not only when edited) · v3 2026-11-20 (Elasticsearch embeds every chunk)
 - **Deciders:** Search and AI context maintainers
 - **Guard:** `VectorDocBuilderTopicFieldsTest` (topic format, chunk boundary) and
   `VectorDocBuilderTest` (`tableChunkText_isByteIdenticalToTheFormatBeforeTopicFields`,
@@ -64,3 +64,8 @@ v2 (2026-11-12): a reindex reuses a stored embedding only when its fingerprint m
 `updatedAt` no longer decides (ADR:2026-11-11-reindex-reuses-an-embedding-only-when-its-fingerprint-matches).
 On Elasticsearch, the next Search Indexing run for `topic` re-embeds every topic with schema
 fields, one paid call each, without waiting for an edit. Elasticsearch still embeds chunk 0 only.
+No longer true; see v3.
+
+v3 (2026-11-20): Elasticsearch has the chunk index and embeds every chunk
+(ADR:2026-11-20-elasticsearch-and-opensearch-share-one-vector-index-service). Upgrading is the
+same on both engines. Run Search Indexing for `topic`.

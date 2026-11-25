@@ -4158,6 +4158,7 @@
     "value-count": "ספירת ערכים",
     "value-plural": "ערכים",
     "value-type-or-target": "סוג ערך או יעד",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "שונות",
     "variant": "וריאנט",
     "variant-plural": "וריאנטים",

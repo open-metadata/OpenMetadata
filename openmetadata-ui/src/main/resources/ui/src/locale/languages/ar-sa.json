@@ -4158,6 +4158,7 @@
     "value-count": "عدد القيمة",
     "value-plural": "قيم",
     "value-type-or-target": "نوع القيمة أو الهدف",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "التباين",
     "variant": "متغير",
     "variant-plural": "متغيرات",

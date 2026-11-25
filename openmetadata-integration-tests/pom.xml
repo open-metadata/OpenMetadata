@@ -522,7 +522,6 @@
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.4.13</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 
@@ -622,7 +621,6 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.4.13</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 
@@ -730,7 +728,6 @@
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
 
@@ -829,7 +826,6 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
 
@@ -938,7 +934,6 @@
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
                     <cacheProvider>redis</cacheProvider>
@@ -1038,7 +1033,6 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
                     <cacheProvider>redis</cacheProvider>
@@ -1147,7 +1141,6 @@
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 
@@ -1246,7 +1239,6 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 
@@ -1354,7 +1346,6 @@
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.4.13</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
 
@@ -1453,7 +1444,6 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.4.13</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
 
@@ -1560,7 +1550,6 @@
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.4.13</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     <cacheProvider>redis</cacheProvider>
@@ -1660,7 +1649,6 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.4.13</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     <cacheProvider>redis</cacheProvider>
@@ -1784,7 +1772,6 @@
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:16-alpine</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     <cacheProvider>redis</cacheProvider>
@@ -1885,7 +1872,6 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:16-alpine</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     <cacheProvider>redis</cacheProvider>
@@ -2001,7 +1987,6 @@
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 
@@ -2100,7 +2085,6 @@
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 

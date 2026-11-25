@@ -4158,6 +4158,7 @@
     "value-count": "Décompte de la Valeur",
     "value-plural": "Valeurs",
     "value-type-or-target": "Type de valeur ou cible",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "Variance",
     "variant": "Variante",
     "variant-plural": "Variantes",

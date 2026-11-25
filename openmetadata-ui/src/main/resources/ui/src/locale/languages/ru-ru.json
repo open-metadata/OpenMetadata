@@ -4158,6 +4158,7 @@
     "value-count": "Количество значений",
     "value-plural": "Значения",
     "value-type-or-target": "Тип значения или цель",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "Дисперсия",
     "variant": "Вариант",
     "variant-plural": "Варианты",
