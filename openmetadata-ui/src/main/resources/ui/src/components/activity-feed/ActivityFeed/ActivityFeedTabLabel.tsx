@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useEntityFeedLink } from '../../../hooks/useEntityFeedLink';
@@ -37,17 +37,19 @@ const ActivityFeedCountLabel: React.FC<
     entityLink,
     dateRange
   );
+  const taskCount = taskCounts[taskStatus];
 
   return (
     <TabsLabel
       {...labelProps}
-      // Hidden until the activity arrives; the task counts land alongside it.
+      // Hidden until both counts arrive, and when either read fails.
       count={
-        activityCount &&
-        getActivityFeedTabCount(
-          activityCount.total + (taskCounts[taskStatus] ?? 0),
-          activityCount.isCapped
-        )
+        activityCount && taskCount !== undefined
+          ? getActivityFeedTabCount(
+              activityCount.total + taskCount,
+              activityCount.isCapped
+            )
+          : undefined
       }
     />
   );
@@ -55,8 +57,10 @@ const ActivityFeedCountLabel: React.FC<
 
 /**
  * The entity page's Activity Feeds & Tasks tab label. In AI mode the tab is an
- * `<ActivityFeed>`, so the label counts what it shows: its Activity and the
- * tasks of the chosen Status. Otherwise `count`.
+ * `<ActivityFeed>`, so once the tab has been opened the label counts what it
+ * shows: its Activity and the tasks of the chosen Status. Until then, and
+ * outside AI mode, `count`, so a page view that never opens the tab does not
+ * read the feed.
  */
 const ActivityFeedTabLabel: React.FC<ActivityFeedTabLabelProps> = ({
   entityType,
@@ -65,8 +69,14 @@ const ActivityFeedTabLabel: React.FC<ActivityFeedTabLabelProps> = ({
 }) => {
   const isAiMode = useIsAiMode();
   const entityLink = useEntityFeedLink(entityType, fqn);
+  const [openedLink, setOpenedLink] = useState(
+    labelProps.isActive ? entityLink : undefined
+  );
+  if (labelProps.isActive && openedLink !== entityLink) {
+    setOpenedLink(entityLink);
+  }
 
-  return isAiMode && entityLink ? (
+  return isAiMode && entityLink && openedLink === entityLink ? (
     <ActivityFeedCountLabel entityLink={entityLink} {...labelProps} />
   ) : (
     <TabsLabel {...labelProps} />
