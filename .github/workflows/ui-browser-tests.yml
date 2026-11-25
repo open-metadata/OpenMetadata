@@ -3,11 +3,10 @@
 #
 # A pull request runs only the test files that execute the code it changes
 # (scripts/select-browser-tests.mjs), using the map of what each test file
-# executes from the latest passing full run: the scheduled or manual run on
-# main, a merge-queue entry, or a pull request that ran everything. The map is
-# an artifact, never committed. The scheduled run and the merge queue run every
-# test file, so a selection miss surfaces on main within hours (or, with the
-# queue on, before it). A missing
+# executes from the latest passing full run (the map is an artifact, never
+# committed). A merge-queue entry selects the same way. Only the run on main
+# every 6 hours, or one started by hand, runs every test file: it writes the
+# map and catches a selection miss within hours of the merge. A missing
 # map, or a change to test setup, configs or dependencies, runs everything on
 # the pull request too.
 #
@@ -43,10 +42,9 @@ env:
   SHARDS: 5
   # Test files per runner when only some run (130 files over 5 runners).
   FILES_PER_SHARD: 26
-  # What a change must touch for the merge queue to run the suite
-  # (merge_group has no `paths` filter). Core components are included: a
-  # core-only pull request runs core's own tests, and the queue's full run
-  # catches a core change that breaks the app before it reaches main.
+  # What a merge-queue entry must touch to select browser tests at all
+  # (merge_group has no `paths` filter). A core change that breaks the app
+  # is caught by the scheduled full run.
   UI_PATHS: >-
     openmetadata-ui/src/main/resources/ui/
     openmetadata-ui-core-components/src/main/resources/ui/
@@ -91,13 +89,13 @@ jobs:
           if grep -q "^$CORE_DIR/" <<< "$changed"; then core=true; fi
           { echo "ui=$ui"; echo "core=$core"; } >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v5
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         with:
           node-version-file: ${{ env.UI_DIR }}/.nvmrc
       # Only esbuild is needed to read the import graph; the full UI install
       # builds core components first.
       - name: Install esbuild
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         run: |
           version=$(awk '/^"?esbuild@/ {found=1} found && /^  version / {gsub(/"/, "", $2); print $2; exit}' "$UI_DIR/yarn.lock")
           mkdir -p "$RUNNER_TEMP/esbuild"
@@ -110,7 +108,7 @@ jobs:
       # from this repository's own branches count: a fork's map comes from
       # unreviewed code and could hide tests from every later pull request.
       - name: Download the impact map from the latest full run
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
@@ -123,7 +121,7 @@ jobs:
             fi
           done
       - name: Test the selection script
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         working-directory: ${{ env.UI_DIR }}
         run: |
           node --test scripts/select-browser-tests.test.mjs scripts/browser-tests-report.test.mjs
@@ -131,11 +129,13 @@ jobs:
         id: plan
         working-directory: ${{ env.UI_DIR }}
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
+          if [ "${{ github.event_name }}" = "merge_group" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
+            echo '{"mode": "none", "reason": "no UI change in this merge-queue entry", "tests": [], "uncovered": []}' > selection.json
+          elif [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "merge_group" ]; then
+            # HEAD^1 is the base of a pull request's merge commit, and the
+            # previous entry (or main) for a merge-queue entry.
             node scripts/select-browser-tests.mjs --map impact-map.json --base HEAD^1 --out selection.json \
               | tee -a "$GITHUB_STEP_SUMMARY"
-          elif [ "${{ github.event_name }}" = "merge_group" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
-            echo '{"mode": "none", "reason": "no UI change in this merge-queue entry", "tests": [], "uncovered": []}' > selection.json
           else
             echo '{"mode": "all", "reason": "full run on ${{ github.event_name }}", "tests": [], "uncovered": []}' > selection.json
           fi

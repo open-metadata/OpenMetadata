@@ -47,7 +47,8 @@ ADR:2026-10-28-page-behaviour-is-tested-in-vitest-browser-mode-and-e2e-tests-lea
 
 ## Which tests run in CI
 
-A pull request runs only the test files that execute the code it changes.
+A pull request, and a merge-queue entry, runs only the test files that execute
+the code it changes.
 `scripts/select-browser-tests.mjs` reads a map of the source files each test
 file executed (recorded by `impact.ts` during the latest passing full run, published
 as a workflow artifact, never committed). It also follows the test helpers a test imports, and the direct
@@ -59,7 +60,7 @@ the Vitest/Vite config or dependencies. Changed code that no browser test
 executes is listed in the PR comment, along with how many of the changed lines
 the tests that ran executed. Main runs every test file every 6 hours (and by
 hand from the Actions tab), which refreshes the map and surfaces anything a
-selection missed (the merge queue does the same before main, when it is on). To
+selection missed. This is the only full run. To
 see what a branch would run:
 
 ```bash
