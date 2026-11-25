@@ -58,10 +58,12 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
@@ -334,6 +336,7 @@ public class OpenSearchBulkSink implements BulkSink {
 
     // Extract StageStatsTracker from context for stats recording
     StageStatsTracker tracker = extractTracker(contextData);
+    ReindexContext reindexContext = (ReindexContext) contextData.get(RECREATE_CONTEXT);
     boolean scriptedPartialUpdates =
         Boolean.TRUE.equals(contextData.get(SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY));
 
@@ -362,6 +365,18 @@ public class OpenSearchBulkSink implements BulkSink {
                 TARGET_INDEX_KEY, indexMapping.getIndexName(searchRepository.getClusterAlias()));
 
     try {
+      if (searchRepository.writeSpecializedIndexBatch(
+          entityType, entities, indexName, reindexContext)) {
+        int written = entities.size();
+        processSuccess.addAndGet(written);
+        totalSubmitted.addAndGet(written);
+        totalSuccess.addAndGet(written);
+        if (tracker != null) {
+          tracker.recordProcessBatch(written, 0, 0);
+          tracker.recordSinkBatch(written, 0);
+        }
+        return;
+      }
       // Process timing wraps the batch's parallel doc-build join. Each entity's runAsync builds
       // a search doc (Jackson serialize + tag enrichment) and submits to the bulk processor;
       // the actual OS bulk write is timed separately at the bulk-request site. So this is
@@ -382,11 +397,14 @@ public class OpenSearchBulkSink implements BulkSink {
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
       } else {
         List<EntityInterface<?>> entityInterfaces = (List<EntityInterface<?>>) entities;
-        ReindexContext reindexContext =
-            contextData.containsKey(RECREATE_CONTEXT)
-                ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
-                : null;
-
+        // Per-entity DocBuildContext is prepared by the upstream processor stage (see
+        // ReindexingUtil.populateDocBuildContext) and stuffed into contextData. The sink stays
+        // transport-only: it just looks up each entity's context by id and hands it to
+        // buildSearchIndexDoc, with no awareness of what's inside (lineage today, more later).
+        @SuppressWarnings("unchecked")
+        Map<UUID, DocBuildContext> docBuildContexts =
+            (Map<UUID, DocBuildContext>)
+                contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
         // Pre-fetch cached embeddings for entities whose fingerprint is unchanged so we can splice
         // them into the staged doc instead of regenerating (avoids expensive embedding-provider
         // calls). The service-layer two-step keeps large vector payloads off the wire for entities
@@ -402,14 +420,6 @@ public class OpenSearchBulkSink implements BulkSink {
               fetchExistingEmbeddings(entityInterfaces, currentById, indexName, reindexContext);
         }
 
-        // Per-entity DocBuildContext is prepared by the upstream processor stage (see
-        // ReindexingUtil.populateDocBuildContext) and stuffed into contextData. The sink stays
-        // transport-only: it just looks up each entity's context by id and hands it to
-        // buildSearchIndexDoc, with no awareness of what's inside (lineage today, more later).
-        @SuppressWarnings("unchecked")
-        Map<UUID, DocBuildContext> docBuildContexts =
-            (Map<UUID, DocBuildContext>)
-                contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
         Map<UUID, Long> relationshipRevisions =
             (Map<UUID, Long>)
                 contextData.getOrDefault(
@@ -515,9 +525,10 @@ public class OpenSearchBulkSink implements BulkSink {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       String docId = entity.getId().toString();
-      DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
+      final SearchIndex index = Entity.buildSearchIndex(entityType, entity);
+      final DocBuildContext ctx = docBuildContexts.get(entity.getId());
       Map<String, Object> searchIndexDoc =
-          new HashMap<>(Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx));
+          new HashMap<>(index.buildSearchIndexDoc(ctx == null ? DocBuildContext.empty() : ctx));
       Long relationshipRevision = relationshipRevisions.get(entity.getId());
       SearchRepository.applyRelationshipRevision(entity, searchIndexDoc, relationshipRevision);
       String json = JsonUtils.pojoToJson(searchIndexDoc);
@@ -1192,7 +1203,7 @@ public class OpenSearchBulkSink implements BulkSink {
       var embeddingClient = vectorService.getEmbeddingClient();
       int expectedDimension = embeddingClient != null ? embeddingClient.getDimension() : -1;
       JsonNode cached = existingEmbeddingsById.get(entity.getId().toString());
-      if (canReuseCachedEmbedding(cached, expectedDimension)) {
+      if (VectorIndexService.canReuseCachedEmbedding(cached, expectedDimension)) {
         // Splices chunkIndex/chunkCount/parentId along with embedding — safe because the
         // service-layer pre-filter only admits entries with the current fingerprint, and the
         // fingerprint covers the body text that determines chunk count.
@@ -1233,40 +1244,6 @@ public class OpenSearchBulkSink implements BulkSink {
       }
       return json;
     }
-  }
-
-  /**
-   * The cached payload from {@code fetchExistingEmbeddings} is pre-filtered by the service layer
-   * to entries whose state matches. As defense-in-depth at the splice site we also require the
-   * cached doc to (a) be an object, (b) have a non-empty {@code embedding} array, (c) have an
-   * {@code embedding} whose length matches {@code expectedDimension} — the current embedding
-   * client's dimension — and (d) have a textual non-blank {@code fingerprint}.
-   *
-   * <p>The dimension check is essential: the reuse pre-filter keys only on entity content
-   * (the fingerprint), which does not change when the embedding model or dimension
-   * changes. Without this guard, a recreate that switches model/dimension would splice an
-   * old-dimension vector into a staged index built for the new dimension, and the document would be
-   * rejected by the knn field — silently leaving the entity unembedded. When {@code
-   * expectedDimension} is non-positive (no active client) the dimension check is skipped.
-   *
-   * <p>Tree-model access is type-tolerant — a missing or unexpectedly-typed field returns a safe
-   * default rather than throwing — and the fingerprint check ensures we never splice a vector into
-   * the new index without also carrying its fingerprint, which would silently break future reuse
-   * for that entity.
-   */
-  private static boolean canReuseCachedEmbedding(JsonNode cached, int expectedDimension) {
-    if (cached == null || !cached.isObject()) {
-      return false;
-    }
-    JsonNode embedding = cached.path("embedding");
-    if (!embedding.isArray() || embedding.isEmpty()) {
-      return false;
-    }
-    if (expectedDimension > 0 && embedding.size() != expectedDimension) {
-      return false;
-    }
-    JsonNode fingerprint = cached.path("fingerprint");
-    return fingerprint.isTextual() && !fingerprint.asText().isBlank();
   }
 
   @Override

@@ -46,6 +46,30 @@ class OntologyDecisionNoticeTest {
   }
 
   @Test
+  void aRichTextReasonReadsOnOneLineWithItsLiteralTextKept() {
+    final ActivityEvent event =
+        OntologyDecisionNotice.eventFor(
+            release(null),
+            TaskResolutionType.Rejected,
+            REVIEWER,
+            "<p>Add a label to Customer.</p><p>Keep &lt;b&gt;both&lt;/b&gt; &amp; more.</p>",
+            7L);
+
+    assertEquals(
+        "reviewer rejected release #3: Add a label to Customer. Keep &lt;b&gt;both&lt;/b&gt; &amp; more.",
+        event.getSummary());
+  }
+
+  @Test
+  void anEmptyRichTextReasonAddsNoReason() {
+    final ActivityEvent event =
+        OntologyDecisionNotice.eventFor(
+            release("1.0.0"), TaskResolutionType.Rejected, REVIEWER, "<p></p>", 7L);
+
+    assertEquals("reviewer rejected v1.0.0", event.getSummary());
+  }
+
+  @Test
   void aReleaseWithNeitherVersionNorRevisionFallsBackToItsName() {
     final ActivityEvent event =
         OntologyDecisionNotice.eventFor(
@@ -65,5 +89,18 @@ class OntologyDecisionNoticeTest {
             release("1.0.0"), TaskResolutionType.Rejected, REVIEWER, "x".repeat(900), 7L);
 
     assertEquals(true, event.getSummary().length() <= 500, event.getSummary());
+  }
+
+  @Test
+  void aTruncatedReasonNeverEndsInsideAnEscapedEntity() {
+    final ActivityEvent event =
+        OntologyDecisionNotice.eventFor(
+            release("1.0.0"),
+            TaskResolutionType.Rejected,
+            REVIEWER,
+            "<p>" + "x".repeat(296) + "&lt;String&gt;</p>",
+            7L);
+
+    assertEquals("reviewer rejected v1.0.0: " + "x".repeat(296) + "…", event.getSummary());
   }
 }

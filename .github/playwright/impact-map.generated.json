@@ -373,6 +373,46 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/constant/migration.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AdvancedSearch.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModeAuthGating.spec.ts",
+        "playwright/e2e/Features/DataProductDomainMigration.spec.ts",
+        "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerAfterSoftDelete.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseStatusAfterReindex.spec.ts",
+        "playwright/e2e/Features/DomainIsolation/DomainLineageIsolation.spec.ts",
+        "playwright/e2e/Features/DomainIsolation/DomainListingIsolation.spec.ts",
+        "playwright/e2e/Features/DomainIsolation/DomainTaskIsolation.spec.ts",
+        "playwright/e2e/Features/EntityRenameConsolidation.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
+        "playwright/e2e/Features/LineagePipelineAnnotator.spec.ts",
+        "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Features/SearchSeparation/DomainRenamePrefixCascade.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskAllEntities.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskContainerEntity.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskEntityResolution.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskPipelineEntity.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskSuggestionAPIs.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskTopicEntity.spec.ts",
+        "playwright/e2e/Flow/ApiCollection.spec.ts",
+        "playwright/e2e/Flow/MetricSearch.spec.ts",
+        "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
+        "playwright/e2e/Flow/SearchRBAC.spec.ts",
+        "playwright/e2e/Pages/CustomProperties.spec.ts",
+        "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
+        "playwright/e2e/Pages/Entity.spec.ts",
+        "playwright/e2e/Pages/EntityDataConsumer.spec.ts",
+        "playwright/e2e/Pages/EntityDataSteward.spec.ts",
+        "playwright/e2e/Pages/PipelineValidation.spec.ts",
+        "playwright/e2e/Pages/ServiceEntity.spec.ts",
+        "playwright/e2e/Pages/Tasks.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/constant/nestedColumnUpdates.ts"
       ],
       "specs": [
@@ -4691,6 +4731,7 @@
         "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
         "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/ActivityFeedFieldPath.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileDetails.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileUserDetail.spec.ts"
       ]
@@ -5880,6 +5921,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Alerts/AlertEnabledSwitch/AlertEnabledSwitch.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Alerts/AlertSourcePicker/AlertSourcePicker.tsx"
       ],
       "specs": [
@@ -6917,7 +6966,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts"
+        "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
+        "playwright/e2e/Features/IncidentManager.spec.ts"
       ]
     },
     {
@@ -8520,6 +8570,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/NotificationBox/TaskMentionCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/IncidentManager.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyControlButtons.tsx"
       ],
       "specs": [
@@ -8666,10 +8724,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/SearchedData/SearchEmptyState/SearchEmptyState.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ExploreUrlState.spec.ts",
-        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
-        "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
-        "playwright/e2e/Flow/ServiceForm.spec.ts"
+        "playwright/e2e/Features/ExploreUrlState.spec.ts"
       ]
     },
     {
@@ -10783,6 +10838,22 @@
       "specs": [
         "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/TaskDetailSummary.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/IncidentManager.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/TaskTransitionFormModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts"
       ]
     },
     {
@@ -14285,6 +14356,15 @@
       ],
       "specs": [
         "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/test/browser/entity-matrix/entityColumnPanel.contract.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Entity.spec.ts",
+        "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts"
       ]
     },
     {

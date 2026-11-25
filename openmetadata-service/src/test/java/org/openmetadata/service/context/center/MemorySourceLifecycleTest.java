@@ -1,6 +1,7 @@
 package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -46,6 +47,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.MockedStatic;
@@ -1025,6 +1028,196 @@ class MemorySourceLifecycleTest {
   }
 
   /**
+   * A re-extraction planned to release a memory a person has since edited (sourceType turned Manual)
+   * leaves the link, rather than hard-deleting the single-source memory and its version history,
+   * disputes and open review. The release decides on the memory as last committed, row locked.
+   */
+  @Test
+  void releaseLeavesAMemoryAPersonEditedRatherThanHardDeletingIt() {
+    EntityReference source = contextFile("Source");
+    ContextMemory edited =
+        anchoredMemory(source)
+            .withSourceType(ContextMemorySourceType.MANUAL)
+            .withEntityStatus(ContextMemoryStatus.APPROVED);
+    UUID memoryId = edited.getId();
+    linkSources(memoryId, source);
+    committed(edited);
+    ContextMemoryRepository memories = spy(repository);
+
+    boolean released;
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher()) {
+      released = new MemorySourceLifecycle(memories).releaseExtractedMemory(memoryId, source);
+    }
+
+    assertFalse(released, "a memory a person edited is not the engine's to release");
+    verify(memories, never()).delete(any(), any(UUID.class), anyBoolean(), anyBoolean());
+    verify(relationshipDAO, never())
+        .delete(any(), anyString(), any(UUID.class), anyString(), anyInt());
+    verify(extensionDAO, never()).insert(any(), any(), any(), any());
+  }
+
+  /**
+   * A re-extraction planned to release a memory a review has since retired (Rejected, here) leaves
+   * it, rather than soft-deleting it and marking it ArchivedWithSources. The archive branch decides
+   * on the memory as last committed too.
+   */
+  @Test
+  void releaseLeavesAMemoryAReviewRetiredRatherThanArchivingIt() {
+    EntityReference released = contextFile("Released");
+    EntityReference archivedCopy = contextFile("Archived").withDeleted(true);
+    ContextMemory rejected =
+        anchoredMemory(released)
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withEntityStatus(ContextMemoryStatus.REJECTED);
+    UUID memoryId = rejected.getId();
+    linkSources(memoryId, released, archivedCopy);
+    committed(rejected);
+    ContextMemoryRepository memories = deletesRecorded(spy(repository));
+
+    boolean wasReleased;
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher()) {
+      wasReleased = new MemorySourceLifecycle(memories).releaseExtractedMemory(memoryId, released);
+    }
+
+    assertFalse(wasReleased, "a memory a review retired is not the engine's to release");
+    verify(memories, never()).delete(any(), any(UUID.class), anyBoolean(), anyBoolean());
+    verify(extensionDAO, never()).insert(any(), any(), any(), any());
+    verify(memories, never()).updateIfCurrent(any(), any(), any(), any());
+    verify(relationshipDAO, never())
+        .delete(any(), anyString(), any(UUID.class), anyString(), anyInt());
+  }
+
+  /**
+   * A memory hard-deleted while the re-extraction planned its release is already gone: the release
+   * is no refusal, and the reconciler moves on without logging a decision it did not make.
+   */
+  @Test
+  void releaseTreatsAMemoryAlreadyGoneAsReleased() {
+    EntityReference source = contextFile("Source");
+    UUID memoryId = UUID.randomUUID();
+    ContextMemoryRepository memories = spy(repository);
+
+    boolean released;
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher()) {
+      released = new MemorySourceLifecycle(memories).releaseExtractedMemory(memoryId, source);
+    }
+
+    assertTrue(released, "a memory already gone is no decision overtook");
+    verify(memories, never()).delete(any(), any(UUID.class), anyBoolean(), anyBoolean());
+  }
+
+  /**
+   * A re-extraction's release refuses each stage a review retires a pill to, so a decision that
+   * lands while the source is re-extracted is never destroyed. Draft still awaits a decision, so an
+   * automated pill held in Draft is released (it closes the review); Approved and Unprocessed are the
+   * engine's; a Manual pill, and an automated one a review retired, are left.
+   */
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"REJECTED", "SUPERSEDED", "INVALIDATED", "DEPRECATED", "ARCHIVED"})
+  void releaseRefusesAReviewDecisionInEachRetiredStage(ContextMemoryStatus stage) {
+    EntityReference source = contextFile("Source");
+    ContextMemory retired =
+        anchoredMemory(source)
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withEntityStatus(stage);
+    UUID memoryId = retired.getId();
+    linkSources(memoryId, source);
+    committed(retired);
+    ContextMemoryRepository memories = spy(repository);
+
+    boolean released;
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher()) {
+      released = new MemorySourceLifecycle(memories).releaseExtractedMemory(memoryId, source);
+    }
+
+    assertFalse(released, stage + " is a decision the engine never releases");
+    verify(memories, never()).delete(any(), any(UUID.class), anyBoolean(), anyBoolean());
+  }
+
+  /**
+   * The repository entry the reconciler calls throws when a decision overtook the release, so its
+   * {@code catch (PreconditionFailedException)} logs and the run goes on, as the other conditional
+   * writes do — the dead catch the unguarded branches had left is no longer dead.
+   */
+  @Test
+  void repositoryReleaseExtractedMemoryThrowsWhenADecisionOvertookIt() {
+    EntityReference source = contextFile("Source");
+    ContextMemory edited =
+        anchoredMemory(source)
+            .withSourceType(ContextMemorySourceType.MANUAL)
+            .withEntityStatus(ContextMemoryStatus.APPROVED);
+    UUID memoryId = edited.getId();
+    committed(edited);
+    ContextMemoryRepository memories = spy(repository);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher()) {
+      assertThrows(
+          PreconditionFailedException.class,
+          () -> memories.releaseExtractedMemory(memoryId, source));
+    }
+
+    verify(memories, never()).delete(any(), any(UUID.class), anyBoolean(), anyBoolean());
+  }
+
+  /**
+   * The reconciler plans Draft, Approved and Unprocessed pills for release; their row as last
+   * committed still qualifies, so the release goes ahead and the memory leaves with its fact.
+   */
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"APPROVED", "UNPROCESSED", "DRAFT"})
+  void releaseGoesAheadForAPillTheEngineStillManages(ContextMemoryStatus stage) {
+    EntityReference source = contextFile("Source");
+    ContextMemory pill =
+        anchoredMemory(source)
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withEntityStatus(stage);
+    UUID memoryId = pill.getId();
+    linkSources(memoryId, source);
+    committed(pill);
+    ContextMemoryRepository memories = deletesRecorded(spy(repository));
+
+    boolean released;
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher()) {
+      released = new MemorySourceLifecycle(memories).releaseExtractedMemory(memoryId, source);
+    }
+
+    assertTrue(released, stage + " is the engine's to release");
+    verify(memories).delete(Entity.ADMIN_USER_NAME, memoryId, false, true);
+  }
+
+  /**
+   * Permanently deleting a source leaves a memory a person decided (its hard delete clears the
+   * link) and never fails the deletion: the engine never releases a decision, in batch as in plan.
+   */
+  @Test
+  void permanentlyDeletingASourceLeavesAMemoryAPersonDecided() {
+    EntityReference source = contextFile("Source");
+    ContextMemory edited =
+        anchoredMemory(source)
+            .withSourceType(ContextMemorySourceType.MANUAL)
+            .withEntityStatus(ContextMemoryStatus.APPROVED);
+    UUID memoryId = edited.getId();
+    sourceMentions(source, edited);
+    linkSources(memoryId, source);
+    ContextMemoryRepository memories = deletesRecorded(spy(repository));
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher();
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      resolveReferences(entities, source, edited.getEntityReference());
+
+      new MemorySourceLifecycle(memories)
+          .releaseExtractedMemories(source.getId(), source.getType());
+    }
+
+    verify(memories, never()).delete(any(), any(UUID.class), anyBoolean(), anyBoolean());
+    verify(extensionDAO, never()).insert(any(), any(), any(), any());
+  }
+
+  /**
    * The private copy took the anchor when the shared file was archived. Restoring the file gives it
    * the anchor back, because everyone the copy lets read the memory reads the file too.
    */
@@ -1549,6 +1742,7 @@ class MemorySourceLifecycleTest {
     doReturn(stored)
         .when(memories)
         .get(isNull(), eq(stored.getId()), any(), eq(include), eq(false));
+    committed(stored);
     return memories;
   }
 
@@ -1634,6 +1828,7 @@ class MemorySourceLifecycleTest {
     return new ContextMemory()
         .withId(UUID.randomUUID())
         .withName("mem")
+        .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
         .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
   }
