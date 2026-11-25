@@ -14,6 +14,7 @@
 import itertools
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -110,9 +111,17 @@ def test_connectors_reject_invalid_configuration(defaults, selected):
     assert not result.stdout
 
 
-@pytest.fixture(params=["ci-pr.yml", "ci-merge-queue.yml"])
+@pytest.fixture(
+    params=[
+        ("ci-pr.yml", "python", "gate"),
+        ("ci-pr.yml", "py-tests-status", None),
+        ("ci-merge-queue.yml", "py-tests-status", None),
+    ]
+)
 def gate(request):
-    script = workflow(request.param)["jobs"]["py-tests-status"]["steps"][0]["run"]
+    name, job, step_id = request.param
+    steps = workflow(name)["jobs"][job]["steps"]
+    script = next(step for step in steps if step_id is None or step.get("id") == step_id)["run"]
 
     def invoke(needs, expected):
         return run(
@@ -173,7 +182,9 @@ def test_nightly_gate_requires_every_dependency_to_succeed():
 
 
 def test_nightly_artifact_names_are_unique_across_invocations():
-    unit_steps = workflow("reusable-py-unit.yml")["jobs"]["py-unit-tests"]["steps"]
+    unit_steps = yaml.load(
+        (ROOT / ".github/actions/python-unit/action.yml").read_text(), Loader=yaml.BaseLoader
+    )["runs"]["steps"]
     unit = {
         key: value
         for step in unit_steps
@@ -205,6 +216,18 @@ def test_nightly_artifact_names_are_unique_across_invocations():
                 for key in ["artifact-name", "coverage-name"]
             )
     assert len(names) == len(set(names))
+
+
+def test_pr_gate_covers_every_selected_step():
+    job = workflow("ci-pr.yml")["jobs"]["python"]
+    gate = next(step for step in job["steps"] if step.get("id") == "gate")
+
+    def keys(template):
+        return set(re.findall(r'^\s*"([\w-]+)":', template, re.MULTILINE))
+
+    suites = {step["id"] for step in job["steps"] if step.get("uses", "").startswith("./.github/actions/")}
+    assert keys(gate["env"]["NEEDS_JSON"]) == keys(gate["env"]["EXPECTED_RESULTS"])
+    assert len(keys(gate["env"]["NEEDS_JSON"])) == len(suites) + 1
 
 
 @pytest.mark.parametrize(
