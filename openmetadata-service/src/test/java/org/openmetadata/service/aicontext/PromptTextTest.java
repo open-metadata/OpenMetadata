@@ -25,18 +25,17 @@ import org.junit.jupiter.params.provider.MethodSource;
 class PromptTextTest {
 
   @Test
-  void contentReadRemovesEncodedImagesAndPreservesQuotedAttributes() {
+  void contentReadRemovesEncodedImagesAndReadsTextAsWritten() {
     assertEquals(
         "Before  after",
         PromptText.forContentRead(
             "Before &lt;img src=&quot;data:image/png;base64,AAAA&quot;&gt; after"));
-    String content =
-        PromptText.forContentRead(
-            "<p>x &gt;&#61; 1 and &#39;a&#39;: &lt;example&gt;</p>"
-                + "<a href=\"https://example.org/?q=&quot;A&quot;\">link</a>");
-    assertTrue(content.contains("x >= 1 and 'a'"));
-    assertFalse(content.contains("<example>"));
-    assertFalse(content.contains("q=\"A\""));
+    String stored =
+        "<p>x &lt;&#61; 1 &amp; y &gt;&#61; 2 &#43; tax, &quot;orders&quot; by owner&#64;corp.com,"
+            + " &#39;a&#39; &#61; &#96;b&#96;</p>";
+    assertEquals(
+        "<p>x <= 1 & y >= 2 + tax, \"orders\" by owner@corp.com, 'a' = `b`</p>",
+        PromptText.forContentRead(stored));
   }
 
   @Test

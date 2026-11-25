@@ -94,6 +94,8 @@ public final class PromptText {
    * <p>Being conservative here costs nothing: the policy only removes markup, so text holding no
    * element has nothing for it to remove.
    */
+  private static final String IMAGE_TAG = "<img";
+
   private static final Pattern HTML_TAG =
       Pattern.compile(
           "(?i)<\\s*+/?+\\s*+(?:a|b|blockquote|br|caption|code|col|colgroup|dd|del|details|div|dl"
@@ -114,26 +116,16 @@ public final class PromptText {
     return DescriptionSanitizer.sanitizeWith(PROMPT_POLICY, description);
   }
 
-  /** Decodes editor entities after stripping markup so prompt text retains operators and quotes. */
+  /**
+   * The text cleaned like {@link #forPrompt}, then fully decoded so it reads as written ({@code x >=
+   * 1}, {@code 'a'}, {@code a & b}), as the content read returned before images were stripped. An
+   * image tag stored as encoded text only becomes markup once decoded, so it is cleaned again.
+   */
   public static String forContentRead(String richText) {
-    String content = forPrompt(richText);
-    if (content == null || content.indexOf('&') < 0) {
-      return content;
-    }
-    String decoded = StringEscapeUtils.unescapeHtml4(content);
-    if (decoded.indexOf('<') < 0) {
-      return decoded;
-    }
-    // An editor can store the image tag itself as entity-encoded text.
-    if (StringUtils.containsIgnoreCase(decoded, "<img")) {
-      content = DescriptionSanitizer.sanitizeWith(PROMPT_POLICY, decoded);
-    }
-    // Keep markup delimiters and quoted attributes escaped in the returned fragment.
-    return content
-        .replace("&gt;", ">")
-        .replace("&#61;", "=")
-        .replace("&#39;", "'")
-        .replace("&#96;", "`");
+    final String decoded = StringEscapeUtils.unescapeHtml4(forPrompt(richText));
+    return StringUtils.containsIgnoreCase(decoded, IMAGE_TAG)
+        ? StringEscapeUtils.unescapeHtml4(forPrompt(decoded))
+        : decoded;
   }
 
   private static boolean hasHtmlTag(String description) {

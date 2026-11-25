@@ -462,13 +462,14 @@ public class GetEntityTool implements McpTool {
                 ctx.options().passages(),
                 getSubjectContext(ctx.securityContext()));
     // PageBodyTextContributor includes the raw editor HTML in indexed page chunks.
-    if (ctx.entity() instanceof Page) {
-      return found.stream()
-          .map(PromptText::forContentRead)
-          .filter(passage -> !nullOrEmpty(passage) && !passage.isBlank())
-          .toList();
-    }
-    return found;
+    return ctx.entity() instanceof Page ? readablePassages(found) : found;
+  }
+
+  private static List<String> readablePassages(List<String> passages) {
+    return passages.stream()
+        .map(PromptText::forContentRead)
+        .filter(passage -> !nullOrEmpty(passage) && !passage.isBlank())
+        .toList();
   }
 
   private static Object renderText(IncludeContext ctx, String text) {
