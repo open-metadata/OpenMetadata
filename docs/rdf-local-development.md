@@ -13,7 +13,7 @@ OpenMetadata supports RDF (Resource Description Framework) for knowledge graph c
 
 ## Standards Compatibility
 
-The RDF stack runs Apache Jena and Fuseki 6.2.0. RDF 1.2 terms survive the whole round trip —
+The RDF stack runs Apache Jena 6.2.0 in OpenMetadata and Fuseki 6.3.0 in the store. RDF 1.2 terms survive the whole round trip —
 import, storage, query, and result serialization:
 
 - **Triple terms**, including `rdf:reifies` statements and nested blank nodes, and **directional
@@ -245,7 +245,7 @@ The Fuseki container (`docker/development/docker-compose-fuseki.yml`) runs the p
 ```yaml
 services:
   fuseki:
-    image: openmetadata/fuseki:6.2.0-91a23ac
+    image: openmetadata/fuseki:6.3.0-9e53975
     container_name: openmetadata-fuseki
     ports:
       - "3030:3030"
@@ -256,7 +256,7 @@ services:
       - FUSEKI_QUERY_TIMEOUT_MS=50000
       - FUSEKI_UPDATE_TIMEOUT_MS=50000
       - OPENMETADATA_EXTENSION_ENABLED=true
-      - JVM_ARGS=-Xms${FUSEKI_HEAP:-1500m} -Xmx${FUSEKI_HEAP:-1500m} -XX:MaxDirectMemorySize=256m
+      - FUSEKI_HEAP=${FUSEKI_HEAP:-1500m}
     volumes:
       - fuseki-store:/fuseki
 ```

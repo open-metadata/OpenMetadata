@@ -31,11 +31,11 @@ import org.testcontainers.utility.DockerImageName;
  */
 public final class FusekiTestImage {
   /**
-   * Built from open-metadata/jena release/6.2.0 at 91a23ac4. The tag is the workflow's immutable
+   * Built from open-metadata/jena release/6.3.0 at 9e53975c. The tag is the workflow's immutable
    * {@code <version>-<commit>} tag; its index digest is
-   * sha256:f1ea04940de6665b111c10a673d5aec0543034b7d65216391bab38a96b666aa2.
+   * sha256:5dc75363b982428a8d27085f158a786d31b5a74a1b091d74fe95e53e1c8876c8.
    */
-  public static final String DEFAULT_IMAGE = "openmetadata/fuseki:6.2.0-91a23ac";
+  public static final String DEFAULT_IMAGE = "openmetadata/fuseki:6.3.0-9e53975";
 
   public static final String IMAGE_PROPERTY = "rdfContainerImage";
   public static final int PORT = 3030;

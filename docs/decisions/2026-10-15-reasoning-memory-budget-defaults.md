@@ -3,7 +3,8 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-15 (initial) · v2 2026-11-23 (the worker half is withdrawn; the
   Fuseki direct-buffer cap stays) · v3 2026-11-24 (Fuseki 6.3.0 pools its output buffer, so
-  responses stop filling the cap)
+  responses stop filling the cap) · v4 2026-11-25 (the pin carries the image's cap, so the
+  deployment files set only the heap)
 - **Deciders:** OpenMetadata RDF maintainers
 - **Guard:** open-metadata/jena `ReasoningSettingsTest`, `ReadinessTest`, `LimitsTest`,
   `WorkerProcessIT` and the image smoke test's "direct buffers are capped" check
@@ -94,3 +95,10 @@ It fails on `6.2.0-f88e5ad` and passes on 6.3.0, which ends at 5.7 MB of direct 
 These are one run a side at 200,000 tables on a shared arm64 host, with the 32 KiB `jetty.xml`
 image, where direct buffers peaked at 3.9 MiB. They have not been repeated on 6.3.0, whose pooled
 buffer is 2 MiB.
+
+## Amendment: the pin carries the image's cap (v4, 2026-11-25)
+
+The pin has carried the image's own cap since `6.2.0-91a23ac`: its entrypoint adds
+`-XX:MaxDirectMemorySize=256m` whenever `JVM_ARGS` does not set the flag. The Compose files and
+the Kubernetes example therefore set only `FUSEKI_HEAP`, and the resulting JVM flags are the ones
+they set before.

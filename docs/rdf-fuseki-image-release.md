@@ -1,9 +1,10 @@
 # The OpenMetadata Fuseki image
 
 OpenMetadata's triple store is the published **`openmetadata/fuseki`** image: the released Apache
-Jena Fuseki distribution plus an optional OpenMetadata Graph Store extension. It is the image of record for tests, Compose files, Kubernetes manifests and
-deployments ([decision record](decisions/2026-10-14-fuseki-image-of-record.md)). This repository no
-longer builds a Fuseki image; the former `docker/rdf-store/` build is retired.
+Jena Fuseki distribution plus an optional OpenMetadata Graph Store extension. It is the image of
+record for tests, Compose files, Kubernetes manifests and deployments
+([decision record](decisions/2026-10-14-fuseki-image-of-record.md)). This repository no longer
+builds a Fuseki image; the former `docker/rdf-store/` build is retired.
 
 For sizing and tuning, see [rdf-production-setup.md](rdf-production-setup.md).
 
@@ -11,21 +12,22 @@ For sizing and tuning, see [rdf-production-setup.md](rdf-production-setup.md).
 
 The image is built in the [open-metadata/jena](https://github.com/open-metadata/jena) fork, from
 the self-contained `openmetadata/fuseki/` directory on each `release/<fuseki-version>` branch. Its
-README documents every environment variable and the layout. The Dockerfile downloads
-the released Fuseki distribution, checks its SHA-512, and compiles the extension against that exact
-`fuseki-server.jar`; Jena itself is not rebuilt or patched.
+README documents every environment variable, the layout and how the fork moves to a new Fuseki
+release. The Dockerfile downloads the released Fuseki distribution, checks its SHA-512, and
+compiles the extension against that exact `fuseki-server.jar`. Jena itself is not rebuilt; the
+image only swaps a newer Shiro into `fuseki-server.jar` (`server-jar/replace-libraries.sh`).
 
-The fork's workflow tests the extension, smoke-tests the image, and publishes
-`linux/amd64` and `linux/arm64` under two tags:
+The fork's workflow tests the extension, smoke-tests the image, and publishes `linux/amd64` and
+`linux/arm64` under two tags:
 
 | Tag | Moves | Use |
 |---|---|---|
-| `<version>-<commit>`, e.g. `6.2.0-600514c` | Never | Everything OpenMetadata ships or tests |
-| `<version>`, e.g. `6.2.0` | On every publish from the release branch | Trying the image by hand only |
+| `<version>-<commit>`, e.g. `6.3.0-9e53975` | Never | Everything OpenMetadata ships or tests |
+| `<version>`, e.g. `6.3.0` | On every publish from the release branch | Trying the image by hand only |
 
-OpenMetadata pins **`openmetadata/fuseki:6.2.0-91a23ac`** (index digest
-`sha256:f1ea04940de6665b111c10a673d5aec0543034b7d65216391bab38a96b666aa2`, built from
-`release/6.2.0` at `91a23ac4`). The pin lives in
+OpenMetadata pins **`openmetadata/fuseki:6.3.0-9e53975`** (index digest
+`sha256:5dc75363b982428a8d27085f158a786d31b5a74a1b091d74fe95e53e1c8876c8`, built from
+`release/6.3.0` at `9e53975c`). The pin lives in
 [FusekiTestImage](../openmetadata-integration-tests/src/test/java/org/openmetadata/it/bootstrap/FusekiTestImage.java),
 the Compose files under `docker/`, and
 [fuseki-deployment.yaml](../docker/rdf-store/kubernetes/fuseki-deployment.yaml). Moving it is a
@@ -57,8 +59,12 @@ FUSEKI_HEAP=4g                                         # or JVM_ARGS, which then
   writer.
 - **Extension.** Bounds Graph Store uploads (`OPENMETADATA_MAX_UPLOAD_BYTES`, default 64 MiB) and
   their writer hold time (`OPENMETADATA_WRITE_TIMEOUT_MS`, default 50000), and advertises the
-  settings to readiness. Reasoning does not run in this image; a reasoning provider runs it and
-  writes its results into Fuseki (ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena).
+  settings to readiness. It also reads RDF Thrift uploads with that same bound per row. Jena 6.3.0
+  caps one Thrift row at 100 KB (open-metadata/jena#24). OpenMetadata uploads rebuilds and ontology
+  releases as RDF Thrift, so without the extension a rebuild loses every entity with a description
+  or query over that size, and activating a release with such a literal fails. Reasoning does not
+  run in this image; a reasoning provider runs it and writes its results into Fuseki
+  (ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena).
 - **Access.** The rendered `shiro.ini` has one account, `admin`; only `/$/ping` is anonymous. To
   add scoped accounts, set `FUSEKI_MANAGE_SHIRO=false` and provide `/fuseki/shiro.ini`.
 
@@ -138,7 +144,7 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
       containers:
         - name: fuseki
-          image: openmetadata/fuseki:6.2.0-91a23ac
+          image: openmetadata/fuseki:6.3.0-9e53975
           ports:
             - containerPort: 3030
           env:
@@ -149,7 +155,7 @@ spec:
             - { name: FUSEKI_QUERY_TIMEOUT_MS, value: "50000" }
             - { name: FUSEKI_UPDATE_TIMEOUT_MS, value: "50000" }
             - { name: OPENMETADATA_EXTENSION_ENABLED, value: "true" }
-            - { name: JVM_ARGS, value: "-Xms4g -Xmx4g -XX:MaxDirectMemorySize=256m" }
+            - { name: FUSEKI_HEAP, value: "4g" }
           volumeMounts:
             - name: fuseki-data
               mountPath: /fuseki
@@ -208,16 +214,24 @@ re-probes on every run.
 
 ## Cutting over an existing deployment
 
+**From an earlier `openmetadata/fuseki` tag.** Change the tag and restart on the same volume.
+Every `6.2.0-<commit>` tag ships the same Fuseki 6.2.0. TDB2 written and compacted under the
+previous pin, `6.2.0-91a23ac`, opens under `6.3.0-9e53975`, and TDB2 written and compacted under
+`6.3.0-9e53975` opens again under `6.2.0-91a23ac`, so rolling back needs no restore. That was
+checked on 2026-11-26 with typed and language-tagged literals and the union default graph, in both
+directions; `6.2.0-f88e5ad` gave the same result.
+
 **From the retired in-repo image (`openmetadata-fuseki:6.2.0` built from `docker/rdf-store/`).** That
 image kept TDB2 at `/fuseki-data/<dataset>` and Lucene indexes at `/fuseki-data/lucene*`; the
-published image keeps TDB2 at `/fuseki/databases/<dataset>`. Both run Fuseki 6.2.0, so the TDB2
-directories move as they are; the Lucene directories are not used. Mounting the old volume at
+published image keeps TDB2 at `/fuseki/databases/<dataset>`. The retired image ran Fuseki 6.2.0,
+whose TDB2 directories open under 6.3.0 as they are, so they move unchanged; the Lucene directories
+are not used. Mounting the old volume at
 `/fuseki` instead starts three empty datasets that look healthy. Either rebuild (start on an empty
 volume and run `RdfIndexApp` with `recreateIndex: true`) or, with Fuseki stopped, copy the datasets:
 
 ```bash
 docker run --rm --user 0 --entrypoint sh \
-  -v <old-volume>:/old:ro -v <new-volume>:/fuseki openmetadata/fuseki:6.2.0-91a23ac \
+  -v <old-volume>:/old:ro -v <new-volume>:/fuseki openmetadata/fuseki:6.3.0-9e53975 \
   -c 'mkdir -p /fuseki/databases \
       && cp -a /old/openmetadata /old/openmetadata_a /old/openmetadata_b /fuseki/databases/ \
       && chown -R 1000:0 /fuseki'
@@ -240,7 +254,7 @@ command, or set `fsGroup: 1000` with `fsGroupChangePolicy: OnRootMismatch` on Ku
 - **`java -jar fuseki-server.jar` ignores `-cp`.** An extension jar present on disk does nothing
   unless the launcher puts it on the classpath. The image's launcher handles this; a hand-rolled
   deployment must not use `-jar`.
-- **Jena 6.2.0 mishandles a second WHERE-bearing operation in one timed update** when
+- **Jena 6.2.0 and 6.3.0 mishandle a second WHERE-bearing operation in one timed update** when
   `arq:updateTimeout` is set. OpenMetadata's generated mutations use `VALUES`/`UNION` to stay at one,
   and the admin SPARQL API rejects anything else. Direct Fuseki clients must follow the same rule.
 - **`/api/v1/system/status` has no RDF check**: database, search, pipeline client, JWKS and

@@ -42,10 +42,10 @@ materialize need separate sizing. See
 ## The Fuseki image
 
 Run the published `openmetadata/fuseki` image, pinned to an immutable `<version>-<commit>` tag
-(today `6.2.0-91a23ac`). [rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) lists the
+(today `6.3.0-9e53975`). [rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) lists the
 environment OpenMetadata needs, what readiness checks, and how to verify a deployment. In short:
 
-- **Fuseki 6.2.0 on Java 21**, downloaded and checked against its SHA-512 when the image is built,
+- **Fuseki 6.3.0 on Java 21**, downloaded and checked against its SHA-512 when the image is built,
   running as uid 1000 under `tini`. On Kubernetes set `fsGroup: 1000` so the volume is writable; a
   volume written by a root-running image needs a one-time `chown`, which the entrypoint prints.
 - **Datasets from `FUSEKI_DATASETS`**: `openmetadata`, `openmetadata_a`, and `openmetadata_b`, at
@@ -56,7 +56,7 @@ environment OpenMetadata needs, what readiness checks, and how to verify a deplo
   `FUSEKI_QUERY_TIMEOUT_MS=50000` and `FUSEKI_UPDATE_TIMEOUT_MS=50000` fire before the 60-second
   client deadline: client-side `requestTimeoutMs` releases an OpenMetadata thread but cannot stop
   work already executing in Fuseki, so the server must release TDB2's writer lock first. Jena 6.2.0
-  has a known failure on the second WHERE-bearing operation in one timed update request.
+  and 6.3.0 have a known failure on the second WHERE-bearing operation in one timed update request.
   OpenMetadata's generated mutations therefore combine batch sources with `VALUES`/`UNION`, and the
   admin SPARQL API rejects requests containing more than one WHERE-bearing operation with a clear
   validation error. Direct Fuseki clients must follow the same restriction.
@@ -64,11 +64,10 @@ environment OpenMetadata needs, what readiness checks, and how to verify a deplo
 - **Admin-only access.** Only `/$/ping` is anonymous; OpenMetadata connects as `admin`.
 - **Explicit equal heap** from `FUSEKI_HEAP` (default `4g`; the development compose files use
   1500 MB).
-- **Capped direct buffers.** Fuseki holds about 5 MiB of them per HTTP request until the next
-  collection, up to the heap size by default. The pinned image predates the 256 MiB default cap
-  (open-metadata/jena#6), so the Compose files and the Kubernetes example set
-  `JVM_ARGS=-Xms<heap> -Xmx<heap> -XX:MaxDirectMemorySize=256m`. `JVM_ARGS` replaces the heap
-  flags `FUSEKI_HEAP` would set.
+- **Capped direct buffers.** The image adds `-XX:MaxDirectMemorySize=256m` unless `JVM_ARGS`
+  sets that flag. Fuseki 6.3.0 reuses one pooled response buffer (apache/jena GH-4084), so
+  responses stay far below the cap; 6.2.0 allocated about 5 MiB per response and filled it between
+  collections. `JVM_ARGS`, when set, replaces the heap flags `FUSEKI_HEAP` would set.
 - **No Lucene text index.** The retired in-repo image wrapped each dataset in a Jena
   `text:TextDataset`; no OpenMetadata code issues `text:query`.
 
@@ -295,8 +294,12 @@ read-only, or `tdb2:unionDefaultGraph` is off. Union is checked by behaviour, so
 Fuseki: readiness writes one triple into a named graph, asks for it without a `GRAPH` clause, and
 removes it. OpenMetadata writes every entity into a named graph, so without union the SPARQL
 playground, the MCP tools, SHACL validation and inference see none of them. The extension and the
-`arq:*Timeout` settings are optional. On Apache Jena Fuseki without them, indexing proceeds with
-the client's own upload budget and deadline and logs each missing guarantee. Without the extension
+`arq:*Timeout` settings are optional on Fuseki 6.2.0. On Apache Jena Fuseki without them, indexing
+proceeds with the client's own upload budget and deadline and logs each missing guarantee. From
+Fuseki 6.3.0 the extension is required: stock Fuseki refuses an RDF Thrift row over 100 KB, and
+OpenMetadata uploads rebuilds and ontology releases as Thrift. Without the extension a rebuild
+loses every entity with a description or query over that size, and an ontology release holding
+such a literal fails to activate. Without the extension
 a Graph Store upload holds TDB2's writer while it transfers, so other writes wait behind it: a small
 update issued during a 4.4 MB upload at 200 KB/s waited 20 s on stock Fuseki 6.0.0 and 0.23 s with
 the extension. `arq:updateTimeout` alone does not protect Graph Store POST/PUT.
