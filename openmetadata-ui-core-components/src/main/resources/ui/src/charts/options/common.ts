@@ -180,9 +180,9 @@ export const categoryAxis = (
 export const valueAxis = (
   theme: ChartTheme,
   props: ChartYAxisProps = {},
-  position: 'left' | 'right' | 'bottom' = 'left'
+  position: 'left' | 'right' | 'bottom' | 'top' = 'left'
 ): YAXisComponentOption => {
-  const vertical = position !== 'bottom';
+  const vertical = position === 'left' || position === 'right';
   const isCategory = props.type === 'category';
   // Category ticks are the values themselves; K/M/B only suits numbers.
   const formatter =
@@ -200,8 +200,11 @@ export const valueAxis = (
       ...tickLabelColor(theme),
       ...(formatter ? { formatter } : {}),
     },
-    // A right-hand axis would draw a second, misaligned set of grid lines.
-    splitLine: { show: position !== 'right', lineStyle: { color: theme.grid } },
+    // A second (right or top) axis would draw another, misaligned set of grid lines.
+    splitLine: {
+      show: position === 'left' || position === 'bottom',
+      lineStyle: { color: theme.grid },
+    },
   } as YAXisComponentOption;
 
   return mergeOption(base, axisRest(props));

@@ -4158,6 +4158,7 @@
     "value-count": "मूल्य संख्या",
     "value-plural": "मूल्ये",
     "value-type-or-target": "मूल्य प्रकार किंवा लक्ष्य",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "प्रसरण",
     "variant": "व्हेरिएंट",
     "variant-plural": "व्हेरिएंट्स",
