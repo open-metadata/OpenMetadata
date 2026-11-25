@@ -282,8 +282,7 @@ describe('GlobalSearchModal', () => {
     renderModal();
     await type('customer');
 
-    // Option 0 is the query action; the rows follow it.
-    press('ArrowDown');
+    // The first result starts highlighted; one ArrowDown moves to the second.
     press('ArrowDown');
     press('Enter');
 
@@ -327,19 +326,55 @@ describe('GlobalSearchModal', () => {
     expect(screen.getByTestId('global-search-input')).toHaveValue('customer');
   });
 
-  it('puts the plugin query action first and runs it with ⌘↵', async () => {
+  it('runs the plugin query action with ⌘↵ only, never with a plain Enter', async () => {
     useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
     renderModal();
     await type('customer');
+
+    // The first result is highlighted; ArrowUp reaches the action above it.
+    expect(screen.getByTestId('query-action')).toHaveAttribute(
+      'aria-selected',
+      'false'
+    );
+
+    press('ArrowUp');
 
     expect(screen.getByTestId('query-action')).toHaveAttribute(
       'aria-selected',
       'true'
     );
 
+    press('Enter');
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+
     press('Enter', { metaKey: true });
 
     expect(mockNavigate).toHaveBeenCalledWith('/?prompt=customer');
+  });
+
+  it('shows skeleton tabs and rows until the first results arrive', async () => {
+    useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
+    renderModal();
+    fireEvent.change(screen.getByTestId('global-search-input'), {
+      target: { value: 'customer' },
+    });
+
+    expect(
+      screen.getByTestId('global-search-tabs-loading')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('global-search-tab-all')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+    });
+
+    expect(
+      screen.queryByTestId('global-search-tabs-loading')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('global-search-tab-all')).toBeInTheDocument();
   });
 
   it('opens scoped to the source that takes ⌥⌘K and stays open on Backspace', async () => {

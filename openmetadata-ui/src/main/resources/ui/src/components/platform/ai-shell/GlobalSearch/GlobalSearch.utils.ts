@@ -175,10 +175,15 @@ interface KeyInput {
   ctrlKey: boolean;
 }
 
-const getEnterAction = (event: KeyInput, context: GlobalSearchKeyContext) =>
-  event.metaKey || event.ctrlKey || context.isActionActive
-    ? 'run-action'
-    : 'select';
+// Only ⌘↵ / Ctrl+↵ runs the query action; a plain Enter opens the highlighted
+// result and does nothing on the action row, so it never starts a chat by accident.
+const getEnterAction = (event: KeyInput, context: GlobalSearchKeyContext) => {
+  if (event.metaKey || event.ctrlKey) {
+    return 'run-action';
+  }
+
+  return context.isActionActive ? undefined : 'select';
+};
 
 const getTabAction = (event: KeyInput, context: GlobalSearchKeyContext) => {
   if (!context.query.trim() || context.tabCount < 2) {
@@ -218,8 +223,10 @@ export const getKeyAction = (
   KEY_ACTIONS[event.key]?.(event, context);
 
 /**
- * Resolves the highlighted option. The "Ask AI" row, when shown, is option 0
- * and the result rows follow it.
+ * Resolves the highlighted option. `activeIndex` is a row index: 0 is the
+ * first result (the default), and -1 is the query action row above it, which
+ * the user reaches with ArrowUp. With no rows the action row is highlighted.
+ * `index` and `count` are in option space (action row first).
  */
 export const getActiveOption = <T extends { key: string }>(
   rows: T[],
@@ -228,7 +235,7 @@ export const getActiveOption = <T extends { key: string }>(
 ) => {
   const offset = hasQueryAction ? 1 : 0;
   const count = rows.length + offset;
-  const index = clampIndex(activeIndex, count);
+  const index = clampIndex(activeIndex + offset, count);
   const isActionActive = hasQueryAction && index === 0;
   const row = isActionActive ? undefined : rows[index - offset];
 

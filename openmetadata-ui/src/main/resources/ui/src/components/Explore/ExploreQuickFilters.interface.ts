@@ -44,4 +44,6 @@ export interface ExploreQuickFiltersProps {
   // Hosts outside Explore (e.g. the AI-mode global search) set this so facet
   // counts ignore the page behind them: its `showDeleted` URL param and NLP mode.
   ignoreHostSearchState?: boolean;
+  // Keep every filter on one line instead of wrapping; the host scrolls it.
+  singleLine?: boolean;
 }

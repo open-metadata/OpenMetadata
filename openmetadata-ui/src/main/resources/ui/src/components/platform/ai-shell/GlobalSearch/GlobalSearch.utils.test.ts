@@ -269,7 +269,7 @@ describe('getKeyAction', () => {
       'Enter on the query action',
       key('Enter'),
       { ...typed, isActionActive: true },
-      'run-action',
+      undefined,
     ],
     ['⌘Enter anywhere', key('Enter', { metaKey: true }), typed, 'run-action'],
     [
@@ -293,17 +293,23 @@ describe('getKeyAction', () => {
 describe('getActiveOption', () => {
   const rows = [{ key: 'a' }, { key: 'b' }];
 
-  it('makes the query action option 0 and offsets the rows after it', () => {
+  it('highlights the first result by default, with the query action above it', () => {
     expect(getActiveOption(rows, 0, true)).toMatchObject({
-      index: 0,
+      index: 1,
       count: 3,
+      isActionActive: false,
+      row: { key: 'a' },
+      optionId: 'global-search-option-a',
+    });
+    expect(getActiveOption(rows, -1, true)).toMatchObject({
+      index: 0,
       isActionActive: true,
       optionId: 'global-search-query-action',
     });
-    expect(getActiveOption(rows, 2, true)).toMatchObject({
-      row: { key: 'b' },
-      optionId: 'global-search-option-b',
-    });
+  });
+
+  it('highlights the query action when there are no results', () => {
+    expect(getActiveOption([], 0, true).isActionActive).toBe(true);
   });
 
   it('clamps past either end instead of wrapping', () => {

@@ -55,10 +55,13 @@ const GlobalSearchFilterBar = ({
   return (
     <>
       <Divider />
-      <Box className="tw:px-4 tw:pb-2" data-testid="global-search-filter-bar">
+      <Box
+        className="tw:overflow-x-auto tw:px-4 tw:pb-2"
+        data-testid="global-search-filter-bar">
         <ExploreQuickFilters
           ignoreHostSearchState
           immediateApply
+          singleLine
           fields={fields}
           index={config.index}
           searchText={query}

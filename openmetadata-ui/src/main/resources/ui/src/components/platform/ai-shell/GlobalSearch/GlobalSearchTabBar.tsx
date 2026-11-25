@@ -13,6 +13,7 @@
 import {
   Box,
   Button,
+  Skeleton,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -37,10 +38,14 @@ export interface GlobalSearchTabBarProps {
   /** Opened scoped to one source: only that type, plus a way out to everything. */
   scopedCategory?: GlobalSearchCategory;
   hideCounts: boolean;
+  /** The query's first results are loading: tabs are not known yet. */
+  isLoading?: boolean;
   labelFor: (key: GlobalSearchCategory) => string;
   onChange: (filter: GlobalSearchFilter) => void;
   onSearchEverything: () => void;
 }
+
+const TAB_SKELETON_WIDTHS = [48, 112, 96, 84];
 
 const GlobalSearchTabBar = ({
   isVisible,
@@ -51,6 +56,7 @@ const GlobalSearchTabBar = ({
   totalCount,
   scopedCategory,
   hideCounts,
+  isLoading = false,
   labelFor,
   onChange,
   onSearchEverything,
@@ -62,6 +68,23 @@ const GlobalSearchTabBar = ({
 
   if (!isVisible) {
     return null;
+  }
+
+  // Which types matched is unknown until the first results arrive, so show
+  // the shape of the tab bar rather than a lone "All".
+  if (isLoading && !scopedCategory) {
+    return (
+      <Box
+        aria-busy
+        align="center"
+        className="tw:px-2.5 tw:py-2"
+        data-testid="global-search-tabs-loading"
+        gap={2}>
+        {TAB_SKELETON_WIDTHS.map((width) => (
+          <Skeleton height={36} key={width} variant="rounded" width={width} />
+        ))}
+      </Box>
+    );
   }
 
   const countOf = (key: GlobalSearchCategory) => results[key]?.count ?? 0;

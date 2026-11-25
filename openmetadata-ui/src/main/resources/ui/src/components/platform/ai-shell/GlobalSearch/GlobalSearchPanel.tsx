@@ -378,8 +378,10 @@ const GlobalSearchPanel = () => {
   }, [activeOptionId]);
 
   const keyActions: Record<GlobalSearchKeyAction, () => void> = {
-    next: () => setActiveIndex(clampIndex(active + 1, optionCount)),
-    previous: () => setActiveIndex(clampIndex(active - 1, optionCount)),
+    next: () =>
+      setActiveIndex(clampIndex(active + 1, optionCount) - actionOffset),
+    previous: () =>
+      setActiveIndex(clampIndex(active - 1, optionCount) - actionOffset),
     'run-action': runQueryAction,
     select: () => activeRow?.onSelect(),
     'next-tab': () =>
@@ -439,6 +441,7 @@ const GlobalSearchPanel = () => {
       <GlobalSearchTabBar
         filter={filter}
         hideCounts={tabCounts.hideCounts}
+        isLoading={isCounting}
         isVisible={view.showTabBar}
         labelFor={labelFor}
         more={more}
@@ -469,7 +472,7 @@ const GlobalSearchPanel = () => {
           id={QUERY_ACTION_OPTION_ID}
           isActive={isActionActive}
           query={trimmed}
-          onHover={() => setActiveIndex(0)}
+          onHover={() => setActiveIndex(-1)}
           onSelect={runQueryAction}
         />
       ) : null}
@@ -483,7 +486,7 @@ const GlobalSearchPanel = () => {
               emptyHintKey={labelKeys.emptyHint}
               hasError={hasError}
               isEmpty={view.isEmpty}
-              isFirstLoad={isListLoading}
+              isFirstLoad={isListLoading || isCounting}
               isScoped={isScoped}
               items={items}
               previewId={previewId}
@@ -498,9 +501,7 @@ const GlobalSearchPanel = () => {
                 />
               }
               onHover={(key) =>
-                setActiveIndex(
-                  rows.findIndex((item) => item.key === key) + actionOffset
-                )
+                setActiveIndex(rows.findIndex((item) => item.key === key))
               }
               onRetry={() => setRetryKey((key) => key + 1)}
               onSearchEverywhere={searchEverything}
@@ -516,9 +517,7 @@ const GlobalSearchPanel = () => {
               onNavigate: goTo,
             })}
             actionHint={t(labelKeys.actionHint)}
-            enterLabel={
-              isActionActive ? t(labelKeys.actionHint) : activeRow?.enterLabel
-            }
+            enterLabel={activeRow?.enterLabel}
             hasQuery={Boolean(query)}
             showActionHint={view.showQueryAction}
             showTabHint={view.showTabHint}
