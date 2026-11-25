@@ -8,10 +8,12 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -40,6 +42,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
+import org.apache.commons.lang3.function.FailableRunnable;
 import org.apache.hc.core5.http.HttpEntity;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +51,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.Table;
@@ -55,6 +59,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.search.vector.utils.DTOs;
@@ -597,10 +602,21 @@ class ElasticSearchVectorServiceTest {
         .when(concept)
         .getEntityReference();
     String termIndex = "ontology_concept_search_index";
+    String releaseBody = "Customer: A person who buys";
     answerByEndpointSuffix(Map.of());
 
-    vectorService.updateEntityEmbeddingChunks(concept);
-    vectorService.updateEntityEmbeddings(concept, termIndex);
+    try (MockedStatic<OntologyTermSearch> terms =
+        mockStatic(OntologyTermSearch.class, CALLS_REAL_METHODS)) {
+      terms
+          .when(() -> OntologyTermSearch.writeCurrentEmbedding(any(), any(), any()))
+          .thenAnswer(
+              invocation -> {
+                invocation.<FailableRunnable<?>>getArgument(2).run();
+                return null;
+              });
+      vectorService.updateEntityEmbeddingChunks(concept);
+      vectorService.updateEntityEmbeddings(concept, termIndex, releaseBody);
+    }
 
     ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
     verify(mockRestClient, atLeastOnce()).performRequest(sent.capture());
@@ -614,7 +630,7 @@ class ElasticSearchVectorServiceTest {
             sentRequest(
                 "POST", "/" + termIndex + "/_update/" + concept.getId() + "?retry_on_conflict=3"));
     assertEquals(
-        VectorDocBuilder.computeFingerprintForEntity(concept),
+        VectorDocBuilder.computeFingerprintForEntity(concept, releaseBody),
         update.path("doc").path("fingerprint").asText());
   }
 
