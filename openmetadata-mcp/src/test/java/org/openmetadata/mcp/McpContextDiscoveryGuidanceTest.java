@@ -34,6 +34,12 @@ class McpContextDiscoveryGuidanceTest {
   }
 
   @Test
+  void companyContextDistinguishesSearchFromLookupByName() {
+    assertThat(listedTools.get("company_context").path("description").asText())
+        .contains("searches Shared notes visible to the caller", "note the caller can view");
+  }
+
+  @Test
   void searchMetadataTellsAgentsHowToFindAnchoredMemories() {
     assertThat(listedTools.get("search_metadata").path("description").asText())
         .contains("entityType='contextMemory'", "primaryEntity.id", "fields='id'");

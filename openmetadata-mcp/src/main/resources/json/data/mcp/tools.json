@@ -9,17 +9,17 @@
         "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "Read Company Context knowledge pills - the question/answer notes extracted from files in the Context Center. Pass 'query' to find pills that answer a question, or 'fqn' to read one you already have the name of; exactly one of the two. Either way the scope is the same: file-extracted pills shared with the organization. Each result carries the pill's title, question, answer, summary and source file, so a search result is usually enough on its own and needs no follow-up read. 'query' needs vector embeddings configured on the server; 'fqn' does not.",
+      "description": "Read approved question-and-answer notes extracted from files in the Context Center. Pass exactly one of 'query' or 'fqn'. A query searches Shared notes visible to the caller and requires vector embeddings. A fully qualified name reads any approved file-extracted note the caller can view. Results include the title, question, answer, summary and source file when available.",
       "parameters": {
         "type": "object",
         "properties": {
           "query": {
             "type": "string",
-            "description": "Natural-language question to match pills against, e.g. 'how do we define an active customer'. Mutually exclusive with 'fqn'."
+            "description": "Question to match against visible Shared notes, e.g. 'how do we define an active customer'. Mutually exclusive with 'fqn'."
           },
           "fqn": {
             "type": "string",
-            "description": "Fully qualified name of a single pill, exactly as a previous result returned it. Mutually exclusive with 'query'."
+            "description": "Known fully qualified name of a note the caller can view. Mutually exclusive with 'query'."
           },
           "size": {
             "type": "integer",
