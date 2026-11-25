@@ -20,7 +20,7 @@ import requests
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
-from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.services.dashboardService import (
@@ -1258,3 +1258,50 @@ class TestSsrsOutageProtection:
         # yield_datamodel yields nothing and the listing stays healthy.
         assert results == []
         assert ssrs_source.datamodel_listing.has_failed is False
+
+    @staticmethod
+    def _truncated_reports():
+        yield MOCK_REPORTS[0]
+        raise SourceConnectionException("Failed to fetch SSRS reports at skip=100")
+
+    def test_report_listing_failure_skips_every_stale_delete(self, ssrs_source):
+        """A /Reports page failing mid-listing hides every later report, its chart and its data
+        models. The producer swallows the raise, so the seen-sets are partial and a stale delete
+        would soft-delete the hidden ones."""
+        ssrs_source.source_config.markDeletedDashboards = True
+        ssrs_source.source_config.markDeletedCharts = True
+        ssrs_source.source_config.markDeletedDataModels = True
+        ssrs_source.source_config.includeDataModels = True
+        ssrs_source.client = MagicMock()
+        ssrs_source.client.get_reports = MagicMock(side_effect=self._truncated_reports)
+
+        produced = list(ssrs_source._run_node_producer(SimpleNamespace(producer="get_dashboard")))
+
+        assert produced == [MOCK_REPORTS[0]]
+        assert any("skip=100" in failure.error for failure in ssrs_source.status.failures)
+        assert ssrs_source.dashboard_listing.has_failed
+        assert ssrs_source.datamodel_listing.has_failed
+
+        ssrs_source.metadata = MagicMock()
+        assert list(ssrs_source.mark_dashboards_as_deleted()) == []
+        assert list(ssrs_source.mark_charts_as_deleted()) == []
+        assert list(ssrs_source.mark_datamodels_as_deleted()) == []
+        ssrs_source.metadata.delete_stale_entities.assert_not_called()
+
+    def test_report_definition_failure_still_deletes_stale_dashboards_and_charts(self, ssrs_source):
+        """A failed report definition hides only data models: the report listing still confirmed
+        every dashboard and chart."""
+        ssrs_source.source_config.markDeletedDashboards = True
+        ssrs_source.source_config.markDeletedCharts = True
+        ssrs_source.source_config.markDeletedDataModels = True
+        ssrs_source.source_config.includeDataModels = True
+        self._wire_outage_client(ssrs_source)
+        list(ssrs_source.yield_datamodel(self._outage_report()))
+        ssrs_source.metadata = MagicMock()
+
+        list(ssrs_source.mark_dashboards_as_deleted())
+        list(ssrs_source.mark_charts_as_deleted())
+        assert list(ssrs_source.mark_datamodels_as_deleted()) == []
+
+        deleted = [call.kwargs["entity"] for call in ssrs_source.metadata.delete_stale_entities.call_args_list]
+        assert deleted == [Dashboard, Chart]

@@ -51,6 +51,7 @@ from metadata.generated.schema.type.basic import (
     SqlQuery,
 )
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.ingestion.api.delete import SourceListing
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.test_connections import SourceConnectionException
@@ -142,11 +143,18 @@ class SsrsSource(DashboardServiceSource):
         return super().prepare()
 
     def get_dashboards_list(self) -> Iterable[SsrsReport]:
-        for report in self.client.get_reports():
-            if report.hidden:
-                self.status.filter(report.name, "Hidden report")
-                continue
-            yield report
+        try:
+            for report in self.client.get_reports():
+                if report.hidden:
+                    self.status.filter(report.name, "Hidden report")
+                    continue
+                yield report
+        except SourceConnectionException:
+            # A page that failed mid-listing hides every report after it, along with their charts
+            # and data models. The producer records the failure.
+            self.dashboard_listing.mark_failed()
+            self.datamodel_listing.mark_failed()
+            raise
 
     def get_dashboard_name(self, dashboard: SsrsReport) -> str:
         return dashboard.name
@@ -161,13 +169,11 @@ class SsrsSource(DashboardServiceSource):
         O(1) across the ingestion run — the previous report's RDL is released
         the moment a new report is requested.
 
-        ``SourceConnectionException`` (raised when the report-definition endpoint is
-        unavailable) is caught by the ``yield_datamodel`` and
-        ``yield_dashboard_lineage_details`` stage processors, which mark the datamodel
-        listing as failed. The end-of-run mark-deleted post-process then skips deletion
-        for the service, so a transient SSRS outage does not soft-delete previously
-        ingested data models. ``ValueError`` from a malformed RDL is treated as a
-        per-report problem and skipped."""
+        ``SourceConnectionException`` (endpoint unavailable) is caught by the callers,
+        which mark the data model listing failed so the run deletes no stale data model.
+        ``ValueError`` from a malformed RDL is a per-report skip: that report's data models
+        are deleted as stale, see
+        ADR:2026-11-25-an-ssrs-run-that-could-not-read-every-report-deletes-nothing-stale."""
         if self._current_rdl and self._current_rdl[0] == dashboard.id:
             return self._current_rdl[1]
         self._current_rdl = None
@@ -553,23 +559,30 @@ class SsrsSource(DashboardServiceSource):
         if lineage is not None:
             yield lineage
 
-    def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
-        """Skip the staleness check when the datamodel listing failed this run.
+    def mark_dashboards_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        if not self._keep_stale(self.source_config.markDeletedDashboards, self.dashboard_listing, "dashboards"):
+            yield from super().mark_dashboards_as_deleted()
 
-        A transient SSRS outage on the report-definition endpoint leaves some report
-        RDLs un-fetched, so their data models are absent from the run's live-FQN set.
-        Without this guard the server would soft-delete those previously ingested data
-        models — exactly the outage data-drop this connector must prevent. Skipping
-        deletion preserves them until a later, fully successful run re-confirms them.
+    def mark_charts_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        # Charts are one per report, so the report listing is what confirms them.
+        if not self._keep_stale(self.source_config.markDeletedCharts, self.dashboard_listing, "charts"):
+            yield from super().mark_charts_as_deleted()
+
+    def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        if not self._keep_stale(self.source_config.markDeletedDataModels, self.datamodel_listing, "data models"):
+            yield from super().mark_datamodels_as_deleted()
+
+    @staticmethod
+    def _keep_stale(mark_deleted: bool | None, listing: SourceListing, entities: str) -> bool:
         """
-        if self.source_config.markDeletedDataModels and self.datamodel_listing.has_failed:
-            logger.warning(
-                "Skipping mark-deleted for data models: the datamodel listing failed "
-                "this run, so some data models were not confirmed. A staleness check "
-                "would risk soft-deleting previously ingested data models."
-            )
-            return
-        yield from super().mark_datamodels_as_deleted()
+        The seen-set of a partial run lacks entities that still exist, and the server deletes
+        whatever a non-empty seen-set leaves out, so a partial run deletes nothing.
+        See ADR:2026-11-25-an-ssrs-run-that-could-not-read-every-report-deletes-nothing-stale.
+        """
+        keep = bool(mark_deleted) and listing.has_failed
+        if keep:
+            logger.warning("Skipping the deletion of stale %s: this run could not read every SSRS report", entities)
+        return keep
 
     def close(self):
         self.client.close()
