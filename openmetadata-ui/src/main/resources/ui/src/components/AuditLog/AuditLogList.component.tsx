@@ -34,8 +34,8 @@ import {
 } from '../../utils/date-time/DateTimeUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { toOwnerRef } from '../../utils/Owner/ownerConversionUtils';
 import Fqn from '../../utils/Fqn';
+import { toOwnerRef } from '../../utils/Owner/ownerConversionUtils';
 import { getUserPath } from '../../utils/RouterUtils';
 import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
@@ -227,7 +227,10 @@ const TEXT_TONE_CLASSES: Record<ValueTone, string> = {
   after: 'tw:text-utility-success-700',
 };
 
-/** Long values such as descriptions are cut to three lines so one entry cannot fill the list. */
+/**
+ * Long values such as descriptions are cut to three lines so one entry cannot fill the list
+ * (ADR:2026-11-25-audit-log-rows-show-five-records-and-three-lines-of-a-change).
+ */
 const TextValue: FC<{ text: string; tone: ValueTone }> = ({ text, tone }) => (
   <span
     className={classNames(
