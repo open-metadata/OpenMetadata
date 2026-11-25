@@ -471,7 +471,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": []
+      "default": null
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",

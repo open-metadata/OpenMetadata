@@ -14,497 +14,332 @@ package org.openmetadata.sdk.fluent;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.Json;
-import jakarta.json.JsonPatch;
+import jakarta.json.JsonReader;
 import java.io.StringReader;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.SearchIndex;
+import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.wrappers.FluentMlModel;
 import org.openmetadata.sdk.fluent.wrappers.FluentPipeline;
 import org.openmetadata.sdk.fluent.wrappers.FluentSearchIndex;
 import org.openmetadata.sdk.fluent.wrappers.FluentTable;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.sdk.services.EntityServiceBase;
+import org.openmetadata.sdk.services.dataassets.DashboardService;
 import org.openmetadata.sdk.services.dataassets.MlModelService;
 import org.openmetadata.sdk.services.dataassets.PipelineService;
 import org.openmetadata.sdk.services.dataassets.SearchIndexService;
 import org.openmetadata.sdk.services.dataassets.TableService;
+import org.openmetadata.sdk.services.storages.SpreadsheetService;
 
-/**
- * Regression tests pinning the fix for the silent tag-data-loss bug in the fluent wrappers'
- * {@code addTag}/{@code addTags} + {@code save()} PATCH flow.
- *
- * <p>Background: every fluent wrapper mutates the locally-held entity and hands it to {@link
- * org.openmetadata.sdk.services.EntityServiceBase#update}, which diffs an in-memory snapshot
- * against the mutated entity and sends a JSON-Patch. When the entity schema's top-level {@code
- * tags} property declared {@code "default": null}, the generated POJO initialized {@code tags} to
- * {@code null}. After a normal {@code get()} with no {@code fields=tags}, the SDK's {@code
- * NON_NULL} serialization omitted {@code tags} from the snapshot, so adding one tag produced a
- * wholesale {@code {"op":"add","path":"/tags","value":[<only the new tag>]}}, which the server
- * applied as a <b>replacement</b> of the stored tag set — silently deleting every previously saved
- * tag while the call returned HTTP 200.
- *
- * <p>The fix sets {@code "default": []} on the top-level {@code tags} of {@code table.json}, {@code
- * pipeline.json}, {@code mlmodel.json} and {@code searchIndex.json} (mirroring commit {@code
- * 88c8fb48f3}, which already did this for the other entity schemas). The generated POJO now
- * initializes {@code tags} to an empty list, so the snapshot carries {@code "tags": []} and the
- * diff emits index-level {@code add /tags/N} ops that <b>insert</b> into the server's stored array
- * rather than replacing it.
- *
- * <p>Each test uses a real service subclass ({@link TableService}/{@link PipelineService}/{@link
- * MlModelService}/{@link SearchIndexService}) backed by a mocked {@link HttpClient} so it
- * exercises the actual {@code EntityServiceBase.update} snapshot+diff+PATCH path users hit, and
- * asserts on the wire PATCH body captured at the HTTP boundary. The captured patch is then
- * applied to a simulated server-stored entity (carrying its pre-existing tags) to prove no data
- * loss occurs end-to-end.
- */
 class FluentAddTagPatchRegressionTest {
+  private static final String EXISTING_TAG = "PII.Existing";
+  private static final String NEW_TAG = "PII.Sensitive";
+  private static final String TIER_TAG = "Tier.Gold";
+  private static final String TABLES = "/v1/tables";
+  private static final String PIPELINES = "/v1/pipelines";
+  private static final String ML_MODELS = "/v1/mlmodels";
+  private static final String SEARCH_INDEXES = "/v1/searchIndexes";
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  private static final String EXISTING_TAG_FQN = "PII.Existing";
-  private static final String NEW_TAG_FQN = "PII.Sensitive";
-
-  /** NON_NULL mapper, matching {@link org.openmetadata.sdk.services.EntityServiceBase}. */
-  private static final ObjectMapper NON_NULL_MAPPER =
-      new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
-
-  @Mock private OpenMetadataClient mockClient;
+  private final UUID id = UUID.randomUUID();
+  private final HttpClient http = mock(HttpClient.class);
+  private final OpenMetadataClient client = mock(OpenMetadataClient.class);
 
   @BeforeEach
-  void setUp() {
-    MockitoAnnotations.openMocks(this);
+  void configureServices() {
+    when(client.tables()).thenReturn(new TableService(http));
+    when(client.pipelines()).thenReturn(new PipelineService(http));
+    when(client.mlModels()).thenReturn(new MlModelService(http));
+    when(client.searchIndexes()).thenReturn(new SearchIndexService(http));
   }
 
-  /**
-   * The fix starts in the generated POJO: the {@code tags} field of each affected entity must
-   * initialize to an empty list (not {@code null}) so the NON_NULL snapshot always carries {@code
-   * "tags": []}. If any of these regress to {@code null}, the wholesale-replace bug returns.
-   */
   @Test
-  void pojoTagsFieldInitializesToEmptyListForAllAffectedEntities() {
-    assertTagsInitializedToEmpty(new Table(), "Table");
-    assertTagsInitializedToEmpty(new Pipeline(), "Pipeline");
-    assertTagsInitializedToEmpty(new MlModel(), "MlModel");
-    assertTagsInitializedToEmpty(new SearchIndex(), "SearchIndex");
+  void tableAddTagPreservesStoredTags() {
+    serveTaggedAsset(TABLES, Table.class);
+    Table fetched = client.tables().get(id);
+    assertTags(fetched);
+    Table saved = new FluentTable(fetched, client).addTag(NEW_TAG).save().get();
+    assertTags(saved, EXISTING_TAG, NEW_TAG);
   }
 
-  private static void assertTagsInitializedToEmpty(Object entity, String entityName) {
-    @SuppressWarnings("unchecked")
-    List<TagLabel> tags = (List<TagLabel>) invokeGetter(entity, "getTags");
-    assertNotNull(tags, () -> entityName + ".tags must not be null (schema default must be [])");
-    assertTrue(tags.isEmpty(), () -> entityName + ".tags must initialize to an empty list");
+  @Test
+  void tableAddTagsPreservesBothAdditionsAndStoredTags() {
+    serveTaggedAsset(TABLES, Table.class);
+    Table saved =
+        new FluentTable(client.tables().get(id), client).addTags(NEW_TAG, TIER_TAG).save().get();
+    assertTags(saved, EXISTING_TAG, NEW_TAG, TIER_TAG);
   }
 
-  private static Object invokeGetter(Object entity, String getter) {
-    try {
-      return entity.getClass().getMethod(getter).invoke(entity);
-    } catch (ReflectiveOperationException e) {
-      throw new AssertionError("Unable to call " + getter + " on " + entity.getClass(), e);
+  @Test
+  void tableAddTagPreservesExplicitlyFetchedTags() {
+    serveTaggedAsset(TABLES, Table.class);
+    Table fetched = client.tables().get(id.toString(), "tags");
+    assertTags(fetched, EXISTING_TAG);
+    assertTags(
+        new FluentTable(fetched, client).addTag(NEW_TAG).save().get(), EXISTING_TAG, NEW_TAG);
+  }
+
+  @Test
+  void clearingFetchedTagsRemovesStoredTags() {
+    serveTaggedAsset(TABLES, Table.class);
+    Table fetched = client.tables().get(id.toString(), "tags");
+    assertTags(fetched, EXISTING_TAG);
+    fetched.getTags().clear();
+    assertTags(client.tables().update(id, fetched));
+  }
+
+  @Test
+  void loadedTagsCanBeNarrowedWithoutACachedSnapshot() {
+    ObjectNode stored = serveTaggedAsset(TABLES, Table.class);
+    addStoredTag(stored, TIER_TAG);
+    Table fetched = client.tables().get(id.toString(), "tags");
+    fetched.getTags().removeIf(tag -> TIER_TAG.equals(tag.getTagFQN()));
+    assertTags(new TableService(http).update(id, fetched), EXISTING_TAG);
+  }
+
+  @Test
+  void reusingEntityAfterRemovalDoesNotDeleteTheNextTag() {
+    ObjectNode stored = serveTaggedAsset(TABLES, Table.class);
+    addStoredTag(stored, TIER_TAG);
+    Table fetched = client.tables().get(id.toString(), "tags");
+    fetched.getTags().removeIf(tag -> EXISTING_TAG.equals(tag.getTagFQN()));
+    assertTags(client.tables().update(id, fetched), TIER_TAG);
+    fetched.setDescription("updated");
+    assertTags(client.tables().update(id, fetched), TIER_TAG);
+  }
+
+  @Test
+  void copiedEntityCanStillClearFetchedOwners() {
+    ObjectNode stored = serveTaggedAsset(TABLES, Table.class);
+    stored
+        .putArray("owners")
+        .addObject()
+        .put("id", UUID.randomUUID().toString())
+        .put("type", "user");
+    Table original = client.tables().get(id.toString(), "tags,owners");
+    assertTags(
+        client.tables().list(new ListParams().setFields("tags")).getData().getFirst(),
+        EXISTING_TAG);
+    Table copy = MAPPER.convertValue(original, Table.class);
+    copy.setOwners(null);
+    client.tables().update(id, copy);
+    assertFalse(stored.hasNonNull("owners"));
+  }
+
+  @Test
+  void staleRemovalCannotDeleteADifferentTagAtTheSameIndex() {
+    ObjectNode stored = serveTaggedAsset(TABLES, Table.class);
+    addStoredTag(stored, TIER_TAG);
+    Table fetched = client.tables().get(id.toString(), "tags");
+    fetched.getTags().removeFirst();
+    stored.withArray("tags").remove(0);
+
+    assertThrows(OpenMetadataException.class, () -> client.tables().update(id, fetched));
+    assertTags(MAPPER.convertValue(stored, Table.class), TIER_TAG);
+  }
+
+  @Test
+  void omittingTagsFromAPartialUpdatePreservesStoredTags() {
+    serveTaggedAsset(TABLES, Table.class);
+    Table partial = client.tables().get(id);
+    partial.setTags(null);
+    partial.setDescription("updated");
+    assertTags(client.tables().update(id, partial), EXISTING_TAG);
+  }
+
+  @Test
+  void editingPartialCopyAfterFullFetchPreservesStoredTags() {
+    serveTaggedAsset(TABLES, Table.class);
+    Table partial = client.tables().get(id);
+    assertTags(client.tables().get(id.toString(), "tags"), EXISTING_TAG);
+    partial.setDescription("updated");
+    Table saved = client.tables().update(id, partial);
+    assertEquals("updated", saved.getDescription());
+    assertTags(saved, EXISTING_TAG);
+  }
+
+  @Test
+  void detachedTableDistinguishesUntouchedTagsFromAnExplicitClear() {
+    serveTaggedAsset(TABLES, Table.class);
+    Table detached = new Table().withId(id).withName("orders").withDescription("updated");
+    assertTags(client.tables().update(id, detached), EXISTING_TAG);
+    detached.setTags(List.of());
+    assertTags(client.tables().update(id, detached));
+  }
+
+  @Test
+  void partialTableRetainsStoredTagsAfterSnapshotEviction() {
+    serveTaggedAsset(TABLES, Table.class);
+    String prefix = TABLES + "/";
+    when(http.execute(eq(HttpMethod.GET), startsWith(prefix), isNull(), eq(Table.class)))
+        .thenAnswer(
+            invocation -> {
+              String path = invocation.getArgument(1);
+              return new Table()
+                  .withId(UUID.fromString(path.substring(prefix.length())))
+                  .withName("orders");
+            });
+    TableService tables = client.tables();
+    Table fetched = tables.get(id);
+    // The SDK retains at most 500 snapshots per service.
+    for (int index = 0; index < 501; index++) {
+      tables.get(UUID.randomUUID());
     }
+
+    fetched.setDescription("updated");
+    Table saved = tables.update(id, fetched);
+    assertEquals("updated", saved.getDescription());
+    assertTags(saved, EXISTING_TAG);
   }
 
-  // ==================== FluentTable.addTag (the primary bug) ====================
-
-  /**
-   * Reproduce the bug scenario end-to-end: fetch an existing table with no {@code fields=tags}
-   * (snapshot carries no tags), add a single tag via the fluent API, save() it, and verify the
-   * emitted PATCH is an index-level {@code add /tags/N} that, when applied to the server's stored
-   * entity (which still has its pre-existing tags), preserves those tags instead of wiping them.
-   */
   @Test
-  void fluentTableAddTag_emitsIndexLevelPatchAndPreservesStoredTags() throws Exception {
-    String tableId = UUID.randomUUID().toString();
-    Table fetchedFromServer = new Table().withId(UUID.fromString(tableId)).withName("orders");
+  void pipelineAddTagsPreservesStoredTags() {
+    serveTaggedAsset(PIPELINES, Pipeline.class);
+    assertTags(
+        new FluentPipeline(client.pipelines().get(id), client).addTags(NEW_TAG).save(),
+        EXISTING_TAG,
+        NEW_TAG);
+  }
+
+  @Test
+  void mlModelAddTagPreservesStoredTags() {
+    serveTaggedAsset(ML_MODELS, MlModel.class);
+    assertTags(
+        new FluentMlModel(client.mlModels().get(id), client).addTag(NEW_TAG).save(),
+        EXISTING_TAG,
+        NEW_TAG);
+  }
+
+  @Test
+  void searchIndexAddTagPreservesStoredTags() {
+    serveTaggedAsset(SEARCH_INDEXES, SearchIndex.class);
+    assertTags(
+        new FluentSearchIndex(client.searchIndexes().get(id), client).addTag(NEW_TAG).save(),
+        EXISTING_TAG,
+        NEW_TAG);
+  }
+
+  @Test
+  void descriptionEditsOnListResultsPreserveStoredTags() {
+    assertListEditPreservesTags(TABLES, Table.class, client.tables());
+    assertListEditPreservesTags(PIPELINES, Pipeline.class, client.pipelines());
+    assertListEditPreservesTags(ML_MODELS, MlModel.class, client.mlModels());
+    assertListEditPreservesTags(SEARCH_INDEXES, SearchIndex.class, client.searchIndexes());
+    assertListEditPreservesTags("/v1/dashboards", Dashboard.class, new DashboardService(http));
+  }
+
+  @Test
+  void directSpreadsheetUpdatePreservesUnrequestedTags() {
+    serveTaggedAsset("/v1/drives/spreadsheets", Spreadsheet.class);
+    SpreadsheetService spreadsheets = new SpreadsheetService(http);
+    Spreadsheet fetched = spreadsheets.get(id);
+    fetched.setTags(List.of(new TagLabel().withTagFQN(NEW_TAG)));
+    assertTags(spreadsheets.update(id, fetched), EXISTING_TAG, NEW_TAG);
+  }
+
+  @Test
+  void detachedTagAdditionsPreserveStoredTags() {
+    serveTaggedAsset(TABLES, Table.class);
+    Table detached =
+        new Table()
+            .withId(id)
+            .withName("orders")
+            .withTags(List.of(new TagLabel().withTagFQN(NEW_TAG)));
+    assertTags(client.tables().update(id, detached), EXISTING_TAG, NEW_TAG);
+  }
+
+  private <T extends EntityInterface<?>> void assertListEditPreservesTags(
+      String path, Class<T> type, EntityServiceBase<T> service) {
+    serveTaggedAsset(path, type);
+    T listed = service.list().getData().getFirst();
+    listed.setDescription("updated");
+    T saved = service.update(id, listed);
+    assertEquals("updated", saved.getDescription());
+    assertTags(saved, EXISTING_TAG);
+  }
+
+  private <T> ObjectNode serveTaggedAsset(String collection, Class<T> type) {
+    String path = collection + "/" + id;
+    ObjectNode partial = MAPPER.createObjectNode().put("id", id.toString()).put("name", "orders");
+    ObjectNode stored = partial.deepCopy();
+    addStoredTag(stored, EXISTING_TAG);
+
+    when(http.execute(HttpMethod.GET, path, null, type))
+        .thenAnswer(invocation -> MAPPER.treeToValue(partial, type));
+    when(http.execute(eq(HttpMethod.GET), eq(path), isNull(), eq(type), any(RequestOptions.class)))
+        .thenAnswer(
+            invocation -> {
+              RequestOptions options = invocation.getArgument(4);
+              List<String> fields =
+                  Arrays.asList(options.getQueryParams().getOrDefault("fields", "").split(","));
+              return MAPPER.treeToValue(
+                  fields.contains("tags") || fields.contains("*") ? stored : partial, type);
+            });
+    when(http.executeForString(eq(HttpMethod.GET), eq(collection), isNull(), any()))
+        .thenAnswer(
+            invocation -> {
+              RequestOptions options = invocation.getArgument(3);
+              ObjectNode item = partial.deepCopy();
+              if ("tags".equals(options.getQueryParams().get("fields"))) {
+                item.set("tags", stored.get("tags"));
+              }
+              ObjectNode page = MAPPER.createObjectNode();
+              page.putArray("data").add(item);
+              return page.toString();
+            });
+    when(http.execute(eq(HttpMethod.PATCH), eq(path), any(JsonNode.class), eq(type), isNull()))
+        .thenAnswer(
+            invocation -> {
+              JsonNode patch = invocation.getArgument(2);
+              try (JsonReader operations = Json.createReader(new StringReader(patch.toString()));
+                  JsonReader entity = Json.createReader(new StringReader(stored.toString()))) {
+                String patched =
+                    Json.createPatch(operations.readArray()).apply(entity.readObject()).toString();
+                stored.removeAll().setAll(MAPPER.readValue(patched, ObjectNode.class));
+                return MAPPER.treeToValue(stored, type);
+              }
+            });
+    return stored;
+  }
+
+  private static void addStoredTag(ObjectNode stored, String fqn) {
+    JsonNode tag =
+        MAPPER.valueToTree(
+            new TagLabel().withTagFQN(fqn).withSource(TagLabel.TagSource.CLASSIFICATION));
+    stored.withArray("tags").add(tag);
+  }
+
+  private static void assertTags(EntityInterface<?> entity, String... expected) {
     assertEquals(
-        new ArrayList<>(),
-        fetchedFromServer.getTags(),
-        "post-fix POJO default: tags starts as an empty list, not null");
-
-    HttpClient mockHttp = stubTableService();
-    when(mockHttp.execute(
-            eq(HttpMethod.GET), eq("/v1/tables/" + tableId), isNull(), eq(Table.class)))
-        .thenReturn(fetchedFromServer);
-    ArgumentCaptor<JsonNode> patchCaptor = ArgumentCaptor.forClass(JsonNode.class);
-    Table serverResponse =
-        new Table()
-            .withId(UUID.fromString(tableId))
-            .withName("orders")
-            .withTags(List.of(tagLabel(NEW_TAG_FQN)));
-    when(mockHttp.execute(
-            eq(HttpMethod.PATCH),
-            eq("/v1/tables/" + tableId),
-            patchCaptor.capture(),
-            eq(Table.class),
-            isNull()))
-        .thenReturn(serverResponse);
-
-    // Realistic user flow: get() populates the SDK snapshot, then addTag().save() PATCHes.
-    Table fetched = mockClient.tables().get(tableId);
-    new FluentTable(fetched, mockClient).addTag(NEW_TAG_FQN).save();
-
-    JsonNode patch = patchCaptor.getValue();
-    // The fix: the patch must insert at an index, not replace the whole array.
-    assertTrue(
-        hasAddOpWithPathPrefix(patch, "/tags/"),
-        () -> "expected an index-level add /tags/N op but patch was: " + patch);
-    assertFalse(
-        hasOp(patch, "add", "/tags"),
-        () ->
-            "wholesale add /tags op silently replaces stored tags (the bug); patch was: " + patch);
-    assertFalse(
-        hasOp(patch, "replace", "/tags"),
-        () -> "replace /tags op would also wipe stored tags; patch was: " + patch);
-
-    // End-to-end guarantee: applying the SDK's patch to the server's stored entity (which
-    // carries its pre-existing tags) must retain those tags — no silent data loss.
-    Table serverStored =
-        new Table()
-            .withId(UUID.fromString(tableId))
-            .withName("orders")
-            .withTags(List.of(tagLabel(EXISTING_TAG_FQN)));
-    List<String> resultingTagFqns = tagFqnsOf(applyPatch(patch, serverStored));
-    assertTrue(
-        resultingTagFqns.contains(NEW_TAG_FQN),
-        () -> "new tag must be present after PATCH; got " + resultingTagFqns);
-    assertTrue(
-        resultingTagFqns.contains(EXISTING_TAG_FQN),
-        () ->
-            "pre-existing stored tag must survive the fluent addTag().save() PATCH; got "
-                + resultingTagFqns);
-  }
-
-  /** Adding multiple tags must emit multiple index-level inserts, never a wholesale replace. */
-  @Test
-  void fluentTableAddTags_multiple_emitsIndexLevelInsertsNotWholesaleReplace() throws Exception {
-    String tableId = UUID.randomUUID().toString();
-    Table fetchedFromServer = new Table().withId(UUID.fromString(tableId)).withName("orders");
-
-    HttpClient mockHttp = stubTableService();
-    when(mockHttp.execute(
-            eq(HttpMethod.GET), eq("/v1/tables/" + tableId), isNull(), eq(Table.class)))
-        .thenReturn(fetchedFromServer);
-    ArgumentCaptor<JsonNode> patchCaptor = ArgumentCaptor.forClass(JsonNode.class);
-    when(mockHttp.execute(
-            eq(HttpMethod.PATCH),
-            eq("/v1/tables/" + tableId),
-            patchCaptor.capture(),
-            eq(Table.class),
-            isNull()))
-        .thenReturn(fetchedFromServer);
-
-    Table fetched = mockClient.tables().get(tableId);
-    new FluentTable(fetched, mockClient).addTags(NEW_TAG_FQN, "Tier.Gold").save();
-
-    JsonNode patch = patchCaptor.getValue();
-    long tagAddOps = patchOpsMatching(patch, "add", "/tags/").size();
-    assertTrue(
-        tagAddOps >= 2,
-        () -> "expected >=2 index-level add /tags/N ops for addTags(x2); patch was: " + patch);
-    assertFalse(
-        hasOp(patch, "add", "/tags"),
-        () -> "wholesale add /tags op would silently drop stored tags; patch was: " + patch);
-  }
-
-  /**
-   * Regression guard: when the entity IS fetched with {@code fields=tags}, the snapshot carries the
-   * existing tags and the diff must append the new tag — no deletion of stored tags either way.
-   */
-  @Test
-  void fluentTableAddTag_afterFetchingWithFieldsTags_appendsToExistingSnapshot() throws Exception {
-    String tableId = UUID.randomUUID().toString();
-    // Jackson deserializes JSON arrays into mutable ArrayLists; mirror that here so addTag() can
-    // append (List.of would be immutable and would throw UnsupportedOperationException).
-    Table fetchedWithTags =
-        new Table()
-            .withId(UUID.fromString(tableId))
-            .withName("orders")
-            .withTags(new ArrayList<>(List.of(tagLabel(EXISTING_TAG_FQN))));
-
-    HttpClient mockHttp = stubTableService();
-    // GET with fields=tags — snapshot records the stored tag list.
-    when(mockHttp.execute(
-            eq(HttpMethod.GET), eq("/v1/tables/" + tableId), isNull(), eq(Table.class), any()))
-        .thenReturn(fetchedWithTags);
-    ArgumentCaptor<JsonNode> patchCaptor = ArgumentCaptor.forClass(JsonNode.class);
-    when(mockHttp.execute(
-            eq(HttpMethod.PATCH),
-            eq("/v1/tables/" + tableId),
-            patchCaptor.capture(),
-            eq(Table.class),
-            isNull()))
-        .thenReturn(fetchedWithTags);
-
-    Table fetched = mockClient.tables().get(tableId, "tags");
-    new FluentTable(fetched, mockClient).addTag(NEW_TAG_FQN).save();
-
-    JsonNode patch = patchCaptor.getValue();
-    assertTrue(
-        hasAddOpWithPathPrefix(patch, "/tags/"),
-        () -> "expected an append add /tags/N op; patch was: " + patch);
-    assertFalse(
-        hasOp(patch, "remove", "/tags"),
-        () -> "must not remove the existing stored tag when appending; patch was: " + patch);
-    assertFalse(
-        hasRemoveOpWithPathPrefix(patch, "/tags/"),
-        () -> "must not remove any stored tag element when appending; patch was: " + patch);
-
-    // Applying the append to the stored entity must keep the existing tag AND add the new one.
-    Table serverStored =
-        new Table()
-            .withId(UUID.fromString(tableId))
-            .withName("orders")
-            .withTags(new ArrayList<>(List.of(tagLabel(EXISTING_TAG_FQN))));
-    List<String> resultingTagFqns = tagFqnsOf(applyPatch(patch, serverStored));
-    assertTrue(resultingTagFqns.contains(EXISTING_TAG_FQN));
-    assertTrue(resultingTagFqns.contains(NEW_TAG_FQN));
-    assertEquals(2, resultingTagFqns.size());
-  }
-
-  // ==================== FluentPipeline.addTags ====================
-
-  @Test
-  void fluentPipelineAddTags_emitsIndexLevelPatchNotWholesaleReplace() throws Exception {
-    String pipelineId = UUID.randomUUID().toString();
-    Pipeline fetchedFromServer =
-        new Pipeline().withId(UUID.fromString(pipelineId)).withName("ingest_orders");
-
-    HttpClient mockHttp = stubPipelineService();
-    when(mockHttp.execute(
-            eq(HttpMethod.GET), eq("/v1/pipelines/" + pipelineId), isNull(), eq(Pipeline.class)))
-        .thenReturn(fetchedFromServer);
-    ArgumentCaptor<JsonNode> patchCaptor = ArgumentCaptor.forClass(JsonNode.class);
-    when(mockHttp.execute(
-            eq(HttpMethod.PATCH),
-            eq("/v1/pipelines/" + pipelineId),
-            patchCaptor.capture(),
-            eq(Pipeline.class),
-            isNull()))
-        .thenReturn(fetchedFromServer);
-
-    Pipeline fetched = mockClient.pipelines().get(pipelineId);
-    new FluentPipeline(fetched, mockClient).addTags(NEW_TAG_FQN).save();
-
-    JsonNode patch = patchCaptor.getValue();
-    assertTrue(
-        hasAddOpWithPathPrefix(patch, "/tags/"),
-        () -> "expected index-level add /tags/N op; patch was: " + patch);
-    assertFalse(
-        hasOp(patch, "add", "/tags"),
-        () -> "wholesale add /tags op would drop stored pipeline tags; patch was: " + patch);
-
-    Pipeline serverStored =
-        new Pipeline()
-            .withId(UUID.fromString(pipelineId))
-            .withName("ingest_orders")
-            .withTags(List.of(tagLabel(EXISTING_TAG_FQN)));
-    List<String> resultingTagFqns = tagFqnsOf(applyPatch(patch, serverStored));
-    assertTrue(resultingTagFqns.contains(NEW_TAG_FQN));
-    assertTrue(
-        resultingTagFqns.contains(EXISTING_TAG_FQN),
-        () -> "pre-existing pipeline tag must survive; got " + resultingTagFqns);
-  }
-
-  // ==================== FluentMlModel.addTag ====================
-
-  @Test
-  void fluentMlModelAddTag_emitsIndexLevelPatchNotWholesaleReplace() throws Exception {
-    String modelId = UUID.randomUUID().toString();
-    MlModel fetchedFromServer = new MlModel().withId(UUID.fromString(modelId)).withName("scorer");
-
-    HttpClient mockHttp = stubMlModelService();
-    when(mockHttp.execute(
-            eq(HttpMethod.GET), eq("/v1/mlmodels/" + modelId), isNull(), eq(MlModel.class)))
-        .thenReturn(fetchedFromServer);
-    ArgumentCaptor<JsonNode> patchCaptor = ArgumentCaptor.forClass(JsonNode.class);
-    when(mockHttp.execute(
-            eq(HttpMethod.PATCH),
-            eq("/v1/mlmodels/" + modelId),
-            patchCaptor.capture(),
-            eq(MlModel.class),
-            isNull()))
-        .thenReturn(fetchedFromServer);
-
-    MlModel fetched = mockClient.mlModels().get(modelId);
-    new FluentMlModel(fetched, mockClient).addTag(NEW_TAG_FQN).save();
-
-    JsonNode patch = patchCaptor.getValue();
-    assertTrue(
-        hasAddOpWithPathPrefix(patch, "/tags/"),
-        () -> "expected index-level add /tags/N op; patch was: " + patch);
-    assertFalse(
-        hasOp(patch, "add", "/tags"),
-        () -> "wholesale add /tags op would drop stored mlmodel tags; patch was: " + patch);
-
-    MlModel serverStored =
-        new MlModel()
-            .withId(UUID.fromString(modelId))
-            .withName("scorer")
-            .withTags(List.of(tagLabel(EXISTING_TAG_FQN)));
-    List<String> resultingTagFqns = tagFqnsOf(applyPatch(patch, serverStored));
-    assertTrue(resultingTagFqns.contains(NEW_TAG_FQN));
-    assertTrue(
-        resultingTagFqns.contains(EXISTING_TAG_FQN),
-        () -> "pre-existing mlmodel tag must survive; got " + resultingTagFqns);
-  }
-
-  // ==================== FluentSearchIndex.addTag ====================
-
-  @Test
-  void fluentSearchIndexAddTag_emitsIndexLevelPatchNotWholesaleReplace() throws Exception {
-    String indexId = UUID.randomUUID().toString();
-    SearchIndex fetchedFromServer =
-        new SearchIndex().withId(UUID.fromString(indexId)).withName("orders_index");
-
-    HttpClient mockHttp = stubSearchIndexService();
-    when(mockHttp.execute(
-            eq(HttpMethod.GET),
-            eq("/v1/searchIndexes/" + indexId),
-            isNull(),
-            eq(SearchIndex.class)))
-        .thenReturn(fetchedFromServer);
-    ArgumentCaptor<JsonNode> patchCaptor = ArgumentCaptor.forClass(JsonNode.class);
-    when(mockHttp.execute(
-            eq(HttpMethod.PATCH),
-            eq("/v1/searchIndexes/" + indexId),
-            patchCaptor.capture(),
-            eq(SearchIndex.class),
-            isNull()))
-        .thenReturn(fetchedFromServer);
-
-    SearchIndex fetched = mockClient.searchIndexes().get(indexId);
-    new FluentSearchIndex(fetched, mockClient).addTag(NEW_TAG_FQN).save();
-
-    JsonNode patch = patchCaptor.getValue();
-    assertTrue(
-        hasAddOpWithPathPrefix(patch, "/tags/"),
-        () -> "expected index-level add /tags/N op; patch was: " + patch);
-    assertFalse(
-        hasOp(patch, "add", "/tags"),
-        () -> "wholesale add /tags op would drop stored searchIndex tags; patch was: " + patch);
-
-    SearchIndex serverStored =
-        new SearchIndex()
-            .withId(UUID.fromString(indexId))
-            .withName("orders_index")
-            .withTags(List.of(tagLabel(EXISTING_TAG_FQN)));
-    List<String> resultingTagFqns = tagFqnsOf(applyPatch(patch, serverStored));
-    assertTrue(resultingTagFqns.contains(NEW_TAG_FQN));
-    assertTrue(
-        resultingTagFqns.contains(EXISTING_TAG_FQN),
-        () -> "pre-existing searchIndex tag must survive; got " + resultingTagFqns);
-  }
-
-  // ==================== service wiring helpers (real service + mocked HTTP) ====================
-
-  /** Wires {@code mockClient.tables()} to a real {@link TableService} backed by a fresh mock HTTP. */
-  private HttpClient stubTableService() {
-    HttpClient mockHttp = mock(HttpClient.class);
-    when(mockClient.tables()).thenReturn(new TableService(mockHttp));
-    return mockHttp;
-  }
-
-  private HttpClient stubPipelineService() {
-    HttpClient mockHttp = mock(HttpClient.class);
-    when(mockClient.pipelines()).thenReturn(new PipelineService(mockHttp));
-    return mockHttp;
-  }
-
-  private HttpClient stubMlModelService() {
-    HttpClient mockHttp = mock(HttpClient.class);
-    when(mockClient.mlModels()).thenReturn(new MlModelService(mockHttp));
-    return mockHttp;
-  }
-
-  private HttpClient stubSearchIndexService() {
-    HttpClient mockHttp = mock(HttpClient.class);
-    when(mockClient.searchIndexes()).thenReturn(new SearchIndexService(mockHttp));
-    return mockHttp;
-  }
-
-  // ==================== patch op + apply helpers ====================
-
-  private static TagLabel tagLabel(String tagFQN) {
-    return new TagLabel().withTagFQN(tagFQN).withSource(TagLabel.TagSource.CLASSIFICATION);
-  }
-
-  private static boolean hasOp(JsonNode patch, String op, String path) {
-    if (patch == null || !patch.isArray()) {
-      return false;
-    }
-    for (JsonNode operation : patch) {
-      if (op.equals(operation.path("op").asText())
-          && path.equals(operation.path("path").asText())) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private static boolean hasAddOpWithPathPrefix(JsonNode patch, String pathPrefix) {
-    return !patchOpsMatching(patch, "add", pathPrefix).isEmpty();
-  }
-
-  private static boolean hasRemoveOpWithPathPrefix(JsonNode patch, String pathPrefix) {
-    return !patchOpsMatching(patch, "remove", pathPrefix).isEmpty();
-  }
-
-  private static List<JsonNode> patchOpsMatching(JsonNode patch, String op, String pathPrefix) {
-    List<JsonNode> matches = new ArrayList<>();
-    if (patch == null || !patch.isArray()) {
-      return matches;
-    }
-    for (JsonNode operation : patch) {
-      if (op.equals(operation.path("op").asText())
-          && operation.path("path").asText().startsWith(pathPrefix)) {
-        matches.add(operation);
-      }
-    }
-    return matches;
-  }
-
-  /**
-   * Applies the SDK's captured Jackson {@code JsonNode} patch to a simulated server-stored entity,
-   * mirroring how the server (jakarta.json / Parsson) would apply it.
-   */
-  private static JsonNode applyPatch(JsonNode patch, Object serverStoredEntity) throws Exception {
-    JsonPatch jsonPatch =
-        Json.createPatch(Json.createReader(new StringReader(patch.toString())).readArray());
-    String serverJson = NON_NULL_MAPPER.writeValueAsString(serverStoredEntity);
-    String patchedJson =
-        jsonPatch.apply(Json.createReader(new StringReader(serverJson)).readObject()).toString();
-    return NON_NULL_MAPPER.readTree(patchedJson);
-  }
-
-  private static List<String> tagFqnsOf(JsonNode entity) {
-    List<String> fqns = new ArrayList<>();
-    JsonNode tags = entity.path("tags");
-    if (tags.isArray()) {
-      for (JsonNode tag : tags) {
-        fqns.add(tag.path("tagFQN").asText());
-      }
-    }
-    return fqns;
+        Arrays.stream(expected).sorted().toList(),
+        entity.getTags().stream().map(TagLabel::getTagFQN).sorted().toList());
   }
 }
