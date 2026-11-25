@@ -124,6 +124,14 @@ describe('AuditLogList.utils', () => {
       ).toEqual({ type: 'text', text: 'Orders & returns Second line' });
     });
 
+    it.each([
+      ['map<string,int>'],
+      ['array<struct<a:int>>'],
+      ['a < b and c > d'],
+    ])('should keep non-HTML angle-bracket text "%s" as is', (raw) => {
+      expect(toChangeValue(raw)).toEqual({ type: 'text', text: raw });
+    });
+
     it('should treat a list of columns as records, not references', () => {
       expect(toChangeValue([{ name: 'id', dataType: 'INT' }])).toEqual({
         type: 'records',

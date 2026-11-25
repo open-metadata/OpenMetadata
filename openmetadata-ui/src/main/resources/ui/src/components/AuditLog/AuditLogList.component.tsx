@@ -283,7 +283,7 @@ const RecordList: FC<{ value: RecordsValue }> = ({ value }) => {
         </div>
       ))}
       {hiddenCount > 0 && (
-        <Typography className="tw:text-tertiary" size="text-xs">
+        <Typography color="secondary" size="text-xs">
           {t('label.plus-count-more', { count: hiddenCount })}
         </Typography>
       )}
@@ -352,7 +352,7 @@ const AuditLogItemHeader: FC<{
           {t('label.bot')}
         </Badge>
       )}
-      <Typography className="tw:text-quaternary">–</Typography>
+      <Typography color="quaternary">–</Typography>
       {log.eventType && (
         <Badge
           color={EVENT_TYPE_COLORS[log.eventType] ?? 'gray'}
@@ -364,7 +364,7 @@ const AuditLogItemHeader: FC<{
       )}
       {log.impersonatedBy && (
         <Typography
-          className="tw:text-tertiary"
+          color="secondary"
           data-testid="impersonated-by"
           size="text-sm">
           {t('label.impersonated-by-with-colon')}{' '}
@@ -400,7 +400,8 @@ const AuditLogItemEntity: FC<{
     )}
     {entityFQN && entityFQN !== entityLabel && (
       <Typography
-        className="tw:break-all tw:text-tertiary"
+        className="tw:break-all"
+        color="secondary"
         data-testid="affected-entity-fqn"
         size="text-xs">
         ({entityFQN})
@@ -429,7 +430,7 @@ const AuditLogItemLineage: FC<{ edge: LineageEdge }> = ({ edge }) => (
     gap={2}
     wrap="wrap">
     <EntityRefLink entityRef={edge.from} />
-    <Typography className="tw:text-tertiary">→</Typography>
+    <Typography color="secondary">→</Typography>
     <EntityRefLink entityRef={edge.to} />
   </Box>
 );
@@ -446,7 +447,7 @@ const AuditLogItemMeta: FC<{ entityType?: string; timestamp?: number }> = ({
     wrap="wrap">
     {entityType && (
       <Typography
-        className="tw:text-secondary"
+        color="secondary"
         data-testid="entity-type-badge"
         size="text-xs">
         {startCase(entityType)}
@@ -459,10 +460,7 @@ const AuditLogItemMeta: FC<{ entityType?: string; timestamp?: number }> = ({
       />
     )}
     {timestamp && (
-      <Typography
-        className="tw:text-tertiary"
-        data-testid="timestamp"
-        size="text-xs">
+      <Typography color="secondary" data-testid="timestamp" size="text-xs">
         <time dateTime={new Date(timestamp).toISOString()}>
           {formatDateTime(timestamp)}
         </time>

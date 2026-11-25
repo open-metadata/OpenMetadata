@@ -224,8 +224,16 @@ const toChangeRef = (object: Record<string, unknown>): ChangeRef => {
 // Closing block tags become spaces so `<p>a</p><p>b</p>` reads "a b", not "ab".
 const BLOCK_END_PATTERN = /<\/(p|div|li|h[1-6])>|<br\s*\/?>/gi;
 
-/** Plain text of an HTML/markdown value, with entities such as `&amp;` decoded. */
+// Only rich-text markup or an entity marks a value as HTML; a type such as `map<string,int>`
+// would otherwise be parsed as an element and vanish from the audit log.
+const HTML_MARKUP_PATTERN =
+  /<\/?(p|div|span|br|li|ul|ol|h[1-6]|strong|em|b|i|u|s|a|code|pre|blockquote|table|tr|td|th)(\s[^>]*)?\/?>|&(#\d+|#x[\da-f]+|[a-z]+);/i;
+
+/** Plain text of an HTML value, with entities such as `&amp;` decoded; other text is kept as is. */
 const toPlainText = (value: string): string => {
+  if (!HTML_MARKUP_PATTERN.test(value)) {
+    return value;
+  }
   const html = value.replace(BLOCK_END_PATTERN, ' ');
   const text = new DOMParser().parseFromString(html, 'text/html').body
     .textContent;
