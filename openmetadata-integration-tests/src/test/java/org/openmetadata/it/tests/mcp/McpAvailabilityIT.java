@@ -32,6 +32,7 @@ class McpAvailabilityIT extends McpTestBase {
   private static final String CONFIG_PATH = "system/mcp/config";
   private static final String SETTINGS_PATH = "system/settings";
   private static final String WRITE_TOOL = "patch_entity";
+  private static final String READ_TOOL = "search_metadata";
   private static final String PROTECTED_RESOURCE = "/.well-known/oauth-protected-resource";
   private static final List<String> GET_ROUTES =
       List.of(
@@ -100,7 +101,9 @@ class McpAvailabilityIT extends McpTestBase {
           JsonNode.class);
       await()
           .atMost(SWITCH_TIMEOUT)
-          .untilAsserted(() -> assertThat(toolNames()).doesNotContain(WRITE_TOOL));
+          // The read tool proves tools/list answered, so a failed call cannot pass as "hidden".
+          .untilAsserted(
+              () -> assertThat(toolNames()).contains(READ_TOOL).doesNotContain(WRITE_TOOL));
     } finally {
       put(CONFIG_PATH, stored, JsonNode.class);
     }
