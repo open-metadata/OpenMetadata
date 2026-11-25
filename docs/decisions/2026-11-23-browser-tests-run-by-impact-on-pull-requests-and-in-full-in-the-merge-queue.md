@@ -1,7 +1,7 @@
 # Browser tests run by impact on pull requests and in full in the merge queue
 
 - **Status:** Proposed
-- **Revisions:** v1 2026-11-23 (initial); v2 2026-11-25 (the merge queue selects too; the only full run is on main every 6 hours or by hand, and it writes the map. The slug predates this)
+- **Revisions:** v1 2026-11-23 (initial); v2 2026-11-25 (the merge queue selects too; the only full run is on main every 6 hours or by hand, a selected run refreshes the map for the tests it ran; a scheduled run with no UI change is skipped. The slug predates this)
 - **Deciders:** Chirag Madlani
 - **Guard:** `scripts/select-browser-tests.test.mjs` (selection rules); `ui-browser-tests.yml` (pull requests and
   merge-queue entries select; the run on main every 6 hours, or by hand, runs every test file)
@@ -15,10 +15,11 @@ into one cycle, so almost every file reaches almost every test.
 
 ## Decision
 - A pull request, and a merge-queue entry, runs only the test files that executed the code it changes. A
-  full run records, per test file, the source files it executed (coverage counters, `src/test/browser/impact.ts`). A fully passing
-  full run publishes that map as an artifact; it is never committed. Pull requests and queue entries download the newest
-  one from the scheduled or manual run on main, or a pull request that ran everything, counting only runs
-  from this repository's own branches: a fork's map comes from unreviewed code and could hide tests.
+  full run records, per test file, the source files it executed (coverage counters, `src/test/browser/impact.ts`). Every passing run
+  publishes the map as an artifact; it is never committed. A full run writes it afresh, and a selected run
+  replaces the entries of the tests it ran in the map it selected from, so the map stays current between
+  full runs. Pull requests and queue entries download the newest one, counting only runs from this
+  repository's own branches: a fork's map comes from unreviewed code and could hide tests.
 - Selection also follows the test helpers a test imports, the direct imports of executed files, changed
   screenshot baselines, and changed `en-us.json` keys. A deleted source file still selects the tests that
   loaded it.
@@ -28,8 +29,9 @@ into one cycle, so almost every file reaches almost every test.
   build, not the browser tests.
 - Only main runs every test file: every 6 hours, and on demand (`workflow_dispatch`). That run keeps the
   map fresh and surfaces a selection miss, or a core change that breaks the app, within hours of the merge.
-  The merge queue selects like a pull request rather than running everything, and a run per push to main
-  was rejected as too costly for the UI merge rate.
+  A scheduled run is skipped when no UI file changed since the last passing full run. The merge queue
+  selects like a pull request rather than running everything, and a run per push to main was rejected as
+  too costly for the UI merge rate.
 - If selection itself fails, the reporting check fails rather than being skipped, since a skipped required
   check would pass with no tests run.
 - Shards: at most 5 runners, 26 test files per runner when only some run (the full suite of about 130

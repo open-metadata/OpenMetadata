@@ -17,7 +17,7 @@
  *   node scripts/select-browser-tests.mjs --map impact-map.json --base <sha> [--out selection.json]
  *
  * The impact map ({ testFile: [source files it executed] }) comes from the
- * latest passing full run with BROWSER_IMPACT_DIR set (src/test/browser/impact.ts). The static
+ * latest passing CI run with BROWSER_IMPACT_DIR set (src/test/browser/impact.ts). The static
  * import graph is too entangled to select from on its own (lazy imports tie
  * ~1,000 modules into one cycle), so it is used only
  * for what coverage cannot see: test helpers, the direct imports of executed

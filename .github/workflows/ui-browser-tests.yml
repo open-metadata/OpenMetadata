@@ -76,11 +76,25 @@ jobs:
         id: changes
         env:
           BASE: ${{ github.event.merge_group.base_sha || 'HEAD^1' }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [ "${{ github.event_name }}" = "merge_group" ]; then
             git fetch --no-tags --depth=1 origin "$BASE"
           fi
-          changed=$(git diff --name-only "$BASE" HEAD)
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            # A scheduled run compares against the last passing scheduled or
+            # manual run, and is skipped when no UI file changed since.
+            last=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ui-browser-tests.yml/runs?branch=main&status=success&per_page=30" \
+              --jq '[.workflow_runs[] | select(.event == "schedule" or .event == "workflow_dispatch")][0].head_sha // empty')
+            # Comparing the two trees needs only the two commits, not the history between.
+            if [ -n "$last" ] && git fetch --no-tags --depth=1 origin "$last"; then
+              changed=$(git diff --name-only "$last" HEAD)
+            else
+              changed="$UI_DIR/"
+            fi
+          else
+            changed=$(git diff --name-only "$BASE" HEAD)
+          fi
           ui=false
           for prefix in $UI_PATHS; do
             if grep -q "^$prefix" <<< "$changed"; then ui=true; fi
@@ -131,6 +145,8 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "merge_group" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
             echo '{"mode": "none", "reason": "no UI change in this merge-queue entry", "tests": [], "uncovered": []}' > selection.json
+          elif [ "${{ github.event_name }}" = "schedule" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
+            echo '{"mode": "none", "reason": "no UI change since the last full run", "tests": [], "uncovered": []}' > selection.json
           elif [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "merge_group" ]; then
             # HEAD^1 is the base of a pull request's merge commit, and the
             # previous entry (or main) for a merge-queue entry.
@@ -154,10 +170,13 @@ jobs:
             echo "shard-count=$shard_count"
             echo "shards=$(jq -cn --argjson n "$shard_count" '[range(1; $n + 1)]')"
           } >> "$GITHUB_OUTPUT"
+      # The map rides along: a passing selected run updates it for the tests it ran.
       - uses: actions/upload-artifact@v7
         with:
           name: browser-selection
-          path: ${{ env.UI_DIR }}/selection.json
+          path: |
+            ${{ env.UI_DIR }}/selection.json
+            ${{ env.UI_DIR }}/impact-map.json
           retention-days: 1
       # When nothing runs, the report job is skipped; leave a comment saying
       # why, so an earlier push's results are not left standing.
@@ -247,9 +266,9 @@ jobs:
         working-directory: ${{ env.UI_DIR }}
         continue-on-error: true
         env:
-          # Every full run records what each test file executes; a passing
-          # one becomes the impact map pull requests select from.
-          BROWSER_IMPACT_DIR: ${{ needs.select.outputs.mode == 'all' && format('{0}/{1}/.impact', github.workspace, env.UI_DIR) || '' }}
+          # Every run records what each test file executes; a passing one
+          # writes (full run) or updates (selected run) the impact map.
+          BROWSER_IMPACT_DIR: ${{ github.workspace }}/${{ env.UI_DIR }}/.impact
         # The blob report carries this shard's results and coverage for the
         # merge in browser-tests-report.
         run: |
@@ -267,7 +286,7 @@ jobs:
           include-hidden-files: true
           retention-days: 1
       - uses: actions/upload-artifact@v7
-        if: always() && needs.select.outputs.mode == 'all'
+        if: always()
         with:
           name: browser-impact-${{ matrix.shard }}
           path: ${{ env.UI_DIR }}/.impact/*.jsonl
@@ -289,8 +308,8 @@ jobs:
 
   # Merges the shards into one result. A pull request gets one report (posted
   # as a comment by ui-browser-tests-comment.yml): what ran and why, the
-  # result, and the changed code the tests executed. A full run publishes the
-  # impact map.
+  # result, and the changed code the tests executed. A passing run publishes
+  # the impact map.
   browser-tests-report:
     name: browser tests + coverage
     needs: [select, browser-tests]
@@ -351,21 +370,33 @@ jobs:
           path: ${{ runner.temp }}/browser-tests-comment/
           retention-days: 3
       - uses: actions/download-artifact@v7
-        if: needs.select.outputs.mode == 'all'
         with:
           # One folder per shard: each names its file after its process id,
           # which can repeat across runners.
           pattern: browser-impact-*
           path: impact
-      # Only a fully passing run is trusted as the map: a failed test may have
-      # stopped before reaching the code it covers.
+      # Only a passing run is trusted: a failed test may have stopped before
+      # reaching the code it covers. A full run writes the map afresh; a
+      # selected run replaces the entries of the tests it ran in the map it
+      # selected from, so the map stays current between full runs.
       - name: Build the impact map
-        if: needs.select.outputs.mode == 'all' && needs.browser-tests.result == 'success'
+        id: map
+        if: needs.browser-tests.result == 'success'
+        # A map that cannot be built leaves the previous one; it never fails the check.
+        continue-on-error: true
+        env:
+          MODE: ${{ needs.select.outputs.mode }}
         run: |
-          cat impact/*/*.jsonl | jq -s 'map({(.test): .used}) | add' > "$UI_DIR/impact-map.json"
-          echo "Impact map: $(jq length "$UI_DIR/impact-map.json") test files" >> "$GITHUB_STEP_SUMMARY"
+          cat impact/*/*.jsonl | jq -s 'map({(.test): .used}) | add // {}' > "$RUNNER_TEMP/fresh.json"
+          if [ "$MODE" = "selected" ] && [ -f "$UI_DIR/impact-map.json" ]; then
+            jq -s '.[0] * .[1]' "$UI_DIR/impact-map.json" "$RUNNER_TEMP/fresh.json" > "$RUNNER_TEMP/map.json"
+          else
+            cp "$RUNNER_TEMP/fresh.json" "$RUNNER_TEMP/map.json"
+          fi
+          mv "$RUNNER_TEMP/map.json" "$UI_DIR/impact-map.json"
+          echo "Impact map: $(jq length "$UI_DIR/impact-map.json") test files, $(jq length "$RUNNER_TEMP/fresh.json") from this run" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v7
-        if: needs.select.outputs.mode == 'all' && needs.browser-tests.result == 'success'
+        if: steps.map.outcome == 'success'
         with:
           name: browser-impact-map
           path: ${{ env.UI_DIR }}/impact-map.json
