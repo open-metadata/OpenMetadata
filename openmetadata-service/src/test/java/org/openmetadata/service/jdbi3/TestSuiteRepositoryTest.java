@@ -112,12 +112,9 @@ class TestSuiteRepositoryTest {
     final List<ResultSummary> historicResults =
         List.of(
             new ResultSummary().withTestCaseName(liveFqn).withStatus(TestCaseStatus.Success),
-            new ResultSummary()
-                .withTestCaseName(softDeletedFqn)
-                .withStatus(TestCaseStatus.Failed));
+            new ResultSummary().withTestCaseName(softDeletedFqn).withStatus(TestCaseStatus.Failed));
     final TestCaseRepository testCases = mock(TestCaseRepository.class);
-    when(testCases.findByNames(anyList(), eq(Include.NON_DELETED)))
-        .thenReturn(List.of(live));
+    when(testCases.findByNames(anyList(), eq(Include.NON_DELETED))).thenReturn(List.of(live));
 
     try (final MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(TEST_CASE)).thenReturn(testCases);
