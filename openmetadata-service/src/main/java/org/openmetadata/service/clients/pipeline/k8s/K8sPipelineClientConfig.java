@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.openapi.models.V1LocalObjectReference;
+import io.kubernetes.client.openapi.models.V1SeccompProfile;
 import io.kubernetes.client.openapi.models.V1Toleration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 
 @Slf4j
@@ -52,6 +54,7 @@ public class K8sPipelineClientConfig {
   private static final String RUN_AS_GROUP_KEY = "runAsGroup";
   private static final String FS_GROUP_KEY = "fsGroup";
   private static final String RUN_AS_NON_ROOT_KEY = "runAsNonRoot";
+  private static final String SECCOMP_KEY = "seccomp";
   private static final String EXTRA_ENV_VARS_KEY = "extraEnvVars";
   private static final String POD_ANNOTATIONS_KEY = "podAnnotations";
   private static final String POD_LABELS_KEY = "podLabels";
@@ -84,6 +87,7 @@ public class K8sPipelineClientConfig {
   private final Long runAsGroup;
   private final Long fsGroup;
   private final boolean runAsNonRoot;
+  private final V1SeccompProfile seccomp;
 
   // Extra configuration
   private final Map<String, String> extraEnvVars;
@@ -124,6 +128,7 @@ public class K8sPipelineClientConfig {
     this.runAsGroup = getLongParam(params, RUN_AS_GROUP_KEY, 1000L);
     this.fsGroup = getLongParam(params, FS_GROUP_KEY, 1000L);
     this.runAsNonRoot = Boolean.parseBoolean(getStringParam(params, RUN_AS_NON_ROOT_KEY, "true"));
+    this.seccomp = JsonUtils.convertValue(params.get(SECCOMP_KEY), V1SeccompProfile.class);
 
     // Extra configuration - parse as list like Argo does
     List<String> rawExtraEnvs = parseListSafely(params.get(EXTRA_ENV_VARS_KEY));
