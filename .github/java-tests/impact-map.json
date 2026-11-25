@@ -881,7 +881,8 @@
         "openmetadata-service/src/main/resources/json/data/dataQualityDimension/**",
         "openmetadata-spec/src/main/resources/json/schema/tests/**",
         "openmetadata-spec/src/main/resources/json/schema/api/tests/**",
-        "openmetadata-spec/src/main/resources/json/schema/api/data/createTableProfile.json"
+        "openmetadata-spec/src/main/resources/json/schema/api/data/createTableProfile.json",
+        "bootstrap/sql/migrations/native/2.1.1/**"
       ],
       "tests": [
         "*TestCase*IT",
