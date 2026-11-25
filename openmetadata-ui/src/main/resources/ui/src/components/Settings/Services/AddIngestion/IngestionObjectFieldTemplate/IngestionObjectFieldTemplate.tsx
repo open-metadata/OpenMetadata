@@ -23,6 +23,7 @@ import {
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
 import classNames from 'classnames';
+import { isEmpty } from 'lodash';
 import { FocusEvent, FunctionComponent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SERVICE_FILTER_PATTERN_FIELDS } from '../../../../../constants/ServiceConnection.constants';
@@ -221,8 +222,8 @@ const SectionFields = ({
     (p) => schemaProperties[p.name]?.type !== 'boolean'
   );
 
-  const orderedFieldGroups = nonBooleanProperties.reduce<FieldGroup[]>(
-    (groups, element) => {
+  const orderedFieldGroups = nonBooleanProperties
+    .reduce<FieldGroup[]>((groups, element) => {
       if (isWide(element.name, schemaProperties)) {
         groups.push({ property: element, type: 'wide' });
 
@@ -238,9 +239,12 @@ const SectionFields = ({
       }
 
       return groups;
-    },
-    []
-  );
+    }, [])
+    .map<FieldGroup>((group) =>
+      group.type === 'grid' && group.properties.length === 1
+        ? { property: group.properties[0], type: 'wide' }
+        : group
+    );
 
   const renderProperty = (
     element: ObjectFieldTemplatePropertyType,
@@ -286,14 +290,25 @@ const SectionFields = ({
 };
 
 const SectionCard = ({
+  hasErrors,
   isCompact,
   section,
 }: {
+  hasErrors: boolean;
   isCompact?: boolean;
   section: IngestionSectionConfig;
 }) => {
   const [open, setOpen] = useState(section.defaultOpen);
   const [active, setActive] = useState(false);
+  const [prevHasErrors, setPrevHasErrors] = useState(hasErrors);
+
+  if (hasErrors !== prevHasErrors) {
+    setPrevHasErrors(hasErrors);
+    if (hasErrors) {
+      setOpen(true);
+    }
+  }
+
   const showBody = !section.collapsible || open;
   const hasVisibleFields = section.properties.some((p) => !p.hidden);
 
@@ -328,18 +343,14 @@ const SectionCard = ({
         title={section.title}
         onToggle={() => setOpen((prev) => !prev)}
       />
-      {showBody ? (
-        <>
-          <Divider className="tw:my-3" />
-          <SectionFields
-            isCompact={isCompact}
-            properties={section.properties}
-            schemaProperties={section.schemaProperties}
-          />
-        </>
-      ) : (
-        <HiddenFields properties={section.properties.filter((p) => p.hidden)} />
-      )}
+      <div className={classNames(!showBody && 'tw:hidden')}>
+        <Divider className="tw:my-3" />
+        <SectionFields
+          isCompact={isCompact}
+          properties={section.properties}
+          schemaProperties={section.schemaProperties}
+        />
+      </div>
     </Card>
   );
 };
@@ -364,6 +375,7 @@ const getCompactAdvancedSection = (
 export const IngestionObjectFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
 > = ({
+  errorSchema,
   idSchema,
   onAddClick,
   properties,
@@ -509,6 +521,9 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
     <div className="tw:flex tw:flex-col tw:gap-3">
       {sections.map((section) => (
         <SectionCard
+          hasErrors={section.properties.some(
+            (p) => !isEmpty(errorSchema?.[p.name])
+          )}
           isCompact={compactAdvancedSection && section.key === 'advanced'}
           key={section.key}
           section={section}
