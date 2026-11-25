@@ -232,6 +232,27 @@ describe('searchAPI tests', () => {
     expect(config.params.fetch_source).toBe(true);
   });
 
+  it.each([
+    { timed_out: true },
+    { partial_results: true },
+    { _shards: { failed: 1 } },
+  ])(
+    'rejects incomplete NLQ results even with HTTP 200: %j',
+    async (diagnostic) => {
+      const mockGet = jest.fn().mockResolvedValue({
+        data: { ...mockTableSearchResponse, ...diagnostic },
+      });
+      jest.mock('./axiosClient', () => ({ get: mockGet }));
+      const {
+        nlqSearch,
+      }: typeof import('./searchAPI') = require('./searchAPI');
+
+      await expect(
+        nlqSearch({ query: 'orders', searchIndex: SearchIndex.TABLE })
+      ).rejects.toThrow();
+    }
+  );
+
   it('nlqSearch should forward query_filter', async () => {
     const mockGet = jest
       .fn()
