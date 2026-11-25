@@ -27,7 +27,7 @@ test.describe(
     let table: TableClass;
 
     test.beforeAll(async ({ browser }) => {
-      test.slow();
+      test.setTimeout(test.info().timeout * 3);
       const { apiContext, afterAction } = await performAdminLogin(browser);
       table = new TableClass();
 

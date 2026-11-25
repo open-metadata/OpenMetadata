@@ -129,7 +129,7 @@ const testTier = 'Tier1';
 test.describe('Right Panel Test Suite', () => {
   // Setup test data and page objects
   test.beforeAll(async ({ browser }) => {
-    test.slow(true); // 5 minutes
+    test.setTimeout(test.info().timeout * 3);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {
@@ -390,7 +390,7 @@ test.describe('Right Panel Test Suite', () => {
       };
 
       test.beforeAll(async ({ browser }) => {
-        test.slow(true);
+        test.setTimeout(test.info().timeout * 3);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
@@ -1473,7 +1473,7 @@ test.describe('Right Panel Test Suite', () => {
       };
 
       test.beforeAll(async ({ browser }) => {
-        test.slow(true);
+        test.setTimeout(test.info().timeout * 3);
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
           await Promise.all(
