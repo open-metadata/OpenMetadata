@@ -617,8 +617,9 @@ ensure_yarn() {
     local v
     v="$("$selected_yarn" --version 2>/dev/null)"
     case "$v" in
-      # A global Yarn 1.22 reports the Yarn 4 release that .yarnrc.yml pins, since it hands off to it.
-      1.*|4.*) ok "Yarn $v ($selected_yarn)" ; return 0 ;;
+      # Run from the repo root, any Yarn >= 1.22 reports the Yarn 4 release .yarnrc.yml pins; a 1.x
+      # answer means a Yarn too old to hand off.
+      4.*) ok "Yarn $v ($selected_yarn)" ; return 0 ;;
       *) warn "Yarn $v found; this repo needs Yarn >= 1.22 to start its pinned Yarn 4. Run: npm i -g yarn@1.22.22" ; return 1 ;;
     esac
   fi

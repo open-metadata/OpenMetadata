@@ -16,8 +16,8 @@ changes this; the only workaround was rewriting the lockfile in CI.
 
 ## Decision
 
-Every yarn project in this repository (`openmetadata-ui`, `openmetadata-ui-core-components`,
-`tooling/antd-codemods`) runs Yarn 4, configured once in the root `.yarnrc.yml`:
+Both yarn projects in this repository (`openmetadata-ui` and `openmetadata-ui-core-components`) run
+Yarn 4, configured once in the root `.yarnrc.yml`:
 
 - `yarnPath` names a release committed under `.yarn/releases/`. Any Yarn >= 1.22 on `PATH`,
   including the 1.22.18 frontend-maven-plugin installs and the one in `node:*` images, hands off
@@ -42,7 +42,10 @@ A `resolutions` key names its parent directly (`eslint-plugin-sonarjs/minimatch`
 Installs use Yarn 4 flags: `--immutable` replaces `--frozen-lockfile`, `--mode=skip-build`
 replaces `--ignore-scripts`, and `YARN_HTTP_TIMEOUT` / `YARN_GLOBAL_FOLDER` replace
 `--network-timeout` / `--cache-folder` (the global cache ignores `cacheFolder`), and
-`yarn --silent <script>` becomes `yarn <script>`. Yarn 4 rejects the old options as syntax errors.
+`yarn --silent <script>` becomes `yarn <script>`. Yarn 4 fails on `--ignore-scripts`, `--cache-folder`,
+`yarn --silent <script>` and `yarn cache dir`; it accepts `--frozen-lockfile` with a deprecation
+warning, and silently ignores `--network-timeout`, so a leftover one quietly drops to the default
+timeout.
 An install whose project directory is read-only (the sandboxed CI container) also sets
 `YARN_INSTALL_STATE_PATH` to a writable path, passed with `docker --env` like the others, because
 Yarn 4 writes `.yarn/install-state.gz` into the project.

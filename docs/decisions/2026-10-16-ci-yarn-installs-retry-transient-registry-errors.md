@@ -33,4 +33,4 @@ errors itself, at which point the loops can go.
 v2 2026-11-25: the UI moved to Yarn 4 (ADR:2026-10-29-ui-yarn-4-registry-from-config). Yarn 4
 retries each failed request itself (`httpRetry`), but a registry that stays down for longer than
 those retries still fails the install, so the job-level loops stay. `--network-timeout 100000`,
-which Yarn 4 rejects, becomes `YARN_HTTP_TIMEOUT=100000` on the same command.
+which Yarn 4 silently ignores, becomes `YARN_HTTP_TIMEOUT=100000` on the same command.

@@ -30,7 +30,9 @@ run_e2e_tests: ## Run e2e tests
 ## Yarn
 .PHONY: yarn_install_cache
 yarn_install_cache:  ## Use Yarn to install UI dependencies
-	cd openmetadata-ui/src/main/resources/ui && yarn install --immutable
+# Yarn 4 reruns the UI's preinstall/postinstall only when its dependency tree changes, never for
+# edits inside the linked core-components or the antlr grammars, so rebuild those outputs here.
+	cd openmetadata-ui/src/main/resources/ui && yarn install --immutable && yarn run preinstall && yarn run postinstall
 
 .PHONY: yarn_start_dev_ui
 yarn_start_dev_ui:  ## Run the UI locally with Yarn
