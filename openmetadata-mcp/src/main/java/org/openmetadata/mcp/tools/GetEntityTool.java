@@ -35,7 +35,6 @@ import org.openmetadata.service.aicontext.PromptText;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.lineage.LineagePermissionFilter;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -455,7 +454,8 @@ public class GetEntityTool implements McpTool {
    */
   private static List<String> passages(IncludeContext ctx, String query) {
     List<String> found =
-        OpenSearchVectorService.getInstance()
+        Entity.getSearchRepository()
+            .getVectorIndexService()
             .searchChunksByParent(
                 ctx.entity().getId().toString(),
                 query,
@@ -480,7 +480,7 @@ public class GetEntityTool implements McpTool {
 
   private static boolean vectorSearchEnabled() {
     return Entity.getSearchRepository().isVectorEmbeddingEnabled()
-        && OpenSearchVectorService.getInstance() != null;
+        && Entity.getSearchRepository().getVectorIndexService() != null;
   }
 
   /** Runs one include section, converting a failure into a note instead of losing the whole read. */

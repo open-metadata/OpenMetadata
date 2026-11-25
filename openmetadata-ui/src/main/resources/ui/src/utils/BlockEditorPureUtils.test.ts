@@ -817,6 +817,21 @@ describe('getHtmlStringFromMarkdownString: CommonMark lists', () => {
     ]);
   });
 
+  it.each(['https', 'http', 'ftp'])(
+    'autolinks %s URLs immediately after a colon',
+    (scheme) => {
+      const url = `${scheme}://example.com`;
+      const doc = new DOMParser().parseFromString(
+        getHtmlStringFromMarkdownString(`Docs:${url}`),
+        'text/html'
+      );
+
+      expect(doc.querySelector('a')?.getAttribute('href')).toBe(url);
+      expect(doc.querySelector('a')?.textContent).toBe(url);
+      expect(doc.body.textContent).toBe(`Docs:${url}`);
+    }
+  );
+
   it.each(['range ~10-~20 rows', '~5~ ms', 'PROGRA~1\\foo~2'])(
     'keeps single tildes literal in %s',
     (content) => {

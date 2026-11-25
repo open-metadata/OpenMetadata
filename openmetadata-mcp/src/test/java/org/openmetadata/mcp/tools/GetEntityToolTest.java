@@ -63,8 +63,8 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.PageBodyTextContributor;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -236,7 +236,8 @@ class GetEntityToolTest {
     SubjectContext alice = new SubjectContext(new User().withName("alice"), null, null);
     SearchRepository searchRepository = mock(SearchRepository.class);
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
-    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
     when(vectorService.searchChunksByParent(page.getId().toString(), "diagram", 3, alice))
         .thenReturn(
             List.of(
@@ -245,14 +246,12 @@ class GetEntityToolTest {
     Map<String, Object> result;
 
     try (MockedStatic<Entity> entities = mockStatic(Entity.class);
-        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class);
-        MockedStatic<OpenSearchVectorService> vectors = mockStatic(OpenSearchVectorService.class)) {
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
       entities
           .when(() -> Entity.getEntityByName(Entity.PAGE, fqn, "", Include.NON_DELETED))
           .thenReturn(page);
       entities.when(Entity::getSearchRepository).thenReturn(searchRepository);
       subjects.when(() -> DefaultAuthorizer.getSubjectContext(securityContext)).thenReturn(alice);
-      vectors.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
 
       result =
           new GetEntityTool()
@@ -305,20 +304,19 @@ class GetEntityToolTest {
     SubjectContext alice = new SubjectContext(new User().withName("alice"), null, null);
     SearchRepository searchRepository = mock(SearchRepository.class);
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
-    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
     when(vectorService.searchChunksByParent(page.getId().toString(), "diagram", 3, alice))
         .thenReturn(List.of("<img src=\"data:image/png;base64,BBBB\">"));
     Map<String, Object> result;
 
     try (MockedStatic<Entity> entities = mockStatic(Entity.class);
-        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class);
-        MockedStatic<OpenSearchVectorService> vectors = mockStatic(OpenSearchVectorService.class)) {
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
       entities
           .when(() -> Entity.getEntityByName(Entity.PAGE, fqn, "", Include.NON_DELETED))
           .thenReturn(page);
       entities.when(Entity::getSearchRepository).thenReturn(searchRepository);
       subjects.when(() -> DefaultAuthorizer.getSubjectContext(securityContext)).thenReturn(alice);
-      vectors.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
 
       result =
           new GetEntityTool()
@@ -358,20 +356,19 @@ class GetEntityToolTest {
     SubjectContext alice = new SubjectContext(new User().withName("alice"), null, null);
     SearchRepository searchRepository = mock(SearchRepository.class);
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
-    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
     when(vectorService.searchChunksByParent(metric.getId().toString(), "amount", 3, alice))
         .thenReturn(List.of(sql));
     Map<String, Object> result;
 
     try (MockedStatic<Entity> entities = mockStatic(Entity.class);
-        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class);
-        MockedStatic<OpenSearchVectorService> vectors = mockStatic(OpenSearchVectorService.class)) {
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
       entities
           .when(() -> Entity.getEntityByName(Entity.METRIC, fqn, "", Include.NON_DELETED))
           .thenReturn(metric);
       entities.when(Entity::getSearchRepository).thenReturn(searchRepository);
       subjects.when(() -> DefaultAuthorizer.getSubjectContext(securityContext)).thenReturn(alice);
-      vectors.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
 
       result =
           new GetEntityTool()
@@ -722,12 +719,12 @@ class GetEntityToolTest {
     when(authorizer.authorizePII(context, List.of())).thenReturn(authorized);
     SearchRepository repository = mock(SearchRepository.class);
     when(repository.isVectorEmbeddingEnabled()).thenReturn(true);
-    OpenSearchVectorService vector = mock(OpenSearchVectorService.class);
+    VectorIndexService vector = mock(VectorIndexService.class);
     when(vector.searchChunksByParent(anyString(), anyString(), anyInt(), any()))
         .thenReturn(List.of("Passage details"));
+    when(repository.getVectorIndexService()).thenReturn(vector);
     try (MockedStatic<Entity> entities = mockStatic(Entity.class);
-        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class);
-        MockedStatic<OpenSearchVectorService> vectors = mockStatic(OpenSearchVectorService.class)) {
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
       entities
           .when(() -> Entity.getEntityByName(eq(Entity.TEST_CASE), eq(fqn), anyString(), any()))
           .thenReturn(testCase);
@@ -741,7 +738,6 @@ class GetEntityToolTest {
       subjects
           .when(() -> DefaultAuthorizer.getSubjectContext(context))
           .thenReturn(new SubjectContext(new User().withName("alice"), null, null));
-      vectors.when(OpenSearchVectorService::getInstance).thenReturn(vector);
       Map<String, Object> result =
           new GetEntityTool()
               .execute(
@@ -819,15 +815,15 @@ class GetEntityToolTest {
     String fqn = "alices-private-note";
     ContextMemory memory = privateMemoryOwnedBy("alice", fqn);
     CatalogSecurityContext securityContext = securityContextFor("alice");
-    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    VectorIndexService vectorService = mock(VectorIndexService.class);
     SearchRepository searchRepository = mock(SearchRepository.class);
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
     when(vectorService.searchChunksByParent(memory.getId().toString(), "retention", 2, caller))
         .thenReturn(passages);
 
     try (MockedStatic<Entity> entities = mockStatic(Entity.class);
-        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class);
-        MockedStatic<OpenSearchVectorService> vectors = mockStatic(OpenSearchVectorService.class)) {
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
       entities
           .when(
               () ->
@@ -836,7 +832,6 @@ class GetEntityToolTest {
           .thenReturn(memory);
       entities.when(Entity::getSearchRepository).thenReturn(searchRepository);
       subjects.when(() -> DefaultAuthorizer.getSubjectContext(securityContext)).thenReturn(caller);
-      vectors.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
 
       return new GetEntityTool()
           .execute(
