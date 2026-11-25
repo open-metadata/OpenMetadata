@@ -138,7 +138,9 @@ ERR_FILE="${LOG_DIR}/${APP_NAME}.err"
 
 # classpath addition for release
 # Java reads an empty classpath entry as the working directory, so a separator only goes
-# between entries, never in front of the first one.
+# between entries, never in front of the first one. It starts empty because an inherited
+# CLASSPATH may carry '.' or empty entries.
+CLASSPATH=""
 for file in ${CATALOG_HOME}/libs/*.jar;
 do
     CLASSPATH="${CLASSPATH:+${CLASSPATH}:}${file}"

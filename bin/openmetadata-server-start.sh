@@ -38,7 +38,9 @@ fi
 
 # classpath addition for release
 # Java reads an empty classpath entry as the working directory, so a separator only goes
-# between entries, never in front of the first one.
+# between entries, never in front of the first one. It starts empty because an inherited
+# CLASSPATH may carry '.' or empty entries; EXT_CLASSPATH is the way to add entries.
+CLASSPATH=""
 for file in $base_dir/libs/*.jar;
 do
     CLASSPATH="${CLASSPATH:+${CLASSPATH}:}${file}"
