@@ -182,9 +182,9 @@ def test_nightly_gate_requires_every_dependency_to_succeed():
 
 
 def test_nightly_artifact_names_are_unique_across_invocations():
-    unit_steps = yaml.load(
-        (ROOT / ".github/actions/python-unit/action.yml").read_text(), Loader=yaml.BaseLoader
-    )["runs"]["steps"]
+    unit_steps = yaml.load((ROOT / ".github/actions/python-unit/action.yml").read_text(), Loader=yaml.BaseLoader)[
+        "runs"
+    ]["steps"]
     unit = {
         key: value
         for step in unit_steps
