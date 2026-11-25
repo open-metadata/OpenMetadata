@@ -54,6 +54,7 @@ class SystemRepositoryEmbeddingsValidationTest {
 
     when(searchRepository.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.OPENSEARCH);
+    when(searchRepository.usesHybridSearchPipeline()).thenReturn(true);
 
     systemRepository = new SystemRepository();
   }
@@ -142,7 +143,11 @@ class SystemRepositoryEmbeddingsValidationTest {
 
     assertFalse(result.getPassed());
     assertTrue(result.getMessage().contains("OpenSearch connection refused"));
-    assertTrue(result.getMessage().contains("OpenSearch vector service failed to start"));
+    assertTrue(
+        result
+            .getMessage()
+            .contains(
+                "The embedding client is configured but the vector service failed to start."));
   }
 
   @Test
@@ -171,14 +176,14 @@ class SystemRepositoryEmbeddingsValidationTest {
     when(embeddingClient.embed("OpenMetadata embedding validation test"))
         .thenReturn(new float[] {0.1f, 0.2f});
     when(embeddingClient.getDimension()).thenReturn(2);
-    // ES has no hybrid pipeline concept; checkHybridSearchPipeline returns empty for non-OS.
-    when(searchRepository.checkHybridSearchPipeline()).thenReturn(Optional.empty());
+    when(searchRepository.usesHybridSearchPipeline()).thenReturn(false);
 
     StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
 
-    assertTrue(
-        result.getPassed(),
-        "ES embeddings validation should pass when client + pipeline checks pass");
-    assertTrue(result.getMessage().contains("working correctly"));
+    assertTrue(result.getPassed(), "ES embeddings validation should pass when the client works");
+    assertTrue(result.getMessage().startsWith("Embeddings are working correctly."));
+    assertFalse(
+        result.getMessage().contains("pipeline"),
+        "an engine without the RRF pipeline must not claim one");
   }
 }
