@@ -457,7 +457,8 @@ test.describe(
         },
         200
       );
-      await page.goto(`/table/${getEncodedFqn(columnFqn)}`, {
+      // Straight on the tab: the label counts the feed once it is open.
+      await page.goto(`/table/${getEncodedFqn(columnFqn)}/activity_feed/all`, {
         waitUntil: 'domcontentloaded',
       });
 
@@ -465,6 +466,41 @@ test.describe(
         timeout: AI_SHELL_TIMEOUT,
       });
       await tableTaskCount;
+    });
+
+    // Most page views never open the tab, so the label reads no feed until then.
+    test("reads the table's feed only once its tab is opened", async ({
+      isolatedUserPage: page,
+      feed,
+    }) => {
+      await enableAiAppMode(page);
+      const feedReads: string[] = [];
+      page.on('request', (request) => {
+        const { pathname } = new URL(request.url());
+        if (pathname === '/api/v1/activity/about') {
+          feedReads.push(pathname);
+        }
+      });
+      await page.goto(tablePath(feed.table), {
+        waitUntil: 'domcontentloaded',
+      });
+      // The page's own count, from the request it already makes.
+      await expect(pageTabCount(page)).toHaveText(/^\d+$/, {
+        timeout: AI_SHELL_TIMEOUT,
+      });
+      await waitForAllLoadersToDisappear(page);
+
+      expect(feedReads).toHaveLength(0);
+
+      const activityRead = waitForResponseWithStatus(
+        page,
+        (r) => new URL(r.url()).pathname === '/api/v1/activity/about',
+        200
+      );
+      await page.getByTestId('activity_feed').click();
+      await activityRead;
+      await expect(feedRoot(page)).toBeVisible({ timeout: AI_SHELL_TIMEOUT });
+      await expectPageCountToMatchFeed(page);
     });
 
     test('another entity page shows the same tab', async ({
