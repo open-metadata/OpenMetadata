@@ -403,9 +403,9 @@ public final class AuditPackGenerator {
       String entityType, AuditReportScope scope, AuditReport report, List<AuditPackAsset> out) {
     try {
       ListFilter filter = new ListFilter(Include.NON_DELETED);
-      List<? extends EntityInterface> entities =
+      List<? extends EntityInterface<?>> entities =
           listAssets(entityType, filter, fieldsForScope(entityType, scope));
-      for (EntityInterface entity : entities) {
+      for (EntityInterface<?> entity : entities) {
         if (scope == AuditReportScope.Asset && report.getScopeTarget() != null) {
           if (!report.getScopeTarget().getId().equals(entity.getId())) {
             continue;
@@ -431,13 +431,13 @@ public final class AuditPackGenerator {
     }
   }
 
-  private static List<EntityInterface> listAssets(
+  private static List<EntityInterface<?>> listAssets(
       String entityType, ListFilter filter, EntityUtil.Fields fields) {
-    List<EntityInterface> result = new ArrayList<>();
-    EntityRepository<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
+    List<EntityInterface<?>> result = new ArrayList<>();
+    EntityRepository<? extends EntityInterface<?>> repo = Entity.getEntityRepository(entityType);
     String after = null;
     do {
-      ResultList<? extends EntityInterface> page =
+      ResultList<? extends EntityInterface<?>> page =
           repo.listAfter(null, fields, filter, PAGE_SIZE, after);
       result.addAll(page.getData());
       after = page.getPaging() == null ? null : page.getPaging().getAfter();
@@ -460,7 +460,7 @@ public final class AuditPackGenerator {
     return result;
   }
 
-  private static Object governanceMetadata(EntityInterface entity) {
+  private static Object governanceMetadata(EntityInterface<?> entity) {
     Object result = null;
     if (entity instanceof AIApplication app) {
       result = app.getGovernanceMetadata();

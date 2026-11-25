@@ -14,6 +14,7 @@
 import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { StatItemProps } from './StatItem.interface';
+import { getStatItemToneClassName } from './StatItem.utils';
 
 type StatItemLabelProps = Pick<
   StatItemProps,
@@ -57,12 +58,12 @@ export const StatItem = ({
   srLabel,
 }: StatItemProps) => {
   const isDisabled = disabled || loading;
+  // Button sets its children on a text line, so this inline box sits on the
+  // baseline with the line's descender space below it. That space sizes the
+  // header rows, so it stays; the translate only re-centres the icon and count.
   const labelClassName = classNames(
-    'tw:inline-flex tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:transition-colors',
-    isActive ? 'tw:text-brand-secondary' : 'tw:text-quaternary',
-    onClick && !isDisabled
-      ? 'tw:cursor-pointer tw:hover:text-secondary'
-      : 'tw:cursor-default'
+    'tw:inline-flex tw:translate-y-[2.5px] tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:transition-colors',
+    getStatItemToneClassName(Boolean(isActive), Boolean(onClick) && !isDisabled)
   );
 
   const label = (
@@ -80,7 +81,7 @@ export const StatItem = ({
     <Button
       aria-busy={loading || undefined}
       aria-label={srLabel ?? tooltip}
-      className="tw:rounded tw:p-0 tw:hover:bg-transparent"
+      className="tw:rounded tw:p-0 tw:hover:bg-transparent tw:*:data-text:flex"
       color="tertiary"
       data-active={isActive || undefined}
       data-testid={testId}

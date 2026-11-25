@@ -11,10 +11,8 @@ from collate_sqllineage.core.parser.sqlglot.analyzer import SqlGlotLineageAnalyz
 from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnalyzer
 from collate_sqllineage.runner import LineageRunner
 
+from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT
 from metadata.utils.timeout import timeout
-
-# max lineage parsing wait in second for each parser and graph comparisons
-LINEAGE_PARSING_TIMEOUT = 10
 
 PARSER_MAP = {
     "SqlGlot": SqlGlotLineageAnalyzer,

@@ -211,6 +211,7 @@ export interface Table {
      * Table Profiler Config to include or exclude columns from profiling.
      */
     tableProfilerConfig?: TableProfilerConfig;
+    tableSharding?:       TableSharding;
     tableType?:           TableType;
     /**
      * Tags for this table.
@@ -845,7 +846,8 @@ export interface ColumnProfile {
     /**
      * No.of Rows that contain duplicates in a column.
      */
-    duplicateCount?: number;
+    duplicateCount?:  number;
+    executionSource?: TableExecutionSource;
     /**
      * First quartile of a column.
      */
@@ -985,6 +987,16 @@ export interface CustomMetricProfile {
     value?: number;
 }
 
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
+}
+
 export interface HistogramClass {
     /**
      * Boundaries of Histogram.
@@ -1095,9 +1107,10 @@ export enum ModelType {
 /**
  * Status of the Table.
  *
- * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
- * property. Entity types without that property have no lifecycle. When a create request
- * omits the stage, the server assigns the entity type's initial stage.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -1317,7 +1330,8 @@ export interface TableProfile {
     /**
      * Custom Metrics profile list bound to a column.
      */
-    customMetrics?: CustomMetricProfile[];
+    customMetrics?:   CustomMetricProfile[];
+    executionSource?: TableExecutionSource;
     /**
      * Percentage of data or no. of rows we want to execute the profiler and tests on
      */
@@ -1354,7 +1368,8 @@ export interface TableData {
     /**
      * List of local column names (not fully qualified column names) of the table.
      */
-    columns?: string[];
+    columns?:         string[];
+    executionSource?: TableExecutionSource;
     /**
      * Data for multiple rows of the table.
      */
@@ -1379,11 +1394,11 @@ export enum DatabaseServiceType {
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
     Data360 = "Data360",
+    Databend = "Databend",
     Databricks = "Databricks",
     Datalake = "Datalake",
     Db2 = "Db2",
     Dbt = "Dbt",
-    DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
     Dremio = "Dremio",
@@ -1403,6 +1418,7 @@ export enum DatabaseServiceType {
     MongoDB = "MongoDB",
     Mssql = "Mssql",
     Mysql = "Mysql",
+    Neo4J = "Neo4j",
     Oracle = "Oracle",
     PinotDB = "PinotDB",
     Postgres = "Postgres",
@@ -1712,6 +1728,22 @@ export interface Partitioning {
 }
 
 /**
+ * Daily shard family metadata. Columns describe the representative.
+ */
+export interface TableSharding {
+    firstShardDate: Date;
+    lastShardDate:  Date;
+    prefix:         string;
+    representative: TableExecutionSource;
+    shardCount:     number;
+    suffixFormat:   SuffixFormat;
+}
+
+export enum SuffixFormat {
+    Yyyymmdd = "YYYYMMDD",
+}
+
+/**
  * This schema defines the type used for describing different types of tables.
  */
 export enum TableType {
@@ -1726,6 +1758,7 @@ export enum TableType {
     Regular = "Regular",
     SecureView = "SecureView",
     SemanticView = "SemanticView",
+    Sharded = "Sharded",
     Stage = "Stage",
     Stream = "Stream",
     Transient = "Transient",

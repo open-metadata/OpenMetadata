@@ -24,7 +24,7 @@ import {
 } from './AnnouncementsUtils';
 
 describe('Test isActiveAnnouncement utility', () => {
-  jest.useFakeTimers('modern').setSystemTime(new Date('2024-02-05'));
+  jest.useFakeTimers().setSystemTime(new Date('2024-02-05'));
 
   it('should return true for active announcement', () => {
     const result = isActiveAnnouncement(

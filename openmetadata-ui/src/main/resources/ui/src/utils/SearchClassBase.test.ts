@@ -27,8 +27,10 @@ import {
 } from '../constants/AdvancedSearch.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
+import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Chart } from '../generated/entity/data/chart';
+import { PageType } from '../interface/knowledge-center.interface';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { SearchClassBase } from './SearchClassBase';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
@@ -55,6 +57,19 @@ describe('SearchClassBase', () => {
 
   beforeEach(() => {
     searchClassBase = new SearchClassBase();
+  });
+
+  it('should map data contracts to their own search index both ways', () => {
+    expect(
+      searchClassBase.getEntityTypeSearchIndexMapping()[
+        EntityType.DATA_CONTRACT
+      ]
+    ).toBe(SearchIndex.DATA_CONTRACT);
+    expect(
+      searchClassBase.getSearchIndexEntityTypeMapping()[
+        SearchIndex.DATA_CONTRACT
+      ]
+    ).toBe(EntityType.DATA_CONTRACT);
   });
 
   it('should return the correct search index for each entity type', () => {
@@ -297,6 +312,22 @@ describe('SearchClassBase', () => {
     expect(result).toBe('/chart/test.chart');
   });
 
+  it.each([
+    ['https://example.com/holidays', 'https://example.com/holidays'],
+    ['javascript:alert(1)', ''],
+    ['data:text/html,<script>alert(1)</script>', ''],
+  ])('links a quick link page with url %s to %p', (url, expected) => {
+    const result = searchClassBase.getEntityLink({
+      fullyQualifiedName: 'quickLink',
+      entityType: EntityType.KNOWLEDGE_PAGE,
+      name: 'quickLink',
+      pageType: PageType.QUICK_LINK,
+      page: { url },
+    } as Parameters<typeof searchClassBase.getEntityLink>[0]);
+
+    expect(result).toBe(expected);
+  });
+
   it('should not call getTestSuiteDetailsPath if entity type is not TestSuite', () => {
     searchClassBase.getEntityLink({
       fullyQualifiedName: 'test.testSuite',
@@ -305,5 +336,33 @@ describe('SearchClassBase', () => {
     });
 
     expect(getTestSuiteDetailsPath).not.toHaveBeenCalled();
+  });
+
+  describe('getExploreTreeKey', () => {
+    it.each([
+      [ExplorePageTabs.TABLES, SearchIndex.DATABASE],
+      [ExplorePageTabs.COLUMNS, SearchIndex.DATABASE],
+      [ExplorePageTabs.DASHBOARDS, SearchIndex.DASHBOARD],
+      [ExplorePageTabs.DASHBOARD_DATA_MODEL, SearchIndex.DASHBOARD],
+      [ExplorePageTabs.CHARTS, SearchIndex.DASHBOARD],
+      [ExplorePageTabs.PIPELINES, SearchIndex.PIPELINE],
+      [ExplorePageTabs.TOPICS, SearchIndex.TOPIC],
+      [ExplorePageTabs.API_COLLECTION, SearchIndex.API_COLLECTION],
+      [ExplorePageTabs.API_ENDPOINT, SearchIndex.API_COLLECTION],
+      [ExplorePageTabs.DIRECTORIES, SearchIndex.DIRECTORY],
+      [ExplorePageTabs.FILES, SearchIndex.DIRECTORY],
+      [ExplorePageTabs.GLOSSARY, 'Governance'],
+      [ExplorePageTabs.TAG, 'Governance'],
+      [ExplorePageTabs.METRIC, 'Governance'],
+      [ExplorePageTabs.DATA_PRODUCT, 'Domain'],
+    ])('expands the root that holds the %s tab (%s)', (tab, rootKey) => {
+      expect(searchClassBase.getExploreTreeKey(tab)).toEqual([rootKey]);
+    });
+
+    it('falls back to Databases for a tab no root lists', () => {
+      expect(
+        searchClassBase.getExploreTreeKey('unknown' as ExplorePageTabs)
+      ).toEqual([SearchIndex.DATABASE]);
+    });
   });
 });

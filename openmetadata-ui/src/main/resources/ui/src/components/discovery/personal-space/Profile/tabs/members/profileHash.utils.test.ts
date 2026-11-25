@@ -11,14 +11,35 @@
  *  limitations under the License.
  */
 
+import {
+  hashSubPathToView,
+  profileSubPathToUserView,
+} from './membersRoute.utils';
 import { profileHash, toHashLocation } from './profileHash.utils';
 
 describe('profileHash', () => {
-  it('builds the profile tab target for a user, encoding the name', () => {
+  it('builds the members user-detail target for a user, encoding the name', () => {
     expect(profileHash.user('john.doe@acme.io')).toEqual({
-      tab: 'profile',
-      subPath: encodeURIComponent('john.doe@acme.io'),
+      tab: 'members',
+      subPath: `user/${encodeURIComponent('john.doe@acme.io')}`,
     });
+  });
+
+  it('round-trips a user named "create" to that user, not the create form', () => {
+    const { subPath } = profileHash.user('create');
+
+    expect(subPath).toBe('user/create');
+    expect(hashSubPathToView(subPath as string)).toEqual({
+      type: 'user-detail',
+      name: 'create',
+      tab: 'overview',
+    });
+
+    const fallback = profileHash.user('create', false);
+
+    expect(profileSubPathToUserView(fallback.subPath as string)?.name).toBe(
+      'create'
+    );
   });
 
   it('builds the access-control role detail target', () => {
@@ -52,5 +73,12 @@ describe('toHashLocation', () => {
 
   it('falls back to just the tab when there is no sub-path', () => {
     expect(toHashLocation({ tab: 'profile' })).toEqual({ hash: 'profile' });
+  });
+
+  it('sends a viewer who cannot browse users to the read-only profile', () => {
+    expect(profileHash.user('alice', false)).toEqual({
+      tab: 'profile',
+      subPath: 'alice',
+    });
   });
 });

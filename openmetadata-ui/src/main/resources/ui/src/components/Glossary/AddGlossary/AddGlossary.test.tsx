@@ -54,6 +54,13 @@ jest.mock('../../Tag/TagSelector/TagSelector', () =>
 
 const onSubmit = jest.fn();
 
+const NO_INTAKE = {
+  customProperties: [],
+  extensionFormFields: [],
+  isLoaded: true,
+  requiredNativeFields: new Map(),
+};
+
 const Harness = () => {
   const form = useForm<GlossaryFormValues>({
     defaultValues: GLOSSARY_FORM_DEFAULTS,
@@ -61,7 +68,7 @@ const Harness = () => {
 
   return (
     <>
-      <AddGlossary form={form} onSubmit={onSubmit} />
+      <AddGlossary form={form} intake={NO_INTAKE} onSubmit={onSubmit} />
       <button onClick={() => form.handleSubmit(onSubmit)()}>submit</button>
     </>
   );

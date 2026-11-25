@@ -14,6 +14,7 @@ import { Select, SelectItemType } from '@openmetadata/ui-core-components';
 import type { FieldProps } from '@react-awesome-query-builder/ui';
 import type { FC } from 'react';
 import { useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { QUERY_BUILDER_POPOVER_CLASS } from '../queryBuilder/types';
 
 type FieldNode = {
@@ -69,6 +70,7 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
   placeholder,
   dataTestId,
 }) => {
+  const { t } = useTranslation();
   // RAQB recreates `items` on every render.
   const itemsKey = buildItemsKey(items as FieldNode[]);
   const selectItems: SelectItemType[] = useMemo(
@@ -113,7 +115,7 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
     const lower = inputValue.toLowerCase();
 
     return selectItems.filter((item) =>
-      item.label.toLowerCase().includes(lower)
+      (item.label ?? '').toLowerCase().includes(lower)
     );
   }, [selectItems, inputValue, selectedLabel]);
 
@@ -123,12 +125,13 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
       // dead-ends.
       allowsEmptyCollection
       data-testid={dataTestId}
+      fontSize="sm"
       inputValue={inputValue}
       isDisabled={readonly}
       items={filteredItems}
-      placeholder={placeholder ?? 'Select field'}
+      placeholder={placeholder ?? t('label.condition-builder-select-field')}
       popoverClassName={QUERY_BUILDER_POPOVER_CLASS}
-      selectedKey={selectedKey ?? undefined}
+      selectedKey={selectedKey ?? null}
       shortcut={false}
       showSearchIcon={false}
       size="sm"
@@ -137,7 +140,12 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
         setInputValue(next);
       }}
       onSelectionChange={(key) => {
+        // On blur or Escape React Aria commits the current selection, as null when the filter has hidden it, and leaves
+        // a controlled box's text to us: show the selection again, or the filter reads as a field the rule never took.
         if (key == null) {
+          isUserFilterRef.current = false;
+          setInputValue(selectedLabel);
+
           return;
         }
         const id = String(key);

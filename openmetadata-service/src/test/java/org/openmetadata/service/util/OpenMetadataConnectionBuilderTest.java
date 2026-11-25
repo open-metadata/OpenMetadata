@@ -189,6 +189,10 @@ class OpenMetadataConnectionBuilderTest {
           Entity.INGESTION_BOT_NAME,
           method.invoke(builder, new IngestionPipeline().withPipelineType(PipelineType.METADATA)));
       assertEquals(
+          Entity.INGESTION_BOT_NAME,
+          method.invoke(
+              builder, new IngestionPipeline().withPipelineType(PipelineType.REVERSE_METADATA)));
+      assertEquals(
           "usage-bot",
           method.invoke(builder, new IngestionPipeline().withPipelineType(PipelineType.USAGE)));
       assertEquals(

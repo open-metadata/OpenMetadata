@@ -47,23 +47,6 @@ public final class ChildFieldResolver {
   public static final int LONGEST_PREFIX = -1;
   private static final int MIN_PARENT_PARTS = 2;
 
-  /**
-   * The container segment any caller may use to mean "this entity's child container", whatever that
-   * container is actually called in the entity's JSON.
-   *
-   * <p>Needed because the suggestion tool builds child suggestion field paths as
-   * {@code columns.<name>.<property>} for every entity type. Without this alias those paths resolve
-   * to nothing on the six registry types whose child container is not literally named "columns", so
-   * an accepted suggestion writes nothing and still reports success.
-   *
-   * <p>The alias applies to every registry type, table included. For table, dashboardDataModel and
-   * worksheet the declared container path already is "columns", so the declared-path branch serves
-   * them and returns the entity's own live list; the alias is what the remaining six need. Aliasing
-   * only where the direct lookup fails was rejected: correctness would then depend on which
-   * reflective getters happen to exist, which is the accident that produced the bug.
-   */
-  public static final String CHILD_CONTAINER_ALIAS = "columns";
-
   public record ChildContainerSpec(
       String entityType,
       String childExtensionType,
@@ -184,7 +167,7 @@ public final class ChildFieldResolver {
   }
 
   @SuppressWarnings("unchecked")
-  public static List<FieldInterface> childrenOf(EntityInterface parent, String entityType) {
+  public static List<FieldInterface> childrenOf(EntityInterface<?> parent, String entityType) {
     ChildContainerSpec spec = specFor(entityType);
     List<FieldInterface> children = new ArrayList<>();
     for (String path : spec.containerPaths()) {
@@ -197,32 +180,24 @@ public final class ChildFieldResolver {
   }
 
   public static Optional<FieldInterface> locate(
-      EntityInterface parent, String entityType, String childFqn) {
+      EntityInterface<?> parent, String entityType, String childFqn) {
     return findByFqn(childrenOf(parent, entityType), childFqn);
   }
 
-  public static void ensureChildFqns(EntityInterface parent, String entityType) {
+  public static void ensureChildFqns(EntityInterface<?> parent, String entityType) {
     assignFqns(parent.getFullyQualifiedName(), childrenOf(parent, entityType));
   }
 
   /**
-   * Resolve the child list that a field path's container segment names, for a registry type.
-   * Returns null when the entity's type is not registered or the segment does not name one of its
-   * declared container paths, which lets callers fall back to their own resolution.
+   * The entity's own live child list at one of its type's declared container paths, such as
+   * {@code messageSchema.schemaFields}. Returns null when the entity's type is not registered or
+   * does not declare that path.
    */
-  public static List<?> containerListFor(EntityInterface entity, String containerName) {
+  public static List<?> containerListFor(EntityInterface<?> entity, String containerPath) {
     String entityType = registryTypeOf(entity);
-    List<?> result = null;
-    if (supports(entityType)) {
-      result = listForDeclaredPath(entity, specFor(entityType), containerName);
-      if (result == null && CHILD_CONTAINER_ALIAS.equals(containerName)) {
-        // Registry type whose child container is not named "columns": serve the alias.
-        // childrenOf concatenates every containerPath, which is what apiEndpoint's two
-        // schemas need, and copies element references so writes still land on the entity.
-        result = childrenOf(entity, entityType);
-      }
-    }
-    return result;
+    boolean declared =
+        supports(entityType) && specFor(entityType).containerPaths().contains(containerPath);
+    return declared && walkPath(entity, containerPath) instanceof List<?> list ? list : null;
   }
 
   /**
@@ -234,22 +209,9 @@ public final class ChildFieldResolver {
    * registration). The registry's own keys already are the canonical entity-type names, so deriving
    * the lookup from them keeps this resolvable everywhere and independent of registration order.
    */
-  private static String registryTypeOf(EntityInterface entity) {
+  private static String registryTypeOf(EntityInterface<?> entity) {
     return TYPE_BY_SIMPLE_CLASS_NAME.get(
         entity.getClass().getSimpleName().toLowerCase(Locale.ROOT));
-  }
-
-  private static List<?> listForDeclaredPath(
-      EntityInterface entity, ChildContainerSpec spec, String containerName) {
-    List<?> result = null;
-    for (String path : spec.containerPaths()) {
-      boolean matches = path.equals(containerName) || path.startsWith(containerName + ".");
-      if (result == null && matches) {
-        Object node = walkPath(entity, path);
-        result = node instanceof List<?> list ? list : null;
-      }
-    }
-    return result;
   }
 
   public static String parentFqnOf(String childFqn, String entityType) {
@@ -301,11 +263,12 @@ public final class ChildFieldResolver {
   }
 
   private static String longestPrefixParent(String childFqn, String entityType) {
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
     String[] parts = FullyQualifiedName.split(childFqn);
     String result = null;
     for (int end = parts.length - 1; end >= MIN_PARENT_PARTS && result == null; end--) {
-      EntityInterface parent =
+      EntityInterface<?> parent =
           repository.findByNameOrNull(
               FullyQualifiedName.build(Arrays.copyOf(parts, end)), Include.ALL);
       result = parent == null ? null : parent.getFullyQualifiedName();

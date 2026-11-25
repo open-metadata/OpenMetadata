@@ -47,7 +47,7 @@ describe('LinkModal', () => {
     fireEvent.change(screen.getByRole('textbox'), {
       target: { value: '{{buildEntityUrl event.entityType entity}}' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
 
     await waitFor(() =>
       expect(onSave).toHaveBeenCalledWith({
@@ -59,7 +59,7 @@ describe('LinkModal', () => {
   it('should call onCancel when the cancel button is clicked', () => {
     render(<LinkModal {...defaultProps} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
 
     expect(onCancel).toHaveBeenCalledTimes(1);
   });

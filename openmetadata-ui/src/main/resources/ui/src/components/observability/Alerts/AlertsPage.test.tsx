@@ -18,7 +18,6 @@ import {
   AlertType,
   EventSubscription,
 } from '../../../generated/events/eventSubscription';
-import { NOTIFICATION_ALERT_KIND } from './alertKinds';
 import AlertsPage from './AlertsPage';
 
 const mockNavigate = jest.fn();
@@ -58,20 +57,42 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children?: ReactNode;
     onPress?: () => void;
   }) => <button onClick={onPress}>{children}</button>,
-  PageLayout: {
-    PageHeader: ({
-      title,
-      actions,
+  PageLayout: Object.assign(
+    ({
+      children,
+      className,
+      'data-testid': testId = 'page-layout',
     }: {
-      title: string;
-      actions?: ReactNode;
+      children?: ReactNode;
+      className?: string;
+      'data-testid'?: string;
     }) => (
-      <div data-testid="page-header">
-        <span>{title}</span>
-        {actions}
+      <div className={className} data-testid={testId}>
+        {children}
       </div>
     ),
-  },
+    {
+      Content: ({ children }: { children?: ReactNode }) => (
+        <main>{children}</main>
+      ),
+      Header: ({ children }: { children?: ReactNode }) => (
+        <header>{children}</header>
+      ),
+
+      PageHeader: ({
+        title,
+        actions,
+      }: {
+        title: string;
+        actions?: ReactNode;
+      }) => (
+        <div data-testid="page-header">
+          <span>{title}</span>
+          {actions}
+        </div>
+      ),
+    }
+  ),
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
@@ -253,12 +274,12 @@ describe('AlertsPage', () => {
     expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
-  it('uses the shared observability page shell when loaded', () => {
+  it('renders the core page layout with its own stacking context when loaded', () => {
     mockUseObservabilityAlerts.mockReturnValue(getAlertsState());
 
     renderAlertsPage();
 
-    expect(screen.getByTestId('observability-page-shell')).toBeInTheDocument();
+    expect(screen.getByTestId('page-layout')).toHaveClass('tw:isolate');
     expect(screen.getByTestId('page-header')).toBeInTheDocument();
     expect(screen.getByTestId('alerts-table')).toBeInTheDocument();
   });
@@ -332,59 +353,6 @@ describe('AlertsPage', () => {
     expect(
       queryClient.getQueryState(ALERT_COUNT_QUERY_KEY)?.isInvalidated
     ).toBe(true);
-  });
-
-  describe('as the Settings → Notifications alert list', () => {
-    const renderNotificationAlertsPage = () =>
-      render(
-        <QueryClientProvider client={queryClient}>
-          <AlertsPage kind={NOTIFICATION_ALERT_KIND} />
-        </QueryClientProvider>
-      );
-
-    it('lists notification alerts including the system activity feed alert', () => {
-      renderNotificationAlertsPage();
-
-      expect(mockUseObservabilityAlerts).toHaveBeenCalledWith(
-        expect.objectContaining({
-          alertType: AlertType.Notification,
-          includeSystemAlerts: true,
-        })
-      );
-
-      const { getAlertDetailsPath } = mockUseObservabilityAlerts.mock
-        .calls[0][0] as { getAlertDetailsPath: (fqn: string) => string };
-
-      expect(getAlertDetailsPath('my_alert')).toBe(
-        '/settings/notifications/alerts/my_alert/configuration'
-      );
-    });
-
-    it('titles the page as notifications', () => {
-      renderNotificationAlertsPage();
-
-      expect(screen.getByTestId('page-header')).toHaveTextContent(
-        'label.notification-plural'
-      );
-    });
-
-    it('creates notification alerts and opens the new alert under settings', async () => {
-      renderNotificationAlertsPage();
-
-      fireEvent.click(screen.getByText('label.add-entity:label.alert'));
-
-      expect(screen.getByTestId('modal-alert-type')).toHaveTextContent(
-        AlertType.Notification
-      );
-
-      fireEvent.click(screen.getByTestId('modal-save'));
-
-      await waitFor(() =>
-        expect(mockNavigate).toHaveBeenCalledWith(
-          '/settings/notifications/alerts/saved.alert/configuration'
-        )
-      );
-    });
   });
 
   it('keeps serving observability alerts by default', () => {

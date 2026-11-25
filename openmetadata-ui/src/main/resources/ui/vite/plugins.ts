@@ -10,10 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { mkdirSync, writeFileSync } from 'fs';
 import path from 'path';
 import type { Plugin } from 'vite';
 
 const UI_ROOT = path.resolve(__dirname, '..');
+
+export const BUNDLE_GRAPH_REPORT = path.join(
+  UI_ROOT,
+  'node_modules/.cache/bundle-graph.json'
+);
 
 /**
  * Vite plugin: capture hashed asset filenames at bundle time and inject
@@ -133,5 +139,120 @@ export const htmlBasePathTransform = (): Plugin => ({
         /(<img[^>]*src=["'])(\.\/)?images\//g,
         '$1${basePath}images/'
       );
+  },
+});
+
+const packageOf = (id: string) => {
+  const nodeModulesPath = id.split('/node_modules/').slice(1).pop();
+  if (!nodeModulesPath) {
+    return undefined;
+  }
+  const [scopeOrName, scopedName] = nodeModulesPath.split('/');
+
+  return scopeOrName.startsWith('@')
+    ? `${scopeOrName}/${scopedName}`
+    : scopeOrName;
+};
+
+const relativeId = (id: string) => {
+  const pkg = packageOf(id);
+
+  return pkg ?? path.relative(UI_ROOT, id);
+};
+
+/**
+ * Writes what the index.html entry loads at startup (files, and every npm
+ * package in them with the import chain that brought it in) plus each page
+ * chunk, for `yarn bundle:check` and `yarn bundle:runtime`. Kept outside dist
+ * so it never ships.
+ */
+export const bundleGraphReport = (): Plugin => ({
+  name: 'bundle-graph-report',
+  generateBundle(_opts, bundle) {
+    const chunks = Object.values(bundle).flatMap((file) =>
+      file.type === 'chunk' ? [file] : []
+    );
+    const byFileName = new Map(chunks.map((chunk) => [chunk.fileName, chunk]));
+    const entry = chunks.find(
+      (chunk) => chunk.isEntry && chunk.facadeModuleId?.endsWith('/index.html')
+    );
+    if (!entry?.facadeModuleId) {
+      this.error('bundle-graph-report: no chunk for the index.html entry');
+    }
+    const entryId = entry.facadeModuleId;
+
+    const bootFiles = new Set<string>();
+    const pending = [entry.fileName];
+    while (pending.length) {
+      const fileName = pending.pop() as string;
+      if (!bootFiles.has(fileName)) {
+        bootFiles.add(fileName);
+        pending.push(...(byFileName.get(fileName)?.imports ?? []));
+      }
+    }
+
+    // Shortest chain of static imports from the entry to `id`, collapsed to
+    // one step per package so the reader sees which app file pulled it in.
+    const importChain = (id: string) => {
+      const parent = new Map<string, string>([[id, '']]);
+      const queue = [id];
+      while (queue.length && !parent.has(entryId)) {
+        const current = queue.shift() as string;
+        for (const importer of this.getModuleInfo(current)?.importers ?? []) {
+          if (!parent.has(importer)) {
+            parent.set(importer, current);
+            queue.push(importer);
+          }
+        }
+      }
+      const chain: string[] = [];
+      for (let node = entryId; node; node = parent.get(node) ?? '') {
+        const step = relativeId(node);
+        if (chain[chain.length - 1] !== step) {
+          chain.push(step);
+        }
+        if (node === id) {
+          break;
+        }
+      }
+
+      return chain;
+    };
+
+    const bootPackages: Record<string, string[]> = {};
+    for (const fileName of bootFiles) {
+      for (const id of byFileName.get(fileName)?.moduleIds ?? []) {
+        const pkg = id.startsWith('\0') ? undefined : packageOf(id);
+        if (pkg && !bootPackages[pkg]) {
+          bootPackages[pkg] = importChain(id);
+        }
+      }
+    }
+
+    const pages = chunks
+      .filter(
+        (chunk) =>
+          chunk.isDynamicEntry && chunk.facadeModuleId?.includes('/src/pages/')
+      )
+      .map((chunk) => ({
+        module: relativeId(chunk.facadeModuleId as string),
+        file: chunk.fileName,
+      }))
+      .sort((a, b) => a.module.localeCompare(b.module));
+
+    mkdirSync(path.dirname(BUNDLE_GRAPH_REPORT), { recursive: true });
+    writeFileSync(
+      BUNDLE_GRAPH_REPORT,
+      JSON.stringify(
+        {
+          entry: entry.fileName,
+          bootFiles: [...bootFiles],
+          bootPackages,
+          pages,
+        },
+        null,
+        2
+      )
+    );
   },
 });

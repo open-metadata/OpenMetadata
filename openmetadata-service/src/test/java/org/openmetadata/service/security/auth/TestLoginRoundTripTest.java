@@ -17,6 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.WebApplicationException;
@@ -24,12 +28,14 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.system.TestLoginCredentialsRequest;
@@ -39,13 +45,23 @@ import org.openmetadata.schema.system.TestLoginStage;
 import org.openmetadata.schema.system.TestLoginStageResult;
 import org.openmetadata.schema.system.TestLoginStageStatus;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.FakeOidcProvider;
 
 class TestLoginRoundTripTest {
   private static final String ADMIN = "admin";
 
+  private final UserRepository users = mock(UserRepository.class);
+
+  @BeforeEach
+  void existingAccount() {
+    User user = new User().withName("alice").withEmail("alice@example.com");
+    when(users.getActiveUserByEmailForAuth(anyString(), any())).thenReturn(user);
+    when(users.getUserByNameForAuthUpdate(anyString())).thenReturn(user);
+  }
+
   private final InMemoryTestLoginSessionStore store = new InMemoryTestLoginSessionStore();
-  private final TestLoginRoundTrip roundTrip = new TestLoginRoundTrip(store);
+  private final TestLoginRoundTrip roundTrip = new TestLoginRoundTrip(store, () -> users);
 
   @Test
   void aPublicClientIsSentToTheBrowserFlowItsLiveLoginUses() {
@@ -137,7 +153,7 @@ class TestLoginRoundTripTest {
       assertEquals(
           TestLoginResult.Status.PENDING, roundTrip.result(ADMIN, testSessionId).getStatus());
 
-      provider.issueIdToken(query.get("nonce"), "alice@example.com");
+      provider.issueIdTokenWithRefreshToken(query.get("nonce"), "alice@example.com");
       roundTrip.completeOidcCallback(testSessionId, callback("code-1", marker));
       TestLoginResult completed = roundTrip.result(ADMIN, testSessionId);
       assertEquals(TestLoginResult.Status.SUCCESS, completed.getStatus(), completed.toString());
@@ -170,7 +186,7 @@ class TestLoginRoundTripTest {
 
   @Test
   void aTestStartedOnOneServerIsFinishedAndReadOnAnother() {
-    TestLoginRoundTrip otherServer = new TestLoginRoundTrip(store);
+    TestLoginRoundTrip otherServer = new TestLoginRoundTrip(store, () -> users);
     TestLoginSession session = roundTrip.start(ADMIN, unreachableLdap());
 
     assertEquals(
@@ -184,7 +200,7 @@ class TestLoginRoundTripTest {
 
   @Test
   void theCredentialLimitHoldsAcrossServers() {
-    TestLoginRoundTrip otherServer = new TestLoginRoundTrip(store);
+    TestLoginRoundTrip otherServer = new TestLoginRoundTrip(store, () -> users);
     for (int i = 0; i < TestLoginRoundTrip.MAX_CREDENTIAL_TESTS_PER_WINDOW; i++) {
       TestLoginRoundTrip server = i % 2 == 0 ? roundTrip : otherServer;
       server.submitCredentials(ADMIN, credentialsFor(server.start(ADMIN, unreachableLdap())));

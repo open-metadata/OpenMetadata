@@ -9,24 +9,44 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import org.apache.hc.core5.http.HttpEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.slf4j.LoggerFactory;
 
 class ElasticSearchVectorServiceTest {
 
@@ -56,6 +76,89 @@ class ElasticSearchVectorServiceTest {
   }
 
   @Test
+  void readableAnchorsAreResolvedOnceAndReachEveryOverfetchPage() throws Exception {
+    String anchorId = UUID.randomUUID().toString();
+    AtomicInteger resolutions = new AtomicInteger();
+    ElasticSearchVectorService service =
+        new ElasticSearchVectorService(
+            mockEsClient,
+            mockEmbeddingClient,
+            2,
+            parameters -> {
+              resolutions.incrementAndGet();
+              return Set.of(anchorId);
+            });
+    String firstPage =
+        "{\"hits\":{\"total\":{\"value\":2},\"hits\":[{\"_score\":0.9,\"_source\":{\"parentId\":\"first\"}}]}}";
+    String secondPage =
+        "{\"hits\":{\"total\":{\"value\":2},\"hits\":[{\"_score\":0.8,\"_source\":{\"parentId\":\"second\"}}]}}";
+    mockRestClientResponseSequence(firstPage, secondPage);
+    SubjectContext subject =
+        new SubjectContext(new User().withId(UUID.randomUUID()).withName("reader"), null);
+    VectorSearchParameters parameters =
+        new VectorSearchParameters(
+            "orders",
+            Map.of("primaryEntityId", List.of(anchorId)),
+            1,
+            0,
+            10,
+            0,
+            null,
+            subject,
+            null);
+
+    DTOs.VectorSearchResponse response = service.search(parameters);
+
+    assertEquals(1, resolutions.get());
+    assertEquals("first", response.hits.getFirst().get("parentId"));
+    assertTrue(response.hasMore);
+    ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+    verify(mockRestClient, times(2)).performRequest(captor.capture());
+    List<Request> requests = captor.getAllValues();
+    for (int i = 0; i < requests.size(); i++) {
+      try (var content = requests.get(i).getEntity().getContent()) {
+        var body = JsonUtils.readTree(new String(content.readAllBytes(), StandardCharsets.UTF_8));
+        String visibility = body.path("knn").path("filter").path("bool").path("filter").toString();
+        assertTrue(visibility.contains("\"anchorId\":[\"" + anchorId + "\"]"), visibility);
+        assertEquals(i, body.path("from").asInt());
+      }
+    }
+  }
+
+  @Test
+  void reindexReusesOnlyStoredEmbeddingsWhoseFingerprintIsCurrent() throws Exception {
+    long updatedAt = 1_700_000_000_000L;
+    Table unchanged = table("orders", "Orders placed online", updatedAt);
+    Table textChanged = table("payments", "Customer payments by card", updatedAt);
+    // Stand-in for the text an older release built for the same entity: same updatedAt, other text.
+    Table textChangedAsLastEmbedded =
+        table("payments", "Customer payments", updatedAt).withId(textChanged.getId());
+    Table unfingerprintable = table("refunds", "Refunds issued", updatedAt);
+    answerIdSearchesFrom(
+        Map.of(
+            id(unchanged), storedEntityDoc(unchanged, unchanged),
+            id(textChanged), storedEntityDoc(textChanged, textChangedAsLastEmbedded),
+            id(unfingerprintable), storedEntityDoc(unfingerprintable, unfingerprintable)));
+
+    Map<String, JsonNode> reusable =
+        vectorService.getExistingEmbeddingsBatch(
+            "table_search_index",
+            Map.of(
+                id(unchanged), currentFingerprint(unchanged),
+                id(textChanged), currentFingerprint(textChanged),
+                id(unfingerprintable),
+                    () -> {
+                      throw new IllegalStateException("tag without an FQN");
+                    },
+                UUID.randomUUID().toString(), currentFingerprint(unchanged)));
+
+    assertEquals(Set.of(id(unchanged)), reusable.keySet());
+    assertEquals(
+        VectorDocBuilder.computeFingerprintForEntity(unchanged),
+        reusable.get(id(unchanged)).path("fingerprint").asText());
+  }
+
+  @Test
   void searchEmbedsTheQueryAsAQueryNotADocument() throws Exception {
     // Providers that distinguish the two (Cohere on Bedrock: search_query vs search_document)
     // return a worse vector for a question embedded as a document, so the query path must not
@@ -66,6 +169,46 @@ class ElasticSearchVectorServiceTest {
 
     verify(mockEmbeddingClient).embedQuery("test query");
     verify(mockEmbeddingClient, never()).embed("test query");
+  }
+
+  /**
+   * The 2-arg {@code updateEntityEmbeddings} overload must refuse ontology terms: the
+   * release-aware writer needs the published release-snapshot body, and embedding from the mutable
+   * working (draft) row would publish drafts into search with no publication check. Manual term
+   * reindexing goes through the release-aware bulk writer (reindex). Mirrors the OpenSearch fix.
+   */
+  @Test
+  void twoArgOverloadRefusesOntologyConceptWithoutWritingOrEmbedding() throws Exception {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(
+        "ontologyconcept", Entity.ONTOLOGY_CONCEPT);
+    OntologyConcept term =
+        new OntologyConcept()
+            .withId(UUID.randomUUID())
+            .withName("order")
+            .withFullyQualifiedName("shop.order")
+            .withDescription("A purchase")
+            .withDeleted(false);
+
+    Logger logger = (Logger) LoggerFactory.getLogger(ElasticSearchVectorService.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      vectorService.updateEntityEmbeddings(term, "entityIndex");
+
+      verify(mockRestClient, never()).performRequest(any(Request.class));
+      verify(mockEmbeddingClient, never()).embed(any(String.class));
+      assertTrue(
+          appender.list.stream()
+              .anyMatch(
+                  event ->
+                      event.getLevel() == Level.WARN
+                          && event.getFormattedMessage().contains("release-aware reindex path")),
+          "must warn that term rebuilds go through the release-aware path");
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
   }
 
   @Test
@@ -559,6 +702,48 @@ class ElasticSearchVectorServiceTest {
         "Expected num_candidates=" + expectedNumCandidates + " in: " + requestBody);
   }
 
+  @Test
+  void testNumCandidatesClampedToEngineMaxForHighK() throws Exception {
+    // The REST resource and MCP tool both advertise MAX_K = 10,000. With the default
+    // multiplier 2 the raw computation is 20,000, which Elasticsearch rejects with a 400.
+    // The query builder must clamp num_candidates to 10,000 so the admitted k never
+    // produces an invalid request.
+    int k = 10_000;
+    int expectedNumCandidates = VectorSearchQueryBuilder.ES_MAX_KNN_NUM_CANDIDATES;
+
+    List<String> capturedBodies = new java.util.ArrayList<>();
+    Response mockResponse = mock(Response.class);
+    HttpEntity mockEntity = mock(HttpEntity.class);
+    when(mockRestClient.performRequest(any(Request.class)))
+        .thenAnswer(
+            inv -> {
+              Request req = inv.getArgument(0);
+              org.apache.hc.core5.http.HttpEntity entity = req.getEntity();
+              if (entity != null) {
+                try (java.io.InputStream is = entity.getContent()) {
+                  capturedBodies.add(new String(is.readAllBytes(), StandardCharsets.UTF_8));
+                }
+              }
+              return mockResponse;
+            });
+    when(mockResponse.getStatusCode()).thenReturn(200);
+    when(mockResponse.getEntity()).thenReturn(mockEntity);
+    when(mockEntity.getContent())
+        .thenAnswer(
+            inv -> new ByteArrayInputStream(EMPTY_HITS_RESPONSE.getBytes(StandardCharsets.UTF_8)));
+
+    vectorService.search("test query", Map.of(), 10, 0, k, 0.0);
+
+    assertFalse(capturedBodies.isEmpty(), "Expected at least one request to be captured");
+    String requestBody = capturedBodies.get(0);
+    assertTrue(
+        requestBody.contains("\"num_candidates\":" + expectedNumCandidates),
+        "Expected num_candidates=" + expectedNumCandidates + " in: " + requestBody);
+    assertFalse(
+        requestBody.contains("\"num_candidates\":20000"),
+        "num_candidates must not exceed the engine cap of 10,000: " + requestBody);
+  }
+
   /** Returns each response in sequence; repeats the last one if more calls are made. */
   private void mockRestClientResponseSequence(String... responses) throws Exception {
     Response mockResponse = mock(Response.class);
@@ -572,5 +757,73 @@ class ElasticSearchVectorServiceTest {
               int idx = Math.min(callCount.getAndIncrement(), responses.length - 1);
               return new ByteArrayInputStream(responses[idx].getBytes(StandardCharsets.UTF_8));
             });
+  }
+
+  private static Table table(String name, String description, long updatedAt) {
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName("svc.db.schema." + name)
+        .withDescription(description)
+        .withUpdatedAt(updatedAt);
+  }
+
+  private static String id(Table table) {
+    return table.getId().toString();
+  }
+
+  private static Supplier<String> currentFingerprint(Table table) {
+    return () -> VectorDocBuilder.computeFingerprintForEntity(table);
+  }
+
+  /** An entity doc as a reindex left it: current updatedAt, embedding of {@code embeddedAs}. */
+  private static ObjectNode storedEntityDoc(Table current, Table embeddedAs) {
+    ObjectNode doc = JsonUtils.getObjectNode();
+    doc.put("name", current.getName());
+    doc.put("updatedAt", current.getUpdatedAt());
+    doc.put("fingerprint", VectorDocBuilder.computeFingerprintForEntity(embeddedAs));
+    doc.putArray("embedding").add(0.1).add(0.2).add(0.3);
+    doc.put("parentId", id(current));
+    return doc;
+  }
+
+  /** Answers an ids query like the engine: only stored ids, only the requested _source fields. */
+  private void answerIdSearchesFrom(Map<String, ObjectNode> storedById) throws Exception {
+    when(mockRestClient.performRequest(any(Request.class)))
+        .thenAnswer(
+            invocation -> {
+              Request request = invocation.getArgument(0);
+              JsonNode query;
+              try (InputStream content = request.getEntity().getContent()) {
+                query =
+                    JsonUtils.readTree(new String(content.readAllBytes(), StandardCharsets.UTF_8));
+              }
+              ObjectNode body = JsonUtils.getObjectNode();
+              var hits = body.putObject("hits").putArray("hits");
+              for (JsonNode id : query.path("query").path("ids").path("values")) {
+                ObjectNode stored = storedById.get(id.asText());
+                if (stored != null) {
+                  ObjectNode hit = hits.addObject().put("_id", id.asText());
+                  ObjectNode source = hit.putObject("_source");
+                  query.path("_source").forEach(field -> copyField(stored, source, field.asText()));
+                }
+              }
+              return responseWith(body.toString());
+            });
+  }
+
+  private static void copyField(ObjectNode from, ObjectNode to, String field) {
+    if (from.has(field)) {
+      to.set(field, from.get(field));
+    }
+  }
+
+  private static Response responseWith(String json) throws Exception {
+    Response response = mock(Response.class);
+    HttpEntity entity = mock(HttpEntity.class);
+    when(response.getEntity()).thenReturn(entity);
+    when(entity.getContent())
+        .thenAnswer(inv -> new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));
+    return response;
   }
 }

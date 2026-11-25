@@ -12,7 +12,6 @@
  */
 
 import { ObjectFieldTemplatePropertyType, RJSFSchema } from '@rjsf/utils';
-import { MenuProps } from 'antd';
 import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
 import type { ComponentType } from 'react';
@@ -25,6 +24,7 @@ import QuickLinkIcon from '../assets/svg/ic-quick-link.svg';
 import DatabaseSchemaIcon from '../assets/svg/ic-schema.svg';
 import MetricIcon from '../assets/svg/metric.svg';
 import TagIcon from '../assets/svg/tag-grey.svg';
+import { ManageMenuItem } from '../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import {
@@ -43,7 +43,7 @@ import {
 } from '../enums/service.enum';
 import { DriveServiceType } from '../generated/api/services/createDriveService';
 import {
-  Connection as ConfigObject,
+  AirflowConnectionObject as ConfigObject,
   WorkflowType,
 } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -562,7 +562,7 @@ class ServiceUtilClassBase {
     _serviceName?: string,
     _navigate?: (path: string) => void,
     _serviceDetails?: ServicesType
-  ): MenuProps['items'] {
+  ): ManageMenuItem[] {
     return [];
   }
 

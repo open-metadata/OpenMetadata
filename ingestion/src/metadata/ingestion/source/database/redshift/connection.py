@@ -385,6 +385,11 @@ _QUERY_HISTORY_PRIVILEGE_TOKEN = "query-history views"
 # psycopg2 surfaces on ``.pgcode``. Bad host / port raise before the driver and are
 # caught by the TCP preflight in ``ping`` via NETWORK_ERRORS.
 REDSHIFT_ERRORS = ErrorPack(
+    when(Matchers.all_of(Matchers.contains("no pg_hba.conf entry"), Matchers.contains("ssl off"))).diagnose(
+        "Connection rejected without SSL",
+        fix="The server rejected an unencrypted connection. Under Advanced Config, set SSL Mode to require and retry.",
+        doc="https://docs.aws.amazon.com/redshift/latest/mgmt/connecting-ssl-support.html",
+    ),
     when(Matchers.contains("password authentication failed")).diagnose(
         "Authentication failed",
         fix="Check the username and password, and that the user is allowed to connect.",

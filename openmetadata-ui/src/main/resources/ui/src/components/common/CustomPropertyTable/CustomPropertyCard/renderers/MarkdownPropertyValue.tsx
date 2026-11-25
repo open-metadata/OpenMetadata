@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
 import { FormEvent, lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import RichTextEditorPreviewerV1 from '../../../RichTextEditor/RichTextEditorPreviewerV1';
 import {
@@ -29,10 +29,17 @@ const MarkdownPropertyView = ({ value }: PropertyViewProps) => (
   <RichTextEditorPreviewerV1 enableSeeMoreVariant markdown={String(value)} />
 );
 
-const MarkdownPropertyEdit = ({ value, onSave, formId }: PropertyEditProps) => {
+const MarkdownPropertyEdit = ({
+  value,
+  onSave,
+  formId,
+  onDirtyChange,
+}: PropertyEditProps) => {
   const { t } = useTranslation();
   const initialValue = typeof value === 'string' ? value : '';
   const [markdown, setMarkdown] = useState(initialValue);
+
+  useReportDirty(markdown.trim(), onDirtyChange);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -41,18 +48,13 @@ const MarkdownPropertyEdit = ({ value, onSave, formId }: PropertyEditProps) => {
 
   return (
     <form noValidate id={formId} onSubmit={handleSubmit}>
-      <Box direction="col" gap={2}>
-        <RichTextEditor
-          autofocus
-          className="tw:rounded-lg tw:border tw:border-primary"
-          initialValue={initialValue}
-          placeHolder={t('label.enter-property-value')}
-          onTextChange={setMarkdown}
-        />
-        <span className="tw:text-xs tw:text-tertiary">
-          {t('message.markdown-supported')}
-        </span>
-      </Box>
+      <RichTextEditor
+        autofocus
+        className="tw:rounded-lg tw:border tw:border-primary"
+        initialValue={initialValue}
+        placeHolder={t('label.enter-property-value')}
+        onTextChange={setMarkdown}
+      />
     </form>
   );
 };

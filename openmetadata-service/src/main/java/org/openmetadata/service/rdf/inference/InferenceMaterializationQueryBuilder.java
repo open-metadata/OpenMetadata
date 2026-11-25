@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.rdf.inference;
 
+import java.util.List;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.query.Query;
@@ -24,23 +25,30 @@ import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
 
-/** Rewrites a validated CONSTRUCT rule into a Fuseki-side named-graph materialization update. */
+/** Rewrites validated CONSTRUCT rules into Fuseki-side named-graph updates. */
 final class InferenceMaterializationQueryBuilder {
   private InferenceMaterializationQueryBuilder() {}
 
-  static String build(final InferenceRuleStatus status) {
+  /**
+   * Adds the rule's conclusions to its graph without clearing it, so repeated passes accumulate
+   * toward a fixed point. The WHERE clause reads Fuseki's union default graph, which holds the
+   * asserted graphs and every rule graph; a {@code USING} list would make Jena build an in-memory
+   * union of the graphs it names instead.
+   */
+  static String insert(final InferenceRuleStatus status) {
     final InferenceRule rule = status.getRule();
     InferenceRuleValidator.requireValid(rule, rule.getName());
     final Query query = QueryFactory.create(rule.getRuleBody());
-    final Node graph = NodeFactory.createURI(status.getGraphUri().toString());
     final UpdateRequest request = requestWithPrologue(query);
-    request.add(new UpdateClear(graph, true));
-    request.add(buildInsert(query, graph));
+    request.add(buildInsert(query, NodeFactory.createURI(status.getGraphUri().toString())));
     return request.toString();
   }
 
-  static String clear(final String graphUri) {
-    return new UpdateRequest(new UpdateClear(NodeFactory.createURI(graphUri), true)).toString();
+  static String clear(final List<String> graphUris) {
+    final UpdateRequest request = new UpdateRequest();
+    graphUris.forEach(
+        graphUri -> request.add(new UpdateClear(NodeFactory.createURI(graphUri), true)));
+    return request.toString();
   }
 
   private static UpdateModify buildInsert(final Query query, final Node graph) {

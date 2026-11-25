@@ -62,17 +62,17 @@ test.describe('FeedEditor duplicate-id fix (live browser)', () => {
         .filter({ hasText: `${marker} thread` })
         .filter({ hasNot: page.getByTestId('feed-reply-card') });
       await threadCard.waitFor({ state: 'visible', timeout: ACTION_TIMEOUT });
-      await threadCard.getByTestId('reply-button').click();
+      // Selects the thread into the side panel. The reply button would open
+      // the reply drawer as well, putting a second copy of the reply on the page.
+      await threadCard.getByTestId('headerText').click();
 
-      // Hover the reply and open its inline-edit editor (mounts one FeedEditor).
+      // Open the reply's inline-edit editor (mounts one FeedEditor).
       const replyCard = page
         .getByTestId('feed-reply-card')
         .filter({ hasText: `${marker} reply` });
       await replyCard.waitFor({ state: 'visible', timeout: 20000 });
-      await replyCard.hover();
-      const editButton = replyCard.getByTestId('edit-message');
-      await editButton.waitFor({ state: 'visible', timeout: 10000 });
-      await editButton.click();
+      await replyCard.getByTestId('conversation-actions').click();
+      await page.getByRole('menuitem', { name: 'Edit' }).click();
 
       const editor = page.getByTestId('editor-wrapper');
       await expect(editor).toBeVisible({ timeout: 20000 });

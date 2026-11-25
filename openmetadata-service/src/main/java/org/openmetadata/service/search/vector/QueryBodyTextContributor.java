@@ -51,7 +51,7 @@ public final class QueryBodyTextContributor implements VectorBodyTextContributor
     return QueryBodyTextContributor::extractBodyText;
   }
 
-  static String extractBodyText(EntityInterface entity) {
+  static String extractBodyText(EntityInterface<?> entity) {
     if (!(entity instanceof Query query)) {
       return null;
     }

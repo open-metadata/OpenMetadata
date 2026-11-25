@@ -63,6 +63,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.parsers.json_schema_parser import parse_json_schema
 from metadata.workflow.classification import AutoClassificationWorkflow
 
+from ....utils.classification import snapshot_classification, snapshot_tag  # noqa: TID252
 from ...kafka.conftest import CustomKafkaContainer  # noqa: TID252
 
 PII_TOPIC_NAME = "test-pii-customers"
@@ -369,7 +370,10 @@ def pii_spacy_recognizer() -> Recognizer:
 @pytest.fixture(scope="module")
 def pii_classification(
     metadata: OpenMetadata[Classification, CreateClassificationRequest],
+    request,
 ) -> Classification:
+    original = snapshot_classification(metadata, "PII")
+    request.addfinalizer(lambda: metadata.create_or_update(original))
     create_classification_request = CreateClassificationRequestFactory.create(
         fqn="PII",
         autoClassificationConfig__conflictResolution=ConflictResolution.highest_priority.value,
@@ -380,12 +384,15 @@ def pii_classification(
 @pytest.fixture(scope="module")
 def sensitive_pii_tag(
     metadata: OpenMetadata[Tag, CreateTagRequest],
+    request,
     pii_classification: Classification,
     email_recognizer: Recognizer,
     credit_card_recognizer: Recognizer,
     us_ssn_recognizer: Recognizer,
     pii_spacy_recognizer: Recognizer,
 ) -> Tag:
+    original = snapshot_tag(metadata, "PII.Sensitive")
+    request.addfinalizer(lambda: metadata.create_or_update(original))
     create_tag_request = CreateTagRequestFactory.create(
         tag_name="Sensitive",
         tag_classification=pii_classification.fullyQualifiedName.root,
@@ -403,10 +410,13 @@ def sensitive_pii_tag(
 @pytest.fixture(scope="module")
 def non_sensitive_pii_tag(
     metadata: OpenMetadata[Tag, CreateTagRequest],
+    request,
     pii_classification: Classification,
     phone_recognizer: Recognizer,
     pii_spacy_recognizer: Recognizer,
 ) -> Tag:
+    original = snapshot_tag(metadata, "PII.NonSensitive")
+    request.addfinalizer(lambda: metadata.create_or_update(original))
     create_tag_request = CreateTagRequestFactory.create(
         tag_name="NonSensitive",
         tag_classification=pii_classification.fullyQualifiedName.root,

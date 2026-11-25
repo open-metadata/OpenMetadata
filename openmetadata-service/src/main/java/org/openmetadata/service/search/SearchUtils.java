@@ -369,13 +369,18 @@ public final class SearchUtils {
    */
   public static boolean shouldApplyRbacConditions(
       SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
-    return Boolean.TRUE.equals(
-            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
-                .getGlobalSettings()
-                .getEnableAccessControl())
+    return isAccessControlEnabled()
         && subjectContext != null
         && !subjectContext.isAdmin()
         && rbacConditionEvaluator != null;
+  }
+
+  /** Whether "Enable Roles & Policies in Search" is on. */
+  public static boolean isAccessControlEnabled() {
+    return Boolean.TRUE.equals(
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
+            .getGlobalSettings()
+            .getEnableAccessControl());
   }
 
   public static SSLContext createElasticSearchSSLContext(
@@ -768,6 +773,11 @@ public final class SearchUtils {
     };
   }
 
+  public static boolean isOntologyIndex(String indexName) {
+    String mapped = mapEntityTypesToIndexNames(indexName);
+    return OntologyTermSearch.ALIAS.equals(mapped) || OntologyTermSearch.isTerm(mapped);
+  }
+
   public static String mapEntityTypesToIndexNames(String indexName) {
     return switch (indexName) {
       case "topic_search_index", Entity.TOPIC -> Entity.TOPIC;
@@ -789,6 +799,9 @@ public final class SearchUtils {
       case "search_entity_search_index", Entity.SEARCH_INDEX -> Entity.SEARCH_INDEX;
       case "tag_search_index", Entity.TAG -> Entity.TAG;
       case "glossary_term_search_index", Entity.GLOSSARY_TERM -> Entity.GLOSSARY_TERM;
+      case OntologyTermSearch.ALIAS -> OntologyTermSearch.ALIAS;
+      case "ontology_concept_search_index", Entity.ONTOLOGY_CONCEPT -> Entity.ONTOLOGY_CONCEPT;
+      case "ontology_property_search_index", Entity.ONTOLOGY_PROPERTY -> Entity.ONTOLOGY_PROPERTY;
       case SearchClient.RELATIONSHIP_TYPE_SEARCH_INDEX, Entity.RELATIONSHIP_TYPE -> Entity
           .RELATIONSHIP_TYPE;
       case "glossary_search_index", Entity.GLOSSARY -> Entity.GLOSSARY;
@@ -812,12 +825,15 @@ public final class SearchUtils {
    * input on non-alphanumeric characters ({@code token_chars: [letter, digit]}), so it reflects
    * the actual number of terms the ngram path will process for a fuzzy multi_match — which is
    * the driver of clause count, not whitespace word count.
+   *
+   * <p>The split uses {@code \p{L}\p{Nd}} rather than POSIX {@code \p{Alnum}} because
+   * {@code token_chars} is Unicode-aware, while POSIX character classes match US-ASCII only.
    */
   private static int analyzedSubTokenCount(String query) {
     if (query == null || query.isBlank()) {
       return 0;
     }
-    String[] parts = query.trim().split("[^\\p{Alnum}]+");
+    String[] parts = query.trim().split("[^\\p{L}\\p{Nd}]+");
     int count = 0;
     for (String p : parts) {
       if (!p.isEmpty()) count++;
@@ -858,6 +874,7 @@ public final class SearchUtils {
    * @param updatedDocuments documents the update-by-query actually modified
    * @param versionConflicts documents skipped because another write won the version race
    * @param failureReasons per-shard failure reasons, empty when the call fully succeeded
+   * @param attempts times the update-by-query ran
    */
   public record ColumnLineageFlushOutcome(
       String operation,
@@ -865,7 +882,40 @@ public final class SearchUtils {
       int requestedFqnCount,
       long updatedDocuments,
       long versionConflicts,
-      List<String> failureReasons) {}
+      List<String> failureReasons,
+      int attempts)
+      implements UpdateByQueryReconciler.Outcome<ColumnLineageFlushOutcome> {
+
+    /** The outcome of a single attempt. */
+    public ColumnLineageFlushOutcome(
+        String operation,
+        String indexName,
+        int requestedFqnCount,
+        long updatedDocuments,
+        long versionConflicts,
+        List<String> failureReasons) {
+      this(
+          operation,
+          indexName,
+          requestedFqnCount,
+          updatedDocuments,
+          versionConflicts,
+          failureReasons,
+          1);
+    }
+
+    @Override
+    public ColumnLineageFlushOutcome afterAttempts(long updatedDocuments, int attempts) {
+      return new ColumnLineageFlushOutcome(
+          operation,
+          indexName,
+          requestedFqnCount,
+          updatedDocuments,
+          versionConflicts,
+          failureReasons,
+          attempts);
+    }
+  }
 
   /**
    * Report a column-lineage reconciliation, distinguishing "nothing to do" from "we cannot tell".
@@ -887,11 +937,12 @@ public final class SearchUtils {
     } else if (outcome.versionConflicts() > 0) {
       LOG.warn(
           "{} in upstream lineage for index {} hit {} version conflict(s); those documents kept "
-              + "their previous column FQNs after reconciliation. {} document(s) updated for {} "
+              + "their previous column FQNs after {} attempt(s). {} document(s) updated for {} "
               + "requested FQN(s).",
           outcome.operation(),
           outcome.indexName(),
           outcome.versionConflicts(),
+          outcome.attempts(),
           outcome.updatedDocuments(),
           outcome.requestedFqnCount());
     } else if (outcome.updatedDocuments() == 0 && outcome.requestedFqnCount() > 0) {

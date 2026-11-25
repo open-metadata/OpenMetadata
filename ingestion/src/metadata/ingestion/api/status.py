@@ -33,7 +33,7 @@ MAX_STATUS_DISPLAY_ITEMS = 1_000
 # Placeholder for filtered entities that carry no name
 UNKNOWN_FILTER_KEY = "<unknown>"
 
-TruncatedStr = Annotated[str | None, AfterValidator(lambda v: v[:MAX_STACK_TRACE_LENGTH] if v else None)]
+TruncatedStr = Annotated[str | None, AfterValidator(lambda v: v[:MAX_STACK_TRACE_LENGTH] if v is not None else None)]
 
 
 class TruncatedStackTraceError(StackTraceError):

@@ -11,14 +11,19 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -58,8 +63,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
@@ -301,7 +305,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           {t('label.hyper-parameter-plural')}{' '}
         </Typography>
         {isEmpty(mlModelDetail.mlHyperParameters) ? (
-          <ErrorPlaceHolder size={SIZE.MEDIUM} />
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoDataPlaceholder data-testid="no-data-placeholder" />
+          </div>
         ) : (
           <Table
             columns={getMlHyperParametersColumn}
@@ -337,7 +343,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             size="small"
           />
         ) : (
-          <ErrorPlaceHolder size={SIZE.MEDIUM} />
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoDataPlaceholder data-testid="no-data-placeholder" />
+          </div>
         )}
       </>
     );
@@ -426,7 +434,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }
 
   return (
-    <PageLayoutV1 pageTitle={mlModelName}>
+    <PageLayoutV1 fillEntityTabs pageTitle={mlModelName}>
       <Box direction="col" gap={3}>
         <div>
           <DataAssetsHeader
@@ -464,9 +472,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               <Tabs.List
                 actions={
                   isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
+                    <ButtonUtility
+                      data-testid="tab-expand-button"
+                      icon={isTabExpanded ? Collapse : Expand}
+                      size="lg"
+                      tooltip={
                         isTabExpanded ? t('label.collapse') : t('label.expand')
                       }
                       onClick={toggleTabExpanded}

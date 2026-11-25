@@ -323,10 +323,16 @@
       },
       "synonyms": {
         "type": "text",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram",
+            "search_analyzer": "om_compound_analyzer"
           }
         }
       },
@@ -596,64 +602,75 @@
       },
       "descriptionSources": {
         "type": "object",
-        "dynamic": false
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Ingested": {
+            "type": "integer"
+          },
+          "Suggested": {
+            "type": "integer"
+          }
+        }
       },
       "tagSources": {
         "type": "object",
-        "dynamic": false
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Generated": {
+            "type": "integer"
+          }
+        }
       },
       "tierSources": {
         "type": "object",
-        "dynamic": false
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Generated": {
+            "type": "integer"
+          }
+        }
       },
       "childrenCount": {
         "type": "integer"
       },
       "mutuallyExclusive": {
         "type": "boolean"
-      },
-      "realizedIn": {
-        "type": "nested",
-        "dynamic": false,
-        "properties": {
-          "id": { "type": "keyword" },
-          "asset": {
-            "properties": {
-              "id": { "type": "keyword" },
-              "type": { "type": "keyword" },
-              "name": {
-                "type": "text",
-                "fields": { "keyword": { "type": "keyword" } }
-              },
-              "fullyQualifiedName": { "type": "keyword" },
-              "displayName": {
-                "type": "text",
-                "fields": { "keyword": { "type": "keyword" } }
-              }
-            }
-          },
-          "role": { "type": "keyword" },
-          "description": { "type": "text" },
-          "provenance": { "type": "keyword" }
-        }
-      },
-      "attributes": {
-        "type": "nested",
-        "dynamic": false,
-        "properties": {
-          "id": { "type": "keyword" },
-          "name": {
-            "type": "text",
-            "fields": { "keyword": { "type": "keyword" } }
-          },
-          "iri": { "type": "keyword" },
-          "description": { "type": "text" },
-          "dataType": { "type": "keyword" },
-          "datatypeIri": { "type": "keyword" },
-          "unit": { "type": "keyword" },
-          "enumValues": { "type": "keyword" },
-          "isIdentifier": { "type": "boolean" }
-        }
       },
       "fingerprint": {
         "type": "keyword"

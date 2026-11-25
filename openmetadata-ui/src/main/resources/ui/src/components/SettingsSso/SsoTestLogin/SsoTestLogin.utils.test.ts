@@ -10,13 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { get } from 'lodash';
 import { ClientType } from '../../../generated/settings/settings';
-import { StageStatus, Status } from '../../../generated/system/testLoginResult';
+import {
+  Stage,
+  StageStatus,
+  Status,
+} from '../../../generated/system/testLoginResult';
+import enUS from '../../../locale/languages/en-us.json';
 import {
   getChangedPaths,
   isBrowserTestLogin,
   isTestLoginSettled,
   requiresTestLogin,
+  STAGE_LABEL_KEYS,
   toConnectionStepState,
 } from './SsoTestLogin.utils';
 
@@ -154,6 +161,20 @@ describe('SsoTestLogin.utils', () => {
       expect(isTestLoginSettled(undefined)).toBe(false);
       expect(isTestLoginSettled({ status: Status.Pending })).toBe(false);
       expect(isTestLoginSettled({ status: Status.Failed })).toBe(true);
+    });
+  });
+});
+
+describe('STAGE_LABEL_KEYS', () => {
+  it('labels every stage the server reports with its own English text', () => {
+    const labelKeys = Object.values(Stage).map(
+      (stage) => STAGE_LABEL_KEYS[stage]
+    );
+
+    expect(new Set(labelKeys).size).toBe(labelKeys.length);
+
+    labelKeys.forEach((labelKey) => {
+      expect(get(enUS, labelKey)).toEqual(expect.any(String));
     });
   });
 });

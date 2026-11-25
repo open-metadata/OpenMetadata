@@ -22,6 +22,8 @@ import time
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from decimal import Decimal
+from functools import partial
 from typing import (
     TYPE_CHECKING,
     TypedDict,
@@ -43,6 +45,7 @@ from metadata.data_quality.validations.models import EvaluationScopeRuntimeParam
 from metadata.data_quality.validations.result_messages import SamplingStability
 from metadata.data_quality.validations.thresholds import (
     DIMENSION_FAILURE_POLICY_PARAM,
+    MIN_ROWS_PER_DIMENSION_PARAM,
     THRESHOLD_PARAM,
     THRESHOLD_UNIT_PARAM,
     DimensionFailurePolicy,
@@ -51,12 +54,15 @@ from metadata.data_quality.validations.thresholds import (
 )
 from metadata.generated.schema.tests.basic import (
     DimensionValue,
+    TestCaseAppliedThreshold,
     TestCaseDimensionResult,
     TestCaseErrorDetails,
+    TestCaseEvaluationScope,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.generated.schema.tests.basic import ThresholdUnit as ResultThresholdUnit
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue  # noqa: TC001
 from metadata.generated.schema.type.basic import Timestamp  # noqa: TC001
@@ -185,6 +191,7 @@ class BaseTestValidator(ABC):
     # Memoized reading of the failure threshold parameters. Declared on the class so that
     # validators overriding __init__ without calling super() still get the default.
     _failure_threshold: FailureThreshold | None = None
+    _min_rows_per_dimension: float | None = None
 
     # Memoized reading of the evaluation scope, and the last widening the threshold produced as
     # `(effective bounds, configured bounds)`. Declared on the class for the same reason.
@@ -198,6 +205,11 @@ class BaseTestValidator(ABC):
     # Whether the test runs its own SQL against the table rather than reading the sampled
     # dataset. Rule-library and custom SQL tests do, and the message has to say so.
     BYPASSES_SAMPLER: bool = False
+
+    # Whether this validator reads `threshold` as a deviation the verdict tolerates. Overridden
+    # by the validators whose `threshold` means something else, so their results do not record a
+    # tolerance they never applied.
+    THRESHOLD_IS_TOLERANCE: bool = True
 
     def __init__(
         self,
@@ -244,6 +256,8 @@ class BaseTestValidator(ABC):
         test_result = self._run_validation()
         if test_result.result:
             test_result.result = self.with_evaluation_scope(test_result.result, test_result.testCaseStatus)
+        test_result.evaluationScope = self.result_evaluation_scope(test_result.testCaseStatus)
+        test_result.appliedThreshold = self.result_applied_threshold(test_result.testCaseStatus)
 
         # Add dimensional results if configured
         if self.is_dimensional_test():
@@ -301,6 +315,51 @@ class BaseTestValidator(ABC):
             )
             return DimensionFailurePolicy.OVERALL_ONLY
 
+    def get_min_rows_per_dimension(self) -> float:
+        """Rows a dimension group needs to take part in the `ANY_DIMENSION` roll-up
+
+        Only a PERCENTAGE threshold is distorted by a small group: 1 violation in a 3-row group is
+        33%. An ABSOLUTE threshold compares the same violation count whatever the group size, and
+        under `OVERALL_ONLY` nothing rolls up, so both read 0 and exempt nothing. The parameters
+        cannot change while the test case runs, so the reading is memoized like the threshold.
+        """
+        minimum = self._min_rows_per_dimension
+        if minimum is None:
+            minimum = self._min_rows_per_dimension = self._read_min_rows_per_dimension()
+        return minimum
+
+    def _read_min_rows_per_dimension(self) -> float:
+        """Parse `minRowsPerDimension`, falling back to exempting no group"""
+        if self.get_dimension_failure_policy() is not DimensionFailurePolicy.ANY_DIMENSION:
+            return 0.0
+        if self.get_failure_threshold().unit is not ThresholdUnit.PERCENTAGE:
+            return 0.0
+
+        try:
+            raw_minimum = self.get_test_case_param_value(
+                self.test_case.parameterValues or [], MIN_ROWS_PER_DIMENSION_PARAM, float, default=0.0
+            )
+        except (TypeError, ValueError):
+            raw_minimum = None
+        minimum = raw_minimum if isinstance(raw_minimum, float) else None
+
+        # Infinity would exempt every group and silently turn ANY_DIMENSION into OVERALL_ONLY.
+        if minimum is None or not thresholds.is_usable(minimum):
+            logger.warning(
+                "Unreadable or out of range %s '%s' for %s. It has to be a finite, non-negative "
+                "number. Rolling every dimension group up.",
+                MIN_ROWS_PER_DIMENSION_PARAM,
+                raw_minimum,
+                self.test_case.fullyQualifiedName,
+            )
+            return 0.0
+        return minimum
+
+    def _is_excluded_from_roll_up(self, group_rows: int | None) -> bool:
+        """Whether a dimension group is too small to fail the test case under `ANY_DIMENSION`"""
+        minimum = self.get_min_rows_per_dimension()
+        return bool(minimum) and group_rows is not None and group_rows < minimum
+
     def _roll_up_dimension_results(
         self,
         test_result: TestCaseResult,
@@ -309,25 +368,45 @@ class BaseTestValidator(ABC):
         """Fail a passing test case when a dimension group failed and the policy asks for it
 
         Only a `Success` is ever turned into a `Failed`: an aborted run computed nothing to roll
-        up, and a failed one already is. The `Others` group takes part like any other group, but
-        it is the aggregate of every group beyond `topDimensions`, so those groups are only ever
-        checked together.
+        up, and a failed one already is. A failed aggregate still gets the explanation for any
+        excluded failing groups. The `Others` group takes part like any other group, but it is the
+        aggregate of every group beyond `topDimensions`, so those groups are only ever checked
+        together.
+
+        A group below `minRowsPerDimension` keeps its own `Failed` status but does not fail the
+        test case. The message names it, so a failing small group is never silently ignored.
         """
-        if test_result.testCaseStatus is not TestCaseStatus.Success:
+        if test_result.testCaseStatus is TestCaseStatus.Aborted:
             return
         if self.get_dimension_failure_policy() is not DimensionFailurePolicy.ANY_DIMENSION:
             return
 
-        failed_groups = [
-            dimension_result.dimensionKey
-            for dimension_result in dimension_results
-            if dimension_result.testCaseStatus is TestCaseStatus.Failed
-        ]
-        if not failed_groups:
+        failed_groups: list[str] = []
+        excluded_failed_groups: list[str] = []
+        for dimension_result in dimension_results:
+            if dimension_result.testCaseStatus is not TestCaseStatus.Failed:
+                continue
+            if dimension_result.excludedFromRollUp:
+                excluded_failed_groups.append(dimension_result.dimensionKey)
+            else:
+                failed_groups.append(dimension_result.dimensionKey)
+
+        sentences = []
+        if failed_groups and test_result.testCaseStatus is TestCaseStatus.Success:
+            test_result.testCaseStatus = TestCaseStatus.Failed
+            if test_result.result:
+                test_result.result = test_result.result.replace(
+                    result_messages.verdict(True), "so the aggregate passed", 1
+                )
+            sentences.append(result_messages.dimension_rollup_sentence(failed_groups))
+        if excluded_failed_groups:
+            sentences.append(
+                result_messages.excluded_dimensions_sentence(excluded_failed_groups, self.get_min_rows_per_dimension())
+            )
+        if not sentences:
             return
 
-        test_result.testCaseStatus = TestCaseStatus.Failed
-        rollup = result_messages.dimension_rollup_sentence(failed_groups)
+        rollup = " ".join(sentences)
         test_result.result = f"{test_result.result} {rollup}" if test_result.result else rollup
 
     @staticmethod
@@ -606,12 +685,20 @@ class BaseTestValidator(ABC):
             )
             return FailureThreshold()
 
+        return FailureThreshold(value=threshold, unit=self.get_threshold_unit())
+
+    def get_threshold_unit(self) -> ThresholdUnit:
+        """Parse `thresholdUnit`, falling back to ABSOLUTE when it is unset or unknown
+
+        Readable on its own for the tests whose `threshold` is not a failure tolerance, and so
+        cannot go through `get_failure_threshold()`.
+        """
         raw_unit = self.get_test_case_param_value(
-            param_values, THRESHOLD_UNIT_PARAM, str, default=ThresholdUnit.ABSOLUTE.value
+            self.test_case.parameterValues or [], THRESHOLD_UNIT_PARAM, str, default=ThresholdUnit.ABSOLUTE.value
         )
         unit_value = raw_unit if isinstance(raw_unit, str) else ThresholdUnit.ABSOLUTE.value
         try:
-            unit = ThresholdUnit(unit_value.upper())
+            return ThresholdUnit(unit_value.upper())
         except ValueError:
             logger.warning(
                 "Unknown %s '%s' for %s. Reading the threshold as %s.",
@@ -620,9 +707,7 @@ class BaseTestValidator(ABC):
                 self.test_case.fullyQualifiedName,
                 ThresholdUnit.ABSOLUTE.value,
             )
-            unit = ThresholdUnit.ABSOLUTE
-
-        return FailureThreshold(value=threshold, unit=unit)
+            return ThresholdUnit.ABSOLUTE
 
     def _needs_row_count(self) -> bool:
         """Whether the total row count has to be computed
@@ -698,7 +783,11 @@ class BaseTestValidator(ABC):
         if threshold.unit is ThresholdUnit.PERCENTAGE:
             if not denominator:
                 return True
-            return violations / denominator * 100 <= threshold.value
+            # Compare rows to the rows the percentage allows. Dividing the violations first goes
+            # through an inexact float (7 / 100 * 100 is 7.000000000000001) and fails a count
+            # sitting exactly on the threshold; Decimal keeps a typed 7 or 2.9 exact.
+            allowed = Decimal(str(threshold.value)) / 100 * denominator
+            return violations <= allowed
 
         return violations <= threshold.value
 
@@ -749,6 +838,44 @@ class BaseTestValidator(ABC):
         except Exception as exc:
             logger.debug("Could not describe the evaluation scope of %s: %s", self.test_case, exc)
             return message
+
+    def result_evaluation_scope(self, status: TestCaseStatus | None) -> TestCaseEvaluationScope | None:
+        """The scope to record on the result, or none for an aborted run, which read no rows
+
+        Like the scope sentence, this is reporting: a scope that cannot be resolved is left off
+        the result rather than failing the run.
+        """
+        if status is TestCaseStatus.Aborted:
+            return None
+        try:
+            return self.get_evaluation_scope().to_result_scope(self.BYPASSES_SAMPLER)
+        except Exception as exc:
+            logger.debug("Could not record the evaluation scope of %s: %s", self.test_case, exc)
+            return None
+
+    def result_applied_threshold(self, status: TestCaseStatus | None) -> TestCaseAppliedThreshold | None:
+        """The threshold to record on the result, as this run read it
+
+        The verdict is only readable next to the tolerance it was taken under, and the test case
+        can be edited between this run and the next one. The snapshot is taken here, from the
+        parameters the evaluator itself read, rather than left for the server to re-read from the
+        test case: an edit landing in between would otherwise be attributed to this run.
+
+        An aborted run took no verdict, so it applied no threshold, and neither did a test whose
+        `threshold` is not a tolerance. Like the evaluation scope, this is reporting: a threshold
+        that cannot be read is left off rather than failing the run.
+        """
+        if status is TestCaseStatus.Aborted or not self.THRESHOLD_IS_TOLERANCE:
+            return None
+        try:
+            threshold = self.get_failure_threshold()
+            return TestCaseAppliedThreshold(
+                value=threshold.value,
+                unit=ResultThresholdUnit(threshold.unit.value),
+            )
+        except Exception as exc:
+            logger.debug("Could not record the applied threshold of %s: %s", self.test_case, exc)
+            return None
 
     @staticmethod
     def _dimension_prefix(dimension_info: DimensionInfo | None) -> str:
@@ -802,6 +929,7 @@ class BaseTestValidator(ABC):
         effective_bounds: tuple[float | None, float | None],
         matched: bool,
         dimension_info: DimensionInfo | None = None,
+        noun: str = "metric units",
     ) -> str:
         """Message for a deviation test against bounds: statistic, bounds, widening, verdict
 
@@ -811,6 +939,7 @@ class BaseTestValidator(ABC):
             effective_bounds: the bounds the value was evaluated against, threshold included
             matched: the verdict
             dimension_info: dimension details, for a dimensional row
+            noun: units of an absolute deviation
 
         Returns:
             str: e.g. "Mean of `amount` is 87.4. Expected between 90 and 110, widened by a 5%
@@ -823,6 +952,7 @@ class BaseTestValidator(ABC):
             effective_bounds,
             self.get_failure_threshold(),
             matched,
+            noun,
         )
 
     def format_expected_value_message(
@@ -832,6 +962,7 @@ class BaseTestValidator(ABC):
         expected,
         matched: bool,
         dimension_info: DimensionInfo | None = None,
+        noun: str = "rows",
     ) -> str:
         """Message for a deviation test against an exact value: statistic, expectation, verdict
 
@@ -841,6 +972,7 @@ class BaseTestValidator(ABC):
             expected: the value the test case expects
             matched: the verdict
             dimension_info: dimension details, for a dimensional row
+            noun: units of an absolute deviation
 
         Returns:
             str: e.g. "Row count is 9,981. Expected 10,000, with a 1.00% tolerance, so this test
@@ -852,6 +984,7 @@ class BaseTestValidator(ABC):
             expected,
             self.get_failure_threshold(),
             matched,
+            noun,
         )
 
     def column_label(self, fallback: str = "the column") -> str:
@@ -1000,6 +1133,11 @@ class BaseTestValidator(ABC):
         params = test_params or {}
         min_bound_param = getattr(self, "MIN_BOUND", None)
         max_bound_param = getattr(self, "MAX_BOUND", None)
+        # The group's row count rather than the evaluation's denominator: some validators count
+        # violations against the non-null values only, and the minimum is set in rows.
+        group_rows = row.get(DIMENSION_TOTAL_COUNT_KEY)
+        if group_rows is None:
+            group_rows = evaluation.get("total_rows")
 
         return self.get_dimension_result_object(
             dimension_values={dimension_col_name: dimension_value},
@@ -1012,6 +1150,7 @@ class BaseTestValidator(ABC):
             impact_score=impact_score,
             min_bound=params.get(min_bound_param) if min_bound_param else None,
             max_bound=params.get(max_bound_param) if max_bound_param else None,
+            excluded_from_roll_up=self._is_excluded_from_roll_up(group_rows),
         )
 
     @staticmethod
@@ -1049,6 +1188,7 @@ class BaseTestValidator(ABC):
         Returns:
             TestCaseResult:
         """
+        configured_min, configured_max = self.configured_bounds((min_bound, max_bound))
         test_case_result = TestCaseResult(
             timestamp=execution_date,  # type: ignore
             testCaseStatus=status,
@@ -1058,6 +1198,10 @@ class BaseTestValidator(ABC):
             # if users don't set the min/max bound, we'll change the inf/-inf (used for computation) to None
             minBound=None if min_bound == float("-inf") else min_bound,
             maxBound=None if max_bound == float("inf") else max_bound,
+            # The window the test case asked for, kept beside the one the threshold widened it
+            # into: an edit to either can no longer be read back onto this run.
+            configuredMinBound=reportable_bound(configured_min),
+            configuredMaxBound=reportable_bound(configured_max),
             # Validators build their Aborted result inside the `except` block that caught the error,
             # so without an explicit `exc` the exception being handled is the cause; that spares each
             # of them from threading it through.
@@ -1088,9 +1232,12 @@ class BaseTestValidator(ABC):
     ) -> list[TestCaseDimensionResult]:
         """Convert DimensionResult objects to TestCaseDimensionResult objects"""
         test_case_dimension_results = []
+        # Every group of a run was judged by the same threshold, so they share the run's snapshot.
+        applied_threshold = test_result.appliedThreshold
 
         for dim_result in dimension_results:
             dimension_key = ",".join([f"{dim_val.name}={dim_val.value}" for dim_val in dim_result.dimensionValues])
+            configured_min, configured_max = self.configured_bounds((dim_result.minBound, dim_result.maxBound))
 
             test_case_dim_result = TestCaseDimensionResult(
                 id=str(uuid4()),
@@ -1109,6 +1256,10 @@ class BaseTestValidator(ABC):
                 impactScore=dim_result.impactScore,  # Include the impact score
                 minBound=dim_result.minBound,
                 maxBound=dim_result.maxBound,
+                configuredMinBound=reportable_bound(configured_min),
+                configuredMaxBound=reportable_bound(configured_max),
+                appliedThreshold=applied_threshold,
+                excludedFromRollUp=dim_result.excludedFromRollUp,
             )
 
             test_case_dimension_results.append(test_case_dim_result)
@@ -1164,6 +1315,7 @@ class BaseTestValidator(ABC):
         impact_score: float | None = None,
         min_bound: float | None = None,
         max_bound: float | None = None,
+        excluded_from_roll_up: bool = False,
     ) -> "DimensionResult":  # noqa: UP037
         """Returns a DimensionResult object with automatic percentage calculations
 
@@ -1178,6 +1330,7 @@ class BaseTestValidator(ABC):
             impact_score: Optional impact score for this dimension (0-1 range)
             min_bound: lower bound the dimension was evaluated against
             max_bound: upper bound the dimension was evaluated against
+            excluded_from_roll_up: whether the dimension is below `minRowsPerDimension`
 
         Returns:
             DimensionResult: Dimension result object with calculated percentages
@@ -1213,6 +1366,8 @@ class BaseTestValidator(ABC):
             impactScore=round(impact_score, 4) if impact_score is not None else None,
             minBound=reportable_bound(min_bound),
             maxBound=reportable_bound(max_bound),
+            # Left out rather than False, so results without the parameter stay unchanged.
+            excludedFromRollUp=True if excluded_from_roll_up else None,
         )
 
         return dimension_result  # noqa: RET504
@@ -1254,6 +1409,21 @@ class BaseTestValidator(ABC):
             float,
             default=float("inf"),
         )
+
+    def get_set_param_value(self, param_name: str) -> list:
+        """An allowed or forbidden set, typed by the column it is checked against"""
+        return self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            param_name,
+            partial(utils.parse_set_values, column_type=self.get_set_values_type()),
+        )
+
+    def get_set_values_type(self):
+        """The column type a set is parsed against, or None to keep its values as written.
+
+        Implementation provided by SQAValidatorMixin or PandasValidatorMixin via MRO chain.
+        """
+        return super().get_set_values_type()  # type: ignore
 
     def get_bounds(self, min_param_name: str, max_param_name: str) -> tuple[float | None, float | None]:
         """Resolve the test case bounds and widen them by the failure threshold.
@@ -1302,7 +1472,8 @@ class BaseTestValidator(ABC):
         for these bounds there is none to report.
         """
         widening = self._bound_widening
-        if widening and widening[0] == effective_bounds:
+        # Dimension results serialize unbounded sides as None rather than infinity.
+        if widening and tuple(map(reportable_bound, widening[0])) == tuple(map(reportable_bound, effective_bounds)):
             return widening[1]
         return effective_bounds
 

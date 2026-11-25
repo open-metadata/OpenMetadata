@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,10 +23,6 @@ import { updateCertificationTag } from '../../../utils/TagsPureUtils';
 import Certification from '../../Certification/Certification.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import CertificationTag from '../CertificationTag/CertificationTag';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
 
 const CertificationWidget = () => {
@@ -51,49 +49,41 @@ const CertificationWidget = () => {
       await onUpdate(updatedEntity);
     } catch {
       // The page-level updater already toasts before rethrowing, so toasting
-      // here would duplicate it. Swallow rather than rethrow so Certification's
-      // post-await cleanup runs and the popover doesn't stay stuck loading.
-    } finally {
-      setIsEditing(false);
+      // here would duplicate it. Swallow rather than rethrow: nothing above
+      // catches it, and the picker has already closed itself.
     }
   };
 
   const certificationButton = entity.certification ? (
-    <WidgetEditButton
+    <ButtonUtility
       data-testid="edit-certification"
-      title={t('label.edit-entity', { entity: t('label.certification') })}
-      onClick={() => setIsEditing(true)}
+      icon={Edit01}
+      tooltip={t('label.edit-entity', { entity: t('label.certification') })}
     />
   ) : (
-    <WidgetPlusButton
+    <ButtonUtility
       data-testid="add-certification"
-      title={t('label.add-entity', { entity: t('label.certification') })}
-      onClick={() => setIsEditing(true)}
+      icon={Plus}
+      tooltip={t('label.add-entity', { entity: t('label.certification') })}
     />
   );
 
-  const headerExtra = canEdit ? certificationButton : null;
-
-  const content = (
+  // Anchored to the header button, like the glossary and tag pickers; the
+  // button's click opens it through Certification's trigger.
+  const headerExtra = canEdit ? (
     <Certification
       currentCertificate={entity.certification?.tagLabel?.tagFQN}
       permission={canEdit}
-      popoverProps={{
-        open: isEditing,
-        onOpenChange: (visible: boolean) => {
-          if (!visible) {
-            setIsEditing(false);
-          }
-        },
-      }}
-      onCertificationUpdate={handleCertificationUpdate}
-      onClose={() => setIsEditing(false)}>
-      {entity.certification && (
-        <div data-testid="certification-label">
-          <CertificationTag showName certification={entity.certification} />
-        </div>
-      )}
+      popoverProps={{ open: isEditing, onOpenChange: setIsEditing }}
+      onCertificationUpdate={handleCertificationUpdate}>
+      {certificationButton}
     </Certification>
+  ) : null;
+
+  const content = entity.certification && (
+    <div data-testid="certification-label">
+      <CertificationTag showName certification={entity.certification} />
+    </div>
   );
 
   return (

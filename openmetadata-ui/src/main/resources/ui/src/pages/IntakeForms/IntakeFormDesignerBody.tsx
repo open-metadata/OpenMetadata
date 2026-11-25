@@ -23,6 +23,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import { isEqualWith, isNil } from 'lodash';
 import {
   forwardRef,
   useCallback,
@@ -56,23 +57,34 @@ export interface IntakeFormDesignerBodyHandle {
 
 interface IntakeFormDesignerBodyProps {
   entityType: TargetEntityType;
-  initialValue: IntakeForm | null;
+  initialValue: (Omit<IntakeForm, 'id'> & { id?: string }) | null;
   open: boolean;
   onSubmit: (payload: CreateIntakeForm) => Promise<void> | void;
+  /** Reports whether the admin changed anything, so a host can guard leaving. */
+  onDirtyChange?: (isDirty: boolean) => void;
 }
+
+// A cleared text field holds '' where it started without a value.
+const isBlank = (value: unknown) => isNil(value) || value === '';
+const emptyEqualsMissing = (a: unknown, b: unknown) =>
+  isBlank(a) && isBlank(b) ? true : undefined;
 
 const IntakeFormDesignerBody = forwardRef<
   IntakeFormDesignerBodyHandle,
   IntakeFormDesignerBodyProps
->(({ entityType, initialValue, open, onSubmit }, ref) => {
+>(({ entityType, initialValue, open, onSubmit, onDirtyChange }, ref) => {
   const { t } = useTranslation();
   const [customProperties, setCustomProperties] = useState<CustomProperty[]>(
     []
   );
-  const [rows, setRows] = useState<IntakeFormFieldRow[]>([]);
+  // What the admin changed, by field path: the rows are recomputed when the custom properties
+  // arrive, and these edits must survive that.
+  const [edits, setEdits] = useState<
+    Record<string, Partial<IntakeFormFieldRow>>
+  >({});
   const [description, setDescription] = useState<string>('');
   const [enabled, setEnabled] = useState<boolean>(true);
-  const [loadingProps, setLoadingProps] = useState(false);
+  const [loadingProps, setLoadingProps] = useState(true);
 
   useEffect(() => {
     if (!open) {
@@ -80,6 +92,7 @@ const IntakeFormDesignerBody = forwardRef<
     }
     setDescription(initialValue?.description ?? '');
     setEnabled(initialValue?.enabled ?? true);
+    setEdits({});
   }, [open, initialValue]);
 
   useEffect(() => {
@@ -113,22 +126,39 @@ const IntakeFormDesignerBody = forwardRef<
     };
   }, [open, entityType]);
 
-  useEffect(() => {
-    setRows(
+  const baseRows = useMemo(
+    () =>
       computeFieldRows({
         nativeFields: intakeFormClassBase.getNativeFields(entityType),
         customProperties,
         initialValue,
         t,
-      })
+      }),
+    [entityType, customProperties, initialValue, t]
+  );
+  const rows = useMemo(
+    () => baseRows.map((row) => ({ ...row, ...edits[row.path] })),
+    [baseRows, edits]
+  );
+
+  // Compares values, not the edit log: a field toggled back reads as unchanged.
+  const isDirty = useMemo(() => {
+    const initialDescription = initialValue?.description ?? '';
+    const initialEnabled = initialValue?.enabled ?? true;
+
+    return (
+      !isEqualWith(rows, baseRows, emptyEqualsMissing) ||
+      description !== initialDescription ||
+      enabled !== initialEnabled
     );
-  }, [entityType, customProperties, initialValue, t]);
+  }, [rows, baseRows, description, enabled, initialValue]);
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const updateRow = useCallback(
     (path: string, patch: Partial<IntakeFormFieldRow>) => {
-      setRows((prev) =>
-        prev.map((row) => (row.path === path ? { ...row, ...patch } : row))
-      );
+      setEdits((prev) => ({ ...prev, [path]: { ...prev[path], ...patch } }));
     },
     []
   );

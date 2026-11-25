@@ -11,22 +11,34 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
+import { TFunction } from 'i18next';
+import { isEmpty, sortBy, xorBy } from 'lodash';
 import {
   Task,
   TaskAvailableTransition,
   TaskCategory,
   TaskStatus,
 } from '../../../../generated/entity/tasks/task';
+import { EntityReference } from '../../../../generated/type/entityReference';
 import { TaskFormSchema } from '../../../../rest/taskFormSchemasAPI';
 import { ResolveTask, TaskResolutionType } from '../../../../rest/tasksAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   applyTaskFormSchemaDefaults,
   getEditableTaskPayload,
+  getResolvedTaskFormSchema,
   getTaskFormHandlerConfig,
   getTaskResolutionNewValue,
+  getTaskTransitionFormSchema,
+  getTaskTransitionUiSchema,
+  hasRequiredTaskFormFields,
   shouldRequireTaskResolutionValue,
 } from '../../../../utils/TaskFormSchemaUtils';
+import {
+  getTaskResolveBody,
+  isOntologyReviewTask,
+} from '../../../../utils/TaskUtils';
+import { isRevisionRequest } from '../../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import { isTaskOpen } from './inbox.utils';
 import { TaskActionLabelOverrides } from './taskDetail.types';
 import { isApproveTransition, isRejectTransition } from './taskList.utils';
@@ -201,7 +213,10 @@ export const getTaskResolveActions = (
     }));
   }
 
-  return getLegacyActions(task, labels, schema);
+  // A Revise and resubmit task is completed by editing the asset, not resolved here.
+  return isOntologyReviewTask(task) || isRevisionRequest(task)
+    ? []
+    : getLegacyActions(task, labels, schema);
 };
 
 /**
@@ -230,26 +245,99 @@ export interface TaskActionInput {
   requiresAssignee: boolean;
   // Incident resolutions store the reason as testCaseFailureReason.
   requiresRootCause: boolean;
+  // The transition's form schema (`transitionForms[formRef|id]`) declares
+  // required fields the resolver must supply before the transition can fire —
+  // a workflow `approve` whose form requires `targetField`/`proposedText`,
+  // for example. The inbox opens a form modal for these (mirroring
+  // `TaskTabNew`'s `shouldOpenWorkflowTransitionModal`); without it the
+  // transition would resolve with no payload and the server would no-op the
+  // form validation, silently losing the required data.
+  requiresForm: boolean;
 }
 
 /**
+ * The form schema a task resolves against. A workflow-driven task gets no
+ * built-in fallback: a failed lookup rejects instead of hiding a transition's
+ * required form, and a missing schema resolves to `undefined`.
+ */
+export const resolveTaskFormSchema = (
+  task: Partial<
+    Pick<
+      Task,
+      | 'type'
+      | 'category'
+      | 'taskFormSchemaId'
+      | 'payload'
+      | 'availableTransitions'
+    >
+  >
+): Promise<TaskFormSchema | undefined> =>
+  task.type && task.category
+    ? getResolvedTaskFormSchema(task.type, task.category, {
+        taskFormSchemaId: task.taskFormSchemaId,
+        payload: task.payload,
+        allowFallback: !task.availableTransitions?.length,
+      })
+    : Promise.resolve(undefined);
+
+/**
  * What an action must collect before it can be resolved. An action that needs
- * nothing fires straight away; anything else opens the action modal.
+ * nothing fires straight away; anything else opens the action modal (a comment
+ * / root-cause modal for `requiresComment`/`requiresRootCause`, an assignee
+ * picker for `requiresAssignee`, or the transition form modal for
+ * `requiresForm`).
+ *
+ * Pass the task's `schema` (see `resolveTaskFormSchema`) so `requiresForm` can
+ * inspect the transition's `transitionForms`; without it `requiresForm` is
+ * `false`.
  */
 export const getTaskActionInput = (
   task: Task,
-  action: TaskResolveAction
+  action: TaskResolveAction,
+  schema?: TaskFormSchema
 ): TaskActionInput => ({
   requiresComment: action.requiresComment,
   requiresAssignee: action.kind === 'assignee',
   requiresRootCause:
     task.category === TaskCategory.Incident && action.requiresComment,
+  requiresForm:
+    action.transition != null &&
+    hasRequiredTaskFormFields(
+      getTaskTransitionFormSchema(schema, action.transition)
+    ),
 });
 
 export const needsTaskActionInput = (
   task: Task,
-  action: TaskResolveAction
-): boolean => Object.values(getTaskActionInput(task, action)).some(Boolean);
+  action: TaskResolveAction,
+  schema?: TaskFormSchema
+): boolean =>
+  Object.values(getTaskActionInput(task, action, schema)).some(Boolean);
+
+const buildTransitionResolveBody = (
+  transition: TaskAvailableTransition,
+  task: Task,
+  comment: { comment?: string } | Record<string, never>,
+  extras: { comment?: string; payload?: Record<string, unknown> } | undefined,
+  schema?: TaskFormSchema
+): ResolveTask => {
+  const transitionUiSchema = schema
+    ? getTaskTransitionUiSchema(schema, transition)
+    : undefined;
+  const payload = extras?.payload;
+  const newValue =
+    payload && transitionUiSchema
+      ? getTaskResolutionNewValue(task, payload, transitionUiSchema)
+      : undefined;
+
+  return getTaskResolveBody(task, {
+    transitionId: transition.id,
+    resolutionType: transition.resolutionType,
+    ...comment,
+    ...(payload ? { payload } : {}),
+    ...(newValue !== undefined ? { newValue } : {}),
+  });
+};
 
 /**
  * The `POST /tasks/{id}/resolve` body for an action. A workflow action names its
@@ -265,13 +353,16 @@ export const buildResolveBody = (
 ): ResolveTask => {
   const comment = extras?.comment ? { comment: extras.comment } : {};
 
+  // `action.transition` is narrowed to a non-optional `TaskAvailableTransition`
+  // for the helper so it needs no non-null assertion.
   if (action.transition) {
-    return {
-      transitionId: action.transition.id,
-      resolutionType: action.transition.resolutionType,
-      ...comment,
-      ...(extras?.payload ? { payload: extras.payload } : {}),
-    };
+    return buildTransitionResolveBody(
+      action.transition,
+      task,
+      comment,
+      extras,
+      schema
+    );
   }
 
   const legacy = buildLegacyResolution(
@@ -289,8 +380,53 @@ export const buildResolveBody = (
   };
 };
 
+const INCIDENT_STAGE_ORDER = ['new', 'ack', 'assigned', 'resolved'];
+
+const getIncidentStageRank = (stageId?: string) =>
+  INCIDENT_STAGE_ORDER.indexOf(stageId ?? '');
+
+/**
+ * An incident's transitions ranked by the stage each moves to, or undefined
+ * when the task is not in an incident stage
+ * (ADR:2026-11-20-incident-task-actions-lead-with-the-next-stage).
+ */
+export const rankByIncidentStage = <T>(
+  items: T[],
+  getTargetStageId: (item: T) => string | undefined,
+  stageId?: string
+): T[] | undefined => {
+  const currentRank = getIncidentStageRank(stageId);
+  const isIncidentStage =
+    currentRank >= 0 &&
+    items.every((item) => getIncidentStageRank(getTargetStageId(item)) >= 0);
+  if (!isIncidentStage) {
+    return undefined;
+  }
+
+  return sortBy(items, (item) => {
+    const step = getIncidentStageRank(getTargetStageId(item)) - currentRank;
+
+    return step > 0 ? step : INCIDENT_STAGE_ORDER.length - step;
+  });
+};
+
+const getDefaultSlots = (
+  actions: TaskResolveAction[]
+): (TaskResolveAction | undefined)[] => {
+  const approve = actions.find((action) => action.kind === 'approve');
+  const reject = actions.find((action) => action.kind === 'reject');
+  const assignee = actions.find((action) => action.kind === 'assignee');
+  const others = actions.filter((action) => action.kind === 'other');
+  const primary = approve ?? others[0];
+
+  return [
+    primary,
+    reject ?? (primary === others[0] ? others[1] : others[0]) ?? assignee,
+  ];
+};
+
 export interface TaskActionLayout {
-  /** The affirmative action, rendered as the header's filled button. */
+  /** The leading action, filled unless it opens the assignee picker. */
   primary?: TaskResolveAction;
   /** The counterpart action, rendered as the header's outlined button. */
   secondary?: TaskResolveAction;
@@ -305,19 +441,18 @@ export interface TaskActionLayout {
  * an incident resolving through `resolve`, a granted access request offering
  * only `revoke` — promotes its first transitions instead, so its real action is
  * never buried in the menu. A reassign only takes a slot once nothing else
- * claims it.
+ * claims it. An incident instead takes its two slots from `rankByIncidentStage`.
  */
 export const splitTaskActions = (
-  actions: TaskResolveAction[]
+  actions: TaskResolveAction[],
+  stageId?: string
 ): TaskActionLayout => {
-  const approve = actions.find((action) => action.kind === 'approve');
-  const reject = actions.find((action) => action.kind === 'reject');
-  const assignee = actions.find((action) => action.kind === 'assignee');
-  const others = actions.filter((action) => action.kind === 'other');
-
-  const primary = approve ?? others[0];
-  const secondary =
-    reject ?? (primary === others[0] ? others[1] : others[0]) ?? assignee;
+  const [primary, secondary] =
+    rankByIncidentStage(
+      actions,
+      (action) => action.transition?.targetStageId,
+      stageId
+    ) ?? getDefaultSlots(actions);
   const promoted = new Set(
     [primary?.id, secondary?.id].filter(Boolean) as string[]
   );
@@ -327,4 +462,29 @@ export const splitTaskActions = (
     secondary,
     overflow: actions.filter((action) => !promoted.has(action.id)),
   };
+};
+
+/**
+ * Why a reassign should not be sent, if it should not. Clicking the current
+ * assignee in the single-select picker clears it, and choosing the same people
+ * again changes nothing: both say who is already assigned. An empty pick on a
+ * task with no assignee says one is required.
+ */
+export const getReassignBlocker = (
+  current: EntityReference[],
+  next: EntityReference[],
+  t: TFunction
+): string | undefined => {
+  const isUnchanged = isEmpty(next) || isEmpty(xorBy(current, next, 'id'));
+  if (!isEmpty(current) && isUnchanged) {
+    return t('message.already-assigned-to-task', {
+      name: current.map((assignee) => getEntityName(assignee)).join(', '),
+    });
+  }
+
+  return isEmpty(next)
+    ? t('message.field-text-is-required', {
+        fieldText: t('label.assignee-plural'),
+      })
+    : undefined;
 };

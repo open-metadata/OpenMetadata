@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -16,6 +17,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.type.SearchIndexDataType;
 import org.openmetadata.schema.type.SearchIndexField;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -26,9 +28,10 @@ import org.openmetadata.service.util.EntityUtil;
  * <p>When a SearchIndex field's {@code dataType} changes between two ingestion runs, {@link
  * EntityUtil#searchIndexFieldMatch} (which matches on name AND dataType) classifies the old field as
  * deleted and the new field as added. The carry-forward block is then responsible for copying the
- * user-curated description from the deleted (old-datatype) field onto the added (new-datatype)
- * field. These tests pin that behavior and guard against regressions where the incoming field's
- * own description is incorrectly preserved (or incorrectly overwritten).
+ * user-curated description — and, when the re-added field carries no tags of its own, the
+ * user-applied tags — from the deleted (old-datatype) field onto the added (new-datatype) field.
+ * These tests pin that behavior and guard against regressions where the incoming field's own
+ * description or tags are incorrectly dropped (or incorrectly overwritten).
  */
 class SearchIndexFieldCarryForwardTest {
 
@@ -107,12 +110,40 @@ class SearchIndexFieldCarryForwardTest {
         .withFields(List.of(field));
   }
 
+  private SearchIndex searchIndex(List<SearchIndexField> fields) {
+    return new SearchIndex()
+        .withId(UUID.randomUUID())
+        .withName("reviews_index")
+        .withFullyQualifiedName("elasticsearch.e2e.reviews_index")
+        .withUpdatedBy("admin")
+        .withVersion(0.1)
+        .withFields(fields);
+  }
+
+  private SearchIndex searchIndexWithNullFields() {
+    return new SearchIndex()
+        .withId(UUID.randomUUID())
+        .withName("reviews_index")
+        .withFullyQualifiedName("elasticsearch.e2e.reviews_index")
+        .withUpdatedBy("admin")
+        .withVersion(0.1)
+        .withFields(null);
+  }
+
   private SearchIndexField field(String name, SearchIndexDataType type, String description) {
     return new SearchIndexField()
         .withName(name)
         .withDataType(type)
         .withDescription(description)
         .withFullyQualifiedName("elasticsearch.e2e.reviews_index." + name);
+  }
+
+  private static TagLabel manualTag(String fqn) {
+    return new TagLabel()
+        .withTagFQN(fqn)
+        .withSource(TagLabel.TagSource.CLASSIFICATION)
+        .withLabelType(TagLabel.LabelType.MANUAL)
+        .withState(TagLabel.State.CONFIRMED);
   }
 
   /**
@@ -211,6 +242,205 @@ class SearchIndexFieldCarryForwardTest {
           reAddedChild.getDescription(),
           "User-curated description must be carried forward for child fields whose dataType "
               + "changes during re-ingestion");
+    }
+  }
+
+  /**
+   * Reproduction for the inverted-tag-guard bug: a user-applied tag on a field whose dataType
+   * changes between two ingestion runs must be carried forward onto the re-added (new-datatype)
+   * field rather than being silently dropped.
+   *
+   * <p>The buggy guard {@code nullOrEmpty(addedField.getTags()) && nullOrEmpty(deleted.getTags())}
+   * only fired when the deleted field had <em>no</em> tags (a no-op copy of empty onto empty). The
+   * one case it existed for — deleted had user tags, re-added has none — was the case it excluded,
+   * so {@code deleteTagsByTarget} removed the user tags with no backstop. The corrected guard
+   * {@code nullOrEmpty(addedField.getTags()) && !nullOrEmpty(deleted.getTags())} copies the deleted
+   * field's tags onto the re-added field, mirroring {@link EntityRepository#updateColumns}.
+   */
+  @Test
+  void carryForwardPreservesUserTagsWhenDataTypeChanges() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      SearchIndexRepository repo = createRepo(entityMock);
+
+      SearchIndexField originalField =
+          field(FIELD_NAME, SearchIndexDataType.TEXT, USER_DESCRIPTION)
+              .withTags(List.of(manualTag("PersonalData.Personal")));
+      SearchIndexField updatedField = field(FIELD_NAME, SearchIndexDataType.KEYWORD, null);
+      assertRoutedThroughDeleteAndAdd(originalField, updatedField);
+
+      SearchIndex original = searchIndex(originalField);
+      SearchIndex updated = searchIndex(updatedField);
+
+      SearchIndexRepository.SearchIndexUpdater updater =
+          repo.new SearchIndexUpdater(original, updated, EntityRepository.Operation.PUT, null);
+
+      updater.entitySpecificUpdate(false);
+
+      SearchIndexField reAdded = updated.getFields().get(0);
+      assertEquals(
+          1,
+          listOrEmpty(reAdded.getTags()).size(),
+          "User-applied tags must be carried forward from the deleted (old-datatype) field "
+              + "onto the added (new-datatype) field — they must NOT be lost");
+      assertEquals(
+          "PersonalData.Personal",
+          reAdded.getTags().get(0).getTagFQN(),
+          "The exact user-applied tag must survive the dataType change carry-forward");
+    }
+  }
+
+  /**
+   * Non-regression: when the incoming (re-added) field already carries its own connector-supplied
+   * tag, the deleted field's user tags must NOT overwrite it. The carry-forward only fires when the
+   * incoming field lacks tags, mirroring {@code EntityRepository.updateColumns}. Guards against the
+   * fix over-correcting into clobbering connector-supplied tags.
+   */
+  @Test
+  void carryForwardDoesNotOverwriteIncomingTagsWhenDataTypeChanges() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      SearchIndexRepository repo = createRepo(entityMock);
+
+      SearchIndexField originalField =
+          field(FIELD_NAME, SearchIndexDataType.TEXT, USER_DESCRIPTION)
+              .withTags(List.of(manualTag("PersonalData.Personal")));
+      SearchIndexField updatedField =
+          field(FIELD_NAME, SearchIndexDataType.KEYWORD, null)
+              .withTags(List.of(manualTag("PII.Sensitive")));
+      assertRoutedThroughDeleteAndAdd(originalField, updatedField);
+
+      SearchIndex original = searchIndex(originalField);
+      SearchIndex updated = searchIndex(updatedField);
+
+      SearchIndexRepository.SearchIndexUpdater updater =
+          repo.new SearchIndexUpdater(original, updated, EntityRepository.Operation.PUT, null);
+
+      updater.entitySpecificUpdate(false);
+
+      SearchIndexField reAdded = updated.getFields().get(0);
+      assertEquals(
+          1,
+          listOrEmpty(reAdded.getTags()).size(),
+          "An incoming tag must NOT be overwritten by the deleted field's tags");
+      assertEquals(
+          "PII.Sensitive",
+          reAdded.getTags().get(0).getTagFQN(),
+          "The incoming connector-supplied tag must be preserved, not replaced by the "
+              + "deleted field's user-applied tag");
+    }
+  }
+
+  /**
+   * Reproduction for the bug report: when the stored SearchIndex has {@code fields == null} (a
+   * state reachable via JSON PATCH removing/nulling {@code /fields}) but the incoming update
+   * carries a non-null {@code fields} list, {@code updateSearchIndexFields} dereferences the null
+   * stored list with {@code origFields.stream()} and throws an NPE that surfaces as HTTP 500.
+   *
+   * <p>The fix normalizes {@code origFields} with {@code listOrEmpty} at the top of {@code
+   * updateSearchIndexFields}, mirroring {@link EntityRepository#updateColumns}, so a null stored
+   * list is treated as empty and the update is processed normally.
+   */
+  @Test
+  void updateSearchIndexFieldsDoesNotThrowNpeWhenStoredFieldsIsNull() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      SearchIndexRepository repo = createRepo(entityMock);
+
+      SearchIndex original = searchIndexWithNullFields();
+      SearchIndex updated =
+          searchIndex(field(FIELD_NAME, SearchIndexDataType.TEXT, "incoming description"));
+
+      SearchIndexRepository.SearchIndexUpdater updater =
+          repo.new SearchIndexUpdater(original, updated, EntityRepository.Operation.PUT, null);
+
+      updater.entitySpecificUpdate(false);
+
+      SearchIndexField result = updated.getFields().get(0);
+      assertEquals(
+          FIELD_NAME,
+          result.getName(),
+          "The incoming field must survive the update when the stored fields list is null");
+      assertEquals(
+          "incoming description",
+          result.getDescription(),
+          "The incoming field's own description must be preserved when the stored fields "
+              + "list is null (treated as empty, all incoming fields are added)");
+    }
+  }
+
+  /**
+   * Non-regression for the recovery path: once the stored {@code fields} is null, the only way to
+   * repair the entity over the API is a PUT/PATCH that re-supplies {@code fields}. With the fix,
+   * re-supplying multiple fields (e.g. the next ingestion run) must process every field as added
+   * against the empty stored list — no carry-forward, no NPE, no field dropped.
+   */
+  @Test
+  void nullStoredFieldsTreatsAllIncomingFieldsAsAddedAndPreservesThem() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      SearchIndexRepository repo = createRepo(entityMock);
+
+      SearchIndex original = searchIndexWithNullFields();
+      SearchIndexField first =
+          field(FIELD_NAME, SearchIndexDataType.TEXT, "title description")
+              .withTags(List.of(manualTag("PersonalData.Personal")));
+      SearchIndexField second =
+          field("abstract", SearchIndexDataType.KEYWORD, "abstract description");
+      SearchIndex updated = searchIndex(List.of(first, second));
+
+      SearchIndexRepository.SearchIndexUpdater updater =
+          repo.new SearchIndexUpdater(original, updated, EntityRepository.Operation.PUT, null);
+
+      updater.entitySpecificUpdate(false);
+
+      List<SearchIndexField> result = updated.getFields();
+      assertEquals(
+          2,
+          listOrEmpty(result).size(),
+          "All incoming fields must be retained against a null stored fields list");
+      assertEquals(
+          "title description",
+          result.get(0).getDescription(),
+          "An added field's own description must be preserved when stored fields is null");
+      assertEquals(
+          1,
+          listOrEmpty(result.get(0).getTags()).size(),
+          "An added field's own tags must be preserved when stored fields is null");
+      assertEquals(
+          "abstract description",
+          result.get(1).getDescription(),
+          "Every incoming field, not just the first, must survive the null-stored update");
+    }
+  }
+
+  /**
+   * Non-regression for child-field recursion: {@code updateSearchIndexFields} recurses into
+   * children matching by parent. With a null stored top-level fields list, a parent field
+   * carrying children must be processed without an NPE and the children must survive.
+   */
+  @Test
+  void nullStoredFieldsDoesNotThrowWhenIncomingFieldHasChildren() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      SearchIndexRepository repo = createRepo(entityMock);
+
+      SearchIndex original = searchIndexWithNullFields();
+      SearchIndexField child = field("title.subfield", SearchIndexDataType.KEYWORD, null);
+      SearchIndexField parent =
+          field(FIELD_NAME, SearchIndexDataType.OBJECT, null).withChildren(List.of(child));
+      SearchIndex updated = searchIndex(parent);
+
+      SearchIndexRepository.SearchIndexUpdater updater =
+          repo.new SearchIndexUpdater(original, updated, EntityRepository.Operation.PUT, null);
+
+      updater.entitySpecificUpdate(false);
+
+      SearchIndexField resultParent = updated.getFields().get(0);
+      assertEquals(
+          1,
+          listOrEmpty(resultParent.getChildren()).size(),
+          "A child field on an incoming parent must survive when the stored top-level "
+              + "fields list is null");
+      assertEquals(
+          "title.subfield",
+          resultParent.getChildren().get(0).getName(),
+          "The child field name must be preserved through the null-stored update");
     }
   }
 }

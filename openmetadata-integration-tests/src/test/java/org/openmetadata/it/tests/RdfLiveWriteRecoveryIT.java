@@ -22,9 +22,12 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -39,21 +42,25 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
 import org.openmetadata.service.rdf.rebuild.RdfMutation;
+import org.openmetadata.service.rdf.rebuild.ReleaseGraphs;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 
 /** Durable delivery through real MySQL/PostgreSQL transactions and HTTP/TDB2 writes. */
 @Tag("rdf")
 @EnabledIfSystemProperty(named = "enableRdf", matches = "true")
 @Execution(ExecutionMode.SAME_THREAD)
 public class RdfLiveWriteRecoveryIT {
+  private static final ReleaseGraphs NO_RELEASES =
+      release -> {
+        throw new IllegalStateException("No ontology release is journaled here");
+      };
   private static final String BASE = "https://open-metadata.org/";
   private static final String GRAPH = BASE + "graph/knowledge";
   private static final String NAME = BASE + "ontology/name";
@@ -62,20 +69,50 @@ public class RdfLiveWriteRecoveryIT {
   private static GenericContainer<?> fuseki;
   private static String endpoint;
 
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void callerTransactionCommitsOrRollsBackItsOutboxAndWatermark(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final long previous = fixture.primary.enqueuedWatermark();
+      assertThrows(
+          IllegalStateException.class,
+          () ->
+              fixture
+                  .database
+                  .jdbi()
+                  .useTransaction(
+                      handle -> {
+                        fixture.primary.enqueue(handle, insert(0));
+                        assertEquals(
+                            0, CompletableFuture.supplyAsync(fixture.other::pendingWrites).join());
+                        throw new IllegalStateException("metadata mutation failed");
+                      }));
+      assertEquals(0, fixture.other.pendingWrites());
+      assertEquals(previous, fixture.other.enqueuedWatermark());
+      fixture
+          .database
+          .jdbi()
+          .useHandle(
+              handle ->
+                  assertThrows(
+                      IllegalStateException.class,
+                      () -> fixture.primary.enqueue(handle, insert(0))));
+      fixture.database.jdbi().useTransaction(handle -> fixture.primary.enqueue(handle, insert(0)));
+      assertEquals(1, fixture.other.pendingWrites());
+      assertTrue(fixture.other.processNext(fixture::apply));
+      assertEquals(0, fixture.primary.pendingWrites());
+      assertEquals(1, fixture.storage.getTripleCount(GRAPH));
+    }
+  }
+
   @BeforeAll
   static void startServices() {
     endpoint = System.getProperty("rdfRebuildFusekiEndpoint");
     if (endpoint == null) {
-      fuseki =
-          new GenericContainer<>(
-                  new ImageFromDockerfile()
-                      .withFileFromPath(
-                          ".", RdfTestDatabase.repositoryRoot().resolve("docker/rdf-store")))
-              .withExposedPorts(3030)
-              .withEnv("JVM_ARGS", "-Xms512m -Xmx1g")
-              .waitingFor(Wait.forHttp("/$/ping"));
+      fuseki = FusekiTestImage.forOpenMetadata("-Xms512m -Xmx1g");
       fuseki.start();
-      endpoint = "http://" + fuseki.getHost() + ":" + fuseki.getMappedPort(3030);
+      endpoint = FusekiTestImage.serverUrl(fuseki);
     }
     for (RdfTestDatabase.Backend backend : RdfTestDatabase.Backend.values()) {
       DATABASES.put(backend, new RdfTestDatabase(backend));
@@ -254,6 +291,26 @@ public class RdfLiveWriteRecoveryIT {
 
   @ParameterizedTest
   @EnumSource(RdfTestDatabase.Backend.class)
+  void anRdfOffMarkWrittenAfterARebuildStartedKeepsTheProjectionDegradedUntilALaterRebuild(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      assertFalse(fixture.primary.isDegraded());
+
+      fixture.primary.recordRdfDisabled();
+      assertTrue(fixture.other.isDegraded());
+
+      final long rebuildStarted = fixture.primary.failureVersion();
+      fixture.other.recordRdfDisabled();
+      fixture.primary.markRebuilt(rebuildStarted);
+      assertTrue(fixture.primary.isDegraded());
+
+      fixture.primary.markRebuilt(fixture.primary.failureVersion());
+      assertFalse(fixture.other.isDegraded());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
   void migrationReapplicationPreservesFailuresAndPendingWrites(
       final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
@@ -313,6 +370,168 @@ public class RdfLiveWriteRecoveryIT {
       fixture.primary.markRebuilt(fixture.primary.failureVersion());
       assertFalse(fixture.newStore().isDegraded());
       assertEquals(0, fixture.deadLetters());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aRefreshQueuedAgainLaterIsRetiredWithoutBeingApplied(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final String refresh = insert(1);
+      fixture.primary.enqueue(refresh);
+      fixture.primary.enqueue(insert(2));
+      fixture.primary.enqueue(refresh);
+      final long last = fixture.primary.enqueuedWatermark();
+      final List<String> applied = new ArrayList<>();
+
+      while (fixture.other.processNext(applied::add, refresh::equals)) {
+        // drain
+      }
+
+      assertEquals(List.of(insert(2), refresh), applied);
+      assertEquals(0, fixture.primary.pendingWrites());
+      assertEquals(last, fixture.newStore().acknowledgedWatermark());
+      fixture.primary.enqueue(refresh);
+      assertTrue(fixture.other.processNext(applied::add, refresh::equals));
+      assertEquals(List.of(insert(2), refresh, refresh), applied, "a lone refresh is applied");
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void anOldRefreshIsAppliedEvenWhenAnotherCopyIsPending(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final String refresh = insert(1);
+      fixture.primary.enqueue(refresh);
+      fixture.clock.advance(61_000);
+      fixture.primary.enqueue(refresh);
+      final List<String> applied = new ArrayList<>();
+
+      assertTrue(fixture.other.processNext(applied::add, refresh::equals));
+
+      assertEquals(List.of(refresh), applied);
+      assertEquals(1, fixture.primary.pendingWrites());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aCopyOutsideTheNextHundredRowsDoesNotRetireTheHead(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final String refresh = insert(1);
+      final List<String> queued = new ArrayList<>();
+      queued.add(refresh);
+      for (int index = 2; index <= 101; index++) {
+        queued.add(insert(index));
+      }
+      queued.add(refresh);
+      fixture.primary.enqueueAll(queued);
+      final List<String> applied = new ArrayList<>();
+
+      assertTrue(fixture.other.processNext(applied::add, refresh::equals));
+
+      assertEquals(List.of(refresh), applied);
+      assertEquals(101, fixture.primary.pendingWrites());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void theWatermarkPassesAWriteOnlyOnceItIsApplied(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      fixture.primary.enqueue(insert(1));
+      final long first = fixture.primary.enqueuedWatermark();
+      fixture.other.enqueue(insert(2));
+      final long second = fixture.other.enqueuedWatermark();
+      assertTrue(first < second);
+
+      assertFalse(
+          fixture.primary.processNext(
+              payload -> {
+                throw new IllegalStateException("Fuseki temporarily unavailable");
+              }));
+      assertTrue(fixture.other.acknowledgedWatermark() < first);
+
+      fixture.clock.advance(1000);
+      assertTrue(fixture.other.processNext(fixture::apply));
+      final long afterFirst = fixture.primary.acknowledgedWatermark();
+      assertTrue(first <= afterFirst && afterFirst < second);
+
+      assertTrue(fixture.primary.processNext(fixture::apply));
+      assertEquals(second, fixture.newStore().acknowledgedWatermark());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aWriteOutsideTheQueueTakesTheNextIdWithoutAnythingToDeliver(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      fixture.primary.enqueue(insert(1));
+      final long queued = fixture.primary.enqueuedWatermark();
+
+      final long untracked = fixture.other.recordUntrackedWrite();
+
+      assertTrue(untracked > queued);
+      assertEquals(untracked, fixture.primary.enqueuedWatermark());
+      assertEquals(1, fixture.primary.pendingWrites());
+      assertTrue(fixture.primary.acknowledgedWatermark() < queued);
+      assertTrue(fixture.primary.processNext(fixture::apply));
+      assertFalse(fixture.primary.processNext(fixture::apply));
+      assertEquals(untracked, fixture.other.acknowledgedWatermark());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aDeadLetteredWriteMovesTheWatermarkOnAndLeavesTheGraphDegraded(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      fixture.primary.enqueue("malformed");
+      final long malformed = fixture.primary.enqueuedWatermark();
+      fixture.primary.enqueue(insert(1));
+      for (int attempt = 1; attempt < 10; attempt++) {
+        assertFalse(fixture.primary.processNext(fixture::apply));
+        fixture.clock.advance(60_000);
+      }
+
+      assertTrue(fixture.primary.processNext(fixture::apply));
+
+      assertTrue(fixture.other.acknowledgedWatermark() >= malformed);
+      assertTrue(fixture.other.isDegraded());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aDeliveredWriteFromAnOlderServerStaysInTheEnqueuedWatermark(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final long legacy = fixture.enqueueWithoutRecordingTheWatermark(insert(1));
+      assertEquals(legacy, fixture.other.enqueuedWatermark());
+
+      assertTrue(fixture.primary.processNext(fixture::apply));
+
+      assertEquals(0, fixture.other.pendingWrites());
+      assertEquals(legacy, fixture.other.enqueuedWatermark());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aDeadLetteredWriteFromAnOlderServerStaysInTheEnqueuedWatermark(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final long legacy = fixture.enqueueWithoutRecordingTheWatermark("malformed");
+      for (int attempt = 1; attempt < 10; attempt++) {
+        assertFalse(fixture.primary.processNext(fixture::apply));
+        fixture.clock.advance(60_000);
+      }
+
+      assertTrue(fixture.primary.processNext(fixture::apply));
+
+      assertEquals(1, fixture.deadLetters());
+      assertEquals(legacy, fixture.other.enqueuedWatermark());
     }
   }
 
@@ -428,7 +647,7 @@ public class RdfLiveWriteRecoveryIT {
                   .withBaseUri(URI.create(BASE))
                   .withRemoteEndpoint(URI.create(endpoint + "/openmetadata"))
                   .withUsername("admin")
-                  .withPassword("admin")
+                  .withPassword(FusekiTestImage.ADMIN_PASSWORD)
                   .withWriteMaxRetries(0));
       storage.clearGraph(GRAPH);
     }
@@ -437,8 +656,25 @@ public class RdfLiveWriteRecoveryIT {
       return new RdfLiveWriteStore(database.jdbi(), clock);
     }
 
+    /** Enqueues as a server that predates rdf_projection_health.enqueuedWatermark does. */
+    long enqueueWithoutRecordingTheWatermark(final String payload) {
+      return database
+          .jdbi()
+          .withHandle(
+              handle ->
+                  handle
+                      .createUpdate(
+                          "INSERT INTO rdf_live_write_queue (payload, createdAt) "
+                              + "VALUES (:payload, :createdAt)")
+                      .bind("payload", payload)
+                      .bind("createdAt", clock.millis())
+                      .executeAndReturnGeneratedKeys("id")
+                      .mapTo(Long.class)
+                      .one());
+    }
+
     void apply(final String payload) {
-      JsonUtils.readValue(payload, RdfMutation.class).apply(storage);
+      JsonUtils.readValue(payload, RdfMutation.class).apply(storage, NO_RELEASES);
     }
 
     String lastError() {

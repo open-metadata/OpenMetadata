@@ -21,20 +21,12 @@ import { OwnerWidget } from './OwnerWidget';
 jest.mock('../../../Customization/GenericProvider/GenericContext');
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Owner: () => <div data-testid="owner-list" />,
 }));
 
 jest.mock('../../../../utils/EntityVersionUtils', () => ({
   getOwnerVersionLabel: jest.fn(() => <div data-testid="owner-version-diff" />),
-}));
-
-jest.mock('../../../common/WidgetActionButton/WidgetActionButton', () => ({
-  WidgetPlusButton: () => (
-    <button aria-label="add owner" data-testid="add-owner" />
-  ),
-  WidgetEditButton: () => (
-    <button aria-label="edit owner" data-testid="edit-owner" />
-  ),
 }));
 
 jest.mock('../../../common/WidgetCard/WidgetCard', () => ({

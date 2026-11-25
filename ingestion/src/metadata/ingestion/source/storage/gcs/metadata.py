@@ -71,6 +71,7 @@ from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.schema_inference import InferenceReport
 
 logger = ingestion_logger()
 
@@ -304,8 +305,11 @@ class GcsSource(StorageServiceSource):
         bucket_client = client.bucket(bucket_name)
         blob = GCSBlobAdapter(bucket_client, archive_path)
         structure_format = metadata_entry.structureFormat or ""
+        inference_report = InferenceReport()
         with open_archive_reader(blob, structure_format) as reader:
-            for entry, columns, entry_format in iter_archive_entries_with_schema(reader):
+            for entry, columns, entry_format in iter_archive_entries_with_schema(
+                reader, limits=self.inference_limits, report=inference_report
+            ):
                 yield from self._generate_inner_file_container(
                     entry=entry,
                     archive_ref=archive_ref,
@@ -314,6 +318,7 @@ class GcsSource(StorageServiceSource):
                     entry_format=entry_format,
                     bucket_response=bucket_response,
                 )
+        inference_report.emit(self.status, f"{bucket_name}/{archive_path}", self.inference_limits)
 
     def _generate_container_details(
         self,
@@ -342,8 +347,8 @@ class GcsSource(StorageServiceSource):
                     name=metadata_entry.dataPath.strip(KEY_SEPARATOR),
                     prefix=prefix,
                     creation_date=bucket_response.creation_date.isoformat() if bucket_response.creation_date else None,
-                    number_of_objects=self._fetch_metric(bucket=bucket_response, metric=GCSMetric.NUMBER_OF_OBJECTS),
-                    size=self._fetch_metric(bucket=bucket_response, metric=GCSMetric.BUCKET_SIZE_BYTES),
+                    number_of_objects=None,
+                    size=None,
                     file_formats=[container.FileFormat(metadata_entry.structureFormat)],
                     data_model=ContainerDataModel(isPartitioned=metadata_entry.isPartitioned, columns=columns),
                     parent=parent,
@@ -499,6 +504,10 @@ class GcsSource(StorageServiceSource):
                 name=f"projects/{bucket.project_id}", filter=filter_, interval=interval
             )
             point = list(timeseries)[-1].points[-1]
+            # total_bytes is DOUBLE in Cloud Monitoring; object_count is INT64.
+            # protobuf silently returns 0 when the wrong oneof field is read.
+            if metric == GCSMetric.BUCKET_SIZE_BYTES:
+                return point.value.double_value
             return point.value.int64_value  # noqa: TRY300
         except Exception:
             logger.debug(traceback.format_exc())

@@ -12,6 +12,7 @@
  */
 import {
   TreeSelect,
+  TreeSelectDataFetcher,
   TreeSelectNode,
   TreeSelectProps,
 } from '@openmetadata/ui-core-components';
@@ -19,6 +20,8 @@ import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { isDerivedTag, withDerivedTags } from '../../../utils/TagsPureUtils';
+import { disableTreeNodes } from '../../../utils/TreeSelect.utils';
 import { useClassificationTreeData } from './hooks/useClassificationTreeData';
 
 // Straight from the core component so they never drift; the rest is fixed here.
@@ -32,6 +35,8 @@ type InheritedTreeSelectProps = Pick<
   | 'label'
   | 'placeholder'
   | 'required'
+  | 'offset'
+  | 'className'
   | 'data-testid'
 >;
 
@@ -52,10 +57,39 @@ const ClassificationTagPicker: FC<ClassificationTagPickerProps> = ({
   label,
   placeholder,
   required = false,
+  offset,
+  className,
   'data-testid': dataTestId,
 }) => {
   const { t } = useTranslation();
   const fetchData = useClassificationTreeData();
+
+  // Shown ticked, but locked: a derived tag cannot be taken off the asset here.
+  const derivedTags = useMemo(
+    () =>
+      value.filter(
+        (tag) => tag.source === TagSource.Classification && isDerivedTag(tag)
+      ),
+    [value]
+  );
+
+  // Keyed by contents, so a caller's inline array does not hand the tree a new fetcher each render.
+  const derivedKey = derivedTags.map((tag) => tag.tagFQN).join('\u0000');
+  const fetchTreeData = useMemo<TreeSelectDataFetcher<TagLabel>>(() => {
+    if (!derivedKey) {
+      return fetchData;
+    }
+    const derivedFqns = new Set(derivedKey.split('\u0000'));
+
+    return async (params) => {
+      const response = await fetchData(params);
+
+      return {
+        ...response,
+        nodes: disableTreeNodes(response.nodes, derivedFqns),
+      };
+    };
+  }, [fetchData, derivedKey]);
 
   const selectedValue = useMemo(
     () =>
@@ -68,6 +102,8 @@ const ClassificationTagPicker: FC<ClassificationTagPickerProps> = ({
             value: tag.tagFQN,
             data: tag,
             isLeaf: true,
+            // Locked in `value` too: the chips and Backspace act before the tree loads.
+            disabled: isDerivedTag(tag),
           })
         ),
     [value]
@@ -86,12 +122,15 @@ const ClassificationTagPicker: FC<ClassificationTagPickerProps> = ({
       const applied = new Map(value.map((tag) => [tag.tagFQN, tag]));
 
       onChange?.(
-        nodes
-          .map((node) => applied.get(node.value) ?? node.data)
-          .filter((tag): tag is TagLabel => Boolean(tag))
+        withDerivedTags(
+          nodes
+            .map((node) => applied.get(node.value) ?? node.data)
+            .filter((tag): tag is TagLabel => Boolean(tag)),
+          derivedTags
+        )
       );
     },
-    [onChange, value]
+    [onChange, value, derivedTags]
   );
 
   // The server already filtered; prevent local re-filtering from hiding results.
@@ -100,9 +139,10 @@ const ClassificationTagPicker: FC<ClassificationTagPickerProps> = ({
   return (
     <TreeSelect
       searchable
+      className={className}
       commitMode={commitMode}
       data-testid={dataTestId}
-      fetchData={fetchData}
+      fetchData={fetchTreeData}
       filterNode={keepAllNodes}
       isOpen={isOpen}
       label={label}
@@ -110,6 +150,7 @@ const ClassificationTagPicker: FC<ClassificationTagPickerProps> = ({
       noDataMessage={t('label.no-entity-available', {
         entity: t('label.tag-plural'),
       })}
+      offset={offset}
       placeholder={
         placeholder ?? t('label.select-field', { field: t('label.tag-plural') })
       }

@@ -111,6 +111,14 @@ describe('CustomPropertyCard.utils', () => {
       ).toEqual(['beta', 'zeta', 'alpha']);
     });
 
+    it('keeps full-width properties in name order when not grouping wide last', () => {
+      expect(
+        filterAndSortProperties(properties, {}, '', 'name', {
+          groupWideLast: false,
+        }).map((p) => p.name)
+      ).toEqual(['alpha', 'beta', 'zeta']);
+    });
+
     it('sorts by type, then by name', () => {
       expect(
         filterAndSortProperties(

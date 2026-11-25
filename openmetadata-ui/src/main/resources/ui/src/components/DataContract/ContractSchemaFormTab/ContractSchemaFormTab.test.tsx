@@ -18,7 +18,9 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../../generated/entity/data/table';
+import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { mockTableData } from '../../../mocks/TableVersion.mock';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
@@ -62,6 +64,8 @@ jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   })),
 }));
 
+const mockTableColumns = jest.fn();
+
 jest.mock('../../common/Table/TableV2', () => {
   return function MockTable({
     columns,
@@ -82,6 +86,8 @@ jest.mock('../../common/Table/TableV2', () => {
     rowKey: string;
     pagination?: unknown;
   }) {
+    mockTableColumns(columns);
+
     return (
       <div data-testid="mock-table">
         <div>Loading: {loading ? 'true' : 'false'}</div>
@@ -102,24 +108,6 @@ jest.mock('../../common/Table/TableV2', () => {
               Select {item.name}
             </button>
           </div>
-        ))}
-      </div>
-    );
-  };
-});
-
-jest.mock('../../Database/TableTags/TableTags.component', () => {
-  return function MockTableTags({
-    tags,
-  }: {
-    tags?: Array<{ tagFQN: string }>;
-  }) {
-    return (
-      <div data-testid="table-tags">
-        {tags?.map((tag) => (
-          <span data-testid={`tag-${tag.tagFQN}`} key={tag.tagFQN}>
-            {tag.tagFQN}
-          </span>
         ))}
       </div>
     );
@@ -223,6 +211,34 @@ describe('ContractSchemaFormTab', () => {
 
       expect(screen.getByText('Next')).toBeInTheDocument();
       expect(screen.getByText('Previous')).toBeInTheDocument();
+    });
+  });
+
+  describe('Tags column', () => {
+    it('should show one tag and fold the rest into a +N count', () => {
+      render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
+
+      const columns = mockTableColumns.mock.calls[0][0] as Array<{
+        key: string;
+        render: (tags: unknown[]) => JSX.Element;
+      }>;
+      const tagsColumn = columns.find((column) => column.key === 'tags');
+      const tags = ['PII.Sensitive', 'PII.Email', 'Tier.Tier1'].map(
+        (tagFQN) => ({
+          tagFQN,
+          name: tagFQN.split('.')[1],
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        })
+      );
+
+      render(<MemoryRouter>{tagsColumn?.render(tags)}</MemoryRouter>);
+
+      expect(screen.getAllByTestId(/^tag-/)).toHaveLength(1);
+      expect(screen.getByTestId('plus-more-count')).toHaveTextContent(
+        '+2 more'
+      );
     });
   });
 

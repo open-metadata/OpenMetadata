@@ -46,7 +46,7 @@ const bundle = buildSync({
       const columns = [{ key: 'name', name: 'Name', editable: true, renderEditCell: textEditor }];
       function App() {
         const [rows, setRows] = useState([{ name: 'Original' }]);
-        return <main className="ant-layout-content"><input aria-label="Unrelated search" defaultValue="Keep this query" />
+        return <main><input aria-label="Unrelated search" defaultValue="Keep this query" />
           <DataGrid columns={columns} rows={rows} onRowsChange={setRows} style={{ height: 160 }} />
           <output data-testid="saved-cell">{rows[0].name}</output></main>;
       }
@@ -165,15 +165,14 @@ for (const selection of ['click', 'keyboard']) {
           useEffect(() => { fetch('/api/v1/tags?parent=Tier').then(() => setReady(true)); }, []);
           return createPortal(<section role="dialog" aria-label="Edit tier">
             <button autoFocus>Cancel</button>
-            {ready ? <><label data-testid="radio-btn-Tier1"><input type="radio" name="tier" />Tier1</label>
-              <button data-testid="update-tier-card" onClick={() => onRowChange({ ...row, tier: 'Tier1' }, true)}>Save</button></>
+            {ready ? <div data-testid="drop-down-menu"><button data-testid="Tier.Tier1" onClick={() => onRowChange({ ...row, tier: 'Tier1' }, true)}>Tier1</button></div>
               : <span role="status">Loading tiers</span>}
           </section>, document.body);
         }
         const columns = [{ key: 'tier', name: 'Tier', editable: true, renderEditCell: TierEditor }];
         function App() {
           const [rows, setRows] = useState([{ tier: 'Unassigned' }]);
-          return <main className="ant-layout-content">
+          return <main>
             <DataGrid columns={columns} rows={rows} onRowsChange={setRows}
               onCellClick={(args, event) => { args.selectCell(true); event.preventGridDefault(); }}
               style={{ height: 160 }} />

@@ -93,12 +93,21 @@ public final class RelationshipTypeValidator {
   }
 
   private static void validateInverse(final RelationshipType relationshipType) {
-    if (!has(relationshipType, RelationshipCharacteristic.SYMMETRIC)) {
+    final EntityReference inverse = relationshipType.getInverse();
+    if (has(relationshipType, RelationshipCharacteristic.SYMMETRIC)) {
+      if (inverse == null || !isSelfReference(relationshipType, inverse)) {
+        throw new BadRequestException("A symmetric relationship must be its own inverse");
+      }
       return;
     }
-    final EntityReference inverse = relationshipType.getInverse();
-    if (inverse == null || !isSelfReference(relationshipType, inverse)) {
-      throw new BadRequestException("A symmetric relationship must be its own inverse");
+    // owl:inverseOf R R entails Symmetric(R); combined with AsymmetricProperty(R) this forces
+    // the relation's extension to be empty — the same policy contradiction the validator
+    // rejects for the SYMMETRIC + ASYMMETRIC characteristic pair, reached here via the inverse
+    // axis rather than via co-declared characteristics.
+    if (has(relationshipType, RelationshipCharacteristic.ASYMMETRIC)
+        && inverse != null
+        && isSelfReference(relationshipType, inverse)) {
+      throw new BadRequestException("An asymmetric relationship cannot be its own inverse");
     }
   }
 

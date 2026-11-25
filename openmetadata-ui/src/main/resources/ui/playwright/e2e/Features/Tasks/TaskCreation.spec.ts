@@ -84,7 +84,7 @@ test.describe('Task Creation - Request Description', () => {
     await expect(page.getByTestId('form-container')).toBeVisible();
 
     // Verify title contains description request info
-    const titleField = page.locator('#title');
+    const titleField = page.getByTestId('title').locator('input');
     await expect(titleField).toBeVisible();
     const titleValue = await titleField.inputValue();
     expect(titleValue.toLowerCase()).toContain('description');
@@ -144,7 +144,7 @@ test.describe('Task Creation - Request Description', () => {
       await expect(page.getByTestId('form-container')).toBeVisible();
 
       // Verify this is a column-level task by checking the about field references a column
-      const titleField = page.locator('#title');
+      const titleField = page.getByTestId('title').locator('input');
       const titleValue = await titleField.inputValue();
       expect(titleValue.toLowerCase()).toContain('description');
 
@@ -175,9 +175,15 @@ test.describe('Task Creation - Request Description', () => {
     await expect(page.getByTestId('form-container')).toBeVisible();
 
     // Assignee field - search and select user
-    const assigneeInput = page.locator(
-      '[data-testid="select-assignee"] .ant-select-selector input'
-    );
+    const assigneeInput = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
+    await expect(assigneeInput).toHaveAccessibleName(/^Assignees\b/);
+    await page
+      .locator('label')
+      .filter({ hasText: /^Assignees\b/ })
+      .click();
+    await expect(assigneeInput).toBeFocused();
     await assigneeInput.click();
 
     // Search for user
@@ -217,7 +223,7 @@ test.describe('Task Creation - Request Description', () => {
     await submitBtn.click();
 
     // Should show validation error for assignee field
-    const assigneeError = page.locator('.ant-form-item-explain-error');
+    const assigneeError = page.getByTestId('assignees').getByText(/required/i);
     await expect(assigneeError).toBeVisible();
   });
 });
@@ -274,7 +280,7 @@ test.describe('Task Creation - Request Tags', () => {
       await expect(page.getByTestId('form-container')).toBeVisible();
 
       // Verify title contains tag info
-      const titleField = page.locator('#title');
+      const titleField = page.getByTestId('title').locator('input');
       const titleValue = await titleField.inputValue();
       expect(titleValue.toLowerCase()).toContain('tag');
 
@@ -422,9 +428,7 @@ test.describe('Task Creation - Suggest Tags', () => {
       await expect(page.getByTestId('form-container')).toBeVisible();
 
       // Add suggested tags using the tag selector
-      const tagsInput = page.locator(
-        '[data-testid="tag-selector"] .ant-select-selector input'
-      );
+      const tagsInput = page.getByTestId('tag-selector').getByRole('combobox');
       if (await tagsInput.isVisible()) {
         await tagsInput.click();
 
@@ -436,8 +440,10 @@ test.describe('Task Creation - Suggest Tags', () => {
         await expect(tagOption).toBeVisible();
         await tagOption.click();
 
-        // Close the dropdown by pressing Escape
-        await page.keyboard.press('Escape');
+        // The multi-select schedules a re-open (~150ms) while its input still
+        // has focus, which would undo an Escape; blurring closes it for good.
+        await tagsInput.blur();
+        await expect(tagsInput).toHaveAttribute('aria-expanded', 'false');
       }
 
       // Submit - tag request pages use submit-tag-request

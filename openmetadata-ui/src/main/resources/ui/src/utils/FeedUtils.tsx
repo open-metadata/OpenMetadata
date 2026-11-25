@@ -11,16 +11,13 @@
  *  limitations under the License.
  */
 
-import { RightOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import type { ReactNode } from 'react';
+import { ChevronRight } from '@openmetadata/ui-core-components/icons';
 import ReactDOM from 'react-dom';
 import type { MentionSuggestionsItem } from '../components/ActivityFeed/FeedEditor/FeedEditor.interface';
 import { EntityUrlMapType, ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { OwnerType } from '../enums/user.enum';
-import { ActivityEventType } from '../generated/entity/activity/activityEvent';
 import type { User } from '../generated/entity/teams/user';
 import { searchQuery } from '../rest/searchAPI';
 import { getRandomColor } from './ColorUtils';
@@ -29,7 +26,7 @@ import { getEntityPlaceHolder } from './EntityDisplayPureUtils';
 import { getEntityName } from './EntityNameUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import { buildMentionLink } from './FeedUtilsPure';
-import { t, Transi18next } from './i18next/LocalUtil';
+import { t } from './i18next/LocalUtil';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -176,7 +173,10 @@ export const getEntityFieldDisplay = (entityField: string) => {
     const entityFields = entityField.split(ENTITY_LINK_SEPARATOR);
     const separator = (
       <span className="p-x-xss">
-        <RightOutlined className="text-xs m-t-xss cursor-default text-grey-muted align-middle " />
+        <ChevronRight
+          className="tw:mt-1 tw:cursor-default tw:text-quaternary tw:align-middle tw:shrink-0"
+          size={14}
+        />
       </span>
     );
 
@@ -191,105 +191,4 @@ export const getEntityFieldDisplay = (entityField: string) => {
   }
 
   return null;
-};
-
-const renderFieldActionHeader = (field: string, action: string): ReactNode => (
-  <Transi18next
-    i18nKey="message.feed-field-action-entity-header"
-    renderElement={
-      <Typography className="font-bold" style={{ fontSize: '14px' }} />
-    }
-    values={{ field, action }}
-  />
-);
-
-const ACTIVITY_EVENT_HEADER_RENDERERS: Partial<
-  Record<ActivityEventType, () => ReactNode>
-> = {
-  [ActivityEventType.EntityCreated]: () => (
-    <Typography className="font-bold tw:text-primary">
-      {t('label.created-lowercase')}
-    </Typography>
-  ),
-  [ActivityEventType.EntityDeleted]: () => (
-    <Typography className="font-bold">
-      {t('label.deleted-lowercase')}
-    </Typography>
-  ),
-  [ActivityEventType.EntitySoftDeleted]: () => (
-    <Typography className="font-bold">
-      {t('label.deleted-lowercase')}
-    </Typography>
-  ),
-  [ActivityEventType.EntityRestored]: () => (
-    <Typography className="font-bold">
-      {t('label.restored-lowercase')}
-    </Typography>
-  ),
-  [ActivityEventType.DescriptionUpdated]: () =>
-    renderFieldActionHeader(
-      t('label.description'),
-      t('label.updated-lowercase')
-    ),
-  [ActivityEventType.ColumnDescriptionUpdated]: () =>
-    renderFieldActionHeader(
-      t('label.description'),
-      t('label.updated-lowercase')
-    ),
-  [ActivityEventType.TagsUpdated]: () =>
-    renderFieldActionHeader(t('label.tag-plural'), t('label.added-lowercase')),
-  [ActivityEventType.ColumnTagsUpdated]: () =>
-    renderFieldActionHeader(t('label.tag-plural'), t('label.added-lowercase')),
-  [ActivityEventType.OwnerUpdated]: () =>
-    renderFieldActionHeader(t('label.owner'), t('label.updated-lowercase')),
-  [ActivityEventType.DomainUpdated]: () =>
-    renderFieldActionHeader(t('label.domain'), t('label.updated-lowercase')),
-  [ActivityEventType.TierUpdated]: () =>
-    renderFieldActionHeader(t('label.tier'), t('label.updated-lowercase')),
-  [ActivityEventType.CustomPropertyUpdated]: () => (
-    <Transi18next
-      i18nKey="message.feed-custom-property-header"
-      renderElement={<Typography className="font-bold" />}
-    />
-  ),
-  [ActivityEventType.TestCaseStatusChanged]: () => (
-    <Transi18next
-      i18nKey="message.feed-test-case-header"
-      renderElement={<Typography className="font-bold" />}
-    />
-  ),
-  [ActivityEventType.PipelineStatusChanged]: () => (
-    <Typography className="font-bold">
-      {t('label.pipeline-status-changed')}
-    </Typography>
-  ),
-};
-
-export const getActivityEventHeaderText = (
-  eventType?: ActivityEventType,
-  fieldName?: string,
-  _entityType?: EntityType
-): ReactNode => {
-  if (!eventType) {
-    return t('label.posted-on-lowercase');
-  }
-
-  const renderHeader = ACTIVITY_EVENT_HEADER_RENDERERS[eventType];
-  if (renderHeader) {
-    return renderHeader();
-  }
-
-  if (fieldName) {
-    return (
-      <Typography className="font-bold">
-        {t('label.updated-field-for-lowercase', { field: fieldName })}
-      </Typography>
-    );
-  }
-
-  return (
-    <Typography className="font-bold">
-      {t('label.updated-lowercase')}
-    </Typography>
-  );
 };

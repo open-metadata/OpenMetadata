@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+
 import { isNil, round } from 'lodash';
 import { useTranslation } from 'react-i18next';
 
@@ -32,16 +32,16 @@ const CustomStatistic = ({
   const { t } = useTranslation();
 
   return (
-    <Row justify="space-between">
-      <Col>
+    <Box className="layout-row" justify="between" wrap="wrap">
+      <Box className="layout-column tw:block">
         <Typography as="p" className="font-medium m-b-0">
           {label}
         </Typography>
         <Typography as="p" className="font-bold text-2xl m-b-0">
           {value}
         </Typography>
-      </Col>
-      <Col className="text-right">
+      </Box>
+      <Box className="layout-column tw:block text-right">
         {!isNil(changeInValue) && (
           <Typography as="p" className="m-b-0">
             <Typography
@@ -60,8 +60,8 @@ const CustomStatistic = ({
             </Typography>
           </Typography>
         )}
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 };
 

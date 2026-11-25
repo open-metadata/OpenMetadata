@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import { User } from '../../../../../../generated/entity/teams/user';
 import {
@@ -47,6 +53,19 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
 
 // Native mocks avoid react-aria provider requirements and make onPress => onClick.
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Card: ({
+    children,
+    className,
+    'data-testid': testId,
+  }: {
+    children?: React.ReactNode;
+    className?: string;
+    'data-testid'?: string;
+  }) => (
+    <div className={className} data-testid={testId}>
+      {children}
+    </div>
+  ),
   Box: ({
     children,
     ...props
@@ -55,22 +74,45 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
   Button: ({
     children,
+    onClick,
     onPress,
     'data-testid': testId,
+    isDisabled,
     isLoading,
   }: {
     children: React.ReactNode;
+    onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
     onPress?: () => void;
     'data-testid'?: string;
+    isDisabled?: boolean;
     isLoading?: boolean;
   }) => (
     <button
       data-loading={isLoading}
       data-testid={testId}
+      disabled={isDisabled}
       type="button"
-      onClick={onPress}>
+      onClick={onClick ?? onPress}>
       {children}
     </button>
+  ),
+  ConfirmPopover: ({
+    children,
+    onConfirm,
+    'data-testid': testId,
+  }: React.PropsWithChildren<{
+    onConfirm: () => void;
+    'data-testid'?: string;
+  }>) => (
+    <div data-testid={testId}>
+      {children}
+      <button
+        aria-label="confirm"
+        data-testid={`${testId}-confirm`}
+        type="button"
+        onClick={onConfirm}
+      />
+    </div>
   ),
   Input: ({
     value,
@@ -116,7 +158,11 @@ describe('BotTokenSection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     Object.assign(navigator, {
-      clipboard: { writeText: jest.fn() },
+      clipboard: { writeText: jest.fn().mockResolvedValue(undefined) },
+    });
+    Object.defineProperty(window, 'isSecureContext', {
+      configurable: true,
+      value: true,
     });
   });
 
@@ -153,6 +199,28 @@ describe('BotTokenSection', () => {
     expect(screen.getByTestId('auth-mechanism')).toBeInTheDocument();
   });
 
+  it('disables generate and revoke when the section is disabled', () => {
+    const { rerender } = render(
+      <BotTokenSection
+        isDisabled
+        botUserData={mockBotUserDataWithoutToken}
+        onTokenUpdate={mockOnTokenUpdate}
+      />
+    );
+
+    expect(screen.getByTestId('auth-mechanism')).toBeDisabled();
+
+    rerender(
+      <BotTokenSection
+        isDisabled
+        botUserData={mockBotUserDataWithToken}
+        onTokenUpdate={mockOnTokenUpdate}
+      />
+    );
+
+    expect(screen.getByTestId('revoke-button')).toBeDisabled();
+  });
+
   it('should show no-token message when no token', () => {
     render(
       <BotTokenSection
@@ -175,7 +243,7 @@ describe('BotTokenSection', () => {
     expect(screen.getByTestId('token-created-on')).toBeInTheDocument();
   });
 
-  it('should copy the token to the clipboard', () => {
+  it('should copy the token to the clipboard', async () => {
     render(
       <BotTokenSection
         botUserData={mockBotUserDataWithToken}
@@ -183,14 +251,16 @@ describe('BotTokenSection', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('copy-token'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('copy-token'));
+    });
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       'mock-jwt-token-value'
     );
   });
 
-  it('should revoke the token and refresh on revoke click', async () => {
+  it('should revoke the token only after confirmation and refresh', async () => {
     render(
       <BotTokenSection
         botUserData={mockBotUserDataWithToken}
@@ -199,6 +269,10 @@ describe('BotTokenSection', () => {
     );
 
     fireEvent.click(screen.getByTestId('revoke-button'));
+
+    expect(revokeUserToken).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('revoke-token-popover-confirm'));
 
     await waitFor(() => expect(revokeUserToken).toHaveBeenCalledWith('user-1'));
 

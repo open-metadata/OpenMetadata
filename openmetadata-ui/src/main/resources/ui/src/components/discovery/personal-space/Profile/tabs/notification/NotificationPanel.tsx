@@ -15,7 +15,6 @@ import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -38,9 +37,16 @@ import {
   NotificationSectionContribution,
 } from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import {
+  settingsHashOptions,
+  SettingsNavigateOptions,
+} from '../../../../../../utils/SettingsHistory.utils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
+import { NATIVE_NOTIFICATION_SECTIONS } from './nativeNotificationSections';
 import type { NotificationView } from './Notification.types';
 import {
   buildSectionCards,
@@ -71,12 +77,15 @@ const NotificationSectionPlaceholder: FC<{
     return <Loader />;
   }
 
+  const EmptyStatePlaceholder = isDenied
+    ? PermissionPlaceholder
+    : NoDataPlaceholder;
+
   return (
     <Box className="tw:relative tw:min-h-60">
-      <EmptyPlaceholder
-        icon={isDenied ? <Lock className="tw:text-secondary" /> : undefined}
+      <EmptyStatePlaceholder
+        icon={isDenied ? <Lock /> : undefined}
         title={t(isDenied ? 'label.access-denied' : 'label.no-data')}
-        variant="blank"
       />
     </Box>
   );
@@ -95,10 +104,15 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   );
 
   const onNavigate = useCallback(
-    (nextView: NotificationView) => {
-      setHash('notification', viewToSubPath(nextView));
+    (nextView: NotificationView, options?: SettingsNavigateOptions) => {
+      setHash(
+        'notification',
+        viewToSubPath(nextView),
+        undefined,
+        settingsHashOptions(view, nextView, options)
+      );
     },
-    [setHash]
+    [setHash, view]
   );
 
   // Actions injected by detail panels (e.g. edit/delete buttons).
@@ -119,10 +133,12 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   const viewFqn = 'fqn' in view ? view.fqn : undefined;
 
   const sectionContributions = useMemo(
-    () =>
-      getContributions<NotificationSectionContribution>(
+    () => [
+      ...NATIVE_NOTIFICATION_SECTIONS,
+      ...getContributions<NotificationSectionContribution>(
         EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS
       ),
+    ],
     [getContributions]
   );
 
@@ -203,7 +219,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     return {
       Component: card ? contribution?.component : undefined,
       isDenied: Boolean(contribution) && !card,
-      label: card?.title ?? t('label.notification'),
+      label: card?.title ?? t('label.alerts-and-notifications'),
       description: card?.description,
       icon: card?.icon,
     };
@@ -277,7 +293,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     }
 
     const settingsLabel = t('label.setting-plural');
-    const notificationLabel = t('label.notification');
+    const notificationLabel = t('label.alerts-and-notifications');
     const alertsLabel = t('label.alert-plural');
     const addAlertLabel = t('label.add-entity', { entity: t('label.alert') });
     const editAlertLabel = t('label.edit-entity', {
@@ -409,7 +425,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
           <Button
             color="primary"
             data-testid="add-alert"
-            size="sm"
+            size="xs"
             onPress={() => onNavigate({ type: 'add' })}>
             {addAlertLabel}
           </Button>
@@ -483,10 +499,9 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
       if (!canEditAlert) {
         return (
           <Box className="tw:relative tw:min-h-60">
-            <EmptyPlaceholder
-              icon={<Lock className="tw:text-secondary" />}
+            <PermissionPlaceholder
+              icon={<Lock />}
               title={t('label.access-denied')}
-              variant="blank"
             />
           </Box>
         );
@@ -516,7 +531,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   })();
 
   return (
-    <Box className="tw:flex-1 tw:overflow-hidden" direction="col">
+    <Box className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto" direction="col">
       {view.type === 'section' ? sectionContent : content}
     </Box>
   );

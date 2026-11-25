@@ -49,6 +49,9 @@ from looker_sdk.sdk.api40.models import (
 )
 from pydantic import ValidationError
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import TableLookup
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -120,6 +123,7 @@ from metadata.ingestion.source.dashboard.looker.measures import (
     build_metric_request,
     candidates_from_explore,
     candidates_from_view,
+    looker_metric_name,
     merge_candidates,
     order_parents_first,
     related_metric_names,
@@ -147,7 +151,6 @@ from metadata.utils.filters import (
 )
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -654,11 +657,12 @@ class LookerSource(DashboardServiceSource):
                     displayName=view.name,
                     description=(Markdown(view.description) if view.description else None),
                     service=self.context.get().dashboard_service,
-                    tags=get_tag_labels(
-                        metadata=self.metadata,
+                    tags=self.get_tag_labels(
+                        entity_fqn=fqn._build(
+                            vars(self.context.get())["dashboard_service"], "model", datamodel_view_name
+                        ),
                         tags=view.tags or [],
                         classification_name=LOOKER_TAG_CATEGORY,
-                        include_tags=self.source_config.includeTags,
                     ),
                     dataModelType=DataModelType.LookMlView.value,
                     serviceType=DashboardServiceType.Looker.value,
@@ -719,12 +723,11 @@ class LookerSource(DashboardServiceSource):
         Method to yield tags related to specific dashboards
         """
         if tags and self.source_config.includeTags:
-            yield from get_ometa_tag_and_classification(
+            yield from self.yield_tag_definitions(
                 tags=tags or [],
                 classification_name=LOOKER_TAG_CATEGORY,
                 tag_description="Looker Tag",
                 classification_description="Tags associated with looker entities",
-                include_tags=self.source_config.includeTags,
             )
 
     def yield_bulk_datamodel(self, model: LookmlModelExplore) -> Iterable[Either[CreateDashboardDataModelRequest]]:
@@ -751,11 +754,10 @@ class LookerSource(DashboardServiceSource):
                     displayName=model.name,
                     description=(Markdown(model.description) if model.description else None),
                     service=self.context.get().dashboard_service,
-                    tags=get_tag_labels(
-                        metadata=self.metadata,
+                    tags=self.get_tag_labels(
+                        entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], "model", datamodel_name),
                         tags=model.tags or [],
                         classification_name=LOOKER_TAG_CATEGORY,
-                        include_tags=self.source_config.includeTags,
                     ),
                     dataModelType=DataModelType.LookMlExplore.value,
                     serviceType=DashboardServiceType.Looker.value,
@@ -970,11 +972,12 @@ class LookerSource(DashboardServiceSource):
                     candidate,
                     assets=self._metric_assets(candidate),
                     related_metrics=related,
-                    tag_labels=get_tag_labels(
-                        metadata=self.metadata,
+                    tag_labels=self.get_tag_labels(
+                        entity_fqn=fqn.quote_name(
+                            looker_metric_name(service, candidate.project, candidate.view, candidate.name)
+                        ),
                         tags=candidate.tags,
                         classification_name=LOOKER_TAG_CATEGORY,
-                        include_tags=self.source_config.includeTags,  # pyright: ignore[reportArgumentType]
                     ),
                 )
                 yield Either(right=metric_request)  # pyright: ignore[reportCallIssue]
@@ -1095,11 +1098,12 @@ class LookerSource(DashboardServiceSource):
                     displayName=view.name,
                     description=(Markdown(view.description) if view.description else None),
                     service=self.context.get().dashboard_service,
-                    tags=get_tag_labels(
-                        metadata=self.metadata,
+                    tags=self.get_tag_labels(
+                        entity_fqn=fqn._build(
+                            vars(self.context.get())["dashboard_service"], "model", datamodel_view_name
+                        ),
                         tags=view.tags or [],
                         classification_name=LOOKER_TAG_CATEGORY,
-                        include_tags=self.source_config.includeTags,
                     ),
                     dataModelType=DataModelType.LookMlView.value,
                     serviceType=DashboardServiceType.Looker.value,
@@ -1356,14 +1360,12 @@ class LookerSource(DashboardServiceSource):
                     source_table_name = self._clean_table_name(sql_table_name, dialect)
                     self._parsed_views[view.name] = source_table_name
 
-                    lineage_request = self.build_lineage_request(
+                    yield from self.build_lineage_requests(
                         source=source_table_name,
                         db_service_prefix=db_service_prefix,
                         to_entity=self._view_data_model,
                         column_lineage=column_lineage,
                     )
-                    if lineage_request:
-                        yield lineage_request
 
             elif view.derived_table:
                 sql_query = view.derived_table.sql
@@ -1487,14 +1489,12 @@ class LookerSource(DashboardServiceSource):
                     self._parsed_views[view.name] = source_table_name
 
                     # View to the source is only there if we are informing the dbServiceNames
-                    lineage_request = self.build_lineage_request(
+                    yield from self.build_lineage_requests(
                         source=source_table_name,
                         db_service_prefix=db_service_prefix,
                         to_entity=self._view_data_model,
                         column_lineage=column_lineage,
                     )
-                    if lineage_request:
-                        yield lineage_request
 
             elif view.derived_table:
                 sql_query = view.derived_table.sql
@@ -1559,7 +1559,7 @@ class LookerSource(DashboardServiceSource):
                                     ),
                                 )
                             )
-                    yield self.build_lineage_request(
+                    yield from self.build_lineage_requests(
                         source=str(from_table_name),
                         db_service_prefix=db_service_prefix,
                         to_entity=self._view_data_model,
@@ -1943,14 +1943,15 @@ class LookerSource(DashboardServiceSource):
         return processed_column_lineage
 
     def _resolve_source_table(self, source: str, db_service_prefix: str) -> Table | None:
-        """Resolve a source table name against one configured db service prefix.
+        matches = self._resolve_source_tables(source, db_service_prefix)
+        if len(matches) == 1:
+            return matches[0]
+        if matches:
+            logger.warning("Ambiguous reference %s; skipping singular Looker attachment", source)
+        return None
 
-        Split out of `build_lineage_request` so metric lineage can reuse the resolution
-        without also tripping that method's `_added_lineage` dedup, which is scoped to
-        view/explore edges.
-
-        We try searching with and without the `database`.
-        """
+    def _resolve_source_tables(self, source: str, db_service_prefix: str) -> list[Table]:
+        """Resolve complete source references within one configured service prefix."""
         source_elements = fqn.split_table_name(table_name=source)
 
         (
@@ -1959,6 +1960,10 @@ class LookerSource(DashboardServiceSource):
             prefix_schema_name,
             prefix_table_name,
         ) = self.parse_db_service_prefix(db_service_prefix)
+
+        table_name = prefix_table_name or source_elements["table"]
+        if not table_name:
+            return []
 
         for database_name in [source_elements["database"], None]:
             if (
@@ -1976,24 +1981,20 @@ class LookerSource(DashboardServiceSource):
             ):
                 continue
 
-            from_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
+            resolution = get_table_binding_resolution(self.metadata, db_service_name)
+            matches = resolution.resolve(
+                TableReference(
+                    prefix_database_name or database_name,
+                    prefix_schema_name or source_elements["database_schema"],
+                    table_name,
+                ),
                 service_name=db_service_name,
-                database_name=prefix_database_name or database_name,
-                schema_name=prefix_schema_name or source_elements["database_schema"],
-                table_name=prefix_table_name or source_elements["table"],
+                lookup=TableLookup.FQN,
             )
+            if matches:
+                return list(matches)
 
-            from_entity: Table = self.metadata.get_by_name(
-                entity=Table,
-                fqn=from_fqn,
-            )
-
-            if from_entity:
-                return from_entity
-
-        return None
+        return []
 
     def build_lineage_request(
         self,
@@ -2017,6 +2018,22 @@ class LookerSource(DashboardServiceSource):
         if from_entity is None:
             return None
 
+        return self._lineage_request_for_source(from_entity, to_entity, column_lineage)
+
+    def build_lineage_requests(
+        self,
+        source: str,
+        db_service_prefix: str,
+        to_entity: Dashboard | DashboardDataModel,
+        column_lineage: list[tuple[str, str]] | None = None,
+    ) -> Iterable[Either[AddLineageRequest]]:
+        tables = self._resolve_source_tables(source, db_service_prefix)
+        for table in tables:
+            request = self._lineage_request_for_source(table, to_entity, None if "*" in source else column_lineage)
+            if request:
+                yield request
+
+    def _lineage_request_for_source(self, from_entity, to_entity, column_lineage):
         if from_entity.id.root not in self._added_lineage:
             self._added_lineage[from_entity.id.root] = []
         if to_entity.id.root not in self._added_lineage[from_entity.id.root]:

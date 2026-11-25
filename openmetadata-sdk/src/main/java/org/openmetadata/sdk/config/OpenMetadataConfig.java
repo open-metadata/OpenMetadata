@@ -1,7 +1,10 @@
 package org.openmetadata.sdk.config;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import org.openmetadata.sdk.network.RequestListener;
 
 public class OpenMetadataConfig {
   private final String baseUrl;
@@ -12,6 +15,7 @@ public class OpenMetadataConfig {
   private final int writeTimeout;
   private final boolean debug;
   private final boolean testMode;
+  private final List<RequestListener> requestListeners;
 
   private OpenMetadataConfig(Builder builder) {
     this.baseUrl = builder.baseUrl;
@@ -22,6 +26,7 @@ public class OpenMetadataConfig {
     this.writeTimeout = builder.writeTimeout;
     this.debug = builder.debug;
     this.testMode = builder.testMode;
+    this.requestListeners = List.copyOf(builder.requestListeners);
   }
 
   public String getBaseUrl() {
@@ -56,6 +61,10 @@ public class OpenMetadataConfig {
     return testMode;
   }
 
+  public List<RequestListener> getRequestListeners() {
+    return requestListeners;
+  }
+
   public String getServerUrl() {
     return baseUrl;
   }
@@ -73,6 +82,7 @@ public class OpenMetadataConfig {
     private int writeTimeout = 60000; // 60 seconds
     private boolean debug = false;
     private boolean testMode = false;
+    private final List<RequestListener> requestListeners = new ArrayList<>();
 
     private Builder() {}
 
@@ -128,6 +138,15 @@ public class OpenMetadataConfig {
 
     public Builder testMode(boolean testMode) {
       this.testMode = testMode;
+      return this;
+    }
+
+    /** Adds a listener notified after every HTTP call; see {@link RequestListener}. */
+    public Builder requestListener(RequestListener listener) {
+      if (listener == null) {
+        throw new IllegalArgumentException("Request listener must not be null");
+      }
+      this.requestListeners.add(listener);
       return this;
     }
 

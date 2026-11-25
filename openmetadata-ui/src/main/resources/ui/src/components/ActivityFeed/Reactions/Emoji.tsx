@@ -17,15 +17,47 @@ import classNames from 'classnames';
 import { createElement, FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { REACTION_LIST } from '../../../constants/reactions.constant';
-import { ReactionOperation } from '../../../enums/reactions.enum';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../enums/reactions.enum';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useImage from '../../../hooks/useImage';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 
+// How a chip is drawn in each variant: its shape, its colors once the viewer
+// has reacted with it, its colors otherwise, and its count.
+interface ChipClasses {
+  shape: string;
+  reacted: string;
+  idle: string;
+  count: string;
+}
+
+const CHIP_CLASSES: Record<ReactionsVariant, ChipClasses> = {
+  [ReactionsVariant.Default]: {
+    shape: 'tw:h-[22px] tw:rounded-md! tw:px-2! tw:py-0!',
+    reacted: 'tw:text-brand-secondary tw:after:outline-brand',
+    idle: 'tw:text-secondary',
+    count: 'tw:ml-1 tw:text-xs',
+  },
+  [ReactionsVariant.Pill]: {
+    shape:
+      'tw:h-6.5 tw:rounded-full! tw:px-2! tw:py-0! tw:shadow-none tw:font-semibold tw:hover:after:outline-primary tw:[&_g-emoji]:text-sm',
+    reacted:
+      'tw:bg-utility-brand-50 tw:hover:bg-utility-brand-50 tw:text-utility-brand-700 tw:hover:text-utility-brand-700 tw:after:outline-utility-brand-300',
+    idle: 'tw:bg-primary tw:text-tertiary tw:hover:text-tertiary tw:after:outline-secondary',
+    // The chip wraps emoji and count in one text span, so its gap never
+    // reaches between them.
+    count: 'tw:ml-1.25 tw:text-xs',
+  },
+};
+
 interface EmojiProps {
   reaction: ReactionType;
   reactionList: Reaction[];
+  variant?: ReactionsVariant;
   onReactionSelect: (
     reaction: ReactionType,
     operation: ReactionOperation
@@ -35,6 +67,7 @@ interface EmojiProps {
 const Emoji: FC<EmojiProps> = ({
   reaction,
   reactionList,
+  variant = ReactionsVariant.Default,
   onReactionSelect,
 }) => {
   const { t } = useTranslation();
@@ -109,10 +142,9 @@ const Emoji: FC<EmojiProps> = ({
       placement="top">
       <Button
         className={classNames(
-          'tw:h-[22px] tw:gap-1 tw:rounded-md! tw:px-2! tw:py-0!',
-          isReacted
-            ? 'tw:text-brand-secondary tw:after:outline-brand'
-            : 'tw:text-secondary'
+          'tw:gap-1',
+          CHIP_CLASSES[variant].shape,
+          isReacted ? CHIP_CLASSES[variant].reacted : CHIP_CLASSES[variant].idle
         )}
         color="secondary"
         data-testid="emoji-button"
@@ -120,7 +152,7 @@ const Emoji: FC<EmojiProps> = ({
         size="xs"
         onClick={handleEmojiOnClick}>
         {element}
-        <span className="tw:ml-1 tw:text-xs" data-testid="emoji-count">
+        <span className={CHIP_CLASSES[variant].count} data-testid="emoji-count">
           {reactionList.length.toLocaleString('en-US', {
             useGrouping: false,
           })}

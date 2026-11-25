@@ -47,6 +47,8 @@ export interface BreadcrumbItemType {
   href?: string;
   /** Optional leading icon, e.g. a home icon on the first crumb. */
   icon?: FC<{ className?: string }>;
+  /** Render as plain text even when `href` or `onAction` is set, e.g. a section label. */
+  isDisabled?: boolean;
 }
 
 export interface BreadcrumbsProps extends HTMLAttributes<HTMLElement> {
@@ -197,7 +199,9 @@ const CrumbLabel = ({
       {Icon && <Icon className={cx('tw:shrink-0', sizes[size].icon)} />}
       <span
         className="tw:truncate"
-        style={maxItemWidth ? { maxWidth: maxItemWidth } : undefined}>
+        // A capped label can be cut short; the title keeps it readable.
+        style={maxItemWidth ? { maxWidth: maxItemWidth } : undefined}
+        title={maxItemWidth ? toText(item.label, '') || undefined : undefined}>
         {item.label}
       </span>
     </span>
@@ -238,6 +242,7 @@ const EllipsisMenu = ({
             <Dropdown.Item
               href={onAction ? undefined : item.href}
               icon={item.icon}
+              isDisabled={item.isDisabled}
               key={item.id}
               label={toText(item.label, `Item ${index + 1}`)}
               onAction={() => onAction?.(item.id)}
@@ -351,7 +356,8 @@ export const Breadcrumbs = ({
                   type={type}
                   onAction={onAction}
                 />
-              ) : item.href || (onAction && !isCurrent) ? (
+              ) : !item.isDisabled &&
+                (item.href || (onAction && !isCurrent)) ? (
                 // React Aria disables the physical last crumb, so clear its
                 // context when href marks that crumb as a destination.
                 <LinkContext.Provider value={{}}>

@@ -10,17 +10,22 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.ledger.AlertRecord;
+import org.openmetadata.service.events.consumer.ledger.AlertRecord;
+import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.migration.utils.DataMigrationStep;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 
 /**
@@ -58,6 +63,22 @@ class AlertBacklogMigrationIT {
     assertFalse(AlertRecord.hasRows(disabled.getId()), "a disabled alert is left as it is");
   }
 
+  /**
+   * The suite's bootstrap ran the real migration workflow, so the skip already recorded its marker.
+   * A later re-run of 2.1.0, which any change to a v210 helper triggers, must not skip again what
+   * those alerts have not sent yet.
+   */
+  @Test
+  void upgradeRecordedTheSkipSoAReRunKeepsWhatIsStillToSend() {
+    MigrationDAO migrationDAO = TestSuiteBootstrap.getJdbi().onDemand(MigrationDAO.class);
+    AtomicInteger runs = new AtomicInteger();
+
+    DataMigrationStep.runOnce(
+        migrationDAO, "2.1.0", AlertBacklogMigration.STEP_NAME, runs::incrementAndGet);
+
+    assertEquals(0, runs.get(), "the upgrade already skipped the backlog, a re-run must not");
+  }
+
   private static EventSubscription storedWith(
       TestNamespace ns, String name, SubscriptionDestination destination) {
     EventSubscription alert =
@@ -71,7 +92,7 @@ class AlertBacklogMigrationIT {
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("disabled"))
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of(Entity.TABLE))
             .withEnabled(false)
             .withPollInterval(86400)

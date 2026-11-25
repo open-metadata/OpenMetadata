@@ -19,6 +19,7 @@ export const onPaneClick = (): void => {
     setSelectedColumn,
     setActiveNode,
     setSelectedNode,
+    setSelectedEdge,
     closeDrawer,
   } = useLineageStore.getState();
 
@@ -27,5 +28,6 @@ export const onPaneClick = (): void => {
   setSelectedColumn('');
   setActiveNode(undefined);
   setSelectedNode(undefined);
+  setSelectedEdge(undefined);
   closeDrawer();
 };

@@ -30,6 +30,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import lombok.Getter;
@@ -52,6 +53,7 @@ import org.openmetadata.service.util.RestUtil;
 @Collection(name = "events")
 public class EventResource {
   @Getter private final ChangeEventRepository repository;
+  private final Authorizer authorizer;
 
   public static class EventList extends ResultList<ChangeEvent> {
 
@@ -65,6 +67,7 @@ public class EventResource {
 
   public EventResource(Authorizer authorizer) {
     this.repository = Entity.getChangeEventRepository();
+    this.authorizer = authorizer;
   }
 
   @GET
@@ -87,6 +90,7 @@ public class EventResource {
       })
   public ResultList<ChangeEvent> get(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description =
                   "List of comma separated entities requested for "
@@ -148,6 +152,8 @@ public class EventResource {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
+    // Events carry the full before and after body of every changed entity, across all entities.
+    authorizer.authorizeAdminOrBot(securityContext);
     List<String> entityCreatedList = EntityList.getEntityList("entityCreated", entityCreated);
     List<String> entityUpdatedList = EntityList.getEntityList("entityUpdated", entityUpdated);
     List<String> entityRestoredList = EntityList.getEntityList("entityRestored", entityRestored);

@@ -10,28 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExclamationCircleFilled } from '@ant-design/icons';
 import {
   Badge,
+  Box,
   Button,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import {
+  ExclamationCircleFilled,
+  LinkExternal01,
+  Star01,
+  StarFilled,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { MouseEvent, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
-import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
-import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { useClipboard } from '../../../hooks/useClipBoard';
-import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
@@ -45,6 +46,11 @@ const FOLLOW_BUTTON_CLASS_NAME = classNames(
   'tw:bg-utility-brand-50 tw:text-sm tw:font-medium tw:text-utility-brand-700',
   'tw:hover:bg-utility-brand-50 tw:hover:text-utility-brand-700 tw:*:data-text:px-0'
 );
+
+const getFollowIconClassName = (isFollowing?: boolean) =>
+  isFollowing
+    ? 'tw:*:data-icon:text-utility-yellow-400 tw:hover:*:data-icon:text-utility-yellow-400'
+    : 'tw:*:data-icon:text-utility-brand-600 tw:hover:*:data-icon:text-utility-brand-600';
 
 const getFollowLabelKey = (isFollowing?: boolean) =>
   `label.${isFollowing ? 'un-follow' : 'follow'}`;
@@ -74,25 +80,6 @@ const EntityHeaderTitle = ({
   entityUrl,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
-  const location = useCustomLocation();
-  const [copyTooltip, setCopyTooltip] = useState<string>();
-  const { onCopyToClipBoard } = useClipboard(
-    entityUrl ?? globalThis.location.href
-  );
-
-  const handleShareButtonClick = async (e: MouseEvent<HTMLElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    await onCopyToClipBoard();
-    setCopyTooltip(t('message.link-copy-to-clipboard'));
-    setTimeout(() => setCopyTooltip(''), 2000);
-  };
-
-  const isTourRoute = useMemo(
-    () => location.pathname.includes(ROUTES.TOUR),
-    [location.pathname]
-  );
-
   const formattedEntityType = useMemo(
     () => entityUtilClassBase.getFormattedEntityType(entityType as EntityType),
     [entityType]
@@ -127,7 +114,10 @@ const EntityHeaderTitle = ({
         {deleted && (
           <div className="text-xs tw:flex-[0_0_100px]">
             <span className="deleted-badge-button" data-testid="deleted-badge">
-              <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+              <ExclamationCircleFilled
+                className="tw:mr-1 tw:shrink-0"
+                size={12}
+              />
               {t('label.deleted')}
             </span>
           </div>
@@ -190,12 +180,13 @@ const EntityHeaderTitle = ({
         })}>
         <Button
           showTextWhileLoading
-          className={FOLLOW_BUTTON_CLASS_NAME}
+          className={classNames(
+            FOLLOW_BUTTON_CLASS_NAME,
+            getFollowIconClassName(isFollowing)
+          )}
           color="tertiary"
           data-testid="entity-follow-button"
-          iconLeading={
-            <StarFilledIcon className="tw:size-3.5 tw:text-utility-brand-600" />
-          }
+          iconLeading={isFollowing ? StarFilled : Star01}
           isDisabled={deleted}
           isLoading={isFollowingLoading}
           size="sm"
@@ -209,14 +200,15 @@ const EntityHeaderTitle = ({
   const renderContent = () => (
     <div
       className={classNames(
-        'entity-header-title tw:flex tw:flex-nowrap tw:items-center tw:gap-3',
+        // min-w-0 lets a long name shrink so its ellipsis applies instead of overlapping the header actions.
+        'entity-header-title tw:flex tw:min-w-0 tw:flex-nowrap tw:items-center tw:gap-3',
         className
       )}
       data-testid={`${serviceName}-${name}`}>
       {icon && <div className="flex-center">{icon}</div>}
       <div
         className={classNames(
-          'd-flex flex-col gap-1 w-min-0 entity-header-container tw:relative tw:max-w-full',
+          'd-flex flex-col w-min-0 entity-header-container tw:relative tw:max-w-full',
           {
             'w-max-full-200': deleted || badge,
           }
@@ -243,35 +235,25 @@ const EntityHeaderTitle = ({
               })}
               data-testid="entity-header-name">
               {entityName}
-              {openEntityInNewPage && (
-                <IconExternalLink
-                  className="anticon vertical-middle m-l-xss"
-                  height={14}
-                  width={14}
-                />
-              )}
             </Typography>
           </Tooltip>
+          {/* Outside the ellipsis so a long name can't truncate the icon away. */}
+          {openEntityInNewPage && (
+            <LinkExternal01 className="tw:text-fg-quaternary" size={14} />
+          )}
 
-          <Tooltip
-            placement="top right"
-            title={
-              copyTooltip ??
-              t('label.copy-item', { item: t('label.url-uppercase') })
-            }>
-            <Button
-              aria-label={t('label.copy-item', {
+          {/* Icon-only actions sit 4px apart; the row's 12px gap is for badges and Follow. */}
+          <Box align="center" gap={1}>
+            <CopyButton
+              testId="entity-header-copy-button"
+              tooltip={t('label.copy-item', {
                 item: t('label.url-uppercase'),
               })}
-              color="tertiary"
-              data-testid="entity-header-copy-button"
-              iconLeading={Copy01}
-              size="xs"
-              type="button"
-              onClick={handleShareButtonClick}
+              tooltipPlacement="top right"
+              value={entityUrl ?? globalThis.location.href}
             />
-          </Tooltip>
-          {(isEmpty(displayName) || !showName) && suffix}
+            {(isEmpty(displayName) || !showName) && suffix}
+          </Box>
           {renderFollowButton()}
         </div>
       </div>
@@ -280,9 +262,9 @@ const EntityHeaderTitle = ({
     </div>
   );
 
-  return link && !isTourRoute ? (
+  return link ? (
     <Link
-      className="no-underline d-inline-block w-max-full entity-header-title-link"
+      className="no-underline d-inline-block w-max-full tw:min-w-0 entity-header-title-link"
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}

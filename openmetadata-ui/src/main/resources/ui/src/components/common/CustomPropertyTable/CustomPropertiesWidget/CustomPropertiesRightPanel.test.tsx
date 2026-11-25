@@ -216,6 +216,19 @@ describe('CustomPropertiesRightPanel', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('spans a half-width preview row across the whole column', () => {
+    renderWidget({
+      propertyLayout: [{ name: 'owner_team', width: 'half' }],
+    });
+
+    // The widget defaults to preview (small); a row must take the full
+    // column even when a saved half width survives, so preview stays one
+    // column regardless of the stored width.
+    expect(screen.getByTestId('custom-property-owner_team-row')).toHaveClass(
+      'tw:col-span-2'
+    );
+  });
+
   it('renders large layout items as cards and the rest as rows', () => {
     renderWidget({
       propertyLayout: [{ name: 'cost_center', width: 'full', size: 'large' }],

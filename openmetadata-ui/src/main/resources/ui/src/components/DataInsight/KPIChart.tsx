@@ -11,14 +11,19 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import {
+  Button,
+  Card,
+  Grid,
+  SkeletonParagraph,
+} from '@openmetadata/ui-core-components';
 import {
   chartColor,
   ChartSeries,
   LineChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Button, Card, Col, Row, Space } from 'antd';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -29,7 +34,6 @@ import {
   DI_STRUCTURE,
   GRAPH_HEIGHT,
 } from '../../constants/DataInsight.constants';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import {
   Kpi,
   KpiResult,
@@ -41,11 +45,13 @@ import {
 } from '../../interface/data-insight.interface';
 import { DataInsightCustomChartResult } from '../../rest/DataInsightAPI';
 import { getLatestKpiResult, getListKpiResult } from '../../rest/KpiAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getDataInsightTooltip } from '../../utils/DataInsightChartUtils';
 import { formatDate } from '../../utils/date-time/DateTimeUtils';
 import { buildKpiChartRows, KpiChartRow } from '../../utils/KPI/KPIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../common/EmptyPlaceholder/PermissionPlaceholder';
 import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
@@ -225,88 +231,94 @@ const KPIChart: FC<Props> = ({
     <Card
       className="data-insight-card data-insight-card-chart"
       data-testid="kpi-card"
-      id="kpi-charts"
-      loading={isLoading || isKpiLoading}
-      title={
-        <PageHeader
-          data={{
-            header: t('label.kpi-title'),
-            subHeader: t('message.kpi-subtitle'),
-          }}
-        />
-      }>
-      {kpiList.length ? (
-        <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-          {hasAtLeastOneData ? (
-            <>
-              <Col span={DI_STRUCTURE.leftContainerSpan}>
-                <div id="kpi-chart">
-                  <LineChart<KpiChartRow>
-                    ariaLabel={t('label.kpi-title')}
-                    data={rows}
-                    height={GRAPH_HEIGHT}
-                    series={series}
-                    tooltip={tooltip}
-                    xAxis={xAxis}
-                    xKey="day"
-                  />
-                </div>
-              </Col>
-              {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
-                <Col span={DI_STRUCTURE.rightContainerSpan}>
-                  <KPILatestResultsV1
-                    kpiLatestResultsRecord={kpiLatestResults}
-                  />
-                </Col>
-              )}
-            </>
-          ) : (
-            <Col className="justify-center" span={24}>
-              {viewKPIPermission ? (
-                <EmptyGraphPlaceholder />
-              ) : (
-                <ErrorPlaceHolder
-                  className="border-none"
-                  permissionValue={t('label.view-entity', {
-                    entity: t('label.kpi-uppercase'),
+      id="kpi-charts">
+      <Card.Header
+        title={
+          <PageHeader
+            data={{
+              header: t('label.kpi-title'),
+              subHeader: t('message.kpi-subtitle'),
+            }}
+          />
+        }
+      />
+      <Card.Content>
+        {isLoading || isKpiLoading ? (
+          <SkeletonParagraph rows={4} />
+        ) : (
+          <>
+            {kpiList.length ? (
+              <Grid
+                className="layout-row layout-grid"
+                style={getLayoutGutter(32)}>
+                {hasAtLeastOneData ? (
+                  <>
+                    <Grid.Item
+                      className="layout-column"
+                      span={DI_STRUCTURE.leftContainerSpan}>
+                      <div id="kpi-chart">
+                        <LineChart<KpiChartRow>
+                          ariaLabel={t('label.kpi-title')}
+                          data={rows}
+                          height={GRAPH_HEIGHT}
+                          series={series}
+                          tooltip={tooltip}
+                          xAxis={xAxis}
+                          xKey="day"
+                        />
+                      </div>
+                    </Grid.Item>
+                    {!isUndefined(kpiLatestResults) &&
+                      !isEmpty(kpiLatestResults) && (
+                        <Grid.Item
+                          className="layout-column"
+                          span={DI_STRUCTURE.rightContainerSpan}>
+                          <KPILatestResultsV1
+                            kpiLatestResultsRecord={kpiLatestResults}
+                          />
+                        </Grid.Item>
+                      )}
+                  </>
+                ) : (
+                  <Grid.Item className="layout-column justify-center" span={24}>
+                    {viewKPIPermission ? (
+                      <EmptyGraphPlaceholder />
+                    ) : (
+                      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                        <PermissionPlaceholder
+                          data-testid="permission-error-placeholder"
+                          permissionValue={t('label.view-entity', {
+                            entity: t('label.kpi-uppercase'),
+                          })}
+                        />
+                      </div>
+                    )}
+                  </Grid.Item>
+                )}
+              </Grid>
+            ) : (
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60">
+                <NoDataPlaceholder
+                  data-testid="no-data-placeholder"
+                  {...(createKPIPermission && {
+                    description: t('message.no-kpi-available-add-new-one'),
+                    footer: (
+                      <Button
+                        color="primary"
+                        iconLeading={Plus}
+                        onClick={handleAddKpi}>
+                        {t('label.add-entity', {
+                          entity: t('label.kpi-uppercase'),
+                        })}
+                      </Button>
+                    ),
                   })}
-                  type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
                 />
-              )}
-            </Col>
-          )}
-        </Row>
-      ) : (
-        <Space
-          className="w-full justify-center items-center"
-          direction="vertical">
-          <ErrorPlaceHolder
-            button={
-              <Button
-                ghost
-                icon={<PlusOutlined />}
-                type="primary"
-                onClick={handleAddKpi}>
-                {t('label.add-entity', {
-                  entity: t('label.kpi-uppercase'),
-                })}
-              </Button>
-            }
-            className="m-0 border-none"
-            permission={createKPIPermission}
-            permissionValue={t('label.create-entity', {
-              entity: t('label.kpi-uppercase'),
-            })}
-            size={SIZE.MEDIUM}
-            type={
-              createKPIPermission
-                ? ERROR_PLACEHOLDER_TYPE.ASSIGN
-                : ERROR_PLACEHOLDER_TYPE.NO_DATA
-            }>
-            {createKPIPermission && t('message.no-kpi-available-add-new-one')}
-          </ErrorPlaceHolder>
-        </Space>
-      )}
+              </div>
+            )}
+          </>
+        )}
+      </Card.Content>
     </Card>
   );
 };

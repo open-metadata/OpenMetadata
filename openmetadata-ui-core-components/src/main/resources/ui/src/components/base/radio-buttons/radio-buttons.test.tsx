@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Label } from '@/components/base/input/label';
 import { RadioButton, RadioGroup } from './radio-buttons';
@@ -116,5 +117,57 @@ describe('RadioGroup label prop', () => {
     ).toBeInTheDocument();
     expect(warnings.messages).not.toContain(NO_LABEL_WARNING);
     warnings.restore();
+  });
+});
+
+describe('RadioButton card variant', () => {
+  it('selects from the hint and trailing content, supports keyboard navigation and skips disabled cards', async () => {
+    const user = userEvent.setup();
+    render(
+      <RadioGroup defaultValue="rdfxml" label="Format">
+        <RadioButton
+          hint="XML serialization"
+          label="RDF/XML"
+          trailing=".rdf"
+          value="rdfxml"
+          variant="card"
+        />
+        <RadioButton
+          isDisabled
+          label="Unavailable"
+          value="unavailable"
+          variant="card"
+        />
+        <RadioButton
+          hint="Readable RDF serialization"
+          label="Turtle"
+          trailing=".ttl"
+          value="turtle"
+          variant="card"
+        />
+      </RadioGroup>
+    );
+
+    const rdfxml = screen.getByRole('radio', { name: /RDF\/XML/ });
+    const turtle = screen.getByRole('radio', { name: /Turtle/ });
+    const disabled = screen.getByRole('radio', { name: 'Unavailable' });
+    expect(rdfxml).toBeChecked();
+
+    await user.click(screen.getByText('Readable RDF serialization'));
+    expect(turtle).toBeChecked();
+    expect(rdfxml).not.toBeChecked();
+
+    await user.click(screen.getByText('.rdf'));
+    expect(rdfxml).toBeChecked();
+    expect(turtle).not.toBeChecked();
+
+    await user.keyboard('{ArrowDown}');
+    expect(turtle).toBeChecked();
+    expect(turtle).toHaveFocus();
+
+    await user.click(screen.getByText('Unavailable'));
+    expect(disabled).toBeDisabled();
+    expect(disabled).not.toBeChecked();
+    expect(turtle).toBeChecked();
   });
 });

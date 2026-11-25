@@ -12,22 +12,58 @@
  */
 
 import {
-  Clock,
-  ShieldTick,
+  ActivityOwnerChanged,
+  OnlineUsers,
+  Teams,
   User01,
-  Users01,
 } from '@openmetadata/ui-core-components/icons';
+import {
+  PAGE_SIZE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../../../constants/constants';
 
 import type {
   MembersLandingCard,
   StageState,
   TimeWindowOption,
+  UserDetailTab,
 } from './Members.types';
+
+// Order is the tab-strip order in the user-detail header.
+export const USER_DETAIL_TABS: UserDetailTab[] = [
+  'overview',
+  'access',
+  'activity',
+  'tasks',
+  'owned-assets',
+  'following',
+  'custom-properties',
+];
+
+// User-detail tabs whose list scrolls inside a bounded body; the rest grow so
+// the panel scrolls and the bottom padding stays below the content.
+export const USER_DETAIL_TAB_LABEL_KEYS: Record<UserDetailTab, string> = {
+  overview: 'label.overview',
+  access: 'label.access',
+  activity: 'label.activity',
+  tasks: 'label.task-plural',
+  'owned-assets': 'label.owned-asset-plural',
+  following: 'label.following',
+  'custom-properties': 'label.custom-property-plural',
+};
+
+export const SCROLLING_USER_DETAIL_TABS: ReadonlySet<UserDetailTab> = new Set([
+  'activity',
+  'tasks',
+  'owned-assets',
+  'following',
+]);
 
 export const LANDING_CARDS: MembersLandingCard[] = [
   {
     id: 'teams',
-    icon: Users01,
+    icon: Teams,
     titleKey: 'label.team-plural',
     descriptionKey: 'message.members-teams-description',
     view: { type: 'teams' },
@@ -41,14 +77,14 @@ export const LANDING_CARDS: MembersLandingCard[] = [
   },
   {
     id: 'admins',
-    icon: ShieldTick,
+    icon: ActivityOwnerChanged,
     titleKey: 'label.admin-plural',
     descriptionKey: 'message.members-admins-description',
     view: { type: 'admins' },
   },
   {
     id: 'online-users',
-    icon: Clock,
+    icon: OnlineUsers,
     titleKey: 'label.online-user-plural',
     descriptionKey: 'message.members-online-users-description',
     view: { type: 'online-users' },
@@ -73,7 +109,7 @@ export const IMPORT_RESULT_DETAILS_KEY = 'details';
 export const IMPORT_RESULT_EMPTY_PLACEHOLDER = '--';
 
 export const WIDGET_CLASS =
-  'tw:flex-1 tw:min-w-[120px] tw:rounded-lg tw:border tw:border-subtle tw:p-3';
+  'tw:flex tw:flex-1 tw:flex-col tw:gap-1 tw:min-w-[120px] tw:overflow-hidden tw:p-3';
 
 // Status-chip utility pairs (bg-utility-{c}-50 + text-utility-{c}-700) — these flip
 // together for dark mode; the plain bg-/fg- status tokens collapse to adjacent shades
@@ -83,3 +119,23 @@ export const STAGE_ICON_CLASS: Record<StageState, string> = {
   active: 'tw:bg-utility-brand-50 tw:text-utility-brand-700',
   pending: 'tw:bg-tertiary tw:text-fg-quaternary',
 };
+
+// Team detail tabs whose content is a borderless table drawn edge to edge in
+// the tab card; the rest get padding.
+export const TABLE_TABS = new Set<string>([
+  'teams',
+  'users',
+  'roles',
+  'policies',
+]);
+
+// The sub-team table is at most ten rows tall (a 9-unit header, 14-unit rows);
+// longer pages scroll inside it, so its search bar and header stay in place.
+export const TEAMS_TABLE_SCROLL = { y: 'calc(var(--tw-spacing) * 149)' };
+
+// A team's sub-teams page ten at a time by default.
+export const TEAMS_PAGE_SIZE_OPTIONS = [
+  PAGE_SIZE,
+  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
+];

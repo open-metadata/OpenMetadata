@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 import CsvCellPreview from './CsvCellPreview.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Tooltip: ({
     title,
     children,
@@ -46,23 +47,20 @@ describe('CsvCellPreview', () => {
   });
 
   it('should render glossary term chips as hierarchy paths', () => {
-    render(
+    const { container } = render(
       <CsvCellPreview
         column="glossaryTerms"
         value="BusinessGlossary.Revenue.NetSales"
       />
     );
 
-    expect(
-      screen.getByText('BusinessGlossary / Revenue / NetSales')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByLabelText('BusinessGlossary.Revenue.NetSales')
-    ).toBeInTheDocument();
+    expect(container.querySelector('.csv-chip-glossary')).toHaveTextContent(
+      'BusinessGlossary / Revenue / NetSales'
+    );
   });
 
-  it('should apply item style colors to chips', () => {
-    render(
+  it('should color a tag chip with the tag style color', () => {
+    const { container } = render(
       <CsvCellPreview
         column="tags"
         itemStyles={{ 'PII.Sensitive': '#5925dc' }}
@@ -70,9 +68,23 @@ describe('CsvCellPreview', () => {
       />
     );
 
-    expect(screen.getByText('PII.Sensitive')).toHaveStyle({
-      color: '#5925dc',
-    });
+    expect(
+      (
+        container.querySelector('.csv-chip-tag') as HTMLElement
+      ).style.getPropertyValue('--tag-color')
+    ).toBe('#5925dc');
+  });
+
+  it('should render an uncolored tag chip in the default tag color', () => {
+    const { container } = render(
+      <CsvCellPreview column="tags" value="PII.Sensitive" />
+    );
+    const chip = container.querySelector('.csv-chip-tag') as HTMLElement;
+
+    expect(chip).toHaveTextContent('PII.Sensitive');
+    expect(chip.style.getPropertyValue('--tag-color')).toBe(
+      'var(--tw-color-gray-cool-600)'
+    );
   });
 
   it('should render tier chips', () => {

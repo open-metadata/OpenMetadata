@@ -42,32 +42,6 @@
     white-space: nowrap;
   }
 
-  .search-box {
-    background-color: @grey-1;
-    border: none;
-    border-radius: var(--om-radius-md);
-
-    .ant-input {
-      background-color: @grey-1;
-      padding: var(--om-space-8);
-      font-size: var(--om-font-size-sm);
-
-      &:hover,
-      &:focus,
-      &:focus-within,
-      &-focused {
-        border-color: @grey-15;
-        box-shadow: none;
-        outline: none;
-      }
-    }
-
-    &:focus-within {
-      box-shadow: none;
-      border-color: @grey-15;
-    }
-  }
-
   .search-results-container {
     flex: 1;
     overflow-y: auto;

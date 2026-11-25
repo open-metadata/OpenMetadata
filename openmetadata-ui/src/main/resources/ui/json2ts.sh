@@ -22,12 +22,20 @@ generateType() {
     tmp_schema_file=$1
     output_file=$2
     echo "Generating $output_file from specification at $tmp_schema_file"
-    ./node_modules/.bin/quicktype -s schema "$tmp_schema_file" -o "$output_file" --just-types > /dev/null 2>&1
+    "$QUICKTYPE" -s schema "$tmp_schema_file" -o "$output_file" --just-types > /dev/null 2>&1 || return 1
+    node openmetadata-ui/src/main/resources/ui/scripts/normalize-generated-map-types.mjs "$QUICKTYPE" "$output_file"
 }
 
 processFile() {
     schema_file=$1
     relative_path=${schema_file#"$schema_directory/"} # Extract relative path
+    case "$schema_file" in
+        openmetadata-spec/src/main/resources/odcs/v*/schema.json)
+            local version=${schema_file%/schema.json}
+            version=${version##*/}
+            relative_path="type/datacontract/odcs/${version//./}/odcsContract.json"
+            ;;
+    esac
     output_dir="$om_ui_directory/$(dirname "$relative_path")"
 
     # Debugging output
@@ -37,11 +45,9 @@ processFile() {
 
     mkdir -p "$output_dir" # Ensure output directory exists
 
-    tmp_schema_file="$tmp_dir/$(basename "$schema_file")"
-    output_file="$output_dir/$(basename "$schema_file" .json).ts"
+    output_file="$output_dir/$(basename "$relative_path" .json).ts"
 
-    # Generate temporary schema and TypeScript file
-    generateType "$schema_file" "$output_file"
+    generateType "$prepared_schema_directory/$relative_path" "$output_file"
 }
 
 getTypes() {
@@ -50,7 +56,7 @@ getTypes() {
 
     for schema_file in "$@"; do
         echo "Processing file $current_file of $total_files: $schema_file"
-        processFile "$schema_file"
+        processFile "$schema_file" || return 1
         current_file=$((current_file + 1))
     done
 }
@@ -65,7 +71,18 @@ if [ "$#" -eq 0 ]; then
     exit 1
 fi
 
+temporary_directory=$(mktemp -d) || exit 1
+trap 'rm -rf "$temporary_directory"' EXIT
+prepared_schema_directory=$(python3 openmetadata-spec/scripts/prepare_model_schemas.py --output-dir "$temporary_directory/model-schemas") || exit 1
+
+# quicktype is fetched on demand at an exact pin (ADR:2026-10-19-ts-codegen-runs-quicktype-via-npx-at-one-exact-pin);
+# keep the version identical to json2ts-generate-all.sh.
+QUICKTYPE=$(npx --yes -p quicktype@20.0.27 -c 'command -v quicktype' 2>/dev/null) || {
+    echo "Failed to resolve quicktype via npx" >&2
+    exit 1
+}
+
 # Process the schema files passed as arguments
-getTypes "$@"
+getTypes "$@" || exit 1
 
 echo "TypeScript generation completed."

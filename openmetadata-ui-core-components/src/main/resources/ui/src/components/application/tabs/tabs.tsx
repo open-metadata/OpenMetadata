@@ -1,6 +1,7 @@
 import type { BadgeColors, Sizes } from '@/components/base/badges/badge-types';
 import { Badge } from '@/components/base/badges/badges';
 import { Card } from '@/components/base/card/card';
+import { useOverflowEdges } from '@/hooks/use-overflow-edges';
 import { cx } from '@/utils/cx';
 import { borderAfter } from '@/utils/tailwindClasses';
 import type { ComponentPropsWithRef, ReactNode } from 'react';
@@ -226,16 +227,12 @@ export const Tab = (props: TabComponentProps) => {
         cx(
           // `tw:relative` anchors the button-minimal selected ::after border — the tab's
           // own outline is reserved for the focus ring.
-          'tw:relative tw:z-10 tw:flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:gap-2 tw:rounded-md tw:whitespace-nowrap tw:text-quaternary tw:transition tw:duration-100 tw:ease-linear',
+          'tw:relative tw:flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:gap-2 tw:rounded-md tw:whitespace-nowrap tw:text-quaternary tw:transition tw:duration-100 tw:ease-linear',
           'tw:group-orientation-vertical:justify-start',
           fullWidth && 'tw:w-full tw:flex-1',
           sizes[size][type],
           // Balances the underline tab inside the fixed-height card bar.
           variant === 'card' && type === 'underline' && 'tw:pt-2.5 tw:pb-1',
-          // z-10 only lifts the underline above the list's separator line, which the card
-          // variant does not draw; keeping it would paint tabs over fixed overlays such as
-          // full-screen lineage.
-          variant === 'card' && 'tw:z-auto',
           getTabStyles(prop)[type],
           typeof props.className === 'function'
             ? props.className(prop)
@@ -284,6 +281,7 @@ export const TabList = <K extends Orientation>({
   );
 
   const isCard = variant === 'card';
+  const overflow = useOverflowEdges(isCard && orientation === 'horizontal');
 
   const tabList = (
     <AriaTabList
@@ -310,7 +308,8 @@ export const TabList = <K extends Orientation>({
 
           typeof className === 'function' ? className(state) : className
         )
-      }>
+      }
+      ref={overflow.ref}>
       {children ?? ((item) => <Tab {...item}>{item.children}</Tab>)}
     </AriaTabList>
   );
@@ -325,7 +324,31 @@ export const TabList = <K extends Orientation>({
   if (isCard) {
     content = (
       <Card className="tw:flex tw:min-h-12 tw:items-center tw:justify-between tw:gap-4 tw:px-5">
-        {tabList}
+        <div
+          className={cx(
+            'tw:relative tw:flex tw:min-w-0 tw:items-center tw:self-stretch',
+            fullWidth && 'tw:flex-1'
+          )}>
+          {tabList}
+          {/* Shadows reach past the card's px-5 to sit flush with its edge, or end before the actions. */}
+          {overflow.edges.start && (
+            <div
+              aria-hidden="true"
+              className="tw:pointer-events-none tw:absolute tw:inset-y-0 tw:-left-5 tw:w-7 tw:bg-linear-to-r tw:from-black/10 tw:to-transparent tw:dark:from-black/40"
+              data-testid="tab-list-shadow-start"
+            />
+          )}
+          {overflow.edges.end && (
+            <div
+              aria-hidden="true"
+              className={cx(
+                'tw:pointer-events-none tw:absolute tw:inset-y-0 tw:w-7 tw:bg-linear-to-l tw:from-black/10 tw:to-transparent tw:dark:from-black/40',
+                actionsSlot ? 'tw:right-0' : 'tw:-right-5'
+              )}
+              data-testid="tab-list-shadow-end"
+            />
+          )}
+        </div>
         {actionsSlot}
       </Card>
     );

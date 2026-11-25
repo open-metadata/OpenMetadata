@@ -206,4 +206,34 @@ describe('updateCustomPropertyByName', () => {
     ).resolves.toBeUndefined();
     expect(mockClient.patch).not.toHaveBeenCalled();
   });
+
+  it('does not add a displayName when changes.displayName is undefined for a property without one', async () => {
+    // Regression guard for the empty-displayName side effect: a property
+    // created WITHOUT a displayName (optional on AddCustomProperty) edited
+    // only for its description must not get an `add /displayName` op. The edit
+    // form's getCustomPropertyChanges emits `displayName: undefined` for an
+    // unchanged field (covered by its unit tests); `omitBy(changes, isUndefined)`
+    // then strips it so compare() cannot add it. This test pins the REST-layer
+    // contract that the fix relies on, using the exact changes shape the util
+    // produces for an unchanged no-displayName property.
+    mockClient.get.mockResolvedValue({
+      data: typeOf(property('b', { description: 'old' })),
+    });
+    mockClient.patch.mockResolvedValue({
+      data: typeOf(property('b', { description: 'new' })),
+    });
+
+    await updateCustomPropertyByName('table', 'b', {
+      displayName: undefined, // what getCustomPropertyChanges emits when unchanged
+      description: 'new',
+    });
+
+    const [, operations] = mockClient.patch.mock.calls[0];
+
+    expect(JSON.stringify(operations)).not.toContain('displayName');
+    expect(operations).toEqual([
+      { op: 'test', path: '/customProperties/0/name', value: 'b' },
+      { op: 'replace', path: '/customProperties/0/description', value: 'new' },
+    ]);
+  });
 });

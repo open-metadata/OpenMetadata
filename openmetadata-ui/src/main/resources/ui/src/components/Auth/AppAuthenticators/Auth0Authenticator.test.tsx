@@ -92,7 +92,9 @@ describe('Auth0Authenticator', () => {
       ref.current?.invokeLogout();
     });
 
-    expect(logout).toHaveBeenCalled();
+    // openUrl: false is v2's local-only logout; anything else navigates to
+    // Auth0's /v2/logout and ends the user's Auth0 session.
+    expect(logout).toHaveBeenCalledWith({ openUrl: false });
     expect(handleSuccessfulLogout).toHaveBeenCalled();
   });
 
@@ -150,7 +152,12 @@ describe('Auth0Authenticator', () => {
   });
 
   describe('getRenewer', () => {
-    it('should return a fresh idToken and expiresAt (ms) on success', async () => {
+    it('returns the cached fresh idToken without a refresh grant when it is still valid', async () => {
+      // Under @auth0/auth0-spa-js v2 the SDK cache fast path is anchored to
+      // the ACCESS token's expiry, not the ID token's. When the cached ID
+      // token is still outside the pre-expiry buffer the renewer must hand
+      // it straight back WITHOUT a network round-trip — otherwise every
+      // proactive renewal would hit Auth0 even when the cache is healthy.
       const exp = Math.floor(Date.now() / 1000) + 300;
       mockGetIdTokenClaims.mockImplementationOnce(() =>
         Promise.resolve({ __raw: 'auth0-fresh-token', exp })
@@ -168,21 +175,121 @@ describe('Auth0Authenticator', () => {
 
       const result = await renewer?.();
 
-      expect(mockGetAccessTokenSilently).toHaveBeenCalled();
-      expect(mockGetIdTokenClaims).toHaveBeenCalled();
+      // The fast path reads the cached claims exactly once and skips
+      // getAccessTokenSilently entirely on this branch.
+      expect(mockGetIdTokenClaims).toHaveBeenCalledTimes(1);
+      expect(mockGetAccessTokenSilently).not.toHaveBeenCalled();
       expect(result).toEqual({
         idToken: 'auth0-fresh-token',
         expiresAt: exp * 1000,
       });
     });
 
-    it('should throw when claims have no __raw token', async () => {
-      mockGetIdTokenClaims.mockImplementationOnce(() =>
-        Promise.resolve(undefined)
-      );
-      const ref = createRef<AuthenticatorRef>();
+    it('forces a refresh grant with cacheMode "off" when the cached ID token is already expired', async () => {
+      // The v2 regression from PR #35717: with cacheMode 'on' the SDK
+      // returns from cache whenever the ACCESS token is still valid — it
+      // never checks the ID token's exp. So a bare getAccessTokenSilently()
+      // would no-op and the renewer would hand back a dead ID token. The
+      // fix forces cacheMode:'off' (a real refresh grant) when the cached
+      // ID token is already in the past, and re-reads the claims it minted.
+      const pastExp = Math.floor(Date.now() / 1000) - 3_600; // 1h ago
+      const futureExp = Math.floor(Date.now() / 1000) + 3_600;
+      mockGetIdTokenClaims
+        .mockResolvedValueOnce({ __raw: 'auth0-dead-token', exp: pastExp })
+        .mockResolvedValueOnce({ __raw: 'auth0-fresh-token', exp: futureExp });
+      mockGetAccessTokenSilently.mockResolvedValueOnce(undefined);
+
       render(
-        <Auth0Authenticator ref={ref}>
+        <Auth0Authenticator ref={createRef<AuthenticatorRef>()}>
+          <div>Child</div>
+        </Auth0Authenticator>
+      );
+
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+      const result = await renewer?.();
+
+      expect(mockGetAccessTokenSilently).toHaveBeenCalledWith({
+        cacheMode: 'off',
+      });
+      expect(mockGetIdTokenClaims).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({
+        idToken: 'auth0-fresh-token',
+        expiresAt: futureExp * 1000,
+      });
+    });
+
+    it('forces a refresh grant when the cached ID token is inside the pre-expiry buffer', async () => {
+      // Even though not yet past, a token inside EXPIRY_THRESHOLD_MILLES
+      // must be rotated rather than handed back — the proactive timer
+      // would otherwise re-fire inside the buffer and the next 401 would
+      // carry a token already on the brink.
+      const nearExp = Math.floor(Date.now() / 1000) + 30; // 30s out < 60s leeway
+      const futureExp = Math.floor(Date.now() / 1000) + 3_600;
+      mockGetIdTokenClaims
+        .mockResolvedValueOnce({ __raw: 'auth0-near-token', exp: nearExp })
+        .mockResolvedValueOnce({ __raw: 'auth0-fresh-token', exp: futureExp });
+      mockGetAccessTokenSilently.mockResolvedValueOnce(undefined);
+
+      render(
+        <Auth0Authenticator ref={createRef<AuthenticatorRef>()}>
+          <div>Child</div>
+        </Auth0Authenticator>
+      );
+
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+      const result = await renewer?.();
+
+      expect(mockGetAccessTokenSilently).toHaveBeenCalledWith({
+        cacheMode: 'off',
+      });
+      expect(result).toEqual({
+        idToken: 'auth0-fresh-token',
+        expiresAt: futureExp * 1000,
+      });
+    });
+
+    it('forces a refresh grant when no cached ID token is present', async () => {
+      // A cold cache (or one evicted by a service-worker restart) returns
+      // undefined from getIdTokenClaims() — the renewer must still mint a
+      // fresh token instead of bailing out.
+      const futureExp = Math.floor(Date.now() / 1000) + 3_600;
+      mockGetIdTokenClaims
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce({ __raw: 'auth0-fresh-token', exp: futureExp });
+      mockGetAccessTokenSilently.mockResolvedValueOnce(undefined);
+
+      render(
+        <Auth0Authenticator ref={createRef<AuthenticatorRef>()}>
+          <div>Child</div>
+        </Auth0Authenticator>
+      );
+
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+      const result = await renewer?.();
+
+      expect(mockGetAccessTokenSilently).toHaveBeenCalledWith({
+        cacheMode: 'off',
+      });
+      expect(result).toEqual({
+        idToken: 'auth0-fresh-token',
+        expiresAt: futureExp * 1000,
+      });
+    });
+
+    it('throws when no idToken is available even after forcing a refresh grant', async () => {
+      // The forced grant ran but the SDK still handed back no claims —
+      // the renewer must not synthesise a fake token, it must throw so
+      // the coordinator surfaces refresh-failed.
+      mockGetIdTokenClaims
+        .mockResolvedValueOnce(undefined) // nothing cached → force the grant
+        .mockResolvedValueOnce(undefined); // grant ran, still no token
+      mockGetAccessTokenSilently.mockResolvedValueOnce(undefined);
+
+      render(
+        <Auth0Authenticator ref={createRef<AuthenticatorRef>()}>
           <div>Child</div>
         </Auth0Authenticator>
       );
@@ -192,6 +299,69 @@ describe('Auth0Authenticator', () => {
       await expect(renewer?.()).rejects.toThrow(
         'Auth0 renewal returned no idToken'
       );
+      expect(mockGetAccessTokenSilently).toHaveBeenCalledWith({
+        cacheMode: 'off',
+      });
+    });
+
+    it('translates a reauth error from the forced refresh grant into ReauthRequiredError', async () => {
+      // The forced grant is the call that can now fail with interaction-
+      // required codes (the cache fast path used to mask them). Those must
+      // still surface as ReauthRequiredError so AuthProvider silent-reauths
+      // instead of signing the user out.
+      const pastExp = Math.floor(Date.now() / 1000) - 3_600;
+      mockGetIdTokenClaims.mockResolvedValueOnce({
+        __raw: 'auth0-dead-token',
+        exp: pastExp,
+      });
+      mockGetAccessTokenSilently.mockImplementationOnce(() =>
+        Promise.reject(
+          Object.assign(new Error('login_required'), {
+            error: 'login_required',
+          })
+        )
+      );
+
+      render(
+        <Auth0Authenticator ref={createRef<AuthenticatorRef>()}>
+          <div>Child</div>
+        </Auth0Authenticator>
+      );
+
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+      await expect(renewer?.()).rejects.toBeInstanceOf(ReauthRequiredError);
+      expect(mockGetAccessTokenSilently).toHaveBeenCalledWith({
+        cacheMode: 'off',
+      });
+    });
+
+    it('rethrows non-reauth errors from the forced refresh grant', async () => {
+      // A network failure inside the forced grant is not something a
+      // redirect can fix; surface it verbatim so the coordinator's
+      // refresh-failed path drives the (bounded) circuit-breaker.
+      const pastExp = Math.floor(Date.now() / 1000) - 3_600;
+      mockGetIdTokenClaims.mockResolvedValueOnce({
+        __raw: 'auth0-dead-token',
+        exp: pastExp,
+      });
+      const networkError = new Error('Failed to fetch');
+      mockGetAccessTokenSilently.mockImplementationOnce(() =>
+        Promise.reject(networkError)
+      );
+
+      render(
+        <Auth0Authenticator ref={createRef<AuthenticatorRef>()}>
+          <div>Child</div>
+        </Auth0Authenticator>
+      );
+
+      const renewer = registerRenewer.mock.calls.at(-1)?.[0];
+
+      await expect(renewer?.()).rejects.toBe(networkError);
+      expect(mockGetAccessTokenSilently).toHaveBeenCalledWith({
+        cacheMode: 'off',
+      });
     });
 
     it.each([
@@ -252,7 +422,7 @@ describe('Auth0Authenticator', () => {
     });
 
     expect(loginWithRedirect).toHaveBeenCalledWith({
-      prompt: 'none',
+      authorizationParams: { prompt: 'none' },
       appState: {
         returnTo: `${window.location.pathname}${window.location.search}`,
       },

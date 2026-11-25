@@ -16,8 +16,8 @@ import BubbleMenu from './BubbleMenu';
 
 const mockIsActive = jest.fn();
 
-jest.mock('@tiptap/react', () => {
-  const originalModule = jest.requireActual('@tiptap/react');
+jest.mock('@tiptap/react/menus', () => {
+  const originalModule = jest.requireActual('@tiptap/react/menus');
 
   return {
     ...originalModule,
@@ -139,9 +139,11 @@ describe('BubbleMenu', () => {
     render(<BubbleMenu {...mockProps} />);
 
     const bold = screen.getByLabelText('Bold');
-    fireEvent.mouseDown(bold);
+    const isNotPrevented = fireEvent.mouseDown(bold);
 
     expect(mockToggleBold).toHaveBeenCalled();
+    // default prevented so the editor keeps focus and its selection
+    expect(isNotPrevented).toBe(false);
   });
 
   it('should call toggleItalic when clicking on Italic', async () => {

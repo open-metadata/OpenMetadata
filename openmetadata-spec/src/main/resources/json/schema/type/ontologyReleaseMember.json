@@ -1,0 +1,54 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyReleaseMember.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyReleaseMember",
+  "description": "An immutable, bounded snapshot in a sealed ontology release.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyReleaseMember",
+  "properties": {
+    "releaseId": {
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "memberKind": {
+      "type": "string",
+      "enum": [
+        "ONTOLOGY",
+        "CONCEPT",
+        "PROPERTY",
+        "AXIOM",
+        "ASSOCIATION",
+        "SHAPE"
+      ]
+    },
+    "memberId": {
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "sourceVersion": {
+      "$ref": "entityHistory.json#/definitions/entityVersion"
+    },
+    "payload": {
+      "description": "Captured content; readers never resolve this through a mutable definition or entity history.",
+      "type": "object",
+      "existingJavaType": "com.fasterxml.jackson.databind.JsonNode",
+      "additionalProperties": true
+    },
+    "payloadDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "payloadBytes": {
+      "type": "integer",
+      "minimum": 1,
+      "existingJavaType": "java.lang.Long"
+    }
+  },
+  "required": [
+    "releaseId",
+    "memberKind",
+    "memberId",
+    "payload",
+    "payloadDigest",
+    "payloadBytes"
+  ],
+  "additionalProperties": false
+}

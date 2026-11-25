@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
 import { insertActivityEventForTest } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -19,11 +19,6 @@ import {
   okJson,
 } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
-import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
-import {
-  selectActivityFeedFilterAndVerifyEndpoint,
-  selectWidgetSortOption,
-} from '../../utils/widgetFilters';
 import { TableClass } from '../entity/TableClass';
 import { TaskClass } from '../entity/TaskClass';
 import { PersonaClass } from '../persona/PersonaClass';
@@ -89,7 +84,9 @@ export const test = base.extend<{ activityData: TaskActivityData }>({
                       w: 1,
                       h: 3,
                     },
-                    { i: 'KnowledgePanel.MyTask', x: 1, y: 0, w: 1, h: 3 },
+                    // MyTask used to sit beside it. It is excluded from the
+                    // landing grid now, so seeding it only produced a layout
+                    // `normalizeLandingPageLayout` would strip on read.
                   ],
                 },
               ],
@@ -204,42 +201,6 @@ export const createActivityTask = async (
   await task.create(data.apiContext);
   expect(task.responseData?.status).toBe('Open');
   return task;
-};
-
-export const selectActivityFilter = async (
-  page: Page,
-  label: 'My Data' | 'Following' | 'All Activity'
-) => {
-  const widget = await waitForLandingPageWidget(
-    page,
-    'KnowledgePanel.ActivityFeed'
-  );
-  const endpoint = {
-    'My Data': '/my-feed',
-    Following: '/following',
-    'All Activity': '',
-  }[label];
-  await selectActivityFeedFilterAndVerifyEndpoint(
-    page,
-    widget,
-    label,
-    `/api/v1/activity${endpoint}`
-  );
-  return widget;
-};
-
-export const openAssignedTasks = async (page: Page) => {
-  const widget = await waitForLandingPageWidget(page, 'KnowledgePanel.MyTask');
-  const response = await selectWidgetSortOption(
-    page,
-    widget,
-    'Assigned',
-    (result) =>
-      result.request().method() === 'GET' &&
-      new URL(result.url()).pathname === '/api/v1/tasks/assigned'
-  );
-  expect(response.status()).toBe(200);
-  return widget;
 };
 
 export { expect } from './base';

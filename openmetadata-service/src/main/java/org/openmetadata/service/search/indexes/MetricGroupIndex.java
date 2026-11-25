@@ -54,6 +54,11 @@ public class MetricGroupIndex implements TaggableIndex {
   }
 
   @Override
+  public Set<String> getFieldsLoadedOnWrite() {
+    return Set.of(FIELD_METRIC_COUNT);
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
     return EXCLUDED_FIELDS;
   }

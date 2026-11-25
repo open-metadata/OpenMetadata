@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { TableProps } from 'antd';
 import { HTMLAttributes, ReactNode } from 'react';
 import { Field } from '../../../generated/entity/data/topic';
+import { TableProps } from '../../common/Table/Table.interface';
 
 export interface TopicSchemaFieldsProps
   extends HTMLAttributes<TableProps<Field>> {

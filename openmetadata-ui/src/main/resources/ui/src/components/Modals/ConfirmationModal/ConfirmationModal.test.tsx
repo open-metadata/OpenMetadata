@@ -40,6 +40,10 @@ describe('Test Ingestion modal component', () => {
     const save = await screen.findByTestId('save-button');
 
     expect(confirmationModal).toBeInTheDocument();
+    expect(confirmationModal).toHaveAttribute('role', 'dialog');
+    expect(screen.getByRole('dialog', { name: 'confirmation modal' })).toBe(
+      confirmationModal
+    );
     expect(header).toBeInTheDocument();
     expect(header.textContent).toBe('confirmation modal');
     expect(bodyText).toBeInTheDocument();
@@ -56,6 +60,41 @@ describe('Test Ingestion modal component', () => {
     fireEvent.click(save);
 
     expect(mockConfirmation).toHaveBeenCalled();
+  });
+
+  it('styles the confirm button as destructive only when asked to', async () => {
+    const { rerender } = render(
+      <ConfirmationModal
+        visible
+        bodyText="Are you sure?"
+        cancelText="Cancel"
+        confirmText="Remove"
+        header="confirmation modal"
+        onCancel={mockCancel}
+        onConfirm={mockConfirmation}
+      />
+    );
+
+    expect(await screen.findByTestId('save-button')).not.toHaveClass(
+      'tw:bg-error-solid'
+    );
+
+    rerender(
+      <ConfirmationModal
+        isDestructive
+        visible
+        bodyText="Are you sure?"
+        cancelText="Cancel"
+        confirmText="Remove"
+        header="confirmation modal"
+        onCancel={mockCancel}
+        onConfirm={mockConfirmation}
+      />
+    );
+
+    expect(await screen.findByTestId('save-button')).toHaveClass(
+      'tw:bg-error-solid'
+    );
   });
 
   it('If loading state is waiting, component should show loading indicator', async () => {
@@ -82,5 +121,21 @@ describe('Test Ingestion modal component', () => {
     const loader = await screen.findByTestId('loading-button');
 
     expect(loader).toBeInTheDocument();
+  });
+
+  it('should not render when not visible', () => {
+    render(
+      <ConfirmationModal
+        bodyText="Are you sure?"
+        cancelText="Cancel"
+        confirmText="Save"
+        header="confirmation modal"
+        visible={false}
+        onCancel={mockCancel}
+        onConfirm={mockConfirmation}
+      />
+    );
+
+    expect(screen.queryByTestId('confirmation-modal')).not.toBeInTheDocument();
   });
 });

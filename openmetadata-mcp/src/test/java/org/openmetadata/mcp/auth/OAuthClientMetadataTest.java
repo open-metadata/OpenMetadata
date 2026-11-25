@@ -22,9 +22,9 @@ class OAuthClientMetadataTest {
     OAuthClientMetadata metadata = new OAuthClientMetadata();
     metadata.setScope(null);
 
-    List<String> result = metadata.validateScope("custom admin");
+    List<String> result = metadata.validateScope("custom openid admin profile");
 
-    assertThat(result).containsExactly("custom", "admin");
+    assertThat(result).containsExactly("openid", "profile");
   }
 
   @Test
@@ -32,19 +32,37 @@ class OAuthClientMetadataTest {
     OAuthClientMetadata metadata = new OAuthClientMetadata();
     metadata.setScope("  ");
 
-    List<String> result = metadata.validateScope("anything");
+    List<String> result = metadata.validateScope("anything email");
 
-    assertThat(result).containsExactly("anything");
+    assertThat(result).containsExactly("email");
   }
 
   @Test
   void testValidateScope_validSubsetAccepted() throws InvalidScopeException {
     OAuthClientMetadata metadata = new OAuthClientMetadata();
-    metadata.setScope("read write admin");
+    metadata.setScope("openid profile email");
 
-    List<String> result = metadata.validateScope("read write");
+    List<String> result = metadata.validateScope("openid profile");
 
-    assertThat(result).containsExactly("read", "write");
+    assertThat(result).containsExactly("openid", "profile");
+  }
+
+  @Test
+  void testValidateScope_noKnownScopeGetsTheDefaults() throws InvalidScopeException {
+    OAuthClientMetadata metadata = new OAuthClientMetadata();
+    metadata.setScope(null);
+
+    assertThat(metadata.validateScope("*")).isNull();
+    assertThat(metadata.validateScope("scope0 scope1 scope2")).isNull();
+  }
+
+  @Test
+  void testValidateScope_repeatedScopesAreKeptOnce() throws InvalidScopeException {
+    OAuthClientMetadata metadata = new OAuthClientMetadata();
+    metadata.setScope(null);
+
+    assertThat(metadata.validateScope("openid openid profile openid"))
+        .containsExactly("openid", "profile");
   }
 
   @Test

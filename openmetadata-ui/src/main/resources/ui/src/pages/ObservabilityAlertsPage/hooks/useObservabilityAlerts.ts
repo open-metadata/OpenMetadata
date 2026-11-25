@@ -57,6 +57,7 @@ export function useObservabilityAlerts({
   const [loading, setLoading] = useState(true);
   const [loadingCount, setLoadingCount] = useState(0);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
+  const [alertsError, setAlertsError] = useState<AxiosError>();
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
   const [alertPermissions, setAlertPermissions] = useState<AlertPermission[]>();
   const [alertResourcePermission, setAlertResourcePermission] =
@@ -135,6 +136,7 @@ export function useObservabilityAlerts({
   const fetchAlerts = useCallback(
     async (params?: Partial<Paging>) => {
       setLoading(true);
+      setAlertsError(undefined);
       try {
         const currentPagingParams: Partial<Paging> | undefined =
           pagingCursor?.cursorType && pagingCursor?.cursorValue
@@ -162,10 +164,9 @@ export function useObservabilityAlerts({
         setAlerts(alertsList);
         handlePagingChange(paging);
         fetchAllAlertsPermission(alertsList);
-      } catch {
-        showErrorToast(
-          t('server.entity-fetch-error', { entity: t('label.alert-plural') })
-        );
+      } catch (error) {
+        setAlerts([]);
+        setAlertsError(error as AxiosError);
       } finally {
         setLoading(false);
       }
@@ -226,6 +227,10 @@ export function useObservabilityAlerts({
         name: t('label.name'),
       },
       {
+        id: ALERT_TABLE_COLUMN_IDS.STATUS,
+        name: t('label.status'),
+      },
+      {
         id: ALERT_TABLE_COLUMN_IDS.TRIGGER,
         name: t('label.trigger'),
       },
@@ -261,6 +266,7 @@ export function useObservabilityAlerts({
     hasResourcePermissionError,
     refetchResourcePermission: fetchAlertResourcePermission,
     alerts,
+    alertsError,
     columnList,
     currentPage,
     getAlertDetailsPath,

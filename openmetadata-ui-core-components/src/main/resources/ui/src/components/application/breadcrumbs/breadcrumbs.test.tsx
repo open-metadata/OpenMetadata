@@ -33,6 +33,65 @@ describe('Breadcrumbs', () => {
     );
   });
 
+  it('renders a disabled item as plain text even with onAction', () => {
+    const onAction = vi.fn();
+    render(
+      <Breadcrumbs
+        items={[
+          { id: 'root', label: 'Workspace', isDisabled: true },
+          { id: 'personas', label: 'Personas' },
+          { id: 'detail', label: 'Detail' },
+        ]}
+        onAction={onAction}
+      />
+    );
+
+    expect(
+      screen.queryByRole('link', { name: 'Workspace' })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Personas' })).toBeInTheDocument();
+  });
+
+  it('keeps a disabled item inert after it collapses into the menu', async () => {
+    const onAction = vi.fn();
+    render(
+      <Breadcrumbs
+        items={[
+          { id: 'root', label: 'Root' },
+          { id: 'section', label: 'Section', isDisabled: true },
+          { id: 'page', label: 'Page' },
+          { id: 'detail', label: 'Detail' },
+        ]}
+        maxItems={2}
+        onAction={onAction}
+      />
+    );
+
+    act(() =>
+      screen.getByRole('button', { name: 'Show hidden breadcrumbs' }).click()
+    );
+    const section = await screen.findByText('Section');
+    act(() => section.click());
+
+    expect(section.closest('[role^="menuitem"]')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+    expect(onAction).not.toHaveBeenCalledWith('section');
+  });
+
+  it('titles capped labels so a truncated name stays readable', () => {
+    render(<Breadcrumbs items={items} maxItemWidth={80} />);
+
+    expect(screen.getByText('Database')).toHaveAttribute('title', 'Database');
+  });
+
+  it('leaves labels untitled when they are not capped', () => {
+    render(<Breadcrumbs items={items} />);
+
+    expect(screen.getByText('Database')).not.toHaveAttribute('title');
+  });
+
   it('renders a last item without an href as the current page', () => {
     render(
       <Breadcrumbs

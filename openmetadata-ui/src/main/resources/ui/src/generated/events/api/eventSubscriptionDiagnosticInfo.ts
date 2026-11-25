@@ -16,15 +16,22 @@
  */
 export interface EventSubscriptionDiagnosticInfo {
     /**
-     * The current offset of the event subscription.
+     * The offset the event subscription has read up to, as stored. A disabled alert keeps the
+     * offset where it stopped; it does not read from there when enabled again.
      */
     currentOffset?: any;
+    /**
+     * Whether the alert is enabled. A disabled alert is not running: it reads and sends no
+     * events until it is enabled again, and then it starts from the latest event.
+     */
+    enabled?: boolean;
     /**
      * Count of failed events for specific alert.
      */
     failedEventsCount?: any;
     /**
-     * Indicates whether all events have been processed.
+     * Whether no events are left that the alert will still process. Always true for a disabled
+     * alert.
      */
     hasProcessedAllEvents?: boolean;
     /**
@@ -32,16 +39,22 @@ export interface EventSubscriptionDiagnosticInfo {
      */
     latestOffset?: any;
     /**
-     * The number of relevant unprocessed events based on the alert's filtering rules for
-     * specific alert.
+     * The number of unprocessed events the alert will still process and its filtering rules let
+     * through. Always 0 for a disabled alert.
      */
     relevantUnprocessedEventsCount?: any;
     /**
-     * A list of relevant unprocessed events based on the alert's filtering criteria.
+     * True when more events are unread than one request evaluates, so
+     * relevantUnprocessedEventsCount counts only the first unread events.
+     */
+    relevantUnprocessedEventsCountIsLowerBound?: boolean;
+    /**
+     * A list of relevant unprocessed events based on the alert's filtering criteria. Empty for
+     * a disabled alert.
      */
     relevantUnprocessedEventsList?: ChangeEvent[];
     /**
-     * The initial offset of the event subscription when it started processing.
+     * The initial offset of the event subscription when it started processing, as stored.
      */
     startingOffset?: any;
     /**
@@ -49,11 +62,12 @@ export interface EventSubscriptionDiagnosticInfo {
      */
     successfulEventsCount?: any;
     /**
-     * The total number of unprocessed events.
+     * The total number of unprocessed events the alert will still read. Always 0 for a disabled
+     * alert.
      */
     totalUnprocessedEventsCount?: any;
     /**
-     * A list of all unprocessed events.
+     * A list of all unprocessed events. Empty for a disabled alert.
      */
     totalUnprocessedEventsList?: ChangeEvent[];
 }

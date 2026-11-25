@@ -22,6 +22,5 @@ export interface SchemaModalProp {
   onChange?: (value: string) => void;
   mode?: Mode;
   isFooterVisible?: boolean;
-  className?: string;
   editorClass?: string;
 }

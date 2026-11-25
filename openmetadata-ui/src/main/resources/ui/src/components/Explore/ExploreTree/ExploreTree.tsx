@@ -17,6 +17,7 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { get, isEmpty, isString, isUndefined } from 'lodash';
 import { Bucket } from 'Models';
@@ -31,13 +32,14 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import { postAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
@@ -47,6 +49,7 @@ import {
   findTreeNodeByKey,
   findTreeNodeKeyByBrowsePath,
   getAggregations,
+  getBrowsePathAncestorKeys,
   getDisabledExploreTreeKeys,
   getExploreQueryFilterMust,
   getQueryFilterMust,
@@ -65,11 +68,12 @@ import {
 } from '../../../utils/ExplorePureUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { getServiceLogoThemeClass } from '../../../utils/ServiceIconUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
 import {
@@ -78,7 +82,7 @@ import {
   TreeNodeData,
 } from './ExploreTree.interface';
 
-const SERVICE_ICON_CLASS = 'service-icon w-4 h-4';
+const SERVICE_ICON_CLASS = 'service-icon w-4 h-4 tw:text-fg-secondary';
 
 const SERVICE_STYLE_SOURCE_FIELDS = ['service.style'];
 const SERVICE_STYLE_TOP_HITS_SIZE = 1;
@@ -231,6 +235,7 @@ const getBucketTypeAndLogo = (
       logo: (
         <img
           alt={t('label.service')}
+          className={getServiceLogoThemeClass(bucket.key)}
           src={serviceIcon}
           style={{ width: 18, height: 18 }}
         />
@@ -339,7 +344,7 @@ const ExploreTree = ({
   // count refresh.
   const treeSelectRef = useRef(false);
   const { t } = useTranslation();
-  const { isTourOpen } = useTourProvider();
+  const { activeDomain } = useDomainStore();
   const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
   const [treeData, setTreeData] = useState(initTreeData);
@@ -349,6 +354,13 @@ const ExploreTree = ({
   // re-fires a lazy load (antd kept the same bookkeeping as loadedKeys). Cleared
   // when the tree rebuilds, since rebuilt roots carry no children.
   const requestedKeysRef = useRef<Set<string>>(new Set());
+  // Path ancestors already auto-expanded, so a node the user collapses is not
+  // re-opened by a later load. Cleared with requestedKeysRef on rebuild.
+  const autoExpandedKeysRef = useRef<Set<string>>(new Set());
+  // The browsePath the root counts were last refreshed for. Until a count fetch
+  // for the current path commits, root counts are stale and must not decide
+  // which categories auto-expand.
+  const rootCountsBrowsePathRef = useRef<unknown>(undefined);
   // Latest selection for the browse-path sync effect to read without taking a
   // dependency on it — that would re-run the effect on every click and fight
   // the highlight the click handler just set. Mirrored during render (not in an
@@ -394,11 +406,6 @@ const ExploreTree = ({
   const onLoadData = useCallback(
     async (treeNode: ExploreTreeNode) => {
       if (treeNode.children || treeNode.disabled) {
-        return;
-      }
-      if (isTourOpen) {
-        forgetLoadRequest(treeNode.key);
-
         return;
       }
       setLoadingKeys((prev) => new Set(prev).add(treeNode.key));
@@ -530,7 +537,6 @@ const ExploreTree = ({
       }
     },
     [
-      isTourOpen,
       forgetLoadRequest,
       updateTreeData,
       searchQueryParam,
@@ -601,13 +607,6 @@ const ExploreTree = ({
   );
 
   const fetchEntityCounts = useCallback(async () => {
-    // Explore is mock-driven during the tour; skip the real aggregation calls.
-    if (isTourOpen) {
-      setIsLoading(false);
-
-      return;
-    }
-
     const fetchSeq = ++countFetchSeqRef.current;
     const isLatestFetch = () => fetchSeq === countFetchSeqRef.current;
     // A browse click keeps the expanded subtree; anything else (dropdown filter,
@@ -663,6 +662,7 @@ const ExploreTree = ({
         return;
       }
 
+      rootCountsBrowsePathRef.current = parsedSearch.browsePath;
       presenceBucketsRef.current = {
         key: presenceCacheKey,
         buckets: presenceBuckets,
@@ -673,6 +673,7 @@ const ExploreTree = ({
       // roots would never re-fetch on their existing expansion.
       if (!preserveExpandedTree) {
         requestedKeysRef.current.clear();
+        autoExpandedKeysRef.current.clear();
       }
 
       // Rebuild the root set from the present static roots so a category an
@@ -706,7 +707,6 @@ const ExploreTree = ({
       }
     }
   }, [
-    isTourOpen,
     searchQueryParam,
     setTreeData,
     parsedSearch.quickFilter,
@@ -720,15 +720,6 @@ const ExploreTree = ({
       fetchEntityCounts();
     }
   }, []);
-
-  const previousIsTourOpenRef = useRef(isTourOpen);
-  useEffect(() => {
-    // Fetch the counts skipped during the tour once it closes.
-    if (previousIsTourOpenRef.current && !isTourOpen) {
-      fetchEntityCounts();
-    }
-    previousIsTourOpenRef.current = isTourOpen;
-  }, [isTourOpen, fetchEntityCounts]);
 
   const filterSignature = useMemo(
     () =>
@@ -790,6 +781,25 @@ const ExploreTree = ({
       hadBrowsePathRef.current = false;
       setSelectedKeys([]);
     }
+  }, [parsedSearch.browsePath, treeData]);
+
+  useEffect(() => {
+    // Rebuilt or deep-linked trees carry fresh keys below the roots, so expand
+    // the loaded ancestors of the browse path; each expand lazy-loads the next
+    // level, which lands here again until the browsed node is revealed.
+    const keysToExpand = getBrowsePathAncestorKeys(
+      treeData,
+      parseBrowsePathFields(parsedSearch.browsePath),
+      {
+        rootCountsMatchPath:
+          rootCountsBrowsePathRef.current === parsedSearch.browsePath,
+      }
+    ).filter((key) => !autoExpandedKeysRef.current.has(key));
+    if (isEmpty(keysToExpand)) {
+      return;
+    }
+    keysToExpand.forEach((key) => autoExpandedKeysRef.current.add(key));
+    setExpandedKeys((prev) => [...new Set([...prev, ...keysToExpand])]);
   }, [parsedSearch.browsePath, treeData]);
 
   // Top-level categories that cannot hold the selected asset type are grayed
@@ -874,36 +884,42 @@ const ExploreTree = ({
     return <Loader />;
   }
 
+  // Scoped to a domain, the results pane already explains why nothing shows.
+  if (treeData.length === 0 && activeDomain !== DEFAULT_DOMAIN_VALUE) {
+    return null;
+  }
+
   if (treeData.length === 0) {
     return (
-      <ErrorPlaceHolder
-        className="h-min-80 d-flex flex-col justify-center border-none"
-        size={SIZE.MEDIUM}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography as="p" className="tw:m-0 tw:font-medium">
-          {t('message.no-data-yet')}
-        </Typography>
-        <Typography as="p" className="tw:m-0">
-          {t('message.add-service-and-data-assets')}
-        </Typography>
-        <Typography as="p" className="tw:mt-0 tw:mb-[1em]">
-          <Transi18next
-            i18nKey="message.need-help-message"
-            renderElement={
-              <a
-                aria-label="Learn more about data discovery"
-                href={DATA_DISCOVERY_DOCS}
-                rel="noreferrer"
-                target="_blank">
-                {t('label.learn-more')}
-              </a>
-            }
-            values={{
-              doc: t('message.see-how-to-get-started'),
-            }}
-          />
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={t('message.add-service-and-data-assets')}
+          footer={
+            <>
+              <Typography as="p" color="secondary" size="text-xs">
+                <Transi18next
+                  i18nKey="message.need-help-message"
+                  renderElement={
+                    <a
+                      aria-label="Learn more about data discovery"
+                      href={DATA_DISCOVERY_DOCS}
+                      rel="noreferrer"
+                      target="_blank">
+                      {t('label.learn-more')}
+                    </a>
+                  }
+                  values={{
+                    doc: t('message.see-how-to-get-started'),
+                  }}
+                />
+              </Typography>
+            </>
+          }
+          icon={<Database01 />}
+          title={t('message.no-data-yet')}
+        />
+      </div>
     );
   }
 

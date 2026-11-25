@@ -27,27 +27,29 @@ import org.openmetadata.mcp.util.ResponseBudget;
  * response for a data-less stub - the caller pays for the query and receives nothing. The cut lands
  * on a UTF-8 boundary and {@code byteCount} reports the pre-truncation size.
  */
-final class RdfBody {
+public final class RdfBody {
 
   /**
    * Ceiling for one RDF payload. UTF-8 bytes are never fewer than the characters they encode, so
    * bounding bytes bounds the serialized length too; the headroom {@link
    * ResponseBudget#DEFAULT_BUDGET_FACTOR} reserves covers JSON escaping and the envelope.
    */
-  static final int MAX_BYTES = (int) ResponseBudget.defaultBudgetChars();
+  static int maxBytes() {
+    return (int) ResponseBudget.defaultBudgetChars();
+  }
 
   static final int MIN_BYTES = 1024;
 
   private RdfBody() {}
 
-  record Bounded(String value, boolean truncated, int byteCount) {
+  public record Bounded(String value, boolean truncated, int byteCount) {
 
-    Bounded {
+    public Bounded {
       value = Objects.requireNonNullElse(value, "");
     }
   }
 
-  static Bounded bound(String response, int maxBytes) {
+  public static Bounded bound(String response, int maxBytes) {
     byte[] bytes = Objects.requireNonNullElse(response, "").getBytes(StandardCharsets.UTF_8);
     int end = utf8Boundary(bytes, Math.min(bytes.length, maxBytes));
     return new Bounded(

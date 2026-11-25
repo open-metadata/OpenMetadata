@@ -30,7 +30,7 @@
       "pattern": "^rdf/ontology-packs/[a-z0-9/_-]+\\.(ttl|rdf|nt|jsonld)$"
     },
     "sourceUrl": {
-      "description": "Authoritative external source for catalogue-only modules.",
+      "description": "Authoritative external source: where a catalogue-only module is obtained, or where a bundled module was published.",
       "type": "string",
       "format": "uri"
     },
@@ -39,11 +39,18 @@
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
     },
+    "sourceSha256": {
+      "description": "Lowercase SHA-256 of the published file, recorded only when the generator converted it to the bundled Turtle payload.",
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
     "conceptCount": {
+      "description": "Distinct IRIs typed owl:Class, rdfs:Class or skos:Concept in the payload.",
       "type": "integer",
       "minimum": 0
     },
     "relationshipCount": {
+      "description": "Distinct IRI-to-IRI rdfs:subClassOf, rdfs:subPropertyOf, skos:broader, skos:narrower and skos:related statements in the payload.",
       "type": "integer",
       "minimum": 0
     },

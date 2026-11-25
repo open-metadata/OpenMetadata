@@ -26,6 +26,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
@@ -105,7 +106,7 @@ public final class RdfTestUtils {
    * @param entity The entity to verify
    * @param rdfType The expected RDF type (e.g., "dcat:Dataset", "foaf:Agent")
    */
-  public static void verifyEntityInRdf(EntityInterface entity, String rdfType) {
+  public static void verifyEntityInRdf(EntityInterface<?> entity, String rdfType) {
     String escapedName = escapeSparqlString(entity.getName());
     String escapedFqn = entity.getFullyQualifiedName().replace("\\", "\\\\").replace("\"", "\\\"");
 
@@ -188,7 +189,7 @@ public final class RdfTestUtils {
    *
    * @param entity The updated entity
    */
-  public static void verifyEntityUpdatedInRdf(EntityInterface entity) {
+  public static void verifyEntityUpdatedInRdf(EntityInterface<?> entity) {
     String sparql =
         String.format(
             "PREFIX om: <https://open-metadata.org/ontology/> "
@@ -361,6 +362,7 @@ public final class RdfTestUtils {
           HttpRequest.newBuilder()
               .uri(URI.create(endpoint + "?query=" + encodedQuery))
               .header("Accept", "application/sparql-results+json")
+              .header("Authorization", FusekiTestImage.adminAuthorization())
               .timeout(Duration.ofSeconds(30))
               .GET()
               .build();
@@ -392,6 +394,7 @@ public final class RdfTestUtils {
           HttpRequest.newBuilder()
               .uri(URI.create(endpoint + "?query=" + encodedQuery))
               .header("Accept", "application/sparql-results+json")
+              .header("Authorization", FusekiTestImage.adminAuthorization())
               .timeout(Duration.ofSeconds(30))
               .GET()
               .build();
@@ -425,7 +428,7 @@ public final class RdfTestUtils {
   /**
    * Log debug information when entity is not found in RDF.
    */
-  private static void logDebugInfo(EntityInterface entity, String rdfType) {
+  private static void logDebugInfo(EntityInterface<?> entity, String rdfType) {
     String debugQuery =
         String.format(
             "PREFIX om: <https://open-metadata.org/ontology/> "

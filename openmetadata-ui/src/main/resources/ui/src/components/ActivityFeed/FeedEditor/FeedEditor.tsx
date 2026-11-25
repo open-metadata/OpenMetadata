@@ -47,6 +47,7 @@ import {
   userMentionItemWithAvatar,
 } from '../../../utils/FeedUtils';
 import { HTMLToMarkdown } from '../../../utils/FeedUtilsPure';
+import { getLanguageDirection } from '../../../utils/i18next/i18nextUtil';
 import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../../utils/QuillUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
@@ -131,15 +132,25 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
           if (item.type === 'user') {
             return getUserByName(item.name, {
               fields: TabSpecificField.PROFILE,
-            }).then((res) => {
-              newMatches[index] = {
-                ...item,
-                avatarEle: userMentionItemWithAvatar(
-                  item,
-                  userProfilePics[item.name] ?? res
-                ),
-              };
-            });
+            })
+              .then((res) => {
+                newMatches[index] = {
+                  ...item,
+                  avatarEle: userMentionItemWithAvatar(
+                    item,
+                    userProfilePics[item.name] ?? res
+                  ),
+                };
+              })
+              .catch(() => {
+                // Fallback: render without avatar on fetch failure so the
+                // index is always populated and quill-mention's renderList
+                // never dereferences an undefined (holey) array element.
+                newMatches[index] = {
+                  ...item,
+                  avatarEle: userMentionItemWithAvatar(item),
+                };
+              });
           } else if (item.type === 'team') {
             newMatches[index] = {
               ...item,
@@ -364,7 +375,7 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
       if (container && editorRef.current) {
         // get the editor instance
         const editorInstance = editorRef.current.getEditor();
-        const direction = i18n.dir();
+        const direction = getLanguageDirection(i18n);
 
         // Explicit ranges throughout: getFormat() and format() without one read
         // the selection with focus, so a merely mounted editor would pull focus

@@ -18,8 +18,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
@@ -38,25 +43,32 @@ import org.openmetadata.service.search.SearchRepository;
  * cluster, or one whose alias a past reindex dropped — gets it back. This exercises that startup
  * reconciliation against the live cluster.
  */
+@Isolated("Temporarily removes shared Data Insights aliases")
+@Execution(ExecutionMode.SAME_THREAD)
 public class DataInsightAliasReconciliationIT {
-
-  private static final String DQ_ENTITY = Entity.TEST_CASE_RESOLUTION_STATUS;
 
   @BeforeAll
   static void setup() {
     SdkClients.adminClient();
   }
 
-  @Test
-  void startupReconciliationReattachesDataInsightAlias() {
+  /** The live indices aliased under di-data-assets-*: test results and incident history. */
+  static Stream<String> dataInsightAliasedEntities() {
+    return Stream.of(Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT);
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("dataInsightAliasedEntities")
+  void startupReconciliationReattachesDataInsightAlias(String entityType) {
     SearchRepository repo = Entity.getSearchRepository();
     SearchClient client = repo.getSearchClient();
     String clusterAlias = repo.getClusterAlias();
-    IndexMapping mapping = repo.getIndexMapping(DQ_ENTITY);
+    IndexMapping mapping = repo.getIndexMapping(entityType);
 
     List<String> dataInsightAliases = mapping.getDataInsightAliases(clusterAlias);
     assertFalse(
-        dataInsightAliases.isEmpty(), DQ_ENTITY + " must declare a Data Insights alias in mapping");
+        dataInsightAliases.isEmpty(),
+        entityType + " must declare a Data Insights alias in mapping");
     String dataInsightAlias = dataInsightAliases.getFirst();
     String canonicalIndex = mapping.getIndexName(clusterAlias);
 

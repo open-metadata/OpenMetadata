@@ -65,6 +65,7 @@ export const TagsTabs = ({
               color="gray"
               key={uniqueId()}
               size="sm"
+              tooltip={tag.tagFQN}
               type="color">
               {tag.tagFQN}
             </Badge>

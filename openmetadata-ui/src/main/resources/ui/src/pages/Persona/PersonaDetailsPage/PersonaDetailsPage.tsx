@@ -11,24 +11,28 @@
  *  limitations under the License.
  */
 import {
+  Button,
   FeaturedIcon,
+  Grid,
+  SimpleModal,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { User03 } from '@openmetadata/ui-core-components/icons';
-import { Button, Col, Modal, Row } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import {
+  SuccessfulTests,
+  User03,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as CheckCircleOutlined } from '../../../assets/svg/complete.svg';
-import { ReactComponent as CloseCircleOutlined } from '../../../assets/svg/ic-close-circle.svg';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
-import NoDataPlaceholder from '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
+import { ManageMenuItem as ItemType } from '../../../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import Loader from '../../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -38,7 +42,6 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { CustomizeUI } from '../../../components/Settings/Persona/CustomizeUI/CustomizeUI';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
-import { SIZE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
@@ -49,6 +52,7 @@ import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEnt
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getUserById } from '../../../rest/userAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getCustomizePageCategories } from '../../../utils/Persona/PersonaUtils';
 import {
@@ -121,7 +125,7 @@ export const PersonaDetailsPage = () => {
 
       if (category) {
         breadcrumbList.push({
-          name: category.label,
+          name: category.label ?? '',
           url: '',
         });
       }
@@ -320,7 +324,7 @@ export const PersonaDetailsPage = () => {
                 ? t('message.remove-default-persona-description')
                 : t('message.set-default-persona-menu-description')
             }
-            icon={isDefault ? CloseCircleOutlined : CheckCircleOutlined}
+            icon={isDefault ? XCircle : SuccessfulTests}
             id={isDefault ? 'remove-default-button' : 'set-as-default-button'}
             name={
               isDefault ? t('label.remove-default') : t('label.set-as-default')
@@ -337,13 +341,19 @@ export const PersonaDetailsPage = () => {
   }
 
   if (isUndefined(personaDetails)) {
-    return <NoDataPlaceholder size={SIZE.LARGE} />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (
     <PageLayoutV1 pageTitle={personaDetails.name}>
-      <Row className="m-b-md tw:isolate" gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid m-b-md tw:isolate"
+        style={getLayoutGutter(0, 16)}>
+        <Grid.Item className="layout-column" span={24}>
           <div className="d-flex justify-between items-start">
             <div className="persona-details-title-container">
               <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -372,8 +382,8 @@ export const PersonaDetailsPage = () => {
               }}
             />
           </div>
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Description
             description={personaDetails.description}
             entityName={personaDetails.name}
@@ -384,8 +394,8 @@ export const PersonaDetailsPage = () => {
               await handlePersonaUpdate({ description });
             }}
           />
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Tabs
             selectedKey={activeKey}
             onSelectionChange={(key) => handleTabClick(String(key))}>
@@ -407,9 +417,9 @@ export const PersonaDetailsPage = () => {
                       await handlePersonaUpdate({ users }, true);
                     }}>
                     <Button
+                      color="primary"
                       data-testid="add-persona-button"
-                      size="small"
-                      type="primary">
+                      size="xs">
                       {t('label.add-entity', { entity: t('label.user') })}
                     </Button>
                   </UserSelectableList>
@@ -418,18 +428,15 @@ export const PersonaDetailsPage = () => {
             </div>
           </Tabs>
           <div>{activeTabContent}</div>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
 
       {/* Set Default Persona Confirmation Modal */}
-      <Modal
+      <SimpleModal
         data-testid="default-persona-confirmation-modal"
-        okButtonProps={{
-          loading: isConfirmModalLoading,
-        }}
+        isOkLoading={isConfirmModalLoading}
+        isOpen={isConfirmModalVisible}
         okText={t('label.yes')}
-        okType="primary"
-        open={isConfirmModalVisible}
         title={
           personaDetails?.default
             ? t('label.remove-default')
@@ -446,7 +453,7 @@ export const PersonaDetailsPage = () => {
                 persona: getEntityName(personaDetails),
               })}
         </Typography>
-      </Modal>
+      </SimpleModal>
     </PageLayoutV1>
   );
 };

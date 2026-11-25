@@ -16,11 +16,22 @@
  */
 export interface EventsRecord {
     /**
+     * True when more events are unread than one request evaluates, so pendingEventsCount and
+     * totalEventsCount count only the first unread events.
+     */
+    countsAreLowerBound?: boolean;
+    /**
+     * Whether the alert is enabled. A disabled alert is not running: it reads and sends no
+     * events until it is enabled again, and then it starts from the latest event.
+     */
+    enabled?: boolean;
+    /**
      * Count of failed events for specific alert.
      */
     failedEventsCount?: any;
     /**
-     * Count of pending events for specific alert.
+     * Count of events the alert will still process. Always 0 for a disabled alert, because
+     * enabling it starts from the latest event.
      */
     pendingEventsCount?: any;
     /**

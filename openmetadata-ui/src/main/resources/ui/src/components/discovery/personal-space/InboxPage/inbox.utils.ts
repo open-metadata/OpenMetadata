@@ -42,11 +42,8 @@ import {
 import {
   formatDateTimeLong,
   getCurrentMillis,
-  getEndOfDayInMillis,
-  getEpochMillisForPastDays,
   getRelativeCalendar,
   getRelativeTime,
-  getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 
@@ -80,6 +77,9 @@ export interface ActivityChange {
   after: string[];
   // Descriptions are prose, not a set of chips.
   isText: boolean;
+  // Values on both sides that the change keeps, e.g. a tag task's current
+  // tags. An activity event records only the change, so it has none.
+  unchanged?: string[];
 }
 
 const CHANGE_LABEL_KEY: Partial<Record<ActivityEventType, string>> = {
@@ -222,6 +222,42 @@ const getTagChange = (before: string[], after: string[]): TagChange => {
 const isTierChange = (tags: string[]) =>
   tags.length > 0 && tags.every((tag) => tag.startsWith(TIER_TAG_PREFIX));
 
+const TAG_EVENTS = new Set([
+  ActivityEventType.TagsUpdated,
+  ActivityEventType.ColumnTagsUpdated,
+]);
+
+const getTagEventType = (activity: ActivityEvent): ActivityEventType => {
+  const { before = [], after = [] } = getActivityChange(activity) ?? {};
+  if (isTierChange([...before, ...after])) {
+    return ActivityEventType.TierUpdated;
+  }
+
+  return getChangeTarget(activity) === 'column'
+    ? ActivityEventType.ColumnTagsUpdated
+    : ActivityEventType.TagsUpdated;
+};
+
+/**
+ * The kind of change a card shows, as its sentence reads it: a tier arrives
+ * as a tags change, and a column's change can arrive as its asset's.
+ */
+export const getActivityKindType = (
+  activity: ActivityEvent
+): ActivityEventType => {
+  const { eventType } = activity;
+  if (TAG_EVENTS.has(eventType)) {
+    return getTagEventType(activity);
+  }
+  if (DESCRIPTION_EVENTS.has(eventType)) {
+    return getChangeTarget(activity) === 'column'
+      ? ActivityEventType.ColumnDescriptionUpdated
+      : ActivityEventType.DescriptionUpdated;
+  }
+
+  return eventType;
+};
+
 const getTagsLabel = (activity: ActivityEvent, t: TFunction): string => {
   const { before = [], after = [] } = getActivityChange(activity) ?? {};
   if (isTierChange([...before, ...after])) {
@@ -243,10 +279,7 @@ export const getActivityEventLabel = (
   t: TFunction
 ): string => {
   const { eventType, fieldName } = activity;
-  if (
-    eventType === ActivityEventType.TagsUpdated ||
-    eventType === ActivityEventType.ColumnTagsUpdated
-  ) {
+  if (TAG_EVENTS.has(eventType)) {
     return getTagsLabel(activity, t);
   }
   if (DESCRIPTION_EVENTS.has(eventType)) {
@@ -306,11 +339,36 @@ export enum ActivityFilter {
   Following = 'following',
 }
 
+const ACTIVITY_FILTERS = new Set<string>(Object.values(ActivityFilter));
+
+/** A link's `?filter=` value as an Activity sub-tab; anything else is ignored. */
+export const parseActivityFilter = (
+  value?: string | null
+): ActivityFilter | undefined =>
+  value && ACTIVITY_FILTERS.has(value) ? (value as ActivityFilter) : undefined;
+
 export enum ActivityGrouping {
   Day = 'day',
   Asset = 'asset',
   User = 'user',
 }
+
+// The recessed surface a card's message and a change's Before sit on: the
+// design's gray-blue in light; in dark the page's own well, as AI Analytics
+// sets its chart previews into their cards.
+export const INBOX_RECESSED_SURFACE_CLASS =
+  'tw:bg-utility-gray-blue-50 tw:dark:bg-primary';
+
+// A message's links and @mentions read as the card's asset link does: brand
+// blue that follows dark mode, not the editor's fixed primary color. `!`: the
+// editor's own link rule is more specific.
+export const INBOX_MESSAGE_CLASS =
+  'inbox-feed-message tw:[&_a]:text-brand-secondary!';
+
+// An asset's 16px icon beside text: the design system's 1.3 stroke, not the
+// heavier 1.5 the shared entity icons draw with, so it matches the type.
+export const INBOX_ENTITY_ICON_CLASS =
+  'tw:flex tw:shrink-0 tw:items-center tw:[&_img]:size-4 tw:[&_svg]:size-4 tw:[&_svg]:[stroke-width:1.3]';
 
 // The Type filter's options: the change panel's field labels, plus Other for
 // everything without one (lifecycle events, conversations).
@@ -341,12 +399,17 @@ export const isSameLocalDay = (first?: number, second?: number): boolean =>
 export type { InboxDateRange } from '../../../../interface/inbox.interface';
 
 // The window a date preset covers: from the start of its first day to the end
-// of today. getDefaultInboxDateRange (last 30 days) seeds the page and the
-// sidebar inbox-icon count.
-export const getInboxDateRange = (days: number): InboxDateRange => ({
-  startTs: getStartOfDayInMillis(getEpochMillisForPastDays(days)),
-  endTs: getEndOfDayInMillis(getCurrentMillis()),
-});
+// of today, in the viewer's own days, which the feed's day headers use too.
+// getDefaultInboxDateRange (last 30 days) seeds the page and the sidebar
+// inbox-icon count.
+export const getInboxDateRange = (days: number): InboxDateRange => {
+  const now = DateTime.now();
+
+  return {
+    startTs: now.minus({ days }).startOf('day').toMillis(),
+    endTs: now.endOf('day').toMillis(),
+  };
+};
 
 export const DEFAULT_INBOX_DATE_PRESET = 'last30days';
 
@@ -367,12 +430,21 @@ export const ACTIVITY_LIMIT = 200;
 export const CONVERSATION_LIMIT = 100;
 
 // Presets capped to the activity API's 30-day window (drops 60-day+); titles are
-// translated by the picker's consumer.
-export const INBOX_DATE_RANGE_OPTIONS: DateFilterType = Object.fromEntries(
-  (
-    Object.entries(PROFILER_FILTER_RANGE) as [string, DateFilterType[string]][]
-  ).filter(([, value]) => value.days <= MAX_ACTIVITY_DAYS)
-);
+// translated by the picker's consumer. Every window runs to the end of today,
+// as the activity API takes no end time, so the profiler's "Yesterday" (which
+// would read as yesterday alone) is offered as "Today".
+// ADR:2026-11-16-a-capped-inbox-feed-is-cut-at-its-oldest-item
+export const INBOX_DATE_RANGE_OPTIONS: DateFilterType = {
+  today: { days: 0, title: 'label.today' },
+  ...Object.fromEntries(
+    (
+      Object.entries(PROFILER_FILTER_RANGE) as [
+        string,
+        DateFilterType[string]
+      ][]
+    ).filter(([, value]) => value.days > 1 && value.days <= MAX_ACTIVITY_DAYS)
+  ),
+};
 
 // Convert the Inbox date window to the `days` param the /activity API takes,
 // clamped to the server's 30-day cap (defaults to the cap when unset).
@@ -407,6 +479,10 @@ export const formatInboxCount = ({ total, isCapped }: InboxCount): string => {
 
   return isCapped ? `${total}+` : String(total);
 };
+
+// A tab's `badge`: the formatted count, or none when there is nothing to count.
+export const getInboxTabBadge = (count?: InboxCount): string | undefined =>
+  count?.total ? formatInboxCount(count) : undefined;
 
 /**
  * Whether a millis timestamp falls inside the selected Inbox date window.

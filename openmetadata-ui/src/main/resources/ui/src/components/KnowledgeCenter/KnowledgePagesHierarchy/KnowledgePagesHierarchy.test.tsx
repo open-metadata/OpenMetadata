@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TreeItemMoveEvent } from '@openmetadata/ui-core-components';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   act,
@@ -246,6 +247,22 @@ jest.mock('context/LimitsProvider/useLimitsStore', () => ({
     .mockImplementation(() => ({ getResourceLimit: jest.fn() })),
 }));
 
+let mockOnItemMove: ((event: TreeItemMoveEvent) => void) | undefined;
+
+jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
+  const Tree = Object.assign(
+    (props: { onItemMove?: (event: TreeItemMoveEvent) => void }) => {
+      mockOnItemMove = props.onItemMove;
+
+      return <actual.Tree {...props} />;
+    },
+    actual.Tree
+  );
+
+  return { ...actual, Tree };
+});
+
 jest.mock('components/common/DeleteModal/DeleteModal', () =>
   jest.fn().mockReturnValue(<div data-testid="delete-widget">DeleteModal</div>)
 );
@@ -272,6 +289,38 @@ describe('KnowledgePagesHierarchy', () => {
 
     // should render the page icon for each top-level node
     expect(screen.getAllByTestId('page-icon')).toHaveLength(3);
+  });
+
+  it('renders a real focusable drag handle button (slot="drag") per row only when EditAll is granted', async () => {
+    const { unmount } = await act(async () => {
+      const result = render(
+        <KnowledgePagesHierarchy
+          permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+        />,
+        { wrapper: TestWrapper }
+      );
+
+      return result;
+    });
+
+    const handles = screen.getAllByRole('button', { name: 'label.move' });
+
+    expect(handles.length).toBeGreaterThan(0);
+
+    handles.forEach((handle) => {
+      expect(handle).toHaveAttribute('slot', 'drag');
+      expect(handle).not.toHaveAttribute('aria-hidden');
+    });
+
+    unmount();
+    await act(async () => {
+      render(
+        <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+        { wrapper: TestWrapper }
+      );
+    });
+
+    expect(screen.queryAllByRole('button', { name: 'label.move' })).toEqual([]);
   });
 
   it('should render the total count from getListKnowledgePages, not the hierarchy paging', async () => {
@@ -418,6 +467,142 @@ describe('KnowledgePagesHierarchy', () => {
     fireEvent.click(deleteButton);
 
     expect(screen.getByTestId('delete-widget')).toBeInTheDocument();
+  });
+
+  it('should not render the delete button when Delete permission is denied', async () => {
+    await act(async () => {
+      render(
+        <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+        { wrapper: TestWrapper }
+      );
+    });
+
+    expect(
+      screen.queryByTestId('How to Discover Assets of Interest-delete-page-btn')
+    ).not.toBeInTheDocument();
+  });
+
+  describe('move to top level (root drop)', () => {
+    const dropOnContainer = (sourceKey: string) => {
+      const container = screen.getByTestId(
+        'knowledge-pages-hierarchy-container'
+      );
+
+      fireEvent.drop(container, {
+        dataTransfer: { getData: () => sourceKey },
+      });
+    };
+
+    // The child article whose parent is 'Article_XJIGIKX2' — a node with a
+    // parent is the only case that can be moved up to the root.
+    const childKey = 'Article_2p7Z8MAN';
+
+    it('should open the move confirmation when a nested page is dropped on the root container', async () => {
+      await act(async () => {
+        render(
+          <KnowledgePagesHierarchy
+            permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+          />,
+          { wrapper: TestWrapper }
+        );
+      });
+
+      await act(async () => {
+        dropOnContainer(childKey);
+      });
+
+      expect(
+        await screen.findByText('label.move-the-entity')
+      ).toBeInTheDocument();
+    });
+
+    it('should ignore a root drop when EditAll permission is denied', async () => {
+      await act(async () => {
+        render(
+          <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+          { wrapper: TestWrapper }
+        );
+      });
+
+      await act(async () => {
+        dropOnContainer(childKey);
+      });
+
+      expect(
+        screen.queryByText('label.move-the-entity')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should ignore a root drop of a page that is already at the root', async () => {
+      await act(async () => {
+        render(
+          <KnowledgePagesHierarchy
+            permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+          />,
+          { wrapper: TestWrapper }
+        );
+      });
+
+      await act(async () => {
+        dropOnContainer('Article_XJIGIKX2');
+      });
+
+      expect(
+        screen.queryByText('label.move-the-entity')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('move by dropping on a row', () => {
+    const childKey = 'Article_mWtepYKg';
+    const parentKey = 'Article_YjCzUcBl';
+
+    const renderEditable = async () => {
+      await act(async () => {
+        render(
+          <KnowledgePagesHierarchy
+            permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+          />,
+          { wrapper: TestWrapper }
+        );
+      });
+    };
+
+    it('should open the move confirmation when a page is dropped on another page', async () => {
+      await renderEditable();
+
+      await act(async () => {
+        mockOnItemMove?.({
+          sourceKey: childKey,
+          targetKey: 'Article_XJIGIKX2',
+          dropPosition: 'on',
+        });
+      });
+
+      expect(
+        await screen.findByText('label.move-the-entity')
+      ).toBeInTheDocument();
+    });
+
+    it.each(['before', 'after'] as const)(
+      'should ignore a drop %s a row instead of moving the page to the top level',
+      async (dropPosition) => {
+        await renderEditable();
+
+        await act(async () => {
+          mockOnItemMove?.({
+            sourceKey: childKey,
+            targetKey: parentKey,
+            dropPosition,
+          });
+        });
+
+        expect(mockOnItemMove).toBeDefined();
+        expect(
+          screen.queryByText('label.move-the-entity')
+        ).not.toBeInTheDocument();
+      }
+    );
   });
 
   describe('loadNodeChildren', () => {

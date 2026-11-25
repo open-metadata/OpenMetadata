@@ -18,7 +18,7 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import event
+from sqlalchemy import Column, Integer, MetaData, String, Table, event
 from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.data_quality.validations.base_test_handler import FailureThreshold, ThresholdUnit
@@ -64,10 +64,14 @@ def build_test_case(parameter_values, compute_passed_failed_row_count=False, ent
 
 
 def build_validator(validator_class, parameter_values, compute_passed_failed_row_count=False):
-    """Build a validator whose only live dependency is its test case"""
-    return validator_class(
-        MagicMock(), build_test_case(parameter_values, compute_passed_failed_row_count), EXECUTION_DATE
-    )
+    """Build a validator whose only live dependencies are its test case and the declared column
+
+    A set validator parses its values in the column's declared type, so the runner declares the
+    table; nothing is ever queried.
+    """
+    runner = MagicMock()
+    runner.dataset = Table("users", MetaData(), Column("nickname", String), Column("age", Integer))
+    return validator_class(runner, build_test_case(parameter_values, compute_passed_failed_row_count), EXECUTION_DATE)
 
 
 @contextmanager
@@ -191,6 +195,27 @@ def test_percentage_threshold_counts_against_the_denominator(
     validator = build_validator(validator_class, test_params + threshold_params(10, ThresholdUnit.PERCENTAGE.value))
 
     assert evaluate(validator, metrics(violations, 200))["matched"] is expected
+
+
+@pytest.mark.parametrize("validator_class,test_params,metrics", VALIDATORS)
+@pytest.mark.parametrize(
+    "violations,denominator,threshold,expected",
+    [
+        (7, 100, 7, True),
+        (8, 100, 7, False),
+        (29, 1000, 2.9, True),
+        (30, 1000, 2.9, False),
+    ],
+)
+def test_percentage_threshold_passes_exactly_at_the_boundary(
+    validator_class, test_params, metrics, violations, denominator, threshold, expected
+):
+    """7 / 100 * 100 is 7.000000000000001 in floats, which used to fail a share sitting on the threshold"""
+    validator = build_validator(
+        validator_class, test_params + threshold_params(threshold, ThresholdUnit.PERCENTAGE.value)
+    )
+
+    assert evaluate(validator, metrics(violations, denominator))["matched"] is expected
 
 
 @pytest.mark.parametrize("validator_class,test_params,metrics", VALIDATORS)
@@ -430,3 +455,37 @@ def test_needs_row_count(parameter_values, compute_passed_failed_row_count, expe
     validator = build_validator(ColumnValuesToBeNotNullValidator, parameter_values, compute_passed_failed_row_count)
 
     assert validator._needs_row_count() is expected
+
+
+@pytest.mark.parametrize("compute_passed_failed_row_count", [False, True])
+@pytest.mark.parametrize(
+    "match_enum,expected_status", [("true", TestCaseStatus.Failed), ("false", TestCaseStatus.Success)]
+)
+def test_in_set_folds_row_count_into_one_query(
+    create_sqlite_table, match_enum, expected_status, compute_passed_failed_row_count
+):
+    """`columnValuesToBeInSet` computes `countInSet` and any `rowCount` it needs in a single SELECT"""
+    validator = ColumnValuesToBeInSetValidator(
+        create_sqlite_table,
+        test_case=build_test_case(
+            [
+                TestCaseParameterValue(name="allowedValues", value="['Jane']"),
+                TestCaseParameterValue(name="matchEnum", value=match_enum),
+            ],
+            compute_passed_failed_row_count=compute_passed_failed_row_count,
+            entity_link=ENTITY_LINK_NAME,
+        ),
+        execution_date=EXECUTION_DATE.timestamp(),
+    )
+
+    with executed_statements(create_sqlite_table) as statements:
+        result = validator.run_validation()
+
+    assert result.testCaseStatus == expected_status
+    assert len(statements) == 1
+    assert Metrics.countInSet.name in statements[0]
+    # matchEnum always needs the row count for its verdict; without it only row level results ask for it
+    assert (Metrics.rowCount.name in statements[0]) is (match_enum == "true" or compute_passed_failed_row_count)
+    if compute_passed_failed_row_count:
+        assert result.failedRows == 70
+        assert result.passedRows == 10

@@ -19,7 +19,7 @@ from functools import partial
 from threading import RLock
 from typing import TYPE_CHECKING, Any, cast
 
-from databricks.sdk.service.catalog import ColumnInfo
+from databricks.sdk.service.catalog import ColumnInfo, TableInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
@@ -36,9 +36,13 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
+    Constraint,
     ConstraintType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
     Table,
     TableConstraint,
+    TablePartition,
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
@@ -62,6 +66,7 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import TotalsDeclarer
@@ -159,7 +164,9 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         connection = cast("UnityCatalogConnectionHandler", self._connection)
         self.client = connection.client
         self.connection_obj = self.client
-        self.table_constraints = []
+        # (table FQN, referred table FQN, foreign key) for keys whose referred table was
+        # not in OpenMetadata yet when their table was written.
+        self.deferred_foreign_keys: list[tuple[str, str, TableConstraint]] = []
         self.context.storage_location = None
         # Caches to avoid redundant API calls (N+1 optimization)
         self._catalog_cache: dict[str, Any] = {}
@@ -473,6 +480,42 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             )
         return tables_with_constraints
 
+    def _list_tables(self, catalog_name: str, schema_name: str) -> Iterable[tuple[TableInfo, str]]:
+        """The schema's tables, each paired with its raw ``securable_kind``.
+
+        This is ``client.tables.list`` done by hand against the same endpoint, because
+        ``TableInfo.from_dict`` enumerates its fields and ``securable_kind`` is not one
+        of them -- and it is the only field that separates a managed Iceberg table from
+        a Delta one, since the payload reports ``data_source_format`` DELTA for both.
+        One listing per schema, exactly as before: the typed and the raw view of a table
+        come out of the same response rather than out of two.
+        """
+        query: dict[str, Any] = {
+            "catalog_name": catalog_name,
+            "schema_name": schema_name,
+            # max_results=0 makes the server paginate with its configured page size;
+            # leaving it unset returns every table of the schema in one response,
+            # which OOMs the pod on schemas with many wide tables.
+            "max_results": 0,
+        }
+        seen_tokens: set[str] = set()
+        while True:
+            response = self.client.api_client.do("GET", "/api/2.1/unity-catalog/tables", query=query)
+            if not isinstance(response, dict):
+                # do() is typed dict | BinaryIO. A non-dict body carries no
+                # next_page_token we can trust, and reading one off it would
+                # spin this loop forever.
+                raise TypeError(f"expected a JSON object, got {type(response).__name__}")
+            for row in response.get("tables") or []:
+                yield TableInfo.from_dict(row), str(row.get("securable_kind") or "").upper()
+            page_token = response.get("next_page_token")
+            if not page_token:
+                return
+            if page_token in seen_tokens:
+                raise RuntimeError(f"Unity Catalog reissued page token [{page_token}] while listing tables.")
+            seen_tokens.add(page_token)
+            query["page_token"] = page_token
+
     def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]]:
         """
         Handle table and views.
@@ -491,16 +534,10 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             yield from self._get_incremental_tables(catalog_name, schema_name)
         else:
             table_with_constraints = self._get_tables_with_constraints()
-            # max_results=0 makes the server paginate with its configured page
-            # size; leaving it unset returns every table of the schema in one
-            # response, which OOMs the pod on schemas with many wide tables.
-            table_listing = partial(
-                self.client.tables.list,
-                catalog_name=catalog_name,
-                schema_name=schema_name,
-                max_results=0,
-            )
-            for table in self._iterate_listing(table_listing, f"tables in schema [{catalog_name}.{schema_name}]"):
+            table_listing = partial(self._list_tables, catalog_name, schema_name)
+            for table, securable_kind in self._iterate_listing(
+                table_listing, f"tables in schema [{catalog_name}.{schema_name}]"
+            ):
                 detailed_table = table
                 if (table.catalog_name, table.schema_name, table.name) in table_with_constraints:
                     # Only tables with constraints require full fetch; list() doesn't include constraint details
@@ -513,7 +550,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                         )
                         logger.warning(msg)
                         self.status.warning(table.name, msg)
-                yield from self._process_table(detailed_table, catalog_name, schema_name)
+                yield from self._process_table(detailed_table, catalog_name, schema_name, securable_kind)
 
     def _get_incremental_tables(self, catalog_name: str, schema_name: str) -> Iterable[tuple[str, TableType]]:
         """Record deleted tables and yield only the tables changed since the watermark."""
@@ -541,7 +578,16 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             )
         for table_name in changed:
             try:
-                table = self.client.tables.get(f"{catalog_name}.{schema_name}.{table_name}")
+                # client.tables.get() by hand: TableInfo.from_dict drops securable_kind,
+                # and that is the only field that tells managed Iceberg from Delta.
+                row = self.client.api_client.do(
+                    "GET", f"/api/2.1/unity-catalog/tables/{catalog_name}.{schema_name}.{table_name}"
+                )
+                if not isinstance(row, dict):
+                    # do() is typed dict | BinaryIO; a non-dict body carries no table.
+                    raise TypeError(f"expected a JSON object, got {type(row).__name__}")  # noqa: TRY301
+                table = TableInfo.from_dict(row)
+                securable_kind = str(row.get("securable_kind") or "").upper()
             except Exception as exc:
                 self.status.failed(
                     StackTraceError(
@@ -551,9 +597,15 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                     )
                 )
                 continue
-            yield from self._process_table(table, catalog_name, schema_name)
+            yield from self._process_table(table, catalog_name, schema_name, securable_kind)
 
-    def _process_table(self, table: Any, catalog_name: str, schema_name: str) -> Iterable[tuple[str, TableType]]:
+    def _process_table(
+        self,
+        table: Any,
+        catalog_name: str,
+        schema_name: str,
+        securable_kind: str,
+    ) -> Iterable[tuple[str, TableType]]:
         """Apply filtering and table-type detection, then yield the table to the topology."""
         try:
             table_name = table.name
@@ -582,6 +634,39 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                     table_type = TableType.MaterializedView
                 elif table.table_type.value.lower() == TableType.External.value.lower():
                     table_type = TableType.External
+            # databricks-sdk 0.20.0 parses METRIC_VIEW and FOREIGN to None, so
+            # securable_kind is read for these. A metric view is a view: it is created
+            # with CREATE VIEW ... WITH METRICS and SHOW VIEWS lists it. So is a
+            # federated view (TABLE_FOREIGN_*_VIEW).
+            # ADR:2026-11-15-unity-catalog-table-types-come-from-the-securable-kind
+            if securable_kind.startswith("TABLE_METRIC_VIEW"):
+                table_type = TableType.View
+            elif securable_kind.startswith("TABLE_STREAMING_LIVE_TABLE"):
+                table_type = TableType.Stream
+            elif securable_kind.startswith("TABLE_FOREIGN_"):
+                table_type = TableType.View if securable_kind.endswith("_VIEW") else TableType.Foreign
+            # Storage format refines a table's own type, so a View or a
+            # MaterializedView is left alone -- a view has no storage format to
+            # speak of. An External table is refined, matching Databricks and the
+            # tracking issue's "previously typed as External or Regular is
+            # recognized as Delta Lake".
+            # Iceberg is checked first because a managed Iceberg table also reports
+            # data_source_format DELTA, so the Delta branch would otherwise swallow
+            # it. UniForm generates Iceberg metadata beside a table that stays Delta
+            # Lake, so TABLE_DELTA_UNIFORM_ICEBERG_* is not Iceberg;
+            # TABLE_DELTA_ICEBERG_MANAGED and TABLE_ICEBERG_* are. Match DELTA
+            # exactly rather than any DELTA-prefixed value, so DELTASHARING -- a
+            # Delta Sharing table, not Delta Lake -- is not misclassified.
+            dsf = getattr(table, "data_source_format", None)
+            normalized_dsf = str(getattr(dsf, "value", dsf)).upper() if dsf is not None else ""
+            if table_type not in (TableType.View, TableType.MaterializedView):
+                if "ICEBERG" in securable_kind and "UNIFORM_ICEBERG" not in securable_kind:
+                    table_type = TableType.Iceberg
+                elif normalized_dsf == "DELTA":
+                    table_type = TableType.DeltaLake
+            is_view = table_type in (TableType.View, TableType.MaterializedView)
+            if not (self.source_config.includeViews if is_view else self.source_config.includeTables):
+                return
             self.context.get().table_data = table  # pyright: ignore[reportAttributeAccessIssue]
             yield table_name, table_type
         except Exception as exc:
@@ -661,9 +746,12 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         try:
             if table_type in (TableType.View, TableType.MaterializedView):
                 if hasattr(table, "view_definition") and table.view_definition:
+                    view_name = f"`{table.catalog_name}`.`{table.schema_name}`.`{table_name}`"
+                    if is_metric_view(table.view_definition):
+                        return f"CREATE VIEW {view_name} WITH METRICS LANGUAGE YAML AS $$\n{table.view_definition}\n$$"
                     view_type = table_type == TableType.View and "VIEW" or "MATERIALIZED VIEW"  # noqa: RUF021
 
-                    return f"CREATE {view_type} `{table.catalog_name}`.`{table.schema_name}`.`{table_name}` AS {table.view_definition}"
+                    return f"CREATE {view_type} {view_name} AS {table.view_definition}"
             elif self.source_config.includeDDL and table_type != TableType.Iceberg:
                 cursor = self.sql_connection.execute(
                     text(
@@ -701,10 +789,20 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                 foreign_constraints,
             ) = self.get_table_constraints(table.table_constraints)
 
-            table_constraints = self.update_table_constraints(primary_constraints, foreign_constraints, columns)
+            table_constraints = self.update_table_constraints(
+                table_name, primary_constraints, foreign_constraints, columns
+            )
             table_constraints = self.normalize_table_constraints(table_constraints, columns)
 
             schema_definition = self.get_schema_definition(table_name=table_name, table_type=table_type, table=table)
+            # A column get_columns skipped is left out: the server rejects a table whose
+            # partition names a column it does not have.
+            column_names = {column.name.root for column in columns}
+            partition_keys = {
+                column.partition_index: column.name
+                for column in table.columns or []
+                if column.partition_index is not None and column.name in column_names
+            }
 
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
@@ -712,6 +810,16 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                 description=table.comment,
                 columns=columns,
                 tableConstraints=table_constraints,
+                tablePartition=TablePartition(
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=partition_keys[index], intervalType=PartitionIntervalTypes.COLUMN_VALUE
+                        )
+                        for index in sorted(partition_keys)
+                    ]
+                )
+                if partition_keys
+                else None,
                 schemaDefinition=schema_definition,
                 databaseSchema=FullyQualifiedEntityName(
                     fqn.build(
@@ -766,60 +874,120 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                 )
         return primary_constraints, foreign_constraints
 
-    def _get_foreign_constraints(self, foreign_columns) -> list[TableConstraint]:
+    def _get_foreign_constraints(self, foreign_columns, table_name: str) -> list[TableConstraint]:
         """
-        Search the referred table for foreign constraints
-        and get referred column fqn
+        Resolve each foreign key to its referred columns' FQNs. A key whose referred
+        table is not in OpenMetadata yet, such as one in a schema the walk reaches
+        later, is held for ``yield_table_constraints``: the server rejects a table whose
+        key refers to a missing table.
         """
 
         table_constraints = []
         for column in foreign_columns:
-            referred_column_fqns = []
             ref_table_fqn = column.parent_table
             table_fqn_list = fqn.split(ref_table_fqn)
 
-            referred_table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                table_name=table_fqn_list[2],
-                schema_name=table_fqn_list[1],
-                database_name=table_fqn_list[0],
-                service_name=self.context.get().database_service,
+            referred_table_fqn = cast(
+                "str",
+                fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    table_name=table_fqn_list[2],
+                    schema_name=table_fqn_list[1],
+                    database_name=table_fqn_list[0],
+                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                ),
             )
 
-            # Check if the referred table exists in OpenMetadata before adding constraint
-            referred_table = self.metadata.get_by_name(entity=Table, fqn=referred_table_fqn)
-            if referred_table:
-                for parent_column in column.parent_columns:
-                    col_fqn = fqn._build(referred_table_fqn, parent_column, quote=False)
-                    if col_fqn:
-                        referred_column_fqns.append(FullyQualifiedEntityName(col_fqn))
-            else:
+            constraint = TableConstraint(
+                constraintType=ConstraintType.FOREIGN_KEY,
+                columns=column.child_columns,
+                referredColumns=[
+                    FullyQualifiedEntityName(fqn._build(referred_table_fqn, parent_column, quote=False))
+                    for parent_column in column.parent_columns or []
+                ],
+            )
+            if self.metadata.get_by_name(entity=Table, fqn=referred_table_fqn):
+                table_constraints.append(constraint)
                 continue
-
-            table_constraints.append(
-                TableConstraint(
-                    constraintType=ConstraintType.FOREIGN_KEY,
-                    columns=column.child_columns,
-                    referredColumns=referred_column_fqns,
-                )
+            table_fqn = fqn._build(
+                self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                table_name,
             )
+            with self._state_lock:
+                self.deferred_foreign_keys.append((table_fqn, referred_table_fqn, constraint))
 
         return table_constraints
 
     # pylint: disable=arguments-differ
-    def update_table_constraints(self, table_constraints, foreign_columns, columns) -> list[TableConstraint]:
+    def update_table_constraints(
+        self,
+        table_name: str,
+        table_constraints: list[TableConstraint],
+        foreign_columns: list[ForeignConstrains],
+        columns: list[Column],
+    ) -> list[TableConstraint]:
         """
         From topology.
         process the table constraints of all tables
         """
-        foreign_table_constraints = self._get_foreign_constraints(foreign_columns)
+        foreign_table_constraints = self._get_foreign_constraints(foreign_columns, table_name)
         if foreign_table_constraints:
             if table_constraints:
                 table_constraints.extend(foreign_table_constraints)
             else:
                 table_constraints = foreign_table_constraints
         return table_constraints
+
+    def yield_table_constraints(self) -> Iterable[Either]:
+        """
+        From topology, once every table is written: add the foreign keys whose
+        referred table was not in OpenMetadata yet when their own table was written.
+        ADR:2026-11-15-unity-catalog-foreign-keys-to-later-tables-are-patched-after-the-run
+        """
+        if not self.deferred_foreign_keys:
+            return
+        # The tables written last may still sit in the sink's bulk buffer.
+        yield Either(right=Barrier(reason="unitycatalog_deferred_foreign_keys"))  # pyright: ignore[reportCallIssue]
+        keys_by_table: dict[str, list[tuple[str, TableConstraint]]] = {}
+        for table_fqn, referred_table_fqn, constraint in self.deferred_foreign_keys:
+            keys_by_table.setdefault(table_fqn, []).append((referred_table_fqn, constraint))
+        for table_fqn, keys in keys_by_table.items():
+            try:
+                foreign_keys = []
+                for referred_table_fqn, constraint in keys:
+                    if self.metadata.get_by_name(entity=Table, fqn=referred_table_fqn):
+                        foreign_keys.append(constraint)
+                    else:
+                        logger.warning(
+                            "Foreign key of [%s] dropped: its referred table [%s] is not in OpenMetadata",
+                            table_fqn,
+                            referred_table_fqn,
+                        )
+                if not foreign_keys:
+                    continue
+                # tableConstraints is not a default field: without it the patch would
+                # replace the constraints already stored, such as the primary key.
+                table = self.metadata.get_by_name(entity=Table, fqn=table_fqn, fields=["tableConstraints"])
+                if table is None:
+                    continue
+                new_table = table.model_copy(deep=True)
+                new_table.tableConstraints = (table.tableConstraints or []) + self.normalize_table_constraints(
+                    foreign_keys, table.columns
+                )
+                # Patched here, not through the sink: the sink's patch renumbers columns
+                # from 1, which would shift Unity Catalog's 0-based column positions.
+                self.metadata.patch(entity=Table, source=table, destination=new_table, skip_on_failure=False)
+            except Exception as exc:
+                yield Either(  # pyright: ignore[reportCallIssue]
+                    left=StackTraceError(
+                        name=table_fqn,
+                        error=f"Unable to add the foreign keys of [{table_fqn}]: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
     def prepare(self):
         """Nothing to prepare"""
@@ -896,6 +1064,8 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                 parsed_string["tags"] = self.get_column_tag_labels(table_name=table_name, column={"name": column.name})
                 parsed_string["ordinalPosition"] = column.position
                 parsed_column = Column(**parsed_string)
+                if column.nullable is False:
+                    parsed_column.constraint = Constraint.NOT_NULL
                 self.add_complex_datatype_descriptions(
                     column=parsed_column,
                     column_json=ColumnJson.model_validate(json.loads(column.type_json)),

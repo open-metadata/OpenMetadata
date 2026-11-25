@@ -19,6 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import DeprecatedFeatureBadge from '../../components/common/DeprecatedFeatureBadge/DeprecatedFeatureBadge';
 import { ENTITY_TYPE_LABEL_KEYS } from '../../utils/IntakeFormUtils';
 import IntakeFormDesignerBody, {
   IntakeFormDesignerBodyHandle,
@@ -35,7 +36,7 @@ const IntakeFormDesignerModal = ({
   const { t } = useTranslation();
   const bodyRef = useRef<IntakeFormDesignerBodyHandle>(null);
 
-  const title = initialValue
+  const title = initialValue?.id
     ? t('label.edit-entity', {
         entity: t('label.entity-intake-form', {
           entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
@@ -50,6 +51,7 @@ const IntakeFormDesignerModal = ({
   return (
     <SlideoutMenu
       isDismissable
+      className="tw:z-9999"
       dialogClassName="tw:overflow-hidden!"
       isOpen={open}
       width="75%"
@@ -61,9 +63,15 @@ const IntakeFormDesignerModal = ({
       {() => (
         <>
           <SlideoutMenu.Header onClose={onCancel}>
-            <Typography size="text-lg" weight="semibold">
-              {title}
-            </Typography>
+            <Box align="center" gap={2}>
+              <Typography size="text-lg" weight="semibold">
+                {title}
+              </Typography>
+              <DeprecatedFeatureBadge
+                description={t('message.intake-form-deprecated')}
+                featureName={t('label.intake-form-plural')}
+              />
+            </Box>
           </SlideoutMenu.Header>
 
           <SlideoutMenu.Content
@@ -94,7 +102,7 @@ const IntakeFormDesignerModal = ({
                 data-testid="intake-form-submit"
                 size="sm"
                 onClick={() => bodyRef.current?.submit()}>
-                {initialValue ? t('label.save') : t('label.create')}
+                {initialValue?.id ? t('label.save') : t('label.create')}
               </Button>
             </Box>
           </SlideoutMenu.Footer>

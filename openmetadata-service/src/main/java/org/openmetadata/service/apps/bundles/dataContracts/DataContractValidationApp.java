@@ -70,7 +70,7 @@ public class DataContractValidationApp extends AbstractNativeApplication {
 
       // Phase 2: Process Data Products with contracts to materialize inherited contracts
       LOG.info("Phase 2: Processing Data Products to materialize inherited contracts for assets");
-      int[] phase2Results = processDataProductContracts(repository);
+      int[] phase2Results = processDataProductContracts(repository, totalProcessed, totalErrors);
       totalProcessed += phase2Results[0];
       totalErrors += phase2Results[1];
 
@@ -78,6 +78,7 @@ public class DataContractValidationApp extends AbstractNativeApplication {
           "DataContractValidationApp completed. Processed: {}, Errors: {}",
           totalProcessed,
           totalErrors);
+      setStats(totalProcessed + totalErrors, totalProcessed, totalErrors);
       updateStatsRecord(AppRunRecord.Status.COMPLETED);
     } catch (Exception e) {
       LOG.error("Error running DataContractValidationApp", e);
@@ -142,7 +143,8 @@ public class DataContractValidationApp extends AbstractNativeApplication {
     return new int[] {totalProcessed, totalErrors};
   }
 
-  private int[] processDataProductContracts(DataContractRepository contractRepository) {
+  private int[] processDataProductContracts(
+      DataContractRepository contractRepository, int baseProcessed, int baseErrors) {
     int totalProcessed = 0;
     int totalErrors = 0;
 
@@ -195,7 +197,7 @@ public class DataContractValidationApp extends AbstractNativeApplication {
               }
               try {
                 // Get the asset entity
-                EntityInterface asset =
+                EntityInterface<?> asset =
                     Entity.getEntity(
                         assetRef.getType(), assetRef.getId(), "*", Include.NON_DELETED);
 
@@ -226,6 +228,12 @@ public class DataContractValidationApp extends AbstractNativeApplication {
               }
             }
 
+            setStats(
+                baseProcessed + baseErrors + totalProcessed + totalErrors,
+                baseProcessed + totalProcessed,
+                baseErrors + totalErrors);
+            updateStatsRecord(AppRunRecord.Status.RUNNING);
+
             // Move to next batch if we received a full batch
             assetOffset += assetLimit;
             hasMoreAssets = assetsResult.getData().size() == assetLimit;
@@ -254,7 +262,7 @@ public class DataContractValidationApp extends AbstractNativeApplication {
   private static DataContractResult validateWithInheritance(
       DataContractRepository repository, DataContract dataContract) {
     EntityReference entityRef = dataContract.getEntity();
-    EntityInterface entity =
+    EntityInterface<?> entity =
         Entity.getEntity(entityRef.getType(), entityRef.getId(), "*", Include.NON_DELETED);
     return repository
         .validateEntityContract(entity, SYSTEM_USER)

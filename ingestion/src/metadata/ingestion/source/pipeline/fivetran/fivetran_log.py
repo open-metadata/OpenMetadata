@@ -9,11 +9,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Query Fivetran's fivetran_metadata.log table in the warehouse to retrieve
+Query Fivetran's Platform Connector log table in the warehouse to retrieve
 sync run history with per-phase (Extract/Process/Load) granularity.
 
 Fivetran automatically creates a Platform Connector in every destination that
-publishes operational metadata to fivetran_metadata.log with 90 days of history.
+publishes operational metadata to a ``log`` table with 90 days of history. The
+schema holding that table is chosen when the connection is set up, so it is read
+from the Fivetran API instead of being assumed.
 """
 
 import json
@@ -21,8 +23,8 @@ import traceback
 from collections.abc import Iterable
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import MetaData as SaMetaData
-from sqlalchemy import desc, select
+from sqlalchemy import DateTime, String, column, desc, select, table
+from sqlalchemy.sql.expression import TableClause
 
 from metadata.generated.schema.entity.data.pipeline import StatusType, TaskStatus
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -32,6 +34,13 @@ from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+# Service id the API reports for the Platform Connector; unchanged by its rename
+# from "Fivetran Log", and the only platform service id Fivetran exposes.
+PLATFORM_CONNECTOR_SERVICE = "fivetran_log"
+# Schema of the Platform Connector Fivetran creates itself. Only a fallback: a
+# manually created connection uses whatever schema name the account chose.
+DEFAULT_LOG_SCHEMA = "fivetran_metadata"
 
 LOG_RETENTION_DAYS = 90
 MAX_SYNC_RUNS = 100
@@ -72,12 +81,49 @@ def _ts(dt: datetime | None) -> Timestamp | None:
     return Timestamp(datetime_to_ts(dt))
 
 
+def resolve_log_schema(connectors: Iterable[dict]) -> str:
+    """Return the destination schema the group's Platform Connector writes to.
+
+    The Platform Connector is just another connection in the group, so its
+    ``schema`` - the name the account chose for it - comes back with the rest of
+    the group's connections. Falls back to the schema Fivetran uses for the
+    connections it creates itself.
+    """
+    for connector in connectors:
+        if connector.get("service") == PLATFORM_CONNECTOR_SERVICE and connector.get("schema"):
+            return connector["schema"]
+    return DEFAULT_LOG_SCHEMA
+
+
+def _log_table(log_schema: str) -> TableClause:
+    """Declare the log table instead of reflecting it.
+
+    Reflection asks the dialect for the schema's table names, and OpenMetadata
+    replaces that method on several dialects with one returning a pydantic model
+    (Snowflake's ``SnowflakeTableList``), which SQLAlchemy cannot fold into a set
+    of names - it failed with ``unhashable type: 'list'``. The log table's shape
+    is fixed by Fivetran, so there is nothing to discover. The column types are
+    declared with it: without them the retention cutoff travels as an untyped
+    bind parameter and the timestamps come back unconverted.
+    """
+    return table(
+        "log",
+        column("sync_id", String),
+        column("connection_id", String),
+        column("message_event", String),
+        column("message_data", String),
+        column("time_stamp", DateTime),
+        schema=log_schema,
+    )
+
+
 def query_sync_logs(
     service: DatabaseService,
     log_database: str,
     connector_id: str,
+    log_schema: str,
 ) -> dict[str, dict] | None:
-    """Query fivetran_metadata.log and return parsed syncs grouped by sync_id.
+    """Query the Platform Connector log table and return parsed syncs grouped by sync_id.
 
     Fivetran's "destination" warehouse is, from OpenMetadata's perspective,
     the *source* of pipeline-status data.  We call it ``log_database`` here
@@ -97,10 +143,7 @@ def query_sync_logs(
         cutoff = datetime.now(timezone.utc) - timedelta(days=LOG_RETENTION_DAYS)
 
         with engine.connect() as conn:
-            sa_metadata = SaMetaData(schema="fivetran_metadata")
-            sa_metadata.reflect(conn, only=["log"])
-            log_table = sa_metadata.tables["fivetran_metadata.log"]
-            col = log_table.c
+            col = _log_table(log_schema).c
 
             query = (
                 select(col.sync_id, col.message_event, col.message_data, col.time_stamp)
@@ -121,7 +164,11 @@ def query_sync_logs(
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(
-            f"Could not query fivetran_metadata.log for connector [{connector_id}] in database [{log_database}]: {exc}"
+            "Could not query %s.log for connector [%s] in database [%s]: %s",
+            log_schema,
+            connector_id,
+            log_database,
+            exc,
         )
         return None
     finally:

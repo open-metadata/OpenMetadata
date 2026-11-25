@@ -15,10 +15,7 @@ import { startCase } from 'lodash';
 import { SERVICE_FILTER_PATTERN_FIELDS } from '../../../../constants/ServiceConnection.constants';
 import { ServiceConnectionFilterPatternFields } from '../../../../enums/ServiceConnection.enum';
 import { ConfigData } from '../../../../interface/service.interface';
-import {
-  getFilteredSchema,
-  getSnowflakeAccountDisplayHost,
-} from '../../../../utils/ServiceConnectionUtils';
+import { getSnowflakeAccountDisplayHost } from '../../../../utils/ServiceConnectionUtils';
 import {
   FILTER_ICONS,
   REGEX_SPECIAL_CHARS,
@@ -28,6 +25,7 @@ import {
   FilterPatternConfig,
   FilterSchemaProperty,
   FilterSectionState,
+  IconComponent,
 } from './FiltersConfigForm.types';
 
 export const escapeRegex = (value: string) =>
@@ -265,40 +263,36 @@ export const singularizeFallback = (label: string) => {
   return label;
 };
 
-export const getSectionIcon = (fieldName: string) =>
+export const getSectionIcon = (fieldName: string): IconComponent =>
   FILTER_ICONS[fieldName as ServiceConnectionFilterPatternFields] ?? Table;
 
 export const getOrderedFilterEntries = (
   properties: Record<string, unknown>
 ) => {
-  const knownFilterFields = getFilteredSchema(properties, false);
-  const fieldNames = Object.keys(properties).filter((fieldName) =>
-    isFilterSchemaProperty(fieldName, properties[fieldName])
+  const entries = Object.entries(properties).filter(
+    (entry): entry is [string, FilterSchemaProperty] =>
+      isFilterSchemaProperty(entry[0], entry[1])
   );
+  const fieldNames = entries.map(([fieldName]) => fieldName);
 
-  return fieldNames
-    .toSorted((first, second) => {
-      const firstKnownIndex = SERVICE_FILTER_PATTERN_FIELDS.indexOf(
-        first as ServiceConnectionFilterPatternFields
-      );
-      const secondKnownIndex = SERVICE_FILTER_PATTERN_FIELDS.indexOf(
-        second as ServiceConnectionFilterPatternFields
-      );
-      const normalizedFirstIndex =
-        firstKnownIndex === -1
-          ? SERVICE_FILTER_PATTERN_FIELDS.length + fieldNames.indexOf(first)
-          : firstKnownIndex;
-      const normalizedSecondIndex =
-        secondKnownIndex === -1
-          ? SERVICE_FILTER_PATTERN_FIELDS.length + fieldNames.indexOf(second)
-          : secondKnownIndex;
+  return entries.toSorted(([first], [second]) => {
+    const firstKnownIndex = SERVICE_FILTER_PATTERN_FIELDS.indexOf(
+      first as ServiceConnectionFilterPatternFields
+    );
+    const secondKnownIndex = SERVICE_FILTER_PATTERN_FIELDS.indexOf(
+      second as ServiceConnectionFilterPatternFields
+    );
+    const normalizedFirstIndex =
+      firstKnownIndex === -1
+        ? SERVICE_FILTER_PATTERN_FIELDS.length + fieldNames.indexOf(first)
+        : firstKnownIndex;
+    const normalizedSecondIndex =
+      secondKnownIndex === -1
+        ? SERVICE_FILTER_PATTERN_FIELDS.length + fieldNames.indexOf(second)
+        : secondKnownIndex;
 
-      return normalizedFirstIndex - normalizedSecondIndex;
-    })
-    .map((fieldName) => [
-      fieldName,
-      knownFilterFields[fieldName] ?? properties[fieldName],
-    ]);
+    return normalizedFirstIndex - normalizedSecondIndex;
+  });
 };
 
 export const addSnowflakeSystemExcludes = (

@@ -53,6 +53,19 @@
         <fileSet>
             <directory>${project.basedir}./bootstrap</directory>
             <outputDirectory>bootstrap</outputDirectory>
+            <excludes>
+                <exclude>*.sh</exclude>
+            </excludes>
+        </fileSet>
+
+        <!-- Maven 3.10+ archives reproducibly and drops the on-disk exec bit, so set it explicitly. -->
+        <fileSet>
+            <directory>${project.basedir}./bootstrap</directory>
+            <outputDirectory>bootstrap</outputDirectory>
+            <includes>
+                <include>*.sh</include>
+            </includes>
+            <fileMode>0755</fileMode>
         </fileSet>
 
 

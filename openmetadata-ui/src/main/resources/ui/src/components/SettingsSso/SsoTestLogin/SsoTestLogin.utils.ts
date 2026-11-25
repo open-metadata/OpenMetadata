@@ -61,6 +61,7 @@ export const STAGE_LABEL_KEYS: Record<Stage, string> = {
   [Stage.Redirected]: 'label.sso-test-stage-redirected',
   [Stage.TokenReceived]: 'label.sso-test-stage-token-received',
   [Stage.TokenValidated]: 'label.sso-test-stage-token-validated',
+  [Stage.TokenRefreshed]: 'label.sso-test-stage-token-refreshed',
   [Stage.CredentialsVerified]: 'label.sso-test-stage-credentials-verified',
   [Stage.ClaimsExtracted]: 'label.sso-test-stage-claims-extracted',
   [Stage.IdentityResolved]: 'label.sso-test-stage-identity-resolved',

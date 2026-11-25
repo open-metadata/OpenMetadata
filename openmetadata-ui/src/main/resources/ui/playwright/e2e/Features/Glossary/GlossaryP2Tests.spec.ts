@@ -81,9 +81,7 @@ test.describe('Glossary P2 Tests', () => {
         await columnSettingsBtn.click();
 
         // Verify column settings modal/dropdown appears
-        const columnSettings = page.locator(
-          '[data-testid="column-settings"], .ant-dropdown'
-        );
+        const columnSettings = page.getByTestId('column-settings');
 
         if (
           await columnSettings.isVisible({ timeout: 2000 }).catch(() => false)

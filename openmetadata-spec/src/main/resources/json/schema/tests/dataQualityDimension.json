@@ -5,7 +5,7 @@
   "description": "A Data Quality Dimension classifies what a test is checking, such as Completeness or Accuracy. Test definitions and test cases reference a dimension by relationship, so renaming or recolouring one updates it everywhere. OpenMetadata ships a set of system dimensions that cannot be edited or deleted; users with the right permission can create their own on top of them.",
   "type": "object",
   "javaType": "org.openmetadata.schema.tests.DataQualityDimension",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "properties": {
     "id": {
       "description": "Unique identifier of this data quality dimension instance.",

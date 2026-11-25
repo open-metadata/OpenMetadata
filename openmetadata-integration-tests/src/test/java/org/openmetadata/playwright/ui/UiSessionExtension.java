@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolver;
 import org.openmetadata.it.auth.AuthSession;
 import org.openmetadata.it.auth.NoPreloadAuth;
+import org.openmetadata.it.bench.ApiLatencyRecorder;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.UiTestServer;
 import org.slf4j.Logger;
@@ -51,6 +52,7 @@ public final class UiSessionExtension
   public void beforeEach(final ExtensionContext extensionContext) {
     final ServerHandle server = UiTestServer.get();
     final BrowserContext context = SessionBrowser.get().newContext(buildContextOptions());
+    ApiLatencyRecorder.global().attach(context);
     if (!hasNoPreloadAuth(extensionContext)) {
       AuthSession.backend().injectIntoBrowser(context, AuthSession.current());
     }

@@ -27,8 +27,10 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
@@ -38,6 +40,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -58,6 +61,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.ConversationFilterType;
 import org.openmetadata.schema.type.ConversationSource;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ReactionType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -68,6 +72,7 @@ import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -129,6 +134,39 @@ class ConversationResourceIT {
   }
 
   @Test
+  void testListingIncludesFieldConversationsOnRequest(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "fields");
+    String about = entityLink(table);
+    String columnAbout =
+        "<#E::table::"
+            + table.getFullyQualifiedName()
+            + "::columns::"
+            + table.getColumns().getFirst().getName()
+            + ">";
+    Conversation onTable = createConversation(about, "About the table");
+    Conversation onColumn = createConversation(columnAbout, "About a column");
+
+    assertEquals(
+        List.of(onTable.getId()),
+        listConversations(about, 10, null, null, null).getData().stream()
+            .map(Conversation::getId)
+            .toList(),
+        "Without includeFields the link matches exactly");
+    // Both may share a millisecond, so the order is the id's, not the creation's.
+    assertEquals(
+        Set.of(onColumn.getId(), onTable.getId()),
+        listConversationsWithFields(about).getData().stream()
+            .map(Conversation::getId)
+            .collect(Collectors.toSet()));
+    assertEquals(
+        List.of(onColumn.getId()),
+        listConversationsWithFields(columnAbout).getData().stream()
+            .map(Conversation::getId)
+            .toList(),
+        "A field link does not widen to its entity");
+  }
+
+  @Test
   void testListingFiltersAndKeysetPagination(TestNamespace ns) throws Exception {
     Table table = createTestTable(ns, "listing");
     String about = entityLink(table);
@@ -157,6 +195,34 @@ class ConversationResourceIT {
     deleteConversation(first.getId());
     deleteConversation(second.getId());
     deleteConversation(third.getId());
+  }
+
+  @Test
+  void testReactivatedThreadSurfacesInLastActivityWindow(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "window");
+    String about = entityLink(table);
+    Conversation oldThread = createConversation(about, "Old thread created before the window");
+    long createdAt = oldThread.getCreatedAt();
+
+    Thread.sleep(20);
+    addReply(oldThread.getId(), "Fresh reply bumps last activity into the window");
+    Conversation reactivated = getConversation(oldThread.getId());
+    long lastActivity = reactivated.getUpdatedAt();
+    assertTrue(lastActivity > createdAt, "reply must advance updatedAt past createdAt");
+
+    ConversationList inWindow = listConversations(about, 100, lastActivity, null);
+    assertContainsConversation(inWindow, oldThread.getId());
+    assertEquals(
+        1,
+        inWindow.getPaging().getTotal(),
+        "reactivated thread must be listed and counted when the window opens after creation");
+
+    ConversationList beforeActivity = listConversations(about, 100, null, lastActivity - 1);
+    assertFalse(
+        containsConversation(beforeActivity, oldThread.getId()),
+        "thread whose last activity is after the window end must be excluded");
+
+    deleteConversation(oldThread.getId());
   }
 
   @Test
@@ -415,6 +481,52 @@ class ConversationResourceIT {
   }
 
   @Test
+  void testMentionsListAndCountOnlyConversationsAboutViewableEntities(TestNamespace ns)
+      throws Exception {
+    Table table = createTestTable(ns, "mentions-view");
+    User user =
+        DenyPolicyPrincipals.userDeniedWhen(
+            ns.shortPrefix("mention_view"), Entity.TABLE, MetadataOperation.VIEW_BASIC, null);
+    OpenMetadataClient userClient =
+        SdkClients.createClient(user.getName(), user.getEmail(), new String[] {});
+    String mention = "Hello <#E::user::" + user.getName() + ">";
+    Conversation onTable = createConversation(entityLink(table), mention);
+    Conversation onSchema =
+        createConversation(
+            "<#E::databaseSchema::" + table.getDatabaseSchema().getFullyQualifiedName() + ">",
+            mention);
+
+    ConversationList mentioned =
+        listConversations(
+            userClient, null, user.getId(), ConversationFilterType.MENTIONS, 100, null, null, null);
+
+    assertContainsConversation(mentioned, onSchema.getId());
+    assertFalse(containsConversation(mentioned, onTable.getId()));
+    assertEquals(1, mentioned.getPaging().getTotal());
+
+    // One row per page (e.g. an unread badge): every page reports the same total, including the
+    // page that hides nothing itself.
+    String after = null;
+    List<UUID> listed = new ArrayList<>();
+    for (int page = 0; page < 2; page++) {
+      ConversationList onePerPage =
+          listConversations(
+              userClient,
+              null,
+              user.getId(),
+              ConversationFilterType.MENTIONS,
+              1,
+              after,
+              null,
+              null);
+      assertEquals(1, onePerPage.getPaging().getTotal(), "total on page " + page);
+      onePerPage.getData().forEach(conversation -> listed.add(conversation.getId()));
+      after = onePerPage.getPaging().getAfter();
+    }
+    assertEquals(List.of(onSchema.getId()), listed);
+  }
+
+  @Test
   void testCreatorAndReplyAuthorAuthorization(TestNamespace ns) throws Exception {
     Table table = createTestTable(ns, "authorization");
     Conversation adminConversation = createConversation(entityLink(table), "Admin root");
@@ -584,6 +696,26 @@ class ConversationResourceIT {
   }
 
   private static ConversationList listConversations(
+      String about, int limit, Long startTs, Long endTs) throws Exception {
+    RequestOptions.Builder options =
+        RequestOptions.builder().queryParam("limit", String.valueOf(limit));
+    if (about != null) {
+      options.queryParam("entityLink", about);
+    }
+    if (startTs != null) {
+      options.queryParam("startTs", startTs.toString());
+    }
+    if (endTs != null) {
+      options.queryParam("endTs", endTs.toString());
+    }
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, CONVERSATIONS_PATH, null, options.build());
+    return MAPPER.readValue(json, ConversationList.class);
+  }
+
+  private static ConversationList listConversations(
       OpenMetadataClient client,
       String about,
       UUID userId,
@@ -617,6 +749,19 @@ class ConversationResourceIT {
         client
             .getHttpClient()
             .executeForString(HttpMethod.GET, CONVERSATIONS_PATH, null, options.build());
+    return MAPPER.readValue(json, ConversationList.class);
+  }
+
+  private static ConversationList listConversationsWithFields(String about) throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityLink", about)
+            .queryParam("includeFields", "true")
+            .build();
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, CONVERSATIONS_PATH, null, options);
     return MAPPER.readValue(json, ConversationList.class);
   }
 

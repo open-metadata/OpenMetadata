@@ -10,19 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
+
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React, { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
+import { getEntityDetailsUrl } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
-import CopyLinkButton from '../CopyLinkButton/CopyLinkButton';
+import CopyButton from '../CopyButton/CopyButton';
 import { DisplayNameProps } from './DisplayName.interface';
 
 interface DisplayNamePropsWithParent extends DisplayNameProps {
@@ -33,6 +33,8 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
   id,
   name,
   displayName,
+  entityName,
+  entityDisplayName,
   onEditDisplayName,
   link,
   allowRename,
@@ -96,29 +98,25 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
           {renderMainContent}
         </Typography>
 
-        <div className="d-flex items-center">
+        <div className="d-flex items-center gap-2">
           {hasEditPermission ? (
-            <Tooltip placement="top" title={t('label.edit')}>
-              <Button
-                ghost
-                className="hover-cell-icon flex-center"
-                data-testid="edit-displayName-button"
-                icon={<IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />}
-                style={{
-                  width: '24px',
-                  height: '24px',
-                }}
-                type="text"
-                onClick={() => setIsDisplayNameEditing(true)}
-              />
-            </Tooltip>
+            <ButtonUtility
+              className="hover-cell-icon"
+              data-testid="edit-displayName-button"
+              icon={Edit01}
+              size="xs"
+              tooltip={t('label.edit')}
+              onClick={() => setIsDisplayNameEditing(true)}
+            />
           ) : null}
 
           {entityType && id && (
-            <CopyLinkButton
-              entityType={entityType}
-              fieldFqn={id}
+            <CopyButton
+              className="hover-cell-icon"
+              isDisabled={!id}
+              size="xs"
               testId="copy-column-link-button"
+              value={getEntityDetailsUrl(entityType, id ?? '')}
             />
           )}
         </div>
@@ -127,8 +125,14 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
         <EntityNameModal
           allowRename={allowRename}
           entity={{
-            name: isString(name) ? name : '',
-            displayName: isString(displayName) ? displayName : undefined,
+            // Prefer the raw `entityName` (e.g. `record.name`) for seeding the
+            // modal — `name` may be a search-highlight ReactNode that
+            // `EntityNameModal` (whose `name` is a required, possibly-disabled
+            // string) cannot consume, which would seed `''` and block Save.
+            name: entityName ?? (isString(name) ? name : ''),
+            displayName:
+              entityDisplayName ??
+              (isString(displayName) ? displayName : undefined),
           }}
           title={t('label.edit-entity', {
             entity: t('label.display-name'),

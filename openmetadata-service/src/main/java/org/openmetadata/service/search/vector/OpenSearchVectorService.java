@@ -1,9 +1,16 @@
 package org.openmetadata.service.search.vector;
 
+import static org.openmetadata.service.search.opensearch.OsUtils.loadVectorIndexMapping;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,6 +24,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +32,8 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.search.OntologyChunkIndex;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -40,11 +50,25 @@ import os.org.opensearch.client.opensearch.core.get.GetResult;
 import os.org.opensearch.client.opensearch.core.mget.MultiGetResponseItem;
 import os.org.opensearch.client.opensearch.generic.Body;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
+import os.org.opensearch.client.opensearch.generic.Request;
 import os.org.opensearch.client.opensearch.generic.Requests;
+import os.org.opensearch.client.opensearch.generic.Response;
 
 @Slf4j
 public class OpenSearchVectorService implements VectorIndexService {
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String ALREADY_CLOSED_EXCEPTION = "already_closed_exception";
+  private static final Retry GENERIC_REQUEST_RETRY =
+      Retry.of(
+          "opensearch-vector-request",
+          RetryConfig.custom()
+              .maxAttempts(3)
+              .intervalFunction(IntervalFunction.ofExponentialBackoff(200, 2))
+              .retryOnException(
+                  error ->
+                      error instanceof UncheckedIOException
+                          && error.getCause() instanceof ClosedSegmentException)
+              .build());
   private static final int OVER_FETCH_MULTIPLIER = 2;
   public static final String HYBRID_PIPELINE_NAME = "hybrid-rrf";
 
@@ -52,10 +76,19 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   private final OpenSearchClient client;
   @Getter private final EmbeddingClient embeddingClient;
+  private final Function<VectorSearchParameters, Set<String>> readableAnchors;
 
   public OpenSearchVectorService(OpenSearchClient client, EmbeddingClient embeddingClient) {
+    this(client, embeddingClient, VectorSearchMemoryAccess::readableAnchorIds);
+  }
+
+  OpenSearchVectorService(
+      OpenSearchClient client,
+      EmbeddingClient embeddingClient,
+      Function<VectorSearchParameters, Set<String>> readableAnchors) {
     this.client = client;
     this.embeddingClient = embeddingClient;
+    this.readableAnchors = readableAnchors;
   }
 
   public static synchronized void init(OpenSearchClient client, EmbeddingClient embeddingClient) {
@@ -110,6 +143,10 @@ public class OpenSearchVectorService implements VectorIndexService {
    */
   public static String buildHybridRrfPipelineDefinition(
       double keywordWeight, double semanticWeight) {
+    return buildHybridRrfPipeline(keywordWeight, semanticWeight).toString();
+  }
+
+  private static ObjectNode buildHybridRrfPipeline(double keywordWeight, double semanticWeight) {
     var weights = MAPPER.createArrayNode().add(keywordWeight).add(semanticWeight);
     var combination =
         MAPPER
@@ -126,7 +163,7 @@ public class OpenSearchVectorService implements VectorIndexService {
 
     var pipeline = MAPPER.createObjectNode();
     pipeline.set("phase_results_processors", MAPPER.createArrayNode().add(scoreRanker));
-    return pipeline.toString();
+    return pipeline;
   }
 
   /**
@@ -147,59 +184,59 @@ public class OpenSearchVectorService implements VectorIndexService {
         semanticWeight);
   }
 
-  public Optional<String> checkHybridSearchPipeline() {
+  /**
+   * Runs a minimal hybrid query carrying the RRF pipeline inline, as hybrid search does. Never
+   * reads the stored pipeline: search does not use it, and a prefix-scoped search role cannot read
+   * it. {@code ignore_unavailable} keeps the check valid before the chunk index exists.
+   */
+  public Optional<String> checkHybridSearchPipeline(double keywordWeight, double semanticWeight) {
+    Optional<String> error;
     try {
-      OpenSearchGenericClient genericClient = client.generic();
-      var request =
+      Request probe =
           Requests.builder()
-              .endpoint("/_search/pipeline/" + HYBRID_PIPELINE_NAME)
-              .method("GET")
+              .endpoint("/" + getChunkIndexName() + "/_search")
+              .query(Map.of("ignore_unavailable", "true"))
+              .method("POST")
+              .json(buildHybridSearchProbe(keywordWeight, semanticWeight))
               .build();
-      try (var response = genericClient.execute(request)) {
-        int status = response.getStatus();
-        if (status < 400) {
-          return Optional.empty();
-        }
-        if (status == 404) {
-          return Optional.of(
-              "Hybrid search pipeline '"
-                  + HYBRID_PIPELINE_NAME
-                  + "' not found. Run a reindex to create it.");
-        }
-        String detail =
-            response
-                .getBody()
-                .map(
-                    b -> {
-                      try {
-                        String body = new String(b.bodyAsBytes(), StandardCharsets.UTF_8);
-                        return body.length() > 200 ? body.substring(0, 200) : body;
-                      } catch (Exception ignored) {
-                        return "";
-                      }
-                    })
-                .orElse("");
-        return Optional.of(
-            "Unexpected status "
-                + status
-                + " when checking hybrid search pipeline '"
-                + HYBRID_PIPELINE_NAME
-                + "'."
-                + (detail.isEmpty() ? "" : " Response: " + detail));
+      try (Response response = client.generic().execute(probe)) {
+        error =
+            response.getStatus() < 400
+                ? Optional.empty()
+                : Optional.of(describeRejectedProbe(response));
       }
     } catch (Exception e) {
-      LOG.error("Failed to check hybrid search pipeline '{}'", HYBRID_PIPELINE_NAME, e);
-      return Optional.of("Failed to check hybrid search pipeline: " + e.toString());
+      LOG.error("Failed to run a hybrid search with the RRF pipeline", e);
+      error = Optional.of("Failed to run a hybrid search with the RRF pipeline: " + e);
     }
+    return error;
+  }
+
+  private static String buildHybridSearchProbe(double keywordWeight, double semanticWeight) {
+    ObjectNode probe = MAPPER.createObjectNode().put("size", 0);
+    ArrayNode subQueries = probe.putObject("query").putObject("hybrid").putArray("queries");
+    subQueries.addObject().putObject("match_all");
+    subQueries.addObject().putObject("match_all");
+    probe.set("search_pipeline", buildHybridRrfPipeline(keywordWeight, semanticWeight));
+    return probe.toString();
+  }
+
+  private static String describeRejectedProbe(Response response) {
+    String body = response.getBody().map(Body::bodyAsString).orElse("");
+    String detail = body.length() > 200 ? body.substring(0, 200) : body;
+    return "OpenSearch rejected a hybrid search with the RRF pipeline (status "
+        + response.getStatus()
+        + ")."
+        + (detail.isEmpty() ? "" : " Response: " + detail);
   }
 
   @Override
-  public Map<String, Object> generateEmbeddingFields(EntityInterface entity) {
+  public Map<String, Object> generateEmbeddingFields(EntityInterface<?> entity) {
     return VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient);
   }
 
   @Override
-  public void updateEntityEmbedding(EntityInterface entity, String entityIndexName) {
+  public void updateEntityEmbedding(EntityInterface<?> entity, String entityIndexName) {
     if (!embeddingClient.isAvailable()) {
       LOG.debug("Embedding provider unavailable; skipping entity {}", entity.getId());
       return;
@@ -224,6 +261,7 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   private static final String CHUNK_INDEX_BASE = "data_asset_embeddings_chunks";
+  private volatile boolean ontologyChunkIndexEnsured;
   private volatile boolean chunkIndexEnsured = false;
 
   /**
@@ -232,6 +270,14 @@ public class OpenSearchVectorService implements VectorIndexService {
    * together with legacy entity-doc embeddings during migration.
    */
   public String getChunkIndexName() {
+    return getChunkIndexName(CHUNK_INDEX_BASE);
+  }
+
+  private String getOntologyChunkIndexName() {
+    return OntologyChunkIndex.name();
+  }
+
+  private String getChunkIndexName(String base) {
     String clusterAlias = null;
     try {
       clusterAlias = Entity.getSearchRepository().getClusterAlias();
@@ -239,14 +285,14 @@ public class OpenSearchVectorService implements VectorIndexService {
       // No SearchRepository in standalone/test contexts; fall back to the unprefixed name.
     }
     return clusterAlias == null || clusterAlias.isEmpty()
-        ? CHUNK_INDEX_BASE
-        : clusterAlias.toLowerCase(Locale.ROOT) + "_" + CHUNK_INDEX_BASE;
+        ? base
+        : clusterAlias.toLowerCase(Locale.ROOT) + "_" + base;
   }
 
   @Override
-  public void updateEntityEmbeddingChunks(EntityInterface entity) {
-    requireChunkIndexForWrite();
-    updateEntityEmbeddingChunks(entity, getChunkIndexName());
+  public void updateEntityEmbeddingChunks(EntityInterface<?> entity) {
+    updateEntityEmbeddingChunks(
+        entity, chunkTargetForWrite(entity.getEntityReference().getType()), null);
   }
 
   /**
@@ -256,7 +302,7 @@ public class OpenSearchVectorService implements VectorIndexService {
    * comes from the sink's own ReindexContext, so writers of normal (non-recreate) runs never
    * consult generation discovery and can never land in a crashed run's orphan.
    */
-  public void backfillEntityChunks(EntityInterface entity, String stagedChunkTarget) {
+  public void backfillEntityChunks(EntityInterface<?> entity, String stagedChunkTarget) {
     if (stagedChunkTarget == null) {
       updateEntityEmbeddingChunks(entity);
     } else {
@@ -271,7 +317,7 @@ public class OpenSearchVectorService implements VectorIndexService {
    * re-embed the whole catalog. Nothing is skipped — the staged generation starts empty, so every
    * entity passes through exactly once ({@code stagedHeader} short-circuits retries).
    */
-  private void backfillChunksToStagedGeneration(EntityInterface entity, String staged) {
+  private void backfillChunksToStagedGeneration(EntityInterface<?> entity, String staged) {
     try {
       String parentId = entity.getId().toString();
       String fingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
@@ -306,16 +352,36 @@ public class OpenSearchVectorService implements VectorIndexService {
    * fingerprint-based staleness check.
    */
   @Override
-  public void updateEntityEmbeddings(EntityInterface entity, String entityIndexName) {
+  public void updateEntityEmbeddings(EntityInterface<?> entity, String entityIndexName) {
+    updateEntityEmbeddings(entity, entityIndexName, null);
+  }
+
+  @Override
+  public void updateEntityEmbeddings(
+      EntityInterface<?> entity, String entityIndexName, String ontologyBody) {
     if (!embeddingClient.isAvailable()) {
       LOG.debug("Embedding provider unavailable; skipping entity {}", entity.getId());
       return;
     }
     try {
       String parentId = entity.getId().toString();
-      String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
-      requireChunkIndexForWrite();
-      String chunkIndexName = getChunkIndexName();
+      String currentFingerprint = fingerprint(entity, ontologyBody);
+      final var type = entity.getEntityReference().getType();
+      if (OntologyTermSearch.isTerm(type) && ontologyBody == null) {
+        // The 2-arg overload cannot safely publish a term. The release-aware writer needs the
+        // release-snapshot body, and embedding from the mutable working (draft) row would
+        // publish unpublished / not-in-active-release / deprecated terms straight into the
+        // searchable ontology chunk index with no publication check. Manual term reindexing
+        // must go through the release-aware bulk writer (reindex), which passes the published
+        // body into the 3-arg overload — see VectorEmbeddingHandler.refreshOntologyEmbedding
+        // and OntologyTermBulkWrite.
+        LOG.warn(
+            "Skipping embedding for ontology term {} without a release body; rebuild term "
+                + "embeddings via the release-aware reindex path",
+            entity.getId());
+        return;
+      }
+      String chunkIndexName = chunkTargetForWrite(type);
       boolean entityDocStale =
           !currentFingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
       ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
@@ -323,14 +389,20 @@ public class OpenSearchVectorService implements VectorIndexService {
       if (entityDocStale || refresh != ChunkRefresh.NONE) {
         List<Map<String, Object>> chunkDocs =
             refresh == ChunkRefresh.RESTAMP
-                ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
-                : VectorDocBuilder.fromEntity(entity, embeddingClient);
-        if (refresh != ChunkRefresh.NONE) {
-          replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
-          mirrorToStagedGeneration(parentId, chunkDocs);
-        }
-        if (entityDocStale && !chunkDocs.isEmpty()) {
-          partialUpdateEntity(entityIndexName, parentId, legacyEmbeddingFields(chunkDocs.get(0)));
+                ? rebuildChunksReusingEmbeddings(
+                    entity, chunkIndexName, parentId, header, ontologyBody)
+                : VectorDocBuilder.fromEntity(entity, embeddingClient, ontologyBody);
+        if (!OntologyTermSearch.isTerm(type)) {
+          if (refresh != ChunkRefresh.NONE) {
+            replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
+            mirrorToStagedGeneration(parentId, chunkDocs);
+          }
+          if (entityDocStale && !chunkDocs.isEmpty()) {
+            partialUpdateEntity(entityIndexName, parentId, legacyEmbeddingFields(chunkDocs.get(0)));
+          }
+        } else {
+          writeCurrentOntologyEmbeddings(
+              entity, currentFingerprint, entityIndexName, chunkIndexName, chunkDocs);
         }
       }
     } catch (EmbeddingUnavailableException unavailable) {
@@ -338,6 +410,28 @@ public class OpenSearchVectorService implements VectorIndexService {
     } catch (Exception e) {
       LOG.error("Failed to update embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
     }
+  }
+
+  private void writeCurrentOntologyEmbeddings(
+      EntityInterface<?> entity,
+      String fingerprint,
+      String entityIndexName,
+      String chunkIndexName,
+      List<Map<String, Object>> chunkDocs)
+      throws IOException {
+    OntologyTermSearch.writeCurrentEmbedding(
+        entity.getEntityReference(),
+        fingerprint,
+        () -> {
+          String id = entity.getId().toString();
+          ChunkHeader header = getChunkHeader(chunkIndexName, id);
+          if (chunkRefresh(entity, fingerprint, header) != ChunkRefresh.NONE) {
+            replaceChunks(chunkIndexName, id, chunkDocs, previousCount(header));
+          }
+          if (!chunkDocs.isEmpty()) {
+            partialUpdateEntity(entityIndexName, id, legacyEmbeddingFields(chunkDocs.getFirst()));
+          }
+        });
   }
 
   /**
@@ -359,11 +453,14 @@ public class OpenSearchVectorService implements VectorIndexService {
   public void writeEntityChunks(
       String parentId, List<Map<String, Object>> chunkDocs, String stagedChunkTarget) {
     try {
-      String target = stagedChunkTarget;
-      if (target == null) {
-        requireChunkIndexForWrite();
-        target = getChunkIndexName();
+      if (chunkDocs.isEmpty()) {
+        return;
       }
+      final var type = (String) chunkDocs.getFirst().get("entityType");
+      final var target =
+          stagedChunkTarget == null || OntologyTermSearch.isTerm(type)
+              ? chunkTargetForWrite(type)
+              : stagedChunkTarget;
       ChunkHeader header = getChunkHeader(target, parentId);
       replaceChunks(target, parentId, chunkDocs, previousCount(header));
     } catch (Exception e) {
@@ -465,6 +562,11 @@ public class OpenSearchVectorService implements VectorIndexService {
   private volatile Set<String> stagedExpectedTypes = Set.of();
   private final Set<String> stagedCompletedTypes = ConcurrentHashMap.newKeySet();
   private volatile boolean stagedChunkRunFailed;
+  // Run-scoped staged chunk index latched by a non-coordinator participant from its ReindexContext
+  // (see latchParticipantStagedTarget). Null on the coordinator, which uses stagedChunkIndex; null
+  // on a participant whose reindex thread has not yet latched (startup race). Volatile: set by the
+  // participant's reindex thread, read by request threads via resolveChunkSinkTarget.
+  private volatile String participantStagedTarget;
 
   /**
    * Begins a staged recreate for a full-recreate run: pre-flights the embedding client (a broken
@@ -517,7 +619,7 @@ public class OpenSearchVectorService implements VectorIndexService {
         throw new RuntimeException("Failed to create staged chunk index " + generation, e);
       }
       stagedChunkIndex = generation;
-      stagedExpectedTypes = Set.copyOf(AvailableEntityTypes.SET);
+      stagedExpectedTypes = AvailableEntityTypes.DATA_ASSET_CHUNK_TYPES;
       stagedCompletedTypes.clear();
       stagedChunkRunFailed = false;
       LOG.info(
@@ -654,14 +756,33 @@ public class OpenSearchVectorService implements VectorIndexService {
   private volatile long cachedSinkTargetAt;
 
   /**
-   * Additional delete target for live chunk deletes: the coordinator's staged generation when this
-   * JVM began the recreate, else the newest un-promoted generation found in cluster state (short
-   * cache). Sink WRITES no longer use discovery — they receive the run-scoped target explicitly
-   * via ReindexContext — so this only serves deletes, where hitting a crashed run's orphan is
-   * harmless idempotent removal.
+   * Resolves the staged chunk target for the live-edit mirror ({@link #mirrorToStagedGeneration})
+   * and delete ({@link #deleteEntityChunks}) paths. Resolution order:
+   *
+   * <ol>
+   *   <li>{@link #stagedChunkIndex} — the coordinator's own run-scoped generation, set by {@link
+   *       #beginStagedChunkRecreate}. Coordinator-only; also gates promotion in {@link
+   *       #markEntityTypeReindexed}, so it must never be set on a participant.
+   *   <li>{@link #participantStagedTarget} — a non-coordinator participant's run-scoped
+   *       generation, latched from its {@code ReindexContext} by {@link
+   *       #latchParticipantStagedTarget}. Authoritative for the run, so mirroring and deletes
+   *       never depend on best-effort discovery — the gap that lost live edits when discovery
+   *       cached a stale {@code null} on a participant JVM (see fd054753fa).
+   *   <li>Best-effort cluster-state probe ({@link #findActiveStagedGeneration}) with a short
+   *       JVM-local cache that may hold {@code null} (no un-promoted {@code *_g*} index exists
+   *       yet, or a transient probe failure). Reached only before a participant latches (startup
+   *       race) or on a JVM with no run context; a {@code null} here is harmless for deletes but
+   *       causes {@link #mirrorToStagedGeneration} to skip the mirror.
+   * </ol>
+   *
+   * <p>Sink writes ({@code writeEntityChunks} / {@code backfillEntityChunks}) do not use this
+   * helper: they receive the run-scoped target explicitly via {@code ReindexContext}.
    */
   private String resolveChunkSinkTarget() {
-    String target = stagedChunkIndex;
+    String target = stagedChunkIndex; // coordinator-only fast path (also gates promotion)
+    if (target == null) {
+      target = participantStagedTarget; // participant latch from ReindexContext
+    }
     if (target == null) {
       long now = System.currentTimeMillis();
       if (now - cachedSinkTargetAt > SINK_TARGET_CACHE_MS) {
@@ -671,6 +792,35 @@ public class OpenSearchVectorService implements VectorIndexService {
       target = cachedSinkTarget;
     }
     return target;
+  }
+
+  /**
+   * Latches the run-scoped staged chunk index a participant received via its {@code
+   * ReindexContext}, so live-edit mirroring ({@link #mirrorToStagedGeneration}) and deletes ({@link
+   * #deleteEntityChunks}) read the authoritative run-scoped target instead of falling through to
+   * the best-effort probe in {@link #findActiveStagedGeneration}. That probe can hold a stale
+   * {@code null} for up to {@value SINK_TARGET_CACHE_MS}ms on a non-coordinator JVM (cached before
+   * the coordinator created the generation, or after a transient cluster-state failure), in which
+   * case the mirror silently no-ops and the live edit is stranded in the soon-to-be-removed old
+   * generation. Called once per run by {@code DistributedJobParticipant} before it streams, and
+   * cleared by {@link #clearParticipantStagedTarget} when the run ends.
+   *
+   * <p>Must NOT set {@link #stagedChunkIndex}: that field gates promotion in {@link
+   * #markEntityTypeReindexed} (checking {@code stagedCompletedTypes} against {@code
+   * stagedExpectedTypes}) and is coordinator-only. {@code participantStagedTarget} is safe because
+   * the promotion path never reads it.
+   */
+  public void latchParticipantStagedTarget(String staged) {
+    participantStagedTarget = staged;
+  }
+
+  /**
+   * Clears the participant latch set by {@link #latchParticipantStagedTarget} when its run ends, so
+   * a later run cannot mirror or delete into a generation that belongs to a finished (promoted or
+   * abandoned) run.
+   */
+  public void clearParticipantStagedTarget() {
+    participantStagedTarget = null;
   }
 
   /** Newest generation index not yet holding the read alias, or null when none exists. */
@@ -834,6 +984,31 @@ public class OpenSearchVectorService implements VectorIndexService {
     return chunkBase + "_g" + System.currentTimeMillis();
   }
 
+  private String chunkTargetForWrite(String entityType) {
+    if (!OntologyTermSearch.isTerm(entityType)) {
+      requireChunkIndexForWrite();
+      return getChunkIndexName();
+    }
+    final var index = getOntologyChunkIndexName();
+    if (!ontologyChunkIndexEnsured) {
+      synchronized (this) {
+        if (!ontologyChunkIndexEnsured) {
+          final var target = resolveLiveChunkTarget(index);
+          if (target == null) {
+            executeGenericRequest("PUT", "/" + index, buildChunkIndexMapping(false));
+            ontologyChunkIndexEnsured = true;
+          } else {
+            ontologyChunkIndexEnsured = applyChunkMappingUpgradeIfStale(target);
+          }
+        }
+      }
+    }
+    if (!ontologyChunkIndexEnsured) {
+      throw new IllegalStateException("Ontology vector chunk index unavailable");
+    }
+    return index;
+  }
+
   /**
    * Write-path gate: throws when the chunk index could not be ensured. A raw write against a
    * missing index would auto-create it with dynamic mappings ({@code embedding} as float, not
@@ -930,10 +1105,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     var mappings = MAPPER.createObjectNode().put("dynamic", false);
     mappings.set("properties", buildChunkProperties());
     mappings.set("_meta", chunkMeta());
-    var root = MAPPER.createObjectNode();
-    root.set(
-        "settings",
-        MAPPER.createObjectNode().set("index", MAPPER.createObjectNode().put("knn", true)));
+    var root = loadVectorIndexMapping();
     root.set("mappings", mappings);
     // Staged generations are created bare: attaching the search alias before promotion would make
     // the half-built generation searchable alongside the live one.
@@ -961,8 +1133,10 @@ public class OpenSearchVectorService implements VectorIndexService {
    * by the context memory clause in {@link VectorSearchQueryBuilder}, where absence means exclusion
    * rather than indifference. Memory chunks written before they were stamped therefore stay out of
    * every KNN result, for admins too, until a Search Reindex restamps them — deliberately, since an
-   * unstamped document may be a Private, retired or anchored memory. Weigh that before making any
-   * future field a filter depends on.
+   * unstamped document may be a Private, retired or anchored memory. {@code memoryScope},
+   * {@code memoryType} and {@code pinned} (v8) restrict only a query that asks for them, so before
+   * the backfill such a query loses those memories' vector hits and never gains a wrong one. Weigh
+   * that before making any future field a filter depends on.
    */
   private String buildChunkMappingUpgradeBody() {
     ObjectNode properties = buildChunkProperties();
@@ -1010,7 +1184,9 @@ public class OpenSearchVectorService implements VectorIndexService {
             "visibility",
             "sharedWithIds",
             ContextMemoryIndex.FIELD_ANCHOR_ID,
-            ContextMemoryIndex.FIELD_STATUS)) {
+            ContextMemoryIndex.FIELD_STATUS,
+            ContextMemoryIndex.FIELD_MEMORY_SCOPE,
+            ContextMemoryIndex.FIELD_MEMORY_TYPE)) {
       properties.set(keyword, MAPPER.createObjectNode().put("type", "keyword"));
     }
     // name/displayName keep a keyword root but gain a `.keyword` subfield so the shard-fair exact
@@ -1029,6 +1205,8 @@ public class OpenSearchVectorService implements VectorIndexService {
       properties.set(text, MAPPER.createObjectNode().put("type", "text"));
     }
     properties.set("deleted", MAPPER.createObjectNode().put("type", "boolean"));
+    properties.set(
+        ContextMemoryIndex.FIELD_PINNED, MAPPER.createObjectNode().put("type", "boolean"));
     properties.set("tags", objectKeyword("tagFQN"));
     properties.set("domains", objectKeyword("name"));
     properties.set("tier", objectKeyword("tagFQN"));
@@ -1113,19 +1291,31 @@ public class OpenSearchVectorService implements VectorIndexService {
    * bulk-deleting the trailing stale ids in the same request — no delete-by-query and no forced
    * refresh on this hot path; visibility follows the index refresh interval.
    */
-  public void updateEntityEmbeddingChunks(EntityInterface entity, String chunkIndexName) {
+  private static String fingerprint(EntityInterface<?> entity, String ontologyBody) {
+    return ontologyBody == null
+        ? VectorDocBuilder.computeFingerprintForEntity(entity)
+        : VectorDocBuilder.computeFingerprintForEntity(entity, ontologyBody);
+  }
+
+  public void updateEntityEmbeddingChunks(EntityInterface<?> entity, String chunkIndexName) {
+    updateEntityEmbeddingChunks(entity, chunkIndexName, null);
+  }
+
+  private void updateEntityEmbeddingChunks(
+      EntityInterface<?> entity, String chunkIndexName, String ontologyBody) {
     try {
       String parentId = entity.getId().toString();
       ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
-      String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
+      String currentFingerprint = fingerprint(entity, ontologyBody);
       ChunkRefresh refresh = chunkRefresh(entity, currentFingerprint, header);
       if (refresh == ChunkRefresh.NONE) {
         LOG.debug("Skipping chunk embedding for {} - content and filters current", parentId);
       } else {
         List<Map<String, Object>> chunkDocs =
             refresh == ChunkRefresh.RESTAMP
-                ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
-                : VectorDocBuilder.fromEntity(entity, embeddingClient);
+                ? rebuildChunksReusingEmbeddings(
+                    entity, chunkIndexName, parentId, header, ontologyBody)
+                : VectorDocBuilder.fromEntity(entity, embeddingClient, ontologyBody);
         replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
       }
     } catch (EmbeddingUnavailableException unavailable) {
@@ -1143,7 +1333,16 @@ public class OpenSearchVectorService implements VectorIndexService {
    * chunk set) or the re-chunk disagrees with the cached count.
    */
   private List<Map<String, Object>> rebuildChunksReusingEmbeddings(
-      EntityInterface entity, String chunkIndexName, String parentId, ChunkHeader header) {
+      EntityInterface<?> entity, String chunkIndexName, String parentId, ChunkHeader header) {
+    return rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header, null);
+  }
+
+  private List<Map<String, Object>> rebuildChunksReusingEmbeddings(
+      EntityInterface<?> entity,
+      String chunkIndexName,
+      String parentId,
+      ChunkHeader header,
+      String ontologyBody) {
     Map<Integer, float[]> vectors =
         fetchExistingChunkVectors(chunkIndexName, parentId, header.chunkCount());
     if (vectors.size() != header.chunkCount()) {
@@ -1152,16 +1351,16 @@ public class OpenSearchVectorService implements VectorIndexService {
           parentId,
           vectors.size(),
           header.chunkCount());
-      return VectorDocBuilder.fromEntity(entity, embeddingClient);
+      return VectorDocBuilder.fromEntity(entity, embeddingClient, ontologyBody);
     }
     try {
-      return VectorDocBuilder.fromEntityReusingEmbeddings(entity, vectors);
+      return VectorDocBuilder.fromEntityReusingEmbeddings(entity, vectors, ontologyBody);
     } catch (RuntimeException e) {
       LOG.info(
           "Chunk docVersion rebuild for {} fell back to re-embedding: {}",
           parentId,
           e.getMessage());
-      return VectorDocBuilder.fromEntity(entity, embeddingClient);
+      return VectorDocBuilder.fromEntity(entity, embeddingClient, ontologyBody);
     }
   }
 
@@ -1225,7 +1424,29 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   /** Header of an entity's chunk set, read from chunk 0. */
   record ChunkHeader(
-      String fingerprint, int chunkCount, int docVersion, String status, String anchorId) {}
+      String fingerprint,
+      int chunkCount,
+      int docVersion,
+      String status,
+      String anchorId,
+      MemoryKind memoryKind) {}
+
+  /** The memory kind a chunk was stamped with; filters read it, the fingerprint does not see it. */
+  record MemoryKind(String scope, String type, boolean pinned) {
+    static MemoryKind of(ContextMemory memory) {
+      return new MemoryKind(
+          ContextMemoryIndex.memoryScopeValue(memory),
+          ContextMemoryIndex.memoryTypeValue(memory),
+          Boolean.TRUE.equals(memory.getPinned()));
+    }
+
+    static MemoryKind read(JsonNode source) {
+      return new MemoryKind(
+          source.path(ContextMemoryIndex.FIELD_MEMORY_SCOPE).asText(null),
+          source.path(ContextMemoryIndex.FIELD_MEMORY_TYPE).asText(null),
+          source.path(ContextMemoryIndex.FIELD_PINNED).asBoolean(false));
+    }
+  }
 
   /** How an entity's stored chunks must be brought up to date. */
   enum ChunkRefresh {
@@ -1235,7 +1456,8 @@ public class OpenSearchVectorService implements VectorIndexService {
     REEMBED
   }
 
-  static ChunkRefresh chunkRefresh(EntityInterface entity, String fingerprint, ChunkHeader header) {
+  static ChunkRefresh chunkRefresh(
+      EntityInterface<?> entity, String fingerprint, ChunkHeader header) {
     ChunkRefresh refresh = ChunkRefresh.NONE;
     if (header == null || !fingerprint.equals(header.fingerprint())) {
       refresh = ChunkRefresh.REEMBED;
@@ -1245,12 +1467,13 @@ public class OpenSearchVectorService implements VectorIndexService {
     return refresh;
   }
 
-  // Status and anchor gate memory visibility but are not embedded text, so the fingerprint
-  // cannot see them change.
-  private static boolean memoryFilterChanged(EntityInterface entity, ChunkHeader header) {
+  // Status and anchor gate memory visibility, and the kind narrows a filtered recall; none of them
+  // is embedded text, so the fingerprint cannot see them change.
+  private static boolean memoryFilterChanged(EntityInterface<?> entity, ChunkHeader header) {
     return entity instanceof ContextMemory memory
         && (!Objects.equals(ContextMemoryIndex.statusValue(memory), header.status())
-            || !ContextMemoryIndex.anchorId(memory).equals(header.anchorId()));
+            || !ContextMemoryIndex.anchorId(memory).equals(header.anchorId())
+            || !MemoryKind.of(memory).equals(header.memoryKind()));
   }
 
   /**
@@ -1259,13 +1482,15 @@ public class OpenSearchVectorService implements VectorIndexService {
    */
   private void mirrorToStagedGeneration(String parentId, List<Map<String, Object>> chunkDocs) {
     String staged = resolveChunkSinkTarget();
-    if (staged != null) {
-      try {
-        replaceChunks(staged, parentId, chunkDocs, previousCount(getChunkHeader(staged, parentId)));
-      } catch (IOException | RuntimeException e) {
-        LOG.warn(
-            "Failed to mirror chunks for {} into staged {}: {}", parentId, staged, e.getMessage());
-      }
+    if (staged == null) {
+      LOG.debug("No staged chunk generation to mirror the live update for {}", parentId);
+      return;
+    }
+    try {
+      replaceChunks(staged, parentId, chunkDocs, previousCount(getChunkHeader(staged, parentId)));
+    } catch (IOException | RuntimeException e) {
+      LOG.warn(
+          "Failed to mirror chunks for {} into staged {}: {}", parentId, staged, e.getMessage());
     }
   }
 
@@ -1293,9 +1518,13 @@ public class OpenSearchVectorService implements VectorIndexService {
                       + "/_doc/"
                       + parentId
                       + "_0?_source_includes=fingerprint,chunkCount,docVersion,"
-                      + ContextMemoryIndex.FIELD_STATUS
-                      + ","
-                      + ContextMemoryIndex.FIELD_ANCHOR_ID)
+                      + String.join(
+                          ",",
+                          ContextMemoryIndex.FIELD_STATUS,
+                          ContextMemoryIndex.FIELD_ANCHOR_ID,
+                          ContextMemoryIndex.FIELD_MEMORY_SCOPE,
+                          ContextMemoryIndex.FIELD_MEMORY_TYPE,
+                          ContextMemoryIndex.FIELD_PINNED))
               .method("GET")
               .build();
       try (var response = genericClient.execute(request)) {
@@ -1321,7 +1550,8 @@ public class OpenSearchVectorService implements VectorIndexService {
                     source.path("chunkCount").asInt(0),
                     source.path("docVersion").asInt(0),
                     source.path(ContextMemoryIndex.FIELD_STATUS).asText(null),
-                    source.path(ContextMemoryIndex.FIELD_ANCHOR_ID).asText(null));
+                    source.path(ContextMemoryIndex.FIELD_ANCHOR_ID).asText(null),
+                    MemoryKind.read(source));
           }
         }
       }
@@ -1506,14 +1736,20 @@ public class OpenSearchVectorService implements VectorIndexService {
         overFetchSize = Math.min(overFetchSize, k);
       }
 
-      String aliasName = getIndexAlias();
+      String aliasName = vectorSearchTarget(parameters.filters());
+      Set<String> readableAnchorIds = readableAnchors.apply(parameters);
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.build(
-                queryVector, parameters.withPagination(overFetchSize, rawOffset));
+                queryVector,
+                parameters.withPagination(overFetchSize, rawOffset),
+                readableAnchorIds);
         String endpoint =
             SearchUtils.appendPreferenceParam(
                 "/" + aliasName + "/_search", parameters.preference());
+        if (aliasName.contains(getOntologyChunkIndexName())) {
+          endpoint += (endpoint.contains("?") ? "&" : "?") + "ignore_unavailable=true";
+        }
         String responseBody = executeGenericRequest("POST", endpoint, queryJson);
 
         JsonNode root = MAPPER.readTree(responseBody);
@@ -1553,6 +1789,18 @@ public class OpenSearchVectorService implements VectorIndexService {
       LOG.error("Vector search failed: {}", e.getMessage(), e);
       throw new RuntimeException("Vector search failed", e);
     }
+  }
+
+  String vectorSearchTarget(Map<String, List<String>> filters) {
+    final var types =
+        filters == null ? List.<String>of() : filters.getOrDefault("entityType", List.of());
+    if (types.stream().noneMatch(OntologyTermSearch::isTerm)) {
+      return getIndexAlias();
+    }
+    final var ontologyChunks = getOntologyChunkIndexName();
+    return types.stream().allMatch(OntologyTermSearch::isTerm)
+        ? ontologyChunks
+        : getIndexAlias() + "," + ontologyChunks;
   }
 
   private static int collectSearchHits(
@@ -1705,45 +1953,33 @@ public class OpenSearchVectorService implements VectorIndexService {
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER = new JacksonJsonpMapper(MAPPER);
 
   /**
-   * Per-entity input to {@link #getExistingEmbeddingsBatch(String, Map)}. {@code currentFingerprint}
-   * is a {@link Supplier} so the caller doesn't pay the MD5 + meta-text construction cost when the
-   * cheaper {@code updatedAt} fast-path resolves the match. {@code updatedAt} may be {@code null}
-   * for entities that don't expose it; in that case the supplier is consulted unconditionally.
-   */
-  public record EntityFingerprintInput(Long updatedAt, Supplier<String> currentFingerprint) {}
-
-  private static final List<String> FINGERPRINT_HEADER_FIELDS = List.of("fingerprint", "updatedAt");
-
-  /**
-   * Two-step batch fetch of cached embedding documents from {@code indexName}, scoped to entities
-   * whose cached state matches the caller-provided current state. Designed to keep large vector
-   * payloads off the wire for entities that will be re-embedded anyway.
+   * Two-step batch fetch of the stored embeddings a reindex may reuse, keyed by entity id. Designed
+   * to keep large vector payloads off the wire for entities that will be re-embedded anyway.
    *
-   * <p>Step 1 — {@code mget} {@code fingerprint} + {@code updatedAt} only for every requested ID,
-   * then decide which IDs "match":
-   *
-   * <ul>
-   *   <li>Fast path: cached {@code updatedAt} equals current {@code updatedAt} — the entity hasn't
-   *       been touched since the prior index, so the embedding is reusable without recomputing the
-   *       fingerprint.
-   *   <li>Fallback: the lazy fingerprint {@link Supplier} is invoked and compared against the
-   *       cached fingerprint.
-   * </ul>
+   * <p>Step 1 — {@code mget} only the stored {@code fingerprint} for every requested ID and keep
+   * the IDs whose fingerprint equals the current one (see {@link StoredEmbeddingReuse}).
    *
    * <p>Step 2 — issue a second {@code mget} that pulls the full embedding {@code _source} only for
    * matching IDs. Entries that don't match are dropped, and the caller can rely on every returned
    * value being safe to splice into a staged index document.
+   *
+   * @param currentFingerprintById each entity's current fingerprint, computed only when a stored
+   *     one exists
    */
+  @Override
   public Map<String, JsonNode> getExistingEmbeddingsBatch(
-      String indexName, Map<String, EntityFingerprintInput> currentById) {
-    if (currentById == null || currentById.isEmpty()) {
+      String indexName, Map<String, Supplier<String>> currentFingerprintById) {
+    if (currentFingerprintById == null || currentFingerprintById.isEmpty()) {
       return Collections.emptyMap();
     }
     try {
-      List<String> entityIds = new ArrayList<>(currentById.keySet());
+      List<String> entityIds = new ArrayList<>(currentFingerprintById.keySet());
       MgetResponse<JsonData> headerResponse =
           client.mget(
-              m -> m.index(indexName).ids(entityIds).sourceIncludes(FINGERPRINT_HEADER_FIELDS),
+              m ->
+                  m.index(indexName)
+                      .ids(entityIds)
+                      .sourceIncludes(StoredEmbeddingReuse.HEADER_FIELDS),
               JsonData.class);
 
       List<String> matchingIds = new ArrayList<>();
@@ -1759,11 +1995,9 @@ public class OpenSearchVectorService implements VectorIndexService {
         if (header == null || !header.isObject()) {
           continue;
         }
-        EntityFingerprintInput input = currentById.get(doc.id());
-        if (input == null) {
-          continue;
-        }
-        if (cachedStateMatches(header, input)) {
+        Supplier<String> currentFingerprint = currentFingerprintById.get(doc.id());
+        if (currentFingerprint != null
+            && StoredEmbeddingReuse.fingerprintMatches(doc.id(), header, currentFingerprint)) {
           matchingIds.add(doc.id());
         }
       }
@@ -1786,7 +2020,7 @@ public class OpenSearchVectorService implements VectorIndexService {
           continue;
         }
         JsonNode cached = doc.source().to(JsonNode.class, JACKSON_JSONP_MAPPER);
-        if (isSpliceable(cached)) {
+        if (StoredEmbeddingReuse.isSpliceable(cached)) {
           result.put(doc.id(), cached);
         }
       }
@@ -1795,35 +2029,6 @@ public class OpenSearchVectorService implements VectorIndexService {
       LOG.error("Failed to batch get embeddings in index={}", indexName, e);
       return Collections.emptyMap();
     }
-  }
-
-  /**
-   * The splice-site contract: callers can rely on every returned entry being a JSON object whose
-   * {@code embedding} is a non-empty array and whose {@code fingerprint} is non-blank text.
-   * Anything else is dropped — silently, since these only fail on corrupt or partial cached docs
-   * that the caller will regenerate from scratch anyway.
-   */
-  private static boolean isSpliceable(JsonNode cached) {
-    if (cached == null || !cached.isObject()) {
-      return false;
-    }
-    JsonNode embedding = cached.path("embedding");
-    if (!embedding.isArray() || embedding.isEmpty()) {
-      return false;
-    }
-    JsonNode fingerprint = cached.path("fingerprint");
-    return fingerprint.isTextual() && !fingerprint.asText().isBlank();
-  }
-
-  private static boolean cachedStateMatches(JsonNode header, EntityFingerprintInput input) {
-    JsonNode cachedUpdatedAt = header.path("updatedAt");
-    if (cachedUpdatedAt.isIntegralNumber()
-        && input.updatedAt() != null
-        && cachedUpdatedAt.asLong() == input.updatedAt()) {
-      return true;
-    }
-    String cachedFp = header.path("fingerprint").asText(null);
-    return cachedFp != null && cachedFp.equals(input.currentFingerprint().get());
   }
 
   public void partialUpdateEntity(
@@ -1866,33 +2071,52 @@ public class OpenSearchVectorService implements VectorIndexService {
   @Override
   public String executeGenericRequest(String method, String endpoint, String body) {
     try {
-      OpenSearchGenericClient genericClient = client.generic();
-      var builder = Requests.builder().endpoint(endpoint).method(method);
-      if (body != null) {
-        builder.json(body);
+      return GENERIC_REQUEST_RETRY.executeSupplier(
+          () -> executeGenericRequestAttempt(method, endpoint, body));
+    } catch (RuntimeException e) {
+      Throwable cause = e instanceof UncheckedIOException ? e.getCause() : e;
+      LOG.error("Generic request failed: {} {}", method, endpoint, cause);
+      throw new RuntimeException("OpenSearch generic request failed", cause);
+    }
+  }
+
+  private String executeGenericRequestAttempt(String method, String endpoint, String body) {
+    var builder = Requests.builder().endpoint(endpoint).method(method);
+    if (body != null) {
+      builder.json(body);
+    }
+    try (var response = client.generic().execute(builder.build())) {
+      validateGenericResponse(response);
+      return response.getBody().map(this::readGenericResponseBody).orElse("{}");
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  private void validateGenericResponse(Response response) throws IOException {
+    if (response.getStatus() >= 400) {
+      String errorBody = response.getBody().map(Body::bodyAsString).orElse("no body");
+      String message =
+          "OpenSearch request failed with status " + response.getStatus() + ": " + errorBody;
+      if (response.getStatus() >= 500 && errorBody.contains(ALREADY_CLOSED_EXCEPTION)) {
+        throw new ClosedSegmentException(message);
       }
-      var request = builder.build();
-      try (var response = genericClient.execute(request)) {
-        if (response.getStatus() >= 400) {
-          String errorBody = response.getBody().map(Body::bodyAsString).orElse("no body");
-          throw new IOException(
-              "OpenSearch request failed with status " + response.getStatus() + ": " + errorBody);
-        }
-        return response
-            .getBody()
-            .map(
-                b -> {
-                  try {
-                    return new String(b.bodyAsBytes(), StandardCharsets.UTF_8);
-                  } catch (Exception e) {
-                    return "{}";
-                  }
-                })
-            .orElse("{}");
-      }
-    } catch (Exception e) {
-      LOG.error("Generic request failed: {} {}", method, endpoint, e);
-      throw new RuntimeException("OpenSearch generic request failed", e);
+      throw new IOException(message);
+    }
+  }
+
+  private String readGenericResponseBody(Body body) {
+    try {
+      return new String(body.bodyAsBytes(), StandardCharsets.UTF_8);
+    } catch (RuntimeException e) {
+      LOG.warn("Failed to read OpenSearch response body", e);
+      return "{}";
+    }
+  }
+
+  private static final class ClosedSegmentException extends IOException {
+    private ClosedSegmentException(String message) {
+      super(message);
     }
   }
 }

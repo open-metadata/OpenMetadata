@@ -80,7 +80,7 @@ describe('AlertDetailsComponent', () => {
     expect(screen.queryByText('TitleBreadcrumb')).not.toBeInTheDocument();
     expect(screen.queryByText('PageHeader')).not.toBeInTheDocument();
 
-    const editButton = screen.getByRole('button', { name: 'label.edit' });
+    const editButton = screen.getByRole('link', { name: 'label.edit' });
     const deleteButton = screen.getByRole('button', { name: 'label.delete' });
 
     expect(editButton).toBeInTheDocument();
@@ -106,7 +106,7 @@ describe('AlertDetailsComponent', () => {
     expect(screen.getByText('TitleBreadcrumb')).toBeInTheDocument();
     expect(screen.getByText('PageHeader')).toBeInTheDocument();
 
-    const editButton = screen.queryByRole('button', { name: 'label.edit' });
+    const editButton = screen.queryByRole('link', { name: 'label.edit' });
     const deleteButton = screen.queryByRole('button', { name: 'label.delete' });
 
     expect(editButton).not.toBeInTheDocument();
@@ -118,15 +118,13 @@ describe('AlertDetailsComponent', () => {
       wrapper: MemoryRouter,
     });
 
-    const editButton = screen.getByRole('button', { name: 'label.edit' });
+    const editButton = screen.getByRole('link', { name: 'label.edit' });
     const deleteButton = screen.getByRole('button', { name: 'label.delete' });
 
     fireEvent.click(deleteButton);
 
     expect(mockDelete).toHaveBeenCalled();
 
-    const editLink = editButton.closest('a');
-
-    expect(editLink).toHaveAttribute('href', '/Edit Alert Link/alertId');
+    expect(editButton).toHaveAttribute('href', 'Edit Alert Link/alertId');
   });
 });

@@ -18,7 +18,6 @@ import {
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import { toFiniteNumber } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
-import { convertMillisecondsToHumanReadableFormat } from '../../../../utils/date-time/DateTimeUtils';
 import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
 import {
   formatNumber,
@@ -40,6 +39,19 @@ const COMPLETED_STATUSES = new Set<TestCaseStatus | undefined>([
 
 const TIMEOUT_ERROR = /time(d)?[\s_-]?out/i;
 
+// A timeout as a message words it, the words standing alone: not a piece of a
+// name ("statement_timeout", "TIMEOUT_MS") or a quoted identifier (column
+// "timeout"), nor "runtime out of memory" or PostgreSQL's "time out of range".
+const TIMEOUT_MESSAGE =
+  /(?<![\w'"`])(?:timed[\s_-]?out|time[_-]?out|time\s+out(?!\s+of\b))(?![\w'"`])/i;
+
+/**
+ * A driver's catch-all types, raised for a timeout among much else (MySQL's
+ * `OperationalError` for a lock wait, Snowflake's `ProgrammingError` for a
+ * statement timeout): only their message tells which it was.
+ */
+const CATCH_ALL_ERROR_TYPES = new Set(['OperationalError', 'ProgrammingError']);
+
 /**
  * errorType is the driver's exception when a query failed (ingestion follows
  * SQLAlchemy's wrapper down to it), and a statement timeout surfaces there
@@ -47,8 +59,9 @@ const TIMEOUT_ERROR = /time(d)?[\s_-]?out/i;
  */
 const TIMEOUT_ERROR_TYPES = new Set(['QueryCanceled']);
 
+// Zero is signed too, "+0 (+0.0%)", as the mock shows a run on target.
 const withSign = (value: string, number: number) =>
-  number > 0 ? `+${value}` : value;
+  number >= 0 ? `+${value}` : value;
 
 /** The run the chart has selected, or the newest one when it has none. */
 export const getSelectedRun = (
@@ -130,7 +143,8 @@ export const formatDifference = (found: number, expected: number) => {
     return absolute;
   }
 
-  const percent = (difference / expected) * 100;
+  // Against the expected value's size, so the percent takes the difference's sign.
+  const percent = (difference / Math.abs(expected)) * 100;
 
   return `${absolute} (${withSign(percent.toFixed(1), percent)}%)`;
 };
@@ -198,22 +212,8 @@ export const getRunDetails = (testCase: TestCase, result: RunResult) => {
   };
 };
 
-export const formatRunDuration = (milliseconds: number) => {
-  // Fast queries finish in a few milliseconds, which one decimal of a second would show as 0.0s.
-  if (Math.round(milliseconds) < 1000) {
-    return `${Math.max(1, Math.round(milliseconds))}ms`;
-  }
-
-  // Rounded before the unit is chosen, so 59,950 ms reads as a minute rather than "60.0s".
-  const seconds = Math.round(milliseconds / 100) / 10;
-
-  return seconds < 60
-    ? `${seconds.toFixed(1)}s`
-    : convertMillisecondsToHumanReadableFormat(
-        Math.round(milliseconds / 1000) * 1000
-      );
-};
-
-export const isTimeoutError = (errorType?: string) =>
+export const isTimeoutError = (errorType?: string, message?: string) =>
   TIMEOUT_ERROR_TYPES.has(errorType ?? '') ||
-  TIMEOUT_ERROR.test(errorType ?? '');
+  TIMEOUT_ERROR.test(errorType ?? '') ||
+  (CATCH_ALL_ERROR_TYPES.has(errorType ?? '') &&
+    TIMEOUT_MESSAGE.test(message ?? ''));

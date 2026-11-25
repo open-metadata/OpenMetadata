@@ -411,7 +411,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     }
     EntityRepository<?> repository;
     EntityDAO<?> dao;
-    Class<? extends EntityInterface> entityClass;
+    Class<? extends EntityInterface<?>> entityClass;
     try {
       repository = Entity.getEntityRepository(entityType);
       dao = repository.getDao();
@@ -482,7 +482,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
 
       Map<String, Map<String, String>> hsetBatch = new HashMap<>(page.size() * 2);
       Map<String, String> setBatch = new HashMap<>(page.size());
-      List<EntityInterface> parsedEntities = new ArrayList<>(page.size());
+      List<EntityInterface<?>> parsedEntities = new ArrayList<>(page.size());
       // Per-page deltas — updateEntityStats adds to the running totals, so passing cumulative
       // counts would double-count entries from earlier pages.
       int pageSuccess = 0;
@@ -490,7 +490,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       for (String json : page) {
         if (json == null || json.isEmpty()) continue;
         try {
-          EntityInterface entity = JsonUtils.readValue(json, entityClass);
+          EntityInterface<?> entity = JsonUtils.readValue(json, entityClass);
           if (entity.getId() == null || entity.getFullyQualifiedName() == null) {
             pageFailed++;
             continue;

@@ -292,7 +292,7 @@ public class DistributedSearchIndexCoordinator {
    * make the {@code name > :afterName} predicate evaluate to NULL/false and return zero
    * rows.
    */
-  private <T extends org.openmetadata.schema.EntityInterface> void walkAndRecord(
+  private <T extends org.openmetadata.schema.EntityInterface<?>> void walkAndRecord(
       EntityRepository<T> repo, List<Long> sortedTargets, Map<Long, String> result) {
     ListFilter filter = repo.getReindexFilter();
     String afterName = "";
@@ -338,7 +338,7 @@ public class DistributedSearchIndexCoordinator {
     }
   }
 
-  private <T extends org.openmetadata.schema.EntityInterface> Object deserializeLast(
+  private <T extends org.openmetadata.schema.EntityInterface<?>> Object deserializeLast(
       EntityRepository<T> repo, List<String> batch) {
     return JsonUtils.readValue(batch.get(batch.size() - 1), repo.getEntityClass());
   }
@@ -476,9 +476,28 @@ public class DistributedSearchIndexCoordinator {
             .updatedAt(System.currentTimeMillis())
             .build();
 
-    updateJob(jobDAO, updatedJob);
+    markJobReady(jobDAO, updatedJob);
 
     return updatedJob;
+  }
+
+  /**
+   * Building partitions can take minutes. If the job was failed in the meantime (its lock was lost,
+   * or a server without the INITIALIZING lock handoff swept it), it stays failed instead of being
+   * brought back to READY and run.
+   */
+  private void markJobReady(SearchIndexJobDAO jobDAO, SearchIndexJob readyJob) {
+    String statsJson =
+        readyJob.getEntityStats() != null ? JsonUtils.pojoToJson(readyJob.getEntityStats()) : null;
+    int updated =
+        jobDAO.markReadyIfInitializing(
+            readyJob.getId().toString(), statsJson, readyJob.getUpdatedAt());
+    if (updated == 0) {
+      throw new IllegalStateException(
+          String.format(
+              "Job %s stopped being INITIALIZING while its partitions were built; not marking it READY",
+              readyJob.getId()));
+    }
   }
 
   /**

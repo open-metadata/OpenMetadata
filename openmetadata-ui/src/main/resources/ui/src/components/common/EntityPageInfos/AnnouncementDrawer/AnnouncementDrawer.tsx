@@ -152,6 +152,13 @@ const AnnouncementDrawer: FC<Props> = ({
   return (
     <SlideoutMenu
       isDismissable
+      /* The library's slideout overlay carries no z-index, so it paints under
+         any app chrome that has one — the fixed nav rail and the docked
+         assistant bar sat on top of the scrim. Stacked at the call site, as
+         `RunHistoryDrawer`, `TagFormDrawer` and `WorkflowsPage` each do; `50`
+         is the value core's own `Modal` overlay uses, and the dialog this
+         drawer opens dims the same chrome correctly with it. */
+      className="tw:z-50"
       data-testid="announcement-drawer"
       isOpen={open}
       width={576}

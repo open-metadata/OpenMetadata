@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.data.Table;
@@ -204,12 +205,51 @@ class PermissionDebugServiceTest {
   }
 
   @Test
+  void debugUserPermissionsProcessesAncestorReachedThroughMultipleParentsOnce() {
+    UserRepository userRepository = mock(UserRepository.class);
+    TeamRepository teamRepository = mock(TeamRepository.class);
+    RoleRepository roleRepository = mock(RoleRepository.class);
+    PolicyRepository policyRepository = mock(PolicyRepository.class);
+
+    stubFields(userRepository, teamRepository, roleRepository, policyRepository);
+
+    Team top = team("top", TeamType.DEPARTMENT, List.of(), List.of(), List.of());
+    Team left = team("left", TeamType.DEPARTMENT, List.of(), List.of(), List.of(top));
+    Team right = team("right", TeamType.DEPARTMENT, List.of(), List.of(), List.of(top));
+    Team group = team("group", TeamType.GROUP, List.of(), List.of(), List.of(left, right));
+
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("bob")
+            .withTeams(List.of(group.getEntityReference()));
+
+    when(userRepository.getByName(isNull(), eq("bob"), eq(EntityUtil.Fields.EMPTY_FIELDS)))
+        .thenReturn(user);
+    stubById(
+        teamRepository,
+        Map.of(group.getId(), group, left.getId(), left, right.getId(), right, top.getId(), top));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      stubRepositories(
+          entityMock, userRepository, teamRepository, roleRepository, policyRepository);
+
+      PermissionDebugInfo debugInfo =
+          new PermissionDebugService().debugUserPermissionsByName("bob");
+
+      assertIterableEquals(
+          List.of("group", "left", "top", "right"),
+          debugInfo.getTeamPermissions().stream().map(t -> t.getTeam().getName()).toList());
+    }
+  }
+
+  @Test
   void debugShowsWildcardAllowDoesNotGrantSparql() {
     UserRepository userRepository = mock(UserRepository.class);
     TeamRepository teamRepository = mock(TeamRepository.class);
     RoleRepository roleRepository = mock(RoleRepository.class);
     PolicyRepository policyRepository = mock(PolicyRepository.class);
-    EntityRepository<EntityInterface> rdfRepository = mock(EntityRepository.class);
+    EntityRepository<EntityInterface<?>> rdfRepository = mock(EntityRepository.class);
 
     stubFields(userRepository, teamRepository, roleRepository, policyRepository);
     User user = new User().withId(UUID.randomUUID()).withName("alice");
@@ -318,7 +358,7 @@ class PermissionDebugServiceTest {
     TeamRepository teamRepository = mock(TeamRepository.class);
     RoleRepository roleRepository = mock(RoleRepository.class);
     PolicyRepository policyRepository = mock(PolicyRepository.class);
-    EntityRepository<EntityInterface> resourceRepository = mock(EntityRepository.class);
+    EntityRepository<EntityInterface<?>> resourceRepository = mock(EntityRepository.class);
 
     stubFields(
         userRepository, teamRepository, roleRepository, policyRepository, resourceRepository);
@@ -336,7 +376,8 @@ class PermissionDebugServiceTest {
 
     when(userRepository.getByName(isNull(), eq("alice"), eq(EntityUtil.Fields.EMPTY_FIELDS)))
         .thenReturn(user);
-    when(resourceRepository.get(isNull(), eq(table.getId()), eq(EntityUtil.Fields.EMPTY_FIELDS)))
+    Mockito.<EntityInterface<?>>when(
+            resourceRepository.get(isNull(), eq(table.getId()), eq(EntityUtil.Fields.EMPTY_FIELDS)))
         .thenReturn(table);
 
     SubjectContext.PolicyContext allowContext =
@@ -417,7 +458,7 @@ class PermissionDebugServiceTest {
     TeamRepository teamRepository = mock(TeamRepository.class);
     RoleRepository roleRepository = mock(RoleRepository.class);
     PolicyRepository policyRepository = mock(PolicyRepository.class);
-    EntityRepository<EntityInterface> resourceRepository = mock(EntityRepository.class);
+    EntityRepository<EntityInterface<?>> resourceRepository = mock(EntityRepository.class);
 
     stubFields(
         userRepository, teamRepository, roleRepository, policyRepository, resourceRepository);
@@ -435,8 +476,9 @@ class PermissionDebugServiceTest {
 
     when(userRepository.getByName(isNull(), eq("alice"), eq(EntityUtil.Fields.EMPTY_FIELDS)))
         .thenReturn(user);
-    when(resourceRepository.getByName(
-            isNull(), eq(table.getFullyQualifiedName()), eq(EntityUtil.Fields.EMPTY_FIELDS)))
+    Mockito.<EntityInterface<?>>when(
+            resourceRepository.getByName(
+                isNull(), eq(table.getFullyQualifiedName()), eq(EntityUtil.Fields.EMPTY_FIELDS)))
         .thenReturn(table);
 
     SubjectContext.PolicyContext policyContext =
@@ -581,7 +623,7 @@ class PermissionDebugServiceTest {
       TeamRepository teamRepository,
       RoleRepository roleRepository,
       PolicyRepository policyRepository,
-      EntityRepository<EntityInterface> resourceRepository) {
+      EntityRepository<EntityInterface<?>> resourceRepository) {
     stubRepositories(entityMock, userRepository, teamRepository, roleRepository, policyRepository);
     entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(resourceRepository);
   }
@@ -592,7 +634,7 @@ class PermissionDebugServiceTest {
     }
   }
 
-  private static <T extends EntityInterface> void stubById(
+  private static <T extends EntityInterface<?>> void stubById(
       EntityRepository<T> repository, Map<UUID, T> entities) {
     when(repository.get(
             isNull(),

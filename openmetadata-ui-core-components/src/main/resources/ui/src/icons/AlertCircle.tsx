@@ -18,22 +18,27 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const AlertCircle: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M12 8v4m0 4h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10"
+      d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0m-8-3.2V10"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M10.1 13H10m.2 0a.2.2 0 1 1-.4 0 .2.2 0 0 1 .4 0"
       stroke="currentColor"
       strokeWidth={1.3}
     />

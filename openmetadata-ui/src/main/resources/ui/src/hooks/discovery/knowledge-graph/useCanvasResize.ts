@@ -52,6 +52,8 @@ export const attachCanvasResize = ({
     const parent = container.parentElement;
     if (refitOnResize.current) {
       refitOnResize.current = false;
+      previousBounds = container.getBoundingClientRect();
+      previousWindow = [window.innerWidth, window.innerHeight];
       onFit();
 
       return;

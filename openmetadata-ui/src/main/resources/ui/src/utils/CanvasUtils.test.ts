@@ -12,6 +12,7 @@
  */
 import { Edge, Node, Viewport } from 'reactflow';
 import { EntityType } from '../enums/entity.enum';
+import { useLineageStore } from '../hooks/useLineageStore';
 import {
   BoundingBox,
   boundsIntersect,
@@ -21,6 +22,7 @@ import {
   getEdgeAngle,
   getEdgeBounds,
   getEdgeCoordinates,
+  getLineagePngExportOptions,
   getNodeHeight,
   getViewportBounds,
   hasSignificantViewportChange,
@@ -241,9 +243,9 @@ describe('CanvasUtils', () => {
         // Y uses node.height (100) from createMockNode, so midpoint = 50
         expect(result).toEqual({
           sourceX: 400,
-          sourceY: 33,
-          targetX: 490,
-          targetY: 33,
+          sourceY: 50,
+          targetX: 500,
+          targetY: 50,
         });
       });
 
@@ -258,9 +260,9 @@ describe('CanvasUtils', () => {
 
         expect(result).not.toBeNull();
         expect(result?.sourceX).toBe(500);
-        expect(result?.sourceY).toBe(233); // 200 + 100/2
-        expect(result?.targetX).toBe(590);
-        expect(result?.targetY).toBe(333); // 300 + 100/2
+        expect(result?.sourceY).toBe(250); // 200 + min(58, 100/2)
+        expect(result?.targetX).toBe(600);
+        expect(result?.targetY).toBe(350); // 300 + min(58, 100/2)
       });
     });
 
@@ -409,7 +411,7 @@ describe('CanvasUtils', () => {
 
         expect(result).not.toBeNull();
         expect(result?.sourceX).toBe(400);
-        expect(result?.targetX).toBe(490);
+        expect(result?.targetX).toBe(500);
       });
     });
 
@@ -440,11 +442,11 @@ describe('CanvasUtils', () => {
         const result = getEdgeCoordinates(edge, tempNode, targetNode);
 
         expect(result).not.toBeNull();
-        expect(result?.sourceY).toBe(20); // 0 + 40/2 (Fixed height for temp nodes)
-        expect(result?.targetY).toBe(33); // 0 + 100/2 - 17 since target is not rootNode
+        expect(result?.sourceY).toBe(29); // 0 + 58/2 (fixed height for temp nodes)
+        expect(result?.targetY).toBe(50); // 0 + min(58, 100/2)
       });
 
-      it('centers edge at actual midpoint when measured height differs from computed height', () => {
+      it('anchors edges at the handle height (min(58px, half the measured height))', () => {
         const edge = createMockEdge('edge1', 'node1', 'node2', false);
         const sourceNode = createMockNode('node1');
         sourceNode.height = 150;
@@ -456,8 +458,8 @@ describe('CanvasUtils', () => {
         const result = getEdgeCoordinates(edge, sourceNode, targetNode);
 
         expect(result).not.toBeNull();
-        expect(result?.sourceY).toBe(133); // 100 + 150/2 - 17 since source node is rootNode
-        expect(result?.targetY).toBe(133); // 100 + 200/2 - 17 since target is not rootNode
+        expect(result?.sourceY).toBe(158); // 100 + min(58, 150/2)
+        expect(result?.targetY).toBe(158); // 100 + min(58, 200/2)
       });
     });
   });
@@ -487,7 +489,7 @@ describe('CanvasUtils', () => {
       expect(bounds.minX).toBeLessThan(351);
       expect(bounds.maxX).toBeGreaterThan(500);
       // sourceY = 50 (node.height=100 / 2), padding=50 → minY = 0
-      expect(bounds.minY).toBeLessThan(0);
+      expect(bounds.minY).toBe(0);
       expect(bounds.maxY).toBeGreaterThan(100);
     });
   });
@@ -1063,6 +1065,141 @@ describe('CanvasUtils', () => {
 
       expect(result).toBe(mockCanvas);
       expect(result).toBeInstanceOf(Object);
+    });
+  });
+
+  describe('getLineagePngExportOptions', () => {
+    const nodes = [
+      {
+        id: 'a',
+        position: { x: 0, y: 0 },
+        data: { node: { columns: [] }, isRootNode: false },
+        width: 400,
+        height: 100,
+      },
+      {
+        id: 'b',
+        position: { x: 1600, y: 900 },
+        data: { node: { columns: [] }, isRootNode: false },
+        width: 400,
+        height: 100,
+      },
+    ] as Node[];
+    const edges = [
+      { id: 'a->b', source: 'a', target: 'b', data: {} },
+    ] as Edge[];
+    const setRenderAllNodes = jest.fn();
+    const mockCtx = {
+      save: jest.fn(),
+      restore: jest.fn(),
+      scale: jest.fn(),
+      translate: jest.fn(),
+      rotate: jest.fn(),
+      stroke: jest.fn(),
+      fill: jest.fn(),
+      beginPath: jest.fn(),
+      moveTo: jest.fn(),
+      lineTo: jest.fn(),
+      closePath: jest.fn(),
+      setLineDash: jest.fn(),
+    };
+    const mockCanvas = {
+      getContext: () => mockCtx,
+    } as unknown as HTMLCanvasElement;
+    const createElement = document.createElement.bind(document);
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      global.Path2D = jest.fn() as unknown as typeof Path2D;
+      jest
+        .spyOn(document, 'createElement')
+        .mockImplementation((tag: string) =>
+          tag === 'canvas' ? mockCanvas : createElement(tag)
+        );
+      (useLineageStore.getState as jest.Mock).mockReturnValue({
+        nodeFilterState: new Map(),
+        columnsInCurrentPages: new Map(),
+        setRenderAllNodes,
+      });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+      (useLineageStore.getState as jest.Mock).mockReturnValue({
+        nodeFilterState: new Map(),
+      });
+    });
+
+    it('fits every node into the image the capture renders', () => {
+      const imageWidth = 2000;
+      const imageHeight = 1000;
+
+      const { x, y, zoom } = getLineagePngExportOptions(
+        nodes,
+        edges
+      ).getViewport(imageWidth, imageHeight);
+
+      nodes.forEach(({ position, width, height }) => {
+        expect(x + position.x * zoom).toBeGreaterThanOrEqual(0);
+        expect(y + position.y * zoom).toBeGreaterThanOrEqual(0);
+        expect(x + (position.x + (width ?? 0)) * zoom).toBeLessThanOrEqual(
+          imageWidth
+        );
+        expect(y + (position.y + (height ?? 0)) * zoom).toBeLessThanOrEqual(
+          imageHeight
+        );
+      });
+    });
+
+    it('draws no edge overlay without a frame', () => {
+      expect(
+        getLineagePngExportOptions(nodes, edges).renderEdgesOverlay(
+          800,
+          600,
+          20,
+          2,
+          undefined
+        )
+      ).toBeNull();
+    });
+
+    it("draws the graph's edges in the frame it is given", () => {
+      const viewport = { x: 10, y: 20, zoom: 0.5 };
+
+      const overlay = getLineagePngExportOptions(
+        nodes,
+        edges
+      ).renderEdgesOverlay(800, 600, 20, 2, viewport);
+
+      expect(overlay).toBe(mockCanvas);
+      expect(mockCtx.translate).toHaveBeenCalledWith(
+        viewport.x + 20,
+        viewport.y + 20
+      );
+      // One path per drawn edge; the arrow heads are drawn without one.
+      expect(global.Path2D).toHaveBeenCalledTimes(edges.length);
+    });
+
+    it('mounts every node for the capture and unmounts them after', async () => {
+      jest
+        .spyOn(window, 'requestAnimationFrame')
+        .mockImplementation((callback: FrameRequestCallback) => {
+          callback(0);
+
+          return 0;
+        });
+      const { beforeCapture, afterCapture } = getLineagePngExportOptions(
+        nodes,
+        edges
+      );
+
+      await beforeCapture();
+
+      expect(setRenderAllNodes).toHaveBeenLastCalledWith(true);
+
+      afterCapture();
+
+      expect(setRenderAllNodes).toHaveBeenLastCalledWith(false);
     });
   });
 });

@@ -24,7 +24,7 @@ correctly and that a poisoned ``DagContext`` no longer breaks the build.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from datetime import timezone as datetime_timezone
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -114,6 +114,17 @@ def test_build_dag_attaches_task():
     assert len(dag.tasks) == 1
     assert TASK_NAME in dag.task_dict
     assert dag.task_dict[TASK_NAME].dag is dag
+
+
+@pytest.mark.parametrize("timeout, expected", [(120, timedelta(minutes=2)), (None, None), (0, None)])
+def test_build_dag_uses_workflow_timeout_in_seconds(timeout, expected):
+    name = "workflow_timeout"
+    pipeline = _ingestion_pipeline(name)
+    pipeline.airflowConfig.workflowTimeout = timeout
+
+    dag = build_dag(TASK_NAME, pipeline, _workflow_config(name), _noop_workflow_fn)
+
+    assert dag.dagrun_timeout == expected
 
 
 def test_build_dag_survives_poisoned_dag_context():
@@ -208,3 +219,57 @@ def test_failure_callback_after_dag_reparse_updates_the_same_run(airflow_run_id)
     assert status.runId == running.runId
     assert status.pipelineState == PipelineState.failed
     assert status.endDate is not None
+
+
+@pytest.mark.parametrize("finished_state", [PipelineState.success, PipelineState.partialSuccess])
+def test_failure_callback_does_not_overwrite_a_finished_run(finished_state):
+    name = "finished_run_not_overwritten"
+    now = datetime.now(datetime_timezone.utc)
+    dag_run = SimpleNamespace(
+        dag_id=name,
+        run_id=str(uuid.uuid4()),
+        logical_date=now,
+        start_date=now,
+        end_date=None,
+        get_state=lambda: "running",
+    )
+    finished = ResponseFormat.format_dag_run_state(dag_run).model_copy(
+        deep=True, update={"pipelineState": finished_state}
+    )
+    config = _workflow_config(name)
+    with patch("openmetadata_managed_apis.workflows.ingestion.common.OpenMetadata") as client:
+        metadata = client.return_value
+        metadata.get_pipeline_status.return_value = finished
+
+        send_failed_status_callback(config, {"dag_run": dag_run})
+
+    metadata.create_or_update_pipeline_status.assert_not_called()
+
+
+def test_on_kill_does_not_overwrite_a_finished_run():
+    name = "on_kill_finished_run"
+    dag = build_dag(TASK_NAME, _ingestion_pipeline(name), _workflow_config(name), _noop_workflow_fn)
+    finished = SimpleNamespace(pipelineState=PipelineState.success, endDate=None)
+    with patch("openmetadata_managed_apis.workflows.ingestion.common.OpenMetadata") as client:
+        metadata = client.return_value
+        metadata.get_pipeline_status.return_value = finished
+
+        dag.get_task(TASK_NAME).on_kill()
+
+    metadata.create_or_update_pipeline_status.assert_not_called()
+    assert finished.pipelineState == PipelineState.success
+
+
+def test_on_kill_marks_a_running_run_as_failed():
+    name = "on_kill_running_run"
+    dag = build_dag(TASK_NAME, _ingestion_pipeline(name), _workflow_config(name), _noop_workflow_fn)
+    running = SimpleNamespace(pipelineState=PipelineState.running, endDate=None)
+    with patch("openmetadata_managed_apis.workflows.ingestion.common.OpenMetadata") as client:
+        metadata = client.return_value
+        metadata.get_pipeline_status.return_value = running
+
+        dag.get_task(TASK_NAME).on_kill()
+
+    metadata.create_or_update_pipeline_status.assert_called_once()
+    assert running.pipelineState == PipelineState.failed
+    assert running.endDate is not None

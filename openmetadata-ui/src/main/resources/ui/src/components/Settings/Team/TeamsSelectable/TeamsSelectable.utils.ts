@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TreeSelectNode } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import {
   ChildElement,
@@ -18,13 +19,7 @@ import {
 } from '../../../../generated/entity/teams/teamHierarchy';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 
-export interface TeamsSelectableTreeNode {
-  title: string;
-  value: string;
-  selectable: boolean;
-  disabled: boolean;
-  children?: TeamsSelectableTreeNode[];
-}
+export type TeamsSelectableTreeNode = TreeSelectNode;
 
 const getTreeNodeData = (
   team: TeamHierarchy | ChildElement,
@@ -43,10 +38,12 @@ const getTreeNodeData = (
   }
 
   return {
-    title: getEntityName(team),
+    id: team.id,
+    label: getEntityName(team),
     value: team.id,
-    selectable: isGroupTeam,
-    disabled: filterJoinable ? !team.isJoinable : false,
+    allowSelection: isGroupTeam,
+    // Branches must remain expandable even when they cannot have direct members.
+    disabled: isGroupTeam && filterJoinable ? !team.isJoinable : false,
     children: isEmpty(children) ? undefined : children,
   };
 };

@@ -15,7 +15,7 @@ Entity Fetcher Strategy
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
-from typing import cast
+from typing import Any, cast
 
 from pydantic import BaseModel
 
@@ -36,6 +36,10 @@ from metadata.ingestion.api.status import Status
 from metadata.ingestion.models.entity_interface import EntityInterfaceWithTags
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import ManualProgress
+from metadata.profiler.metrics.system.system import (
+    DEFAULT_SYSTEM_METRICS_BATCH_SIZE,
+    TABLE_BATCH_WINDOW,
+)
 from metadata.profiler.source.fetcher.config import EntityFilterConfigInterface
 from metadata.profiler.source.fetcher.profiler_source_factory import (
     profiler_source_factory,
@@ -43,10 +47,9 @@ from metadata.profiler.source.fetcher.profiler_source_factory import (
 from metadata.profiler.source.model import ProfilerSourceAndEntity
 from metadata.utils.db_utils import Table
 from metadata.utils.filters import (
+    _filter_server_compatible,
     filter_by_classifications,
     filter_by_container,
-    filter_by_schema,
-    filter_by_table,
     filter_by_topic,
     validate_regex,
 )
@@ -237,8 +240,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         return schema_filter is not None and table_filter is not None and schema_filter.mode != table_filter.mode
 
     def _filter_deferred_excludes(self, table: Table) -> bool:
-        """Apply exclude filters that were deferred to client-side
-        because schema and table filters use conflicting modes."""
+        """Apply conflicting-mode excludes with the listing API's substring semantics."""
         schema_filter = self.schema_filter_pattern
         table_filter = self.table_filter_pattern
 
@@ -249,7 +251,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 if self.source_config.useFqnForFiltering
                 else table.databaseSchema.name
             )
-            if schema_name and filter_by_schema(exclude_only, schema_name):
+            if schema_name and _filter_server_compatible(exclude_only, schema_name):
                 self.status.filter(
                     schema_name,
                     f"Schema pattern not allowed for schema {schema_name}",
@@ -261,7 +263,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             table_name = table.name.root
             if table.fullyQualifiedName and self.source_config.useFqnForFiltering:
                 table_name = table.fullyQualifiedName.root
-            if filter_by_table(exclude_only, table_name):
+            if _filter_server_compatible(exclude_only, table_name):
                 self.status.filter(
                     table_name,
                     f"Table pattern not allowed for table {table_name}",
@@ -277,6 +279,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             entity=Table,
             fields=FIELDS,
             params=params,
+            skip_on_failure=True,
+            on_skip=self._record_unparseable_table,
         )
 
         has_deferred = self._has_conflicting_filter_modes()
@@ -289,6 +293,16 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             if self._filter_views(table):
                 continue
             yield table
+
+    def _record_unparseable_table(self, raw_table: dict[str, Any], exc: Exception) -> None:
+        """One table the client cannot parse must not cost the rest of the database."""
+        self.status.failed(
+            StackTraceError(
+                name=raw_table.get("fullyQualifiedName", "<unknown table>"),
+                error=f"Skipping table the client could not parse: {exc}",
+                stackTrace=traceback.format_exc(),
+            )
+        )
 
     def _seed_table_total(self, database: Database, db_fqn: str) -> None:
         """Seed this database's server-side-filtered table count so % and ETA
@@ -303,6 +317,31 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             self.progress.seed_scope_total(Table.__name__, db_fqn, total)
         else:
             self.progress.mark_reconcilable(Table.__name__)
+
+    def _batched(self, tables: Iterable[Table]) -> Iterator[list[Table]]:
+        """Group tables so system metrics can read the DML history of a whole batch in
+        one scan. Only one batch of entities is buffered at a time."""
+        # A connection-level setting, so only the connectors that batch their system
+        # metrics (e.g. Snowflake) expose it; the others are grouped with the default.
+        service_connection = self.config.source.serviceConnection
+        batch_size = (
+            getattr(service_connection.root.config, "systemMetricsBatchSize", None) if service_connection else None
+        ) or DEFAULT_SYSTEM_METRICS_BATCH_SIZE
+        batch: list[Table] = []
+        try:
+            for table in tables:
+                batch.append(table)
+                if len(batch) == batch_size:
+                    yield batch
+                    batch = []
+        except Exception:
+            # Tables listed before a paging failure are still profiled, as when they
+            # were handed over one at a time.
+            if batch:
+                yield batch
+            raise
+        if batch:
+            yield batch
 
     def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
         """Fetch database entity"""
@@ -319,16 +358,23 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                     self.global_profiler_config,
                 )
 
-                for table in self._get_table_entities(database):
-                    observed += 1
-                    self.progress.track_asset(Table.__name__)
-                    yield Either(
-                        left=None,
-                        right=ProfilerSourceAndEntity(
-                            profiler_source=profiler_source,
-                            entity=table,
-                        ),
+                for batch in self._batched(self._get_table_entities(database)):
+                    registered_batch = TABLE_BATCH_WINDOW.register(
+                        [table.fullyQualifiedName.root for table in batch if table.fullyQualifiedName]
                     )
+                    try:
+                        for table in batch:
+                            observed += 1
+                            self.progress.track_asset(Table.__name__)
+                            yield Either(
+                                left=None,
+                                right=ProfilerSourceAndEntity(
+                                    profiler_source=profiler_source,
+                                    entity=table,
+                                ),
+                            )
+                    finally:
+                        TABLE_BATCH_WINDOW.discard(registered_batch)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(

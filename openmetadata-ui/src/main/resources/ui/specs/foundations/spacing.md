@@ -9,7 +9,12 @@ directional/shorthand variants). Raw px/rem in these properties are flagged as
 > `flex-basis` keep raw lengths and are **not** flagged — they are layout
 > dimensions, not spacing.
 
-## Core scale (prefer these)
+In TSX use `tw:` spacing utilities (`tw:p-4`). In LESS write
+`calc(var(--tw-spacing) * <n / 4>)` — `--tw-spacing` is 4px
+(ADR:2026-10-20-less-non-colour-values-read-tailwind-theme-vars). The `--om-space-*` tokens below
+are legacy; migrate a reference when its rule is edited.
+
+## Core scale (legacy `--om-space-*`)
 
 | Token | Value | Typical use |
 | --- | --- | --- |
@@ -44,23 +49,22 @@ off-grid spacing** — round to the core scale.
 Negative margins are expressed with `calc`:
 
 ```less
-margin-top: calc(-1 * var(--om-space-8)); /* was: -8px */
+margin-top: calc(var(--tw-spacing) * -2); /* was: -8px */
 ```
 
 ## Layers
 
-- **Layer 1** `globals.css` upstream (Tailwind's `--spacing` scale). Spacing has
-  no per-step upstream var, so the project tokens hold the raw px value.
-- **Layer 2** `--om-space-<n>: <n>px` (the raw value lives here).
-- **Components** `padding: var(--om-space-16);`
+- **Theme** `globals.css` sets `--spacing: 4px`, emitted as `--tw-spacing`.
+- **Components** `padding: calc(var(--tw-spacing) * 4);`
+- **Legacy** `--om-space-<n>: <n>px` in `tokens.css`, kept until no component reads it.
 
 ## Do / Don't
 
 ```less
 /* DO */
-padding: var(--om-space-16) var(--om-space-24);
-gap: var(--om-space-8);
-margin-bottom: var(--om-space-4);
+padding: calc(var(--tw-spacing) * 4) calc(var(--tw-spacing) * 6);
+gap: calc(var(--tw-spacing) * 2);
+margin-bottom: var(--tw-spacing);
 
 /* DON'T */
 padding: 16px 24px;

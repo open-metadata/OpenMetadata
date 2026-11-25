@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Autocomplete,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Col, Row, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchRoles } from '../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -106,8 +109,11 @@ const SsoRolesSelectField = (props: FieldProps) => {
   };
 
   return (
-    <Row className={classNames('field-error', { 'has-error': hasError })}>
-      <Col span={24}>
+    <Grid
+      className={`layout-row layout-grid ${classNames('field-error', {
+        'has-error': hasError,
+      })}`}>
+      <Grid.Item className="layout-column" span={24}>
         <Typography
           as="article"
           className={`array-field-label ${
@@ -115,30 +121,38 @@ const SsoRolesSelectField = (props: FieldProps) => {
           }`}>
           {startCase(props.name)}
         </Typography>
-      </Col>
-      <Col className="sso-select-container" span={24}>
-        <Select
-          allowClear
-          showSearch
-          className={classNames('m-t-xss w-full', {
-            'ant-select-status-error': hasError,
-          })}
+      </Grid.Item>
+      <Grid.Item className="layout-column tw:mt-1" span={24}>
+        <Autocomplete
+          multiple
+          aria-label={startCase(props.name)}
           data-testid={`sso-configuration-form-array-field-template-${props.name}`}
-          disabled={props.disabled}
-          filterOption={false}
+          filterOption={() => true}
           id={id}
-          mode="multiple"
-          options={roleOptions}
+          isDisabled={props.disabled}
+          isInvalid={hasError}
+          items={roleOptions.map((option) => ({
+            id: option.value,
+            label: option.label,
+          }))}
           placeholder={placeholder}
-          status={hasError ? 'error' : undefined}
-          value={value}
+          selectedItems={value.map((roleName) => ({
+            id: roleName,
+            label:
+              roleOptions.find((option) => option.value === roleName)?.label ??
+              roleName,
+          }))}
           onBlur={handleBlur}
-          onChange={handleChange}
           onFocus={handleFocus}
-          onSearch={debouncedSearchRoles}
-        />
-      </Col>
-    </Row>
+          onItemCleared={(key: Key) =>
+            handleChange(value.filter((roleName) => roleName !== key))
+          }
+          onItemInserted={(key: Key) => handleChange([...value, String(key)])}
+          onSearchChange={debouncedSearchRoles}>
+          {(item) => <Autocomplete.Item id={item.id} label={item.label} />}
+        </Autocomplete>
+      </Grid.Item>
+    </Grid>
   );
 };
 

@@ -18,6 +18,7 @@ import {
   GridComponent,
   LegendComponent,
   MarkLineComponent,
+  MarkPointComponent,
   TooltipComponent,
   VisualMapComponent,
 } from 'echarts/components';
@@ -47,6 +48,7 @@ export const registerChartParts = (): void => {
     LegendComponent,
     DataZoomComponent,
     MarkLineComponent,
+    MarkPointComponent,
     AriaComponent,
     VisualMapComponent,
     LabelLayout,

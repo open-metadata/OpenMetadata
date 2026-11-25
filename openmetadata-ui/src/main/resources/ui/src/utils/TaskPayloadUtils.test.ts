@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TagLabel } from '../generated/type/tagLabel';
 import { TaskEntityType, type Task as TaskEntity } from '../rest/tasksAPI';
-import { getNormalizedTaskPayload } from './TaskPayloadUtils';
+import { diffTagLabels, getNormalizedTaskPayload } from './TaskPayloadUtils';
 
 const buildTask = (
   type: TaskEntityType,
@@ -47,5 +48,105 @@ describe('getNormalizedTaskPayload suggestedValue branch', () => {
 
     expect(result.suggestedValue).toBe('updated description');
     expect(result.isSuggestionEmpty).toBe(false);
+  });
+});
+
+describe('TagUpdate remove-all-tags suggestion', () => {
+  it('flags a remove-all-tags task as a NON-empty suggestion', () => {
+    const currentTags = [
+      { tagFQN: 'PII.Sensitive' },
+      { tagFQN: 'PersonalData.Personal' },
+    ];
+
+    const result = getNormalizedTaskPayload(
+      buildTask(TaskEntityType.TagUpdate, {
+        fieldPath: 'columns.email.tags',
+        currentTags,
+        tagsToRemove: currentTags,
+        tagsToAdd: [],
+        operation: 'Replace',
+      })
+    );
+
+    expect(result.suggestedTags).toEqual([]);
+    expect(result.suggestedValue).toBe('[]');
+    expect(result.isSuggestionEmpty).toBe(false);
+  });
+
+  it('preserves currentTags-only no-op rendering as a non-empty suggestion', () => {
+    const result = getNormalizedTaskPayload(
+      buildTask(TaskEntityType.TagUpdate, {
+        fieldPath: 'columns.email.tags',
+        currentTags: [{ tagFQN: 'PII.Sensitive' }],
+        tagsToAdd: [],
+        tagsToRemove: [],
+        operation: 'Replace',
+      })
+    );
+
+    expect(result.suggestedTags).toEqual([{ tagFQN: 'PII.Sensitive' }]);
+    expect(result.suggestedValue).toBe(
+      JSON.stringify([{ tagFQN: 'PII.Sensitive' }])
+    );
+    expect(result.isSuggestionEmpty).toBe(false);
+  });
+});
+
+describe('Suggestion task with suggestionType Tag', () => {
+  const tags = [{ tagFQN: 'Data Sensitivity.Confidential' }];
+
+  it('reads the tags from suggestedValue instead of a description', () => {
+    const result = getNormalizedTaskPayload(
+      buildTask(TaskEntityType.Suggestion, {
+        suggestionType: 'Tag',
+        suggestedValue: JSON.stringify(tags),
+      })
+    );
+
+    expect(result.suggestedTags).toEqual(tags);
+    expect(result.newDescription).toBeUndefined();
+    expect(result.isSuggestionEmpty).toBe(false);
+  });
+
+  // The server adds a Tag suggestion to the field's tags, so existing tags
+  // stay and the suggested ones are what is new.
+  it('adds the suggested tags to the current ones instead of dropping them', () => {
+    const existing = { tagFQN: 'Tier.Tier1' };
+    const result = getNormalizedTaskPayload(
+      buildTask(TaskEntityType.Suggestion, {
+        suggestionType: 'Tag',
+        currentValue: JSON.stringify([existing]),
+        suggestedValue: JSON.stringify(tags),
+      })
+    );
+
+    expect(result.currentTags).toEqual([existing]);
+    expect(result.suggestedTags).toEqual([existing, ...tags]);
+  });
+
+  it('keeps a description suggestion on the description path', () => {
+    const result = getNormalizedTaskPayload(
+      buildTask(TaskEntityType.Suggestion, {
+        suggestionType: 'Description',
+        suggestedValue: 'A customer address',
+      })
+    );
+
+    expect(result.newDescription).toBe('A customer address');
+    expect(result.suggestedValue).toBe('A customer address');
+  });
+});
+
+describe('diffTagLabels', () => {
+  it('matches tags by tagFQN, so an unchanged tag is neither removed nor added', () => {
+    const diff = diffTagLabels(
+      [{ tagFQN: 'Tier.Tier1' }] as TagLabel[],
+      [{ tagFQN: 'Tier.Tier1' }, { tagFQN: 'PII.Sensitive' }] as TagLabel[]
+    );
+
+    expect(diff.filter((part) => part.removed)).toEqual([]);
+    expect(
+      diff.filter((part) => part.added).flatMap((part) => part.value)
+    ).toEqual([{ tagFQN: 'PII.Sensitive' }]);
   });
 });

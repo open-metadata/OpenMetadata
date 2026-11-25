@@ -339,11 +339,16 @@ const isAdvancedProperty = (
   );
 };
 
+/**
+ * `extraAdvancedNames` lets a form tuck more of its own fields into the
+ * Advanced section (uiSchema `ui:options.advancedProperties`).
+ */
 export const partitionProperties = (
   properties: ObjectFieldTemplateProps['properties'],
   schema: ObjectFieldTemplateProps['schema'],
   isRoot: boolean,
-  isGatedCredentialConfig: boolean
+  isGatedCredentialConfig: boolean,
+  extraAdvancedNames: string[] = []
 ) => {
   return properties.reduce(
     (acc, prop) => {
@@ -353,6 +358,7 @@ export const partitionProperties = (
       const schemaProperty = getSchemaProperty(schema, prop.name);
 
       if (
+        extraAdvancedNames.includes(prop.name) ||
         isAdvancedProperty(
           prop,
           schema,

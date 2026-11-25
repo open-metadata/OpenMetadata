@@ -21,6 +21,7 @@ import {
   IntakeForm,
   TargetEntityType,
 } from '../../../../../../generated/governance/intakeForm';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import IntakeFormDesignerBody, {
   IntakeFormDesignerBodyHandle,
 } from '../../../../../../pages/IntakeForms/IntakeFormDesignerBody';
@@ -33,6 +34,8 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import Loader from '../../../../../common/Loader/Loader';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { GovernanceView } from './Governance.types';
 
 const INTAKE_FORM_ENTITY = 'label.intake-form';
@@ -54,11 +57,21 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
   const { t } = useTranslation();
   const bodyRef = useRef<IntakeFormDesignerBodyHandle>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(isDirty);
   const [isLoadingExisting, setIsLoadingExisting] = useState(false);
   const [existing, setExisting] = useState<IntakeForm | null>(null);
   const [resolvedEntityType, setResolvedEntityType] = useState<
     TargetEntityType | undefined
   >(entityType);
+
+  useEffect(() => {
+    if (editId) {
+      return; // edit flow owns resolvedEntityType via getIntakeFormById
+    }
+    setExisting(null);
+    setResolvedEntityType(entityType);
+  }, [editId, entityType]);
 
   useEffect(() => {
     if (!editId) {
@@ -103,8 +116,8 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
 
   if (isLoadingExisting || !resolvedEntityType) {
     return (
-      <div className="tw:flex tw:flex-1 tw:items-center tw:justify-center tw:p-8 tw:text-sm tw:text-tertiary">
-        {t('label.loading')}
+      <div className="tw:flex tw:flex-1 tw:items-center tw:justify-center tw:p-8">
+        <Loader dataTestId="intake-form-page-loader" />
       </div>
     );
   }
@@ -115,13 +128,16 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
       data-testid="intake-form-page"
       direction="col">
       <div className="tw:flex-1 tw:overflow-y-auto">
-        <IntakeFormDesignerBody
-          open
-          entityType={resolvedEntityType}
-          initialValue={existing}
-          ref={bodyRef}
-          onSubmit={handleSubmit}
-        />
+        <div className="tw:w-full">
+          <IntakeFormDesignerBody
+            open
+            entityType={resolvedEntityType}
+            initialValue={existing}
+            ref={bodyRef}
+            onDirtyChange={setIsDirty}
+            onSubmit={handleSubmit}
+          />
+        </div>
       </div>
 
       <Box
@@ -134,9 +150,12 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
           data-testid="intake-form-cancel"
           isDisabled={isSaving}
           type="button"
-          onPress={() => onNavigate({ type: VIEW_INTAKE_LIST })}>
+          onPress={() =>
+            runGuarded(() => onNavigate({ type: VIEW_INTAKE_LIST }))
+          }>
           {t('label.cancel')}
         </Button>
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="intake-form-submit"

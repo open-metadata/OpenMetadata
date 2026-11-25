@@ -17,8 +17,7 @@ import { triggerIngestionPipeline } from '../../utils/ingestionExecution';
 import { ResponseDataType } from './Entity.interface';
 
 // Deploy writes the DAG file before the scheduler recognizes it. An immediate
-// trigger can still return 404 until the next parse — same reason
-// IngestionLogStreamLive.spec.ts waits and retries.
+// trigger can still return 404 until the next parse, so wait and retry.
 const PIPELINE_DEPLOY_READINESS_DELAY_MS = 5_000;
 const PIPELINE_TRIGGER_MAX_ATTEMPTS = 3;
 const PIPELINE_TRIGGER_RETRY_DELAY_MS = 10_000;

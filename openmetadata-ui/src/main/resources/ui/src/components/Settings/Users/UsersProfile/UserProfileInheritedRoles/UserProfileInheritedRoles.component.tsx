@@ -12,8 +12,8 @@
  */
 
 import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { InheritedRoles } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as InheritedRolesIcon } from '../../../../../assets/svg/ic-inherited-roles.svg';
 import { EntityType } from '../../../../../enums/entity.enum';
 import Chip from '../../../../common/Chip/Chip.component';
 import { UserProfileInheritedRolesProps } from './UserProfileInheritedRoles.interface';
@@ -27,9 +27,9 @@ const UserProfileInheritedRoles = ({
     <div
       className="d-flex flex-col  w-full  p-[20px]  p-0 m-b-0"
       data-testid="user-profile-inherited-roles">
-      <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
-        <div className="d-flex flex-center user-page-icon">
-          <InheritedRolesIcon height={16} />
+      <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
+        <div className="tw:m-0.5 tw:flex tw:items-center tw:justify-center">
+          <InheritedRoles size={16} />
         </div>
         <div className="d-flex justify-between w-full">
           <Typography className="text-sm font-medium">
@@ -37,8 +37,8 @@ const UserProfileInheritedRoles = ({
           </Typography>
         </div>
       </div>
-      <div className="user-profile-card-body d-flex justify-start gap-2">
-        <div className="d-flex flex-center user-page-icon">
+      <div className="tw:mb-2.5 tw:flex tw:justify-start tw:gap-2">
+        <div className="tw:m-0.5 tw:flex tw:items-center tw:justify-center">
           <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
         </div>
         <Chip

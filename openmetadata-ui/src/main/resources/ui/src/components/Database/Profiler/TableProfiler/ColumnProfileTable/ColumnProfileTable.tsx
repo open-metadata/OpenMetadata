@@ -11,19 +11,22 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Table, Typography } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Skeleton,
+  Table,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   ChevronRight,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import Qs from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
@@ -50,8 +53,8 @@ import {
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import { getSkeletonMockData } from '../../../../../utils/Skeleton.utils';
 import { pruneEmptyChildren } from '../../../../../utils/TablePureUtils';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import NoSearchResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import PermissionPlaceholder from '../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
@@ -101,7 +104,7 @@ const ColumnProfileTable = () => {
     handlePageChange,
     handlePageSizeChange,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging();
 
   const tableDetailsWithColumns = useMemo(
     () => ({ ...tableProfiler, columns: data as Column[] } as TableType),
@@ -322,22 +325,21 @@ const ColumnProfileTable = () => {
             <div className="d-inline-flex items-start gap-1 flex-column">
               <div className="d-inline-flex items-baseline tw:gap-1">
                 {hasChildren ? (
-                  <button
+                  <ButtonUtility
                     aria-expanded={isExpanded}
-                    className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex"
+                    aria-label={
+                      isExpanded ? t('label.collapse') : t('label.expand')
+                    }
                     data-testid="expand-icon"
-                    onClick={(e) => {
+                    icon={isExpanded ? ChevronDown : ChevronRight}
+                    size="xs"
+                    onClick={(e: MouseEvent) => {
                       e.stopPropagation();
                       handleToggleExpand(rowKey);
-                    }}>
-                    {isExpanded ? (
-                      <ChevronDown className="tw:size-4" />
-                    ) : (
-                      <ChevronRight className="tw:size-4" />
-                    )}
-                  </button>
+                    }}
+                  />
                 ) : (
-                  <span className="tw:inline-block tw:w-4" />
+                  <span className="tw:inline-block tw:w-5" />
                 )}
                 <Link
                   className="break-word p-0 d-block text-link-color tw:font-medium hover:tw:underline"
@@ -407,10 +409,12 @@ const ColumnProfileTable = () => {
 
   if (permissions && !permissions?.ViewDataProfile) {
     return (
-      <ErrorPlaceHolder
-        permissionValue={Operation.ViewDataProfile}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={Operation.ViewDataProfile}
+        />
+      </div>
     );
   }
 
@@ -481,7 +485,9 @@ const ColumnProfileTable = () => {
                       ))}
                     </div>
                   ) : (
-                    <FilterTablePlaceHolder />
+                    <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                      <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+                    </div>
                   )
                 }>
                 {({ id, record, depth, hasChildren }) =>

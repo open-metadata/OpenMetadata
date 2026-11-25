@@ -18,9 +18,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
-import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
-import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -35,6 +33,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.IntSupplier;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.EntityInterface;
@@ -65,14 +66,17 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.ConversationReplyResourceContext;
 import org.openmetadata.service.security.policyevaluator.ConversationResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.RowDecisionGate;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonPatchUtils;
 import org.openmetadata.service.util.RestUtil;
 
 /** Repository for bounded conversation roots and normalized replies. */
@@ -83,6 +87,13 @@ public class ConversationRepository {
   public static final int MAX_ROOT_PAGE_SIZE = 100;
   public static final int MAX_REPLY_PAGE_SIZE = 100;
   public static final int EMBEDDED_REPLY_LIMIT = 3;
+
+  /** Entities checked to count a listing's viewable total; a bound between cost and accuracy. */
+  static final int MAX_VIEWABLE_COUNT_ENTITIES = 10_000;
+
+  private static final List<MetadataOperation> VIEW_BASIC_ONLY =
+      List.of(MetadataOperation.VIEW_BASIC);
+
   static final String ROOT_TARGET = "Root";
   static final String REPLY_TARGET = "Reply";
   private static final String DELETED_USER_NAME = "DeletedUser";
@@ -110,6 +121,7 @@ public class ConversationRepository {
       SecurityContext securityContext,
       Authorizer authorizer,
       String entityLink,
+      boolean includeFields,
       UUID userId,
       ConversationFilterType filterType,
       Boolean resolved,
@@ -125,6 +137,7 @@ public class ConversationRepository {
         buildFilter(
             securityContext,
             entityLink,
+            includeFields,
             userId,
             filterType,
             resolved,
@@ -143,11 +156,153 @@ public class ConversationRepository {
     if (before != null) {
       Collections.reverse(conversations);
     }
-    hydrate(conversations, EMBEDDED_REPLY_LIMIT);
-    conversations.forEach(conversation -> withHref(uriInfo, conversation));
     ConversationFilter.Sql countSql = filter.build(false);
     int total = conversationDAO.count(countSql.condition(), countSql.params());
-    return rootResult(conversations, before, after, hasMore, total);
+    ResultList<Conversation> page = rootResult(conversations, before, after, hasMore, total);
+    if (nullOrEmpty(entityLink)) {
+      page = viewableOnly(securityContext, authorizer, page, countSql);
+    }
+    // Hydrated after filtering, so replies and references load only for the rows returned.
+    hydrate(page.getData(), EMBEDDED_REPLY_LIMIT);
+    page.getData().forEach(conversation -> withHref(uriInfo, conversation));
+    return page;
+  }
+
+  /**
+   * A listing that spans entities (e.g. a user's mentions) keeps only conversations about entities
+   * the caller may view, as the activity feeds do. The cursors are taken from the full page so
+   * paging still walks every row, and the total counts only conversations the caller may view
+   * (ADR:2026-11-11-cross-entity-conversation-listings-count-only-viewable-conversations).
+   */
+  private ResultList<Conversation> viewableOnly(
+      SecurityContext securityContext,
+      Authorizer authorizer,
+      ResultList<Conversation> page,
+      ConversationFilter.Sql countSql) {
+    if (!getSubjectContext(securityContext).isAdmin()) {
+      keepViewable(securityContext, new ViewPermissionFilter(authorizer), page, countSql);
+    }
+    return page;
+  }
+
+  /** Leaves out the page's rows the caller may not view and recounts its total without them. */
+  private void keepViewable(
+      SecurityContext securityContext,
+      ViewPermissionFilter viewFilter,
+      ResultList<Conversation> page,
+      ConversationFilter.Sql countSql) {
+    Predicate<String> mayHide = typesThatMayHide(securityContext);
+    List<Conversation> visible = viewableRows(securityContext, viewFilter, mayHide, page.getData());
+    page.getPaging()
+        .setTotal(
+            viewableTotal(
+                page.getPaging().getTotal(),
+                visible.size(),
+                () -> viewableCount(securityContext, viewFilter, mayHide, countSql)));
+    page.setData(visible);
+  }
+
+  /** The {@code conversations} about entities the caller may view. */
+  private static List<Conversation> viewableRows(
+      SecurityContext securityContext,
+      ViewPermissionFilter viewFilter,
+      Predicate<String> mayHide,
+      List<Conversation> conversations) {
+    List<EntityReference> toCheck = entitiesToCheck(conversations, mayHide);
+    Set<UUID> viewable =
+        toCheck.isEmpty() ? Set.of() : viewFilter.viewableIds(securityContext, toCheck);
+    return conversations.stream()
+        .filter(c -> isShown(c.getEntityRef(), mayHide, viewable))
+        .toList();
+  }
+
+  /** The entities the conversations are about whose type a rule could hide. */
+  private static List<EntityReference> entitiesToCheck(
+      List<Conversation> conversations, Predicate<String> mayHide) {
+    return conversations.stream()
+        .map(Conversation::getEntityRef)
+        .filter(about -> about != null && mayHide.test(about.getType()))
+        .toList();
+  }
+
+  /**
+   * Whether a rule could hide an entity of a type from the caller. A type no rule can hide is never
+   * checked entity by entity, as for task subjects (e.g. a caller with an unconditional view grant).
+   */
+  private static Predicate<String> typesThatMayHide(SecurityContext securityContext) {
+    SubjectContext subject = getSubjectContext(securityContext);
+    Map<String, Boolean> byType = new HashMap<>();
+    return type ->
+        type == null
+            || byType.computeIfAbsent(
+                type, key -> RowDecisionGate.mayDiffer(subject, key, VIEW_BASIC_ONLY));
+  }
+
+  private static boolean isShown(
+      EntityReference about, Predicate<String> mayHide, Set<UUID> viewable) {
+    return about == null || !mayHide.test(about.getType()) || viewable.contains(about.getId());
+  }
+
+  /**
+   * The stored total stands only when the page shows that many rows; otherwise rows may be hidden
+   * on this page or another, so they are recounted. Never less than the page itself.
+   */
+  static int viewableTotal(int total, int visibleOnPage, IntSupplier recount) {
+    return total > visibleOnPage ? Math.max(recount.getAsInt(), visibleOnPage) : total;
+  }
+
+  /** Conversations under {@code countSql} about entities the caller may view. */
+  private int viewableCount(
+      SecurityContext securityContext,
+      ViewPermissionFilter viewFilter,
+      Predicate<String> mayHide,
+      ConversationFilter.Sql countSql) {
+    return viewableCount(
+        conversationDAO.countByEntityType(countSql.condition(), countSql.params()),
+        mayHide,
+        types -> viewableOfTypes(securityContext, viewFilter, countSql, types));
+  }
+
+  /**
+   * Rows of a type no rule can hide count as they are; only the types left over are checked, and
+   * only when there are any.
+   */
+  static int viewableCount(
+      List<FeedDAOs.ConversationTypeCount> byType,
+      Predicate<String> mayHide,
+      ToIntFunction<List<String>> viewableOfTypes) {
+    List<String> checked =
+        byType.stream().map(FeedDAOs.ConversationTypeCount::entityType).filter(mayHide).toList();
+    int unchecked =
+        byType.stream()
+            .filter(row -> !mayHide.test(row.entityType()))
+            .mapToInt(FeedDAOs.ConversationTypeCount::conversations)
+            .sum();
+    return checked.isEmpty() ? unchecked : unchecked + viewableOfTypes.applyAsInt(checked);
+  }
+
+  /**
+   * Conversations about viewable entities of {@code types}, counted per entity so each entity is
+   * checked once, over at most {@link #MAX_VIEWABLE_COUNT_ENTITIES} entities: past that it is a
+   * lower bound.
+   */
+  private int viewableOfTypes(
+      SecurityContext securityContext,
+      ViewPermissionFilter viewFilter,
+      ConversationFilter.Sql countSql,
+      List<String> types) {
+    List<FeedDAOs.ConversationEntityCount> counts =
+        conversationDAO.countByEntity(
+            countSql.condition(), countSql.params(), types, MAX_VIEWABLE_COUNT_ENTITIES);
+    List<EntityReference> entities =
+        counts.stream()
+            .map(row -> new EntityReference().withType(row.entityType()).withId(row.entityId()))
+            .toList();
+    Set<UUID> viewable = viewFilter.viewableIds(securityContext, entities);
+    return counts.stream()
+        .filter(row -> viewable.contains(row.entityId()))
+        .mapToInt(FeedDAOs.ConversationEntityCount::conversations)
+        .sum();
   }
 
   public Conversation create(
@@ -568,6 +723,7 @@ public class ConversationRepository {
   private ConversationFilter buildFilter(
       SecurityContext securityContext,
       String entityLink,
+      boolean includeFields,
       UUID userId,
       ConversationFilterType filterType,
       Boolean resolved,
@@ -586,6 +742,7 @@ public class ConversationRepository {
                 .toList();
     return ConversationFilter.builder()
         .entityLink(entityLink)
+        .includeFields(includeFields)
         .userId(userId)
         .filterType(filterType)
         .resolved(resolved)
@@ -1089,7 +1246,7 @@ public class ConversationRepository {
   private Target resolveTarget(String about, Include include) {
     MessageParser.EntityLink link = MessageParser.EntityLink.parse(about);
     EntityReference reference = EntityUtil.validateEntityLink(link);
-    EntityInterface entity = getWithDomains(reference.getType(), reference.getId(), include);
+    EntityInterface<?> entity = getWithDomains(reference.getType(), reference.getId(), include);
     return new Target(entity.getEntityReference(), emptyIfNull(entity.getDomains()));
   }
 
@@ -1098,7 +1255,7 @@ public class ConversationRepository {
    * name would 400 on every conversation scoped to a domain. Drop the field where it is unsupported
    * instead.
    */
-  private EntityInterface getWithDomains(String entityType, UUID id, Include include) {
+  private EntityInterface<?> getWithDomains(String entityType, UUID id, Include include) {
     EntityRepository<?> repository = Entity.getEntityRepository(entityType);
     return repository.get(
         null, id, repository.getOnlySupportedFields(Entity.FIELD_DOMAINS), include, false);
@@ -1108,7 +1265,7 @@ public class ConversationRepository {
     ActivityEvent event = activityStreamRepository.getById(activityId);
     EntityReference eventTarget = event.getEntity();
     try {
-      EntityInterface target = getWithDomains(eventTarget.getType(), eventTarget.getId(), ALL);
+      EntityInterface<?> target = getWithDomains(eventTarget.getType(), eventTarget.getId(), ALL);
       return new ActivityContext(
           event, new Target(target.getEntityReference(), emptyIfNull(target.getDomains())), true);
     } catch (EntityNotFoundException exception) {
@@ -1189,13 +1346,33 @@ public class ConversationRepository {
         && !subject.hasDomains(conversation.getDomains())) {
       throw conversationNotFound(conversation.getId());
     }
+    List<AuthRequest> requests = new ArrayList<>();
+    requests.add(
+        request(
+            Entity.CONVERSATION,
+            MetadataOperation.VIEW_BASIC,
+            new ConversationResourceContext(conversation)));
+    // A conversation discloses what it is about, so reading it by id needs what reading that
+    // entity needs, as the scoped listing does
+    // (ADR:2026-11-03-read-handlers-authorize-like-the-entity-reads-they-mirror).
+    liveTarget(conversation).ifPresent(target -> requests.add(targetViewRequest(target)));
     try {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(Entity.CONVERSATION, MetadataOperation.VIEW_BASIC),
-          new ConversationResourceContext(conversation));
+      authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ALL);
     } catch (AuthorizationException exception) {
       throw conversationNotFound(conversation.getId());
+    }
+  }
+
+  /** The entity a conversation is about, while it exists; a deleted one has nothing to honour. */
+  private static Optional<EntityReference> liveTarget(Conversation conversation) {
+    EntityReference target = conversation.getEntityRef();
+    if (target == null || target.getType() == null || target.getId() == null) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(Entity.getEntityReferenceById(target.getType(), target.getId(), ALL));
+    } catch (EntityNotFoundException exception) {
+      return Optional.empty();
     }
   }
 
@@ -1300,11 +1477,10 @@ public class ConversationRepository {
     if (patch == null || patch.toJsonArray().isEmpty()) {
       throw BadRequestException.of("Patch must contain at least one operation");
     }
-    for (JsonValue value : patch.toJsonArray()) {
-      JsonObject operation = value.asJsonObject();
-      String path = operation.getString("path", "");
-      if (!allowedPaths.contains(path)) {
-        throw BadRequestException.of("Patch path is not allowed: " + path);
+    // A move or copy reads its "from" location too, so that has to be allowed as well.
+    for (String location : JsonPatchUtils.touchedLocations(patch)) {
+      if (!allowedPaths.contains(location)) {
+        throw BadRequestException.of("Patch path is not allowed: " + location);
       }
     }
   }

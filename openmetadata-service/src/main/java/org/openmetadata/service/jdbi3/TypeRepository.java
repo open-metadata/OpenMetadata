@@ -41,7 +41,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
-import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.jobs.EnumCleanupArgs;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
@@ -53,7 +52,9 @@ import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jobs.BackgroundJobTypes;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.resources.types.TypeResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -84,6 +85,13 @@ public class TypeRepository extends EntityRepository<Type> {
     if (fields.contains("customProperties")) {
       types.forEach(type -> type.setCustomProperties(getCustomProperties(type)));
     }
+  }
+
+  // A type's custom property definitions are field relationships under its name. A type carries no
+  // tag labels, so its delete leaves tag_usage alone.
+  @Override
+  protected boolean shouldCleanupFqnDependents() {
+    return true;
   }
 
   @Override
@@ -164,6 +172,16 @@ public class TypeRepository extends EntityRepository<Type> {
 
   public PutResponse<Type> addCustomProperty(
       UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property) {
+    return addCustomProperty(uriInfo, updatedBy, id, property, true);
+  }
+
+  public PutResponse<Type> createCustomProperty(
+      UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property) {
+    return addCustomProperty(uriInfo, updatedBy, id, property, false);
+  }
+
+  private PutResponse<Type> addCustomProperty(
+      UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property, boolean updateExisting) {
     Lock lock = TYPE_PROPERTY_LOCKS.get(id);
     lock.lock();
     try {
@@ -180,11 +198,13 @@ public class TypeRepository extends EntityRepository<Type> {
 
       find(property.getPropertyType().getId(), NON_DELETED); // Validate customProperty type exists
 
-      // If property already exists, then update it. Else add the new property.
       List<CustomProperty> updatedProperties = new ArrayList<>(List.of(property));
       for (CustomProperty existing : type.getCustomProperties()) {
         if (!existing.getName().equals(property.getName())) {
           updatedProperties.add(existing);
+        } else if (!updateExisting) {
+          throw new BadRequestException(
+              String.format("Custom property '%s' already exists", property.getName()));
         }
       }
 
@@ -302,13 +322,9 @@ public class TypeRepository extends EntityRepository<Type> {
     if (uniqueColumns.size() != columns.size()) {
       throw new IllegalArgumentException("Column names must be unique.");
     }
-    if (columns.size() < tableConfig.getMinColumns()
-        || columns.size() > tableConfig.getMaxColumns()) {
+    if (columns.size() < tableConfig.getMinColumns()) {
       throw new IllegalArgumentException(
-          "Custom Property table has invalid value columns size must be between "
-              + tableConfig.getMinColumns()
-              + " and "
-              + tableConfig.getMaxColumns());
+          "Custom Property table must have at least " + tableConfig.getMinColumns() + " column(s)");
     }
 
     try {
@@ -464,6 +480,10 @@ public class TypeRepository extends EntityRepository<Type> {
               Relationship.HAS.ordinal());
       // Delete all the data stored in the entity extension for the custom property
       daoCollection.entityExtensionDAO().deleteExtension(customPropertyFQN);
+      if (CustomPropertyReferences.REFERENCE_TYPES.contains(property.getPropertyType().getName())) {
+        new CustomPropertyReferences(daoCollection)
+            .deleteProperty(updated.getName(), property.getName());
+      }
 
       if (Entity.hasEntityRepository(Entity.INTAKE_FORM)) {
         IntakeFormRepository intakeFormRepository =
@@ -608,7 +628,7 @@ public class TypeRepository extends EntityRepository<Type> {
             String jobArgs = JsonUtils.pojoToJson(enumCleanupArgs);
             long jobId =
                 jobDao.insertJob(
-                    BackgroundJob.JobType.CUSTOM_PROPERTY_ENUM_CLEANUP,
+                    BackgroundJobTypes.CUSTOM_PROPERTY_ENUM_CLEANUP,
                     new EnumCleanupHandler(daoCollection),
                     jobArgs,
                     updatedBy);

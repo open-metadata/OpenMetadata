@@ -12,9 +12,8 @@
  */
 
 import { GraphData } from '../../../components/discovery/knowledge-graph/KnowledgeGraph.interface';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import {
-  addDeclaredOntologyProperties,
+  conceptEntityType,
   getOntologyScope,
 } from './knowledgeGraphOntology.utils';
 
@@ -47,29 +46,6 @@ const graph: GraphData = {
     { from: 'table', to: 'owner', label: 'Owned by', relationType: 'ownedBy' },
   ],
 };
-const terms = [
-  {
-    id: 'customer',
-    name: 'Customer',
-    attributes: [
-      {
-        id: 'email',
-        name: 'emailAddress',
-        dataType: 'STRING',
-        iri: 'https://business.example/email',
-      },
-      {
-        id: 'identifier',
-        name: 'customerId',
-        dataType: 'STRING',
-        isIdentifier: true,
-      },
-    ],
-    effectiveAttributes: [
-      { id: 'inherited', name: 'inheritedProperty', dataType: 'STRING' },
-    ],
-  },
-] as GlossaryTerm[];
 
 it('shows actual directional concept predicates and their asset mappings', () => {
   const result = getOntologyScope(graph, 'customer');
@@ -92,52 +68,31 @@ it('preserves an isolated selected concept and partial response information', ()
   ).toEqual({ nodes: [graph.nodes[0]], edges: [], truncated: true });
 });
 
-it('exposes declared property domains without inventing inherited declarations', () => {
-  const result = addDeclaredOntologyProperties(
-    graph,
-    graph,
-    terms,
-    'customer',
-    1,
-    'Domain'
-  );
+it('keeps a native concept bound to an asset', () => {
+  const bound: GraphData = {
+    nodes: [
+      { id: 'patient', label: 'Patient', type: 'ontologyConcept' },
+      { id: 'table', label: 'patients', type: 'table' },
+    ],
+    edges: [
+      {
+        from: 'patient',
+        to: 'table',
+        label: 'Bound asset',
+        relationType: 'boundAsset',
+      },
+    ],
+  };
 
-  expect(
-    result?.nodes
-      .filter((node) => node.type === 'property')
-      .map((node) => node.label)
-  ).toEqual(['emailAddress', 'customerId']);
-  expect(result?.edges.slice(-2)).toEqual([
-    expect.objectContaining({
-      from: 'https://business.example/email',
-      to: 'customer',
-      relationType: 'http://www.w3.org/2000/01/rdf-schema#domain',
-    }),
-    expect.objectContaining({ to: 'customer', label: 'Domain' }),
-  ]);
+  expect(getOntologyScope(bound, 'patient')).toEqual(bound);
 });
 
-it('keeps property expansion within the selected level and honors filters', () => {
+it('explores a native concept by its own type and any other concept as a glossary term', () => {
   expect(
-    addDeclaredOntologyProperties(graph, graph, terms, 'customer', 0, 'Domain')
-  ).toBe(graph);
-  expect(
-    addDeclaredOntologyProperties(graph, graph, terms, 'table', 1, 'Domain')
-      ?.nodes
-  ).toHaveLength(4);
-  expect(
-    addDeclaredOntologyProperties(graph, graph, terms, 'table', 2, 'Domain')
-      ?.nodes
-  ).toHaveLength(6);
-  expect(
-    addDeclaredOntologyProperties(
-      graph,
-      graph,
-      terms,
-      'customer',
-      2,
-      'Domain',
-      { entityTypes: ['table'], relationshipTypes: [] }
-    )
-  ).toBe(graph);
+    conceptEntityType({ id: 'c', label: 'C', type: 'ontologyConcept' })
+  ).toBe('ontologyConcept');
+  expect(conceptEntityType({ id: 't', label: 'T', type: 'glossaryTerm' })).toBe(
+    'glossaryTerm'
+  );
+  expect(conceptEntityType(undefined)).toBe('glossaryTerm');
 });

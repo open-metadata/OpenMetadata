@@ -48,7 +48,7 @@ final class ContextMemoryAnchorAccess {
   private static boolean isAllowed(String userName, EntityReference anchor) {
     boolean allowed;
     try {
-      ResourceContext<EntityInterface> resource =
+      ResourceContext<EntityInterface<?>> resource =
           new ResourceContext<>(anchor.getType(), anchor.getId(), anchor.getFullyQualifiedName());
       DefaultAuthorizer.authorizeUser(
           userName,
@@ -67,8 +67,8 @@ final class ContextMemoryAnchorAccess {
   }
 
   private static boolean isSourceVisible(
-      String userName, ResourceContext<EntityInterface> resource) {
-    EntityInterface entity = resource.getEntity();
+      String userName, ResourceContext<EntityInterface<?>> resource) {
+    EntityInterface<?> entity = resource.getEntity();
     return entity != null
         && (!(entity instanceof ContextFile file)
             || ContextFileVisibility.isVisibleToUser(file, userName, false));

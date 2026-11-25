@@ -26,7 +26,7 @@ public final class DatabaseSchemaShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new DatabaseSchema()
         .withId(ctx.id())
         .withName("schema")

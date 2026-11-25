@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Config } from '@react-awesome-query-builder/core';
 import { render, screen } from '@testing-library/react';
 import { useTranslation } from 'react-i18next';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../rest/searchAPI';
 import {
   EMPTY_QUERY_FILTER_STRINGS,
-  getExploreURLWithFilters,
+  getExploreURLForAdvancedFilter,
   getModifiedQueryFilterWithSelectedAssets,
   getTotalResourceCount,
   isValidElasticsearchQuery,
@@ -41,12 +40,6 @@ jest.mock('@react-awesome-query-builder/ui', () => ({
     checkTree: jest.fn().mockReturnValue({}),
     loadTree: jest.fn().mockReturnValue({}),
   },
-}));
-
-jest.mock('@ant-design/icons', () => ({
-  InfoCircleOutlined: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="info-icon">Info Icon</div>),
 }));
 
 describe('CuratedAssetsUtils', () => {
@@ -343,36 +336,55 @@ describe('CuratedAssetsUtils', () => {
     });
   });
 
-  describe('getExploreURLWithFilters', () => {
-    it('generates explore URL with query filters', () => {
-      const result = getExploreURLWithFilters({
-        queryFilter: '{"query":{"bool":{"must":[]}}}',
-        selectedResource: ['table'],
-        config: {} as Config,
-      });
+  describe('getExploreURLForAdvancedFilter', () => {
+    const paramsOf = (url: string) =>
+      new URLSearchParams(url.slice(url.indexOf('?') + 1));
+    const filter = {
+      query: { bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] } },
+    };
 
-      expect(result).toBe('/explore');
+    it('opens the saved filter as one Advanced Search group, scoped to the resources', () => {
+      const params = paramsOf(
+        getExploreURLForAdvancedFilter({
+          queryFilter: JSON.stringify(filter),
+          selectedResource: ['table'],
+        })
+      );
+
+      expect(JSON.parse(params.get('queryFilter') ?? '')).toEqual({
+        query: { bool: { must: [filter.query] } },
+      });
+      expect(JSON.parse(params.get('quickFilter') ?? '')).toEqual({
+        query: {
+          bool: {
+            must: [{ bool: { should: [{ term: { entityType: 'table' } }] } }],
+          },
+        },
+      });
     });
 
-    it('handles invalid query filter JSON', () => {
-      const result = getExploreURLWithFilters({
-        queryFilter: 'invalid-json',
-        selectedResource: ['table'],
-        config: {} as Config,
-      });
+    it.each([
+      ['no saved filter', ''],
+      ['a filter with no query', '{}'],
+    ])('carries no Advanced Search for %s', (_name, queryFilter) => {
+      const params = paramsOf(
+        getExploreURLForAdvancedFilter({
+          queryFilter,
+          selectedResource: ['table'],
+        })
+      );
 
-      // Function returns default explore path when JSON parsing fails
-      expect(result).toBe('/explore');
+      expect(params.has('queryFilter')).toBe(false);
+      expect(params.has('quickFilter')).toBe(true);
     });
 
-    it('handles empty query filter', () => {
-      const result = getExploreURLWithFilters({
-        queryFilter: '',
-        selectedResource: ['table'],
-        config: {} as Config,
-      });
-
-      expect(result).toBe('/explore');
+    it.each([
+      ['an unreadable filter', 'invalid-json', ['table']],
+      ['no resources', JSON.stringify(filter), []],
+    ])('opens plain Explore for %s', (_name, queryFilter, selectedResource) => {
+      expect(
+        getExploreURLForAdvancedFilter({ queryFilter, selectedResource })
+      ).toBe('/explore');
     });
   });
 

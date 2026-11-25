@@ -24,6 +24,7 @@ import { TestSuite } from '../../../../generated/tests/testSuite';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { ProfileExecutionSourceProps } from '../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 
 export type MetricChartType = {
   information: {
@@ -38,7 +39,8 @@ export type MetricChartType = {
   data: Record<string, string | number | undefined>[];
 };
 
-export interface ProfilerDetailsCardProps {
+export interface ProfilerDetailsCardProps
+  extends Pick<ProfileExecutionSourceProps, 'profiles' | 'isSharded'> {
   showYAxisCategory?: boolean;
   chartCollection: MetricChartType;
   name: string;
@@ -78,7 +80,6 @@ export interface DataQualityTabProps {
   tableHeader?: ReactNode;
   removeTableBorder?: boolean;
   enableBulkActions?: boolean;
-  editVariant?: 'drawer' | 'modal';
   hasActiveFilters?: boolean;
   emptyStateAction?: EmptyPlaceholderAction;
   // Per-entity permissions keyed by test-case id, supplied by the list API when

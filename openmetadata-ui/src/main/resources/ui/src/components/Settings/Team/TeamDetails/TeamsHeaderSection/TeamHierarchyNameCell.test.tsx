@@ -22,8 +22,10 @@ import {
 import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
 import { TeamHierarchyNameCell } from './TeamHierarchyNameCell';
 
-jest.mock('antd', () => {
-  const actual = jest.requireActual<typeof import('antd')>('antd');
+jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual<
+    typeof import('@openmetadata/ui-core-components')
+  >('@openmetadata/ui-core-components');
 
   return {
     ...actual,

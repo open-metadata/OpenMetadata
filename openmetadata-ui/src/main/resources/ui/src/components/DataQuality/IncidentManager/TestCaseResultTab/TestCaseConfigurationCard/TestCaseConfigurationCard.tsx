@@ -10,11 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Suggestions } from '@openmetadata/ui-core-components/icons';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as StarIcon } from '../../../../../assets/svg/ic-suggestions.svg';
-import { WidgetEditButton } from '../../../../common/WidgetActionButton/WidgetActionButton';
 import {
   ConfigurationParameterRow,
   TestCaseConfigurationCardProps,
@@ -22,12 +26,14 @@ import {
 import {
   getCategoryTranslation,
   getConfigurationShapes,
+  getConfiguredThresholdSentence,
   getDefinitionDisplayName,
   toSqlLines,
 } from './TestCaseConfigurationCard.utils';
 
+// No ligatures: Geist Mono draws `>=` as `≥`, so the query would read as something it is not.
 const SQL_BLOCK_CLASS_NAME =
-  'tw:max-h-80 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:py-2.5 tw:focus-visible:outline-focus-ring';
+  'tw:max-h-80 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:py-2.5 tw:focus-visible:outline-focus-ring tw:[font-variant-ligatures:none]';
 
 /**
  * The prototype's read-only, line-numbered SQL block. Deliberately not
@@ -113,10 +119,10 @@ function ParameterRows({
           className={`tw:px-3 tw:py-2.5 ${
             index < rows.length - 1 ? 'tw:border-b tw:border-secondary' : ''
           }`}
-          data-testid={`configuration-parameter-${row.label}`}
+          data-testid={`configuration-parameter-${row.name ?? row.label}`}
           gap={2}
           justify="between"
-          key={row.label}>
+          key={row.name ?? row.label}>
           {/* The label gives way, so a narrow rail wraps it, not the value. */}
           <Typography
             as="span"
@@ -144,9 +150,10 @@ function DynamicAssertionCallout() {
       className="tw:gap-2.5 tw:rounded-lg tw:border tw:border-utility-blue-200 tw:bg-utility-blue-50 tw:px-3 tw:py-2.5"
       data-testid="dynamic-assertion">
       {/* The sparkle matches the title colour; the asset draws in currentColor. */}
-      <StarIcon
+      <Suggestions
         aria-hidden
-        className="tw:h-[18px] tw:w-[18px] tw:shrink-0 tw:text-utility-blue-700"
+        className="tw:shrink-0 tw:text-utility-blue-700"
+        size={18}
       />
       <div>
         <Typography
@@ -164,6 +171,30 @@ function DynamicAssertionCallout() {
   );
 }
 
+/** What the test fails on, in the words the form's preview used. */
+function ThresholdSentence({
+  testCaseData,
+  testDefinition,
+}: Readonly<
+  Pick<TestCaseConfigurationCardProps, 'testCaseData' | 'testDefinition'>
+>) {
+  const { t } = useTranslation();
+  const sentence = getConfiguredThresholdSentence(
+    testCaseData,
+    testDefinition,
+    t
+  );
+
+  return sentence ? (
+    <Typography
+      as="p"
+      className="tw:text-xs tw:text-secondary"
+      data-testid="configuration-threshold-sentence">
+      {sentence}
+    </Typography>
+  ) : null;
+}
+
 const TestCaseConfigurationCard = ({
   testCaseData,
   testDefinition,
@@ -177,7 +208,14 @@ const TestCaseConfigurationCard = ({
   const { t } = useTranslation();
 
   const category = getCategoryTranslation(testCaseData?.entityLink);
-  const categoryLine = t(category.key, category.options);
+  const dimension =
+    testCaseData?.dataQualityDimension?.displayName ??
+    testCaseData?.dataQualityDimension?.name;
+  // The dimension describes the test, so it sits with the test's category, not
+  // in a row: every shape would then have a row, and the empty state none.
+  const categoryLine = [t(category.key, category.options), dimension]
+    .filter(Boolean)
+    .join(' · ');
   const definitionName = getDefinitionDisplayName(testDefinition);
 
   const {
@@ -204,15 +242,20 @@ const TestCaseConfigurationCard = ({
         align="center"
         className="tw:border-b tw:border-secondary tw:px-4 tw:py-3"
         gap={2}>
+        {/* The rail's widget cards' title style, so the rail reads as one. */}
         <Typography
           as="span"
-          className="tw:text-sm tw:font-bold tw:text-primary">
+          className="tw:whitespace-nowrap tw:text-quaternary"
+          data-testid="configuration-title"
+          size="text-sm"
+          weight="semibold">
           {t('label.configuration')}
         </Typography>
         {showEditButton && (
-          <WidgetEditButton
+          <ButtonUtility
             data-testid="edit-parameter-icon"
-            title={t('label.edit-entity', { entity: t('label.parameter') })}
+            icon={Edit01}
+            tooltip={t('label.edit-entity', { entity: t('label.parameter') })}
             onClick={onEditParameter}
           />
         )}
@@ -241,8 +284,16 @@ const TestCaseConfigurationCard = ({
         </div>
 
         <div className="tw:flex tw:flex-col tw:gap-2.5">
-          {hasParameterRows && <ParameterRows rows={parameterRows} />}
+          {/* The callout says how the test is checked; the rows below it are settings. */}
           {isDynamicAssertion && <DynamicAssertionCallout />}
+          {/* The version page shows the parameters' diff, not the configuration as it stands. */}
+          {!isVersionPage && (
+            <ThresholdSentence
+              testCaseData={testCaseData}
+              testDefinition={testDefinition}
+            />
+          )}
+          {hasParameterRows && <ParameterRows rows={parameterRows} />}
           {hasVersionDiff && (
             <div data-testid="configuration-version-diff">
               {versionParameterDiff}

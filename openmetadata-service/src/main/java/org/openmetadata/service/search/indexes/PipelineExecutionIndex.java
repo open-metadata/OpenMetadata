@@ -1,13 +1,21 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import java.util.HashMap;
 import java.util.Map;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.ParseTags;
 
 public record PipelineExecutionIndex(Pipeline pipeline, PipelineStatus pipelineStatus)
     implements SearchIndex {
+  /** The pipeline fields a run document copies from its pipeline. */
+  public static final String ACCESS_FIELDS = "owners,domains,tags,tasks,certification";
 
   @Override
   public Object getEntity() {
@@ -48,8 +56,34 @@ public record PipelineExecutionIndex(Pipeline pipeline, PipelineStatus pipelineS
 
     executionDoc.put("entityType", "pipelineExecution");
     executionDoc.put("deleted", false);
+    executionDoc.putAll(accessFields(pipeline));
 
     return executionDoc;
+  }
+
+  /**
+   * The pipeline's fields search access control decides on, shaped as on the pipeline's own
+   * document, so a run is found exactly where its pipeline is. The pipeline must be loaded with
+   * {@link #ACCESS_FIELDS} (ADR:2026-11-03-search-applies-the-same-access-rules-as-entity-reads).
+   */
+  @SuppressWarnings("unchecked")
+  public static Map<String, Object> accessFields(Pipeline pipeline) {
+    ParseTags tags = new ParseTags(Entity.getEntityTags(Entity.PIPELINE, pipeline));
+    Map<String, Object> fields = new HashMap<>();
+    fields.put("owners", listOrEmpty(pipeline.getOwners()));
+    fields.put("domains", listOrEmpty(pipeline.getDomains()));
+    fields.put("tags", tags.getTags());
+    fields.put("tier", tags.getTierTag());
+    fields.put("certification", pipeline.getCertification());
+    fields.put("service", pipeline.getService());
+    return JsonUtils.convertValue(fields, Map.class);
+  }
+
+  public static Pipeline withAccessFields(EntityReference pipeline) {
+    return pipeline.getId() != null
+        ? Entity.getEntity(Entity.PIPELINE, pipeline.getId(), ACCESS_FIELDS, Include.ALL)
+        : Entity.getEntityByName(
+            Entity.PIPELINE, pipeline.getFullyQualifiedName(), ACCESS_FIELDS, Include.ALL);
   }
 
   public static Map<String, Float> getFields() {

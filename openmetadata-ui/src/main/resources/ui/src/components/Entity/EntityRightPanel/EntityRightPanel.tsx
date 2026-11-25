@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+
 import { EntityTags } from 'Models';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
@@ -79,7 +80,13 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   return (
     <>
       {beforeSlot}
-      <Space className="w-full" direction="vertical" size="large">
+      <Box
+        inline
+        align="stretch"
+        className="layout-space w-full"
+        direction="col"
+        gap={6}
+        itemClassName="layout-space-item">
         {showDataProductContainer && (
           <div data-testid="KnowledgePanel.DataProducts">
             <DataProductsContainer
@@ -136,7 +143,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
           />
         )}
         <PartitionedKeys />
-      </Space>
+      </Box>
       {afterSlot}
     </>
   );

@@ -30,6 +30,9 @@ export enum SchedularOptions {
   ON_DEMAND = 'OnDemand',
 }
 
+export const TEST_CASE_RESOLUTION_WORKFLOW_NAME =
+  'TestCaseResolutionTaskWorkflow';
+
 export enum WorkflowType {
   EVENT_BASED = 'Event Based',
   PERIODIC_BATCH = 'Periodic Batch',
@@ -88,6 +91,13 @@ export const NODE_TYPE_MAPPINGS = {
     type: NodeType.AutomatedTask,
     label: 'Policy Enforcement',
     displayLabel: 'Policy Enforcement',
+  },
+  // Compiled by lifecycle playbooks from their stages, so the palette does not offer it.
+  [NodeSubType.CollectMetadataTask]: {
+    type: NodeType.AutomatedTask,
+    category: 'lifecycle',
+    label: 'Request Missing Fields',
+    displayLabel: 'Missing Fields Task',
   },
   [NodeSubType.SinkTask]: {
     type: NodeType.AutomatedTask,

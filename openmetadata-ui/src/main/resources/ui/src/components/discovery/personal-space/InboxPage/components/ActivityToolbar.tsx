@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Box,
-  FilterSelect,
-  Tabs,
-} from '@openmetadata/ui-core-components';
+import { Box, FilterSelect, Tabs } from '@openmetadata/ui-core-components';
 import {
   Calendar,
   Clock,
@@ -34,13 +29,11 @@ import {
   ActivityFilter,
   ActivityGrouping,
   ACTIVITY_TYPE_KEYS,
-  formatInboxCount,
+  getInboxTabBadge,
   InboxCount,
   INBOX_DATE_RANGE_OPTIONS,
 } from '../inbox.utils';
-import ActivityToolbarMenu, {
-  ACTIVITY_TRIGGER_CLASS_NAME,
-} from './ActivityToolbarMenu';
+import ActivityToolbarMenu from './ActivityToolbarMenu';
 
 const FILTER_LABEL_KEY: Record<ActivityFilter, string> = {
   [ActivityFilter.All]: 'label.all',
@@ -88,8 +81,8 @@ const ActivityToolbar = ({
       Object.entries(INBOX_DATE_RANGE_OPTIONS).map(([value, preset]) => ({
         value,
         label: t(preset.title, preset.titleData),
-        // A single day reads as a time, a span as dates.
-        icon: preset.days === 1 ? Clock : Calendar,
+        // Today reads as a time, a span as dates.
+        icon: preset.days === 0 ? Clock : Calendar,
       })),
     [t]
   );
@@ -126,36 +119,15 @@ const ActivityToolbar = ({
         className="tw:w-fit"
         selectedKey={filter}
         onSelectionChange={(key) => onFilterChange(key as ActivityFilter)}>
-        {/* The design sets the tabs on the tertiary gray, a step darker. */}
-        <Tabs.List className="tw:bg-tertiary" size="sm" type="button-border">
-          {Object.values(ActivityFilter).map((value) => {
-            const count = counts?.[value];
-
-            return (
-              // The design's tighter tabs, so a count fits without wrapping.
-              <Tabs.Item
-                className="tw:gap-1.5 tw:px-2.25"
-                id={value}
-                key={value}>
-                {/* The tab's own badge stays gray; the design tints the chosen one. */}
-                {({ isSelected }) => (
-                  <>
-                    {t(FILTER_LABEL_KEY[value])}
-                    {count?.total ? (
-                      <Badge
-                        // Keeps a badged tab as tall as a bare one.
-                        className="tw:-my-px"
-                        color={isSelected ? 'brand' : 'gray'}
-                        size="sm"
-                        type="color">
-                        {formatInboxCount(count)}
-                      </Badge>
-                    ) : null}
-                  </>
-                )}
-              </Tabs.Item>
-            );
-          })}
+        <Tabs.List size="sm" type="button-border">
+          {Object.values(ActivityFilter).map((value) => (
+            <Tabs.Item
+              badge={getInboxTabBadge(counts?.[value])}
+              id={value}
+              key={value}>
+              {t(FILTER_LABEL_KEY[value])}
+            </Tabs.Item>
+          ))}
         </Tabs.List>
       </Tabs>
       <Box align="center" gap={2}>
@@ -183,7 +155,6 @@ const ActivityToolbar = ({
         <FilterSelect
           bordered
           hideCounts
-          className={ACTIVITY_TRIGGER_CLASS_NAME}
           data-testid="activity-type-filter"
           label={t('label.type')}
           options={typeOptions}

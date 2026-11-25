@@ -10,36 +10,48 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Form } from 'antd';
-import { useEffect } from 'react';
+import {
+  Box,
+  FieldProp,
+  FieldTypes,
+  FormField,
+  FormItemLabel,
+  FormSelectItem,
+  getField,
+  HookForm,
+} from '@openmetadata/ui-core-components';
+import { useEffect, useMemo } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
   EntityStatus,
 } from '../../../generated/entity/data/dataContract';
 import { useEntityRules } from '../../../hooks/useEntityRules';
-import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { generateFormFields } from '../../../utils/formUtils';
+import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import { EntityReferenceOption } from '../../Glossary/AddGlossary/AddGlossary.interface';
+import {
+  hasOwnerRuleViolation,
+  toEntityReferenceOption,
+  toEntityReferences,
+} from '../../Glossary/AddGlossary/AddGlossary.utils';
+import { useUserTeamOptions } from '../../Glossary/hooks/useEntityReferenceOptions';
+import { ContractFormStep } from '../ContractFormStep/ContractFormStep';
 import './contract-detail-form-tab.less';
 
+interface ContractDetailFormValues {
+  name: string;
+  entityStatus: FormSelectItem | null;
+  owners: EntityReferenceOption[];
+  description: string;
+}
+
 const DATA_CONTRACT_STATUS_OPTION_KEYS = [
-  {
-    labelKey: 'label.draft',
-    value: EntityStatus.Draft,
-  },
-  {
-    labelKey: 'label.in-review',
-    value: EntityStatus.InReview,
-  },
-  {
-    labelKey: 'label.approved',
-    value: EntityStatus.Approved,
-  },
+  { labelKey: 'label.draft', value: EntityStatus.Draft },
+  { labelKey: 'label.in-review', value: EntityStatus.InReview },
+  { labelKey: 'label.approved', value: EntityStatus.Approved },
 ];
 
 export const ContractDetailFormTab: React.FC<{
@@ -57,125 +69,150 @@ export const ContractDetailFormTab: React.FC<{
   buttonProps: { nextLabel, isNextVisible = true },
 }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
   const { entityRules } = useEntityRules(EntityType.TABLE);
-  const dataContractStatusOptions = DATA_CONTRACT_STATUS_OPTION_KEYS.map(
-    ({ labelKey, value }) => ({
-      label: t(labelKey),
-      value,
-    })
+  const ownersPicker = useUserTeamOptions();
+
+  const statusOptions = useMemo<FormSelectItem[]>(
+    () =>
+      DATA_CONTRACT_STATUS_OPTION_KEYS.map(({ labelKey, value }) => ({
+        id: value,
+        label: t(labelKey),
+      })),
+    [t]
   );
 
-  const fields: FieldProp[] = [
-    {
-      label: t('label.contract-title'),
-      id: 'name',
-      name: 'name',
-      type: FieldTypes.TEXT,
-      required: true,
-      placeholder: t('label.please-enter-entity-name', {
-        entity: t('label.contract'),
-      }),
-      props: {
-        'data-testid': 'contract-name',
-      },
-    },
-    {
-      label: t('label.status'),
-      id: 'entityStatus',
-      name: 'entityStatus',
-      type: FieldTypes.SELECT,
-      required: false,
-      placeholder: t('label.select-field', { field: t('label.status') }),
-      props: {
-        'data-testid': 'contract-status',
-        options: dataContractStatusOptions,
-        popupClassName: 'contract-status-dropdown',
-      },
-      formItemProps: {
-        initialValue: initialValues?.entityStatus ?? EntityStatus.Draft,
-      },
-    },
-    {
-      label: t('label.owner-plural'),
-      name: 'owners',
-      id: 'root/owner',
-      type: FieldTypes.USER_TEAM_SELECT_INPUT,
-      required: false,
-      props: {
-        owner: initialValues?.owners,
-        hasPermission: true,
-        multiple: {
-          user: entityRules.canAddMultipleUserOwners,
-          team: entityRules.canAddMultipleTeamOwner,
+  const toFormValues = (
+    contract?: Partial<DataContract>
+  ): ContractDetailFormValues => {
+    const status = contract?.entityStatus ?? EntityStatus.Draft;
+
+    return {
+      name: contract ? getEntityName(contract) : '',
+      entityStatus: statusOptions.find((item) => item.id === status) ?? null,
+      owners: (contract?.owners ?? []).map(toEntityReferenceOption),
+      description: contract?.description ?? '',
+    };
+  };
+
+  const form = useForm<ContractDetailFormValues>({
+    defaultValues: toFormValues(initialValues),
+    mode: 'onChange',
+  });
+
+  useEffect(() => {
+    form.reset(toFormValues(initialValues));
+  }, [initialValues]);
+
+  // Report only user edits: a reset must not mark untouched fields as changed.
+  useEffect(() => {
+    const { unsubscribe } = form.watch((values, { name, type }) => {
+      if (type !== 'change' || !name) {
+        return;
+      }
+
+      const changed: Partial<DataContract> = {
+        name: { name: values.name },
+        entityStatus: {
+          entityStatus: values.entityStatus?.id as EntityStatus | undefined,
         },
+        owners: {
+          owners: toEntityReferences(
+            (values.owners ?? []) as EntityReferenceOption[]
+          ),
+        },
+        description: { description: values.description },
+      }[name.split('.')[0] as keyof ContractDetailFormValues];
+
+      onChange(changed);
+    });
+
+    return unsubscribe;
+  }, [form, onChange]);
+
+  const fields = useMemo<FieldProp[]>(
+    () => [
+      {
+        id: 'name',
+        label: t('label.contract-title'),
+        name: 'name',
+        placeholder: t('label.please-enter-entity-name', {
+          entity: t('label.contract'),
+        }),
+        props: { 'data-testid': 'contract-name' },
+        required: true,
+        rules: {
+          required: t('label.field-required', {
+            field: t('label.contract-title'),
+          }),
+        },
+        type: FieldTypes.TEXT,
+      },
+      {
+        id: 'entityStatus',
+        label: t('label.status'),
+        name: 'entityStatus',
+        placeholder: t('label.select-field', { field: t('label.status') }),
+        props: {
+          'data-testid': 'contract-status',
+          options: statusOptions,
+          size: 'md',
+        },
+        type: FieldTypes.SELECT,
+      },
+      {
+        id: 'root/owner',
+        label: t('label.owner-plural'),
+        name: 'owners',
         placeholder: t('label.please-select-entity', {
           entity: t('label.owner-plural'),
         }),
+        props: {
+          'data-testid': 'contract-owners',
+          // The server already filtered the options by the search text.
+          filterOption: () => true,
+          multiple: true,
+          ...ownersPicker,
+        },
+        rules: {
+          validate: (owners: EntityReferenceOption[]) =>
+            hasOwnerRuleViolation(owners, entityRules)
+              ? t('message.owner-multiple-users-or-single-team')
+              : true,
+        },
+        type: FieldTypes.USER_TEAM_SELECT_INPUT,
       },
-      formItemProps: {
-        valuePropName: 'owners',
-        trigger: 'onUpdate',
-      },
-    },
-    {
-      label: t('label.description'),
-      id: 'description',
-      name: 'description',
-      type: FieldTypes.DESCRIPTION,
-      required: false,
-      props: {
-        'data-testid': 'contract-description',
-        initialValue: initialValues?.description ?? '',
-      },
-    },
-  ];
-
-  useEffect(() => {
-    if (initialValues) {
-      form.setFieldsValue({
-        name: getEntityName(initialValues),
-        description: initialValues.description,
-        entityStatus: initialValues.entityStatus ?? EntityStatus.Draft,
-        owners: initialValues.owners,
-      });
-    }
-  }, [initialValues]);
+    ],
+    [entityRules, ownersPicker, statusOptions, t]
+  );
 
   return (
-    <>
-      <Card className="container bg-grey p-box">
-        <div>
-          <Typography className="contract-detail-form-tab-title">
-            {t('label.contract-detail-plural')}
-          </Typography>
-          <Typography as="p" className="contract-detail-form-tab-description">
-            {t('message.contract-detail-plural-description')}
-          </Typography>
-        </div>
-
-        <div className="contract-form-content-container">
-          <Form
-            className="new-form-style contract-detail-form"
-            form={form}
-            layout="vertical"
-            onValuesChange={onChange}>
-            {generateFormFields(fields)}
-          </Form>
-        </div>
-      </Card>
-      {isNextVisible && (
-        <div className="d-flex justify-end m-t-md">
-          <Button
-            className="contract-next-button"
-            htmlType="submit"
-            type="primary"
-            onClick={onNext}>
-            {nextLabel ?? t('label.next')}
-            <Icon component={RightIcon} />
-          </Button>
-        </div>
-      )}
-    </>
+    <ContractFormStep
+      description={t('message.contract-detail-plural-description')}
+      isNextVisible={isNextVisible}
+      nextLabel={nextLabel}
+      title={t('label.contract-detail-plural')}
+      onNext={onNext}>
+      <div className="contract-form-content-container">
+        <HookForm
+          className="contract-detail-form tw:flex tw:flex-col tw:gap-5"
+          form={form}>
+          {fields.map((field) => (
+            <div key={field.id}>{getField(field)}</div>
+          ))}
+          <FormField control={form.control} name="description">
+            {({ field }) => (
+              <Box className="tw:gap-1.5" direction="col">
+                <FormItemLabel label={t('label.description')} />
+                <RichTextEditor
+                  className="contract-description new-form-style"
+                  initialValue={initialValues?.description ?? ''}
+                  onTextChange={field.onChange}
+                />
+              </Box>
+            )}
+          </FormField>
+        </HookForm>
+      </div>
+    </ContractFormStep>
   );
 };

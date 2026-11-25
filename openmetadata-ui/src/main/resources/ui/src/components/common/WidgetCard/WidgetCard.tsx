@@ -14,14 +14,12 @@ import {
   ButtonUtility,
   Card,
   Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { InfoCircle } from '@openmetadata/ui-core-components/icons';
+import { ChevronUp, Info } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic-card-expand-collapse.svg';
 import { WidgetCardProps } from './WidgetCard.interface';
 
 const WidgetCard = ({
@@ -93,12 +91,12 @@ const WidgetCard = ({
               {!isExpandDisabled && (
                 <ButtonUtility
                   className={classNames(
-                    'tw:p-0.5 tw:transition-transform tw:duration-200 tw:mt-0.5',
+                    'tw:transition-transform tw:duration-200',
                     { 'tw:rotate-180': !isExpanded }
                   )}
-                  color="tertiary"
                   data-testid="expand-collapse-icon"
-                  icon={<CardExpandCollapseIcon className="tw:h-4 tw:w-4" />}
+                  icon={ChevronUp}
+                  size="lg"
                   tooltip={t(isExpanded ? 'label.collapse' : 'label.expand')}
                   onClick={handleExpandClick}
                 />
@@ -106,12 +104,18 @@ const WidgetCard = ({
             </div>
           }
           title={
-            <div className="tw:flex tw:items-center tw:gap-2">
+            // Match the chevron's height so the title stays centred on it
+            // whether or not a header action is rendered beside the title.
+            <div
+              className={classNames(
+                'tw:flex tw:min-w-0 tw:items-center tw:gap-2',
+                { 'tw:min-h-8': !isExpandDisabled }
+              )}>
               {titleIcon}
               {title && (
                 <Typography
                   as="span"
-                  className="tw:whitespace-nowrap tw:text-quaternary"
+                  className="tw:truncate tw:text-quaternary"
                   size="text-sm"
                   weight="semibold">
                   {title}
@@ -119,13 +123,11 @@ const WidgetCard = ({
               )}
               {helperText && (
                 <Tooltip title={helperText}>
-                  <TooltipTrigger className="tw:leading-0">
-                    <InfoCircle
-                      className="tw:cursor-pointer tw:text-utility-gray-400"
-                      size={14}
-                      strokeWidth={2}
-                    />
-                  </TooltipTrigger>
+                  <ButtonUtility
+                    aria-label={t('label.info')}
+                    icon={Info}
+                    size="sm"
+                  />
                 </Tooltip>
               )}
               {headerExtra}

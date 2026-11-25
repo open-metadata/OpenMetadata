@@ -206,7 +206,7 @@ describe('IncidentGroupBulkStatusModal', () => {
     renderChange({ kind: 'severity', severity: CreateSeverities.Severity2 });
 
     expect(screen.getByText('label.set-severity')).toBeInTheDocument();
-    expect(screen.getByText('Severity 2')).toBeInTheDocument();
+    expect(screen.getByText('label.severity 2')).toBeInTheDocument();
 
     await apply();
 

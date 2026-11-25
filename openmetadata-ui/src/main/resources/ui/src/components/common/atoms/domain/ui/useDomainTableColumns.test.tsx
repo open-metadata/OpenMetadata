@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { EntityStatus } from '../../../../../generated/entity/data/glossaryTerm';
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import domainClassBase from '../../../../../utils/Domain/DomainClassBase';
 import {
@@ -156,8 +157,14 @@ describe('useDomainTableColumns', () => {
       jest.restoreAllMocks();
     });
 
+    const REVIEWED_DOMAINS = [
+      { ...DOMAIN, entityStatus: EntityStatus.Approved },
+    ] as Domain[];
+
     it('appends the contributed column after the OSS columns', () => {
-      const { result } = renderHook(() => useDomainTableColumns());
+      const { result } = renderHook(() =>
+        useDomainTableColumns({ entities: REVIEWED_DOMAINS })
+      );
 
       expect(result.current.columns.at(-1)).toEqual({
         id: 'entityStatus',
@@ -166,11 +173,27 @@ describe('useDomainTableColumns', () => {
     });
 
     it('renders the contributed column through its own renderer', () => {
-      const { result } = renderHook(() => useDomainTableColumns());
+      const { result } = renderHook(() =>
+        useDomainTableColumns({ entities: REVIEWED_DOMAINS })
+      );
 
       render(<>{result.current.renderCell(DOMAIN, 'entityStatus')}</>);
 
       expect(screen.getByText('status:engineering')).toBeInTheDocument();
+    });
+
+    it('hides the status column while every domain is unprocessed', () => {
+      const { result } = renderHook(() =>
+        useDomainTableColumns({
+          entities: [
+            { ...DOMAIN, entityStatus: EntityStatus.Unprocessed },
+          ] as Domain[],
+        })
+      );
+
+      expect(result.current.columns.map((column) => column.id)).not.toContain(
+        'entityStatus'
+      );
     });
   });
 });

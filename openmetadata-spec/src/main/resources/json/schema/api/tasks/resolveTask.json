@@ -22,6 +22,16 @@
       "description": "New value to apply (for update tasks).",
       "type": "string"
     },
+    "changeDecisions": {
+      "description": "Per-change decisions on the reviewed change request revision. Only selected approved changes are applied; rejected and omitted changes are discarded. The request closes without a new revision or task. Absent or empty: the resolution applies to the whole revision.",
+      "type": "array",
+      "items": { "$ref": "../../governance/changeRequest/approvalDecision.json#/definitions/changeDecision" }
+    },
+    "changeRequestRevision": {
+      "description": "Revision number of the linked change request the resolver reviewed. Required when the task reviews a change request.",
+      "type": "integer",
+      "minimum": 1
+    },
     "payload": {
       "description": "Schema-driven resolution payload used for configurable task forms.",
       "type": "object",

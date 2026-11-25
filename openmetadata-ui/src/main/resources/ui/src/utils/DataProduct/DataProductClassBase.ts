@@ -15,6 +15,7 @@ import { ReactNode } from 'react';
 import { ListingExtraColumn } from '../../components/common/atoms/shared/types';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import {
+  CUSTOM_PROPERTIES_WIDGET,
   DESCRIPTION_WIDGET,
   GridSizes,
   KNOWLEDGE_ARTICLE_WIDGET,
@@ -215,6 +216,7 @@ class DataProductClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      CUSTOM_PROPERTIES_WIDGET,
       KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }

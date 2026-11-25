@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { render } from '@testing-library/react';
 import { renderHook } from '@testing-library/react-hooks';
 import { EditorOptions } from '@tiptap/core';
 import { Editor } from '@tiptap/react';
+import { Component, createElement } from 'react';
 import { useCustomEditor } from './useCustomEditor';
 
 class MockEditor {
@@ -152,5 +154,32 @@ describe('useCustomEditor hook', () => {
     expect(mockOnFocus).not.toHaveBeenCalled();
     expect(mockOnSelectionUpdate).not.toHaveBeenCalled();
     expect(mockOnTransaction).not.toHaveBeenCalled();
+  });
+
+  // EditorContent resets a live editor's view on unmount, which re-renders it.
+  // Destroying first makes it skip that, so unmounting many previewers stays cheap.
+  it('destroys the editor before a child unmounts', () => {
+    let destroyedWhenChildUnmounted: boolean | undefined;
+
+    class Child extends Component<{ editor: MockEditor | null }> {
+      componentWillUnmount() {
+        destroyedWhenChildUnmounted = this.props.editor?.isDestroyed;
+      }
+
+      render() {
+        return null;
+      }
+    }
+
+    const Parent = () => {
+      const editor = useCustomEditor() as unknown as MockEditor | null;
+
+      return createElement(Child, { editor });
+    };
+
+    const { unmount } = render(createElement(Parent));
+    unmount();
+
+    expect(destroyedWhenChildUnmounted).toBe(true);
   });
 });

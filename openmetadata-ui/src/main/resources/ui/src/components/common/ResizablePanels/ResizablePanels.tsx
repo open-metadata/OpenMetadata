@@ -10,15 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Tooltip } from 'antd';
+import { ButtonUtility, Card } from '@openmetadata/ui-core-components';
+
+import { LayoutLeft } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
-import { ReactComponent as SidebarCollapsedIcon } from '../../../assets/svg/ic-sidebar-collapsed.svg';
 import DocumentTitle from '../DocumentTitle/DocumentTitle';
 import './resizable-panels.less';
 import { ResizablePanelsProps } from './ResizablePanels.interface';
+import { getEnforcedMinWidthStyle } from './ResizablePanels.utils';
 
 const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   className,
@@ -46,7 +48,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
     <>
       {pageTitle && <DocumentTitle title={pageTitle} />}
       <ReflexContainer
-        className={classNames(className, 'resizable-panels-layout bg-grey')}
+        className={classNames(className, 'resizable-panels-layout')}
         orientation={orientation}>
         <ReflexElement
           className={classNames(firstPanel.className, 'resizable-first-panel', {
@@ -61,12 +63,13 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           }}>
           {isFirstPanelWrapInCard ? (
             <Card
-              bodyStyle={firstPanel.cardBodyStyles}
               className={classNames(firstPanel.cardClassName, {
                 // If allowScroll is true, the card will not have a scrollbar
                 'h-full overflow-y-auto': !firstPanel.allowScroll,
               })}>
-              {firstPanel.children}
+              <Card.Content style={firstPanel.cardBodyStyles}>
+                {firstPanel.children}
+              </Card.Content>
             </Card>
           ) : (
             firstPanel.children
@@ -80,17 +83,16 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
             { collapsed: isRightPanelCollapsed }
           )}>
           {isRightPanelCollapsed && (
-            <Card className="reflex-card card-padding-0">
-              <Tooltip placement="right" title={t('label.expand')}>
-                <Button
-                  className="mr-2 header-collapse-button"
-                  data-testid="sidebar-toggle"
-                  icon={<SidebarCollapsedIcon height={20} width={20} />}
-                  size="middle"
-                  type="text"
-                  onClick={handleCollapse}
-                />
-              </Tooltip>
+            <Card className="reflex-card">
+              <ButtonUtility
+                className="mr-2"
+                data-testid="sidebar-toggle"
+                icon={LayoutLeft}
+                size="lg"
+                tooltip={t('label.expand')}
+                tooltipPlacement="right"
+                onClick={handleCollapse}
+              />
             </Card>
           )}
           {!isRightPanelCollapsed && (
@@ -121,12 +123,17 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           data-testid={secondPanel.className}
           flex={isRightPanelCollapsed ? 0 : secondPanel.flex}
           minSize={isRightPanelCollapsed ? 0 : secondPanel.minWidth}
+          style={getEnforcedMinWidthStyle(secondPanel, isRightPanelCollapsed)}
           onStopResize={(args) => {
             secondPanel.onStopResize?.(args.component.props.flex);
           }}>
           {!hideSecondPanel &&
             (isSecondPanelWrapInCard ? (
-              <Card className="reflex-card">{secondPanel.children}</Card>
+              <Card className="reflex-card">
+                <Card.Content className="tw:min-h-0 tw:flex-1 tw:overflow-auto">
+                  {secondPanel.children}
+                </Card.Content>
+              </Card>
             ) : (
               secondPanel.children
             ))}

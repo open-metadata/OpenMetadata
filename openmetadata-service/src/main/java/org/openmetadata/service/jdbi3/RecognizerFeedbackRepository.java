@@ -243,7 +243,7 @@ public class RecognizerFeedbackRepository {
         return null;
       }
 
-      org.openmetadata.schema.EntityInterface entity =
+      org.openmetadata.schema.EntityInterface<?> entity =
           repository.getByName(null, entityFQN, repository.getFields("tags"));
 
       List<TagLabel> tagsToCheck = null;
@@ -321,7 +321,7 @@ public class RecognizerFeedbackRepository {
         throw new IllegalArgumentException("Unknown entity type: " + entityType);
       }
 
-      org.openmetadata.schema.EntityInterface entity =
+      org.openmetadata.schema.EntityInterface<?> entity =
           repository.getByName(null, entityFQN, repository.getFields("tags"));
 
       List<TagLabel> tagsToCheck = null;
@@ -404,10 +404,10 @@ public class RecognizerFeedbackRepository {
         return;
       }
 
-      org.openmetadata.schema.EntityInterface entity =
+      org.openmetadata.schema.EntityInterface<?> entity =
           repository.getByName(null, entityFQN, repository.getFields("tags"));
 
-      org.openmetadata.schema.EntityInterface originalEntity =
+      org.openmetadata.schema.EntityInterface<?> originalEntity =
           JsonUtils.readValue(JsonUtils.pojoToJson(entity), entity.getClass());
 
       boolean entityModified = false;

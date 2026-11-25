@@ -38,6 +38,29 @@ describe('getDerivedPermissionFlags', () => {
     expect(flags.canEditAll).toBe(false);
   });
 
+  it('canEditDomains follows EditDomains, falling back to EditAll (matches server subsumption)', () => {
+    // EditDomains granted on its own is enough — no EditAll needed.
+    expect(
+      getDerivedPermissionFlags(perms({ [Operation.EditDomains]: true }))
+        .canEditDomains
+    ).toBe(true);
+
+    // Absent EditDomains falls back to EditAll, exactly as the server's EditAll
+    // subsumes every Edit* operation.
+    expect(
+      getDerivedPermissionFlags(perms({ [Operation.EditAll]: true }))
+        .canEditDomains
+    ).toBe(true);
+
+    // Explicit EditDomains denial beats EditAll — lets a policy grant EditAll
+    // yet withhold domain reassignment.
+    expect(
+      getDerivedPermissionFlags(
+        perms({ [Operation.EditDomains]: false, [Operation.EditAll]: true })
+      ).canEditDomains
+    ).toBe(false);
+  });
+
   it('deleted=true switches off every edit flag but not view or delete', () => {
     const flags = getDerivedPermissionFlags(
       perms({

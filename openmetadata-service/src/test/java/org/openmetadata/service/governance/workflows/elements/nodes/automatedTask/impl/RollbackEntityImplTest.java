@@ -50,6 +50,7 @@ import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.RollbackEntityImpl.RejectionOutcome;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class RollbackEntityImplTest {
@@ -252,11 +253,10 @@ class RollbackEntityImplTest {
         .patch(
             isNull(),
             eq(current.getFullyQualifiedName()),
-            eq(REVIEWER),
+            eq(ChangeActor.system(REVIEWER, WorkflowEventConsumer.GOVERNANCE_BOT)),
             patchCaptor.capture(),
             isNull(),
-            isNull(),
-            eq(WorkflowEventConsumer.GOVERNANCE_BOT));
+            isNull());
     return applyPatch(current, patchCaptor.getValue());
   }
 

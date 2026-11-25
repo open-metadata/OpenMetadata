@@ -21,13 +21,14 @@ import {
 import { TestCaseResolutionStatusTypes as ResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   DEFAULT_INCIDENT_GROUP_BY,
+  DEFAULT_INCIDENT_GROUP_SORT,
   INCIDENT_TREND_COLORS,
   SPARKLINE_HEIGHT,
   SPARKLINE_INSET,
   SPARKLINE_WIDTH,
 } from './IncidentGroups.constants';
 import {
-  countRecurringIncidentGroups,
+  countRisingIncidentGroups,
   getIncidentGroupByOption,
   getIncidentGroupSortQuery,
   getIncidentGroupsQuery,
@@ -38,10 +39,11 @@ import {
   getIncidentTrendPoints,
   getPageAfterEmptyRead,
   hasActiveIncidentGroupFilters,
-  isRecurring,
+  isRising,
   isUnownedIncidentGroup,
   parseIncidentGroupBy,
   parseIncidentGroupFilters,
+  parseIncidentGroupSort,
 } from './IncidentGroups.utils';
 
 const group = (
@@ -292,28 +294,28 @@ describe('getIncidentTrendColor', () => {
   );
 });
 
-describe('isRecurring', () => {
-  it('should treat a rising group as recurring', () => {
+describe('isRising', () => {
+  it('should treat a rising group as rising', () => {
     expect(
-      isRecurring(group({ trendDirection: IncidentTrendDirection.Rising }))
+      isRising(group({ trendDirection: IncidentTrendDirection.Rising }))
     ).toBe(true);
   });
 
-  it('should not treat a falling, steady or trendless group as recurring', () => {
+  it('should not treat a falling, steady or trendless group as rising', () => {
     expect(
-      isRecurring(group({ trendDirection: IncidentTrendDirection.Falling }))
+      isRising(group({ trendDirection: IncidentTrendDirection.Falling }))
     ).toBe(false);
     expect(
-      isRecurring(group({ trendDirection: IncidentTrendDirection.Steady }))
+      isRising(group({ trendDirection: IncidentTrendDirection.Steady }))
     ).toBe(false);
-    expect(isRecurring(group())).toBe(false);
+    expect(isRising(group())).toBe(false);
   });
 });
 
-describe('countRecurringIncidentGroups', () => {
+describe('countRisingIncidentGroups', () => {
   it('should count only the rising groups of the loaded page', () => {
     expect(
-      countRecurringIncidentGroups([
+      countRisingIncidentGroups([
         group({ trendDirection: IncidentTrendDirection.Rising }),
         group({ trendDirection: IncidentTrendDirection.Rising }),
         group({ trendDirection: IncidentTrendDirection.Falling }),
@@ -324,7 +326,7 @@ describe('countRecurringIncidentGroups', () => {
   });
 
   it('should count nothing for an empty page', () => {
-    expect(countRecurringIncidentGroups([])).toBe(0);
+    expect(countRisingIncidentGroups([])).toBe(0);
   });
 });
 
@@ -507,5 +509,37 @@ describe('getIncidentGroupSortQuery', () => {
     expect(
       getIncidentGroupSortQuery({ field: 'severity', type: 'desc' })
     ).toEqual({ sortType: 'desc', sortField: 'severity' });
+  });
+});
+
+describe('parseIncidentGroupSort', () => {
+  it('should read a valid field and direction', () => {
+    expect(parseIncidentGroupSort('lastSeen', 'asc')).toEqual({
+      field: 'lastSeen',
+      type: 'asc',
+    });
+  });
+
+  it('should fall back to the default for missing or unknown values', () => {
+    expect(parseIncidentGroupSort(undefined, undefined)).toEqual(
+      DEFAULT_INCIDENT_GROUP_SORT
+    );
+    expect(parseIncidentGroupSort('name', 'sideways')).toEqual(
+      DEFAULT_INCIDENT_GROUP_SORT
+    );
+  });
+
+  it('should keep a valid field when only the direction is unknown', () => {
+    expect(parseIncidentGroupSort('severity', 'bogus')).toEqual({
+      field: 'severity',
+      type: DEFAULT_INCIDENT_GROUP_SORT.type,
+    });
+  });
+
+  it('should keep a valid direction when only the field is unknown', () => {
+    expect(parseIncidentGroupSort('bogus', 'asc')).toEqual({
+      field: DEFAULT_INCIDENT_GROUP_SORT.field,
+      type: 'asc',
+    });
   });
 });

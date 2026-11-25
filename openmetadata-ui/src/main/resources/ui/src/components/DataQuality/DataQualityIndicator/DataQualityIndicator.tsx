@@ -178,7 +178,10 @@ const useIndicatorContent = (
   return {
     isList: false,
     title: t('label.upstream-data-quality-issue'),
-    description: t('message.dq-upstream-failing-test'),
+    description: t(
+      pluralKey('message.dq-upstream-failing-test', counts.upstreamIssues),
+      { count: counts.upstreamIssues }
+    ),
     actionLabel: t('label.view-upstream-issue'),
     to: {
       pathname: getEntityDetailsPath(

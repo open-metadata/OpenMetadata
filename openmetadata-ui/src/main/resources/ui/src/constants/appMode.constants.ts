@@ -66,3 +66,7 @@ export const DEFAULT_APP_MODE = 'default';
  * admin-facing `AppMode` enum value into the runtime mode string.
  */
 export const AI_APP_MODE = 'ai';
+
+// Classic mode is deprecated; its removal is announced in the release notes.
+export const CLASSIC_MODE_RELEASE_NOTES_URL =
+  'https://docs.open-metadata.org/latest/releases/all-releases';

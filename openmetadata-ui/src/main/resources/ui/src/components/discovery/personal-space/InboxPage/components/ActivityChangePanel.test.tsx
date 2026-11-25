@@ -61,12 +61,58 @@ describe('ActivityChangePanel', () => {
     );
 
     expect(screen.getByTestId('activity-change-error')).toHaveTextContent(
-      'label.before− Ram'
+      'label.existing− Ram'
     );
     expect(screen.getByTestId('activity-change-success')).toHaveTextContent(
-      'label.after+ Data Platform team'
+      'label.suggested+ Data Platform team'
     );
     expect(screen.getByText('−1')).toBeInTheDocument();
+  });
+
+  // A task's change keeps the field's other values, neutral, on both sides.
+  it('shows kept values on both sides beside what changed', () => {
+    render(
+      <ActivityChangePanel
+        change={{
+          labelKey: 'label.tag-plural',
+          before: [],
+          after: ['PII.Sensitive'],
+          isText: false,
+          unchanged: ['PII.Email'],
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('activity-change-error')).toHaveTextContent(
+      'label.existingPII.Email'
+    );
+    expect(screen.getByTestId('activity-change-success')).toHaveTextContent(
+      'label.suggestedPII.Email+ PII.Sensitive'
+    );
+    expect(screen.getByText('+1')).toBeInTheDocument();
+    expect(screen.queryByText('−0')).not.toBeInTheDocument();
+  });
+
+  // Every change, text or values, reads as what exists and what is suggested.
+  it('names a description change Existing and Suggested', () => {
+    render(
+      <ActivityChangePanel
+        change={{
+          labelKey: 'label.description',
+          before: ['Old text'],
+          after: ['New text'],
+          isText: true,
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('activity-change-error')).toHaveTextContent(
+      'label.existing'
+    );
+    expect(screen.getByTestId('activity-change-success')).toHaveTextContent(
+      'label.suggested'
+    );
+    expect(screen.queryByText('label.before')).not.toBeInTheDocument();
   });
 
   // Two owners can share a display name; each still gets its own chip.

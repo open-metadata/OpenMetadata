@@ -18,7 +18,7 @@ working with OpenMetadata entities.
 import traceback
 import types
 from collections import OrderedDict
-from collections.abc import Generator, Iterable
+from collections.abc import Callable, Generator, Iterable
 from itertools import chain
 from typing import (
     Any,
@@ -657,6 +657,7 @@ class OpenMetadata(
         params: dict[str, str] | None = None,
         skip_on_failure: bool = False,
         include: str | None = None,
+        on_skip: Callable[[dict[str, Any], Exception], None] | None = None,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -684,6 +685,8 @@ class OpenMetadata(
                 except Exception as exc:
                     logger.error(f"Error creating entity [{entity.__name__}]. Failed with exception {exc}")
                     logger.debug(f"Can't create [{entity.__name__}] from [{elmt}]. Skipping.")
+                    if on_skip:
+                        on_skip(elmt, exc)
                     continue
         else:
             entities = [entity(**elmt) for elmt in resp["data"]]
@@ -701,6 +704,7 @@ class OpenMetadata(
         params: dict[str, str] | None = None,
         skip_on_failure: bool = False,
         include: str | None = None,
+        on_skip: Callable[[dict[str, Any], Exception], None] | None = None,
     ) -> Iterable[T]:
         """
         Utility method that paginates over all EntityLists
@@ -720,6 +724,7 @@ class OpenMetadata(
             params=params,
             skip_on_failure=skip_on_failure,
             include=include,
+            on_skip=on_skip,
         )
         yield from entity_list.entities
 
@@ -733,6 +738,7 @@ class OpenMetadata(
                 after=after,
                 skip_on_failure=skip_on_failure,
                 include=include,
+                on_skip=on_skip,
             )
             yield from entity_list.entities
             after = entity_list.after
@@ -794,6 +800,7 @@ class OpenMetadata(
         scope_params: dict[str, str] | None,
         live_fqns: Iterable[str],
         recursive: bool = True,
+        allow_empty_seen: bool = False,
     ) -> BulkOperationResult | None:
         """
         Ask the server to soft-delete entities of `entity` within a scope that were not reported
@@ -804,6 +811,10 @@ class OpenMetadata(
         connector sends `live_fqns` (the FQNs it produced this run); the server soft-deletes the
         in-scope entities that are not in that set.
 
+        An empty `live_fqns` deletes nothing unless `allow_empty_seen` marks it authoritative. The
+        flag is sent only with an empty `live_fqns`, the one case where it changes the outcome, so
+        servers that predate it never receive it otherwise.
+
         Returns the BulkOperationResult, or None when the server does not expose the endpoint
         (older server) so the caller can fall back to the legacy paginate-and-diff path.
         """
@@ -811,12 +822,15 @@ class OpenMetadata(
             raise ValueError("delete_stale_entities requires a scope, e.g. {'database': fqn}")
 
         scope_entity_type, scope_fqn = next(iter(scope_params.items()))
+        seen_fqns = list(live_fqns)
         request = {
             "scopeFqn": scope_fqn,
             "scopeEntityType": scope_entity_type,
-            "seenFqns": list(live_fqns),
+            "seenFqns": seen_fqns,
             "recursive": recursive,
         }
+        if allow_empty_seen and not seen_fqns:
+            request["allowEmptySeenFqns"] = True
         url = f"{self.get_suffix(entity)}/deleteStale"
         try:
             resp = self.client.delete(url, json=request)

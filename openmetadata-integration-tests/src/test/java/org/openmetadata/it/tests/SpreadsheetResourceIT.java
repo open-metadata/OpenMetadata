@@ -18,17 +18,21 @@ import org.openmetadata.it.factories.DriveServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateSpreadsheet;
+import org.openmetadata.schema.api.data.CreateWorksheet;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.Spreadsheet;
+import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.fluent.Directories;
 import org.openmetadata.sdk.fluent.Spreadsheets;
 import org.openmetadata.sdk.fluent.Worksheets;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.services.drives.SpreadsheetService;
+import org.openmetadata.sdk.services.drives.WorksheetService;
 
 /**
  * Integration tests for Spreadsheet entity operations.
@@ -288,6 +292,47 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
     assertEquals(directory.getId(), spreadsheet.getDirectory().getId());
     assertEquals(
         directory.getFullyQualifiedName(), spreadsheet.getDirectory().getFullyQualifiedName());
+  }
+
+  @Test
+  void test_spreadsheetInDirectory_resolvesDriveServiceAndAcceptsWorksheetWrites(TestNamespace ns) {
+    DriveService driveService = sharedDriveService(ns);
+    WorksheetService worksheets = new WorksheetService(SdkClients.adminClient().getHttpClient());
+    // A spreadsheet in a folder has two CONTAINS parents, the service and the folder, and the
+    // database returns them in an order set by their ids. Eight folders make it near-certain that
+    // at least one folder is returned first.
+    for (int i = 0; i < 8; i++) {
+      Directory directory =
+          Directories.create()
+              .name(ns.prefix("svc_dir_" + i))
+              .withService(driveService.getFullyQualifiedName())
+              .execute();
+      Spreadsheet created =
+          Spreadsheets.create()
+              .name(ns.prefix("svc_sheet_" + i))
+              .withService(driveService.getFullyQualifiedName())
+              .withParent(directory.getEntityReference())
+              .execute();
+
+      Spreadsheet fetched = getSpreadsheetService().get(created.getId().toString());
+      assertEquals(
+          driveService.getId(),
+          fetched.getService().getId(),
+          "A spreadsheet in a folder must report its drive service, not the folder");
+
+      Worksheet worksheet =
+          worksheets.create(
+              new CreateWorksheet()
+                  .withName(ns.prefix("svc_ws_" + i))
+                  .withSpreadsheet(created.getFullyQualifiedName()));
+      Worksheet patched =
+          worksheets.patch(
+              worksheet.getId().toString(),
+              JsonUtils.readTree(
+                  "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"described\"}]"));
+      assertEquals("described", patched.getDescription());
+      assertEquals(driveService.getId(), patched.getService().getId());
+    }
   }
 
   @Test
