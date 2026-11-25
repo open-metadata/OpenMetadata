@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/microsoftAccess/localFilePath.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Local File Path",
+  "description": "Local filesystem path to a single Access database file or a directory containing Access files.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.microsoftAccess.MicrosoftAccessLocalFilePath",
+  "properties": {
+    "localFilePath": {
+      "type": "string",
+      "title": "Local File Path",
+      "description": "Absolute path to the .accdb or .mdb file, or a directory. Supports ~ expansion (e.g. ~/data/sales.accdb). All .accdb and .mdb files found recursively in a directory will be ingested."
+    }
+  },
+  "required": ["localFilePath"],
+  "additionalProperties": false
+}

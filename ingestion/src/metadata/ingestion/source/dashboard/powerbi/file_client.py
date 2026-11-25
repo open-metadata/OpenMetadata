@@ -30,11 +30,13 @@ from metadata.generated.schema.entity.services.connections.dashboard.powerbi.azu
 from metadata.generated.schema.entity.services.connections.dashboard.powerbi.gcsConfig import (
     GCSConfig,
 )
+from metadata.generated.schema.entity.services.connections.dashboard.powerbi.localConfig import (
+    LocalConfig,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.powerbi.s3Config import (
     S3Config,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
-    LocalConfig,
     PowerBIConnection,
 )
 from metadata.ingestion.connections.source_api_client import TrackedREST

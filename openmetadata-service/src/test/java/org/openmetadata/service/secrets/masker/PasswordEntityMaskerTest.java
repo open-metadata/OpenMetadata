@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.services.connections.messaging.SchemaRegistryConf
 import org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.EntityMaskException;
 
 public class PasswordEntityMaskerTest extends TestEntityMasker {
@@ -121,6 +123,161 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                 .unmaskServiceConnectionConfig(
                     masked, original, "DomoDashboard", ServiceType.DASHBOARD);
     assertEquals(TOKEN, restored.getAccessToken());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void testEveryLeafOfAWorkflowValueThatMatchesNoOptionIsMasked() {
+    Map<String, Object> config =
+        Map.of("type", "DatabricksPipeline", "authType", Map.of("token", TOKEN, "region", "eu"));
+    Workflow stored =
+        JsonUtils.convertValue(
+            Map.of(
+                "name",
+                "test-connection",
+                "workflowType",
+                "TEST_CONNECTION",
+                "request",
+                Map.of(
+                    "connection", Map.of("config", config),
+                    "serviceType", "Pipeline",
+                    "connectionType", "DatabricksPipeline")),
+            Workflow.class);
+
+    Workflow masked = EntityMaskerFactory.createEntityMasker().maskWorkflow(stored);
+
+    Map<String, Object> request =
+        (Map<String, Object>)
+            JsonUtils.readValue(JsonUtils.pojoToJson(masked), Map.class).get("request");
+    Map<String, Object> connection = (Map<String, Object>) request.get("connection");
+    String mask = getMaskedPassword();
+    assertEquals(
+        Map.of("token", mask, "region", mask),
+        ((Map<String, Object>) connection.get("config")).get("authType"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void testEveryLeafOfAPipelineValueThatMatchesNoOptionIsMasked() {
+    Map<String, Object> gcpConfig =
+        Map.of("type", "service_account", "privateKey", TOKEN, "path", "/keys/sa.json");
+    Map<String, Object> source =
+        Map.of("dbtConfigType", "gcs", "dbtSecurityConfig", Map.of("gcpConfig", gcpConfig));
+    IngestionPipeline stored =
+        JsonUtils.convertValue(
+            Map.of(
+                "name",
+                "dbt-gcs",
+                "pipelineType",
+                "dbt",
+                "sourceConfig",
+                Map.of("config", Map.of("type", "DBT", "dbtConfigSource", source)),
+                "airflowConfig",
+                Map.of()),
+            IngestionPipeline.class);
+
+    EntityMaskerFactory.createEntityMasker().maskIngestionPipeline(stored);
+
+    Map<String, Object> config =
+        (Map<String, Object>)
+            ((Map<String, Object>)
+                    JsonUtils.readValue(JsonUtils.pojoToJson(stored), Map.class)
+                        .get("sourceConfig"))
+                .get("config");
+    Map<String, Object> security =
+        (Map<String, Object>)
+            ((Map<String, Object>) config.get("dbtConfigSource")).get("dbtSecurityConfig");
+    String mask = getMaskedPassword();
+    assertEquals(Map.of("type", mask, "privateKey", mask, "path", mask), security.get("gcpConfig"));
+  }
+
+  @Test
+  void testEveryLeafOfAValueThatMatchesNoOptionIsMasked() {
+    Map<String, Object> stored =
+        Map.of(
+            "type",
+            "DatabricksPipeline",
+            "hostPort",
+            "databricks.example:443",
+            "authType",
+            Map.of(
+                "token",
+                TOKEN,
+                "clientId",
+                "client",
+                "clientSecret",
+                OAUTH_CLIENT_SECRET,
+                "scopes",
+                List.of("all-apis"),
+                "retries",
+                3));
+
+    Object masked =
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(stored, "DatabricksPipeline", ServiceType.PIPELINE);
+
+    String mask = getMaskedPassword();
+    assertEquals(
+        Map.of(
+            "token",
+            mask,
+            "clientId",
+            mask,
+            "clientSecret",
+            mask,
+            "scopes",
+            List.of(mask),
+            "retries",
+            mask),
+        JsonUtils.readValue(JsonUtils.pojoToJson(masked), Map.class).get("authType"));
+  }
+
+  @Test
+  void testEveryLeafOfALocalPathOptionValueThatMatchesNoOptionIsMasked() {
+    Map<String, Object> aws = Map.of("awsAccessKeyId", "access-key", "awsSecretAccessKey", TOKEN);
+    String mask = getMaskedPassword();
+    Map<String, Object> maskedAws = Map.of("awsAccessKeyId", mask, "awsSecretAccessKey", mask);
+
+    Object powerBi =
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(
+                Map.of("pbitFilesSource", Map.of("path", "/data/pbit", "securityConfig", aws)),
+                "PowerBI",
+                ServiceType.DASHBOARD);
+    Object access =
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(
+                Map.of("connection", Map.of("localFilePath", "/data/a.accdb", "awsConfig", aws)),
+                "MicrosoftAccess",
+                ServiceType.DATABASE);
+
+    assertEquals(
+        Map.of("path", mask, "securityConfig", maskedAws),
+        JsonUtils.readValue(JsonUtils.pojoToJson(powerBi), Map.class).get("pbitFilesSource"));
+    assertEquals(
+        Map.of("localFilePath", mask, "awsConfig", maskedAws),
+        JsonUtils.readValue(JsonUtils.pojoToJson(access), Map.class).get("connection"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void testEveryLeafOfAGcpConfigThatMatchesNoOptionIsMasked() {
+    Map<String, Object> gcpConfig =
+        Map.of("type", "service_account", "privateKey", TOKEN, "path", "/keys/sa.json");
+
+    Object bigQuery =
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(
+                Map.of("credentials", Map.of("gcpConfig", gcpConfig)),
+                "BigQuery",
+                ServiceType.DATABASE);
+
+    String mask = getMaskedPassword();
+    Map<String, Object> credentials =
+        (Map<String, Object>)
+            JsonUtils.readValue(JsonUtils.pojoToJson(bigQuery), Map.class).get("credentials");
+    assertEquals(
+        Map.of("type", mask, "privateKey", mask, "path", mask), credentials.get("gcpConfig"));
   }
 
   @Test

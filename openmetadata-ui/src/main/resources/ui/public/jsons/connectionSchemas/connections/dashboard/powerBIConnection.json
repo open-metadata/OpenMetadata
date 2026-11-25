@@ -11,33 +11,6 @@
         "PowerBI"
       ],
       "default": "PowerBI"
-    },
-    "localConfig": {
-      "title": "Local Config",
-      "description": "Local config source where no extra information needs to be sent.",
-      "type": "object",
-      "properties": {
-        "pbitFileConfigType": {
-          "description": "pbit File Configuration type",
-          "type": "string",
-          "enum": [
-            "local"
-          ],
-          "default": "local"
-        },
-        "path": {
-          "title": "Path",
-          "description": "Directory path for the pbit files",
-          "type": "string"
-        },
-        "pbitFilesExtractDir": {
-          "title": "pbit Files Extraction Directory",
-          "description": "Path of the folder where the .pbit files will be unzipped and datamodel schema will be extracted",
-          "type": "string",
-          "default": "/tmp/pbitFiles"
-        }
-      },
-      "additionalProperties": false
     }
   },
   "properties": {
@@ -123,6 +96,7 @@
           "title": "Local Config",
           "description": "Local config source where no extra information needs to be sent.",
           "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.PowerBILocalConfig",
           "properties": {
             "pbitFileConfigType": {
               "description": "pbit File Configuration type",
@@ -283,43 +257,6 @@
                     }
                   }
                 },
-                "gcpCredentialsPath": {
-                  "title": "GCP Credentials Path",
-                  "description": "Pass the path of file containing the GCP credentials info",
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "title": "Credentials Type",
-                      "description": "Google Cloud Platform account type.",
-                      "type": "string",
-                      "default": "gcp_credential_path",
-                      "const": "gcp_credential_path"
-                    },
-                    "path": {
-                      "title": "Path",
-                      "description": "Path of the file containing the GCP credentials info",
-                      "type": "string"
-                    },
-                    "projectId": {
-                      "title": "GCP Project ID",
-                      "description": "GCP Project ID to parse metadata from",
-                      "oneOf": [
-                        {
-                          "title": "Single Project ID",
-                          "type": "string"
-                        },
-                        {
-                          "title": "Multiple Project ID",
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        }
-                      ],
-                      "default": null
-                    }
-                  }
-                },
                 "GCPImpersonateServiceAccountValues": {
                   "title": "GCP impersonate service account values",
                   "description": "Pass the values to impersonate a service account of Google Cloud",
@@ -449,6 +386,7 @@
                       "title": "GCP Credentials Path",
                       "description": "Pass the path of file containing the GCP credentials info",
                       "type": "object",
+                      "javaType": "org.openmetadata.schema.security.credentials.GCPCredentialsPath",
                       "properties": {
                         "type": {
                           "title": "Credentials Type",
@@ -480,7 +418,8 @@
                           ],
                           "default": null
                         }
-                      }
+                      },
+                      "additionalProperties": false
                     },
                     {
                       "type": "object",

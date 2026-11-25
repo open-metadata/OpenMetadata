@@ -151,6 +151,12 @@ public abstract class ServiceEntityResource<
     return Optional.of(service -> decryptOrNullify(securityContext, service));
   }
 
+  @Override
+  public Response create(UriInfo uriInfo, SecurityContext securityContext, T service) {
+    requireNoEncryptedSecrets(service);
+    return super.create(uriInfo, securityContext, service);
+  }
+
   // Every write that answers with the service shows its connection the way a read does.
 
   @Override
@@ -299,6 +305,9 @@ public abstract class ServiceEntityResource<
     T originalService =
         repository.findByNameOrNull(service.getFullyQualifiedName(), Include.NON_DELETED);
     String connectionType = extractServiceType(service);
+    if (originalService == null || originalService.getConnection() == null) {
+      requireNoEncryptedSecrets(service);
+    }
     try {
       if (originalService != null
           && originalService.getConnection() != null
@@ -322,6 +331,14 @@ public abstract class ServiceEntityResource<
       throw InvalidServiceConnectionException.byMessage(
           connectionType,
           String.format("Failed to unmask connection instance of %s", connectionType));
+    }
+  }
+
+  private void requireNoEncryptedSecrets(T service) {
+    if (service.getConnection() != null) {
+      EntityMaskerFactory.getEntityMasker()
+          .requireNoEncryptedSecrets(
+              service.getConnection().getConfig(), extractServiceType(service), serviceType);
     }
   }
 

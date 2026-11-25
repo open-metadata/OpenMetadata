@@ -12,6 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import datalakeSchema from '../../public/jsons/connectionSchemas/connections/database/datalakeConnection.json';
 import teradataSchema from '../../public/jsons/connectionSchemas/connections/database/teradataConnection.json';
 import mlflowSchema from '../../public/jsons/connectionSchemas/connections/mlmodel/mlflowConnection.json';
 import {
@@ -230,5 +231,46 @@ describe('getKeyValues', () => {
       'false'
     );
     expect(screen.getByRole('textbox', { name: 'retries' })).toHaveValue('0');
+  });
+});
+
+describe('getKeyValues for a GCS config source', () => {
+  const renderGcsConfigSource = (gcpConfig: Record<string, unknown>) =>
+    render(
+      <div>
+        {getKeyValues({
+          obj: { configSource: { securityConfig: { gcpConfig } } },
+          schemaPropertyObject: datalakeSchema.properties,
+          schema: datalakeSchema,
+          serviceCategory: 'databaseServices',
+        })}
+      </div>
+    );
+
+  const inputWithValue = (value: string) =>
+    screen
+      .getAllByTestId('input-field')
+      .find((input) => (input as HTMLInputElement).value === value);
+
+  it('renders the private key of GCP credential values as a password input', () => {
+    renderGcsConfigSource({
+      type: 'service_account',
+      projectId: 'analytics',
+      privateKey: '*********',
+    });
+
+    expect(inputWithValue('*********')).toHaveAttribute('type', 'password');
+  });
+
+  it('leaves the path of a GCP credentials path option readable', () => {
+    renderGcsConfigSource({
+      type: 'gcp_credential_path',
+      path: '/keys/service-account.json',
+    });
+
+    expect(inputWithValue('/keys/service-account.json')).toHaveAttribute(
+      'type',
+      'text'
+    );
   });
 });

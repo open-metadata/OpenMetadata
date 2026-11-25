@@ -825,12 +825,15 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       // in case of test connection type, we get the original connection values from the service
       // name
       originalWorkflow = buildFromOriginalServiceConnection(securityContext, workflow);
-      if (!ConnectionSecretsGuard.readsStoredSecrets(securityContext)) {
+      if (originalWorkflow != null && !ConnectionSecretsGuard.readsStoredSecrets(securityContext)) {
         requireSecretsReenteredOnRetarget(workflow, originalWorkflow);
       }
     } else {
       originalWorkflow =
           repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
+    }
+    if (originalWorkflow == null) {
+      EntityMaskerFactory.getEntityMasker().requireNoEncryptedSecrets(workflow);
     }
     return EntityMaskerFactory.getEntityMasker().unmaskWorkflow(workflow, originalWorkflow);
   }
@@ -882,14 +885,25 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     return workflowDecrypted;
   }
 
+  /**
+   * The stored workflow, with the connection of the service its request names when that service
+   * has one. Null when neither is stored, so nothing the request sends counts as stored.
+   */
   private Workflow buildFromOriginalServiceConnection(
       SecurityContext securityContext, Workflow workflow) {
-    Workflow originalWorkflow =
+    Workflow storedWorkflow =
         repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
-    if (originalWorkflow == null) {
-      originalWorkflow =
-          (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
-    }
+    Workflow originalWorkflow =
+        storedWorkflow == null
+            ? (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow)
+            : storedWorkflow;
+    boolean fromService = useStoredServiceConnection(securityContext, originalWorkflow);
+    return storedWorkflow == null && !fromService ? null : originalWorkflow;
+  }
+
+  private boolean useStoredServiceConnection(
+      SecurityContext securityContext, Workflow originalWorkflow) {
+    boolean used = false;
     if (originalWorkflow.getRequest()
         instanceof TestServiceConnectionRequest testServiceConnection) {
       EntityRepository<? extends EntityInterface<?>> serviceRepository =
@@ -907,8 +921,9 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
             new ResourceContext<>(serviceEntityType, originalService.getId(), null));
         testServiceConnection.setConnection(originalService.getConnection());
         originalWorkflow.setRequest(testServiceConnection);
+        used = true;
       }
     }
-    return originalWorkflow;
+    return used;
   }
 }

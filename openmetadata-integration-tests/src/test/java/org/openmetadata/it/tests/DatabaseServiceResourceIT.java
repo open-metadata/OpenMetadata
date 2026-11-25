@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -81,6 +83,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
@@ -318,6 +321,82 @@ public class DatabaseServiceResourceIT
   }
 
   @Test
+  void serviceAcceptsAnEncryptedPasswordOnlyAsItsOwnStoredValue(TestNamespace ns) {
+    DatabaseService source = createEntity(mysqlService(ns.prefix("cipher_source"), "source-pw"));
+    String sourceToken = storedPassword(source.getId());
+    assertTrue(sourceToken.startsWith("fernet:"), "The test server must encrypt secrets at rest");
+
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> createEntity(mysqlService(ns.prefix("cipher_copy"), sourceToken)))
+            .getStatusCode());
+
+    putService(mysqlService(source.getName(), sourceToken));
+    assertEquals("source-pw", Fernet.getInstance().decrypt(storedPassword(source.getId())));
+    putService(mysqlService(source.getName(), PASSWORD_MASK));
+    assertEquals("source-pw", Fernet.getInstance().decrypt(storedPassword(source.getId())));
+
+    DatabaseService target = createEntity(mysqlService(ns.prefix("cipher_target"), "target-pw"));
+    String targetToken = storedPassword(target.getId());
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> putService(mysqlService(target.getName(), sourceToken)))
+            .getStatusCode());
+    ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/connection/config/authType/password")
+        .put("value", sourceToken);
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () ->
+                    SdkClients.adminClient()
+                        .databaseServices()
+                        .patch(target.getId().toString(), patch))
+            .getStatusCode());
+    assertEquals(targetToken, storedPassword(target.getId()));
+  }
+
+  private static CreateDatabaseService mysqlService(String name, String password) {
+    return new CreateDatabaseService()
+        .withName(name)
+        .withServiceType(DatabaseServiceType.Mysql)
+        .withConnection(
+            new DatabaseConnection()
+                .withConfig(
+                    new MysqlConnection()
+                        .withHostPort("localhost:3306")
+                        .withUsername("test_user")
+                        .withAuthType(new basicAuth().withPassword(password))));
+  }
+
+  private static void putService(CreateDatabaseService request) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/services/databaseServices", request, DatabaseService.class);
+  }
+
+  private static String storedPassword(UUID id) {
+    String json =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery("SELECT json FROM dbservice_entity WHERE id = :id")
+                        .bind("id", id.toString())
+                        .mapTo(String.class)
+                        .one());
+    return JsonUtils.readTree(json).at("/connection/config/authType/password").asText();
+  }
+
+  @Test
   void post_databaseServiceWithMysqlConnection_200_OK(TestNamespace ns) {
     MysqlConnection conn =
         new MysqlConnection()
@@ -353,7 +432,7 @@ public class DatabaseServiceResourceIT
     OpenMetadataException e =
         assertThrows(OpenMetadataException.class, () -> createEntity(request));
     assertEquals(400, e.getStatusCode());
-    assertTrue(e.getMessage().contains("unrecognized field 'sslMode'"), e.getMessage());
+    assertTrue(e.getMessage().contains("[sslMode]"), e.getMessage());
   }
 
   @Test

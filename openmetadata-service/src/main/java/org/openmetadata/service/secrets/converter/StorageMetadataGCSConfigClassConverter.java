@@ -30,7 +30,7 @@ public class StorageMetadataGCSConfigClassConverter extends ClassConverter {
     StorageMetadataGCSConfig gcsConfig =
         (StorageMetadataGCSConfig) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvert(gcsConfig.getSecurityConfig(), List.of(GCPCredentials.class))
+    tryToConvertOrFail(gcsConfig.getSecurityConfig(), List.of(GCPCredentials.class))
         .ifPresent(obj -> gcsConfig.setSecurityConfig((GCPCredentials) obj));
 
     return gcsConfig;

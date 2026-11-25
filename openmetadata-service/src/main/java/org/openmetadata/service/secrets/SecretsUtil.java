@@ -22,6 +22,7 @@ import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
+import org.openmetadata.service.secrets.converter.UnmatchedOptions;
 import org.openmetadata.service.util.ReflectionUtil;
 
 public final class SecretsUtil {
@@ -99,6 +100,20 @@ public final class SecretsUtil {
               connectionType, message),
           e);
     }
+  }
+
+  /**
+   * Converts like {@link #convert(Object, String, String, ServiceType)}, letting {@code handler}
+   * decide what happens to a secret-bearing value that matches none of its options.
+   */
+  public static Object convert(
+      Object connectionConfig,
+      String connectionType,
+      String connectionName,
+      ServiceType serviceType,
+      UnmatchedOptions.Handler handler) {
+    return UnmatchedOptions.during(
+        handler, () -> convert(connectionConfig, connectionType, connectionName, serviceType));
   }
 
   /**

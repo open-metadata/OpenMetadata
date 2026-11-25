@@ -360,6 +360,27 @@ const handleSpecialServiceConfig = (
   return null;
 };
 
+// The `securityConfig` of every config source option, so the one matching the stored value wins
+const getSecurityConfigOptions = (
+  configSourceSchema: unknown,
+  schema: Record<string, unknown>
+): Record<string, unknown>[] => {
+  if (!isRecord(configSourceSchema)) {
+    return [];
+  }
+  const node = resolveRef(configSourceSchema, schema);
+  const options = node.oneOf ?? node.anyOf ?? [node];
+
+  return isArray(options)
+    ? options
+        .map(
+          (option) =>
+            getSchemaProperties(option, undefined, schema).securityConfig
+        )
+        .filter(isRecord)
+    : [];
+};
+
 // Handles database service config source
 const handleDatabaseConfigSource = (
   key: string,
@@ -374,23 +395,16 @@ const handleDatabaseConfigSource = (
   }
 
   if (securityConfig.gcpConfig) {
-    const gcpConfigSchema = isRecord(securityConfig.gcpConfig)
-      ? getSchemaProperties(
-          get(
-            schema,
-            'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues'
-          ),
-          securityConfig.gcpConfig,
-          schema
-        )
-      : getSchemaProperties(
-          get(
-            schema,
-            'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath'
-          ),
-          value,
-          schema
-        );
+    const securityConfigSchema = getSchemaProperties(
+      { oneOf: getSecurityConfigOptions(schemaPropertyObject[key], schema) },
+      securityConfig,
+      schema
+    );
+    const gcpConfigSchema = getSchemaProperties(
+      securityConfigSchema.gcpConfig,
+      securityConfig.gcpConfig,
+      schema
+    );
 
     return getKeyValues({
       obj: isRecord(securityConfig.gcpConfig)
