@@ -59,6 +59,26 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class EntityUtilTest {
   @Test
+  void testTableConstraintMatch_nullReferredColumns() {
+    final TableConstraint missing = constraintWithReferences(null);
+    final TableConstraint populated = constraintWithReferences(List.of("schema.parent.id"));
+    final TableConstraint empty = constraintWithReferences(List.of());
+
+    assertTrue(EntityUtil.tableConstraintMatch.test(missing, constraintWithReferences(null)));
+    assertFalse(EntityUtil.tableConstraintMatch.test(missing, populated));
+    assertFalse(EntityUtil.tableConstraintMatch.test(populated, missing));
+    assertFalse(EntityUtil.tableConstraintMatch.test(missing, empty));
+    assertFalse(EntityUtil.tableConstraintMatch.test(empty, missing));
+  }
+
+  private static TableConstraint constraintWithReferences(List<String> references) {
+    return new TableConstraint()
+        .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+        .withColumns(List.of("parent_id"))
+        .withReferredColumns(references);
+  }
+
+  @Test
   void test_isDescriptionRequired() {
     assertFalse(
         EntityUtil.isDescriptionRequired(Table.class)); // Table entity does not require description

@@ -65,6 +65,7 @@ from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameter
 from metadata.generated.schema.tests.testDefinition import (
     EntityType,
     TestCaseParameterDefinition,
+    TestDataType,
     TestDefinition,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -133,6 +134,7 @@ def build_test_case(
     entity_type: EntityType,
     values: list[TestCaseParameterValue] | None = None,
     compute_row_count: bool | None = True,
+    parameter_definitions: list[TestCaseParameterDefinition] | None = None,
 ) -> TestCase:
     test_definition = TestDefinition(
         id=uuid4(),
@@ -140,7 +142,7 @@ def build_test_case(
         description="Amounts must not be negative",
         entityType=entity_type,
         testPlatforms=["OpenMetadata"],
-        parameterDefinition=THRESHOLD_PARAMETERS,
+        parameterDefinition=[*THRESHOLD_PARAMETERS, *(parameter_definitions or [])],
         sqlExpression=expression,
     )  # type: ignore
     runtime_params = RuleLibrarySqlExpressionRuntimeParameters(
@@ -407,6 +409,47 @@ def test_delete_boundary_errors_preserve_results_and_inspection_query(sample_api
             metadata.delete_failed_rows_sample(case)
     else:
         metadata.delete_failed_rows_sample(case)
+
+
+@pytest.mark.parametrize(VARIANT_PARAMS, SQA_VARIANTS)
+@pytest.mark.parametrize(
+    ("data_type", "raw_value", "condition", "rendered_condition"),
+    [
+        (TestDataType.INT, "0", "amount < {{ cutoff }}", "amount < 0"),
+        (TestDataType.DECIMAL, "0.0", "amount < {{ cutoff }}", "amount < 0.0"),
+        (TestDataType.BOOLEAN, "true", "amount < 0 AND {{ cutoff }} = TRUE", "amount < 0 AND 1 = TRUE"),
+        (
+            TestDataType.DATE,
+            "2025-01-15",
+            "amount < 0 AND {{ cutoff }} = date('2025-01-15')",
+            "amount < 0 AND '2025-01-15' = date('2025-01-15')",
+        ),
+        (
+            TestDataType.DATETIME,
+            "2025-01-15T10:30:00",
+            "amount < 0 AND datetime({{ cutoff }}) = '2025-01-15 10:30:00'",
+            "amount < 0 AND datetime('2025-01-15 10:30:00.000000') = '2025-01-15 10:30:00'",
+        ),
+    ],
+)
+def test_typed_parameters_preserve_counts_samples_and_inspection_sql(
+    validator_class, entity_link, expression, entity_type, data_type, raw_value, condition, rendered_condition
+):
+    case = build_test_case(
+        entity_link,
+        "SELECT * FROM {{ table_name }} WHERE " + condition,
+        entity_type,
+        values=[TestCaseParameterValue(name="cutoff", value=raw_value)],
+        parameter_definitions=[TestCaseParameterDefinition(name="cutoff", dataType=data_type)],
+    )
+    response = run_with_samples(validator_class, query_runner(order_rows()), case)
+    assert response.testCaseResult.testCaseStatus == TestCaseStatus.Failed
+    assert response.testCaseResult.failedRows == NEGATIVE_ROWS
+    assert response.testCaseResult.passedRows == TOTAL_ROWS - NEGATIVE_ROWS
+    assert response.failedRowsSample is not None
+    assert response.failedRowsSample.rows == [[1, -1, "ok"], [2, -2, "ok"], [3, -3, "ok"]]
+    assert response.clearFailedRowsSample is False
+    assert response.inspectionQuery == "SELECT * FROM main.orders WHERE " + rendered_condition
 
 
 class TestSQARuleLibraryFailedRowsSample:

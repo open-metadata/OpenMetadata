@@ -210,7 +210,7 @@ def _sample_value(value: Any) -> Any:
     return value
 
 
-def render_literal_sql(sql: str, params: dict[str, str], dialect: Dialect) -> str:
+def render_literal_sql(sql: str, params: dict[str, Any], dialect: Dialect) -> str:
     """`sql` as `text()` runs it with `params`, with the bind parameters written in as literals"""
     statement = text(sql)
     # A test case also carries parameters its SQL does not use (`threshold`), and bindparams() rejects those.
