@@ -676,8 +676,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       Pair<String, Map<String, Object>> updates)
       throws IOException {
     if (!isClientAvailable) {
-      LOG.error("OpenSearch client is not available. Cannot update children for indices.");
-      return;
+      throw new IOException(
+          "OpenSearch client is not available. Cannot update children for indices.");
     }
 
     final Query query = anyOfFieldQuery(field, values);
@@ -709,7 +709,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                         .params(params)))
                     .refresh(Refresh.True));
 
-    runReconciled("updateChildren", request, true);
+    runReconciled("updateChildren", request, true).requireComplete();
 
     LOG.info("Successfully updated children in OpenSearch for indices: {}", indices);
   }

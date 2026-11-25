@@ -31,8 +31,10 @@ import org.mockito.MockedStatic;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.UpdateByQueryReconciler;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.BulkByScrollFailure;
 import os.org.opensearch.client.opensearch._types.Conflicts;
 import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
@@ -241,6 +243,51 @@ class OpenSearchEntityManagerUpdateByQueryRetryTest {
                     List.of("from--->to"),
                     Pair.of("ctx._source.remove('upstreamLineage')", Map.of())));
     verify(client, never()).updateByQuery(any(UpdateByQueryRequest.class));
+  }
+
+  @Test
+  void removingLineageReportsExhaustedConflicts() throws Exception {
+    assertIncompleteRemoval(response(0, 1), "version conflict");
+    verify(client, times(UpdateByQueryReconciler.MAX_ATTEMPTS))
+        .updateByQuery(any(UpdateByQueryRequest.class));
+  }
+
+  @Test
+  void removingLineageReportsAnUpdateTimeout() throws Exception {
+    final var result = response(0, 0);
+    when(result.timedOut()).thenReturn(true);
+    assertIncompleteRemoval(result, "timed out");
+  }
+
+  @Test
+  void removingLineageReportsAnUpdateShardFailure() throws Exception {
+    final var failure =
+        BulkByScrollFailure.of(
+            f ->
+                f.index("tables")
+                    .id("to")
+                    .status(403)
+                    .cause(c -> c.type("cluster_block_exception").reason("writes blocked")));
+    final var result = response(0, 0);
+    when(result.failures()).thenReturn(List.of(failure));
+    assertIncompleteRemoval(result, "writes blocked");
+  }
+
+  private void assertIncompleteRemoval(final UpdateByQueryResponse result, final String reason)
+      throws Exception {
+    indicesHoldingMatches("tables");
+    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(result);
+    final var failure =
+        assertThrows(
+            IOException.class,
+            () ->
+                new OpenSearchEntityManager(client)
+                    .updateChildren(
+                        List.of("all"),
+                        "upstreamLineage.docUniqueId",
+                        List.of("from--->to"),
+                        Pair.of("ctx._source.remove('upstreamLineage')", Map.of())));
+    assertTrue(failure.getMessage().contains(reason), failure::getMessage);
   }
 
   private void indicesHoldingMatches(String... names) throws Exception {

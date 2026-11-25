@@ -29,45 +29,54 @@ public class LineageIndexWriteOrderIT {
   @Test
   void deletionIsIndexedBeforeItsResponseAndAReplacementIsRetained(final TestNamespace ns)
       throws Exception {
-    final var fromSchema = DatabaseSchemaTestFactory.createSimple(ns);
-    final var toSchema = DatabaseSchemaTestFactory.createSimple(ns);
-    final Table from =
-        TableTestFactory.createWithName(ns, fromSchema.getFullyQualifiedName(), "from");
-    final Table to = TableTestFactory.createWithName(ns, toSchema.getFullyQualifiedName(), "to");
-    final var client = SdkClients.adminClient();
-    final var edge =
-        new AddLineage()
-            .withEdge(
-                new EntitiesEdge()
-                    .withFromEntity(from.getEntityReference())
-                    .withToEntity(to.getEntityReference()));
-
-    client.lineage().addLineage(edge);
-    assertIndexedEdge(from.getEntityReference(), to.getEntityReference());
-    assertIndexedEdge(from.getService(), to.getService());
-
-    client.lineage().deleteLineage("table:" + from.getId(), "table:" + to.getId());
-    assertTrue(
-        indexedEdges(to.getEntityReference()).isEmpty(),
-        "A successful delete must not leave a background task that can erase a subsequent add");
-
-    assertTrue(
-        indexedEdges(to.getService()).isEmpty(),
-        "Derived service removal must finish before returning");
-
-    client.lineage().addLineage(edge);
-    assertIndexedEdge(from.getEntityReference(), to.getEntityReference());
-    assertIndexedEdge(from.getService(), to.getService());
+    final TableEdge edge = TableEdge.create(ns);
+    edge.add();
+    edge.assertIndexed();
+    edge.delete();
+    assertTrue(indexedEdges(edge.to().getEntityReference()).isEmpty());
+    assertTrue(indexedEdges(edge.to().getService()).isEmpty());
+    edge.add();
+    edge.assertIndexed();
   }
 
-  private static void assertIndexedEdge(final EntityReference from, final EntityReference to)
+  record TableEdge(Table from, Table to) {
+    static TableEdge create(final TestNamespace ns) {
+      return new TableEdge(table(ns, "from"), table(ns, "to"));
+    }
+
+    private static Table table(final TestNamespace ns, final String name) {
+      final var schema = DatabaseSchemaTestFactory.createSimple(ns);
+      return TableTestFactory.createWithName(ns, schema.getFullyQualifiedName(), name);
+    }
+
+    void add() {
+      final var edge =
+          new EntitiesEdge()
+              .withFromEntity(from.getEntityReference())
+              .withToEntity(to.getEntityReference());
+      SdkClients.adminClient().lineage().addLineage(new AddLineage().withEdge(edge));
+    }
+
+    void delete() {
+      SdkClients.adminClient()
+          .lineage()
+          .deleteLineage("table:" + from.getId(), "table:" + to.getId());
+    }
+
+    void assertIndexed() throws Exception {
+      assertIndexedEdge(from.getEntityReference(), to.getEntityReference());
+      assertIndexedEdge(from.getService(), to.getService());
+    }
+  }
+
+  static void assertIndexedEdge(final EntityReference from, final EntityReference to)
       throws Exception {
     final List<EsLineageData> edges = indexedEdges(to);
     assertEquals(1, edges.size());
     assertEquals(from.getId(), edges.getFirst().getFromEntity().getId());
   }
 
-  private static List<EsLineageData> indexedEdges(final EntityReference entity) throws Exception {
+  static List<EsLineageData> indexedEdges(final EntityReference entity) throws Exception {
     final String document =
         SdkClients.adminClient()
             .getHttpClient()

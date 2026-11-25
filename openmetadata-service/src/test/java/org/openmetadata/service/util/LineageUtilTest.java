@@ -40,28 +40,56 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 
 class LineageUtilTest {
 
   @ParameterizedTest
   @CsvSource({"false,true", "false,false", "true,true", "true,false"})
-  void failedDerivedLineageRemovalQueuesTheDownstreamEntityWithoutInterruptingItsCaller(
+  void failedDerivedLineageRemovalDoesNotInterruptItsCaller(
       final boolean deferred, final boolean checkedFailure) throws Exception {
     final EntityReference from = entityRef(Entity.DOMAIN, UUID.randomUUID(), "domain.from");
     final EntityReference to = entityRef(Entity.DOMAIN, UUID.randomUUID(), "domain.to");
-    final SearchRepository repository = mock(SearchRepository.class);
-    final SearchClient client = mock(SearchClient.class);
     final Exception failure =
         checkedFailure
             ? new IOException("search timeout")
             : new IllegalStateException("search unavailable");
+    final SearchRepository repository = failingRemoval(failure);
+    try (final MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(Entity::getSearchRepository).thenReturn(repository);
+      removeDerivedEdge(from, to, deferred);
+    } finally {
+      LineageUtil.clearLineageDeferred();
+    }
+  }
+
+  private static SearchRepository failingRemoval(final Exception failure) throws IOException {
+    final SearchRepository repository = mock(SearchRepository.class);
+    final SearchClient client = mock(SearchClient.class);
     when(repository.getSearchClient()).thenReturn(client);
     when(repository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS)).thenReturn("all");
     doThrow(failure)
         .when(client)
         .updateChildren(any(List.class), any(String.class), any(List.class), any(Pair.class));
+    return repository;
+  }
+
+  private static void removeDerivedEdge(
+      final EntityReference from, final EntityReference to, final boolean deferred)
+      throws Exception {
+    if (deferred) {
+      assertTrue(LineageUtil.beginLineageDeferral());
+    }
+    invokeDerivedRemoval(from, to);
+    if (deferred) {
+      final var writes = LineageUtil.drainLineageDeferred();
+      assertEquals(1, writes.size());
+      assertDoesNotThrow(writes.getFirst()::run);
+    }
+  }
+
+  private static void invokeDerivedRemoval(final EntityReference from, final EntityReference to)
+      throws Exception {
     final Method delete =
         LineageUtil.class.getDeclaredMethod(
             "deleteLineageFromSearch",
@@ -70,32 +98,7 @@ class LineageUtilTest {
             LineageDetails.class);
     delete.setAccessible(true);
 
-    try (final MockedStatic<Entity> entities = mockStatic(Entity.class);
-        final MockedStatic<SearchIndexRetryQueue> retry = mockStatic(SearchIndexRetryQueue.class)) {
-      entities.when(Entity::getSearchRepository).thenReturn(repository);
-      retry
-          .when(
-              () -> SearchIndexRetryQueue.failureReason("deleteDerivedLineageFromSearch", failure))
-          .thenReturn("search failure");
-      if (deferred) {
-        assertTrue(LineageUtil.beginLineageDeferral());
-      }
-      assertDoesNotThrow(
-          () -> {
-            delete.invoke(null, from, to, null);
-          });
-      if (deferred) {
-        final var writes = LineageUtil.drainLineageDeferred();
-        assertEquals(1, writes.size());
-        assertDoesNotThrow(writes.getFirst()::run);
-      }
-      retry.verify(
-          () ->
-              SearchIndexRetryQueue.enqueue(
-                  to.getId().toString(), to.getFullyQualifiedName(), "search failure"));
-    } finally {
-      LineageUtil.clearLineageDeferred();
-    }
+    delete.invoke(null, from, to, null);
   }
 
   @Test

@@ -1623,8 +1623,8 @@ public class LineageRepository {
       invalidateLineageCacheForEdge(fromEntity, toEntity);
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
-          fromEntity.getId() != null ? fromEntity.getId().toString() : null,
-          fromEntity.getFullyQualifiedName(),
+          toEntity.getId() != null ? toEntity.getId().toString() : null,
+          toEntity.getFullyQualifiedName(),
           SearchIndexRetryQueue.failureReason("deleteLineageFromSearch", e));
       LOG.error("Failed to delete lineage from search for {}: {}", uniqueValue, e.getMessage());
     }

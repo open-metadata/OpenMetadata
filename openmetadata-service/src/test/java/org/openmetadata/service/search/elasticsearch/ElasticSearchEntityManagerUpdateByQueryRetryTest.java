@@ -17,6 +17,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import es.co.elastic.clients.elasticsearch._types.Conflicts;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
@@ -40,6 +41,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.UpdateByQueryReconciler;
 
 class ElasticSearchEntityManagerUpdateByQueryRetryTest {
 
@@ -253,6 +255,51 @@ class ElasticSearchEntityManagerUpdateByQueryRetryTest {
                     List.of("from--->to"),
                     Pair.of("ctx._source.remove('upstreamLineage')", Map.of())));
     verify(client, never()).updateByQuery(any(UpdateByQueryRequest.class));
+  }
+
+  @Test
+  void removingLineageReportsExhaustedConflicts() throws Exception {
+    assertIncompleteRemoval(response(0, 1), "version conflict");
+    verify(client, times(UpdateByQueryReconciler.MAX_ATTEMPTS))
+        .updateByQuery(any(UpdateByQueryRequest.class));
+  }
+
+  @Test
+  void removingLineageReportsAnUpdateTimeout() throws Exception {
+    final var result = response(0, 0);
+    when(result.timedOut()).thenReturn(true);
+    assertIncompleteRemoval(result, "timed out");
+  }
+
+  @Test
+  void removingLineageReportsAnUpdateShardFailure() throws Exception {
+    final var failure =
+        BulkIndexByScrollFailure.of(
+            f ->
+                f.index("tables")
+                    .id("to")
+                    .status(403)
+                    .cause(c -> c.type("cluster_block_exception").reason("writes blocked")));
+    final var result = response(0, 0);
+    when(result.failures()).thenReturn(List.of(failure));
+    assertIncompleteRemoval(result, "writes blocked");
+  }
+
+  private void assertIncompleteRemoval(final UpdateByQueryResponse result, final String reason)
+      throws Exception {
+    indicesHoldingMatches("tables");
+    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(result);
+    final var failure =
+        assertThrows(
+            IOException.class,
+            () ->
+                new ElasticSearchEntityManager(client)
+                    .updateChildren(
+                        List.of("all"),
+                        "upstreamLineage.docUniqueId",
+                        List.of("from--->to"),
+                        Pair.of("ctx._source.remove('upstreamLineage')", Map.of())));
+    assertTrue(failure.getMessage().contains(reason), failure::getMessage);
   }
 
   private void indicesHoldingMatches(String... names) throws Exception {

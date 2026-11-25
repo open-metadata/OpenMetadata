@@ -643,8 +643,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       Pair<String, Map<String, Object>> updates)
       throws IOException {
     if (!isClientAvailable) {
-      LOG.error("ElasticSearch client is not available. Cannot update children for indices.");
-      return;
+      throw new IOException(
+          "ElasticSearch client is not available. Cannot update children for indices.");
     }
     final Query query = anyOfFieldQuery(field, values);
     final List<String> indices = indicesHoldingMatches(indexNames, query);
@@ -668,7 +668,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                 .params(params))
                     .refresh(true));
 
-    runReconciled("updateChildren", request, true);
+    runReconciled("updateChildren", request, true).requireComplete();
 
     LOG.info("Successfully updated children in ElasticSearch for indices: {}", indices);
   }

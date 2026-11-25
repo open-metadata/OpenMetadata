@@ -8,10 +8,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Timestamp;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -25,10 +27,14 @@ import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.factories.TeamHierarchyTestFactory;
+import org.openmetadata.it.search.SearchClient;
+import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO;
@@ -36,6 +42,7 @@ import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchIndexRetryWorker;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.LineageUtil;
 
 @ExtendWith(TestNamespaceExtension.class)
 @Isolated("Owns the global retry queue and application worker lifecycle")
@@ -720,6 +727,93 @@ class SearchIndexRetryQueueIT {
   // ---------------------------------------------------------------------------
   // Worker integration tests
   // ---------------------------------------------------------------------------
+
+  @Test
+  void failedLineageRemovalQueuesTheDownstreamTableAndService(final TestNamespace ns)
+      throws Exception {
+    final var edge = LineageIndexWriteOrderIT.TableEdge.create(ns);
+    final var sourceDomain = assignDomain(ns, edge.from(), "source");
+    final var targetDomain = assignDomain(ns, edge.to(), "target");
+    edge.add();
+    edge.assertIndexed();
+    LineageIndexWriteOrderIT.assertIndexedEdge(sourceDomain, targetDomain);
+    withLineageWritesBlocked(
+        () -> {
+          LineageUtil.removeDomainLineage(edge.from().getId(), Entity.TABLE, sourceDomain);
+          edge.delete();
+        });
+    assertQueuedRemovals(
+        "deleteLineageFromSearch", edge.to().getEntityReference(), edge.to().getService());
+    assertQueuedRemovals("deleteDerivedLineageFromSearch", targetDomain);
+    assertRepairClearsIndexedEdges(
+        edge.to().getEntityReference(), edge.to().getService(), targetDomain);
+  }
+
+  private static void assertRepairClearsIndexedEdges(final EntityReference... downstream) {
+    final var worker = new SearchIndexRetryWorker(collectionDAO, searchRepository);
+    worker.start();
+    try {
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () -> {
+                for (final var entity : downstream) {
+                  assertTrue(
+                      LineageIndexWriteOrderIT.indexedEdges(entity).isEmpty(),
+                      entity.getFullyQualifiedName());
+                }
+              });
+    } finally {
+      worker.stop();
+    }
+  }
+
+  private static EntityReference assignDomain(
+      final TestNamespace ns, final Table table, final String name) {
+    final var domain = TeamHierarchyTestFactory.domain(ns, name).getEntityReference();
+    SdkClients.adminClient()
+        .tables()
+        .update(table.getId().toString(), table.withDomains(List.of(domain)));
+    return domain;
+  }
+
+  private static void withLineageWritesBlocked(final Runnable remove) {
+    final var search = new SearchClient(OssTestServer.defaultHandle());
+    final String settings =
+        "/"
+            + String.join(
+                ",",
+                writeIndex(Entity.TABLE),
+                writeIndex(Entity.DOMAIN),
+                writeIndex(Entity.DATABASE_SERVICE))
+            + "/_settings";
+    try {
+      search.put(settings, "{\"index.blocks.write\":true}");
+      remove.run();
+    } finally {
+      search.put(settings, "{\"index.blocks.write\":null}");
+    }
+  }
+
+  private static String writeIndex(final String entityType) {
+    return searchRepository.getWriteIndexName(searchRepository.getIndexMapping(entityType));
+  }
+
+  private static void assertQueuedRemovals(
+      final String operation, final EntityReference... expected) {
+    final var queued =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000).stream()
+            .filter(row -> row.getFailureReason().startsWith(operation + ":"))
+            .collect(
+                Collectors.toMap(
+                    SearchIndexRetryRecord::getEntityId, SearchIndexRetryRecord::getEntityFqn));
+    assertEquals(
+        Arrays.stream(expected)
+            .collect(
+                Collectors.toMap(
+                    ref -> ref.getId().toString(), EntityReference::getFullyQualifiedName)),
+        queued);
+  }
 
   @Test
   void testWorkerProcessesValidEntityRetry(TestNamespace ns) throws Exception {

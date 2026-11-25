@@ -173,11 +173,26 @@ class LineageRepositoryTest {
 
   @Test
   void aCompletedLineageDeletionCannotRemoveAReplacementEdge() throws Exception {
-    final Field clientField = LineageRepository.class.getDeclaredField("searchClient");
-    clientField.setAccessible(true);
-    final SearchClient client = (SearchClient) clientField.get(null);
     final AtomicBoolean indexed = new AtomicBoolean(true);
     final List<Runnable> backgroundTasks = new ArrayList<>();
+    simulateSearchRemoval(indexed, backgroundTasks);
+    deleteFromSearch();
+    assertFalse(
+        indexed.get(), "The deletion must be visible before its caller can add a replacement");
+    indexed.set(true);
+    backgroundTasks.forEach(Runnable::run);
+    assertTrue(indexed.get(), "A completed delete must not later erase the replacement");
+  }
+
+  private static SearchClient lineageSearchClient() throws Exception {
+    final Field clientField = LineageRepository.class.getDeclaredField("searchClient");
+    clientField.setAccessible(true);
+    return (SearchClient) clientField.get(null);
+  }
+
+  private static void simulateSearchRemoval(
+      final AtomicBoolean indexed, final List<Runnable> backgroundTasks) throws Exception {
+    final SearchClient client = lineageSearchClient();
     doAnswer(
             call -> {
               backgroundTasks.add(() -> indexed.set(false));
@@ -193,6 +208,9 @@ class LineageRepositoryTest {
         .when(client)
         .updateChildren(any(List.class), any(String.class), any(List.class), any(Pair.class));
     when(searchRepository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS)).thenReturn("all");
+  }
+
+  private void deleteFromSearch() throws Exception {
     final Method delete =
         LineageRepository.class.getDeclaredMethod(
             "deleteLineageFromSearch",
@@ -202,11 +220,6 @@ class LineageRepositoryTest {
     delete.setAccessible(true);
 
     delete.invoke(new LineageRepository(), fromEntity, toEntity, null);
-    assertFalse(
-        indexed.get(), "The deletion must be visible before its caller can add a replacement");
-    indexed.set(true);
-    backgroundTasks.forEach(Runnable::run);
-    assertTrue(indexed.get(), "A completed delete must not later erase the replacement");
   }
 
   @Test
