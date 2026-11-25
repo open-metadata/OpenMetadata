@@ -931,3 +931,20 @@ def test_resolve_topic_same_named_views_across_models_stay_ambiguous(omni_source
 def test_resolve_topic_same_model_collision_without_exact_spelling_stays_ambiguous(omni_source):
     _index(omni_source, ORDERS_TOPIC, ORDERS_VIEW)
     assert omni_source._resolve_topic("ORDERS") is None
+
+
+def test_resolve_topic_shared_base_view_named_like_a_topic_stays_ambiguous(omni_source):
+    """A reference that only matches a shared base view names the view, not a topic,
+    so a topic spelled like the view's leaf must not win the tie."""
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    files = {
+        "model": "",
+        "orders.topic": "base_view: schema__shared__orders\n",
+        "returns.topic": "base_view: schema__shared__orders\n",
+    }
+    omni_source.client.get_models = lambda *_: [OmniModel(id="m1", name="sales")]
+    omni_source.client.get_model_topics = lambda model: OmniApiClient._parse_model_yaml(model, files)
+    omni_source.prepare()
+
+    assert omni_source._resolve_topic("schema__shared__orders") is None

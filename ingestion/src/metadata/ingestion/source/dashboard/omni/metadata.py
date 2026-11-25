@@ -242,7 +242,9 @@ class OmniSource(DashboardServiceSource):
             if len(matches) == 1:
                 return matches[0]
             if len(matches) > 1:
-                exact = self._exact_name_match(table_ref, matches)
+                # Only a name-index hit names a topic; an alias hit names a shared
+                # base view, so a topic spelled like its leaf must not win the tie.
+                exact = self._exact_name_match(table_ref, matches) if index is self._topic_name_index else None
                 if exact:
                     return exact
                 logger.warning(
