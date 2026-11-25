@@ -161,6 +161,7 @@
     "lodash": "4.18.1",
     "lru-cache": "^11.5.3",
     "luxon": "^3.2.1",
+    "marked": "12.0.2",
     "oidc-client": "^1.11.5",
     "pdfjs-dist": "^4",
     "process": "^0.11.10",
