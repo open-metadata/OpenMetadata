@@ -47,10 +47,10 @@ public class MlModelCollection implements Iterable<MlModel> {
     }
 
     try {
-      ListParams pageParams = new ListParams();
-      pageParams.setLimit(params.getLimit());
+      ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<MlModel> response = client.mlModels().list(pageParams);

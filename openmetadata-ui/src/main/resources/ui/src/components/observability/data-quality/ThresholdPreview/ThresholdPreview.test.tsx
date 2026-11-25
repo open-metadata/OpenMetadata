@@ -357,10 +357,23 @@ describe('ThresholdPreview', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('warns instead of promising a tolerance no validator applies', () => {
+  it('states the at-expected-location tolerance a row-counting validator applies', () => {
     renderPreview(definitionOf('columnValuesToBeAtExpectedLocation'), {
       threshold: 5,
     });
+
+    expect(sentence()).toBe(
+      'Fail when more than 5 row(s) in column fail this test.'
+    );
+    expect(
+      screen.queryByTestId('threshold-not-enforced-warning')
+    ).not.toBeInTheDocument();
+  });
+
+  it('warns instead of promising a tolerance no known validator applies', () => {
+    // A custom definition that declares the threshold params but is not in any
+    // semantic map: the UI cannot promise how its validator reads the value.
+    renderPreview(definitionOf('someCustomTestDefinition'), { threshold: 5 });
 
     expect(
       screen.queryByTestId('threshold-preview-sentence')

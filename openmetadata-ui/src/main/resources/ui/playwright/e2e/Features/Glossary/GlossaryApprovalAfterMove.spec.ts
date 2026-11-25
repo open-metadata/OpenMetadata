@@ -12,6 +12,7 @@
  */
 
 import test, { expect, type APIRequestContext } from '@playwright/test';
+import { migratedTo } from '../../../constant/migration';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
@@ -196,246 +197,254 @@ test.describe(
   'Glossary - Approval After Move',
   { tag: ['@Features', '@Governance'] },
   () => {
-    test('approving an open task succeeds after the parent term is moved under a sibling', async ({
-      browser,
-    }) => {
-      test.setTimeout(5 * 60 * 1000);
+    test(
+      'approving an open task succeeds after the parent term is moved under a sibling',
+      migratedTo.javaIT(
+        'GlossaryTermMoveApprovalIT#test_approveApprovalTaskAfterMovingParentTerm_drivesMovedTermToApproved'
+      ),
+      async ({ browser }) => {
+        test.setTimeout(5 * 60 * 1000);
 
-      const { apiContext: adminApiContext, afterAction: adminAfterAction } =
-        await performAdminLogin(browser);
-      const { page: reviewerPage, afterAction: reviewerAfterAction } =
-        await performUserLogin(browser, reviewerUser);
+        const { apiContext: adminApiContext, afterAction: adminAfterAction } =
+          await performAdminLogin(browser);
+        const { page: reviewerPage, afterAction: reviewerAfterAction } =
+          await performUserLogin(browser, reviewerUser);
 
-      let originalTaskId: string | null = null;
-      let newChildFqn = '';
+        let originalTaskId: string | null = null;
+        let newChildFqn = '';
 
-      const { glossary, parent, child, container } =
-        await setupGlossaryWithPendingApproval(adminApiContext);
+        const { glossary, parent, child, container } =
+          await setupGlossaryWithPendingApproval(adminApiContext);
 
-      try {
-        await test.step('Verify exactly one open approval task exists for Eligible Securities', async () => {
-          await verifyTaskCreated(
-            reviewerPage,
-            child.responseData.fullyQualifiedName,
-            child.data.name
-          );
-          const { count, taskId } = await queryOpenApprovalTasks(
-            adminApiContext,
-            child.responseData.fullyQualifiedName
-          );
-          expect(count).toBe(1);
-          originalTaskId = taskId;
-        });
-
-        await test.step('Move Securities Lending under Product and Service', async () => {
-          await waitForApprovalWorkflowReady(
-            adminApiContext,
-            child.responseData.fullyQualifiedName
-          );
-          await moveParentUnderContainer(adminApiContext, parent, container);
-        });
-
-        await test.step('Wait for task accessible at new FQN: count=1, same task ID (no duplicate or replacement)', async () => {
-          await expect
-            .poll(
-              async () => {
-                const res = await adminApiContext
-                  .get(
-                    `/api/v1/glossaryTerms/${child.responseData.id}?fields=fullyQualifiedName`
-                  )
-                  .then((r) => r.json());
-                newChildFqn = res.fullyQualifiedName;
-
-                return newChildFqn;
-              },
-              {
-                message: 'child FQN to update after async move',
-                timeout: 120_000,
-                intervals: [3_000, 5_000, 10_000],
-              }
-            )
-            .not.toBe(child.responseData.fullyQualifiedName);
-
-          await verifyTaskCreated(reviewerPage, newChildFqn, child.data.name);
-
-          const { count: countNew, taskId: taskIdNew } =
-            await queryOpenApprovalTasks(adminApiContext, newChildFqn);
-          expect(countNew).toBe(1);
-          expect(taskIdNew).toBe(originalTaskId);
-        });
-
-        await test.step('Reviewer: expand tree and approve Eligible Securities', async () => {
-          await redirectToHomePage(reviewerPage);
-          await sidebarClick(reviewerPage, SidebarItem.GLOSSARY);
-          await selectActiveGlossary(
-            reviewerPage,
-            glossary.responseData.displayName
-          );
-          await performExpandAll(reviewerPage);
-
-          const approveButton = reviewerPage.getByTestId(
-            `${child.data.name}-approve-btn`
-          );
-          await expect(approveButton).toBeVisible({ timeout: 60_000 });
-
-          const taskResolve = waitForTaskResolveResponse(reviewerPage);
-          await approveButton.click();
-          await taskResolve;
-
-          await toastNotification(
-            reviewerPage,
-            /Task resolved successfully|Vote recorded/
-          );
-        });
-
-        await test.step('Verify Approved status and zero remaining open tasks', async () => {
-          await waitForTermStatus(
-            adminApiContext,
-            child.responseData.id,
-            newChildFqn,
-            'Approved'
-          );
-          const { count } = await queryOpenApprovalTasks(
-            adminApiContext,
-            newChildFqn
-          );
-          expect(count).toBe(0);
-        });
-      } finally {
-        await glossary.delete(adminApiContext);
-        await adminAfterAction();
-        await reviewerAfterAction();
-      }
-    });
-
-    test('rejecting an open task succeeds after the parent term is moved under a sibling', async ({
-      browser,
-    }) => {
-      test.setTimeout(5 * 60 * 1000);
-
-      const { apiContext: adminApiContext, afterAction: adminAfterAction } =
-        await performAdminLogin(browser);
-      const { page: reviewerPage, afterAction: reviewerAfterAction } =
-        await performUserLogin(browser, reviewerUser);
-
-      let originalTaskId: string | null = null;
-      let newChildFqn = '';
-
-      const { glossary, parent, child, container } =
-        await setupGlossaryWithPendingApproval(adminApiContext);
-
-      try {
-        await test.step('Verify exactly one open approval task exists for Eligible Securities', async () => {
-          await verifyTaskCreated(
-            reviewerPage,
-            child.responseData.fullyQualifiedName,
-            child.data.name
-          );
-          const { count, taskId } = await queryOpenApprovalTasks(
-            adminApiContext,
-            child.responseData.fullyQualifiedName
-          );
-          expect(count).toBe(1);
-          originalTaskId = taskId;
-        });
-
-        await test.step('Move Securities Lending under Product and Service', async () => {
-          await waitForApprovalWorkflowReady(
-            adminApiContext,
-            child.responseData.fullyQualifiedName
-          );
-          await moveParentUnderContainer(adminApiContext, parent, container);
-        });
-
-        await test.step('Wait for task accessible at new FQN: count=1, same task ID (no duplicate or replacement)', async () => {
-          await expect
-            .poll(
-              async () => {
-                const res = await adminApiContext
-                  .get(
-                    `/api/v1/glossaryTerms/${child.responseData.id}?fields=fullyQualifiedName`
-                  )
-                  .then((r) => r.json());
-                newChildFqn = res.fullyQualifiedName;
-
-                return newChildFqn;
-              },
-              {
-                message: 'child FQN to update after async move',
-                timeout: 120_000,
-                intervals: [3_000, 5_000, 10_000],
-              }
-            )
-            .not.toBe(child.responseData.fullyQualifiedName);
-
-          await verifyTaskCreated(reviewerPage, newChildFqn, child.data.name);
-
-          const { count: countNew, taskId: taskIdNew } =
-            await queryOpenApprovalTasks(adminApiContext, newChildFqn);
-          expect(countNew).toBe(1);
-          expect(taskIdNew).toBe(originalTaskId);
-        });
-
-        await test.step('Reviewer: expand tree and reject Eligible Securities', async () => {
-          await redirectToHomePage(reviewerPage);
-          await sidebarClick(reviewerPage, SidebarItem.GLOSSARY);
-          await selectActiveGlossary(
-            reviewerPage,
-            glossary.responseData.displayName
-          );
-          await performExpandAll(reviewerPage);
-
-          const rejectButton = reviewerPage.getByTestId(
-            `${child.data.name}-reject-btn`
-          );
-          await expect(rejectButton).toBeVisible({ timeout: 60_000 });
-
-          const taskResolve = waitForTaskResolveResponse(reviewerPage);
-          await rejectButton.click();
-          const rejectDialog = reviewerPage.getByRole('dialog', {
-            name: 'Reject',
+        try {
+          await test.step('Verify exactly one open approval task exists for Eligible Securities', async () => {
+            await verifyTaskCreated(
+              reviewerPage,
+              child.responseData.fullyQualifiedName,
+              child.data.name
+            );
+            const { count, taskId } = await queryOpenApprovalTasks(
+              adminApiContext,
+              child.responseData.fullyQualifiedName
+            );
+            expect(count).toBe(1);
+            originalTaskId = taskId;
           });
-          const requiresComment = await Promise.race([
-            rejectDialog
-              .waitFor({ state: 'visible' })
-              .then(() => true as const),
-            taskResolve.then(() => false as const),
-          ]);
 
-          if (requiresComment) {
-            await rejectDialog
-              .getByRole('textbox', { name: 'Comment *' })
-              .fill('Rejected after moving the parent glossary term');
+          await test.step('Move Securities Lending under Product and Service', async () => {
+            await waitForApprovalWorkflowReady(
+              adminApiContext,
+              child.responseData.fullyQualifiedName
+            );
+            await moveParentUnderContainer(adminApiContext, parent, container);
+          });
 
-            const confirmReject = rejectDialog.getByRole('button', {
-              name: 'Reject',
-              exact: true,
-            });
-            await expect(confirmReject).toBeEnabled();
-            await confirmReject.click();
-          }
+          await test.step('Wait for task accessible at new FQN: count=1, same task ID (no duplicate or replacement)', async () => {
+            await expect
+              .poll(
+                async () => {
+                  const res = await adminApiContext
+                    .get(
+                      `/api/v1/glossaryTerms/${child.responseData.id}?fields=fullyQualifiedName`
+                    )
+                    .then((r) => r.json());
+                  newChildFqn = res.fullyQualifiedName;
 
-          expect((await taskResolve).ok()).toBe(true);
-        });
+                  return newChildFqn;
+                },
+                {
+                  message: 'child FQN to update after async move',
+                  timeout: 120_000,
+                  intervals: [3_000, 5_000, 10_000],
+                }
+              )
+              .not.toBe(child.responseData.fullyQualifiedName);
 
-        await test.step('Verify term reaches Rejected status and zero remaining open tasks', async () => {
-          await waitForTermStatus(
-            adminApiContext,
-            child.responseData.id,
-            newChildFqn,
-            'Rejected'
-          );
-          const { count } = await queryOpenApprovalTasks(
-            adminApiContext,
-            newChildFqn
-          );
-          expect(count).toBe(0);
-        });
-      } finally {
-        await glossary.delete(adminApiContext);
-        await adminAfterAction();
-        await reviewerAfterAction();
+            await verifyTaskCreated(reviewerPage, newChildFqn, child.data.name);
+
+            const { count: countNew, taskId: taskIdNew } =
+              await queryOpenApprovalTasks(adminApiContext, newChildFqn);
+            expect(countNew).toBe(1);
+            expect(taskIdNew).toBe(originalTaskId);
+          });
+
+          await test.step('Reviewer: expand tree and approve Eligible Securities', async () => {
+            await redirectToHomePage(reviewerPage);
+            await sidebarClick(reviewerPage, SidebarItem.GLOSSARY);
+            await selectActiveGlossary(
+              reviewerPage,
+              glossary.responseData.displayName
+            );
+            await performExpandAll(reviewerPage);
+
+            const approveButton = reviewerPage.getByTestId(
+              `${child.data.name}-approve-btn`
+            );
+            await expect(approveButton).toBeVisible({ timeout: 60_000 });
+
+            const taskResolve = waitForTaskResolveResponse(reviewerPage);
+            await approveButton.click();
+            await taskResolve;
+
+            await toastNotification(
+              reviewerPage,
+              /Task resolved successfully|Vote recorded/
+            );
+          });
+
+          await test.step('Verify Approved status and zero remaining open tasks', async () => {
+            await waitForTermStatus(
+              adminApiContext,
+              child.responseData.id,
+              newChildFqn,
+              'Approved'
+            );
+            const { count } = await queryOpenApprovalTasks(
+              adminApiContext,
+              newChildFqn
+            );
+            expect(count).toBe(0);
+          });
+        } finally {
+          await glossary.delete(adminApiContext);
+          await adminAfterAction();
+          await reviewerAfterAction();
+        }
       }
-    });
+    );
+
+    test(
+      'rejecting an open task succeeds after the parent term is moved under a sibling',
+      migratedTo.javaIT(
+        'GlossaryTermMoveApprovalIT#test_rejectApprovalTaskAfterMovingParentTerm_drivesMovedTermToRejected'
+      ),
+      async ({ browser }) => {
+        test.setTimeout(5 * 60 * 1000);
+
+        const { apiContext: adminApiContext, afterAction: adminAfterAction } =
+          await performAdminLogin(browser);
+        const { page: reviewerPage, afterAction: reviewerAfterAction } =
+          await performUserLogin(browser, reviewerUser);
+
+        let originalTaskId: string | null = null;
+        let newChildFqn = '';
+
+        const { glossary, parent, child, container } =
+          await setupGlossaryWithPendingApproval(adminApiContext);
+
+        try {
+          await test.step('Verify exactly one open approval task exists for Eligible Securities', async () => {
+            await verifyTaskCreated(
+              reviewerPage,
+              child.responseData.fullyQualifiedName,
+              child.data.name
+            );
+            const { count, taskId } = await queryOpenApprovalTasks(
+              adminApiContext,
+              child.responseData.fullyQualifiedName
+            );
+            expect(count).toBe(1);
+            originalTaskId = taskId;
+          });
+
+          await test.step('Move Securities Lending under Product and Service', async () => {
+            await waitForApprovalWorkflowReady(
+              adminApiContext,
+              child.responseData.fullyQualifiedName
+            );
+            await moveParentUnderContainer(adminApiContext, parent, container);
+          });
+
+          await test.step('Wait for task accessible at new FQN: count=1, same task ID (no duplicate or replacement)', async () => {
+            await expect
+              .poll(
+                async () => {
+                  const res = await adminApiContext
+                    .get(
+                      `/api/v1/glossaryTerms/${child.responseData.id}?fields=fullyQualifiedName`
+                    )
+                    .then((r) => r.json());
+                  newChildFqn = res.fullyQualifiedName;
+
+                  return newChildFqn;
+                },
+                {
+                  message: 'child FQN to update after async move',
+                  timeout: 120_000,
+                  intervals: [3_000, 5_000, 10_000],
+                }
+              )
+              .not.toBe(child.responseData.fullyQualifiedName);
+
+            await verifyTaskCreated(reviewerPage, newChildFqn, child.data.name);
+
+            const { count: countNew, taskId: taskIdNew } =
+              await queryOpenApprovalTasks(adminApiContext, newChildFqn);
+            expect(countNew).toBe(1);
+            expect(taskIdNew).toBe(originalTaskId);
+          });
+
+          await test.step('Reviewer: expand tree and reject Eligible Securities', async () => {
+            await redirectToHomePage(reviewerPage);
+            await sidebarClick(reviewerPage, SidebarItem.GLOSSARY);
+            await selectActiveGlossary(
+              reviewerPage,
+              glossary.responseData.displayName
+            );
+            await performExpandAll(reviewerPage);
+
+            const rejectButton = reviewerPage.getByTestId(
+              `${child.data.name}-reject-btn`
+            );
+            await expect(rejectButton).toBeVisible({ timeout: 60_000 });
+
+            const taskResolve = waitForTaskResolveResponse(reviewerPage);
+            await rejectButton.click();
+            const rejectDialog = reviewerPage.getByRole('dialog', {
+              name: 'Reject',
+            });
+            const requiresComment = await Promise.race([
+              rejectDialog
+                .waitFor({ state: 'visible' })
+                .then(() => true as const),
+              taskResolve.then(() => false as const),
+            ]);
+
+            if (requiresComment) {
+              await rejectDialog
+                .getByRole('textbox', { name: 'Comment *' })
+                .fill('Rejected after moving the parent glossary term');
+
+              const confirmReject = rejectDialog.getByRole('button', {
+                name: 'Reject',
+                exact: true,
+              });
+              await expect(confirmReject).toBeEnabled();
+              await confirmReject.click();
+            }
+
+            expect((await taskResolve).ok()).toBe(true);
+          });
+
+          await test.step('Verify term reaches Rejected status and zero remaining open tasks', async () => {
+            await waitForTermStatus(
+              adminApiContext,
+              child.responseData.id,
+              newChildFqn,
+              'Rejected'
+            );
+            const { count } = await queryOpenApprovalTasks(
+              adminApiContext,
+              newChildFqn
+            );
+            expect(count).toBe(0);
+          });
+        } finally {
+          await glossary.delete(adminApiContext);
+          await adminAfterAction();
+          await reviewerAfterAction();
+        }
+      }
+    );
   }
 );
