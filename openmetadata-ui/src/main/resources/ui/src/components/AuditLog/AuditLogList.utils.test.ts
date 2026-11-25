@@ -197,11 +197,13 @@ describe('AuditLogList.utils', () => {
 
     it('should treat a single reference object as a one-item list', () => {
       expect(
-        toChangeValue({ type: 'team', name: 'Engineering' })
+        toChangeValue({ id: 't-1', type: 'team', name: 'Engineering' })
       ).toMatchObject({
         type: 'refs',
         refs: [
           {
+            id: 't-1',
+            name: 'Engineering',
             fqn: 'Engineering',
             entityType: 'team',
             refKind: 'entity',

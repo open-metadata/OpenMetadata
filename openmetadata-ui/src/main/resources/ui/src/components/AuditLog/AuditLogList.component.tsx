@@ -110,9 +110,13 @@ const getEntityHref = (
   return getEntityLinkFromType(entityFQN, normalizedType) || undefined;
 };
 
+/** Inline values of a change line; lists of objects render below it as records instead. */
 const getLineValues = (
   row: ChangeRow
 ): { value: ChangeValue; tone: ValueTone }[] => {
+  if (row.newValue?.type === 'records' || row.oldValue?.type === 'records') {
+    return [];
+  }
   if (row.oldValue && row.newValue) {
     return [
       { value: row.oldValue, tone: 'before' },

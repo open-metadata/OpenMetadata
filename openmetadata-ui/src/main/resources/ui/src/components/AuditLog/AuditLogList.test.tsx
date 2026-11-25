@@ -412,6 +412,30 @@ describe('AuditLogList', () => {
     );
   });
 
+  it('should show only the new records, without an arrow, when both sides are lists', () => {
+    renderLogs([
+      updateLog({
+        fieldsUpdated: [
+          {
+            name: 'testCaseResultSummary',
+            oldValue: JSON.stringify([
+              { status: 'Failed', testCaseName: 'old_case' },
+            ]),
+            newValue: JSON.stringify([
+              { status: 'Success', testCaseName: 'new_case' },
+            ]),
+          },
+        ],
+      }),
+    ]);
+
+    const row = screen.getByTestId('change-row');
+
+    expect(row).not.toHaveTextContent('→');
+    expect(screen.getByTestId('change-record')).toHaveTextContent('new_case');
+    expect(row).not.toHaveTextContent('old_case');
+  });
+
   it('should cap records and say how many are hidden', () => {
     const rows = Array.from({ length: 7 }, (_, index) => ({
       name: `row-${index}`,
