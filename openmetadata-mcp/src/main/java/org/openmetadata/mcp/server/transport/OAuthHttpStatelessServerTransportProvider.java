@@ -1,7 +1,11 @@
 package org.openmetadata.mcp.server.transport;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.socket.SocketAddressFilter.validatePrefixedTokenRequest;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.net.InetAddresses;
@@ -12,6 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -35,13 +40,16 @@ import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
 import org.openmetadata.mcp.server.auth.html.HtmlTemplates;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
+import org.openmetadata.mcp.server.auth.model.AuthorizationErrorResponse;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor;
 import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor.InvalidClientCredentialsException;
+import org.openmetadata.mcp.server.auth.util.McpResourceUri;
 import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.McpClientPolicy;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -88,6 +96,10 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private volatile String contextPath;
 
   static final String BEARER_PREFIX = "Bearer ";
+  private static final String RESOURCE_PARAM = "resource";
+  private static final String AUDIENCE_CLAIM = "aud";
+  private static final String INVALID_AUDIENCE_MESSAGE =
+      "Token audience does not match this MCP resource.";
 
   // Headers a browser-based MCP client sends on its POST. Any header missing from this list makes
   // the CORS preflight fail, and the user just sees a network error.
@@ -191,8 +203,10 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     this.oauthMetadata = metadata;
     this.protectedResourceMetadata = protectedResourceMetadata;
-    // Same ordering as rebuildMetadata: the metadata is in place before the issuer is published.
+    // Same ordering as rebuildMetadata: the metadata is in place before the issuer and resource
+    // are published.
     authProvider.setIssuer(issuer);
+    authProvider.setResource(protectedResourceMetadata.getResource());
     this.authorizationHandler = new AuthorizationHandler(authProvider);
     this.registrationHandler = new RegistrationHandler(new OAuthClientRepository());
     this.revocationHandler = new RevocationHandler(new OAuthTokenRepository());
@@ -306,8 +320,18 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     // Note this only closes the gap inside this method. A base URL change while a login is already
     // in progress still moves the issuer under that client, which no ordering here can prevent.
     authProvider.setIssuer(issuer);
+    authProvider.setResource(newResourceMetadata.getResource());
 
     LOG.info("OAuth metadata rebuilt with base URL: {}", baseUrl);
+  }
+
+  /**
+   * Returns the canonical protected resource URI advertised by this transport (RFC 9728), or {@code
+   * null} if protected resource metadata has not been initialized.
+   */
+  public URI getProtectedResourceUri() {
+    ProtectedResourceMetadata metadata = this.protectedResourceMetadata;
+    return metadata != null ? metadata.getResource() : null;
   }
 
   /**
@@ -448,6 +472,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     } else {
       try {
         validatePrefixedTokenRequest(jwtFilter, tokenWithType);
+        validateTokenAudience(tokenWithType, getProtectedResourceUri());
         authenticated = true;
       } catch (CredentialUnavailableException e) {
         LOG.debug("Bearer token could not be confirmed", e);
@@ -473,6 +498,66 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       presented = !authorizationHeader.substring(BEARER_PREFIX.length()).isBlank();
     }
     return presented;
+  }
+
+  /**
+   * Enforces RFC 8707 audience binding on OpenMetadata-signed JWTs carrying an {@code aud} claim.
+   *
+   * <p>External IdP tokens (non-OpenMetadata {@code kid}) are validated by {@code
+   * ProviderTokenValidator} instead. OpenMetadata-signed tokens without an {@code aud} claim
+   * (PATs, bot tokens, web session tokens, and pre-upgrade MCP tokens) remain accepted. Once an
+   * OpenMetadata-signed token carries {@code aud}, it must match {@code expectedResource} via
+   * {@link McpResourceUri#matches}, failing closed on malformed claim shapes or an unset expected
+   * resource.
+   */
+  public static void validateTokenAudience(final String tokenOrHeader, final URI expectedResource) {
+    final DecodedJWT jwt = decodeBearerToken(tokenOrHeader);
+    if (!JwtFilter.isOpenMetadataKeyId(jwt.getKeyId())) {
+      return;
+    }
+    if (jwt.getClaim(AUDIENCE_CLAIM).isMissing()) {
+      return;
+    }
+    if (!hasMatchingAudience(jwt.getAudience(), expectedResource)) {
+      throw AuthenticationException.getInvalidTokenException(INVALID_AUDIENCE_MESSAGE);
+    }
+  }
+
+  private static DecodedJWT decodeBearerToken(final String tokenOrHeader) {
+    final String rawToken = stripBearerPrefix(tokenOrHeader);
+    if (nullOrEmpty(rawToken) || rawToken.isBlank()) {
+      throw AuthenticationException.getTokenNotPresentException();
+    }
+    try {
+      return JWT.decode(rawToken);
+    } catch (JWTDecodeException e) {
+      throw AuthenticationException.getInvalidTokenException("Invalid token.", e);
+    }
+  }
+
+  private static String stripBearerPrefix(final String tokenOrHeader) {
+    if (tokenOrHeader != null
+        && tokenOrHeader.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
+      return tokenOrHeader.substring(BEARER_PREFIX.length());
+    }
+    return tokenOrHeader;
+  }
+
+  private static boolean hasMatchingAudience(
+      final List<String> audiences, final URI expectedResource) {
+    if (expectedResource == null || nullOrEmpty(audiences)) {
+      return false;
+    }
+    boolean matched = false;
+    for (final String audience : audiences) {
+      if (audience == null) {
+        return false;
+      }
+      if (McpResourceUri.matches(audience, expectedResource)) {
+        matched = true;
+      }
+    }
+    return matched;
   }
 
   /**
@@ -724,8 +809,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
             .setRequestContext(request, response);
       }
 
+      List<String> resourceValues = extractResourceValues(request);
       AuthorizationHandler.AuthorizationResponse authResponse =
-          authorizationHandler.handle(params).join();
+          authorizationHandler.handle(params, resourceValues).join();
 
       String redirectUrl = authResponse.getRedirectUrl();
       if (redirectUrl != null && response.isCommitted()) {
@@ -762,14 +848,23 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         // would hit a closed stream (EofException).
         LOG.debug("SSO login redirect already initiated by provider; response committed");
       } else {
-        // No redirect URL — error case where redirect_uri is invalid or client is unknown.
-        // Per RFC 6749, display the error to the user instead of redirecting.
+        // No redirect URL — error case where redirect_uri is invalid, client is unknown, or policy
+        // blocks error callbacks. Per RFC 6749, display the error directly instead of redirecting.
         setCorsHeaders(request, response);
         response.setContentType("application/json");
         response.setStatus(400);
+        AuthorizationErrorResponse authError = authResponse.getError();
         Map<String, String> error = new HashMap<>();
-        error.put("error", "invalid_request");
-        error.put("error_description", "Authorization request failed");
+        error.put(
+            "error",
+            authError != null && !nullOrEmpty(authError.getError())
+                ? authError.getError()
+                : "invalid_request");
+        error.put(
+            "error_description",
+            authError != null && !nullOrEmpty(authError.getErrorDescription())
+                ? authError.getErrorDescription()
+                : "Authorization request failed");
         getObjectMapper().writeValue(response.getOutputStream(), error);
       }
 
@@ -861,6 +956,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         throw new TokenException("invalid_request", "grant_type parameter is required");
       }
 
+      List<String> resourceValues = extractResourceValues(request);
+
       if ("authorization_code".equals(grantType)) {
         // Handle authorization code exchange
         String code = params.get("code");
@@ -870,6 +967,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         if (code == null || code.isEmpty()) {
           throw new TokenException("invalid_request", "code parameter is required");
         }
+
+        validateRequestedResource(resourceValues);
 
         // Load the authorization code to validate client_id and redirect_uri
         AuthorizationCode storedCode = authProvider.loadAuthorizationCode(client, code).join();
@@ -917,6 +1016,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
         if (refreshTokenValue == null || refreshTokenValue.isEmpty()) {
           throw new TokenException("invalid_request", "refresh_token parameter is required");
         }
+
+        validateRequestedResource(resourceValues);
+
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setToken(refreshTokenValue);
         refreshToken.setClientId(clientId);
@@ -1279,6 +1381,24 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     body.put("error", error);
     body.put("error_description", description);
     getObjectMapper().writeValue(response.getOutputStream(), body);
+  }
+
+  private static List<String> extractResourceValues(HttpServletRequest request) {
+    String[] values = request.getParameterValues(RESOURCE_PARAM);
+    if (values == null) {
+      Map<String, String[]> paramMap = request.getParameterMap();
+      if (paramMap != null) {
+        values = paramMap.get(RESOURCE_PARAM);
+      }
+    }
+    return values != null ? Arrays.asList(values) : null;
+  }
+
+  private void validateRequestedResource(List<String> resourceValues) throws TokenException {
+    if (!McpResourceUri.validateRequested(resourceValues, getProtectedResourceUri())) {
+      throw new TokenException(
+          McpResourceUri.INVALID_TARGET_ERROR, McpResourceUri.INVALID_TARGET_DESCRIPTION);
+    }
   }
 
   private static String sanitizeRedirectUrlForLogging(String url) {

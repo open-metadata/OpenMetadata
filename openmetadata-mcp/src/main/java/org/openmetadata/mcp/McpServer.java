@@ -10,6 +10,7 @@ import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpStatelessServerTransport;
 import jakarta.servlet.DispatcherType;
+import java.net.URI;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -60,6 +61,7 @@ public class McpServer implements McpServerProvider {
   protected DefaultPromptsContext promptsContext;
   private Environment environment;
   private volatile String mcpBotName;
+  volatile Supplier<URI> expectedResourceSupplier;
 
   // Default constructor for dynamic loading
   public McpServer() {
@@ -311,6 +313,7 @@ public class McpServer implements McpServerProvider {
               authProvider,
               allowedOrigins);
       statelessOauthTransport.setContextPath(contextHandler.getContextPath());
+      this.expectedResourceSupplier = statelessOauthTransport::getProtectedResourceUri;
       McpStatelessSyncServer server =
           buildServer(
               statelessOauthTransport,
@@ -529,6 +532,11 @@ public class McpServer implements McpServerProvider {
       securityContext = jwtFilter.getCatalogSecurityContext(token);
     } else {
       securityContext = jwtFilter.getCatalogSecurityContext(token, activePersona);
+    }
+    Supplier<URI> resourceSupplier = this.expectedResourceSupplier;
+    if (resourceSupplier != null) {
+      OAuthHttpStatelessServerTransportProvider.validateTokenAudience(
+          token, resourceSupplier.get());
     }
     return securityContext;
   }

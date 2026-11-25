@@ -36,6 +36,7 @@ import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestReposito
 import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
+import org.openmetadata.mcp.server.auth.util.McpResourceUri;
 import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.ServiceTokenType;
@@ -139,6 +140,11 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   // sets it again whenever the configured base URL changes while the server is running.
   private volatile String issuer;
 
+  // Canonical protected resource URI advertised in ProtectedResourceMetadata (RFC 9728) and
+  // stamped as the JWT "aud" claim on minted MCP access tokens (RFC 8707). Volatile because the
+  // transport provider updates it when the configured base URL changes while the server is running.
+  private volatile URI resource;
+
   private final McpGrantTransaction grantTransaction = new McpGrantTransaction();
 
   public UserSSOOAuthProvider(JWTTokenGenerator jwtGenerator) {
@@ -160,6 +166,23 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   @Override
   public void setIssuer(String issuer) {
     this.issuer = issuer;
+  }
+
+  @Override
+  public URI getResource() {
+    URI current = resource;
+    if (current != null) {
+      return current;
+    }
+    String currentIssuer = issuer;
+    return !nullOrEmpty(currentIssuer) && !currentIssuer.isBlank()
+        ? URI.create(currentIssuer)
+        : null;
+  }
+
+  @Override
+  public void setResource(URI resource) {
+    this.resource = resource;
   }
 
   /**
@@ -1056,12 +1079,20 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   }
 
   /**
-   * Mints an access token naming the client it was issued to, and stores it. JwtFilter refuses one
-   * that is no longer stored, which is how a revoke reaches every server.
+   * Mints an access token naming the client it was issued to and bound to this MCP server's
+   * canonical resource URI via {@code aud}, then stores its hash. JwtFilter refuses one that is no
+   * longer stored, which is how a revoke reaches every server.
    * ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server
    */
   private JWTAuthMechanism issueAccessToken(
       User user, String userName, String clientId, List<String> scopes) {
+    URI targetResource = getResource();
+    String audience =
+        targetResource != null
+            ? McpResourceUri.canonicalize(targetResource)
+                .map(URI::toString)
+                .orElse(targetResource.toString())
+            : null;
     JWTAuthMechanism jwtAuth =
         jwtGenerator.generateJWTToken(
             userName,
@@ -1072,7 +1103,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
             false,
             ServiceTokenType.OM_USER,
             scopes,
-            clientId);
+            clientId,
+            audience);
     tokenRepository.storeAccessToken(
         new AccessToken(jwtAuth.getJWTToken(), clientId, scopes, jwtAuth.getJWTTokenExpiresAt()),
         clientId,

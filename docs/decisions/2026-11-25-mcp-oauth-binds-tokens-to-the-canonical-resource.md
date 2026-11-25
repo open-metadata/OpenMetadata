@@ -1,0 +1,73 @@
+# MCP OAuth validates the RFC 8707 resource parameter against the canonical resource URI and binds minted tokens via aud
+
+- **Status:** Accepted
+- **Revisions:** v1 2026-11-25 (initial)
+- **Deciders:** deepinsight coder
+- **Guard:** `McpResourceUriTest`, `AuthorizationHandlerTest`,
+  `OAuthHttpStatelessServerTransportProviderTest`, `JWTTokenGeneratorTest`,
+  `UserSSOOAuthProviderTest`, `McpServerRequestContextTest`,
+  `SsoMcpSignInChecksIT#resourceParameterIsEnforcedAcrossAuthorizeTokenAndResourceServer`
+- **Related:** #38479,
+  ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path,
+  ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server,
+  ADR:2026-11-02-mcp-authorization-errors-reach-a-remote-callback-through-a-link
+
+## Context
+
+The MCP authorization specification requires RFC 8707 resource indicators so that an access token
+requested for one MCP server cannot be issued for, or replayed against, another. Previously,
+`/mcp/authorize` and `/mcp/token` ignored the `resource` parameter (and collapsed repeated query or
+form values via `values[0]`), minted MCP access tokens carried no `aud` claim, and `/mcp` performed
+no audience check on OpenMetadata-signed JWTs.
+
+At the same time, several real MCP clients (`Codex CLI`, `mcp-remote`) still omit `resource`,
+OpenMetadata-signed PATs, bot JWTs, and web session tokens carry no `aud` claim, and external IdP
+OIDC Bearer tokens carry the OIDC `client_id` in `aud` (validated by `ProviderTokenValidator`).
+
+## Decision
+
+- **Single canonical resource source:** The server's canonical resource URI is always
+  `protectedResourceMetadata.getResource()` (`<baseUrl>/mcp`, honoring
+  ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path and never trusting `Host` or
+  `X-Forwarded-*`). It is published to the OAuth provider alongside `issuer` at startup and on
+  every runtime `baseUrl` reload.
+- **Strict RFC 8707 / RFC 3986 validation (`McpResourceUri`):** Every `resource` parameter value
+  from `request.getParameterValues("resource")` is validated on `/mcp/authorize` (after `client_id`
+  and `redirect_uri` verification, before creating a pending login or contacting the IdP) and on
+  `/mcp/token` for both `authorization_code` and `refresh_token` grants (before consuming the code
+  or rotating the refresh token). Only absolute hierarchical `http`/`https` URIs up to 2048
+  characters without userinfo, query, fragment, dangling port colons, invalid ports, dot-segments,
+  or repeated slashes are accepted; scheme and host fold case with `Locale.ROOT`, explicit default
+  ports (`:80` / `:443`) normalize away, and raw paths compare case-sensitively without
+  percent-decoding while allowing at most one trailing slash. Any invalid or mismatched value
+  returns `invalid_target` with a static error description that never echoes untrusted input.
+- **Backward-compatible omission:** An absent `resource` parameter (`null`) remains accepted on
+  `/mcp/authorize` and `/mcp/token` so legacy MCP clients keep signing in; an empty `resource=` is
+  present and rejected with `invalid_target`.
+- **Audience binding and enforcement:** Minted MCP OAuth access tokens carry the canonical resource
+  URI as a single-string JWT `aud` claim via an additive `JWTTokenGenerator` overload. On `/mcp`
+  (in `OAuthHttpStatelessServerTransportProvider.authenticateRequest` and defense-in-depth in
+  `McpServer.securityContextFrom`), OpenMetadata-signed JWTs (`JwtFilter.isOpenMetadataKeyId`) that
+  carry an `aud` claim (`!jwt.getClaim("aud").isMissing()`) must match the canonical resource URI,
+  failing closed on malformed claim types (`null`, empty arrays, non-strings, null array elements)
+  or an unresolved expected resource. OpenMetadata-signed tokens without `aud` (PATs, bot tokens,
+  session tokens, and pre-upgrade 10-minute MCP tokens) and non-OpenMetadata IdP tokens keep
+  working unchanged.
+- **No database schema changes:** OpenMetadata hosts a single MCP protected resource per
+  deployment, so `resource` is not persisted on `mcp_pending_auth_requests`,
+  `oauth_authorization_codes`, or `oauth_refresh_tokens`. This avoids guarded DDL migrations across
+  MySQL and PostgreSQL and lets 30-day refresh tokens survive an operator fixing `baseUrl`.
+
+## Consequences
+
+- Foreign, malformed, or multi-value-smuggled `resource` requests are stopped at `/mcp/authorize`
+  and `/mcp/token` without creating pending requests, contacting the IdP, burning valid
+  authorization codes, or invalidating valid refresh tokens, while preserving
+  ADR:2026-11-02-mcp-authorization-errors-reach-a-remote-callback-through-a-link for remote HTTPS
+  callbacks.
+- Tokens minted for another MCP server (including another OpenMetadata instance sharing default
+  signing keys, or an old `baseUrl`) are refused at `/mcp` with HTTP 401 and
+  `WWW-Authenticate: Bearer ..., error="invalid_token"`.
+- Revisit persisting `resource` per grant only if OpenMetadata ever serves multiple distinct MCP
+  protected resources from one authorization server, or if strict rejection of omitted `resource`
+  becomes required once legacy clients are retired.

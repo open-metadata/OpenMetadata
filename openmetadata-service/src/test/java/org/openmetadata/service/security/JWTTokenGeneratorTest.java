@@ -17,9 +17,12 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Ticker;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -27,6 +30,7 @@ import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -412,6 +416,81 @@ class JWTTokenGeneratorTest {
             .isMissing());
     // Minted in the same second for the same user and client, yet distinct: the store keys by hash.
     assertNotEquals(mcpToken.getJWTToken(), sameSecondToken.getJWTToken());
+  }
+
+  @Test
+  void mcpAccessTokenWithAudienceWritesSingleStringAudAndPreservesOtherClaims() throws Exception {
+    String canonicalResource = "https://om.example/data-catalog/mcp";
+    JWTAuthMechanism boundToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam",
+            Set.of(),
+            false,
+            "sam@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of("openid", "profile"),
+            "mcp-client",
+            canonicalResource);
+
+    DecodedJWT jwt = decodedJWT(boundToken.getJWTToken());
+    assertEquals(List.of(canonicalResource), jwt.getAudience());
+    assertEquals("mcp-client", jwt.getClaim(JWTTokenGenerator.CLIENT_ID_CLAIM).asString());
+    assertEquals("openid profile", jwt.getClaim(JWTTokenGenerator.SCOPE_CLAIM).asString());
+    assertNotNull(jwt.getId());
+
+    String payloadJson =
+        new String(Base64.getUrlDecoder().decode(jwt.getPayload()), StandardCharsets.UTF_8);
+    JsonNode payload = new ObjectMapper().readTree(payloadJson);
+    assertTrue(payload.get("aud").isTextual());
+    assertEquals(canonicalResource, payload.get("aud").asText());
+  }
+
+  @Test
+  void omittingOrPassingBlankAudienceOmitsAudClaim() {
+    JWTAuthMechanism nineArgToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam",
+            Set.of(),
+            false,
+            "sam@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of("openid"),
+            "mcp-client");
+    JWTAuthMechanism nullAudienceToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam",
+            Set.of(),
+            false,
+            "sam@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of("openid"),
+            "mcp-client",
+            null);
+    JWTAuthMechanism blankAudienceToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam",
+            Set.of(),
+            false,
+            "sam@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of("openid"),
+            "mcp-client",
+            "   ");
+
+    for (JWTAuthMechanism mechanism :
+        List.of(nineArgToken, nullAudienceToken, blankAudienceToken)) {
+      DecodedJWT jwt = decodedJWT(mechanism.getJWTToken());
+      assertTrue(jwt.getClaim("aud").isMissing());
+      assertNull(jwt.getAudience());
+    }
   }
 
   @Test

@@ -856,7 +856,8 @@ public class JwtFilter implements ContainerRequestFilter {
     return isOpenMetadataKeyId(jwt.getKeyId());
   }
 
-  private static boolean isOpenMetadataKeyId(String tokenKeyId) {
+  /** Returns true when {@code tokenKeyId} matches this deployment's OpenMetadata signing key id. */
+  public static boolean isOpenMetadataKeyId(String tokenKeyId) {
     String openMetadataKeyId = JWTTokenGenerator.getInstance().getKid();
     return !nullOrEmpty(openMetadataKeyId) && openMetadataKeyId.equals(tokenKeyId);
   }

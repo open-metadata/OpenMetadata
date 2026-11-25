@@ -1,5 +1,6 @@
 package org.openmetadata.mcp.auth;
 
+import java.net.URI;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.openmetadata.mcp.auth.exception.AuthorizeException;
@@ -24,6 +25,24 @@ public interface OAuthAuthorizationServerProvider {
    * @param issuer The issuer identifier.
    */
   void setIssuer(String issuer);
+
+  /**
+   * Returns the canonical protected resource URI (RFC 8707 / RFC 9728) served by this server.
+   * Defaults to the issuer URI when non-blank.
+   * @return The canonical protected resource URI, or null if not resolved yet.
+   */
+  default URI getResource() {
+    String issuer = getIssuer();
+    return issuer != null && !issuer.isBlank() ? URI.create(issuer) : null;
+  }
+
+  /**
+   * Sets the canonical protected resource URI. Called when the transport starts up and again
+   * whenever the configured base URL changes, so this value always matches the published protected
+   * resource metadata.
+   * @param resource The canonical protected resource URI.
+   */
+  default void setResource(URI resource) {}
 
   /**
    * Retrieves client information by client ID.

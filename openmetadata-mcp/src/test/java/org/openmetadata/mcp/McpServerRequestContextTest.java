@@ -13,7 +13,11 @@ import static org.mockito.Mockito.when;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,14 +35,18 @@ import org.mockito.Mockito;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.mcp.usage.McpUsageRecorder;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.ActivePersonaContext;
+import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.openmetadata.service.util.RequestEntityCache;
 
@@ -285,6 +293,58 @@ class McpServerRequestContextTest {
             .apply(tokenContext("token-alice"), request);
 
     assertThat(result.messages()).hasSize(1);
+  }
+
+  @Test
+  void defenseInDepthAudienceCheckRejectsForeignAudTokenAndCleansThread() throws Exception {
+    JWTTokenConfiguration tokenConfig = new JWTTokenConfiguration();
+    tokenConfig.setJwtissuer("open-metadata.org");
+    tokenConfig.setKeyId("mcp-server-test-key");
+    tokenConfig.setRsaprivateKeyFilePath(
+        Path.of(
+                Thread.currentThread()
+                    .getContextClassLoader()
+                    .getResource("private_key.der")
+                    .toURI())
+            .toString());
+    tokenConfig.setRsapublicKeyFilePath(
+        Path.of(
+                Thread.currentThread()
+                    .getContextClassLoader()
+                    .getResource("public_key.der")
+                    .toURI())
+            .toString());
+    JWTTokenGenerator.getInstance()
+        .init(
+            new AuthenticationConfiguration()
+                .withTokenValidationAlgorithm(
+                    AuthenticationConfiguration.TokenValidationAlgorithm.RS_256),
+            tokenConfig);
+
+    Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
+    String header =
+        encoder.encodeToString(
+            "{\"alg\":\"RS256\",\"typ\":\"JWT\",\"kid\":\"mcp-server-test-key\"}"
+                .getBytes(StandardCharsets.UTF_8));
+    String foreignPayload =
+        encoder.encodeToString(
+            "{\"sub\":\"alice\",\"aud\":\"https://other.example/mcp\"}"
+                .getBytes(StandardCharsets.UTF_8));
+    String foreignToken = header + "." + foreignPayload + ".sig";
+
+    McpServer server = serverFor(toolContextObservingAndCaching(), jwtFilterFor("alice"));
+    server.expectedResourceSupplier = () -> URI.create("https://om.example/mcp");
+    onWorker(
+        () -> {
+          cachePolicy();
+          return null;
+        });
+
+    assertThatThrownBy(
+            () ->
+                onWorker(() -> callToolWith(server, TOOL, new HashMap<>(), Map.of(), foreignToken)))
+        .hasRootCauseInstanceOf(AuthenticationException.class);
+    assertThat(onWorker(this::isPolicyCached)).isFalse();
   }
 
   private DefaultToolContext toolContextObservingAndCaching() {
