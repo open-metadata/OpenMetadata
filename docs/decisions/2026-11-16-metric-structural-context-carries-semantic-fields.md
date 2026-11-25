@@ -17,11 +17,10 @@ measures and the variant hierarchy from its computation prompt.
 Add optional `dimensions`, `measures`, `filters` and related metric FQNs to
 `assetContext.generic` in structured JSON. Reuse the metric schemas and the concept builder's
 non-blank filter conditions. Related FQNs are distinct references already admitted to the existing
-visible, Approved-or-unset, bounded concept metric knowledge list. When the first 50 candidates
-fill the scan window, structured metric JSON checks up to 50 additional distinct related
-references. The first visible, approved-or-unset omission sets the truncation marker. A hidden
-reference alone cannot set it. If all lookahead candidates are filtered out, the response
-makes no assertion about visibility beyond that window.
+visible, Approved-or-unset, bounded concept metric knowledge list. After checking the first 50
+knowledge candidates, structured metric JSON checks omitted related references in batches of 50.
+It stops at the first visible, Approved-or-unset omission and sets the truncation marker.
+A relation the caller cannot view does not set the marker.
 
 Keep `conceptContext` JSON and default concept Markdown unchanged, including its granularity,
 units and parenthesized AND conjunction of all filters. The earlier accepted decision remains

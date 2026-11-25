@@ -352,7 +352,17 @@ class AIContextBuilderTest {
         AIContextBuilder.resolveBoundedMetrics(
             references,
             references,
-            ref -> new KnowledgeItem().withFullyQualifiedName(ref.getFullyQualifiedName()));
+            ref -> new KnowledgeItem().withFullyQualifiedName(ref.getFullyQualifiedName()),
+            batch -> true);
+    final GenericAssetContext generic = fitRelatedMetricProjection(references, resolved);
+
+    assertEquals(50, generic.getRelatedMetrics().size());
+    assertEquals(expectedTruncation, generic.getSemanticFieldsTruncated());
+    assertFalse(generic.getRelatedMetrics().contains("metric_50"));
+  }
+
+  private static GenericAssetContext fitRelatedMetricProjection(
+      final List<EntityReference> references, final AIContextBuilder.ResolvedMetrics resolved) {
     final GenericAssetContext generic =
         AIContextBuilder.buildMetricContext(
             new Metric().withRelatedMetrics(references),
@@ -364,57 +374,46 @@ class AIContextBuilderTest {
     new AIContextBuilder(Entity.METRIC, "revenue")
         .withMetricSemantics(true)
         .applyKnowledgeBudget(context);
-
-    assertEquals(50, generic.getRelatedMetrics().size());
-    assertEquals(expectedTruncation, generic.getSemanticFieldsTruncated());
-    assertFalse(generic.getRelatedMetrics().contains("metric_50"));
+    return generic;
   }
 
   @Test
   void filteredRelatedMetricsDoNotSignalTruncation() {
     final List<EntityReference> references =
-        IntStream.range(0, 51)
+        IntStream.range(0, 151)
             .mapToObj(index -> new EntityReference().withFullyQualifiedName("metric_" + index))
             .toList();
     final AIContextBuilder.ResolvedMetrics resolved =
-        AIContextBuilder.resolveBoundedMetrics(references, references, ref -> null);
-    final GenericAssetContext generic =
-        AIContextBuilder.buildMetricContext(
-            new Metric().withRelatedMetrics(references),
-            new ConceptContext().withMetrics(resolved.items()),
-            true,
-            resolved.omittedVisibleRelation());
+        AIContextBuilder.resolveBoundedMetrics(references, references, ref -> null, batch -> false);
+    final GenericAssetContext generic = fitRelatedMetricProjection(references, resolved);
 
     assertNull(generic.getRelatedMetrics());
     assertNull(generic.getSemanticFieldsTruncated());
   }
 
   @Test
-  void omittedRelationsMustBeVisibleAndLookaheadIsBounded() {
+  void visibleOmissionAfterHiddenBatchStillMarksTheProjectionIncomplete() {
     final List<EntityReference> references =
-        IntStream.range(0, 150)
+        IntStream.range(0, 151)
             .mapToObj(index -> new EntityReference().withFullyQualifiedName("metric_" + index))
             .toList();
-    final List<String> inspected = new ArrayList<>();
-    final AIContextBuilder.ResolvedMetrics hiddenTail =
+    final EntityReference omittedVisible = references.get(100);
+    final List<Integer> batchSizes = new ArrayList<>();
+    final AIContextBuilder.ResolvedMetrics resolved =
         AIContextBuilder.resolveBoundedMetrics(
             references,
             references,
-            ref -> {
-              inspected.add(ref.getFullyQualifiedName());
-              return inspected.size() <= 50 ? new KnowledgeItem() : null;
+            ref -> new KnowledgeItem().withFullyQualifiedName(ref.getFullyQualifiedName()),
+            batch -> {
+              batchSizes.add(batch.size());
+              return batch.contains(omittedVisible);
             });
-    assertEquals(50, hiddenTail.items().size());
-    assertFalse(hiddenTail.omittedVisibleRelation());
-    assertEquals(100, inspected.size());
+    final GenericAssetContext generic = fitRelatedMetricProjection(references, resolved);
 
-    final AIContextBuilder.ResolvedMetrics mixedTail =
-        AIContextBuilder.resolveBoundedMetrics(
-            references,
-            references,
-            ref -> "metric_51".equals(ref.getFullyQualifiedName()) ? new KnowledgeItem() : null);
-    assertTrue(mixedTail.omittedVisibleRelation());
-    assertTrue(mixedTail.items().isEmpty());
+    assertEquals(50, generic.getRelatedMetrics().size());
+    assertFalse(generic.getRelatedMetrics().contains(omittedVisible.getFullyQualifiedName()));
+    assertTrue(generic.getSemanticFieldsTruncated());
+    assertEquals(List.of(50, 50), batchSizes);
   }
 
   @Test

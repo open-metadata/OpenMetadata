@@ -15,10 +15,12 @@ package org.openmetadata.service.aicontext;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.google.common.collect.Iterators;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +28,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -78,12 +81,14 @@ import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -1108,13 +1113,17 @@ public class AIContextBuilder {
     final List<EntityReference> references = new ArrayList<>(findAttachedMetrics(entity));
     references.addAll(related);
     return resolveBoundedMetrics(
-        references, includeMetricSemantics ? related : List.of(), this::toMetricKnowledgeItem);
+        references,
+        includeMetricSemantics ? related : List.of(),
+        this::toMetricKnowledgeItem,
+        this::containsEligibleRelatedMetric);
   }
 
   static ResolvedMetrics resolveBoundedMetrics(
       final List<EntityReference> references,
       final List<EntityReference> related,
-      final Function<EntityReference, KnowledgeItem> mapper) {
+      final Function<EntityReference, KnowledgeItem> mapper,
+      final Predicate<List<EntityReference>> containsEligibleMetric) {
     final List<EntityReference> candidates =
         references.stream().distinct().limit(MAX_KNOWLEDGE_ITEMS).toList();
     final List<KnowledgeItem> items =
@@ -1122,24 +1131,63 @@ public class AIContextBuilder {
     final boolean omittedVisibleRelation =
         !related.isEmpty()
             && candidates.size() == MAX_KNOWLEDGE_ITEMS
-            && hasVisibleOmittedRelation(candidates, related, mapper);
+            && hasVisibleOmittedRelation(candidates, related, containsEligibleMetric);
     return new ResolvedMetrics(items, omittedVisibleRelation);
   }
 
   private static boolean hasVisibleOmittedRelation(
       final List<EntityReference> candidates,
       final List<EntityReference> related,
-      final Function<EntityReference, KnowledgeItem> mapper) {
+      final Predicate<List<EntityReference>> containsEligibleMetric) {
     final Set<String> inspected =
         candidates.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toSet());
-    // Bound lookahead to one more page. Only a resolved, visible omission warrants a marker.
-    return related.stream()
-        .filter(
-            ref ->
-                ref.getFullyQualifiedName() != null && inspected.add(ref.getFullyQualifiedName()))
-        .limit(MAX_KNOWLEDGE_ITEMS)
-        .map(mapper)
-        .anyMatch(Objects::nonNull);
+    final Iterator<EntityReference> omitted =
+        related.stream()
+            .filter(ref -> ref.getFullyQualifiedName() != null)
+            .filter(ref -> !inspected.contains(ref.getFullyQualifiedName()))
+            .iterator();
+    final Iterator<List<EntityReference>> batches =
+        Iterators.partition(omitted, MAX_KNOWLEDGE_ITEMS);
+    boolean eligible = false;
+    while (!eligible && batches.hasNext()) {
+      eligible = containsEligibleMetric.test(batches.next());
+    }
+    return eligible;
+  }
+
+  private boolean containsEligibleRelatedMetric(final List<EntityReference> references) {
+    boolean eligible = false;
+    try {
+      final MetricRepository repository =
+          (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
+      final List<UUID> ids =
+          references.stream()
+              .map(EntityReference::getId)
+              .filter(Objects::nonNull)
+              .distinct()
+              .toList();
+      final List<Metric> approved =
+          repository
+              .get(null, ids, ResourceContext.authorizationFields(repository), Include.NON_DELETED)
+              .stream()
+              .filter(AIContextBuilder::isGovernedDefinition)
+              .toList();
+      final List<Metric> permitted =
+          authorizer == null || securityContext == null
+              ? approved
+              : new ViewPermissionFilter(authorizer)
+                  .retainPermitted(
+                      securityContext,
+                      Entity.METRIC,
+                      repository,
+                      approved,
+                      List.of(MetadataOperation.VIEW_BASIC));
+      eligible = !permitted.isEmpty();
+    } catch (RuntimeException e) {
+      LOG.warn(
+          "AIContext: failed to check omitted related metrics for {}: {}", fqn, e.getMessage());
+    }
+    return eligible;
   }
 
   private List<EntityReference> findAttachedMetrics(EntityInterface<?> entity) {
