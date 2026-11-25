@@ -57,7 +57,8 @@ node["minimum_version"]="$(sed 's/^v//' "$(dirname "${BASH_SOURCE[0]}")/../openm
 declare -A yarn
 yarn["name"]="Yarn"
 yarn["version_command"]="yarn --version"
-yarn["required_version"]="1.22 1.23 1.24"
+# Inside the repo any Yarn >= 1.22 hands off to the Yarn 4 release pinned in .yarnrc.yml.
+yarn["required_version"]="1.22 1.23 1.24 4"
 
 declare -A antlr
 antlr["name"]="ANTLR"

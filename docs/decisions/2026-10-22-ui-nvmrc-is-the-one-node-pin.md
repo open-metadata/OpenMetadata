@@ -1,9 +1,9 @@
 # The UI .nvmrc is the one Node pin, and raising it waits for Collate's Node pins
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-22 (initial)
+- **Revisions:** v1 2026-10-22 (initial) · v2 2026-10-29 (Yarn 4: `engines.node` enforced by a repo plugin)
 - **Deciders:** Chirag Madlani
-- **Guard:** `engines.node` in both UI `package.json` files (`yarn install` rejects an older Node); `scripts/check_prerequisites.sh` and `scripts/dev_setup.sh` read the floor from `.nvmrc`; reviewer for the hand-kept pins and the Collate merge order
+- **Guard:** `engines.node` in both UI `package.json` files (`yarn install` rejects an older Node through `.yarn/plugins/engines-node.cjs`); `scripts/check_prerequisites.sh` and `scripts/dev_setup.sh` read the floor from `.nvmrc`; reviewer for the hand-kept pins and the Collate merge order
 - **Related:** [OpenMetadata #35921](https://github.com/open-metadata/OpenMetadata/issues/35921), [OpenMetadata #35923](https://github.com/open-metadata/OpenMetadata/pull/35923)
 
 ## Context
@@ -39,3 +39,10 @@ fails loudly at `yarn install` rather than shipping an old Node. The cost is tha
 downstream builds on an older Node 22.x are blocked until they upgrade; `make dev_setup` upgrades
 them. Upgrading frontend-maven-plugin to a release that reads `.nvmrc` would remove the pom pins
 from the hand-kept list.
+
+## Amendment
+
+v2 2026-10-29: the UI moved to Yarn 4 (ADR:2026-10-29-ui-yarn-4-registry-from-config), which does
+not check `engines`, and `openmetadata-ui/.npmrc` (`engine-strict=true`) was removed. The root
+`.yarnrc.yml` loads `.yarn/plugins/engines-node.cjs`, which fails `yarn install` when the running
+Node does not satisfy `engines.node`, so the rule above holds unchanged.

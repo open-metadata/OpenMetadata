@@ -20,12 +20,16 @@ FROM node:${NODE_VERSION}-alpine AS builder
 
 WORKDIR /app
 
-# Copy lockfile + manifest first so the layer is cached when only source changes.
+# Copy the Yarn config, lockfile and manifest first so the layer is cached when only source
+# changes. The image's Yarn 1 hands off to the Yarn 4 release that .yarnrc.yml names.
+COPY .yarnrc.yml ./
+COPY .yarn/releases ./.yarn/releases
+COPY .yarn/plugins ./.yarn/plugins
 COPY openmetadata-ui-core-components/src/main/resources/ui/package.json \
      openmetadata-ui-core-components/src/main/resources/ui/yarn.lock ./
 
 # Install all dependencies (dev deps are required for the Storybook build).
-RUN yarn install --frozen-lockfile --network-timeout 120000
+RUN YARN_HTTP_TIMEOUT=120000 yarn install --immutable
 
 # Copy the rest of the source tree.
 COPY openmetadata-ui-core-components/src/main/resources/ui/ ./

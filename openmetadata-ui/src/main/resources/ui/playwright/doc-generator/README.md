@@ -53,7 +53,7 @@ A GitHub Actions workflow is available to automate the documentation update proc
 *   **Trigger**: Manual trigger via `workflow_dispatch`.
 *   **Logic**:
     1.  Runs against the `main` branch.
-    2.  Installs dependencies using `yarn install --frozen-lockfile`.
+    2.  Installs dependencies using `yarn install --immutable`.
     3.  Executes documentation generation via `yarn generate:e2e-docs`.
     4.  **Detection**: Uses `git status` to detect if any documentation files were modified.
     5.  **Auto PR**: If changes are found, it creates/updates the `chore/update-playwright-docs` branch and automatically opens a Pull Request to `main`.

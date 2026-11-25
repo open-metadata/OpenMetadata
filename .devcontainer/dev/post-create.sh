@@ -64,7 +64,7 @@ fi
 # Install frontend dependencies
 echo "Installing frontend dependencies..."
 cd openmetadata-ui/src/main/resources/ui
-yarn install --frozen-lockfile
+yarn install --immutable
 cd -
 
 # Set up Python virtual environment for ingestion
