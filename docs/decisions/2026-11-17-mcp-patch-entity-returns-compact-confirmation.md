@@ -28,6 +28,9 @@ dozen calls. The reply also left out `entityType` and `updatedAt`.
   never touched. A held patch therefore answers with identity and version only, not the published
   field values.
 - There is no opt-in full reply: `get_entity_details` reads the full entity.
+- `McpResponseUtils.compactPatch(entity, changeType)` is replaced by
+  `compactPatch(entity, entityType, changeType)` rather than kept. Its only caller was
+  `PatchEntityTool`; nothing in Collate or ai-platform calls it.
 
 ## Consequences
 
