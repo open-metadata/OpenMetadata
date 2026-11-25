@@ -6,7 +6,9 @@
 - **Guard:** `WorkflowDefinitionResourceIT.test_editorWhoIsTheOnlyApproverIsNeverAskedToApprove`,
   `WorkflowDefinitionResourceIT.test_editorIsLeftOffTheApprovalWhenSomeoneElseCanApprove`,
   `SetApprovalAssigneesImplTest.testSelfApprovalPrevention_eventDrivenSoleRequester_*`
-- **Related:** ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters
+- **Related:** ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters;
+  amends ADR:2026-10-22-agent-glossary-proposals-are-decided-through-the-approval-workflow
+  (withdraws its "a sole one keeps it" consequence)
 
 ## Context
 
