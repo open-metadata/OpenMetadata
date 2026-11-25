@@ -26,7 +26,7 @@ import {
   EventSubscription,
   ProviderType,
 } from '../../../generated/events/eventSubscription';
-import { ModifiedEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { ModifiedEventSubscription } from '../../../utils/AlertsClassBase.interface';
 import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
 import AlertDetailsPage from './AlertDetailsPage';
 
@@ -60,7 +60,7 @@ jest.mock('../../../hooks/observability/alerts/useAlertDetailsData', () => ({
   useAlertDetailsData: (params: unknown) => mockUseAlertDetailsData(params),
 }));
 
-jest.mock('../../../pages/AddObservabilityPage/hooks/useAlertFormData', () => ({
+jest.mock('../../../hooks/observability/alerts/useAlertFormData', () => ({
   useAlertFormData: (params: unknown) => mockUseAlertFormData(params),
 }));
 
@@ -151,32 +151,54 @@ jest.mock('@openmetadata/ui-core-components', () => {
       </button>
     ),
     Owner: jest.fn(() => <div data-testid="owner-label" />),
-    PageLayout: {
-      PageHeader: ({
-        breadcrumb,
-        footer,
-        meta,
-        subtitle,
-        title,
-        actions,
+    PageLayout: Object.assign(
+      ({
+        children,
+        className,
+        'data-testid': testId = 'page-layout',
       }: {
-        breadcrumb?: ReactNode;
-        footer?: ReactNode;
-        meta?: ReactNode;
-        subtitle?: string;
-        title: string;
-        actions?: ReactNode;
+        children?: ReactNode;
+        className?: string;
+        'data-testid'?: string;
       }) => (
-        <div data-testid="page-header">
-          {breadcrumb}
-          <span>{title}</span>
-          <span data-testid="page-header-subtitle">{subtitle}</span>
-          <div data-testid="header-metadata">{meta}</div>
-          <div data-testid="header-actions">{actions}</div>
-          {footer}
+        <div className={className} data-testid={testId}>
+          {children}
         </div>
       ),
-    },
+      {
+        Content: ({ children }: { children?: ReactNode }) => (
+          <main>{children}</main>
+        ),
+        Header: ({ children }: { children?: ReactNode }) => (
+          <header>{children}</header>
+        ),
+
+        PageHeader: ({
+          breadcrumb,
+          footer,
+          meta,
+          subtitle,
+          title,
+          actions,
+        }: {
+          breadcrumb?: ReactNode;
+          footer?: ReactNode;
+          meta?: ReactNode;
+          subtitle?: string;
+          title: string;
+          actions?: ReactNode;
+        }) => (
+          <div data-testid="page-header">
+            {breadcrumb}
+            <span>{title}</span>
+            <span data-testid="page-header-subtitle">{subtitle}</span>
+            <div data-testid="header-metadata">{meta}</div>
+            <div data-testid="header-actions">{actions}</div>
+            {footer}
+          </div>
+        ),
+      }
+    ),
     Tabs,
     Typography: ({ children }: { children?: ReactNode }) => (
       <span>{children}</span>

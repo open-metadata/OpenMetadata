@@ -207,6 +207,19 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return Set.copyOf(replaced);
   }
 
+  /**
+   * Locking the rows before the relationship sweep makes the delete, direct or through a domain
+   * cascade, wait for a writer that has share-locked a data product to link an asset (see {@code
+   * EntityRepository#lockDataProducts}), so the sweep removes the writer's edge instead of running
+   * before it commits and leaving it behind.
+   */
+  @Override
+  protected void lockRowsForDelete(List<DataProduct> dataProducts) {
+    List<String> ids =
+        dataProducts.stream().map(dataProduct -> dataProduct.getId().toString()).toList();
+    EntityDAO.queryInChunks(ids, chunk -> dao.lockIdsForUpdate(dao.getTableName(), chunk));
+  }
+
   @Override
   protected void clearEntitySpecificRelationshipsForMany(List<DataProduct> entities) {
     if (entities.isEmpty()) return;
@@ -447,25 +460,32 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public BulkOperationResult bulkAddInputPorts(
       String dataProductName, BulkAssets request, ChangeActor actor) {
-    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, true, actor);
+    return executeInTransaction(
+        () -> bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, true, actor));
   }
 
   public BulkOperationResult bulkRemoveInputPorts(
       String dataProductName, BulkAssets request, ChangeActor actor) {
-    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, false, actor);
+    return executeInTransaction(
+        () -> bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, false, actor));
   }
 
   public BulkOperationResult bulkAddOutputPorts(
       String dataProductName, BulkAssets request, ChangeActor actor) {
-    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, true, actor);
+    return executeInTransaction(
+        () -> bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, true, actor));
   }
 
   public BulkOperationResult bulkRemoveOutputPorts(
       String dataProductName, BulkAssets request, ChangeActor actor) {
-    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, false, actor);
+    return executeInTransaction(
+        () -> bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, false, actor));
   }
 
-  @Transaction
+  // Repositories are instantiated directly rather than as JDBI SQL-object proxies, so a
+  // @Transaction annotation here would not create a transaction. The public bulk-port entry
+  // points open the real boundary with executeInTransaction, so relationship rows, the
+  // change-event insert, and the entity store commit or roll back together.
   private BulkOperationResult bulkPortsOperation(
       String dataProductNameOrId,
       BulkAssets request,

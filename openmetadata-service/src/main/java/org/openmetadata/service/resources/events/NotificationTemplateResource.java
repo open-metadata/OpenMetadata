@@ -76,6 +76,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.JsonPatchUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -451,12 +452,11 @@ public class NotificationTemplateResource
   }
 
   private boolean isTemplateFieldPatch(JsonPatch patch) {
-    return patch.toJsonArray().stream()
+    return JsonPatchUtils.touchedLocations(patch).stream()
         .anyMatch(
-            op -> {
-              String path = op.asJsonObject().getString("path", "");
-              return path.equals("/templateBody") || path.equals("/templateSubject");
-            });
+            location ->
+                JsonPatchUtils.isAtOrUnder(location, "/templateBody")
+                    || JsonPatchUtils.isAtOrUnder(location, "/templateSubject"));
   }
 
   @PATCH

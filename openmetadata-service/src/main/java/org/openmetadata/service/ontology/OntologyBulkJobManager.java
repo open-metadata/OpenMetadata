@@ -27,6 +27,7 @@ import org.openmetadata.schema.api.data.OntologyBulkResultArtifact;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.jobs.BackgroundJobTypes;
 import org.openmetadata.service.jobs.JobDAO;
 
 public final class OntologyBulkJobManager implements OntologyBulkExecutionService.JobScheduler {
@@ -62,10 +63,12 @@ public final class OntologyBulkJobManager implements OntologyBulkExecutionServic
     return toJob(requireBackgroundJob(id));
   }
 
-  public OntologyBulkJobList list(final String user, final int limit) {
+  public OntologyBulkJobList list(final String user, final String glossaryId, final int limit) {
     return new OntologyBulkJobList()
         .withJobs(
-            jobDao.listOntologyBulkJobsByUser(user, limit).stream().map(this::toJob).toList());
+            jobDao.listOntologyBulkJobsByUser(user, glossaryId, limit).stream()
+                .map(this::toJob)
+                .toList());
   }
 
   public OntologyBulkJob requestCancel(final long id) {
@@ -126,7 +129,7 @@ public final class OntologyBulkJobManager implements OntologyBulkExecutionServic
   private long insert(
       final OntologyBulkJobArguments arguments, final int totalRows, final String user) {
     return jobDao.insertTrackedJobInternal(
-        BackgroundJob.JobType.ONTOLOGY_BULK.name(),
+        BackgroundJobTypes.ONTOLOGY_BULK,
         HANDLER_NAME,
         JsonUtils.pojoToJson(arguments),
         user,

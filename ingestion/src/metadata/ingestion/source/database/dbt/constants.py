@@ -92,6 +92,8 @@ REQUIRED_NODE_KEYS = {
 
 NONE_KEYWORDS_LIST = ["none", "null"]
 
+DBT_SQL_LANGUAGE = "sql"
+
 DBT_CATALOG_FILE_NAME = "catalog.json"
 DBT_MANIFEST_FILE_NAME = "manifest.json"
 DBT_RUN_RESULTS_FILE_NAME = "run_results"
@@ -142,6 +144,7 @@ class DbtTestFailureEnum(Enum):
     FAILURE = "failure"
     FAIL = "fail"
     ERROR = "error"
+    WARN = "warn"
 
 
 class DbtCommonEnum(Enum):

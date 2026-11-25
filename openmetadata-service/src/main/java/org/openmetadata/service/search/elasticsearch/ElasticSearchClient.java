@@ -87,8 +87,10 @@ import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryDsl;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
+import org.openmetadata.service.search.queries.SearchQueryDsl;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -176,7 +178,8 @@ public class ElasticSearchClient implements SearchClient {
     entityManager = new ElasticSearchEntityManager(newClient);
     genericManager = new ElasticSearchGenericManager(newClient);
     aggregationManager = new ElasticSearchAggregationManager(newClient, rbacConditionEvaluator);
-    dataInsightAggregatorManager = new ElasticSearchDataInsightAggregatorManager(newClient);
+    dataInsightAggregatorManager =
+        new ElasticSearchDataInsightAggregatorManager(newClient, rbacConditionEvaluator);
     searchManager =
         new ElasticSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias, nlqService);
   }
@@ -239,6 +242,11 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public Object getLowLevelClient() {
     return lowLevelClient;
+  }
+
+  @Override
+  public SearchQueryDsl getQueryDsl() {
+    return new ElasticQueryDsl(newClient._transport().jsonpMapper());
   }
 
   @Override
@@ -377,6 +385,12 @@ public class ElasticSearchClient implements SearchClient {
   public SearchResultListMapper searchForExport(
       SearchRequest request, SubjectContext subjectContext) throws IOException {
     return searchManager.searchForExport(request, subjectContext);
+  }
+
+  @Override
+  public SearchResultListMapper searchSimilarContextMemories(
+      String text, String filterJson, int size) throws IOException {
+    return searchManager.searchSimilarContextMemories(text, filterJson, size);
   }
 
   @Override
@@ -937,6 +951,17 @@ public class ElasticSearchClient implements SearchClient {
       @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
       throws IOException {
     return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
+  }
+
+  @Override
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      boolean live,
+      SubjectContext caller)
+      throws IOException {
+    return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live, caller);
   }
 
   @Override

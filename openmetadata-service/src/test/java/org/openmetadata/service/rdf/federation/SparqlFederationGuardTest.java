@@ -13,6 +13,8 @@ import org.apache.jena.update.UpdateRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Failure-mode coverage for the SPARQL federation guard. Each test names exactly the case it
@@ -22,6 +24,7 @@ class SparqlFederationGuardTest {
 
   private static final String WIKIDATA = "https://query.wikidata.org/sparql";
   private static final String DBPEDIA = "https://dbpedia.org/sparql";
+  private static final String INTERNAL_HOST = "http://10.0.0.5:8080/internal";
 
   private SparqlFederationGuard disabled() {
     return new SparqlFederationGuard(false, Set.of());
@@ -225,6 +228,86 @@ class SparqlFederationGuardTest {
     }
   }
 
+  /**
+   * EXISTS and NOT EXISTS carry a whole graph pattern inside an expression, and the engine
+   * evaluates that pattern — SERVICE included — wherever the expression sits.
+   */
+  @Nested
+  @DisplayName("SERVICE hidden inside expressions and EXISTS blocks")
+  class HiddenService {
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(
+        strings = {
+          "SELECT * WHERE { ?s ?p ?o FILTER EXISTS { SERVICE <%s> { ?a ?b ?c } } }",
+          "SELECT * WHERE { ?s ?p ?o FILTER NOT EXISTS { SERVICE <%s> { ?a ?b ?c } } }",
+          "SELECT * WHERE { ?s ?p ?o FILTER(!EXISTS { SERVICE <%s> { ?a ?b ?c } }) }",
+          "SELECT * WHERE { ?s ?p ?o FILTER(COALESCE(EXISTS { SERVICE <%s> { ?a ?b ?c } }, false)) }",
+          "SELECT * WHERE { BIND(EXISTS { SERVICE <%s> { ?a ?b ?c } } AS ?x) }",
+          "SELECT * WHERE { LET (?x := EXISTS { SERVICE <%s> { ?a ?b ?c } }) }",
+          "SELECT * WHERE { UNFOLD(EXISTS { SERVICE <%s> { ?a ?b ?c } } AS ?x) }",
+          "SELECT (EXISTS { SERVICE <%s> { ?a ?b ?c } } AS ?x) WHERE { }",
+          "SELECT ?x WHERE { ?s ?p ?o } GROUP BY (EXISTS { SERVICE <%s> { ?a ?b ?c } } AS ?x)",
+          "SELECT ?s WHERE { ?s ?p ?o } GROUP BY ?s HAVING (EXISTS { SERVICE <%s> { ?a ?b ?c } })",
+          "SELECT (SAMPLE(EXISTS { SERVICE <%s> { ?a ?b ?c } }) AS ?x) WHERE { ?s ?p ?o }",
+          "SELECT * WHERE { ?s ?p ?o } ORDER BY (EXISTS { SERVICE <%s> { ?a ?b ?c } })",
+          "SELECT * WHERE { { SELECT (EXISTS { SERVICE <%s> { ?a ?b ?c } } AS ?x) WHERE { } } }",
+          "SELECT * WHERE { ?s ?p ?o FILTER EXISTS { FILTER EXISTS { SERVICE <%s> { ?a ?b ?c } } } }",
+          "SELECT * WHERE { ?s ?p ?o OPTIONAL { FILTER EXISTS { SERVICE <%s> { ?a ?b ?c } } } }",
+          "SELECT * WHERE { ?s ?p ?o LATERAL { FILTER EXISTS { SERVICE <%s> { ?a ?b ?c } } } }",
+          "SELECT * WHERE { ?s ?p ?o EXISTS { SERVICE <%s> { ?a ?b ?c } } }",
+          "SELECT * WHERE { ?s ?p ?o NOT EXISTS { SERVICE <%s> { ?a ?b ?c } } }",
+          "ASK { FILTER EXISTS { SERVICE <%s> { ?a ?b ?c } } }",
+          "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o FILTER EXISTS { SERVICE <%s> { ?a ?b ?c } } }",
+          "DESCRIBE ?s WHERE { ?s ?p ?o FILTER EXISTS { SERVICE <%s> { ?a ?b ?c } } }"
+        })
+    @DisplayName("is rejected wherever the engine would evaluate it")
+    void hiddenServiceIsRejected(final String template) {
+      final String query = template.formatted(INTERNAL_HOST);
+
+      final SparqlFederationGuard.FederationDisallowedException rejection =
+          assertThrows(
+              SparqlFederationGuard.FederationDisallowedException.class,
+              () -> disabled().enforce(query));
+
+      assertEquals(INTERNAL_HOST, rejection.getBlockedEndpoint());
+    }
+
+    @Test
+    @DisplayName("is rejected even when another SERVICE in the query is allowlisted")
+    void hiddenServiceNextToAnAllowlistedOneIsRejected() {
+      final String query =
+          "SELECT * WHERE { SERVICE <"
+              + WIKIDATA
+              + "> { ?s ?p ?o } FILTER EXISTS { SERVICE <"
+              + INTERNAL_HOST
+              + "> { ?a ?b ?c } } }";
+
+      assertEquals(
+          INTERNAL_HOST, withAllowlist(WIKIDATA).firstDisallowedEndpoint(query).orElseThrow());
+    }
+
+    @Test
+    @DisplayName("is reported as a variable when its endpoint is a variable")
+    void hiddenVariableServiceIsReportedAsVariable() {
+      final String query = "SELECT * WHERE { ?e ?p ?o FILTER EXISTS { SERVICE ?e { ?a ?b ?c } } }";
+
+      assertEquals(List.of("?e"), disabled().serviceEndpoints(query));
+    }
+
+    @Test
+    @DisplayName("EXISTS without SERVICE stays allowed")
+    void existsWithoutServiceIsAllowed() {
+      final String query =
+          "SELECT * WHERE { ?s ?p ?o FILTER NOT EXISTS { ?s a <urn:Excluded> } "
+              + "BIND(EXISTS { ?s <urn:p> \"SERVICE <"
+              + INTERNAL_HOST
+              + ">\" } AS ?x) }";
+
+      assertTrue(disabled().serviceEndpoints(query).isEmpty());
+    }
+  }
+
   @Nested
   @DisplayName("serviceEndpoints listing")
   class ServiceEndpointsListing {
@@ -277,6 +360,23 @@ class SparqlFederationGuardTest {
       final UpdateRequest request = UpdateFactory.create(updateWithService(WIKIDATA));
 
       assertDoesNotThrow(() -> withAllowlist(WIKIDATA).enforceUpdate(request));
+    }
+
+    @Test
+    @DisplayName("SERVICE hidden in an EXISTS inside the WHERE clause is rejected")
+    void hiddenServiceInWhereClauseRejected() {
+      final UpdateRequest request =
+          UpdateFactory.create(
+              "INSERT { ?s <urn:copied> ?x } WHERE { ?s ?p ?o BIND(EXISTS { SERVICE <"
+                  + INTERNAL_HOST
+                  + "> { ?a ?b ?c } } AS ?x) }");
+
+      final SparqlFederationGuard.FederationDisallowedException exception =
+          assertThrows(
+              SparqlFederationGuard.FederationDisallowedException.class,
+              () -> withAllowlist(WIKIDATA).enforceUpdate(request));
+
+      assertEquals(INTERNAL_HOST, exception.getBlockedEndpoint());
     }
 
     @Test

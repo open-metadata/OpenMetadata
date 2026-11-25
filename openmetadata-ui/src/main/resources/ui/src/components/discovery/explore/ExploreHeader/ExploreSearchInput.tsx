@@ -18,13 +18,12 @@ import {
   Input,
   SelectPopover,
 } from '@openmetadata/ui-core-components';
-import { Search } from '@openmetadata/ui-core-components/icons';
+import { Search, XCircle } from '@openmetadata/ui-core-components/icons';
 import { isAppleDevice } from '@react-aria/utils';
 import classNames from 'classnames';
 import type { FormEvent, ReactNode, RefObject } from 'react';
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconCloseCircleOutlined } from '../../../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as IconSuggestionsActive } from '../../../../assets/svg/ic-suggestions-active.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../../../assets/svg/ic-suggestions-blue.svg';
 import type { SearchIndex } from '../../../../enums/search.enum';
@@ -82,12 +81,8 @@ const INPUT_CONTAINER_CLASS = classNames(
 const SUGGESTIONS_CONTAINER_CLASS =
   'tw:max-h-[calc(24rem-2rem)] tw:w-full tw:overflow-y-auto';
 
-const SEARCH_POPOVER_CLASS = classNames(
-  'tw:max-h-96! tw:w-(--trigger-width) tw:origin-(--trigger-anchor-point)',
-  'tw:overflow-x-hidden tw:overflow-y-auto tw:rounded-lg tw:bg-overlay-surface',
-  'tw:px-0! tw:py-4! tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
-  'tw:will-change-transform'
-);
+// Surface, edge and shadow come from the core SelectPopover; only size and padding differ.
+const SEARCH_POPOVER_CLASS = 'tw:max-h-96! tw:px-0! tw:py-4!';
 
 const NLP_SUGGESTION_ITEM_CLASS = classNames(
   "tw:[&_[data-testid='ai-query-suggestions']]:w-full!",
@@ -215,6 +210,7 @@ export const ExploreSearchInput = ({
           )}
           <Input
             data-input-wrapper
+            autoComplete="off"
             className={INPUT_FIELD_CONTAINER_CLASS}
             data-testid="explore-search-input"
             fontSize="xs"
@@ -238,7 +234,7 @@ export const ExploreSearchInput = ({
           {searchValue && (
             <ButtonUtility
               data-testid="explore-clear-search-button"
-              icon={IconCloseCircleOutlined}
+              icon={XCircle}
               size="xs"
               tooltip={t('label.clear')}
               onClick={onClearSearch}

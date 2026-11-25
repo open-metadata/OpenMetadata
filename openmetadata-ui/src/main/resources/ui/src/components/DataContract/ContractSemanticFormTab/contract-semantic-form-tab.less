@@ -14,22 +14,10 @@
 @import (reference) '../../../styles/variables.less';
 
 .contract-semantic-form-container {
-  .expandable-card.expanded {
-    .expandable-card-header {
-      border-bottom-left-radius: 0;
-      border-bottom-right-radius: 0;
-    }
-  }
-
   .expandable-card {
     margin-top: var(--om-space-16);
-    border: 1px solid @border-color-7;
-    box-shadow: 0 1px 2px 0 @grey-27;
 
     .expandable-card-header {
-      background: var(--tw-color-bg-primary);
-      border-bottom: 1px solid @grey-200;
-
       .semantic-form-item-title-container {
         display: flex;
         align-items: center;
@@ -80,6 +68,6 @@
     display: flex;
     justify-content: space-between;
     padding: var(--om-space-16) var(--om-space-24);
-    border-top: 1px solid @grey-200;
+    border-top: 1px solid var(--tw-border-color-secondary);
   }
 }

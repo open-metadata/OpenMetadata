@@ -1,9 +1,9 @@
 # Policy conditions are rewritten through the SpEL AST, and a call naming only deleted entities becomes false
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-03 (team and role conditions rewritten on hard delete only) · v3 2026-11-25 (domain conditions rewritten on rename and delete)
 - **Deciders:** Ram Narayan Balaji
-- **Guard:** `PolicyConditionUpdaterTest`, `OpenSearchRBACConditionEvaluatorTest#falseLiteralMakesAnAllowRuleMatchNothing`, `PolicyResourceIT#test_deletingTheOnlyTagLeavesAConditionThatMatchesNothing`
+- **Guard:** `PolicyConditionUpdaterTest`, `OpenSearchRBACConditionEvaluatorTest#falseLiteralMakesAnAllowRuleMatchNothing`, `PolicyResourceIT#test_deletingTheOnlyTagLeavesAConditionThatMatchesNothing`, `PolicyResourceIT#test_softDeletedTeamAndRoleLeavePolicyConditionAsWrittenThroughRestore`, `PolicyResourceIT#test_renamedDomainIsUpdatedInPolicyCondition`, `PolicyResourceIT#test_deletedDomainMakesItsPolicyConditionMatchNothing`
 - **Related:** #26942
 
 ## Context
@@ -43,3 +43,25 @@ all of the entities it names are gone.
   that no longer applies, which is accurate; folding them away would hide that something was deleted.
 - Conditions rewritten by earlier versions are not revisited.
 - A computed (non-literal) argument is never treated as an entity name; such calls are not rewritten.
+
+## Amendment: team and role conditions are rewritten on hard delete only (v2)
+
+Point 3 no longer rewrites `inAnyTeam()`, `matchTeam()` and `hasAnyRole()` calls on a soft delete.
+A soft-deleted team or role already drops out of every membership, so the unchanged condition
+matches nothing while it is deleted, and a restore brings the team or role back to conditions
+that still name it. Team and role conditions are therefore rewritten only on hard delete, like
+services, classifications and glossaries. Soft delete and restore of a team or role drop the
+cached policies of every user.
+
+## Amendment: domain conditions are rewritten on rename and delete (v3)
+
+`matchAnyDomain()` names domains by fully qualified name, so it joins the functions the updater
+rewrites. A domain rename rewrites its arguments by prefix, so a condition naming a sub-domain
+follows a rename of its parent. Domain delete is always hard and recursive, so it removes the
+domain and every sub-domain from the condition, and a call left with no argument becomes `false`.
+
+`matchAnyDomain()` matches the exact FQN it names: `matchAnyDomain('Finance')` does not match an
+asset in `Finance.Payments`, unlike `hasDomain()`, which includes sub-domains. Existing policies
+depend on that, so widening it later would need its own function or an explicit opt-in.
+`PolicyConditionUpdaterTest#everyFunctionTakingArgumentsIsRewrittenOrListedAsNotNeedingIt` fails
+when a policy function that takes arguments is in no rewrite set and not listed as needing none.

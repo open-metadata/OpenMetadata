@@ -37,7 +37,7 @@ const ownerUser = new UserClass();
 
 test.describe('Glossary Term Assets Tab - Right Panel', () => {
   test.beforeAll(async ({ browser }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
     const { apiContext, afterAction } = await performAdminLogin(browser);
     try {
       await testGlossary.create(apiContext);

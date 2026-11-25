@@ -1,7 +1,7 @@
 # A memory conflict opens a review task, and approving it supersedes the disputed memory
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-14 (a refused decision evicts the memories it wrote from the entity cache) · v3 2026-10-19 (that eviction comes from every rolled-back transaction)
+- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-14 (a refused decision evicts the memories it wrote from the entity cache) · v3 2026-10-19 (that eviction comes from every rolled-back transaction) · v4 2026-11-03 (only automation records disputes) · v5 2026-11-17 (a dispute follows the value that replaced it)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryLifecycleTest`, `MemoryConflictDecisionTest`,
   `MemoryConflictReviewTasksTest`, `MemoryConflictResolutionTest`, `ContextMemoryLifecycleIT`,
@@ -113,3 +113,35 @@ ADR:2026-10-19-a-rolled-back-transaction-evicts-the-cache-keys-it-wrote, every t
 does not commit evicts the keys its writes recorded, so the refusal leaves no uncommitted memory in
 the cache without code of its own. `ContextMemoryConflictReviewIT` still checks that a decision
 failing part-way leaves both memories as they were, and now guards that rule.
+
+## Amendment — 2026-11-03: only automation records disputes
+
+Item 1's editability rule is necessary but no longer sufficient: only an admin, a bot, or a bot
+writing for a user records disputes, on create or update (403 otherwise), so a non-admin cannot
+open a review over their own memory and approve it there
+(ADR:2026-10-09-data-consumers-create-context-memories v3).
+
+## Amendment — 2026-11-17: a dispute follows the value that replaced it
+
+Two memories can dispute one Approved value, such as two other values documents give for one
+question. Approving the first supersedes it, so the second's dispute names a retired value, and
+approving the second superseded nothing and left two values Approved.
+
+Approving a review now follows each disputed memory another decision superseded to the Approved
+memory holding its claim now (`MemoryConflictDecision.laterValues`, never the reviewed memory
+itself, whose own retry is item 5's), and refuses the decision with 412. When the resolver may read
+that memory, the review is first pointed at it, keeping the dispute's reason, written as the
+resolver impersonated by `governance-bot`, so the reviewer compares it; the dispute may name a
+memory some of the review's readers cannot open, as any dispute can. Otherwise nothing is written,
+and an admin or a requeue takes it from there. A chain is followed through at most ten
+replacements; one still replaced after the tenth refuses the decision with 412 too, and the memory
+needs a requeue. The chain is followed through the Archive: a later value archived with its document
+makes the decision wait (409), as a disputed memory in the Archive does, and a later value a person
+deleted is gone. The chain starts at every disputed memory still stored, one a person deleted
+included: deleting a value another decision replaced takes nothing back. Rejecting is unaffected.
+
+This supersedes "Writers link only memories the same audience may read; Collate links same-audience
+pairs only" in the Consequences. A re-point can name a memory of another audience that its resolver
+can read, and Collate's Memory Reconciliation now names a contradicting memory of any audience,
+written as an admin, with a fixed reason when the two memories have different readers
+(ADR:openmetadata-collate/2026-11-17-reconciliation-compares-a-memory-with-similar-memories-anywhere).

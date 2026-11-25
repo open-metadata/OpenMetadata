@@ -16,6 +16,7 @@ package org.openmetadata.service.alerting.channel.webhook;
 import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
+import org.openmetadata.service.alerting.channel.WebhookSecrets;
 
 /** A webhook whose configuration carries secrets, which are stored encrypted and read back masked. */
 public final class SecretWebhookConfigRules extends WebhookConfigRules {

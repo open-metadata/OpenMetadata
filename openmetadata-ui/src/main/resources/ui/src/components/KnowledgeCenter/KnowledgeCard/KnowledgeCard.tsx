@@ -22,6 +22,7 @@ import {
 import { AxiosError } from 'axios';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { OwnerType } from '../../../enums/user.enum';
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -94,7 +95,7 @@ const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
         <UserPopOverCard
           showUserName
           className="tw:text-xs tw:font-medium tw:text-secondary tw:gap-2 tw:max-w-40"
-          displayName={getEntityName(owners?.[0])}
+          displayName={owners[0].displayName}
           profileWidth={20}
           type={owners?.[0]?.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
           userName={owners[0].name ?? owners[0].displayName ?? ''}
@@ -105,7 +106,7 @@ const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
           data-testid="owner-name"
           size="text-xs"
           weight="medium">
-          {t('label.no-entity', { entity: t('label.owner') })}
+          {NO_DATA_PLACEHOLDER}
         </Typography>
       )}
 

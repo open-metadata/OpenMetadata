@@ -57,3 +57,8 @@ export const OBSERVABILITY_ALERT_COUNT_QUERY_KEY = [
   'alerts',
   'count',
 ] as const;
+
+// Each observability page owns a stacking context, so the page tabs' `z-10`
+// stays below a modal's scrim instead of painting through it.
+// ADR:2026-11-16-observability-pages-use-core-page-layout
+export const OBSERVABILITY_PAGE_LAYOUT_CLASS = 'tw:isolate';

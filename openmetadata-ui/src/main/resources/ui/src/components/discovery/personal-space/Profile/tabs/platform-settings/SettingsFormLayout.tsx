@@ -23,6 +23,8 @@ import classNames from 'classnames';
 import type { ReactNode } from 'react';
 import type { FieldValues, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 
 interface SettingsFormSectionProps {
   /** Omit when the page header already names the form. */
@@ -77,6 +79,12 @@ const SettingsFormLayout = <T extends FieldValues>({
   centered,
 }: SettingsFormLayoutProps<T>) => {
   const { t } = useTranslation();
+  // Settings saves report failure only through a toast, so the prompt offers
+  // Discard or Continue editing rather than a "Save & go" that could leave
+  // after a failed save.
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    form.formState.isDirty
+  );
 
   return (
     <HookForm
@@ -111,7 +119,7 @@ const SettingsFormLayout = <T extends FieldValues>({
           color="tertiary"
           data-testid="cancel-button"
           isDisabled={isSaving}
-          onPress={onCancel}>
+          onPress={() => runGuarded(onCancel)}>
           {t('label.cancel')}
         </Button>
         <Button
@@ -123,6 +131,7 @@ const SettingsFormLayout = <T extends FieldValues>({
           {t('label.save')}
         </Button>
       </Box>
+      <UnsavedChangesPrompt {...promptProps} />
     </HookForm>
   );
 };

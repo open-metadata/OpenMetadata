@@ -1,6 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
@@ -17,13 +16,13 @@ import java.beans.PropertyDescriptor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
@@ -38,7 +37,6 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.IncidentGroupBy;
 import org.openmetadata.schema.tests.type.IncidentStatusCount;
-import org.openmetadata.schema.tests.type.IncidentTrendDirection;
 import org.openmetadata.schema.tests.type.Metric;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
@@ -57,7 +55,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs.TestCaseResolutionStatusTimeSeriesDAO.IncidentGroupPage;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -92,7 +92,6 @@ public class TestCaseResolutionStatusRepository
   private static final String SEVERITY_WORST_FIRST = "MIN(i.severity) IS NULL, MIN(i.severity) ASC";
   private static final String SEVERITY_MILDEST_FIRST =
       "MIN(i.severity) IS NOT NULL, MIN(i.severity) DESC";
-  private static final int TREND_BUCKET_COUNT = 8;
   // ADR:2026-10-28-incident-history-uses-bounded-keyset-pages
   private static final int ORPHAN_HISTORY_BATCH_SIZE = 100;
   // A record range that holds every record, for listings whose range applies to the incidents.
@@ -185,6 +184,28 @@ public class TestCaseResolutionStatusRepository
         Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
+  /** The graph carries a test case's open incident, so every status change refreshes it. */
+  @Override
+  protected void postCreate(TestCaseResolutionStatus status) {
+    super.postCreate(status);
+    refreshTestCaseProjection(status);
+  }
+
+  @Override
+  protected void postUpdate(TestCaseResolutionStatus status) {
+    super.postUpdate(status);
+    refreshTestCaseProjection(status);
+  }
+
+  private static void refreshTestCaseProjection(TestCaseResolutionStatus status) {
+    Optional.ofNullable(status.getTestCaseReference())
+        .map(EntityReference::getId)
+        .ifPresent(
+            id ->
+                RdfUpdater.refreshEntities(
+                    List.of(new EntityReference().withType(Entity.TEST_CASE).withId(id))));
+  }
+
   @Override
   protected Set<String> getGroupInvariantParams(String groupBy) {
     return LATEST_PER_TEST_CASE.equals(groupBy) ? TEST_CASE_INVARIANT_PARAMS : Set.of();
@@ -193,15 +214,34 @@ public class TestCaseResolutionStatusRepository
   // Fields a TCRS search doc carries that the {@link TestCaseResolutionStatus} schema
   // ({@code additionalProperties: false}) does not, so each one left in a hit 400s strict Jackson
   // deserialization on /testCaseIncidentStatus/search/list. {@code table} is the parent table
-  // reference the tag cascade matches incidents on. {@code testSuites} stays to scrub legacy docs
-  // written before the SearchRepository inheritable-field refactor stopped propagating
-  // testCase.testSuites onto child TCRS docs.
+  // reference the tag cascade matches incidents on; {@code database}, {@code databaseSchema} and
+  // {@code service} are the ancestors a soft delete matches them on. {@code testSuites} stays to
+  // scrub legacy docs written before the SearchRepository inheritable-field refactor stopped
+  // propagating testCase.testSuites onto child TCRS docs.
   static final List<String> SEARCH_ONLY_FIELDS =
-      List.of("@timestamp", "domains", "testCase", "testSuite", "testSuites", "fqnParts", "table");
+      List.of(
+          "@timestamp",
+          "domains",
+          "testCase",
+          "testSuite",
+          "testSuites",
+          "fqnParts",
+          "table",
+          "database",
+          "databaseSchema",
+          "service",
+          "certification");
 
   @Override
   protected List<String> getExcludeSearchFields() {
     return SEARCH_ONLY_FIELDS;
+  }
+
+  // An incident has no deleted flag of its own: it is deleted with its test case, whose flag the
+  // document embeds.
+  @Override
+  public String getSearchDeletedField() {
+    return "testCase.deleted";
   }
 
   // The {@code latest=false} listing path skips client-side {@code extractAndFilterSource} and
@@ -358,9 +398,8 @@ public class TestCaseResolutionStatusRepository
 
   /**
    * Applies one entry of a bulk status change. An entry that keeps the open incident's status as
-   * it is only edits its severity; one that would change nothing at all — or that sends an open
-   * incident back to New, which the status flow ignores — is rejected, so the bulk result reports
-   * it instead of counting it as applied.
+   * it is only edits its severity; one that would change nothing at all is rejected, so the bulk
+   * result reports it instead of counting it as applied.
    */
   public void applyBulkStatus(TestCaseResolutionStatus incoming, String testCaseFqn) {
     TestCaseResolutionStatus latest = getLatestRecord(testCaseFqn);
@@ -372,9 +411,6 @@ public class TestCaseResolutionStatusRepository
                 "Incident is already %s", latest.getTestCaseResolutionStatusType().value()));
       }
       updateSeverity(latest, incoming.getSeverity(), incoming.getUpdatedBy());
-    } else if (isOpen
-        && incoming.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.New) {
-      throw new IllegalArgumentException("An open incident cannot be moved back to New");
     } else {
       createNewRecord(incoming, testCaseFqn);
     }
@@ -465,6 +501,9 @@ public class TestCaseResolutionStatusRepository
       TestCaseResolutionStatus recordEntity, String recordFQN, String extension) {
 
     TestCaseResolutionStatus lastIncident = getLatestRecord(recordFQN);
+    rejectReopeningResolvedIncident(recordEntity, lastIncident, recordFQN);
+    // A new stateId must follow the previous incident on this test case, including a resolved one.
+    // orderIncidentWrite separately serializes concurrent writes within the same stateId.
     long lastTimestamp =
         lastIncident != null && lastIncident.getTimestamp() != null
             ? lastIncident.getTimestamp()
@@ -502,9 +541,9 @@ public class TestCaseResolutionStatusRepository
               ? lastIncident.getFailureSummary()
               : recordEntity.getFailureSummary());
     } else if (lastIncident != null && isReopeningStatus(recordEntity)) {
-      // Ack/Assigned/Resolved after a Resolved incident reopens it: reuse the stateId, severity,
-      // and failure summary so the timeline stays contiguous. New is excluded — a new failure
-      // starts a fresh incident.
+      // A Resolved record after a Resolved incident keeps that incident's stateId, so the
+      // repeated resolution is a no-op. Ack/Assigned never get here: they are rejected above.
+      // New is excluded — a new failure starts a fresh incident.
       recordEntity.setStateId(lastIncident.getStateId());
       recordEntity.setSeverity(
           recordEntity.getSeverity() == null
@@ -525,9 +564,17 @@ public class TestCaseResolutionStatusRepository
         recordEntity.getStateId());
     switch (recordEntity.getTestCaseResolutionStatusType()) {
       case New -> {
+        // Moving an open incident back to New is a workflow transition on its task, falling back
+        // to a plain record for a legacy incident without a task, as Ack does. A new test failure
+        // never reaches this branch: it opens its incident through getOrCreateIncident.
         if (Boolean.TRUE.equals(unresolvedIncident(lastIncident))) {
-          LOG.debug("Skipping - already have unresolved incident");
-          return;
+          if (applyLegacyStatusToIncidentTask(recordEntity, recordFQN)) {
+            return;
+          }
+        } else if (lastIncident != null) {
+          // A resolved incident is final. A user's New must not write a task-less incident record
+          // beside it; the UI starts a new incident by creating its task.
+          throw reopenOfResolvedIncidentRejected(recordFQN);
         }
       }
       case Ack, Assigned -> {
@@ -550,31 +597,87 @@ public class TestCaseResolutionStatusRepository
     persistRecord(recordFQN, recordEntity);
   }
 
+  // Resolved is final for an incident: Ack or Assigned on it would reopen the same incident. A
+  // later failure of the test case opens a separate incident, so this is the only way back.
+  private static void rejectReopeningResolvedIncident(
+      TestCaseResolutionStatus recordEntity,
+      TestCaseResolutionStatus lastIncident,
+      String recordFQN) {
+    if (lastIncident != null
+        && lastIncident.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Resolved
+        && (recordEntity.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Ack
+            || recordEntity.getTestCaseResolutionStatusType()
+                == TestCaseResolutionStatusTypes.Assigned)) {
+      throw reopenOfResolvedIncidentRejected(recordFQN);
+    }
+  }
+
+  private static IllegalArgumentException reopenOfResolvedIncidentRejected(String recordFQN) {
+    return new IllegalArgumentException(
+        String.format(
+            "Incident for %s is resolved and cannot be reopened; a new test failure opens a new incident",
+            recordFQN));
+  }
+
   private void persistRecord(String recordFQN, TestCaseResolutionStatus recordEntity) {
-    EntityReference testCaseReference = recordEntity.getTestCaseReference();
-    recordEntity.withTestCaseReference(null);
-    String recordJson = JsonUtils.pojoToJson(recordEntity);
-    recordEntity.withTestCaseReference(testCaseReference);
     DeadlockRetry.execute(
         () ->
             Entity.getJdbi()
                 .inTransaction(
                     handle -> {
-                      timeSeriesDao.insert(recordFQN, entityType, recordJson);
-                      ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
-                          .upsertIncident(
-                              recordEntity.getStateId().toString(),
-                              recordFQN,
-                              recordEntity.getTestCaseResolutionStatusType().value(),
-                              extractAssigneeName(recordEntity),
-                              recordEntity.getSeverity() != null
-                                  ? recordEntity.getSeverity().value()
-                                  : null,
-                              recordEntity.getTimestamp(),
-                              recordEntity.getId().toString());
+                      var dao =
+                          handle.attach(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+                      orderIncidentWrite(dao, recordFQN, recordEntity);
+                      dao.insert(recordFQN, entityType, serializeIncident(recordEntity));
+                      dao.upsertIncident(
+                          recordEntity.getStateId().toString(),
+                          recordFQN,
+                          recordEntity.getTestCaseResolutionStatusType().value(),
+                          extractAssigneeName(recordEntity),
+                          recordEntity.getSeverity() != null
+                              ? recordEntity.getSeverity().value()
+                              : null,
+                          recordEntity.getTimestamp(),
+                          recordEntity.getId().toString(),
+                          WorkflowHandler.isMigrationContext());
                       storeRelationship(recordEntity);
                       return null;
                     }));
+  }
+
+  private void orderIncidentWrite(
+      CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO dao,
+      String recordFQN,
+      TestCaseResolutionStatus record) {
+    long timestamp =
+        dao.nextIncidentTimestamp(
+            record.getStateId().toString(),
+            recordFQN,
+            record.getTestCaseResolutionStatusType().value(),
+            record.getTimestamp(),
+            record.getId().toString());
+    long adjustment = timestamp - record.getTimestamp();
+    record.setTimestamp(timestamp);
+    record.setUpdatedAt(
+        Math.max(record.getUpdatedAt() == null ? timestamp : record.getUpdatedAt(), timestamp));
+    if (adjustment > 0 && record.getMetrics() != null) {
+      record.getMetrics().stream()
+          .filter(
+              metric ->
+                  TIME_TO_RESPONSE.equals(metric.getName())
+                      || TIME_TO_RESOLUTION.equals(metric.getName()))
+          .forEach(metric -> metric.setValue(metric.getValue() + adjustment));
+    }
+  }
+
+  private String serializeIncident(TestCaseResolutionStatus record) {
+    EntityReference reference = record.getTestCaseReference();
+    record.setTestCaseReference(null);
+    try {
+      return JsonUtils.pojoToJson(record);
+    } finally {
+      record.setTestCaseReference(reference);
+    }
   }
 
   // The PARENT_OF relationship is written inside persistRecord's transaction. The base
@@ -590,13 +693,15 @@ public class TestCaseResolutionStatusRepository
   }
 
   private static EntityReference extractAssignee(TestCaseResolutionStatus recordEntity) {
-    if (recordEntity.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Assigned
-        || recordEntity.getTestCaseResolutionStatusDetails() == null) {
+    Object details = recordEntity.getTestCaseResolutionStatusDetails();
+    if (details == null) {
       return null;
     }
-    Assigned assigned =
-        JsonUtils.convertValue(recordEntity.getTestCaseResolutionStatusDetails(), Assigned.class);
-    return assigned != null ? assigned.getAssignee() : null;
+    return switch (recordEntity.getTestCaseResolutionStatusType()) {
+      case Assigned -> JsonUtils.convertValue(details, Assigned.class).getAssignee();
+      case Resolved -> JsonUtils.convertValue(details, Resolved.class).getAssignee();
+      default -> null;
+    };
   }
 
   @Override
@@ -680,18 +785,7 @@ public class TestCaseResolutionStatusRepository
     if (TaskRepository.isTerminalStatus(task.getStatus())
         && recordEntity.getTestCaseResolutionStatusType()
             != TestCaseResolutionStatusTypes.Resolved) {
-      // Ack/Assigned on a resolved incident reopens it: same task/stateId, workflow restarted.
-      String reopeningUser =
-          recordEntity.getUpdatedBy() != null ? recordEntity.getUpdatedBy().getName() : null;
-      try {
-        task = taskRepository.reopenTaskWithWorkflow(task, reopeningUser);
-      } catch (Exception e) {
-        LOG.error("Failed to reopen incident task {} for {}", task.getId(), recordFQN, e);
-        if (e instanceof RuntimeException) {
-          throw (RuntimeException) e;
-        }
-        throw new RuntimeException(e);
-      }
+      throw reopenOfResolvedIncidentRejected(recordFQN);
     }
 
     String transitionId = resolveLegacyTransitionId(task, recordEntity);
@@ -703,7 +797,8 @@ public class TestCaseResolutionStatusRepository
           task.getWorkflowStageId());
       return true;
     }
-
+    String user =
+        recordEntity.getUpdatedBy() != null ? recordEntity.getUpdatedBy().getName() : null;
     TaskResolutionType resolutionType =
         recordEntity.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Resolved
             ? TaskResolutionType.Completed
@@ -712,13 +807,7 @@ public class TestCaseResolutionStatusRepository
     String comment = extractLegacyResolutionComment(recordEntity);
 
     taskRepository.resolveTaskWithWorkflow(
-        task,
-        transitionId,
-        resolutionType,
-        null,
-        resolvedPayload,
-        comment,
-        recordEntity.getUpdatedBy() != null ? recordEntity.getUpdatedBy().getName() : null);
+        task, transitionId, resolutionType, null, resolvedPayload, comment, user);
 
     LOG.info(
         "Applied legacy incident status {} to task {} using transition {}",
@@ -759,6 +848,9 @@ public class TestCaseResolutionStatusRepository
     return switch (recordEntity.getTestCaseResolutionStatusType()) {
       case Ack -> "ack".equals(task.getWorkflowStageId()) ? null : "ack";
       case Assigned -> "assigned".equals(task.getWorkflowStageId()) ? "reassign" : "assign";
+      case New -> IncidentWorkflowStages.NEW_STAGE_ID.equals(task.getWorkflowStageId())
+          ? null
+          : IncidentWorkflowStages.NEW_TRANSITION_ID;
       case Resolved -> TaskEntityStatus.Completed == task.getStatus() ? null : "resolve";
       default -> null;
     };
@@ -850,9 +942,6 @@ public class TestCaseResolutionStatusRepository
             Entity.TEST_CASE, testCase.getFullyQualifiedName(), "owners,domains", Include.ALL);
 
     EntityReference updatedByRef = getEntityReferenceByName(Entity.USER, updatedBy, Include.ALL);
-
-    List<EntityReference> assignees =
-        !nullOrEmpty(fullTestCase.getOwners()) ? fullTestCase.getOwners() : List.of();
     UUID taskId = UUID.randomUUID();
 
     Task task =
@@ -870,7 +959,6 @@ public class TestCaseResolutionStatusRepository
                     .withTestCaseResolutionStatusId(taskId)
                     .withFailureReason(failureReason))
             .withCreatedBy(updatedByRef)
-            .withAssignees(assignees)
             .withCreatedAt(System.currentTimeMillis())
             .withUpdatedBy(updatedBy)
             .withUpdatedAt(System.currentTimeMillis());
@@ -879,6 +967,8 @@ public class TestCaseResolutionStatusRepository
       task.withDomains(fullTestCase.getDomains());
     }
 
+    List<EntityReference> assignees = resolveAutoAssignees(task, fullTestCase.getOwners());
+    task.withAssignees(assignees);
     task = taskRepository.createInternal(task);
     LOG.info(
         "Incident task created on test failure: id={}, testCase={}",
@@ -886,6 +976,16 @@ public class TestCaseResolutionStatusRepository
         fullTestCase.getFullyQualifiedName());
     advanceAutoAssignedIncident(taskRepository, task.getId(), assignees, updatedBy);
     return task.getId();
+  }
+
+  // The owners are assigned only when the workflow the incident is bound to has owner
+  // auto-assignment on; an incident created without them waits in New, like an unowned table's.
+  private static List<EntityReference> resolveAutoAssignees(
+      Task task, List<EntityReference> owners) {
+    if (nullOrEmpty(owners) || !TaskWorkflowLifecycleResolver.isOwnerAutoAssignmentEnabled(task)) {
+      return List.of();
+    }
+    return owners;
   }
 
   /**
@@ -976,9 +1076,18 @@ public class TestCaseResolutionStatusRepository
             TestCaseResolutionStatus.class);
 
     for (TestCaseResolutionStatus testCaseResolutionStatus : testCaseResolutionStatuses) {
-      // We'll keep the status as assigned but remove the deleted user as the assignee
-      // Incidents are treated as immutable entities -- hence we create a new one
+      if (testCaseResolutionStatus.getTestCaseResolutionStatusType()
+          != TestCaseResolutionStatusTypes.Assigned) {
+        continue;
+      }
       setInheritedFields(testCaseResolutionStatus);
+      String testCaseFqn = testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName();
+      TestCaseResolutionStatus latest = getLatestRecord(testCaseFqn);
+      if (latest == null
+          || !Objects.equals(latest.getStateId(), testCaseResolutionStatus.getStateId())
+          || !Objects.equals(latest.getId(), testCaseResolutionStatus.getId())) {
+        continue;
+      }
       TestCaseResolutionStatusMapper mapper = new TestCaseResolutionStatusMapper();
       TestCaseResolutionStatus newStatus =
           mapper.createToEntity(
@@ -1017,6 +1126,8 @@ public class TestCaseResolutionStatusRepository
     }
 
     TestCaseResolutionStatus lastIncident = getLatestRecord(recordFQN);
+    // A new stateId must follow the previous incident on this test case, including a resolved one.
+    // orderIncidentWrite separately serializes concurrent writes within the same stateId.
     long lastTimestamp =
         lastIncident != null && lastIncident.getTimestamp() != null
             ? lastIncident.getTimestamp()
@@ -1123,6 +1234,14 @@ public class TestCaseResolutionStatusRepository
     }
   }
 
+  // A domain filter covers the domain and its sub-domains, as the navbar pick does.
+  public static String resolveDomainFilterIds(String domain) {
+    return nullOrEmpty(domain)
+        ? null
+        : EntityUtil.domainAndSubDomainIds(
+            getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED));
+  }
+
   public static UUID resolveFilterEntityId(String entityType, String name) {
     UUID entityId = null;
     if (!nullOrEmpty(name)) {
@@ -1158,8 +1277,18 @@ public class TestCaseResolutionStatusRepository
         ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
             .listIncidentGroups(
                 groupBy, filter, incidentGroupOrderBy(sortField, sortType), limit, offsetInt);
+    IncidentGroupTrend window = IncidentGroupTrend.endingAt(System.currentTimeMillis());
+    Map<String, List<Integer>> trends =
+        ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
+            .incidentGroupTrends(
+                groupBy,
+                filter,
+                page.counts().stream()
+                    .map(CollectionDAO.TestCaseIncidentGroupCount::groupKey)
+                    .toList(),
+                window);
     return new ResultList<>(
-        toIncidentGroups(groupBy, page),
+        toIncidentGroups(groupBy, page, trends, window),
         getBeforeOffset(offsetInt, limit),
         getAfterOffset(offsetInt, limit, page.total()),
         page.total());
@@ -1179,7 +1308,10 @@ public class TestCaseResolutionStatusRepository
   }
 
   private static List<TestCaseIncidentGroup> toIncidentGroups(
-      IncidentGroupBy groupBy, IncidentGroupPage page) {
+      IncidentGroupBy groupBy,
+      IncidentGroupPage page,
+      Map<String, List<Integer>> trends,
+      IncidentGroupTrend window) {
     IncidentGroupReferences references = resolveIncidentGroupReferences(page);
     return page.counts().stream()
         .map(
@@ -1188,8 +1320,9 @@ public class TestCaseResolutionStatusRepository
                     toIncidentGroup(
                         groupBy,
                         count,
-                        parseIncidentCreatedAt(count),
-                        references.groups().get(count.groupKey())),
+                        trends.get(count.groupKey()),
+                        references.groups().get(count.groupKey()),
+                        window),
                     count,
                     page,
                     references))
@@ -1254,8 +1387,9 @@ public class TestCaseResolutionStatusRepository
   private static TestCaseIncidentGroup toIncidentGroup(
       IncidentGroupBy groupBy,
       CollectionDAO.TestCaseIncidentGroupCount count,
-      List<Long> incidentCreatedAt,
-      EntityReference reference) {
+      List<Integer> trend,
+      EntityReference reference,
+      IncidentGroupTrend window) {
     TestCaseIncidentGroup group =
         new TestCaseIncidentGroup()
             .withGroupBy(groupBy)
@@ -1272,7 +1406,11 @@ public class TestCaseResolutionStatusRepository
     if (!assignees.isEmpty()) {
       group.withAssignees(assignees);
     }
-    setIncidentTrend(group, incidentCreatedAt);
+    group
+        .withTrend(trend)
+        .withTrendDirection(IncidentGroupTrend.direction(trend))
+        .withTrendStart(window.start())
+        .withTrendEnd(window.end());
     if (reference != null) {
       group
           .withId(reference.getId())
@@ -1297,14 +1435,6 @@ public class TestCaseResolutionStatusRepository
     return result;
   }
 
-  private static List<Long> parseIncidentCreatedAt(CollectionDAO.TestCaseIncidentGroupCount count) {
-    List<Long> result = List.of();
-    if (!nullOrEmpty(count.incidentCreatedAt())) {
-      result = Arrays.asList(JsonUtils.readValue(count.incidentCreatedAt(), Long[].class));
-    }
-    return result;
-  }
-
   // The group's open incidents split across the statuses they currently sit in, ordered the way
   // the triage order ranks them. A status no incident is in is left out rather than reported as a
   // zero, so the breakdown only ever names statuses that are actually occupied.
@@ -1325,42 +1455,6 @@ public class TestCaseResolutionStatusRepository
   private static TestCaseResolutionStatusTypes statusFromRank(int statusRank) {
     int index = Math.min(Math.max(statusRank, 1), STATUS_TRIAGE_ORDER.size()) - 1;
     return STATUS_TRIAGE_ORDER.get(index);
-  }
-
-  private static void setIncidentTrend(TestCaseIncidentGroup group, List<Long> incidentCreatedAt) {
-    List<Long> timestamps = listOrEmpty(incidentCreatedAt);
-    if (!timestamps.isEmpty()) {
-      long min = Collections.min(timestamps);
-      long max = Collections.max(timestamps);
-      List<Integer> buckets = bucketIncidentCreatedAt(timestamps, min, max);
-      group.withTrend(buckets).withTrendDirection(trendDirection(buckets, max > min));
-    }
-  }
-
-  private static List<Integer> bucketIncidentCreatedAt(List<Long> timestamps, long min, long max) {
-    int[] buckets = new int[TREND_BUCKET_COUNT];
-    long span = max - min;
-    for (long timestamp : timestamps) {
-      int bucket = span == 0 ? 0 : (int) ((timestamp - min) * TREND_BUCKET_COUNT / span);
-      buckets[Math.min(bucket, TREND_BUCKET_COUNT - 1)]++;
-    }
-    return Arrays.stream(buckets).boxed().toList();
-  }
-
-  private static IncidentTrendDirection trendDirection(List<Integer> buckets, boolean hasSpan) {
-    IncidentTrendDirection result = IncidentTrendDirection.Steady;
-    if (hasSpan) {
-      int half = TREND_BUCKET_COUNT / 2;
-      int firstHalf = buckets.subList(0, half).stream().mapToInt(Integer::intValue).sum();
-      int lastHalf =
-          buckets.subList(half, TREND_BUCKET_COUNT).stream().mapToInt(Integer::intValue).sum();
-      if (lastHalf > firstHalf) {
-        result = IncidentTrendDirection.Rising;
-      } else if (lastHalf < firstHalf) {
-        result = IncidentTrendDirection.Falling;
-      }
-    }
-    return result;
   }
 
   // A table can be gone while incidents raised on it are still open; it is then named after its

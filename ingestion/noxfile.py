@@ -14,9 +14,8 @@ Nox sessions for testing and formatting checks.
 
 import argparse
 import fcntl
-import json
 import os
-import re
+import runpy
 import shutil
 import subprocess
 import sys
@@ -26,14 +25,15 @@ from pathlib import Path
 import nox
 from nox.virtualenv import PassthroughEnv
 
-# NOTE: This is still a work in progress! We still need to:
-#    - Fix ignored unit tests
-#    - Add integration tests
-#    - Address the TODOs in the code
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
 
-# TODO: Add python 3.9. PYTHON 3.9 fails in Mac os due to problem with `psycopg2-binary` package
+with (Path(__file__).resolve().parent / "pyproject.toml").open("rb") as configuration:
+    PYTHON_ENVIRONMENTS = tomllib.load(configuration)["tool"]["openmetadata"]["python-environments"]
 
-SUPPORTED_PYTHON_VERSIONS = ["3.10", "3.11", "3.12"]
+SUPPORTED_PYTHON_VERSIONS = PYTHON_ENVIRONMENTS["supported-python"]
 
 
 def get_python_versions():
@@ -49,7 +49,10 @@ def get_python_versions():
 INGESTION_ROOT = Path(__file__).resolve().parent
 nox.options.envdir = str(INGESTION_ROOT / ".nox")
 ROOT = INGESTION_ROOT.parent
-PROFILES = ("runtime", "all", "dev", "test", "style", "generation", "coverage")
+PROFILES = tuple(PYTHON_ENVIRONMENTS["profiles"])
+UV = runpy.run_path(str(ROOT / "scripts/python_tools.py"))["ensure_uv"]()
+os.environ["OM_UV_EXECUTABLE"] = str(UV)
+os.environ["PATH"] = str(UV.parent) + os.pathsep + os.environ["PATH"]
 
 
 # ADR:2026-10-27-local-python-environments-use-locked-profiles
@@ -65,28 +68,9 @@ def generation_lock():
 
 def default_environment(profile):
     """Select the checkout application environment or an isolated tool environment."""
-    if profile in ("runtime", "all", "dev", "test"):
+    if profile in ("runtime", "all", "dev", "test", "test-classification"):
         return Path(os.environ.get("OM_PYTHON_ENVIRONMENT") or ROOT / (os.environ.get("OM_VENV_DIR") or "env"))
     return INGESTION_ROOT / ".nox" / profile
-
-
-def pinned_uv(session, python, environment):
-    """Locate or install the project's exact uv version in the selected environment."""
-    pins = re.findall(
-        r'^required-version\s*=\s*"==([^"]+)"\s*$',
-        (INGESTION_ROOT / "pyproject.toml").read_text(),
-        re.MULTILINE,
-    )
-    if len(pins) != 1:
-        session.error("Expected one exact tool.uv.required-version pin")
-    for candidate in (python.parent / "uv", Path(sys.executable).parent / "uv", shutil.which("uv")):
-        if candidate and Path(candidate).is_file():
-            version = session.run(str(candidate), "--version", silent=True, external=True)
-            if version.split()[1] == pins[0]:
-                return str(candidate)
-    session.run(str(python), "-I", "-m", "ensurepip", "--upgrade", env=environment, external=True)
-    session.run(str(python), "-I", "-m", "pip", "install", f"uv=={pins[0]}", env=environment, external=True)
-    return str(python.parent / "uv")
 
 
 def synchronize(session, profile, path, interpreter):
@@ -95,32 +79,14 @@ def synchronize(session, profile, path, interpreter):
     if path.exists() and any(path.iterdir()) and not (path / "pyvenv.cfg").is_file():
         session.error(f"Refusing to synchronize a non-venv path: {path}")
     if not python.exists():
-        session.run(str(interpreter), "-m", "venv", str(path), external=True)
+        session.run(str(UV), "venv", "--python", str(interpreter), str(path), external=True)
     environment = {
         "VIRTUAL_ENV": str(path),
         "UV_PROJECT_ENVIRONMENT": str(path),
         "PATH": str(path / "bin") + os.pathsep + os.environ["PATH"],
     }
-    uv = pinned_uv(session, python, environment)
-    command = [uv, "sync", "--locked", "--project", str(INGESTION_ROOT), "--python", str(python)]
-    parser_check = "try:\n import tomllib\nexcept ImportError:\n import tomli"
-    if subprocess.run([str(python), "-I", "-c", parser_check], capture_output=True, check=False).returncode:
-        session.run(*command, "--only-group", "bootstrap", "--inexact", env=environment, external=True)
-    policy = json.loads(
-        session.run(
-            str(python),
-            "-I",
-            "-c",
-            "import json,sys\ntry:\n import tomllib\nexcept ImportError:\n import tomli as tomllib\n"
-            "with open(sys.argv[1], 'rb') as stream:\n"
-            " print(json.dumps(tomllib.load(stream)['tool']['openmetadata']['python-environments']))",
-            str(INGESTION_ROOT / "pyproject.toml"),
-            env=environment,
-            silent=True,
-            external=True,
-        )
-    )
-    selected = policy["profiles"][profile]
+    command = [str(UV), "sync", "--locked", "--project", str(INGESTION_ROOT), "--python", str(python)]
+    selected = PYTHON_ENVIRONMENTS["profiles"][profile]
     with generation_lock() if selected["install-project"] else nullcontext():
         if selected["install-project"]:
             generation_python, generation_environment = synchronize(
@@ -148,18 +114,6 @@ def synchronize(session, profile, path, interpreter):
         for extra in selected["extras"]:
             flags.extend(["--extra", extra])
         session.run(*command, *flags, env=environment, external=True)
-        if profile == "test" and policy.get("classification-models"):
-            session.run(
-                str(python),
-                "-I",
-                "-m",
-                "metadata",
-                "install-classification-models",
-                "--languages",
-                ",".join(policy["classification-models"]["languages"]),
-                env=environment,
-                external=True,
-            )
     return python, environment
 
 
@@ -212,19 +166,19 @@ def coverage(session):
 
 @nox.session(name="precommit-install", reuse_venv=True, venv_backend="uv|venv", default=False)
 def precommit_install(session):
-    python = prepare(session, "dev")
+    python = prepare(session, "hooks")
     session.run(str(python.parent / "pre-commit"), "install")
 
 
 @nox.session(name="generate-settings-docs", reuse_venv=True, venv_backend="uv|venv", default=False)
 def generate_settings_docs(session):
-    python = prepare(session, "dev")
+    python = prepare(session, "runtime")
     session.run(str(python), str(INGESTION_ROOT / "scripts/generate_settings_docs.py"))
 
 
 @nox.session(name="check-import-layers", reuse_venv=True, venv_backend="uv|venv", default=False)
 def check_import_layers(session):
-    python = prepare(session, "dev")
+    python = prepare(session, "imports")
     session.run(str(python.parent / "lint-imports"))
 
 
@@ -251,11 +205,24 @@ def lint(session):
     parser = argparse.ArgumentParser()
     parser.add_argument("--fix", action="store_true")
     args = parser.parse_args(session.posargs)
-    sources = [str(INGESTION_ROOT), str(ROOT / "openmetadata-airflow-apis")]
+    sources = [
+        str(INGESTION_ROOT),
+        str(ROOT / "openmetadata-airflow-apis"),
+        str(ROOT / "openmetadata-spec/scripts/prepare_model_schemas.py"),
+    ]
     sources.extend(
         str(ROOT / "scripts" / name)
-        for name in ("generate_ingestion_models.py", "check_generated_models.py", "datamodel_generation.py")
+        for name in (
+            "generate_ingestion_models.py",
+            "check_generated_models.py",
+            "datamodel_generation.py",
+            "update_version.py",
+            "prepare_classification_models.py",
+            "python_ci.py",
+            "python_tools.py",
+        )
     )
+    sources.extend(str(ROOT / ".github/scripts" / name) for name in ("tests/test_python_ci.py",))
     session.run(
         str(python.parent / "ruff"),
         "check",
@@ -285,7 +252,7 @@ def lint(session):
     python=get_python_versions(),
 )
 def static_checks(session):
-    python = prepare(session, "test")
+    python = prepare(session, "types")
     # `--baselinemode=discard` fails the run on any *new* error not in the
     # baseline (early-return path in basedpyright's BaselineHandler.write)
     # while tolerating baseline entries that don't fire on the current
@@ -307,6 +274,15 @@ def static_checks(session):
 # ---------------------------------------------------------------------------
 # Unit tests
 # ---------------------------------------------------------------------------
+def run_test_process(session, command, suite, environment=None):
+    """Run a test process and record its unmodified exit status."""
+    if environment is None:
+        environment = {name: value for name, value in {**os.environ, **session.env}.items() if value is not None}
+    result = subprocess.run(command, cwd=INGESTION_ROOT, env=environment, check=False)
+    (INGESTION_ROOT / f"{suite}-test-exit-code.txt").write_text(f"{result.returncode}\n")
+    return result.returncode
+
+
 @nox.session(
     name="unit-tests",
     reuse_venv=True,
@@ -321,7 +297,7 @@ def unit_tests(session):
         nox -s unit-tests -- -k test_name # run specific test
         nox -s unit-tests -- tests/unit/topology/  # run specific directory
     """
-    python = prepare(session, "test")
+    python = prepare(session, "test-classification")
 
     pytest_args = [
         "-c",
@@ -344,7 +320,9 @@ def unit_tests(session):
 
     pytest_args.extend(session.posargs)
 
-    session.run(str(python.parent / "pytest"), *pytest_args)
+    exit_code = run_test_process(session, [str(python.parent / "pytest"), *pytest_args], "unit")
+    if exit_code:
+        session.error(f"Unit tests exited with code {exit_code}")
 
 
 # ---------------------------------------------------------------------------
@@ -366,8 +344,7 @@ def integration_tests(session):
         nox -s integration-tests                   # local, appends to .coverage
         nox -s integration-tests -- --standalone   # CI, standalone .coverage
     """
-    python = prepare(session, "test")
-
+    python = prepare(session, "test-classification")
     args = list(session.posargs)
     standalone = "--standalone" in args
     if standalone:
@@ -398,39 +375,96 @@ def integration_tests(session):
 
     pytest_args.extend(args)
 
-    session.run(str(python.parent / "pytest"), *pytest_args)
+    exit_code = run_test_process(session, [str(python.parent / "pytest"), *pytest_args], "integration")
+    if exit_code:
+        session.error(f"Integration tests exited with code {exit_code}")
+
+
+@nox.session(name="cli-e2e", python=False, default=False)
+def cli_e2e(session):
+    """Run one connector's CLI tests with optional parent and subprocess coverage."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("connector")
+    parser.add_argument("--suite", choices=("legacy", "v2"), default="legacy")
+    parser.add_argument("--no-cov", action="store_true")
+    args = parser.parse_args(session.posargs)
+    connector = args.connector
+    collect_coverage = not args.no_cov
+    test = INGESTION_ROOT / "tests/cli_e2e" / f"test_cli_{connector}.py"
+    pytest_args = ["--durations=20"]
+    report = connector
+    if args.suite == "v2":
+        test = INGESTION_ROOT / "tests/cli_e2e_v2" / connector
+        report = f"v2-{connector}"
+        pytest_args.extend(["-v", "--e2e-contract-check"])
+        workers = {"bigquery": "6", "snowflake": "4"}.get(connector)
+        if workers:
+            pytest_args.extend(["-n", workers])
+    if not connector.replace("_", "").isalnum() or not (test.is_dir() if args.suite == "v2" else test.is_file()):
+        session.error(f"Unknown CLI E2E connector: {connector}")
+    python = prepare(session, "test-classification")
+    environment = {name: value for name, value in {**os.environ, **session.env}.items() if value is not None}
+    test_environment = environment
+    command = [str(python), "-m"]
+    commands = []
+    if collect_coverage:
+        test_environment = {
+            **environment,
+            "COVERAGE_FILE": str(INGESTION_ROOT / f".coverage.{connector}"),
+        }
+        command.extend(["coverage", "run", "--rcfile=pyproject.toml", "--branch", "-m"])
+        commands = ["combine"] if os.environ.get("GITHUB_ACTIONS") == "true" else ["combine", "report"]
+    exit_code = run_test_process(
+        session,
+        [
+            *command,
+            "pytest",
+            "-c",
+            "pyproject.toml",
+            *pytest_args,
+            f"--junitxml=junit/test-results-{report}.xml",
+            str(test),
+        ],
+        "cli-e2e",
+        test_environment,
+    )
+    for command in commands:
+        subprocess.run(
+            [str(python), "-m", "coverage", command, f"--data-file=.coverage.{connector}", "--rcfile=pyproject.toml"],
+            cwd=INGESTION_ROOT,
+            env=environment,
+            check=False,
+        )
+    if exit_code:
+        session.error(f"CLI E2E tests exited with code {exit_code}")
 
 
 # ---------------------------------------------------------------------------
 # Combine coverage
 # ---------------------------------------------------------------------------
-@nox.session(
-    name="combine-coverage",
-    reuse_venv=True,
-    venv_backend="uv|venv",
-)
+@nox.session(name="combine-coverage", python=False)
 def combine_coverage(session):
-    """Combine coverage from multiple test runs and generate reports.
-
-    Used in CI to merge coverage artifacts from separate unit and
-    integration jobs. Expects .coverage files under coverage-data/.
-
-    Example:
-        nox -s combine-coverage
-    """
-    session.chdir(Path(__file__).resolve().parent)
+    """Combine local or downloaded coverage and stage JUnit reports."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--coverage-dir", type=Path)
+    parser.add_argument("--results-dir", type=Path)
+    args = parser.parse_args(session.posargs)
     python = prepare(session, "coverage")
-    session.run(str(python.parent / "coverage"), "combine")
-    session.run(
-        str(python.parent / "coverage"),
-        "report",
-        "--rcfile=pyproject.toml",
-    )
+    files = []
+    if args.coverage_dir:
+        directory = Path(session.invoked_from) / args.coverage_dir
+        files = sorted(path for path in directory.rglob(".coverage*") if path.is_file())
+        if not files:
+            session.error("No Python coverage artifacts were downloaded")
+    if args.results_dir:
+        directory = Path(session.invoked_from) / args.results_dir
+        junit = INGESTION_ROOT / "junit"
+        junit.mkdir(exist_ok=True)
+        for index, path in enumerate(sorted(directory.rglob("test-results*.xml"))):
+            shutil.copyfile(path, junit / f"test-results-{index}.xml")
+    session.run(str(python.parent / "coverage"), "combine", "--rcfile=pyproject.toml", "--keep", *map(str, files))
     session.run(
         str(python.parent / "coverage"),
         "xml",
         "--rcfile=pyproject.toml",
-        "-o",
-        "coverage.xml",
     )
-    session.run("mv", "coverage.xml", "ci-coverage.xml", external=True)

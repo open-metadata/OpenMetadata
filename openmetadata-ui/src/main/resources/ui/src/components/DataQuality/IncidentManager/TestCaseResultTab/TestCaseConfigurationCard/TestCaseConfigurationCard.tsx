@@ -16,10 +16,9 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Suggestions } from '@openmetadata/ui-core-components/icons';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as StarIcon } from '../../../../../assets/svg/ic-suggestions.svg';
 import {
   ConfigurationParameterRow,
   TestCaseConfigurationCardProps,
@@ -151,9 +150,10 @@ function DynamicAssertionCallout() {
       className="tw:gap-2.5 tw:rounded-lg tw:border tw:border-utility-blue-200 tw:bg-utility-blue-50 tw:px-3 tw:py-2.5"
       data-testid="dynamic-assertion">
       {/* The sparkle matches the title colour; the asset draws in currentColor. */}
-      <StarIcon
+      <Suggestions
         aria-hidden
-        className="tw:h-[18px] tw:w-[18px] tw:shrink-0 tw:text-utility-blue-700"
+        className="tw:shrink-0 tw:text-utility-blue-700"
+        size={18}
       />
       <div>
         <Typography

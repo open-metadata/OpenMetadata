@@ -38,9 +38,7 @@ import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
 } from '../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../enums/Alerts.enum';
 import { Status, TypedEvent } from '../../../generated/events/api/typedEvent';
@@ -62,7 +60,6 @@ import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import RichTextEditorPreviewNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 
-const PAGE_SIZE_OPTIONS = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE];
 const SKELETON_ROWS = 5;
 
 const STATUS_BADGES: Record<
@@ -194,7 +191,7 @@ const AlertAiRecentEventsTab = ({
     pageSize,
     paging,
     showPagination,
-  } = usePaging(PAGE_SIZE_BASE, PAGE_SIZE_OPTIONS);
+  } = usePaging(undefined, LIST_PAGE_SIZE_OPTIONS);
   const { id } = alertDetails;
   const isFiltered = filter !== AlertRecentEventFilters.ALL;
 
@@ -365,7 +362,7 @@ const AlertAiRecentEventsTab = ({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={computeTotalPages(pageSize, paging.total)}
             onPageChange={handlePageChange}
             onPageSizeChange={handlePageSizeChange}

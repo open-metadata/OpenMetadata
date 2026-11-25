@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
+import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -21,9 +24,15 @@ import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getTableViewData,
   StatusIndicator,
+  ViewDataInterface,
 } from '../../../../utils/executionUtils';
+import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import Table from '../../../common/Table/TableV2';
+import {
+  LIST_VIEW_SCROLL,
+  OPTIONAL_COLUMN_KEYS,
+} from './ListViewTab.constants';
 
 interface ListViewProps {
   executions: Array<PipelineStatus> | undefined;
@@ -32,6 +41,16 @@ interface ListViewProps {
   searchString: string | undefined;
   handleSearch: (value: string) => void;
 }
+
+const renderCount = (value?: number) => (
+  <span className="tw:tabular-nums">
+    {isUndefined(value) ? '--' : formatNumberWithComma(value)}
+  </span>
+);
+
+const renderNoWrap = (value?: string) => (
+  <span className="tw:whitespace-nowrap">{value ?? '--'}</span>
+);
 
 const ListView = ({
   executions,
@@ -55,50 +74,108 @@ const ListView = ({
       typingInterval: 500,
       onSearch: handleSearch,
     }),
-    [searchString, handleSearch]
+    [t, searchString, handleSearch]
+  );
+
+  const reportedColumnKeys = useMemo(
+    () =>
+      new Set(
+        OPTIONAL_COLUMN_KEYS.filter((key) =>
+          tableData?.some((row) => !isUndefined(row[key]))
+        )
+      ),
+    [tableData]
   );
 
   const columns = useMemo(
-    () => [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-      },
-      {
-        title: t('label.status'),
-        dataIndex: 'status',
-        key: 'status',
-        render: (status: StatusType) => <StatusIndicator status={status} />,
-      },
-      {
-        title: t('label.date-and-time'),
-        dataIndex: 'timestamp',
-        key: 'timestamp',
-      },
-      {
-        title: t('label.start-entity', { entity: t('label.time') }),
-        dataIndex: 'startTime',
-        key: 'startTime',
-        render: (startTime: number) =>
-          startTime ? formatDateTime(startTime) : '--',
-      },
-      {
-        title: t('label.end-entity', { entity: t('label.time') }),
-        dataIndex: 'endTime',
-        key: 'endTime',
-        render: (endTime: number) => (endTime ? formatDateTime(endTime) : '--'),
-      },
-      {
-        title: t('label.duration'),
-        dataIndex: 'duration',
-        key: 'duration',
-        render: (duration: string, record: { name: string }) => (
-          <span data-testid={`duration-${record.name}`}>{duration}</span>
-        ),
-      },
-    ],
-    []
+    () =>
+      [
+        {
+          title: t('label.name'),
+          dataIndex: 'name',
+          key: 'name',
+          render: renderNoWrap,
+        },
+        {
+          title: t('label.status'),
+          dataIndex: 'status',
+          key: 'status',
+          render: (status: StatusType) => <StatusIndicator status={status} />,
+        },
+        {
+          title: t('label.date-and-time'),
+          dataIndex: 'timestamp',
+          key: 'timestamp',
+          render: renderNoWrap,
+        },
+        {
+          title: t('label.start-entity', { entity: t('label.time') }),
+          dataIndex: 'startTime',
+          key: 'startTime',
+          render: (startTime: number) =>
+            renderNoWrap(startTime ? formatDateTime(startTime) : undefined),
+        },
+        {
+          title: t('label.end-entity', { entity: t('label.time') }),
+          dataIndex: 'endTime',
+          key: 'endTime',
+          render: (endTime: number) =>
+            renderNoWrap(endTime ? formatDateTime(endTime) : undefined),
+        },
+        {
+          title: t('label.duration'),
+          dataIndex: 'duration',
+          key: 'duration',
+          render: (duration: string, record: { name: string }) => (
+            <span
+              className="tw:whitespace-nowrap"
+              data-testid={`duration-${record.name}`}>
+              {duration}
+            </span>
+          ),
+        },
+        {
+          title: t('label.rows-read'),
+          dataIndex: 'rowsRead',
+          key: 'rowsRead',
+          align: 'right' as const,
+          render: renderCount,
+        },
+        {
+          title: t('label.rows-written'),
+          dataIndex: 'rowsWritten',
+          key: 'rowsWritten',
+          align: 'right' as const,
+          render: renderCount,
+        },
+        {
+          title: t('label.log'),
+          dataIndex: 'logLink',
+          key: 'logLink',
+          align: 'center' as const,
+          render: (logLink: string | undefined, record: { name: string }) =>
+            logLink ? (
+              <ButtonUtility
+                color="tertiary"
+                data-testid={`log-link-${record.name}`}
+                href={logLink}
+                icon={LinkExternal01}
+                rel="noopener noreferrer"
+                size="xs"
+                target="_blank"
+                tooltip={t('label.view-entity', { entity: t('label.log') })}
+              />
+            ) : (
+              '--'
+            ),
+        },
+      ].filter(
+        (column) =>
+          !OPTIONAL_COLUMN_KEYS.includes(
+            column.key as keyof ViewDataInterface
+          ) || reportedColumnKeys.has(column.key as keyof ViewDataInterface)
+      ),
+    [t, reportedColumnKeys]
   );
 
   return (
@@ -117,6 +194,7 @@ const ListView = ({
       }}
       pagination={false}
       rowKey={(record) => `${record.name}-${record.status}-${record.key}`}
+      scroll={LIST_VIEW_SCROLL}
       searchProps={searchProps}
     />
   );

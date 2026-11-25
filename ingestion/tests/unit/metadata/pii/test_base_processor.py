@@ -508,3 +508,101 @@ def test_diagnostics_do_not_change_emitted_tags(workflow_config, caplog):
 
     assert _processor_warnings(caplog)
     assert with_diagnostics == without_diagnostics == [("service.database.schema.table.id", "PII.Email")]
+
+
+@pytest.mark.parametrize("store", [True, False])
+def test_inference_memory_error_preserves_other_tags_and_forwards_samples(
+    workflow_config: OpenMetadataWorkflowConfig, store: bool
+):
+    processor = RecordingClassificationProcessor(workflow_config)
+    original_classify = processor.create_column_tag_labels
+
+    def classify(column: Column, sample_data: Sequence[Any]) -> Sequence[TagLabel]:
+        if column.name.root == "broken":
+            raise MemoryError("synthetic inference allocation failure")
+        return original_classify(column, sample_data)
+
+    processor.create_column_tag_labels = classify
+    columns = [_column("email"), _column("broken"), _column("later")]
+    table_data = TableData(columns=[column.name for column in columns], rows=[["a", "b", "c"]])
+    record = SamplerResponse(entity=_table(columns), sample_data=SampleData(data=table_data, store=store))
+
+    result = processor.run(record)
+
+    assert result is record
+    assert isinstance(result, SamplerResponse)
+    assert result.column_tags is not None
+    assert [(tag.column_fqn, tag.tag_label.tagFQN.root) for tag in result.column_tags] == [
+        ("service.database.schema.table.email", "PII.Email"),
+        ("service.database.schema.table.later", "PII.Email"),
+    ]
+    assert result.sample_data is not None
+    assert result.sample_data.store is store
+    if store:
+        assert result.sample_data.data == table_data
+    else:
+        assert result.sample_data.data is None
+    assert processor.model_load_failure is None
+    assert len(processor.status.failures) == 1
+    failure = processor.status.failures[0]
+    assert failure.name == "service.database.schema.table"
+    assert "synthetic inference allocation failure" in str(failure.error)
+    assert "broken" in str(failure.error)
+    assert "MemoryError" in str(failure.stackTrace)
+
+
+@pytest.mark.parametrize("store", [True, False])
+def test_model_failure_discards_interrupted_tags_and_forwards_later_samples(workflow_config, store):
+    from metadata.pii.model_loading import ClassificationModelLoadError
+
+    processor = RecordingClassificationProcessor(workflow_config)
+    original_classify = processor.create_column_tag_labels
+    calls = []
+
+    def classify(column, sample_data):
+        calls.append(column.name.root)
+        if column.name.root == "broken":
+            raise ClassificationModelLoadError("fr_core_news_md", "any", "fr", "local_load")
+        return original_classify(column, sample_data)
+
+    processor.create_column_tag_labels = classify
+    columns = [_column("email"), _column("broken"), _column("later")]
+    records = [
+        SamplerResponse(
+            entity=_table(columns),
+            sample_data=SampleData(
+                data=TableData(columns=[c.name for c in columns], rows=[["a", "b", "c"]]), store=store
+            ),
+        )
+        for _ in range(3)
+    ]
+    completed = SamplerResponse(entity=_table([_column("email")]))
+    assert processor._run(completed).right.column_tags
+
+    for record in records:
+        assert processor._run(record).right is record
+        assert record.column_tags == []
+        assert (record.sample_data.data is not None) == store
+
+    assert calls == ["email", "email", "broken"]
+    assert completed.column_tags
+    assert processor.model_load_failure is not None
+    assert len(processor.status.failures) == 1
+    assert "forwarded" in processor.status.failures[0].error
+
+
+def test_deprecated_processor_disables_after_lazy_model_failure(workflow_config, monkeypatch):
+    from metadata.pii.algorithms import presidio_utils
+    from metadata.pii.processor import PIIProcessor
+
+    presidio_utils.load_nlp_engine.cache_clear()
+    monkeypatch.setattr(presidio_utils.spacy, "load", Mock(side_effect=ValueError("broken model")))
+    processor = PIIProcessor(workflow_config, Mock(spec=OpenMetadata))
+    for _ in range(2):
+        record = SamplerResponse(entity=_table([_column("email")]))
+        assert processor._run(record).right is record
+        assert record.column_tags == []
+    assert len(processor.status.failures) == 1
+    assert processor.model_load_failure.phase == "local_load"
+    presidio_utils.spacy.load.assert_called_once()
+    presidio_utils.load_nlp_engine.cache_clear()

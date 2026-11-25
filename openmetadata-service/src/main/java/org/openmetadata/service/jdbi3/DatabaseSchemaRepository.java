@@ -671,7 +671,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     List<Table> tables =
         tableRepository.listAllForCSV(
             tableRepository.getFields("owners,tags,domains,extension"),
-            schema.getFullyQualifiedName());
+            schema.getFullyQualifiedName(),
+            user);
     tables.forEach(
         table -> tableRepository.setFieldsInternal(table, new Fields(Set.of("columns", "tags"))));
     tables.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
@@ -682,7 +683,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     List<StoredProcedure> storedProcedures =
         spRepository.listAllForCSV(
             spRepository.getFields("owners,tags,domains,extension,storedProcedureCode"),
-            schema.getFullyQualifiedName());
+            schema.getFullyQualifiedName(),
+            user);
     storedProcedures.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
 
     // Export all entities using a single CSV

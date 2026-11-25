@@ -29,6 +29,7 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.microsoftFabric.CertificateAuthentication;
 import org.openmetadata.schema.services.connections.database.microsoftFabric.ClientSecretAuthentication;
+import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
@@ -303,6 +304,59 @@ public class SecretsManagerLifecycleTest {
         ServiceType.DATABASE);
 
     assertTrue(secretsManager.getSecretsMap().containsKey(sharedSecretId));
+  }
+
+  /**
+   * Kafka {@code consumerConfig} holds secrets two ways: a key the schema declares ({@code
+   * sasl.oauthbearer.client.secret}) is a password field of its own, and any other string entry
+   * ({@code custom.plugin.secret}) is a secret of the map, stored under an id derived from its key.
+   * Both are stored, encrypted at rest, decrypted on read and deleted with the service, while
+   * non-string settings are left alone.
+   */
+  @Test
+  void testKafkaMapSecretEntriesLifecycle() {
+    String connectionName = "prod_kafka";
+    String consumerConfigId =
+        secretsManager.buildSecretId(true, "messaging", connectionName) + "/consumerconfig";
+    String declaredSecretId = consumerConfigId + "/sasloauthbearerclientsecret";
+    String mapEntrySecretId = consumerConfigId + "/additionalproperties/custom_plugin_secret";
+    Map<String, Object> kafkaConnection =
+        Map.of(
+            "bootstrapServers",
+            "broker:9092",
+            "consumerConfig",
+            Map.of(
+                "sasl.oauthbearer.client.secret", "oauth-client-secret",
+                "custom.plugin.secret", "plugin-secret",
+                "session.timeout.ms", 6000));
+
+    KafkaConnection encrypted =
+        (KafkaConnection)
+            secretsManager.encryptServiceConnectionConfig(
+                kafkaConnection, "Kafka", connectionName, ServiceType.MESSAGING);
+    assertNotEquals(
+        "oauth-client-secret", encrypted.getConsumerConfig().getSaslOauthbearerClientSecret());
+    assertNotEquals(
+        "plugin-secret",
+        encrypted.getConsumerConfig().getAdditionalProperties().get("custom.plugin.secret"));
+    assertEquals(
+        6000, encrypted.getConsumerConfig().getAdditionalProperties().get("session.timeout.ms"));
+    assertEquals(DECRYPTED_VALUE, secretsManager.getSecret(declaredSecretId));
+    assertEquals(DECRYPTED_VALUE, secretsManager.getSecret(mapEntrySecretId));
+
+    KafkaConnection decrypted =
+        (KafkaConnection)
+            secretsManager.decryptServiceConnectionConfig(
+                encrypted, "Kafka", ServiceType.MESSAGING);
+    assertEquals(DECRYPTED_VALUE, decrypted.getConsumerConfig().getSaslOauthbearerClientSecret());
+    assertEquals(
+        DECRYPTED_VALUE,
+        decrypted.getConsumerConfig().getAdditionalProperties().get("custom.plugin.secret"));
+
+    secretsManager.deleteSecretsFromServiceConnectionConfig(
+        kafkaConnection, "Kafka", connectionName, ServiceType.MESSAGING);
+    assertFalse(secretsManager.getSecretsMap().containsKey(declaredSecretId));
+    assertFalse(secretsManager.getSecretsMap().containsKey(mapEntrySecretId));
   }
 
   private Map<String, Object> fabricConfig(Map<String, String> authType) {

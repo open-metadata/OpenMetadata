@@ -26,6 +26,8 @@ from sqlalchemy.exc import OperationalError
 from tenacity import Retrying, retry_if_exception_type, stop_after_delay, wait_fixed
 from testcontainers.mysql import MySqlContainer
 
+from _openmetadata_testutils.helpers.database_images import mysql_source_image
+
 from ..runtime.ci import mask_secrets
 from .baseline import build_mysql_baseline
 
@@ -35,7 +37,7 @@ if TYPE_CHECKING:
     from ..features.database.source import SqlSourceBaseline
 
 logger = logging.getLogger(__name__)
-MYSQL_IMAGE = "mysql:8.0.44@sha256:9c3380eac945af0736031b200027f581925927c81e010056214a4bd6b6693714"
+MYSQL_IMAGE = mysql_source_image()
 _INGEST_USER_OPTION = "e2e_mysql_ingest_user"
 
 

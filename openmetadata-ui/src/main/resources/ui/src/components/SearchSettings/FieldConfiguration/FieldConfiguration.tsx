@@ -26,10 +26,12 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  SettingsSliders,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { MouseEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/setting-colored.svg';
 import { SearchFieldMatchType as MatchType } from '../../../generated/configuration/searchSettings';
 import './field-configuration.less';
 import { FieldConfigurationProps } from './fieldConfiguration.interface';
@@ -144,7 +146,10 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
                     <span
                       className="p-x-xs font-semibold d-flex items-center field-weightage"
                       data-testid="field-weight">
-                      <FilterIcon className="tw:size-3.5 tw:shrink-0" />
+                      <SettingsSliders
+                        className="tw:shrink-0 tw:text-utility-blue-700"
+                        size={14}
+                      />
                       {fieldWeight < 10 ? `0${fieldWeight}` : fieldWeight}
                     </span>
                   </div>

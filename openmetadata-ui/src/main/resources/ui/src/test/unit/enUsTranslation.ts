@@ -19,7 +19,7 @@ export const MISSING_TRANSLATION_MARKER = '[[missing translation:';
 const i18n = createInstance();
 void i18n.init({
   fallbackLng: false,
-  initImmediate: false,
+  initAsync: false,
   interpolation: { escapeValue: false },
   lng: 'en-US',
   parseMissingKeyHandler: (key) => MISSING_TRANSLATION_MARKER + key + ']]',

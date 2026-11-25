@@ -138,19 +138,24 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
     assertThat(restricted.toString()).doesNotContain(hiddenMember.getName());
   }
 
-  /** A patch answers with the patched entity, so a write by the restricted caller is a read too. */
+  /** A patch echoes the fields it changed, so a write by the restricted caller is a read too. */
   @Test
   void patchResponse_omitsTheRelationsTheCallerCannotView() throws Exception {
-    JsonNode unrestricted = patchDescription(current, "Patched by the admin", authToken);
-    assertThat(unrestricted.path("parent").path("id").asText())
-        .isEqualTo(hiddenParent.getId().toString());
+    // relatedMetrics links both ways, so this test uses metrics of its own, not the shared ones.
+    Metric target = createMetric(metric("mcp_rel_patch_" + suffix));
+    Metric hidden = createMetric(restricted(metric("mcp_rel_patch_hidden_" + suffix)));
+    Metric visible = createMetric(metric("mcp_rel_patch_visible_" + suffix));
+    Metric added = createMetric(metric("mcp_rel_patch_added_" + suffix));
+
+    JsonNode unrestricted = patchRelatedMetrics(target, List.of(hidden, visible), authToken);
+    assertThat(idsOf(unrestricted.path("relatedMetrics")))
+        .containsExactlyInAnyOrder(hidden.getId().toString(), visible.getId().toString());
 
     JsonNode restricted =
-        patchDescription(current, "Patched by the restricted user", restrictedToken);
-    assertThat(isAbsent(restricted.path("parent"))).isTrue();
-    assertThat(idsOf(restricted.path("relatedMetrics"))).isEmpty();
-    assertThat(restricted.toString())
-        .doesNotContain(hiddenParent.getName(), hiddenRelated.getName());
+        patchRelatedMetrics(target, List.of(hidden, visible, added), restrictedToken);
+    assertThat(idsOf(restricted.path("relatedMetrics")))
+        .containsExactlyInAnyOrder(visible.getId().toString(), added.getId().toString());
+    assertThat(restricted.toString()).doesNotContain(hidden.getName());
   }
 
   /** A metric created below a parent inherits the parent's group, which the creator may not view. */
@@ -188,11 +193,15 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
     return callTool(McpTestUtils.createGetEntityToolCall(entityType, fqn), token);
   }
 
-  private JsonNode patchDescription(Metric metric, String description, String token)
+  private JsonNode patchRelatedMetrics(Metric metric, List<Metric> related, String token)
       throws Exception {
+    List<Map<String, String>> refs =
+        related.stream()
+            .map(target -> Map.of("id", target.getId().toString(), "type", Entity.METRIC))
+            .toList();
     String patch =
         OBJECT_MAPPER.writeValueAsString(
-            List.of(Map.of("op", "add", "path", "/description", "value", description)));
+            List.of(Map.of("op", "add", "path", "/relatedMetrics", "value", refs)));
     return callTool(
         McpTestUtils.createPatchEntityToolCall(
             Entity.METRIC, metric.getFullyQualifiedName(), patch),
@@ -231,8 +240,8 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
   }
 
   /**
-   * Views, creates and describes across the catalog, except that the metrics and metric groups
-   * tagged as restricted are hidden from it.
+   * Views and creates across the catalog and edits metric hierarchies, except that the metrics and
+   * metric groups tagged as restricted are hidden from it.
    */
   private static User createRestrictedUser(String suffix) throws Exception {
     List<MetadataOperation> viewOperations =
@@ -255,12 +264,18 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
             .withOperations(viewOperations)
             .withCondition("matchAnyTag('%s')".formatted(RESTRICTED_TAG))
             .withEffect(Rule.Effect.DENY);
+    Rule allowHierarchyWrites =
+        new Rule()
+            .withName("AllowMetricHierarchyWrites")
+            .withResources(List.of(Entity.METRIC, Entity.METRIC_GROUP))
+            .withOperations(List.of(MetadataOperation.EDIT_ALL))
+            .withEffect(Rule.Effect.ALLOW);
     Policy policy =
         post(
             "policies",
             new CreatePolicy()
                 .withName("mcp_rel_policy_" + suffix)
-                .withRules(List.of(allowCatalog, denyRestricted)),
+                .withRules(List.of(allowCatalog, allowHierarchyWrites, denyRestricted)),
             Policy.class);
     Role role =
         post(

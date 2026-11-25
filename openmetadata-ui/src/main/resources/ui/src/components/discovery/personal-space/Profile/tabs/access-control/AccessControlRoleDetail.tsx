@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import {
   Autocomplete,
@@ -26,7 +27,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Copy01,
   Edit01 as Edit,
   Policy as PolicyIcon,
   Teams,
@@ -56,7 +56,6 @@ import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { useAuth } from '../../../../../../hooks/authHooks';
-import { useClipboard } from '../../../../../../hooks/useClipBoard';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
   getPolicies,
@@ -76,6 +75,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import CopyButton from '../../../../../common/CopyButton/CopyButton';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
@@ -395,7 +395,10 @@ const RenameHeaderInput: FC<RenameHeaderInputProps> = ({
 
 interface AccessControlRoleDetailProps {
   fqn: string;
-  onNavigate: (view: AccessControlView) => void;
+  onNavigate: (
+    view: AccessControlView,
+    options?: SettingsNavigateOptions
+  ) => void;
   onRename?: (newDisplayName: string) => void;
   onSetHeaderActions?: (actions: React.ReactNode) => void;
   onSetHeaderTitleInput?: (titleInput: React.ReactNode) => void;
@@ -411,7 +414,6 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   onSetHeaderTitleSuffix,
 }) => {
   const { t } = useTranslation();
-  const { onCopyToClipBoard, hasCopied } = useClipboard(window.location.href);
   const { isAdminUser } = useAuth();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { contains } = useFilter({ sensitivity: 'base' });
@@ -497,7 +499,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   }, [role, renameValue, t, fetchRole, onRename]);
 
   const handleAfterDeleteRole = useCallback(
-    () => onNavigate({ type: 'roles' }),
+    () => onNavigate({ type: 'roles' }, { replace: true }),
     [onNavigate]
   );
 
@@ -527,6 +529,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
           data-testid="rename-role-btn"
           icon={Edit}
           isDisabled={!canEditAll}
+          size="lg"
           tooltip={String(
             canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
           )}
@@ -536,17 +539,11 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
             setIsRenameOpen(true);
           }}
         />
-        <ButtonUtility
-          data-testid="copy-link-btn"
-          icon={Copy01}
-          size="lg"
-          tooltip={String(
-            hasCopied
-              ? t('message.link-copy-to-clipboard')
-              : t('label.copy-item', { item: t('label.url-uppercase') })
-          )}
+        <CopyButton
+          testId="copy-link-btn"
+          tooltip={t('label.copy-item', { item: t('label.url-uppercase') })}
           tooltipPlacement="right"
-          onPress={() => onCopyToClipBoard()}
+          value={window.location.href}
         />
       </Box>
     );
@@ -585,8 +582,6 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     handleSaveRename,
     handleAfterDeleteRole,
     t,
-    hasCopied,
-    onCopyToClipBoard,
     onSetHeaderActions,
     onSetHeaderTitleInput,
     onSetHeaderTitleSuffix,

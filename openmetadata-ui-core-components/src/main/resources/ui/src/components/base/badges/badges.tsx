@@ -1,7 +1,7 @@
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { Dot } from '@/components/foundations/dot-icon';
 import { cx } from '@/utils/cx';
-import { X as CloseX } from '../../../icons';
+import { XClose } from '../../../icons';
 import type {
   CSSProperties,
   HTMLAttributes,
@@ -112,6 +112,24 @@ const addonOnlyColors = Object.fromEntries(
   ])
 ) as Record<BadgeColors, { root: string; addon: string }>;
 
+// Status colors use their semantic `bg-*-solid` roles; the rest use the
+// theme-aware `utility-*-600` step. Both carry light and dark values.
+const solidColors: Record<BadgeColors, string> = {
+  gray: 'tw:bg-utility-gray-600',
+  brand: 'tw:bg-brand-solid',
+  error: 'tw:bg-error-solid',
+  warning: 'tw:bg-warning-solid',
+  success: 'tw:bg-success-solid',
+  'gray-blue': 'tw:bg-utility-gray-blue-600',
+  'blue-light': 'tw:bg-utility-blue-light-600',
+  blue: 'tw:bg-utility-blue-600',
+  indigo: 'tw:bg-utility-indigo-600',
+  purple: 'tw:bg-utility-purple-600',
+  pink: 'tw:bg-utility-pink-600',
+  orange: 'tw:bg-utility-orange-600',
+  'blue-dark': 'tw:bg-utility-blue-dark-600',
+};
+
 const withPillTypes = {
   [badgeTypes.pillColor]: {
     common:
@@ -167,6 +185,12 @@ interface BadgeProps<T extends BadgeTypes>
   children: ReactNode;
   className?: string;
   bordered?: boolean;
+  /**
+   * `solid` paints an opaque fill with on-solid text, for a badge laid over
+   * imagery such as a count on an avatar, where the translucent dark-mode
+   * tint of `tinted` lets the image show through.
+   */
+  variant?: 'tinted' | 'solid';
   style?: CSSProperties;
   'data-testid'?: string;
   /** Tooltip text shown on hover/focus */
@@ -187,6 +211,7 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
     size = 'md',
     color = 'gray',
     bordered = true,
+    variant = 'tinted',
     children,
     tooltip,
     tooltipPlacement = 'top',
@@ -197,6 +222,7 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
     ...rest
   } = props;
   const colors = withPillTypes[type];
+  const isSolid = variant === 'solid';
   const Component = href ? AriaLink : 'span';
 
   const pillSizes = {
@@ -229,8 +255,10 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
         // Never wider than its container: a long label truncates instead of spilling out of it.
         'tw:max-w-full',
         sizes[type][size],
-        colors.styles[color].root,
-        bordered && 'tw:outline-1 tw:-outline-offset-1',
+        isSolid
+          ? cx(solidColors[color as BadgeColors], 'tw:text-primary_on-brand')
+          : colors.styles[color].root,
+        bordered && !isSolid && 'tw:outline-1 tw:-outline-offset-1',
         // A linked badge must look identical to a non-linked one: no underline,
         // and the color root's text class sets its color. `tw:text-inherit` here
         // would win the tailwind-merge conflict and drop that color.
@@ -597,7 +625,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
     color = 'gray',
     type = 'pill-color',
     bordered = true,
-    icon: Icon = CloseX,
+    icon: Icon = XClose,
     buttonLabel,
     buttonTestId,
     children,

@@ -189,5 +189,14 @@ public interface PipelineServiceClientInterface {
     return false;
   }
 
+  /* Whether the runner knows a pipeline by its name alone, so two same-named pipelines of different
+   * services reach one runner object. Airflow does (the dag_id), and so does Kubernetes (the CronJob,
+   * ConfigMap and Secret names). The server then refuses runner calls for a pipeline whose name a
+   * deployed pipeline of another service already holds. Runners that tell pipelines apart by more
+   * than the name keep the default. */
+  default boolean addressesPipelinesByName() {
+    return false;
+  }
+
   String getPlatform();
 }

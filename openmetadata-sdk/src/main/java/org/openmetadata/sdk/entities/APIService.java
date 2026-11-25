@@ -10,27 +10,30 @@ import org.openmetadata.sdk.models.ListResponse;
 
 public class APIService extends org.openmetadata.schema.entity.services.ApiService {
 
-  public static APIService create(org.openmetadata.schema.entity.services.ApiService entity)
+  public static org.openmetadata.schema.entity.services.ApiService create(
+      org.openmetadata.schema.entity.services.ApiService entity) throws OpenMetadataException {
+    return OpenMetadata.client().apiServices().create(entity);
+  }
+
+  public static org.openmetadata.schema.entity.services.ApiService retrieve(String id)
       throws OpenMetadataException {
-    return (APIService) OpenMetadata.client().apiServices().create(entity);
+    return OpenMetadata.client().apiServices().get(id);
   }
 
-  public static APIService retrieve(String id) throws OpenMetadataException {
-    return (APIService) OpenMetadata.client().apiServices().get(id);
-  }
-
-  public static APIService retrieve(UUID id) throws OpenMetadataException {
+  public static org.openmetadata.schema.entity.services.ApiService retrieve(UUID id)
+      throws OpenMetadataException {
     return retrieve(id.toString());
   }
 
-  public static APIService retrieveByName(String name) throws OpenMetadataException {
-    return (APIService) OpenMetadata.client().apiServices().getByName(name);
+  public static org.openmetadata.schema.entity.services.ApiService retrieveByName(String name)
+      throws OpenMetadataException {
+    return OpenMetadata.client().apiServices().getByName(name);
   }
 
-  public static APIService update(
+  public static org.openmetadata.schema.entity.services.ApiService update(
       String id, org.openmetadata.schema.entity.services.ApiService patch)
       throws OpenMetadataException {
-    return (APIService) OpenMetadata.client().apiServices().update(id, patch);
+    return OpenMetadata.client().apiServices().update(id, patch);
   }
 
   public static void delete(String id, boolean recursive, boolean hardDelete)

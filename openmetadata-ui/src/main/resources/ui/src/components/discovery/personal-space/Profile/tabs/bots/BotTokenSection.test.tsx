@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import { User } from '../../../../../../generated/entity/teams/user';
 import {
@@ -68,12 +74,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
   Button: ({
     children,
+    onClick,
     onPress,
     'data-testid': testId,
     isDisabled,
     isLoading,
   }: {
     children: React.ReactNode;
+    onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
     onPress?: () => void;
     'data-testid'?: string;
     isDisabled?: boolean;
@@ -84,7 +92,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       data-testid={testId}
       disabled={isDisabled}
       type="button"
-      onClick={onPress}>
+      onClick={onClick ?? onPress}>
       {children}
     </button>
   ),
@@ -150,7 +158,11 @@ describe('BotTokenSection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     Object.assign(navigator, {
-      clipboard: { writeText: jest.fn() },
+      clipboard: { writeText: jest.fn().mockResolvedValue(undefined) },
+    });
+    Object.defineProperty(window, 'isSecureContext', {
+      configurable: true,
+      value: true,
     });
   });
 
@@ -231,7 +243,7 @@ describe('BotTokenSection', () => {
     expect(screen.getByTestId('token-created-on')).toBeInTheDocument();
   });
 
-  it('should copy the token to the clipboard', () => {
+  it('should copy the token to the clipboard', async () => {
     render(
       <BotTokenSection
         botUserData={mockBotUserDataWithToken}
@@ -239,7 +251,9 @@ describe('BotTokenSection', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('copy-token'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('copy-token'));
+    });
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       'mock-jwt-token-value'

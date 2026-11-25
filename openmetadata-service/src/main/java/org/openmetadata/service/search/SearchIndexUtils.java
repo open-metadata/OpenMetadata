@@ -19,10 +19,12 @@ import jakarta.json.JsonValue;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -36,6 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.Datum;
 import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
@@ -233,7 +236,8 @@ public final class SearchIndexUtils {
             target ->
                 target.equals(normalize.apply(type))
                     || ((target.equals(normalize.apply(GLOBAL_SEARCH_ALIAS))
-                            || target.equals(normalize.apply(DATA_ASSET_SEARCH_ALIAS)))
+                            || target.equals(normalize.apply(DATA_ASSET_SEARCH_ALIAS))
+                            || target.equals(normalize.apply(OntologyTermSearch.ALIAS)))
                         && mapping.getParentAliases() != null
                         && mapping.getParentAliases().stream()
                             .map(normalize)
@@ -335,6 +339,16 @@ public final class SearchIndexUtils {
     upsert.values().removeIf(Objects::isNull);
     upsert.remove(SearchClient.FIELDS_TO_REMOVE);
     return upsert;
+  }
+
+  /**
+   * The fields an update document lists under {@code fieldsToRemove}. A scripted update removes
+   * them along with the fields of {@link SearchClient#FIELDS_TO_REMOVE_WHEN_NULL} it sets to null.
+   */
+  public static List<String> listedFieldsToRemove(Map<String, Object> doc) {
+    return doc.get(SearchClient.FIELDS_TO_REMOVE) instanceof Collection<?> fields
+        ? fields.stream().map(String::valueOf).toList()
+        : List.of();
   }
 
   public static Map<String, Object> stripDocMapIfOversized(
@@ -1001,12 +1015,20 @@ public final class SearchIndexUtils {
   }
 
   private static String getPropertyTypeSafe(String entityType, String propertyName) {
+    return findPropertyType(entityType, propertyName).orElse("unknown");
+  }
+
+  /**
+   * The property's current type name, or empty when it is not defined. Empty is kept apart from any
+   * name because a user-created field type may itself be called "unknown".
+   */
+  public static Optional<String> findPropertyType(
+      final String entityType, final String propertyName) {
     try {
-      return TypeRegistry.getCustomPropertyType(entityType, propertyName);
-    } catch (Exception e) {
-      LOG.debug(
-          "Could not find property type for {}.{}, using 'unknown'", entityType, propertyName);
-      return "unknown";
+      return Optional.ofNullable(TypeRegistry.getCustomPropertyType(entityType, propertyName));
+    } catch (final Exception e) {
+      LOG.debug("Could not find property type for {}.{}", entityType, propertyName);
+      return Optional.empty();
     }
   }
 
@@ -1301,6 +1323,39 @@ public final class SearchIndexUtils {
       if (childrenObj instanceof List) {
         List<Map<String, Object>> children = (List<Map<String, Object>>) childrenObj;
         transformColumnExtensionsRecursive(children, columnEntityType);
+      }
+    }
+  }
+
+  /**
+   * The tag FQNs search access control matches a tag condition on a table or its columns against:
+   * every tag the table's own endpoints decide on.
+   */
+  public static List<String> policyTagFqns(Table table) {
+    // The tags TableRepository.allTags merges, collected by FQN alone: merging the labels
+    // themselves
+    // scans the merged list once per tag, which on a wide table is the cost of every column.
+    Set<String> fqns = new LinkedHashSet<>();
+    addTagFqns(fqns, table.getTags());
+    addColumnTagFqns(fqns, table.getColumns());
+    if (table.getDataModel() != null) {
+      addTagFqns(fqns, table.getDataModel().getTags());
+      addColumnTagFqns(fqns, table.getDataModel().getColumns());
+    }
+    return List.copyOf(fqns);
+  }
+
+  private static void addColumnTagFqns(Set<String> fqns, List<Column> columns) {
+    for (Column column : listOrEmpty(columns)) {
+      addTagFqns(fqns, column.getTags());
+      addColumnTagFqns(fqns, column.getChildren());
+    }
+  }
+
+  private static void addTagFqns(Set<String> fqns, List<TagLabel> tags) {
+    for (TagLabel tag : listOrEmpty(tags)) {
+      if (tag.getTagFQN() != null) {
+        fqns.add(tag.getTagFQN());
       }
     }
   }

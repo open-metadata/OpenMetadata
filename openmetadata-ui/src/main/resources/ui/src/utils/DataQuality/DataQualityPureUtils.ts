@@ -10,6 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Accuracy,
+  ActivityAssetUpdated,
+  Completeness,
+  Dimension,
+  Integrity,
+  Sql,
+  SuccessfulTests,
+  Uniqueness,
+} from '@openmetadata/ui-core-components/icons';
 import { compare, type Operation } from 'fast-json-patch';
 import {
   cloneDeep,
@@ -26,14 +36,6 @@ import {
   pick,
 } from 'lodash';
 import QueryString from 'qs';
-import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
-import { ReactComponent as CompletenessIcon } from '../../assets/svg/ic-completeness.svg';
-import { ReactComponent as ConsistencyIcon } from '../../assets/svg/ic-consistency.svg';
-import { ReactComponent as IntegrityIcon } from '../../assets/svg/ic-integrity.svg';
-import { ReactComponent as SqlIcon } from '../../assets/svg/ic-sql.svg';
-import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness.svg';
-import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
-import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
 import type { TestCaseFormType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import type { StatusData } from '../../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import type { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
@@ -719,23 +721,36 @@ export const buildDataQualityDashboardFilters = (data: {
 export const getDimensionIcon = (dimension: DataQualityDimensions) => {
   switch (dimension) {
     case DataQualityDimensions.Accuracy:
-      return AccuracyIcon;
+      return Accuracy;
     case DataQualityDimensions.Consistency:
-      return ConsistencyIcon;
+      return ActivityAssetUpdated;
     case DataQualityDimensions.Completeness:
-      return CompletenessIcon;
+      return Completeness;
     case DataQualityDimensions.Integrity:
-      return IntegrityIcon;
+      return Integrity;
     case DataQualityDimensions.SQL:
-      return SqlIcon;
+      return Sql;
     case DataQualityDimensions.Uniqueness:
-      return UniquenessIcon;
+      return Uniqueness;
     case DataQualityDimensions.Validity:
-      return ValidityIcon;
+      return SuccessfulTests;
     default:
-      return NoDimensionIcon;
+      return Dimension;
   }
 };
+
+const DIMENSION_ICON_CLASS: Partial<Record<DataQualityDimensions, string>> = {
+  [DataQualityDimensions.Accuracy]: 'tw:text-utility-blue-500',
+  [DataQualityDimensions.Completeness]: 'tw:text-utility-blue-700',
+  [DataQualityDimensions.Consistency]: 'tw:text-utility-warning-500',
+  [DataQualityDimensions.Integrity]: 'tw:text-utility-error-500',
+  [DataQualityDimensions.SQL]: 'tw:text-utility-brand-900',
+  [DataQualityDimensions.Uniqueness]: 'tw:text-utility-brand-900',
+  [DataQualityDimensions.Validity]: 'tw:text-utility-green-500',
+};
+
+export const getDimensionIconClassName = (dimension: DataQualityDimensions) =>
+  DIMENSION_ICON_CLASS[dimension] ?? 'tw:text-utility-blue-700';
 
 export const convertSearchSourceToTable = (
   searchSource: TableSearchSource

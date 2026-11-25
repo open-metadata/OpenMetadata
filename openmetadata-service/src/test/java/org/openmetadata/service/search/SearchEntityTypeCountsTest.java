@@ -599,6 +599,32 @@ class SearchEntityTypeCountsTest {
   }
 
   @Test
+  void incompleteResponseSaysWhatFailedWithoutTheEngineReasons() {
+    SearchEntityTypeCounts counts =
+        counts(
+            (body, index) -> {
+              ObjectNode response = response(body);
+              response.put("timed_out", true);
+              ObjectNode shards = (ObjectNode) response.path("_shards");
+              shards.put("failed", 2);
+              shards
+                  .putArray("failures")
+                  .addObject()
+                  .put("index", "cluster_table_search_index")
+                  .putObject("reason")
+                  .put("type", "query_shard_exception")
+                  .put("reason", "failed to create query on field [owners.name]");
+              return response;
+            });
+    IOException error =
+        assertThrows(IOException.class, () -> search(counts, request(), "table", ranked));
+    assertTrue(
+        error.getMessage().endsWith("(timed out: true, failed shards: 2 of 3)"),
+        error.getMessage());
+    assertFalse(error.getMessage().contains("query_shard_exception"), error.getMessage());
+  }
+
+  @Test
   void acceptsZeroAndLongCountsAndRejectsOverflowingSum() throws IOException {
     for (long total : List.of(0L, Long.MAX_VALUE)) {
       SearchEntityTypeCounts counts =

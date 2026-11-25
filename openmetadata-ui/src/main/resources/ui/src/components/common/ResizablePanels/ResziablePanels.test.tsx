@@ -126,4 +126,32 @@ describe('ResizablePanels', () => {
       )
     ).toBeInTheDocument();
   });
+
+  it('should hold the second panel at its minWidth in CSS when enforceMinWidth is set', () => {
+    // react-reflex only turns minWidth into flex ratios, which squeeze this panel below
+    // its minimum when both panels' minimums exceed the container.
+    render(
+      <ResizablePanels
+        firstPanel={firstPanel}
+        pageTitle="Test Page"
+        secondPanel={{ ...secondPanel, enforceMinWidth: true, minWidth: 400 }}
+      />
+    );
+
+    expect(screen.getByTestId(secondPanel.className)).toHaveStyle({
+      minWidth: '400px',
+    });
+  });
+
+  it('should not set a CSS min width on the second panel by default', () => {
+    render(
+      <ResizablePanels
+        firstPanel={firstPanel}
+        pageTitle="Test Page"
+        secondPanel={{ ...secondPanel, minWidth: 400 }}
+      />
+    );
+
+    expect(screen.getByTestId(secondPanel.className).style.minWidth).toBe('');
+  });
 });

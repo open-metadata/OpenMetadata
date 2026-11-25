@@ -18,13 +18,15 @@ import {
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import {
+  CloseCircleFilled,
+  Edit01,
+  Persona,
+  Save,
+} from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona-new.svg';
-import { ReactComponent as ClosePopoverIcon } from '../../../../assets/svg/ic-popover-close.svg';
-import { ReactComponent as SavePopoverIcon } from '../../../../assets/svg/ic-popover-save.svg';
 
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -236,7 +238,7 @@ export const PersonaSelectableList = ({
           direction="col">
           <div className="d-flex justify-start items-center gap-2 m-b-sm">
             <div className="d-flex flex-start items-center">
-              <PersonaIcon height={16} />
+              <Persona className="tw:text-utility-gray-500" size={16} />
             </div>
 
             <Typography className="user-profile-edit-popover-card-title">
@@ -285,7 +287,7 @@ export const PersonaSelectableList = ({
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }persona-edit-cancel`}
-              icon={ClosePopoverIcon}
+              icon={CloseCircleFilled}
               tooltip={t('label.cancel')}
               onClick={handleCloseEditTeam}
             />
@@ -294,7 +296,7 @@ export const PersonaSelectableList = ({
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }-persona-edit-save`}
-              icon={SavePopoverIcon}
+              icon={Save}
               isLoading={isSaving}
               tooltip={t('label.save')}
               onClick={handlePersonaUpdate}

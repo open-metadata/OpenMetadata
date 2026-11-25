@@ -16,6 +16,7 @@ import {
   Button,
   ButtonUtility,
   ConfirmPopover,
+  PaginationCardWithControls,
   TableCard,
   Toggle,
 } from '@openmetadata/ui-core-components';
@@ -37,9 +38,7 @@ import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
   pagingObject,
 } from '../../../../../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../../../../../constants/HelperTextUtil';
@@ -70,11 +69,15 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
-import NextPrevious from '../../../../../common/NextPrevious/NextPrevious';
-import type { PagingHandlerParams } from '../../../../../common/NextPrevious/NextPrevious.interface';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
+import {
+  PageCursor,
+  useCursorPageJump,
+} from '../../../../../../hooks/paging/useCursorPageJump';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
+import { getUserIdentifier } from '../../../../../../utils/UsersPureUtils';
 import type { MembersUsersPanelProps } from './Members.types';
 import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
 import { profileHash } from './profileHash.utils';
@@ -98,30 +101,29 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleted, setShowDeleted] = useState(false);
   const [searchValue, setSearchValue] = useState('');
-  const latestSearchIdRef = useRef(0);
+  const latestLoadIdRef = useRef(0);
 
   // Only page + size go to the settings hash; cursors stay in state, so a
   // reloaded page > 1 has no cursor to resume from and restarts at page 1.
   const {
     page: currentPage,
-    pageSize: hashPageSize,
+    resolvedPageSize: pageSize,
+    savePageSize,
     setPage: setHashPage,
-  } = useHashPagingParams();
-  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
   const [paging, setPaging] = useState<Paging>(pagingObject);
-  const showPagination =
-    Boolean(paging.before || paging.after) ||
-    paging.total > pageSize ||
-    pageSize !== PAGE_SIZE_BASE;
+  const showPagination = shouldShowPager(users);
 
   const handlePageChange = useCallback(
     (page: number) => setHashPage(page, undefined, undefined, pageSize),
     [setHashPage, pageSize]
   );
   const handlePageSizeChange = useCallback(
-    (size: number) =>
-      setHashPage(INITIAL_PAGING_VALUE, undefined, undefined, size),
-    [setHashPage]
+    (size: number) => {
+      savePageSize(size);
+      setHashPage(INITIAL_PAGING_VALUE, undefined, undefined, size);
+    },
+    [savePageSize, setHashPage]
   );
 
   const canCreateUser = useMemo(
@@ -132,36 +134,67 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     [isAdminUser, permissions]
   );
 
+  const listParams = useMemo(
+    () => ({
+      fields: USER_FIELDS,
+      limit: pageSize,
+      isAdmin: isAdmin || undefined,
+      isBot: false,
+      include: showDeleted ? Include.Deleted : Include.NonDeleted,
+    }),
+    [pageSize, isAdmin, showDeleted]
+  );
+  const fetchPaging = useCallback(
+    // A walk keeps only the cursors, so it skips the row fields.
+    async (after: string) =>
+      (await getUsers({ ...listParams, fields: undefined, after })).paging,
+    [listParams]
+  );
+  const {
+    cursorFor,
+    remember: rememberPage,
+    reset: resetPages,
+  } = useCursorPageJump(fetchPaging);
+
   const fetchUsers = useCallback(
-    async (params?: { after?: string; before?: string }) => {
+    async (params?: PageCursor, page = INITIAL_PAGING_VALUE) => {
+      // Only the latest list or search load may fill the table: the pager
+      // stays clickable while a page loads.
+      const loadId = ++latestLoadIdRef.current;
       setIsLoading(true);
       try {
-        const response = await getUsers({
-          fields: USER_FIELDS,
-          limit: pageSize,
-          isAdmin: isAdmin || undefined,
-          isBot: false,
-          include: showDeleted ? Include.Deleted : Include.NonDeleted,
-          ...params,
-        });
+        const response = await getUsers({ ...listParams, ...params });
+        if (loadId !== latestLoadIdRef.current) {
+          return;
+        }
+        // Page 1 is a fresh load (filter, size, restore), so older cursors
+        // may no longer line up.
+        if (page === INITIAL_PAGING_VALUE) {
+          resetPages();
+        }
+        rememberPage(page, response.paging);
         setUsers(response.data);
         setPaging(response.paging);
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-fetch-error', { entity: t('label.user') })
-        );
-        setUsers([]);
+        if (loadId === latestLoadIdRef.current) {
+          showErrorToast(
+            error as AxiosError,
+            t('server.entity-fetch-error', { entity: t('label.user') })
+          );
+          setUsers([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (loadId === latestLoadIdRef.current) {
+          setIsLoading(false);
+        }
       }
     },
-    [pageSize, isAdmin, showDeleted, setPaging, t]
+    [listParams, rememberPage, resetPages, setPaging, t]
   );
 
   const searchUsers = useCallback(
     async (query: string, page = INITIAL_PAGING_VALUE) => {
-      const searchId = ++latestSearchIdRef.current;
+      const searchId = ++latestLoadIdRef.current;
       setIsLoading(true);
       try {
         const response = await searchQuery({
@@ -175,17 +208,21 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
             ...(isAdmin && { isAdmin: 'true' }),
           }),
         });
-        if (searchId !== latestSearchIdRef.current) {
+        if (searchId !== latestLoadIdRef.current) {
           return;
         }
         const data = response.hits.hits.map(({ _source }) => _source as User);
         setUsers(data);
         setPaging({ total: response.hits.total.value });
       } catch (error) {
-        showErrorToast(error as AxiosError);
-        setUsers([]);
+        if (searchId === latestLoadIdRef.current) {
+          showErrorToast(error as AxiosError);
+          setUsers([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (searchId === latestLoadIdRef.current) {
+          setIsLoading(false);
+        }
       }
     },
     [pageSize, isAdmin, showDeleted, setPaging]
@@ -201,6 +238,8 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   const handleSearch = useCallback(
     (value: string) => {
       setSearchValue(value);
+      // Drops a page jump still walking, so it cannot replace the results.
+      resetPages();
       resetToFirstPage();
       if (value) {
         void searchUsers(value);
@@ -208,7 +247,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         void fetchUsers();
       }
     },
-    [resetToFirstPage, fetchUsers, searchUsers]
+    [resetPages, resetToFirstPage, fetchUsers, searchUsers]
   );
 
   const handleShowDeletedChange = useCallback(
@@ -220,10 +259,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     [resetToFirstPage]
   );
 
-  const handlePageNavigation = ({
-    currentPage: newPage,
-    cursorType,
-  }: PagingHandlerParams) => {
+  const handlePageNavigation = async (newPage: number) => {
     if (searchValue) {
       handlePageChange(newPage);
       void searchUsers(searchValue, newPage);
@@ -231,14 +267,22 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       return;
     }
 
-    const cursor = cursorType && paging[cursorType];
+    let cursor: PageCursor | undefined;
+    try {
+      cursor = await cursorFor(newPage, currentPage);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', { entity: t('label.user') })
+      );
 
-    if (!cursorType || !cursor) {
       return;
     }
-
+    if (!cursor) {
+      return;
+    }
     handlePageChange(newPage);
-    void fetchUsers({ [cursorType]: cursor });
+    void fetchUsers(cursor, newPage);
   };
 
   const handleRestoreUser = useCallback(
@@ -305,22 +349,22 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   }, [canCreateUser, isAdmin, onNavigate, onSetHeader, t]);
 
   const columns: ColumnsType<User> = useMemo(() => {
-    const usernameColumn = {
-      title: t('label.username'),
-      dataIndex: 'username',
-      key: 'username',
+    const nameColumn = {
+      title: t('label.name'),
+      dataIndex: 'name',
+      key: 'name',
       ellipsis: true,
       render: (_: unknown, record: User) => (
         <UserNameCell goTo={goTo} record={record} />
       ),
     };
 
-    const nameColumn = {
-      title: t('label.name'),
-      dataIndex: 'name',
-      key: 'name',
+    const emailColumn = {
+      title: t('label.email'),
+      dataIndex: 'email',
+      key: 'email',
       ellipsis: true,
-      render: (_: unknown, record: User) => getEntityName(record),
+      render: (_: unknown, record: User) => getUserIdentifier(record),
     };
 
     const teamsColumn = {
@@ -412,7 +456,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       ),
     };
 
-    const baseColumns = [usernameColumn, nameColumn, teamsColumn];
+    const baseColumns = [nameColumn, emailColumn, teamsColumn];
 
     if (!isAdmin) {
       baseColumns.push(rolesColumn);
@@ -489,20 +533,15 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
           />
         </div>
         {showPagination && (
-          <NextPrevious
-            className="tw:py-3"
-            currentPage={currentPage}
-            isLoading={isLoading}
-            isNumberBased={Boolean(searchValue)}
+          <PaginationCardWithControls
+            // Same compact pager as the Teams list.
+            minimal
+            page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
-            paging={paging}
-            pagingHandler={handlePageNavigation}
-            onShowSizeChange={handlePageSizeChange}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
+            total={Math.max(1, Math.ceil((paging.total ?? 0) / pageSize))}
+            onPageChange={handlePageNavigation}
+            onPageSizeChange={handlePageSizeChange}
           />
         )}
       </TableCard.Root>

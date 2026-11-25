@@ -17,23 +17,26 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mockStatic;
 
-import com.github.jknack.handlebars.EscapingStrategy;
-import com.github.jknack.handlebars.Handlebars;
-import com.github.jknack.handlebars.Template;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.content.template.sandbox.TemplateSandbox;
+import org.openmetadata.service.exception.EntityNotFoundException;
 
 /**
- * Focused unit tests for {@link BuildEntityUrlHelper}. Renders the helper through a real
- * Handlebars instance configured exactly like {@code HandlebarsProvider} (HTML_ENTITY escaping
- * strategy) and overrides {@code getBaseUrl()} so the tests do not depend on {@code EmailUtil} or
- * any DB-backed settings.
+ * Focused unit tests for {@link BuildEntityUrlHelper}. Renders the helper through the template
+ * sandbox that notification templates use, and overrides {@code getBaseUrl()} so the tests do not
+ * depend on {@code EmailUtil} or any DB-backed settings.
  *
  * <p>Reproduces the two notification-link regressions reported in
  * https://github.com/open-metadata/OpenMetadata/issues/27918:
@@ -49,35 +52,36 @@ import org.openmetadata.service.Entity;
 class BuildEntityUrlHelperTest {
 
   private static final String BASE_URL = "http://localhost:8585";
+  private static final String TABLE_FQN = "service.db.schema.orders";
+  private static final String CONTRACT_FQN = TABLE_FQN + ".dataContract_Orders Contract";
   private static final String TEMPLATE_SRC =
       "<a href=\"{{buildEntityUrl event.entityType entity}}\">link</a>";
 
-  private Template template;
-  private Handlebars handlebars;
+  private TemplateSandbox sandbox;
 
   @BeforeEach
-  void setUp() throws IOException {
-    handlebars = new Handlebars().with(EscapingStrategy.HTML_ENTITY);
-    new BuildEntityUrlHelper() {
-      @Override
-      protected String getBaseUrl() {
-        return BASE_URL;
-      }
-    }.register(handlebars);
-    template = handlebars.compileInline(TEMPLATE_SRC);
+  void setUp() {
+    sandbox =
+        new TemplateSandbox(
+            List.of(
+                new BuildEntityUrlHelper() {
+                  @Override
+                  protected String getBaseUrl() {
+                    return BASE_URL;
+                  }
+                }));
   }
 
   /** Renders {@code {{buildEntityUrl event.entityType fqn '<view>'}}} (the task/feed deep link). */
   private String renderFeedLink(String entityType, String fqn, String view) throws IOException {
-    Template t =
-        handlebars.compileInline(
-            "<a href=\"{{buildEntityUrl event.entityType fqn '" + view + "'}}\">link</a>");
-    return t.apply(Map.of("event", Map.of("entityType", entityType), "fqn", fqn));
+    return sandbox.render(
+        "<a href=\"{{buildEntityUrl event.entityType fqn '" + view + "'}}\">link</a>",
+        Map.of("event", Map.of("entityType", entityType), "fqn", fqn));
   }
 
   private String render(String entityType, Map<String, Object> entity) throws IOException {
     Map<String, Object> ctx = Map.of("event", Map.of("entityType", entityType), "entity", entity);
-    return template.apply(ctx);
+    return sandbox.render(TEMPLATE_SRC, ctx);
   }
 
   private String extractHref(String rendered) {
@@ -208,6 +212,24 @@ class BuildEntityUrlHelperTest {
   }
 
   @Test
+  void metadataExample_rendersEntityLink() throws IOException {
+    String example = new BuildEntityUrlHelper().getMetadata().getUsages().get(0).getExample();
+    Map<String, Object> entity =
+        Map.of(
+            "id", UUID.randomUUID().toString(),
+            "fullyQualifiedName", "service.db.schema.users",
+            "name", "users");
+
+    String url =
+        extractHref(
+            sandbox.render(
+                "<a href=\"" + example + "\">link</a>",
+                Map.of("event", Map.of("entityType", "table"), "entity", entity)));
+
+    assertEquals(BASE_URL + "/table/service.db.schema.users", url);
+  }
+
+  @Test
   void testCaseTaskLink_pointsToIssuesTab() throws IOException {
     String url = extractHref(renderFeedLink(Entity.TEST_CASE, "service.db.schema.tc1", "tasks"));
 
@@ -234,6 +256,26 @@ class BuildEntityUrlHelperTest {
   }
 
   @Test
+  void task_linksToTaskPage() throws IOException {
+    Map<String, Object> entity =
+        Map.of(
+            "id", UUID.randomUUID().toString(),
+            "fullyQualifiedName", "TASK-00761",
+            "name", "Approval required for ClaimEventFeature");
+
+    String url = extractHref(render(Entity.TASK, entity));
+
+    assertEquals(BASE_URL + "/tasks/TASK-00761", url);
+  }
+
+  @Test
+  void taskLink_withView_staysOnTaskPage() throws IOException {
+    String url = extractHref(renderFeedLink(Entity.TASK, "TASK-00761", "tasks"));
+
+    assertEquals(BASE_URL + "/tasks/TASK-00761", url);
+  }
+
+  @Test
   void testCaseResultLink_keepsResultsTabWithoutView() throws IOException {
     Map<String, Object> entity =
         Map.of(
@@ -250,14 +292,103 @@ class BuildEntityUrlHelperTest {
   void nullableEntityUrl_withView_doesNotEmitLiteralNull() throws IOException {
     // A query without an id makes buildEntityUrl return null; the view suffix must not turn that
     // into the literal "null/activity_feed/...".
-    Template t =
-        handlebars.compileInline(
-            "<a href=\"{{buildEntityUrl event.entityType entity 'tasks'}}\">link</a>");
     Map<String, Object> entity = Map.of("fullyQualifiedName", "DWH.q", "name", "q");
     String href =
-        extractHref(t.apply(Map.of("event", Map.of("entityType", Entity.QUERY), "entity", entity)));
+        extractHref(
+            sandbox.render(
+                "<a href=\"{{buildEntityUrl event.entityType entity 'tasks'}}\">link</a>",
+                Map.of("event", Map.of("entityType", Entity.QUERY), "entity", entity)));
 
     assertFalse(href.contains("null"), () -> "URL must not contain literal 'null': " + href);
     assertFalse(href.contains("/activity_feed/"), () -> "no feed suffix on a null URL: " + href);
+  }
+
+  @Test
+  void dataContract_withAsset_linksToAssetContractTab() throws IOException {
+    Map<String, Object> entity =
+        Map.of(
+            "id", UUID.randomUUID().toString(),
+            "fullyQualifiedName", CONTRACT_FQN,
+            "entity", Map.of("type", Entity.TABLE, "fullyQualifiedName", TABLE_FQN));
+
+    String url = extractHref(render(Entity.DATA_CONTRACT, entity));
+
+    assertEquals(BASE_URL + "/table/" + TABLE_FQN + "/contract", url);
+  }
+
+  @Test
+  void dataContractReference_loadsContractToLinkItsAsset() throws IOException {
+    Map<String, Object> about =
+        Map.of(
+            "id",
+            UUID.randomUUID().toString(),
+            "type",
+            Entity.DATA_CONTRACT,
+            "fullyQualifiedName",
+            CONTRACT_FQN);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      stubContractLookup(entity);
+      String url = extractHref(render(Entity.DATA_CONTRACT, about));
+
+      assertEquals(BASE_URL + "/table/" + TABLE_FQN + "/contract", url);
+    }
+  }
+
+  @Test
+  void dataContractFqn_loadsContractToLinkItsAsset() throws IOException {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      stubContractLookup(entity);
+      String url =
+          extractHref(
+              sandbox.render(
+                  "<a href=\"{{buildEntityUrl 'dataContract' fqn}}\">link</a>",
+                  Map.of("fqn", CONTRACT_FQN)));
+
+      assertEquals(BASE_URL + "/table/" + TABLE_FQN + "/contract", url);
+    }
+  }
+
+  @Test
+  void dataContractTaskLink_pointsToAssetTasksTab() throws IOException {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      stubContractLookup(entity);
+      String url = extractHref(renderFeedLink(Entity.DATA_CONTRACT, CONTRACT_FQN, "tasks"));
+
+      assertEquals(BASE_URL + "/table/" + TABLE_FQN + "/activity_feed/tasks", url);
+    }
+  }
+
+  @Test
+  void deletedDataContract_rendersEmptyLink() throws IOException {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(() -> Entity.getEntityByName(Entity.DATA_CONTRACT, CONTRACT_FQN, "", Include.ALL))
+          .thenThrow(EntityNotFoundException.byName(CONTRACT_FQN));
+      String url =
+          extractHref(
+              sandbox.render(
+                  "<a href=\"{{buildEntityUrl 'dataContract' fqn}}\">link</a>",
+                  Map.of("fqn", CONTRACT_FQN)));
+
+      assertEquals("", url);
+    }
+  }
+
+  /** The stored contract keeps only the table's id and type; resolving it adds the FQN. */
+  private void stubContractLookup(MockedStatic<Entity> entity) {
+    EntityReference storedRef = new EntityReference().withId(UUID.randomUUID()).withType("table");
+    DataContract contract =
+        new DataContract().withFullyQualifiedName(CONTRACT_FQN).withEntity(storedRef);
+    entity
+        .when(() -> Entity.getEntityByName(Entity.DATA_CONTRACT, CONTRACT_FQN, "", Include.ALL))
+        .thenReturn(contract);
+    entity
+        .when(() -> Entity.getEntityReference(storedRef, Include.ALL))
+        .thenReturn(
+            new EntityReference()
+                .withId(storedRef.getId())
+                .withType("table")
+                .withFullyQualifiedName(TABLE_FQN));
   }
 }

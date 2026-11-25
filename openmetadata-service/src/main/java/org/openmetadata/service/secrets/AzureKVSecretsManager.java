@@ -1,6 +1,7 @@
 package org.openmetadata.service.secrets;
 
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.exception.HttpResponseException;
 import com.azure.core.exception.ResourceNotFoundException;
 import com.azure.core.util.polling.SyncPoller;
 import com.azure.identity.ClientSecretCredentialBuilder;
@@ -11,12 +12,15 @@ import com.azure.security.keyvault.secrets.models.DeletedSecret;
 import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
 import com.azure.security.keyvault.secrets.models.SecretProperties;
 import com.google.common.annotations.VisibleForTesting;
+import java.util.Locale;
 import java.util.regex.Pattern;
 import org.apache.logging.log4j.util.Strings;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
 
 public class AzureKVSecretsManager extends ExternalSecretsManager {
+  private static final int MAX_SECRET_NAME_LENGTH = 127;
+  private static final int HTTP_CONFLICT = 409;
 
   private static AzureKVSecretsManager instance = null;
   private SecretClient client;
@@ -91,6 +95,24 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
     storeSecret(secretName, secretValue);
   }
 
+  /**
+   * Key Vault deletes softly: a deleted secret keeps its name for the vault's retention period, and
+   * a write under that name is refused with a 409 until then.
+   */
+  @Override
+  protected boolean isNameReserved(Throwable failure) {
+    boolean conflict = false;
+    Throwable cause = failure;
+    for (int depth = 0; cause != null && !conflict && depth < MAX_CAUSE_CHAIN_DEPTH; depth++) {
+      conflict =
+          cause instanceof HttpResponseException httpError
+              && httpError.getResponse() != null
+              && httpError.getResponse().getStatusCode() == HTTP_CONFLICT;
+      cause = cause.getCause();
+    }
+    return conflict;
+  }
+
   @Override
   void storeSecret(String secretName, String secretValue) {
     client.setSecret(
@@ -119,6 +141,17 @@ public class AzureKVSecretsManager extends ExternalSecretsManager {
   @Override
   protected boolean isNotFoundException(Exception exception) {
     return exception instanceof ResourceNotFoundException;
+  }
+
+  @Override
+  protected int maxSecretIdLength() {
+    return MAX_SECRET_NAME_LENGTH;
+  }
+
+  /** Key Vault secret names are case-insensitive. */
+  @Override
+  protected String canonicalSecretName(String secretName) {
+    return secretName.toLowerCase(Locale.ROOT);
   }
 
   public static AzureKVSecretsManager getInstance(SecretsConfig secretsConfig) {
