@@ -7,6 +7,9 @@ UPDATE test_definition
 SET json = jsonb_set(json, '{supportedServices}',
                      (json->'supportedServices') || '["Vertica"]'::jsonb)
 WHERE name = 'tableDiff'
-  AND jsonb_typeof(json->'supportedServices') = 'array'
-  AND jsonb_array_length(json->'supportedServices') > 0
-  AND NOT (json->'supportedServices') @> '["Vertica"]'::jsonb;
+  AND CASE
+        WHEN jsonb_typeof(json->'supportedServices') = 'array'
+        THEN jsonb_array_length(json->'supportedServices') > 0
+             AND NOT (json->'supportedServices') @> '["Vertica"]'::jsonb
+        ELSE FALSE
+      END;
