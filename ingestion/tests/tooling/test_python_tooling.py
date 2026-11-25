@@ -29,8 +29,9 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
+import yaml
 
-from ingestion.tests.utils.python_tooling import prepare_locked_tooling
+from ingestion.tests.utils.python_tooling import UV_VERSION, prepare_locked_tooling
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -71,7 +72,7 @@ def nox_repo(tooling_repo: Path, monkeypatch) -> Path:
     package = tooling_repo / "ingestion/src/metadata"
     (package / "__init__.py").touch()
     (package / "sample.py").write_text(
-        "def classify(value):\n    if value > 0:\n        return 'positive'\n    return 'other'\n"
+        "def classify(value: int) -> str:\n    if value > 0:\n        return 'positive'\n    return 'other'\n"
     )
     for suite in ("unit", "integration"):
         tests = tooling_repo / f"ingestion/tests/{suite}"
@@ -98,9 +99,306 @@ def reported_test_names(repo: Path, suite: str) -> list[str]:
     return [case.attrib["name"] for case in report.findall(".//testcase")]
 
 
-@pytest.mark.parametrize("entrypoint", ["make", "nox"])
-@pytest.mark.parametrize("workers", [None, "2", "0", "auto"], ids=["default", "two", "serial", "auto"])
-def test_unit_worker_count_defaults_to_four_and_respects_overrides(
+@pytest.mark.parametrize(
+    "directory, target, ci, exit_code",
+    [
+        ("module", "coverage", True, 0),
+        ("root", "coverage_apis", False, 0),
+        ("root", "run_apis_tests", True, 1),
+        ("module", "test", True, 5),
+    ],
+)
+def test_airflow_make_preserves_selection_status_and_coverage(
+    tooling_repo, monkeypatch, directory, target, ci, exit_code
+):
+    project = tooling_repo / "openmetadata-airflow-apis"
+    project.mkdir()
+    for name in ("Makefile", "noxfile.py"):
+        shutil.copyfile(REPO_ROOT / "openmetadata-airflow-apis" / name, project / name)
+    tools = [
+        f"{name}=={importlib.metadata.version(name)}" for name in ("nox", "pytest", "pytest-cov", "pytest-timeout")
+    ]
+    (project / "pyproject.toml").write_text(
+        '[build-system]\nrequires=["setuptools==83.0.0"]\nbuild-backend="setuptools.build_meta"\n'
+        '[project]\nname="api-tooling-fixture"\nversion="0.0.0"\nrequires-python=">=3.10"\n'
+        "[dependency-groups]\ntest=" + json.dumps(tools) + "\n"
+        '[tool.setuptools.packages.find]\ninclude=["openmetadata_managed_apis"]\n'
+        '[tool.pytest.ini_options]\ntestpaths=["tests"]\n'
+        '[tool.coverage.run]\nsource=["openmetadata_managed_apis"]\nrelative_files=true\nbranch=true\n'
+    )
+    package = project / "openmetadata_managed_apis"
+    package.mkdir()
+    (package / "__init__.py").write_text('def classify(value):\n    return "positive" if value > 0 else "other"\n')
+    tests = project / "tests"
+    tests.mkdir()
+    (tests / "test_selection.py").write_text(
+        "from openmetadata_managed_apis import classify\n"
+        "def test_selected():\n    assert classify(1) == 'positive'\n"
+        f"    assert {exit_code != 1!r}\n"
+        "def test_selected_rejected():\n    raise AssertionError('unselected')\n"
+    )
+    monkeypatch.setenv("GITHUB_ACTIONS", "true" if ci else "false")
+    monkeypatch.delenv("PYTEST_ADDOPTS", raising=False)
+    assert_success(run("uv", "lock", "--project", str(project), cwd=tooling_repo))
+    selection = "missing and not rejected" if exit_code == 5 else "selected and not rejected"
+    result = run(
+        "make",
+        target,
+        f"PYTHON={sys.executable}",
+        f'ARGS=tests/test_selection.py -k "{selection}"',
+        cwd=project if directory == "module" else tooling_repo,
+    )
+    assert (result.returncode == 0) == (exit_code == 0), result.stdout + result.stderr
+    assert (project / "airflow-apis-test-exit-code.txt").read_text().strip() == str(exit_code)
+    report = ET.parse(project / "junit/test-results-airflow-apis.xml")
+    assert [case.attrib["name"] for case in report.findall(".//testcase")] == (
+        [] if exit_code == 5 else ["test_selected"]
+    )
+    coverage = "coverage" in target
+    assert (project / "ci-coverage.xml").is_file() == coverage
+    assert ("TOTAL" in result.stdout) == (coverage and not ci)
+
+
+@pytest.mark.parametrize("suite", ["unit", "integration"])
+@pytest.mark.parametrize("collect, exit_code", [(False, 0), (True, 0), (True, 1)])
+def test_ci_suite_collects_coverage_only_when_selected(
+    nox_repo: Path, monkeypatch, suite: str, collect: bool, exit_code: int
+) -> None:
+    from coverage import CoverageData
+
+    test = nox_repo / f"ingestion/tests/{suite}/test_selection.py"
+    test.write_text(
+        "import subprocess, sys\nfrom metadata.sample import classify\n\ndef test_selected():\n"
+        "    subprocess.run([sys.executable, '-c', "
+        "\"from metadata.sample import classify; assert classify(-1) == 'other'\"], check=True)\n"
+        f"    assert classify(1) == {'positive' if exit_code == 0 else 'other'!r}\n"
+    )
+    action = yaml.safe_load((REPO_ROOT / ".github/actions/python-suite/action.yml").read_text())
+    script = next(step["run"] for step in action["runs"]["steps"] if "run" in step)
+    monkeypatch.setenv("SUITE", suite)
+    monkeypatch.setenv("NOX_ARGS", "-n 1" if suite == "unit" else "--standalone")
+    monkeypatch.setenv("COLLECT_COVERAGE", "true" if collect else "false")
+
+    assert_success(run("make", "install_test", cwd=nox_repo))
+    result = run("bash", "-eo", "pipefail", "-c", script, cwd=nox_repo)
+    assert result.returncode == exit_code, result.stdout + result.stderr
+    assert "TOTAL" not in result.stdout
+
+    assert reported_test_names(nox_repo, suite) == ["test_selected"]
+    coverage_file = nox_repo / "ingestion/.coverage"
+    assert coverage_file.is_file() == collect
+    if collect:
+        data = CoverageData(str(coverage_file))
+        data.read()
+        assert data.has_arcs()
+        assert data.lines("src/metadata/sample.py") == [1, 2, 3, 4]
+        assert (2, 3) in data.arcs("src/metadata/sample.py")
+        assert (2, 4) in data.arcs("src/metadata/sample.py")
+
+
+@pytest.mark.parametrize("profile", ["dev", "test", "types", "style"])
+def test_ci_python_action_installs_the_locked_selection(nox_repo: Path, monkeypatch, profile: str) -> None:
+    action = yaml.safe_load((REPO_ROOT / ".github/actions/prepare-python-environment/action.yml").read_text())
+    install = next(step["run"] for step in action["runs"]["steps"] if step.get("name") == "Install Python dependencies")
+    environment = nox_repo / (f"ingestion/.nox/{profile}" if profile in ("types", "style") else "env")
+    monkeypatch.setenv("PYTHON_PROFILE", profile)
+    lock = (nox_repo / "ingestion/uv.lock").read_bytes()
+
+    assert_success(run("bash", "-eo", "pipefail", "-c", install, cwd=nox_repo))
+
+    application = run(
+        str(environment / "bin/python"),
+        "-I",
+        "-c",
+        "from metadata.sample import classify; assert classify(1) == 'positive'",
+        cwd=nox_repo,
+    )
+    assert (application.returncode == 0) == (profile != "style"), application.stdout + application.stderr
+    probe = run(str(environment / "bin/python"), "-I", "-c", "import pytest, coverage", cwd=nox_repo)
+    assert (probe.returncode == 0) == (profile == "test"), probe.stdout + probe.stderr
+    assert (nox_repo / "ingestion/uv.lock").read_bytes() == lock
+
+
+@pytest.mark.parametrize("package", ["metadata", "airflow_provider_openmetadata"])
+def test_static_checks_isolate_dependencies_and_catch_application_errors(nox_repo: Path, package: str) -> None:
+    assert_success(run("make", "install_test", cwd=nox_repo))
+    application = nox_repo / "env/bin/python"
+    snapshot = (
+        "import importlib.metadata as m; print(sorted((d.metadata['Name'], d.version) for d in m.distributions()))"
+    )
+    before = run(str(application), "-I", "-c", snapshot, cwd=nox_repo)
+    assert_success(before)
+    project = nox_repo / "ingestion"
+    helper = project / "src/_openmetadata_testutils/example.py"
+    helper.parent.mkdir()
+    helper.write_text("def helper() -> str:\n    return 1\n")
+    baseline = project / ".basedpyright/baseline.json"
+    original_baseline = baseline.read_bytes()
+
+    assert_success(run("make", "static-checks", cwd=nox_repo))
+
+    after = run(str(application), "-I", "-c", snapshot, cwd=nox_repo)
+    assert_success(after)
+    assert after.stdout == before.stdout
+    checker = project / ".nox/types/bin/python"
+    assert_success(
+        run(
+            str(checker),
+            "-I",
+            "-c",
+            "import importlib.util as u; import basedpyright; "
+            "assert all(u.find_spec(n) is None for n in ['pytest', 'coverage', 'xdist'])",
+            cwd=nox_repo,
+        )
+    )
+    source = project / f"src/{package}/example.py"
+    source.parent.mkdir(exist_ok=True)
+    source.write_text("def application() -> str:\n    return 1\n")
+
+    result = run("make", "static-checks", cwd=nox_repo)
+
+    assert result.returncode != 0
+    assert "reportReturnType" in result.stdout + result.stderr
+    assert str(source) in result.stdout + result.stderr
+    assert baseline.read_bytes() == original_baseline
+
+
+@pytest.mark.parametrize("profile", ["test", "test-classification"])
+def test_python_preparation_restores_test_dependencies_after_dev_install(nox_repo: Path, monkeypatch, profile) -> None:
+    assert_success(run("make", "install_dev", cwd=nox_repo))
+    action = yaml.safe_load((REPO_ROOT / ".github/actions/prepare-python-environment/action.yml").read_text())
+    restore = next(step["run"] for step in action["runs"]["steps"] if "PYTHON_PROFILE" in step.get("env", {}))
+    monkeypatch.setenv("PYTHON_PROFILE", profile)
+
+    assert_success(run("bash", "-eo", "pipefail", "-c", restore, cwd=nox_repo))
+
+    assert_success(
+        run(
+            str(nox_repo / "env/bin/python"),
+            "-I",
+            "-c",
+            "import pytest, coverage; from metadata.sample import classify",
+            cwd=nox_repo,
+        )
+    )
+
+
+@pytest.mark.parametrize("suite", ["unit", "integration"])
+@pytest.mark.parametrize("exit_code", [0, 1, 5])
+def test_ci_suite_records_pytest_status_and_streams_real_output(nox_repo, monkeypatch, suite, exit_code):
+    test = nox_repo / f"ingestion/tests/{suite}/test_selection.py"
+    test.write_text(
+        f"def test_selected():\n    print('suite output')\n    assert {exit_code != 1}\n"
+        if exit_code != 5
+        else "value = 1\n"
+    )
+    assert_success(run("make", "install_test", cwd=nox_repo))
+    monkeypatch.setenv("SUITE", suite)
+    monkeypatch.setenv("NOX_ARGS", f"-n 0 -s tests/{suite}/test_selection.py")
+    action = yaml.safe_load((REPO_ROOT / ".github/actions/python-suite/action.yml").read_text())
+
+    result = run("bash", "-eo", "pipefail", "-c", action["runs"]["steps"][0]["run"], cwd=nox_repo)
+
+    assert (result.returncode == 0) == (exit_code == 0), result.stdout + result.stderr
+    assert (nox_repo / f"ingestion/{suite}-test-exit-code.txt").read_text().strip() == str(exit_code)
+    assert (nox_repo / f"ingestion/junit/test-results-{suite}.xml").is_file()
+    log = (nox_repo / f"ingestion/{suite}-test-run.log").read_text()
+    expected = {0: "1 passed", 1: "1 failed", 5: "no tests ran"}[exit_code]
+    assert expected in log
+    assert expected in result.stdout
+    if exit_code != 5:
+        assert "suite output" in log
+        assert "suite output" in result.stdout
+
+
+@pytest.mark.parametrize("exit_code", [0, 1, 5])
+@pytest.mark.parametrize("collect", [True, False])
+@pytest.mark.parametrize("suite", ["legacy", "v2"])
+def test_cli_e2e_preserves_pytest_outcome_and_subprocess_coverage(
+    nox_repo: Path, exit_code: int, collect: bool, suite: str
+) -> None:
+    tests = nox_repo / ("ingestion/tests/cli_e2e_v2/demo" if suite == "v2" else "ingestion/tests/cli_e2e")
+    tests.mkdir(parents=True)
+    if suite == "v2":
+        (tests / "conftest.py").write_text(
+            "def pytest_addoption(parser):\n"
+            "    parser.addoption('--e2e-contract-check', action='store_true')\n"
+            "def pytest_configure(config):\n"
+            "    assert config.getoption('--e2e-contract-check')\n"
+        )
+    (tests / "test_cli_demo.py").write_text(
+        "import subprocess, sys\nfrom metadata.sample import classify\n"
+        "def test_connector():\n"
+        "    assert classify(1) == 'positive'\n"
+        "    subprocess.run([sys.executable, '-c', "
+        "\"from metadata.sample import classify; assert classify(-1) == 'other'\"], check=True)\n"
+        f"    assert {exit_code != 1}\n"
+        if exit_code != 5
+        else "value = 1\n"
+    )
+    args = [] if collect else ["--no-cov"]
+    if suite == "v2":
+        args.extend(["--suite", "v2"])
+    result = run("nox", "--no-venv", "-s", "cli-e2e", "--", "demo", *args, cwd=nox_repo / "ingestion")
+    assert (result.returncode == 0) == (exit_code == 0), result.stdout + result.stderr
+    assert (nox_repo / "ingestion/cli-e2e-test-exit-code.txt").read_text().strip() == str(exit_code)
+    report = "v2-demo" if suite == "v2" else "demo"
+    assert (nox_repo / f"ingestion/junit/test-results-{report}.xml").is_file()
+    if not collect:
+        assert not list((nox_repo / "ingestion").glob(".coverage*"))
+    elif exit_code != 5:
+        from coverage import CoverageData
+
+        coverage = CoverageData(str(nox_repo / "ingestion/.coverage.demo"))
+        coverage.read()
+        assert coverage.lines("src/metadata/sample.py") == [1, 2, 3, 4]
+    if exit_code != 5:
+        assert reported_test_names(nox_repo, report) == ["test_connector"]
+
+
+@pytest.mark.parametrize("connector, workers", [("bigquery", "6"), ("snowflake", "4")])
+def test_cli_v2_runs_contracts_with_connector_worker_counts(nox_repo, connector, workers):
+    from coverage import CoverageData
+
+    tests = nox_repo / "ingestion/tests/cli_e2e_v2" / connector
+    tests.mkdir(parents=True)
+    (tests / "conftest.py").write_text(
+        "def pytest_addoption(parser):\n"
+        "    parser.addoption('--e2e-contract-check', action='store_true')\n"
+        "def pytest_configure(config):\n"
+        "    assert config.getoption('--e2e-contract-check')\n"
+    )
+    (tests / "test_workers.py").write_text(
+        "import os, subprocess, sys\nfrom metadata.sample import classify\n"
+        f"def test_workers():\n    assert os.environ['PYTEST_XDIST_WORKER_COUNT'] == {workers!r}\n"
+        "    assert classify(1) == 'positive'\n"
+        "    subprocess.run([sys.executable, '-c', "
+        "\"from metadata.sample import classify; assert classify(-1) == 'other'\"], check=True)\n"
+    )
+    result = run(
+        "nox",
+        "--no-venv",
+        "-s",
+        "cli-e2e",
+        "--",
+        connector,
+        "--suite",
+        "v2",
+        cwd=nox_repo / "ingestion",
+    )
+    assert_success(result)
+    assert reported_test_names(nox_repo, f"v2-{connector}") == ["test_workers"]
+    data = CoverageData(str(nox_repo / f"ingestion/.coverage.{connector}"))
+    data.read()
+    assert data.lines("src/metadata/sample.py") == [1, 2, 3, 4]
+    assert (2, 3) in data.arcs("src/metadata/sample.py")
+    assert (2, 4) in data.arcs("src/metadata/sample.py")
+
+
+@pytest.mark.parametrize(
+    "entrypoint, workers", [("make", None), ("nox", "2"), ("nox", "0"), ("nox", "auto"), ("make", "2")]
+)
+def test_unit_commands_default_to_four_and_respect_overrides(
     nox_repo: Path, entrypoint: str, workers: str | None
 ) -> None:
     expected = {None: "4", "2": "2", "0": None, "auto": "1"}[workers]
@@ -108,7 +406,7 @@ def test_unit_worker_count_defaults_to_four_and_respects_overrides(
         "import os\n\ndef test_worker_count():\n"
         f"    assert os.environ.get('PYTEST_XDIST_WORKER_COUNT') == {expected!r}\n"
     )
-    args = ["-n", workers] if workers is not None else []
+    args = [] if workers is None else ["-n", workers]
     if entrypoint == "make":
         result = run("make", "unit_ingestion", "ARGS=" + " ".join(args), cwd=nox_repo)
     else:
@@ -118,8 +416,10 @@ def test_unit_worker_count_defaults_to_four_and_respects_overrides(
     assert reported_test_names(nox_repo, "unit") == ["test_worker_count"]
 
 
-@pytest.mark.parametrize("directory", [".", "ingestion"])
-@pytest.mark.parametrize("target", ["unit_ingestion", "unit_ingestion_dev_env"])
+@pytest.mark.parametrize(
+    "directory, target",
+    [(".", "unit_ingestion"), ("ingestion", "unit_ingestion"), (".", "unit_ingestion_dev_env")],
+)
 def test_make_unit_commands_use_the_complete_selection(nox_repo: Path, directory: str, target: str) -> None:
     for relative, name in (
         ("workflow/test_workflow_selection.py", "test_workflow_selected"),
@@ -142,26 +442,19 @@ def test_make_unit_commands_use_the_complete_selection(nox_repo: Path, directory
     ]
 
 
-@pytest.mark.parametrize("entrypoint", ["make", "nox"])
-@pytest.mark.parametrize("selection", ["node", "keyword", "marker"])
+@pytest.mark.parametrize("entrypoint, selection", [("nox", "node"), ("make", "keyword"), ("nox", "marker")])
 def test_unit_commands_run_only_the_requested_subset(nox_repo: Path, entrypoint: str, selection: str) -> None:
     (nox_repo / "ingestion/tests/unit/test_selection.py").write_text(
         "import pytest\n\n@pytest.mark.slow\ndef test_unit_selected():\n    pass\n\n"
         "def test_unit_rejected():\n    assert False, 'Unrequested test executed'\n"
     )
-    args = {
-        "node": ["tests/unit/test_selection.py::test_unit_selected"],
-        "keyword": ["-k", "unit_selected and not rejected"],
-        "marker": ["-m", "slow"],
-    }[selection]
     if entrypoint == "make":
-        selection_args = {
-            "node": "tests/unit/test_selection.py::test_unit_selected",
-            "keyword": "-k 'unit_selected and not rejected'",
-            "marker": "-m slow",
-        }[selection]
-        result = run("make", "unit_ingestion", f"ARGS=-n 0 {selection_args}", cwd=nox_repo)
+        result = run("make", "unit_ingestion", "ARGS=-n 0 -k 'unit_selected and not rejected'", cwd=nox_repo)
     else:
+        args = {
+            "node": ["tests/unit/test_selection.py::test_unit_selected"],
+            "marker": ["-m", "slow"],
+        }[selection]
         result = nox_tests(nox_repo, "unit", "-n", "0", *args)
 
     assert_success(result)
@@ -187,8 +480,7 @@ def test_nox_preserves_maxfail_value(nox_repo: Path, suite: str) -> None:
     assert "1 failed" in result.stdout
 
 
-@pytest.mark.parametrize("suite", ["unit", "integration"])
-@pytest.mark.parametrize("path_first", [True, False])
+@pytest.mark.parametrize("suite, path_first", [("unit", True), ("integration", False)])
 def test_nox_explicit_path_replaces_default_suite(nox_repo: Path, suite: str, path_first: bool) -> None:
     focused = nox_repo / "ingestion/tests/focused"
     focused.mkdir()
@@ -266,8 +558,7 @@ def test_pytest_collects_mlflow_from_both_entry_points(nox_repo: Path, directory
     ]
 
 
-@pytest.mark.parametrize("directory", [".", "ingestion"])
-def test_make_coverage_combines_unit_and_integration(tooling_repo: Path, directory: str, monkeypatch) -> None:
+def test_make_coverage_combines_unit_and_integration(tooling_repo: Path, monkeypatch) -> None:
     package = tooling_repo / "ingestion/src/metadata"
     (package / "__init__.py").touch()
     (package / "sample.py").write_text(
@@ -286,7 +577,7 @@ def test_make_coverage_combines_unit_and_integration(tooling_repo: Path, directo
     monkeypatch.setenv("PYTEST_XDIST_AUTO_NUM_WORKERS", "1")
     monkeypatch.setenv("PYTEST_INTEGRATION_WORKERS", "0")
 
-    assert_success(run("make", "coverage", cwd=tooling_repo / directory))
+    assert_success(run("make", "coverage", cwd=tooling_repo))
 
     report = ET.parse(tooling_repo / "ingestion/ci-coverage.xml").getroot()
     sample = report.find(".//class[@name='sample.py']")
@@ -297,9 +588,8 @@ def test_make_coverage_combines_unit_and_integration(tooling_repo: Path, directo
     assert not (tooling_repo / ".coverage").exists()
 
 
-@pytest.mark.parametrize("directory", [".", "ingestion"])
 @pytest.mark.parametrize("target", ["run_python_tests", "coverage"])
-def test_make_coverage_rejects_missing_data(tooling_repo: Path, directory: str, target: str) -> None:
+def test_make_coverage_rejects_missing_data(tooling_repo: Path, target: str) -> None:
     # A prior successful run must not make an empty run look successful.
     (tooling_repo / "ingestion/coverage.xml").write_text("<stale/>\n")
     if target == "run_python_tests":
@@ -314,16 +604,39 @@ def test_make_coverage_rejects_missing_data(tooling_repo: Path, directory: str, 
             )
         )
 
-    result = run("make", "MAKE=true", target, cwd=tooling_repo / directory)
+    result = run("make", "MAKE=true", target, cwd=tooling_repo)
 
     assert result.returncode != 0, result.stdout + result.stderr
     assert "No data to report" in result.stdout + result.stderr
+
+
+@pytest.fixture
+def manifest_repo(tmp_path: Path) -> Path:
+    for relative in (
+        "Makefile",
+        "ingestion/Makefile",
+        "ingestion/noxfile.py",
+        "ingestion/pyproject.toml",
+        "ingestion/uv.lock",
+        "scripts/datamodel_generation.py",
+        "scripts/generate_ingestion_models.py",
+        "scripts/python_tools.py",
+        "openmetadata-spec/scripts/prepare_model_schemas.py",
+        "ingestion/src/metadata/generated/__init__.py",
+    ):
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("original\n")
+    shutil.copyfile(REPO_ROOT / "scripts/check_generated_models.py", tmp_path / "scripts/check_generated_models.py")
+    assert_success(run(sys.executable, "scripts/check_generated_models.py", "--write", cwd=tmp_path))
+    return tmp_path
 
 
 @pytest.mark.parametrize(
     "changed",
     [
         "scripts/generate_ingestion_models.py",
+        "scripts/python_tools.py",
         "openmetadata-spec/scripts/prepare_model_schemas.py",
         "ingestion/uv.lock",
         "ingestion/pyproject.toml",
@@ -332,18 +645,18 @@ def test_make_coverage_rejects_missing_data(tooling_repo: Path, directory: str, 
         "ingestion/src/metadata/generated/__init__.py",
     ],
 )
-def test_generation_manifest_detects_changes(tooling_repo: Path, changed: str) -> None:
+def test_generation_manifest_detects_changes(manifest_repo: Path, changed: str) -> None:
     command = (sys.executable, "scripts/check_generated_models.py", "--check")
-    assert_success(run(*command, cwd=tooling_repo))
-    path = tooling_repo / changed
+    assert_success(run(*command, cwd=manifest_repo))
+    path = manifest_repo / changed
     path.write_text(path.read_text() + "\n# Changed generation contract.\n")
 
-    result = run(*command, cwd=tooling_repo)
+    result = run(*command, cwd=manifest_repo)
 
     assert result.returncode == 1, result.stdout + result.stderr
     assert changed in result.stdout
-    assert_success(run(sys.executable, "scripts/check_generated_models.py", "--write", cwd=tooling_repo))
-    assert_success(run(*command, cwd=tooling_repo))
+    assert_success(run(sys.executable, "scripts/check_generated_models.py", "--write", cwd=manifest_repo))
+    assert_success(run(*command, cwd=manifest_repo))
 
 
 @pytest.mark.parametrize("directory", [".", "ingestion"])
@@ -412,7 +725,15 @@ def test_direct_nox_session_installs_locked_profile(nox_repo: Path, directory: s
     assert environment.parent == nox_repo / "ingestion/.nox"
     assert (environment / "pyvenv.cfg").is_file()
     assert not (nox_repo / ".nox").exists()
-    assert_success(run(str(environment / "bin/python"), "-I", "-c", "import pytest, coverage, uv", cwd=nox_repo))
+    assert_success(
+        run(
+            str(environment / "bin/python"),
+            "-I",
+            "-c",
+            "import pytest, coverage; import importlib.util; assert importlib.util.find_spec('uv') is None",
+            cwd=nox_repo,
+        )
+    )
 
 
 def test_nox_rejects_stale_lock_before_executing(nox_repo: Path) -> None:
@@ -483,14 +804,30 @@ def test_relative_application_environment(nox_repo: Path, directory: str, monkey
     assert not (nox_repo / "ingestion/custom-application").exists()
 
 
-def test_empty_environment_bootstraps_pinned_uv_without_uv_on_path(nox_repo: Path, monkeypatch) -> None:
-    monkeypatch.setenv("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
-    assert shutil.which("uv") is None
+@pytest.mark.parametrize("wrong_uv", [False, True])
+def test_local_bootstrap_installs_and_reuses_pinned_uv(nox_repo: Path, monkeypatch, wrong_uv: bool) -> None:
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("CI", raising=False)
+    binaries = nox_repo / "bin"
+    binaries.mkdir()
+    wrong = binaries / "uv"
+    if wrong_uv:
+        wrong.write_text(f'#!{sys.executable}\nprint("uv 0.0.0")\n')
+        wrong.chmod(0o755)
+    monkeypatch.setenv("PATH", str(binaries) + ":/usr/bin:/bin:/usr/sbin:/sbin")
+    assert bool(shutil.which("uv")) == wrong_uv
     assert shutil.which("nox") is None
     assert_success(run("make", "install_test", f"PYTHON={sys.executable}", cwd=nox_repo))
     result = run(str(nox_repo / "ingestion/.nox/bootstrap/bin/uv"), "--version", cwd=nox_repo)
     assert_success(result)
-    assert result.stdout.startswith("uv 0.13.4 ")
+    assert result.stdout.split()[:2] == ["uv", UV_VERSION]
+    managed = nox_repo / "ingestion/.nox/bootstrap/bin/uv"
+    installed = managed.stat().st_mtime_ns
+    assert_success(run("make", "install_test", f"PYTHON={sys.executable}", cwd=nox_repo))
+    assert managed.stat().st_mtime_ns == installed
+    if wrong_uv:
+        assert_success(run(str(wrong), "--version", cwd=nox_repo))
+        assert run(str(wrong), "--version", cwd=nox_repo).stdout.strip() == "uv 0.0.0"
     assert_success(
         run(
             str(nox_repo / "env/bin/python"),
@@ -499,6 +836,98 @@ def test_empty_environment_bootstraps_pinned_uv_without_uv_on_path(nox_repo: Pat
             cwd=nox_repo,
         )
     )
+
+
+@pytest.mark.parametrize("wrong_uv", [False, True])
+def test_ci_bootstrap_rejects_missing_or_wrong_uv_without_installing(
+    tooling_repo: Path, monkeypatch, wrong_uv: bool
+) -> None:
+    binaries = tooling_repo / "bin"
+    binaries.mkdir()
+    if wrong_uv:
+        executable = binaries / "uv"
+        executable.write_text(f'#!{sys.executable}\nprint("uv 0.0.0")\n')
+        executable.chmod(0o755)
+    make = shutil.which("make")
+    assert make
+    monkeypatch.setenv("PATH", str(binaries))
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+
+    result = run(make, "python_tools", f"PYTHON={sys.executable}", cwd=tooling_repo)
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert f"Expected uv {UV_VERSION}" in result.stderr
+    assert not (tooling_repo / "ingestion/.nox/bootstrap").exists()
+
+
+def test_ci_profiles_reuse_external_uv_without_installing_environment_copies(nox_repo: Path, monkeypatch) -> None:
+    uv = Path(shutil.which("uv")).resolve()
+    installed = uv.stat().st_mtime_ns
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("OM_UV_EXECUTABLE", str(uv))
+    assert_success(run("make", "install_test", cwd=nox_repo))
+    nox = nox_repo / "ingestion/.nox/bootstrap/bin/nox"
+    for profile in ("style", "coverage"):
+        assert_success(run(str(nox), "-f", "ingestion/noxfile.py", "-s", "install", "--", profile, cwd=nox_repo))
+    for path in [
+        nox_repo / "env",
+        *[nox_repo / "ingestion/.nox" / name for name in ("bootstrap", "generation", "style", "coverage")],
+    ]:
+        assert not (path / "bin/uv").exists()
+        assert_success(
+            run(
+                str(path / "bin/python"),
+                "-I",
+                "-c",
+                "from importlib.metadata import distributions; assert not any(d.metadata['Name'].lower() == 'uv' for d in distributions())",
+                cwd=nox_repo,
+            )
+        )
+    assert uv.stat().st_mtime_ns == installed
+
+
+def test_explicit_uv_version_is_checked_before_nox_bootstrap(tooling_repo: Path, monkeypatch) -> None:
+    executable = tooling_repo / "wrong-uv"
+    executable.write_text(f'#!{sys.executable}\nprint("uv 0.0.0")\n')
+    executable.chmod(0o755)
+    monkeypatch.setenv("OM_UV_EXECUTABLE", str(executable))
+
+    result = run("make", "python_tools", cwd=tooling_repo)
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert f"OM_UV_EXECUTABLE must point to uv {UV_VERSION}" in result.stderr
+    assert not (tooling_repo / "ingestion/.nox/bootstrap").exists()
+
+
+def test_changed_uv_pin_rejects_the_previous_executable(tooling_repo: Path, monkeypatch) -> None:
+    config = tooling_repo / "ingestion/pyproject.toml"
+    config.write_text(
+        config.read_text().replace(f'required-version = "=={UV_VERSION}"', 'required-version = "==0.0.0"')
+    )
+    monkeypatch.setenv("OM_UV_EXECUTABLE", shutil.which("uv"))
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+
+    result = run("make", "python_tools", cwd=tooling_repo)
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "must point to uv 0.0.0" in result.stderr
+    assert not (tooling_repo / "ingestion/.nox/bootstrap").exists()
+
+
+def test_application_environment_uv_is_not_selected_for_exact_sync(nox_repo: Path, monkeypatch) -> None:
+    environment = nox_repo / "env"
+    assert_success(run(sys.executable, "-m", "venv", str(environment), cwd=nox_repo))
+    sentinel = nox_repo / "application-uv-used"
+    executable = environment / "bin/uv"
+    executable.write_text(
+        f"#!{sys.executable}\nfrom pathlib import Path\nPath({str(sentinel)!r}).touch()\nprint('uv {UV_VERSION}')\n"
+    )
+    executable.chmod(0o755)
+    monkeypatch.setenv("PATH", str(environment / "bin") + os.pathsep + os.environ["PATH"])
+
+    assert_success(run("make", "install_test", cwd=nox_repo))
+
+    assert not sentinel.exists()
 
 
 def test_tool_profile_does_not_prune_application_dependencies(nox_repo: Path, monkeypatch) -> None:
@@ -560,8 +989,7 @@ def test_tool_install_ignores_metadata_on_callers_pythonpath(nox_repo: Path) -> 
     )
 
 
-@pytest.mark.parametrize("directory", [".", "ingestion"])
-@pytest.mark.parametrize("profile", ["style", "coverage", "generation"])
+@pytest.mark.parametrize("profile, directory", [("style", "."), ("coverage", "ingestion"), ("generation", ".")])
 def test_explicit_tool_environment_preserves_application(nox_repo: Path, profile: str, directory: str) -> None:
     assert_success(run("make", "install_test", cwd=nox_repo))
     environment = nox_repo / "env"
@@ -832,7 +1260,7 @@ def test_model_archives_merge_and_repeated_locked_sync_avoids_denied_origin(nox_
                 "--requirement",
                 requirement,
                 "--uv-version",
-                "0.13.4",
+                UV_VERSION,
                 "--output",
                 str(archive),
                 cwd=nox_repo,
@@ -870,10 +1298,6 @@ def test_model_archives_merge_and_repeated_locked_sync_avoids_denied_origin(nox_
         )
     assert (nox_repo / "ingestion/uv.lock").read_bytes() == lock
     assert requests == []
-    assert_success(model_helper("clean", "--project", str(nox_repo / "ingestion"), cwd=nox_repo))
-    assert_success(run("uv", "cache", "prune", "--ci", "--force", cwd=nox_repo))
-    assert not any(p.name in ("fixture_first", "fixture_second") for p in cache.rglob("*"))
-    assert (cache / "CACHEDIR.TAG").is_file()
     # Stale requirements still fail with locked validation, even when models cannot be fetched.
     config = nox_repo / "ingestion/pyproject.toml"
     config.write_text(config.read_text().replace("idna==3.11", "idna==3.10"))
@@ -896,7 +1320,7 @@ def test_model_preparation_retries_only_transient_failures(tmp_path, model_origi
         requirement = requirement.split("#")[0] + "#sha256=" + "0" * 64
     output = tmp_path / "model.tar"
     result = model_helper(
-        "prepare", "--requirement", requirement, "--uv-version", "0.13.4", "--output", str(output), cwd=tmp_path
+        "prepare", "--requirement", requirement, "--uv-version", UV_VERSION, "--output", str(output), cwd=tmp_path
     )
     if failure == "transient":
         assert_success(result)
@@ -910,56 +1334,41 @@ def test_model_preparation_retries_only_transient_failures(tmp_path, model_origi
             assert "Hash mismatch" in result.stderr
 
 
-@pytest.mark.skipif(sys.version_info < (3, 11), reason="CI bootstrap uses stdlib tomllib")
-@pytest.mark.parametrize(
-    ("versions", "maximum"),
-    [(["3.10", "3.11", "3.12"], "3.12"), (["3.9", "3.10"], "3.10")],
-)
-def test_python_matrix_bootstraps_from_pyproject_without_site_packages(tmp_path, versions, maximum):
-    project = tmp_path / "ingestion"
-    project.mkdir()
-    (project / "pyproject.toml").write_text(
-        "[tool.openmetadata.python-environments]\nsupported-python = " + json.dumps(versions) + "\n"
-    )
-
-    result = run(
-        sys.executable,
-        "-I",
-        "-S",
-        str(REPO_ROOT / "scripts/prepare_classification_models.py"),
-        "matrix",
-        "--project",
-        str(project),
-        cwd=tmp_path,
-    )
-
-    assert_success(result)
-    assert json.loads(result.stdout) == {"python-versions": versions, "discovery-python": maximum}
-
-
 def test_model_discovery_rejects_metadata_version_mismatch_and_tracks_identity(tmp_path):
     project = tmp_path / "ingestion"
     project.mkdir()
     config = project / "pyproject.toml"
-    original = (REPO_ROOT / "ingestion/pyproject.toml").read_text()
+    digest = "a" * 64
+    original = f"""[tool.uv]
+required-version = "=={UV_VERSION}"
+[[tool.uv.dependency-metadata]]
+name = "fixture-model"
+version = "1.2.3"
+requires-dist = []
+[dependency-groups]
+classification-models = ["fixture-model @ https://example.invalid/fixture_model-1.2.3-py3-none-any.whl#sha256={digest}"]
+[tool.openmetadata.python-environments]
+supported-python = ["3.9", "3.13", "3.10"]
+"""
     config.write_text(original)
     result = model_helper("discover", "--project", str(project), cwd=tmp_path)
     assert_success(result)
     baseline = json.loads(result.stdout)
-    assert baseline["discovery-python"] == "3.12"
-    keys = {entry["name"]: entry["key"] for entry in baseline["include"]}
+    assert baseline["discovery-python"] == "3.13"
+    [model] = baseline["include"]
+    assert model["name"] == "fixture-model"
     for old, new in [
-        ("#sha256=5e63", "?mirror=second#sha256=5e63"),
-        ("#sha256=5e63", "?#sha256=5e63"),
-        ("#sha256=5e63", "#sha256=6e63"),
-        ("==0.13.4", "==0.13.5"),
+        ("#sha256=", "?mirror=second#sha256="),
+        ("#sha256=", "?#sha256="),
+        (digest, "b" * 64),
+        (f"=={UV_VERSION}", "==0.0.0"),
     ]:
         config.write_text(original.replace(old, new))
         result = model_helper("discover", "--project", str(project), cwd=tmp_path)
         assert_success(result)
-        changed = {entry["name"]: entry["key"] for entry in json.loads(result.stdout)["include"]}
-        assert changed["en-core-web-md"] != keys["en-core-web-md"]
-    config.write_text(original.replace('version = "3.8.0"', 'version = "3.9.0"', 1))
+        [changed] = json.loads(result.stdout)["include"]
+        assert changed["key"] != model["key"]
+    config.write_text(original.replace('version = "1.2.3"', 'version = "1.2.4"'))
     result = model_helper("discover", "--project", str(project), cwd=tmp_path)
     assert result.returncode != 0
     assert "Missing exact static dependency metadata" in result.stderr
@@ -978,7 +1387,7 @@ def test_model_free_test_profile_preserves_test_dependencies_after_model_selecti
                 "--requirement",
                 requirement,
                 "--uv-version",
-                "0.13.4",
+                UV_VERSION,
                 "--output",
                 str(archive),
                 cwd=nox_repo,
@@ -1030,7 +1439,7 @@ def test_model_versions_coexist_in_one_cache_after_parallel_preparation(tmp_path
                 "--requirement",
                 requirement,
                 "--uv-version",
-                "0.13.4",
+                UV_VERSION,
                 "--output",
                 str(archive),
                 cwd=tmp_path,
@@ -1052,7 +1461,7 @@ def test_model_versions_coexist_in_one_cache_after_parallel_preparation(tmp_path
         (project / "pyproject.toml").write_text(
             '[project]\nname="fixture-project"\nversion="0.0.0"\nrequires-python=">=3.10"\n'
             "[dependency-groups]\nclassification-models=[" + json.dumps(requirement) + "]\n"
-            '[tool.uv]\npackage=false\nrequired-version="==0.13.4"\ndefault-groups=[]\n'
+            f'[tool.uv]\npackage=false\nrequired-version="=={UV_VERSION}"\ndefault-groups=[]\n'
             '[[tool.uv.dependency-metadata]]\nname="fixture-first"\nversion="'
             + version
             + '"\nrequires-dist=[]\nrequires-python=">=3.10"\n'

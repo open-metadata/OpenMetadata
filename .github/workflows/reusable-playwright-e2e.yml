@@ -16,7 +16,7 @@
 # postgresql PR pipeline and the mysql nightly share one source of truth.
 # For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
 
-name: Playwright E2E (reusable)
+name: reusable-playwright-e2e
 on:
   workflow_call:
     inputs:
@@ -100,11 +100,11 @@ on:
     # as `<caller-job> / playwright-summary` and never satisfy the rule).
     outputs:
       gate_result:
-        description: Aggregate result of the gate job (`success`, `failure`, `cancelled`, `skipped`).
-        value: ${{ jobs.gate.result }}
+        description: Result of workload selection (`success`, `failure`, `cancelled`, `skipped`).
+        value: ${{ jobs.check-changes.result }}
       gate_should_run:
-        description: gate's `should_run` decision (`true`/`false`).
-        value: ${{ jobs.gate.outputs.should_run }}
+        description: Whether the triggering event selects Playwright workloads (`true`/`false`).
+        value: ${{ contains(fromJSON('["merge_group", "schedule", "workflow_dispatch", "push"]'), github.event_name) && 'true' || 'false' }}
       check_changes_result:
         description: Aggregate result of check-changes.
         value: ${{ jobs.check-changes.result }}
@@ -172,25 +172,8 @@ concurrency:
 jobs:
   # Playwright runs only in the merge queue (plus schedule / dispatch / main
   # cache-warm pushes); callers skip this workflow on PR events.
-  gate:
-    runs-on: ubuntu-latest
-    permissions: {}
-    outputs:
-      should_run: ${{ steps.gate.outputs.should_run }}
-    steps:
-      - name: Compute gate decision
-        id: gate
-        env:
-          EVENT: ${{ github.event_name }}
-        run: |
-          case "$EVENT" in
-            merge_group|schedule|workflow_dispatch|push) echo "should_run=true" >> "$GITHUB_OUTPUT" ;;
-            *) echo "should_run=false" >> "$GITHUB_OUTPUT" ;;
-          esac
-
   check-changes:
-    needs: gate
-    if: ${{ needs.gate.outputs.should_run == 'true' }}
+    if: ${{ contains(fromJSON('["merge_group", "schedule", "workflow_dispatch", "push"]'), github.event_name) }}
     runs-on: ubuntu-latest
     outputs:
       e2e: ${{ steps.filter.outputs.e2e }}
@@ -267,7 +250,7 @@ jobs:
               - '.github/scripts/tests/test_playwright_ci_planning.py'
               - '.github/scripts/tests/test_playwright_cache_assets.py'
               - '.github/scripts/verify_playwright_coverage.py'
-              - '.github/workflows/playwright-e2e-reusable.yml'
+              - '.github/workflows/reusable-playwright-e2e.yml'
               - '.github/workflows/playwright-postgresql-e2e.yml'
               - '.github/workflows/playwright-postgresql-nightly.yml'
               - '.github/workflows/playwright-mysql-nightly.yml'
@@ -298,13 +281,13 @@ jobs:
               - 'openmetadata-ui/src/main/resources/ui/playwright/constant/**'
               - 'openmetadata-ui/src/main/resources/ui/playwright/fixtures/**'
               - 'openmetadata-ui/src/main/resources/ui/playwright/test-data/**'
-              - '.github/workflows/playwright-e2e-reusable.yml'
+              - '.github/workflows/reusable-playwright-e2e.yml'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
               - '.github/actions/cache-ui-dist/action.yml'
               - '.github/scripts/serve_playwright_ui.cjs'
             rdf:
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
-              - '.github/workflows/playwright-e2e-reusable.yml'
+              - '.github/workflows/reusable-playwright-e2e.yml'
               - 'docker/run_local_docker.sh'
               - 'docker/run_local_docker_common.sh'
               - 'docker/run_local_docker_rdf.sh'
@@ -1110,10 +1093,9 @@ jobs:
           STRICT_DAG_VALIDATION: "true"
           VALIDATION_TIMEOUT_SECONDS: "600"
         with:
-          python-version: "3.10"
           args: "-d ${{ inputs.database }} -s true"
           ingestion_dependency: "playwright"
-          lightweight-ingestion: "true"
+          setup-java: "false"
 
       - name: Setup Node.js for fixture state
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
@@ -1563,12 +1545,10 @@ jobs:
         if: ${{ !contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: "3.10"
           fast-mode: "true"
           fixture-path: ${{ steps.fast-inputs.outputs.fixture }}
           distribution-path: ${{ steps.fast-inputs.outputs.distribution }}
           ingestion-image-path: ${{ steps.fast-inputs.outputs.ingestion_image }}
-          install-test-dependencies: "false"
 
       # The visual and RDF lanes cannot use the shared fixture (see
       # PW_PRESEEDED_STATE above), so each seeds its own environment from
@@ -1609,21 +1589,17 @@ jobs:
         if: ${{ matrix.lane == 'visual' }}
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: "3.10"
           args: "-d mysql -s true"
           ingestion_dependency: "playwright"
-          install-test-dependencies: "false"
 
       - name: Setup the RDF environment
         id: setup-rdf-environment
         if: ${{ matrix.lane == 'rdf' }}
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: "3.10"
           args: "-d postgresql -s true"
           startup-script: "./docker/run_local_docker_rdf.sh"
           ingestion_dependency: "playwright"
-          install-test-dependencies: "false"
 
       - name: Wait for Fuseki to be healthy
         if: ${{ matrix.lane == 'rdf' }}
