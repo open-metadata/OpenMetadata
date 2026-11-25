@@ -180,10 +180,10 @@ public final class McpResponseUtils {
    * ADR:2026-11-17-mcp-patch-entity-returns-compact-confirmation
    */
   public static Map<String, Object> compactPatch(
-      EntityInterface<?> entity, String entityType, EventType changeType) {
-    Map<String, Object> masked = JsonUtils.getMap(maskSecrets(entity));
-    Map<String, Object> doc = confirmation(entity, entityType, masked);
-    List<String> changed =
+      final EntityInterface<?> entity, final String entityType, final EventType changeType) {
+    final Map<String, Object> masked = JsonUtils.getMap(maskSecrets(entity));
+    final Map<String, Object> doc = confirmation(entity, entityType, masked);
+    final List<String> changed =
         EventType.ENTITY_NO_CHANGE.equals(changeType)
             ? List.of()
             : changedFields(entity.getChangeDescription());
@@ -197,8 +197,8 @@ public final class McpResponseUtils {
   }
 
   private static Map<String, Object> confirmation(
-      EntityInterface<?> entity, String entityType, Map<String, Object> masked) {
-    Map<String, Object> doc = new LinkedHashMap<>();
+      final EntityInterface<?> entity, final String entityType, final Map<String, Object> masked) {
+    final Map<String, Object> doc = new LinkedHashMap<>();
     IDENTITY_FIELDS.forEach(key -> putIfPresent(doc, key, masked.get(key)));
     doc.put(ENTITY_TYPE_KEY, entityType);
     doc.put(VERSION_KEY, entity.getVersion());
@@ -241,7 +241,8 @@ public final class McpResponseUtils {
     }
   }
 
-  private static void putIfPresent(Map<String, Object> doc, String key, Object value) {
+  private static void putIfPresent(
+      final Map<String, Object> doc, final String key, final Object value) {
     if (value != null) {
       doc.put(key, value);
     }

@@ -373,7 +373,7 @@ class McpResponseUtilsTest {
 
   @Test
   void compactPatchEchoesChangedFieldsButNotTheWideOnes() {
-    Table table =
+    final Table table =
         wideTable()
             .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")))
             .withExtension(Map.of("costCenter", "finance"))
@@ -385,7 +385,7 @@ class McpResponseUtilsTest {
                             new FieldChange().withName("columns"),
                             new FieldChange().withName("extension"))));
 
-    Map<String, Object> doc =
+    final Map<String, Object> doc =
         McpResponseUtils.compactPatch(table, Entity.TABLE, EventType.ENTITY_UPDATED);
 
     assertEquals(table.getId().toString(), doc.get("id"));
@@ -404,14 +404,14 @@ class McpResponseUtilsTest {
 
   @Test
   void compactPatchNamesANestedChangeWithoutEchoingItsParent() {
-    Table table =
+    final Table table =
         wideTable()
             .withChangeDescription(
                 new ChangeDescription()
                     .withFieldsUpdated(
                         List.of(new FieldChange().withName("columns.col_0.description"))));
 
-    Map<String, Object> doc =
+    final Map<String, Object> doc =
         McpResponseUtils.compactPatch(table, Entity.TABLE, EventType.ENTITY_UPDATED);
 
     assertEquals(List.of("columns.col_0.description"), doc.get("changed"));
@@ -421,14 +421,14 @@ class McpResponseUtilsTest {
   @Test
   void compactPatchReportsNothingChangedOnAHeldOrNoOpWrite() {
     // A held write returns the stored entity, whose change description is the previous version's.
-    Table table =
+    final Table table =
         wideTable()
             .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")))
             .withChangeDescription(
                 new ChangeDescription()
                     .withFieldsUpdated(List.of(new FieldChange().withName("tags"))));
 
-    Map<String, Object> doc =
+    final Map<String, Object> doc =
         McpResponseUtils.compactPatch(table, Entity.TABLE, EventType.ENTITY_NO_CHANGE);
 
     assertFalse(doc.containsKey("changed"));
@@ -436,7 +436,7 @@ class McpResponseUtilsTest {
   }
 
   private static Table wideTable() {
-    List<Column> columns = new ArrayList<>();
+    final List<Column> columns = new ArrayList<>();
     for (int i = 0; i < 50; i++) {
       columns.add(
           new Column()
