@@ -139,8 +139,9 @@ FAILED_EVENT_TYPES = [EventType.FAIL, EventType.ABORT]
 
 # Every pipeline write replaces its task list and start date, while each event names one
 # job and only some carry Airflow's dates, so what a pipeline holds is read once and kept.
-# The cache is capped by task count, about 1 KB a task: one pipeline can hold any number of
+# The cache is capped by task count, 1 to 2 KB a task: one pipeline can hold any number of
 # tasks. A pipeline dropped from it is read again from the server, which holds every task.
+# ADR:2026-11-18-openlineage-runs-are-their-own-pipelines-and-steps-join-their-parent
 KNOWN_TASKS_CACHE_MAXSIZE = 50_000
 
 

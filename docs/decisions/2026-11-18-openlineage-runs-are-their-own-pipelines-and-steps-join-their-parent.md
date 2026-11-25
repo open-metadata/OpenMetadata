@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-18 (initial)
 - **Deciders:** Akash Verma
-- **Guard:** `test_openlineage_status.py::test_spark_application_launched_by_an_airflow_task_is_a_run_of_its_own_pipeline`, `test_openlineage_status.py::test_dag_run_triggered_by_another_dags_task_is_a_run_of_its_own_pipeline`, `test_openlineage_status.py::test_dbt_run_started_by_an_airflow_task_is_a_run_of_its_own_pipeline`, `test_openlineage_status.py::test_step_joins_its_parents_run_whatever_its_name`, `test_openlineage_status.py::test_run_started_by_an_airflow_task_is_linked_from_the_dag_pipeline`
+- **Guard:** `test_openlineage_status.py::test_spark_application_launched_by_an_airflow_task_is_a_run_of_its_own_pipeline`, `test_openlineage_status.py::test_dag_run_triggered_by_another_dags_task_is_a_run_of_its_own_pipeline`, `test_openlineage_status.py::test_dbt_run_started_by_an_airflow_task_is_a_run_of_its_own_pipeline`, `test_openlineage_status.py::test_step_joins_its_parents_run_whatever_its_name`, `test_openlineage_status.py::test_run_started_by_an_airflow_task_is_linked_from_the_dag_pipeline`, `test_openlineage_status.py::test_pipeline_dropped_from_the_task_cache_keeps_all_its_tasks`
 - **Related:** #19481, #37990
 
 ## Context
@@ -28,6 +28,12 @@ holding the task that started it gets a `pipeline → pipeline` lineage edge to 
 `OpenLineage` and the task's job name in its description. That pipeline is the one named after the
 parent facet's root job, written by this connector or by a native connector, and it must have the
 task; otherwise no edge is written.
+
+Every pipeline PUT replaces its task list and start date, so the connector keeps each pipeline's
+tasks and start date between events in an LRU cache. The cache is weighted by task count, because
+one pipeline can hold any number of steps, and capped at 50,000 tasks: 1000 pipelines of 50 steps,
+at 1 to 2 KB a task, so 50 to 100 MB per ingestion. A pipeline dropped from the cache is read again
+from the server, which holds every task; a pipeline bigger than the cap is read on every event.
 
 ## Consequences
 The application and its SQL jobs share one pipeline with run status, and lineage edges name that
