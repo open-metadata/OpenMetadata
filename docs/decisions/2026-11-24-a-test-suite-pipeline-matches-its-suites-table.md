@@ -32,7 +32,7 @@ before talking to the ingestion runner.
    the pipeline's original `service` restored before preparation) and before every runner action:
    deploy, run, toggle, and data-contract DQ validation. Violations return HTTP 400 before calling
    the runner.
-5. **Upgrade normalization:** `LogicalTestSuitePipelineMigration` (run once in `2.1.1` on both
+5. **Upgrade normalization:** `LogicalTestSuitePipelineMigration` (run once in `2.1.2` on both
    MySQL and PostgreSQL) creates `idx_test_suite_id` on `test_suite(id)`, strips
    `sourceConfig.config.entityFullyQualifiedName` from stored logical-suite pipelines, and aligns
    any mismatched non-null `sourceConfig.config.entityFullyQualifiedName` on stored basic-suite

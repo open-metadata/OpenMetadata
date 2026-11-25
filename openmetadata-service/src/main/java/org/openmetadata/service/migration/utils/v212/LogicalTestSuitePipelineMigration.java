@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.migration.utils.v211;
+package org.openmetadata.service.migration.utils.v212;
 
 import java.util.Optional;
 import org.jdbi.v3.core.Handle;
