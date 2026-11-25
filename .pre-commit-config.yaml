@@ -104,6 +104,14 @@ repos:
         language: system
         pass_filenames: false
         require_serial: true
+      - id: yarn-engines-plugin
+        name: Yarn engines-node plugin still rejects an old Node
+        description: Fails if a change to .yarnrc.yml, the Yarn release or its plugins stops `yarn install` refusing a Node older than engines.node (ADR:2026-10-22-ui-nvmrc-is-the-one-node-pin).
+        entry: python -m pytest -q scripts/tests/test_yarn_engines_plugin.py
+        language: python
+        additional_dependencies: [pytest]
+        files: ^(\.yarnrc\.yml|\.yarn/(plugins|releases)/)
+        pass_filenames: false
       - id: java-impact-map
         name: Java impact map owns the code and ITs this branch adds
         description: Fails the push while the branch leaves Java code or ITs without an area in .github/java-tests/impact-map.json, empties a pattern or breaks a map rule. The message names the glob to add and the likely area.
