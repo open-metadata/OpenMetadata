@@ -20,6 +20,7 @@ import static org.openmetadata.it.tests.CredentialFixtures.LOGGED_IN_USER;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.macasaet.fernet.Key;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -28,7 +29,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -118,13 +118,13 @@ class OpsFernetKeyRotationIT {
   private static final Pattern LEFT_OUT_LINE = Pattern.compile("^Large tables left out");
   private static final Pattern IDENTIFIER =
       Pattern.compile("[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+");
-  private static final SecureRandom RANDOM = new SecureRandom();
 
   /** What the class leaves behind, undone in {@link #removeWhatTheClassMade()}. */
   private static final List<Runnable> UNDO = new CopyOnWriteArrayList<>();
 
   private static volatile String oldKey;
   private static volatile String newKey;
+  private static volatile List<Candidate> seededCandidates = List.of();
 
   private record Candidate(SecretOwner owner, String field) {}
 
@@ -160,17 +160,17 @@ class OpsFernetKeyRotationIT {
       try (ForkedServerNode oldWorld =
           ForkedServerNode.start(ForkedServerNode.Settings.DEFAULT.withFernetKey(oldWorldKeys))) {
         seed = seedOldWorld(ns, oldWorld.apiBase(), receiver);
+        seededCandidates = List.copyOf(seed.candidates);
       }
       seedWhatNeedsNoApi(ns, seed);
       Scan seeded = FernetStoreScan.take(true);
       requireSeedHoldsOnlyOldKeyTokens(seed, seeded);
-      runRotation(ns, seed, rotatedKeys, receiver);
+      runRotation(seed, seeded, rotatedKeys, receiver);
     }
   }
 
-  private void runRotation(TestNamespace ns, Seed seed, String rotatedKeys, HeaderReceiver receiver)
+  private void runRotation(Seed seed, Scan seeded, String rotatedKeys, HeaderReceiver receiver)
       throws Exception {
-    Scan seeded = FernetStoreScan.take(true);
     Set<String> tablesWithOldTokens = tablesHoldingOldTokens(seeded, seed);
     assertTrue(
         tablesWithOldTokens.contains(UNLISTED_TABLE),
@@ -254,7 +254,10 @@ class OpsFernetKeyRotationIT {
       Awaitility.await("both workers completed a call against the node")
           .atMost(WAIT)
           .pollInterval(50, TimeUnit.MILLISECONDS)
-          .until(() -> patches.get() > 0 && refreshes.get() > 0 && failure.get() == null);
+          .until(() -> (patches.get() > 0 && refreshes.get() > 0) || failure.get() != null);
+      if (failure.get() != null) {
+        throw new AssertionError("Worker failed before rotation started", failure.get());
+      }
 
       Outcome applied = rotate(rotatedKeys, "--apply", "--yes");
       for (int rerun = 0; rerun < 2 && applied.exitCode() == 3; rerun++) {
@@ -339,13 +342,21 @@ class OpsFernetKeyRotationIT {
         FernetStoreScan.redis(
                 "redis-cli --scan --pattern '" + keyspace + ":e:*:" + seed.alertId + "'")
             .getStdout();
-    for (String alertKey : alertKeys.lines().filter(line -> !line.isBlank()).toList()) {
+    List<String> keys = alertKeys.lines().filter(line -> !line.isBlank()).toList();
+    assertFalse(keys.isEmpty(), "the seeded alert is cached in Redis");
+    for (String alertKey : keys) {
       String base =
           FernetStoreScan.redis("redis-cli --raw hget '" + alertKey + "' base").getStdout();
       for (String token : tokensIn(base)) {
-        assertTrue(
-            token.startsWith("fernet:bound:") || newOnly.open(token) instanceof Opening.Primary,
-            "the cached alert holds no old-key token");
+        boolean opensWithNew =
+            token.startsWith("fernet:bound:")
+                ? seed.candidates.stream()
+                    .anyMatch(
+                        c ->
+                            BoundCiphertext.open(newOnly, c.owner(), c.field(), token)
+                                instanceof Opening.Primary)
+                : newOnly.open(token) instanceof Opening.Primary;
+        assertTrue(opensWithNew, "the cached alert holds only new-key tokens");
       }
       assertTrue(pttl(alertKey) > 0, "the cached alert still expires");
     }
@@ -550,9 +561,17 @@ class OpsFernetKeyRotationIT {
     return FernetStoreScan.take(true).tokens().stream()
         .anyMatch(
             token ->
-                !token.bound()
-                    && current.open(token.text()) instanceof Opening.NoKey
-                    && !(old.open(token.text()) instanceof Opening.NoKey));
+                token.bound()
+                    ? seededCandidates.stream()
+                        .anyMatch(
+                            c ->
+                                BoundCiphertext.open(current, c.owner(), c.field(), token.text())
+                                        instanceof Opening.NoKey
+                                    && !(BoundCiphertext.open(
+                                            old, c.owner(), c.field(), token.text())
+                                        instanceof Opening.NoKey))
+                    : current.open(token.text()) instanceof Opening.NoKey
+                        && !(old.open(token.text()) instanceof Opening.NoKey));
   }
 
   // ---- seeding ----
@@ -1416,9 +1435,7 @@ class OpsFernetKeyRotationIT {
   }
 
   private static String randomKey() {
-    byte[] bytes = new byte[32];
-    RANDOM.nextBytes(bytes);
-    String key = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    String key = Key.generateKey().serialise();
     assertNotEquals(KeyRing.parse(newKey).fingerprints(), KeyRing.parse(key).fingerprints());
     return key;
   }

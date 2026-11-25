@@ -25,18 +25,16 @@ import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashSet;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.PreparedBatch;
@@ -239,22 +237,22 @@ class FernetRotationStoresIT {
   void versionsAreReadForATableWhoseIdIsNumeric() {
     String table = "fernet_it_numeric_id_" + suffix();
     String extension = "fernet-it-" + suffix();
-    jdbi.useHandle(
-        handle -> {
-          handle.execute(
-              "CREATE TABLE " + table + " (id bigint PRIMARY KEY, doc " + jsonType() + ")");
-          handle.execute("INSERT INTO " + table + " (id) VALUES (7)");
-          handle
-              .createUpdate(
-                  "INSERT INTO entity_extension (id, extension, jsonSchema, json)"
-                      + " VALUES ('7', :extension, 'test', CAST(:json AS "
-                      + jsonType()
-                      + "))")
-              .bind("extension", extension)
-              .bind("json", "{\"password\":\"" + OLD.seal("version-secret") + "\"}")
-              .execute();
-        });
     try {
+      jdbi.useHandle(
+          handle -> {
+            handle.execute(
+                "CREATE TABLE " + table + " (id bigint PRIMARY KEY, doc " + jsonType() + ")");
+            handle.execute("INSERT INTO " + table + " (id) VALUES (7)");
+            handle
+                .createUpdate(
+                    "INSERT INTO entity_extension (id, extension, jsonSchema, json)"
+                        + " VALUES ('7', :extension, 'test', CAST(:json AS "
+                        + jsonType()
+                        + "))")
+                .bind("extension", extension)
+                .bind("json", "{\"password\":\"" + OLD.seal("version-secret") + "\"}")
+                .execute();
+          });
       List<Value> versions = RotationStoresTestSupport.versionsOf(jdbi, type, table);
 
       assertEquals(1, versions.size());
@@ -263,14 +261,7 @@ class FernetRotationStoresIT {
           List.of("7", extension),
           versions.getFirst().key().stream().map(String::valueOf).toList());
     } finally {
-      jdbi.useHandle(
-          handle -> {
-            handle.execute("DROP TABLE " + table);
-            handle
-                .createUpdate("DELETE FROM entity_extension WHERE extension = :extension")
-                .bind("extension", extension)
-                .execute();
-          });
+      cleanupTableAndExtension(table, extension);
     }
   }
 
@@ -280,41 +271,47 @@ class FernetRotationStoresIT {
     String extension = "fernet-it-" + suffix();
     String entityId = UUID.randomUUID().toString();
     String orphanId = UUID.randomUUID().toString();
-    jdbi.useHandle(
-        handle -> {
-          handle.execute(
-              "CREATE TABLE " + table + " (id varchar(36) PRIMARY KEY, doc " + jsonType() + ")");
-          handle
-              .createUpdate("INSERT INTO " + table + " (id) VALUES (:id)")
-              .bind("id", entityId)
-              .execute();
-          for (String id : List.of(entityId, orphanId)) {
-            handle
-                .createUpdate(
-                    "INSERT INTO entity_extension (id, extension, jsonSchema, json)"
-                        + " VALUES (:id, :extension, 'test', CAST(:json AS "
-                        + jsonType()
-                        + "))")
-                .bind("id", id)
-                .bind("extension", extension)
-                .bind("json", "{\"password\":\"" + OLD.seal("version-secret") + "\"}")
-                .execute();
-          }
-        });
     try {
+      jdbi.useHandle(
+          handle -> {
+            handle.execute(
+                "CREATE TABLE " + table + " (id varchar(36) PRIMARY KEY, doc " + jsonType() + ")");
+            handle
+                .createUpdate("INSERT INTO " + table + " (id) VALUES (:id)")
+                .bind("id", entityId)
+                .execute();
+            for (String id : List.of(entityId, orphanId)) {
+              handle
+                  .createUpdate(
+                      "INSERT INTO entity_extension (id, extension, jsonSchema, json)"
+                          + " VALUES (:id, :extension, 'test', CAST(:json AS "
+                          + jsonType()
+                          + "))")
+                  .bind("id", id)
+                  .bind("extension", extension)
+                  .bind("json", "{\"password\":\"" + OLD.seal("version-secret") + "\"}")
+                  .execute();
+            }
+          });
       List<Value> read = RotationStoresTestSupport.defaultReadCandidates(jdbi, type);
 
       assertEquals(1, read.stream().filter(value -> isKey(value, entityId, extension)).count());
       assertEquals(0, read.stream().filter(value -> isKey(value, orphanId, extension)).count());
     } finally {
+      cleanupTableAndExtension(table, extension);
+    }
+  }
+
+  private void cleanupTableAndExtension(String table, String extension) {
+    try {
+      jdbi.useHandle(handle -> handle.execute("DROP TABLE IF EXISTS " + table));
+    } finally {
       jdbi.useHandle(
-          handle -> {
-            handle.execute("DROP TABLE " + table);
-            handle
-                .createUpdate("DELETE FROM entity_extension WHERE extension = :extension")
-                .bind("extension", extension)
-                .execute();
-          });
+          handle ->
+              handle
+                  .createUpdate("DELETE FROM entity_extension WHERE extension = :extension")
+                  .bind("extension", extension)
+                  .execute());
     }
   }
 
@@ -323,28 +320,25 @@ class FernetRotationStoresIT {
     assumeTrue(TestSuiteBootstrap.isRedisEnabled(), "the lane runs without Redis");
     String tail = ":fernet-it:" + suffix() + ":s";
     List<String> keys = List.of(tail, "om" + tail);
-    RedisClient client = RedisClient.create(TestSuiteBootstrap.getRedisUrl());
-    try (StatefulRedisConnection<String, String> connection = client.connect()) {
-      RedisCommands<String, String> redis = connection.sync();
-      try {
-        for (String key : keys) {
-          redis.set(key, "{\"omRefreshToken\":\"" + OLD.seal("refresh") + "\"}");
-        }
+    withRedis(
+        redis -> {
+          try {
+            for (String key : keys) {
+              redis.set(key, "{\"omRefreshToken\":\"" + OLD.seal("refresh") + "\"}");
+            }
 
-        RotationStoresTestSupport.rewriteRedisKeyspace(redis, "", RING);
+            RotationStoresTestSupport.rewriteRedisKeyspace(redis, "", RING);
 
-        for (String key : keys) {
-          assertTrue(
-              NEW.open(JsonUtils.readTree(redis.get(key)).get("omRefreshToken").textValue())
-                  instanceof Opening.Primary,
-              "rewritten under the new key: " + key);
-        }
-      } finally {
-        redis.del(keys.toArray(String[]::new));
-      }
-    } finally {
-      client.shutdown();
-    }
+            for (String key : keys) {
+              assertTrue(
+                  NEW.open(JsonUtils.readTree(redis.get(key)).get("omRefreshToken").textValue())
+                      instanceof Opening.Primary,
+                  "rewritten under the new key: " + key);
+            }
+          } finally {
+            redis.del(keys.toArray(String[]::new));
+          }
+        });
   }
 
   @Test
@@ -460,55 +454,109 @@ class FernetRotationStoresIT {
     String keyspace =
         TestSuiteBootstrap.createApplicationConfigCopy().getCacheConfig().redis.keyspace;
     String prefix = keyspace + ":fernet-it:" + suffix();
+    withRedis(
+        redis -> {
+          try {
+            redis.psetex(
+                prefix + ":s",
+                TTL_MILLIS,
+                "{\"omRefreshToken\":\"" + OLD.seal("refresh") + "\",\"version\":3}");
+            redis.hset(
+                prefix + ":h",
+                "base",
+                "{\"id\":\"" + UUID.randomUUID() + "\",\"jwt\":\"" + OLD.seal("bot") + "\"}");
+            redis.hset(prefix + ":h", "ref", "{\"id\":\"x\"}");
+            redis.pexpire(prefix + ":h", TTL_MILLIS);
+            String member = OLD.seal("member");
+            redis.rpush(prefix + ":l", member);
+
+            Pass rewrite = RotationStoresTestSupport.rewriteRedis(redis, prefix, RING);
+
+            assertEquals(2, rewrite.count("REKEYED"));
+            assertEquals(1, rewrite.count("UNREWRITABLE"));
+            JsonNode session = JsonUtils.readTree(redis.get(prefix + ":s"));
+            assertEquals(3, session.get("version").intValue());
+            assertEquals(
+                new Opening.Primary("refresh"),
+                NEW.open(session.get("omRefreshToken").textValue()));
+            long stringTtl = redis.pttl(prefix + ":s");
+            assertTrue(
+                stringTtl > 0 && stringTtl <= TTL_MILLIS, "the string keeps its TTL: " + stringTtl);
+            assertEquals(
+                new Opening.Primary("bot"),
+                NEW.open(
+                    JsonUtils.readTree(redis.hget(prefix + ":h", "base")).get("jwt").textValue()));
+            assertEquals("{\"id\":\"x\"}", redis.hget(prefix + ":h", "ref"));
+            long hashTtl = redis.pttl(prefix + ":h");
+            assertTrue(hashTtl > 0 && hashTtl <= TTL_MILLIS, "the hash keeps its TTL: " + hashTtl);
+            assertEquals(
+                List.of(member),
+                redis.lrange(prefix + ":l", 0, -1),
+                "a list member is never written");
+
+            Pass check = RotationStoresTestSupport.checkRedis(redis, prefix, RING);
+            assertEquals(2, check.count("PRIMARY"));
+            assertEquals(1, check.count("UNREWRITABLE"));
+            assertEquals(
+                List.of(
+                    "redis key="
+                        + digestOf(prefix + ":l")
+                        + " list member: token that will not be replaced: it is a member of a Redis list, set or sorted set"),
+                check.problems());
+          } finally {
+            redis.del(prefix + ":s", prefix + ":h", prefix + ":l");
+          }
+        });
+  }
+
+  @Test
+  void aRedisCompareAndSetThatLosesToAnOutOfBandChangeReturnsFalseAndLeavesTheOtherText() {
+    assumeTrue(TestSuiteBootstrap.isRedisEnabled(), "the lane runs without Redis");
+    String keyspace =
+        TestSuiteBootstrap.createApplicationConfigCopy().getCacheConfig().redis.keyspace;
+    String prefix = keyspace + ":fernet-it-cas:" + suffix();
+    String stringKey = prefix + ":s";
+    String hashKey = prefix + ":h";
+    withRedis(
+        redis -> {
+          try {
+            String initialString = OLD.seal("before-string");
+            String updatedString = OLD.seal("after-string");
+            redis.psetex(stringKey, TTL_MILLIS, initialString);
+            redis.psetex(stringKey, TTL_MILLIS, updatedString);
+
+            assertFalse(
+                RotationStoresTestSupport.compareAndSetRedis(
+                    redis, stringKey, "", initialString, NEW.seal("before-string")));
+            assertEquals(updatedString, redis.get(stringKey));
+            assertTrue(
+                RotationStoresTestSupport.compareAndSetRedis(
+                    redis, stringKey, "", updatedString, NEW.seal("after-string")));
+            assertEquals(new Opening.Primary("after-string"), NEW.open(redis.get(stringKey)));
+
+            String initialHash = OLD.seal("before-hash");
+            String updatedHash = OLD.seal("after-hash");
+            redis.hset(hashKey, "base", initialHash);
+            redis.hset(hashKey, "base", updatedHash);
+
+            assertFalse(
+                RotationStoresTestSupport.compareAndSetRedis(
+                    redis, hashKey, "base", initialHash, NEW.seal("before-hash")));
+            assertEquals(updatedHash, redis.hget(hashKey, "base"));
+            assertTrue(
+                RotationStoresTestSupport.compareAndSetRedis(
+                    redis, hashKey, "base", updatedHash, NEW.seal("after-hash")));
+            assertEquals(new Opening.Primary("after-hash"), NEW.open(redis.hget(hashKey, "base")));
+          } finally {
+            redis.del(stringKey, hashKey);
+          }
+        });
+  }
+
+  private static void withRedis(Consumer<RedisCommands<String, String>> test) {
     RedisClient client = RedisClient.create(TestSuiteBootstrap.getRedisUrl());
     try (StatefulRedisConnection<String, String> connection = client.connect()) {
-      RedisCommands<String, String> redis = connection.sync();
-      try {
-        redis.psetex(
-            prefix + ":s",
-            TTL_MILLIS,
-            "{\"omRefreshToken\":\"" + OLD.seal("refresh") + "\",\"version\":3}");
-        redis.hset(
-            prefix + ":h",
-            "base",
-            "{\"id\":\"" + UUID.randomUUID() + "\",\"jwt\":\"" + OLD.seal("bot") + "\"}");
-        redis.hset(prefix + ":h", "ref", "{\"id\":\"x\"}");
-        redis.pexpire(prefix + ":h", TTL_MILLIS);
-        String member = OLD.seal("member");
-        redis.rpush(prefix + ":l", member);
-
-        Pass rewrite = RotationStoresTestSupport.rewriteRedis(redis, prefix, RING);
-
-        assertEquals(2, rewrite.count("REKEYED"));
-        assertEquals(1, rewrite.count("UNREWRITABLE"));
-        JsonNode session = JsonUtils.readTree(redis.get(prefix + ":s"));
-        assertEquals(3, session.get("version").intValue());
-        assertEquals(
-            new Opening.Primary("refresh"), NEW.open(session.get("omRefreshToken").textValue()));
-        long stringTtl = redis.pttl(prefix + ":s");
-        assertTrue(
-            stringTtl > 0 && stringTtl <= TTL_MILLIS, "the string keeps its TTL: " + stringTtl);
-        assertEquals(
-            new Opening.Primary("bot"),
-            NEW.open(JsonUtils.readTree(redis.hget(prefix + ":h", "base")).get("jwt").textValue()));
-        assertEquals("{\"id\":\"x\"}", redis.hget(prefix + ":h", "ref"));
-        long hashTtl = redis.pttl(prefix + ":h");
-        assertTrue(hashTtl > 0 && hashTtl <= TTL_MILLIS, "the hash keeps its TTL: " + hashTtl);
-        assertEquals(
-            List.of(member), redis.lrange(prefix + ":l", 0, -1), "a list member is never written");
-
-        Pass check = RotationStoresTestSupport.checkRedis(redis, prefix, RING);
-        assertEquals(2, check.count("PRIMARY"));
-        assertEquals(1, check.count("UNREWRITABLE"));
-        assertEquals(
-            List.of(
-                "redis key="
-                    + digestOf(prefix + ":l")
-                    + " list member: token that will not be replaced: it is a member of a Redis list, set or sorted set"),
-            check.problems());
-      } finally {
-        redis.del(prefix + ":s", prefix + ":h", prefix + ":l");
-      }
+      test.accept(connection.sync());
     } finally {
       client.shutdown();
     }
@@ -571,12 +619,6 @@ class FernetRotationStoresIT {
 
   // Computed here on purpose, so the test pins the printed digest independently of Location.
   private static String digestOf(String key) {
-    try {
-      byte[] digest =
-          MessageDigest.getInstance("SHA-256").digest(key.getBytes(StandardCharsets.UTF_8));
-      return HexFormat.of().formatHex(digest).substring(0, 12);
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException(e);
-    }
+    return DigestUtils.sha256Hex(key).substring(0, 12);
   }
 }

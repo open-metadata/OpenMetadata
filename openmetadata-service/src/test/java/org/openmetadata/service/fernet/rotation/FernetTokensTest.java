@@ -234,6 +234,31 @@ class FernetTokensTest {
   }
 
   @Test
+  void anUnpaddedTokenOrLiteralImmediatelyFollowedByAnotherTokenRekeysEveryToken() {
+    String fortyChars = "0123456789012345678901234567890123456789";
+    String firstOld = OLD.seal(fortyChars);
+    String secondOld = OLD.seal(SECRET);
+    assertFalse(firstOld.endsWith("="));
+
+    Rewrite adjacent =
+        FernetTokens.rewrite(StoredText.writable(ROW, firstOld + secondOld, Encoding.BYTES), RING);
+    String replaced = adjacent.replacement().orElseThrow();
+    assertEquals(firstOld.length() + secondOld.length(), replaced.length());
+    assertEquals(
+        new Opening.Primary(fortyChars), NEW.open(replaced.substring(0, firstOld.length())));
+    assertEquals(new Opening.Primary(SECRET), NEW.open(replaced.substring(firstOld.length())));
+
+    Rewrite afterLiteral =
+        FernetTokens.rewrite(
+            StoredText.writable(ROW, "fernet:foo" + secondOld, Encoding.TEXT), RING);
+    String replacedAfterLiteral = afterLiteral.replacement().orElseThrow();
+    assertTrue(replacedAfterLiteral.startsWith("fernet:foo"));
+    assertEquals(
+        new Opening.Primary(SECRET),
+        NEW.open(replacedAfterLiteral.substring("fernet:foo".length())));
+  }
+
+  @Test
   void aPaddedTokenFollowedByALetterInBytesStaysWhole() {
     String oldToken = OLD.seal(SECRET);
     assertTrue(oldToken.endsWith("=="), "six bytes of plaintext give a padded token");

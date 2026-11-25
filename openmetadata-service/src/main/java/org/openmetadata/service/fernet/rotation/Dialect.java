@@ -14,6 +14,7 @@
 package org.openmetadata.service.fernet.rotation;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -28,21 +29,30 @@ enum Dialect {
   MYSQL(
       "DATABASE()",
       '`',
-      Map.of(
-          "json", ColumnType.JSON,
-          "char", ColumnType.TEXT,
-          "varchar", ColumnType.TEXT,
-          "tinytext", ColumnType.TEXT,
-          "text", ColumnType.TEXT,
-          "mediumtext", ColumnType.TEXT,
-          "longtext", ColumnType.TEXT,
-          "binary", ColumnType.BYTES,
-          "varbinary", ColumnType.BYTES,
-          "tinyblob", ColumnType.BYTES)) {
+      "c.extra",
+      "SELECT table_name, column_name FROM information_schema.key_column_usage"
+          + " WHERE table_schema = DATABASE() AND constraint_name = 'PRIMARY'"
+          + " ORDER BY table_name, ordinal_position",
+      Map.ofEntries(
+          Map.entry("json", ColumnType.JSON),
+          Map.entry("char", ColumnType.TEXT),
+          Map.entry("varchar", ColumnType.TEXT),
+          Map.entry("tinytext", ColumnType.TEXT),
+          Map.entry("text", ColumnType.TEXT),
+          Map.entry("mediumtext", ColumnType.TEXT),
+          Map.entry("longtext", ColumnType.TEXT),
+          Map.entry("binary", ColumnType.BYTES),
+          Map.entry("varbinary", ColumnType.BYTES),
+          Map.entry("tinyblob", ColumnType.BYTES),
+          Map.entry("blob", ColumnType.BYTES),
+          Map.entry("mediumblob", ColumnType.BYTES),
+          Map.entry("longblob", ColumnType.BYTES))) {
+    // MySQL reports DEFAULT_GENERATED for an expression default, a column the database does not
+    // recompute, so only the VIRTUAL and STORED forms count.
     @Override
-    Optional<ColumnType> columnType(String dataType) {
-      return super.columnType(dataType)
-          .or(() -> dataType.endsWith("blob") ? Optional.of(ColumnType.BYTES) : Optional.empty());
+    boolean isGenerated(String marker) {
+      String lower = marker.toLowerCase(Locale.ROOT);
+      return lower.contains("virtual generated") || lower.contains("stored generated");
     }
 
     @Override
@@ -97,6 +107,13 @@ enum Dialect {
   POSTGRES(
       "current_schema()",
       '"',
+      "c.is_generated",
+      "SELECT tc.table_name, kcu.column_name FROM information_schema.table_constraints tc"
+          + " JOIN information_schema.key_column_usage kcu"
+          + " ON kcu.constraint_schema = tc.constraint_schema"
+          + " AND kcu.constraint_name = tc.constraint_name AND kcu.table_name = tc.table_name"
+          + " WHERE tc.table_schema = current_schema() AND tc.constraint_type = 'PRIMARY KEY'"
+          + " ORDER BY tc.table_name, kcu.ordinal_position",
       Map.of(
           "json", ColumnType.JSON,
           "jsonb", ColumnType.JSONB,
@@ -104,6 +121,11 @@ enum Dialect {
           "character varying", ColumnType.TEXT,
           "character", ColumnType.TEXT,
           "bytea", ColumnType.BYTES)) {
+    @Override
+    boolean isGenerated(String marker) {
+      return "always".equalsIgnoreCase(marker);
+    }
+
     @Override
     String asText(SqlColumn column) {
       String name = quote(column.name());
@@ -154,11 +176,20 @@ enum Dialect {
 
   private final String currentSchema;
   private final char quoteChar;
+  private final String generatedColumn;
+  private final String primaryKeysSql;
   private final Map<String, ColumnType> columnTypes;
 
-  Dialect(String currentSchema, char quoteChar, Map<String, ColumnType> columnTypes) {
+  Dialect(
+      String currentSchema,
+      char quoteChar,
+      String generatedColumn,
+      String primaryKeysSql,
+      Map<String, ColumnType> columnTypes) {
     this.currentSchema = currentSchema;
     this.quoteChar = quoteChar;
+    this.generatedColumn = generatedColumn;
+    this.primaryKeysSql = primaryKeysSql;
     this.columnTypes = columnTypes;
   }
 
@@ -174,8 +205,22 @@ enum Dialect {
     return currentSchema;
   }
 
+  /** The {@code information_schema.columns} column that marks generated columns. */
+  String generatedColumn() {
+    return generatedColumn;
+  }
+
+  /** The query returning {@code (table_name, column_name)} pairs for all primary keys in order. */
+  String primaryKeysSql() {
+    return primaryKeysSql;
+  }
+
+  /** Whether the non-null {@link #generatedColumn()} marker denotes a generated column. */
+  abstract boolean isGenerated(String marker);
+
   String quote(String identifier) {
-    return quoteChar + identifier + quoteChar;
+    String q = String.valueOf(quoteChar);
+    return q + identifier.replace(q, q + q) + q;
   }
 
   /** The kind of text a column of this {@code information_schema} data type holds, if any. */

@@ -66,7 +66,7 @@ public final class WebhookSecretAnchors implements BoundSecretAnchors {
   }
 
   private static boolean looksLikeADestination(JsonNode node) {
-    return uuidOf(node.path(ID)).isPresent()
+    return JsonDocument.uuidOf(node.path(ID)).isPresent()
         && node.path(TYPE).isTextual()
         && node.path(CONFIG).isObject();
   }
@@ -114,17 +114,5 @@ public final class WebhookSecretAnchors implements BoundSecretAnchors {
                 fields));
       }
     }
-  }
-
-  private static Optional<UUID> uuidOf(JsonNode node) {
-    Optional<UUID> id = Optional.empty();
-    if (node.isTextual()) {
-      try {
-        id = Optional.of(UUID.fromString(node.textValue()));
-      } catch (IllegalArgumentException e) {
-        LOG.trace("An id that is not a UUID names no destination");
-      }
-    }
-    return id;
   }
 }

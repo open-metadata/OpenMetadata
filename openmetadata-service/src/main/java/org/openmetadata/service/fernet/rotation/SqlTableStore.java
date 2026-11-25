@@ -71,6 +71,8 @@ final class SqlTableStore implements TokenStore {
   /** The last key of a page and how many rows the page had. */
   private record Page(List<Object> lastKey, int rows) {}
 
+  private record PageRow(List<Object> key, boolean flagged) {}
+
   SqlTable table() {
     return table;
   }
@@ -178,23 +180,26 @@ final class SqlTableStore implements TokenStore {
                 + " LIMIT "
                 + PAGE_SIZE);
     IntStream.range(0, after.size()).forEach(i -> query.bind(AFTER + i, after.get(i)));
-    List<List<Object>> rows = query.map((rs, ctx) -> pageRow(rs)).list();
-    List<Object> last = List.of();
-    for (List<Object> row : rows) {
-      last = List.copyOf(row.subList(0, table.primaryKey().size()));
-      if (row.subList(table.primaryKey().size(), row.size()).contains(Boolean.TRUE)) {
-        flaggedKeys.add(last);
+    List<PageRow> rows = query.map((rs, ctx) -> pageRow(rs)).list();
+    List<Object> last = rows.isEmpty() ? List.of() : List.copyOf(rows.getLast().key());
+    for (PageRow row : rows) {
+      if (row.flagged()) {
+        flaggedKeys.add(List.copyOf(row.key()));
       }
     }
     return new Page(last, rows.size());
   }
 
-  private List<Object> pageRow(ResultSet rs) throws SQLException {
-    List<Object> row = new ArrayList<>(keyOf(rs));
+  private PageRow pageRow(ResultSet rs) throws SQLException {
+    List<Object> key = keyOf(rs);
+    boolean flagged = false;
     for (int i = 0; i < table.columns().size(); i++) {
-      row.add(rs.getBoolean(table.primaryKey().size() + 1 + i));
+      if (rs.getBoolean(table.primaryKey().size() + 1 + i)) {
+        flagged = true;
+        break;
+      }
     }
-    return row;
+    return new PageRow(key, flagged);
   }
 
   private List<StoredText> fetch(List<List<Object>> keys) {

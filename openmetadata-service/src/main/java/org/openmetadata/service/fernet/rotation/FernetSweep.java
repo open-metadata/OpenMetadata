@@ -121,14 +121,8 @@ final class FernetSweep {
   }
 
   private static String failure(RuntimeException e) {
-    Throwable cause = e;
-    while (cause != null && !(cause instanceof SQLException)) {
-      cause = cause.getCause();
-    }
     return e.getClass().getSimpleName()
-        + (cause instanceof SQLException sql && sql.getSQLState() != null
-            ? ", SQLState " + sql.getSQLState()
-            : "");
+        + sqlCause(e).map(SQLException::getSQLState).map(state -> ", SQLState " + state).orElse("");
   }
 
   /**
@@ -210,17 +204,24 @@ final class FernetSweep {
   // A statement's exception may render its bound values, so only the database's own message is
   // kept, and only its first line: PostgreSQL adds Detail and Where lines that quote row data.
   static String describe(RuntimeException e) {
-    Throwable cause = e;
-    while (cause.getCause() != null && !(cause instanceof SQLException)) {
-      cause = cause.getCause();
+    return sqlCause(e)
+        .map(
+            sql ->
+                sql.getClass().getSimpleName()
+                    + " "
+                    + sql.getSQLState()
+                    + ": "
+                    + firstLine(sql.getMessage()))
+        .orElseGet(() -> e.getClass().getName());
+  }
+
+  private static Optional<SQLException> sqlCause(Throwable failure) {
+    for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+      if (cause instanceof SQLException sql) {
+        return Optional.of(sql);
+      }
     }
-    return cause instanceof SQLException sql
-        ? sql.getClass().getSimpleName()
-            + " "
-            + sql.getSQLState()
-            + ": "
-            + firstLine(sql.getMessage())
-        : e.getClass().getName();
+    return Optional.empty();
   }
 
   private static String firstLine(String message) {

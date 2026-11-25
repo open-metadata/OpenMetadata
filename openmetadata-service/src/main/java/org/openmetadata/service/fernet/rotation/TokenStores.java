@@ -73,10 +73,9 @@ final class TokenStores {
     }
     redis.ifPresent(stores::add);
     List<String> leftOut =
-        catalog.stream()
-            .map(SqlTable::name)
-            .filter(table -> !read.stream().anyMatch(it -> it.name().equals(table)))
-            .toList();
+        scope == Scope.EVERY_TABLE
+            ? List.of()
+            : catalog.stream().map(SqlTable::name).filter(LargeTables::isLarge).toList();
     return new Discovery(
         List.copyOf(stores),
         leftOut,

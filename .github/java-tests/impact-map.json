@@ -620,6 +620,7 @@
       "sources": [
         "openmetadata-service/src/main/java/org/openmetadata/service/secrets/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/fernet/**",
+        "openmetadata-service/src/main/resources/META-INF/services/org.openmetadata.service.fernet.rotation.BoundSecretAnchors",
         "openmetadata-service/src/main/java/org/openmetadata/service/**/*Secret*",
         "openmetadata-service/src/main/java/org/openmetadata/service/util/AwsCredentials*",
         "openmetadata-service/src/main/java/org/openmetadata/service/util/AzureTokenProvider*"
@@ -1110,6 +1111,7 @@
         "*Migration*IT",
         "*SeedData*IT",
         "*Operations*IT",
+        "Ops*IT",
         "*DbTune*IT"
       ]
     },

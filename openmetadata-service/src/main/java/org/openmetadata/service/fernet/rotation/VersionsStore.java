@@ -13,7 +13,8 @@
 
 package org.openmetadata.service.fernet.rotation;
 
-import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -36,16 +37,23 @@ final class VersionsStore implements TokenStore {
   static final int ID_BATCH = 500;
   private static final String ID = "id";
 
+  private record IdSource(SqlTable table, String idColumn) {}
+
   private final Handle handle;
   private final Dialect dialect;
   private final SqlTableStore versions;
-  private final List<SqlTable> idTables;
+  private final String versionsIdColumn;
+  private final List<IdSource> idSources;
 
   VersionsStore(Handle handle, Dialect dialect, SqlTable versions, List<SqlTable> idTables) {
     this.handle = handle;
     this.dialect = dialect;
     this.versions = new SqlTableStore(handle, dialect, versions);
-    this.idTables = idTables.stream().filter(table -> table.hasColumn(ID)).toList();
+    this.versionsIdColumn = versions.columnName(ID).orElse(ID);
+    this.idSources =
+        idTables.stream()
+            .flatMap(table -> table.columnName(ID).map(col -> new IdSource(table, col)).stream())
+            .toList();
   }
 
   @Override
@@ -55,7 +63,7 @@ final class VersionsStore implements TokenStore {
 
   @Override
   public Stream<StoredText> candidates() {
-    return idTables.stream().flatMap(this::versionsOf);
+    return idSources.stream().flatMap(this::versionsOf);
   }
 
   @Override
@@ -68,22 +76,26 @@ final class VersionsStore implements TokenStore {
     return versions.compareAndSet(read, replacement);
   }
 
-  private Stream<StoredText> versionsOf(SqlTable table) {
+  private Stream<StoredText> versionsOf(IdSource source) {
     return StreamSupport.stream(
-        Spliterators.spliteratorUnknownSize(new IdBatches(table), Spliterator.ORDERED), false);
+        Spliterators.spliteratorUnknownSize(new IdBatches(source), Spliterator.ORDERED), false);
   }
 
-  private List<Object> idsAfter(SqlTable table, Optional<Object> after) {
-    String where = after.isPresent() ? " WHERE " + dialect.quote(ID) + " > :after" : "";
+  private List<Object> idsAfter(IdSource source, Optional<Object> after) {
+    String idCol = dialect.quote(source.idColumn());
+    String where =
+        after.isPresent()
+            ? " WHERE " + idCol + " IS NOT NULL AND " + idCol + " > :after"
+            : " WHERE " + idCol + " IS NOT NULL";
     var query =
         handle.createQuery(
-            "SELECT "
-                + dialect.quote(ID)
+            "SELECT DISTINCT "
+                + idCol
                 + " FROM "
-                + dialect.quote(table.name())
+                + dialect.quote(source.table().name())
                 + where
                 + " ORDER BY "
-                + dialect.quote(ID)
+                + idCol
                 + " LIMIT "
                 + ID_BATCH);
     after.ifPresent(value -> query.bind("after", value));
@@ -96,25 +108,25 @@ final class VersionsStore implements TokenStore {
    * {@code id} of a table such as {@code openmetadata_settings}.
    */
   private final class IdBatches implements Iterator<StoredText> {
-    private final SqlTable table;
-    private final List<StoredText> ready = new ArrayList<>();
+    private final IdSource source;
+    private final Deque<StoredText> ready = new ArrayDeque<>();
     private Optional<Object> after = Optional.empty();
     private boolean exhausted;
 
-    IdBatches(SqlTable table) {
-      this.table = table;
+    IdBatches(IdSource source) {
+      this.source = source;
     }
 
     @Override
     public boolean hasNext() {
       while (ready.isEmpty() && !exhausted) {
-        List<Object> ids = idsAfter(table, after);
+        List<Object> ids = idsAfter(source, after);
         exhausted = ids.size() < ID_BATCH;
         if (!ids.isEmpty()) {
           after = Optional.of(ids.getLast());
           ready.addAll(
               versions.flaggedCellsWhere(
-                  dialect.quote(ID) + " IN (<ids>)",
+                  dialect.quote(versionsIdColumn) + " IN (<ids>)",
                   query -> query.bindList("ids", ids.stream().map(String::valueOf).toList())));
         }
       }
@@ -126,7 +138,7 @@ final class VersionsStore implements TokenStore {
       if (!hasNext()) {
         throw new NoSuchElementException();
       }
-      return ready.removeFirst();
+      return ready.poll();
     }
   }
 }

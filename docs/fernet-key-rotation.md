@@ -20,7 +20,8 @@ To rotate the JWT signing key, see [jwt-signing-key-rotation.md](jwt-signing-key
 - Every server, and the host that runs `openmetadata-ops.sh`, runs a release that has the
   `rotate-fernet-key` command.
 - The ops host's configuration points at the servers' database, with the same database user. When
-  `cacheConfig.provider` is `redis`, it also points at the same Redis, with the same keyspace.
+  `cache.provider` (`CACHE_PROVIDER`) is `redis`, it also points at the same Redis, with the same
+  keyspace.
 - The ops host's clock is within a minute of the servers' clocks. A token stamped more than a
   minute ahead of the ops host's clock does not open there, and the report counts it as No key.
 - Back up the database.
@@ -187,9 +188,10 @@ connections use.
   wide. Columns are chosen by type, not by name, so tables that a later release, a distribution or
   the workflow engine adds are read without changes to the command. Generated columns are left
   out because the database recomputes them from the column the command rewrites.
-- Every key under the configured `cacheConfig.redis.keyspace`, when `cacheConfig.provider` is
-  `redis`. With a blank keyspace, the servers write the entity cache under `:` and sessions under
-  `om:`, and the command reads both. A rewritten key keeps its time to live.
+- Every key under the configured `cache.redis.keyspace` (`CACHE_REDIS_KEYSPACE`), when
+  `cache.provider` (`CACHE_PROVIDER`) is `redis`. With a blank keyspace, the servers write the
+  entity cache under `:` and sessions under `om:`, and the command reads both. A rewritten key keeps
+  its time to live.
 
 By default, the command leaves out the large tables that cannot hold a secret, such as data assets,
 change events, relationships and time series. It then reads entity versions only for the entities

@@ -44,7 +44,7 @@ public final class SessionStoreFactory {
         if (commands != null) {
           LOG.info(
               "SessionStore backend: Redis (keyspace={})",
-              config.redis.keyspace == null ? "om" : config.redis.keyspace);
+              RedisSessionStore.effectiveKeyspace(config.redis.keyspace));
           return new CurrentKeySessionStore(new RedisSessionStore(commands, config.redis.keyspace));
         }
       }

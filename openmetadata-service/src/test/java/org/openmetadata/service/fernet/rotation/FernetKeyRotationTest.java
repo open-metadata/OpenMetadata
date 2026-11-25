@@ -31,7 +31,6 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  * asked, so a refusal that moves later or goes away fails these tests with another exception.
  */
 class FernetKeyRotationTest {
-  private static final String SHIPPED_DEFAULT_KEY = "jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=";
   private static final String NEW = Key.generateKey().serialise();
   private static final String OLD = Key.generateKey().serialise();
   private static final BooleanSupplier NEVER_ASKED =
@@ -51,11 +50,24 @@ class FernetKeyRotationTest {
   }
 
   @Test
+  void applyWithDuplicateKeysIsRefusedBeforeTheOperatorIsAsked() {
+    Refused refused =
+        assertThrows(
+            Refused.class, () -> run(Options.of(true, false, NEVER_ASKED), OLD + "," + OLD));
+
+    assertEquals(
+        "--apply needs FERNET_KEY to list at least two distinct keys; all configured keys are"
+            + " identical.",
+        refused.getMessage());
+  }
+
+  @Test
   void applyWithTheShippedDefaultKeyFirstIsRefusedBeforeTheOperatorIsAsked() {
     Refused refused =
         assertThrows(
             Refused.class,
-            () -> run(Options.of(true, true, NEVER_ASKED), SHIPPED_DEFAULT_KEY + "," + OLD));
+            () ->
+                run(Options.of(true, true, NEVER_ASKED), KeyRing.SHIPPED_DEFAULT_KEY + "," + OLD));
 
     assertEquals(
         "The primary key is the default key shipped in openmetadata.yaml; put a new key first.",

@@ -18,6 +18,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+import org.openmetadata.schema.exception.JsonParsingException;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * A stored value parsed as JSON, or JSON held in one of its strings.
@@ -27,6 +29,7 @@ import java.util.stream.StreamSupport;
  *     nearest document it is held in; the holder of a profile's webhooks
  */
 public record JsonDocument(JsonNode root, Optional<UUID> enclosingId) {
+  private static final String ID = "id";
 
   /** Every object node of the document, the root included, parents before children. */
   public Stream<JsonNode> objectNodes() {
@@ -40,5 +43,31 @@ public record JsonDocument(JsonNode root, Optional<UUID> enclosingId) {
             ? StreamSupport.stream(node.spliterator(), false).flatMap(JsonDocument::descendants)
             : Stream.empty();
     return Stream.concat(Stream.of(node), children);
+  }
+
+  /** Parses {@code text} as a JSON object or array, or returns empty if it is neither. */
+  public static Optional<JsonNode> parseContainer(String text) {
+    try {
+      return Optional.of(JsonUtils.readTree(text)).filter(JsonNode::isContainerNode);
+    } catch (JsonParsingException e) {
+      return Optional.empty();
+    }
+  }
+
+  /** Parses {@code node} as a UUID when it is a valid UUID string. */
+  public static Optional<UUID> uuidOf(JsonNode node) {
+    if (!node.isTextual()) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(UUID.fromString(node.textValue()));
+    } catch (IllegalArgumentException e) {
+      return Optional.empty();
+    }
+  }
+
+  /** Parses an object's {@code id} field as a UUID when present and valid. */
+  public static Optional<UUID> idOf(JsonNode node) {
+    return node.isObject() ? uuidOf(node.path(ID)) : Optional.empty();
   }
 }

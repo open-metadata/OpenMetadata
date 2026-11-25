@@ -14,17 +14,17 @@
 package org.openmetadata.service.fernet.rotation;
 
 import io.lettuce.core.KeyScanCursor;
-import io.lettuce.core.MapScanCursor;
 import io.lettuce.core.ScanArgs;
 import io.lettuce.core.ScanCursor;
 import io.lettuce.core.ScoredValue;
 import io.lettuce.core.ScriptOutputType;
 import io.lettuce.core.ValueScanCursor;
 import io.lettuce.core.api.sync.RedisCommands;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Spliterator;
@@ -145,35 +145,30 @@ final class RedisTokenStore implements TokenStore {
   }
 
   private Stream<StoredText> hashFields(String key) {
-    List<StoredText> fields = new ArrayList<>();
-    ScanArgs args = ScanArgs.Builder.limit(SCAN_COUNT);
-    MapScanCursor<String, String> cursor = commands.hscan(key, args);
-    while (true) {
-      for (Map.Entry<String, String> field : cursor.getMap().entrySet()) {
-        fields.add(
-            StoredText.writable(
-                Location.ofRedis(key, field.getKey()), field.getValue(), Encoding.TEXT));
-      }
-      if (cursor.isFinished()) {
-        break;
-      }
-      cursor = commands.hscan(key, cursor, args);
-    }
-    return fields.stream();
+    return scanned(
+        cursor -> commands.hscan(key, cursor, ScanArgs.Builder.limit(SCAN_COUNT)),
+        c ->
+            c.getMap().entrySet().stream()
+                .map(
+                    field ->
+                        StoredText.writable(
+                            Location.ofRedis(key, field.getKey()), field.getValue(), Encoding.TEXT))
+                .toList())
+        .stream();
   }
 
-  private static <C extends ScanCursor> List<String> scanned(
-      Function<ScanCursor, C> scan, Function<C, List<String>> values) {
-    List<String> members = new ArrayList<>();
+  private static <C extends ScanCursor, T> List<T> scanned(
+      Function<ScanCursor, C> scan, Function<C, List<T>> values) {
+    List<T> items = new ArrayList<>();
     C cursor = scan.apply(ScanCursor.INITIAL);
     while (true) {
-      members.addAll(values.apply(cursor));
+      items.addAll(values.apply(cursor));
       if (cursor.isFinished()) {
         break;
       }
       cursor = scan.apply(cursor);
     }
-    return members;
+    return items;
   }
 
   private static Stream<StoredText> members(String key, String kind, List<String> members) {
@@ -190,7 +185,7 @@ final class RedisTokenStore implements TokenStore {
   /** The keys under each prefix in turn, one SCAN page at a time. */
   private final class Keys implements Iterator<String> {
     private final Iterator<String> remaining = prefixes.iterator();
-    private final List<String> ready = new ArrayList<>();
+    private final Deque<String> ready = new ArrayDeque<>();
     private ScanArgs args;
     private KeyScanCursor<String> cursor;
 
@@ -217,7 +212,7 @@ final class RedisTokenStore implements TokenStore {
       if (!hasNext()) {
         throw new NoSuchElementException();
       }
-      return ready.removeFirst();
+      return ready.poll();
     }
   }
 }

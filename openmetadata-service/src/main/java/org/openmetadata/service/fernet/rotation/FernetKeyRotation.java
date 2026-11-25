@@ -126,6 +126,10 @@ public final class FernetKeyRotation {
       throw new Refused(
           "--apply needs FERNET_KEY to list the new key first and the old key second; only one key is configured.");
     }
+    if (options.mode() == Mode.APPLY && keys.fingerprints().stream().distinct().count() < 2) {
+      throw new Refused(
+          "--apply needs FERNET_KEY to list at least two distinct keys; all configured keys are identical.");
+    }
     if (options.mode() == Mode.APPLY && keys.isPrimaryTheShippedDefault()) {
       throw new Refused(
           "The primary key is the default key shipped in openmetadata.yaml; put a new key first.");
@@ -232,7 +236,7 @@ public final class FernetKeyRotation {
 
     /** Prints the report. Tokens, plaintexts and keys never appear; the sweep logged every place. */
     public void print(PrintStream out, TablePrinter printer) {
-      out.println("Fernet keys on this host: " + describe(fingerprints));
+      out.println("Fernet keys on this host: " + KeyRing.describe(fingerprints));
       out.println(coverage.line());
       if (primaryIsShippedDefault) {
         out.println(
@@ -342,13 +346,6 @@ public final class FernetKeyRotation {
 
     private long total(Outcome outcome) {
       return stores.stream().mapToLong(store -> store.count(outcome)).sum();
-    }
-
-    private static String describe(List<String> fingerprints) {
-      return IntStream.range(0, fingerprints.size())
-          .mapToObj(i -> i == 0 ? fingerprints.get(i) + " (primary)" : fingerprints.get(i))
-          .reduce((left, right) -> left + ", " + right)
-          .orElse("");
     }
   }
 }

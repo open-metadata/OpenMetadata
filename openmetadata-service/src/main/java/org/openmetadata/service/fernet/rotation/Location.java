@@ -13,15 +13,12 @@
 
 package org.openmetadata.service.fernet.rotation;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.commons.codec.digest.DigestUtils;
 
 /**
  * Where a stored value is: a column of one row, or one Redis string or hash field.
@@ -79,12 +76,6 @@ record Location(String store, String container, List<String> keyColumns, List<Ob
   }
 
   static String digest(String text) {
-    try {
-      byte[] digest =
-          MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));
-      return HexFormat.of().formatHex(digest).substring(0, DIGEST_LENGTH);
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException(e);
-    }
+    return DigestUtils.sha256Hex(text).substring(0, DIGEST_LENGTH);
   }
 }

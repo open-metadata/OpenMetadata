@@ -24,19 +24,14 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.exception.JsonParsingException;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.secrets.BoundCiphertext;
 import org.openmetadata.service.secrets.SecretOwner;
 
 /** The candidate bindings of every bound token in a stored value, from every anchor provider. */
-@Slf4j
 final class Anchors {
   /** How deep JSON held in strings is expanded: a version holds a change description holding a list. */
   static final int MAX_NESTING = 4;
 
-  private static final String ID = "id";
   private static final List<BoundSecretAnchors> PROVIDERS =
       ServiceLoader.load(BoundSecretAnchors.class).stream()
           .map(ServiceLoader.Provider::get)
@@ -81,37 +76,16 @@ final class Anchors {
 
   private static void expand(
       JsonNode node, Optional<UUID> enclosingId, int depth, List<JsonDocument> documents) {
-    JsonDocument document = new JsonDocument(node, idOf(node).or(() -> enclosingId));
+    JsonDocument document = new JsonDocument(node, JsonDocument.idOf(node).or(() -> enclosingId));
     documents.add(document);
     if (depth < MAX_NESTING) {
       JsonDocument.descendants(node)
           .filter(JsonNode::isTextual)
           .map(JsonNode::textValue)
           .filter(text -> text.contains(BoundCiphertext.PREFIX))
-          .map(Anchors::parseContainer)
+          .map(JsonDocument::parseContainer)
           .flatMap(Optional::stream)
           .forEach(nested -> expand(nested, document.enclosingId(), depth + 1, documents));
-    }
-  }
-
-  private static Optional<UUID> idOf(JsonNode node) {
-    Optional<UUID> id = Optional.empty();
-    if (node.isObject() && node.path(ID).isTextual()) {
-      try {
-        id = Optional.of(UUID.fromString(node.path(ID).textValue()));
-      } catch (IllegalArgumentException e) {
-        LOG.debug("An id that is not a UUID anchors no profile webhook");
-      }
-    }
-    return id;
-  }
-
-  private static Optional<JsonNode> parseContainer(String text) {
-    try {
-      return Optional.of(JsonUtils.readTree(text)).filter(JsonNode::isContainerNode);
-    } catch (JsonParsingException e) {
-      LOG.debug("A string with a bound token is not JSON");
-      return Optional.empty();
     }
   }
 }

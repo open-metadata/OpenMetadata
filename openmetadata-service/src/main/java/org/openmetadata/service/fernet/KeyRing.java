@@ -21,16 +21,15 @@ import com.macasaet.fernet.Validator;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.TemporalAmount;
 import java.util.Arrays;
-import java.util.HexFormat;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.commons.codec.digest.DigestUtils;
 
 /**
  * The configured Fernet keys, primary first, as an immutable value. It never reads or changes the
@@ -38,18 +37,20 @@ import java.util.stream.IntStream;
  */
 public final class KeyRing {
   public static final KeyRing NONE = new KeyRing(List.of());
-
-  private static final String KEY_SEPARATOR = ",";
-  private static final String SHIPPED_DEFAULT_KEY = "jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=";
-  private static final int FINGERPRINT_LENGTH = 12;
-  private static final SecureRandom RANDOM = new SecureRandom();
-  private static final Validator<String> NEVER_EXPIRES =
+  public static final String SHIPPED_DEFAULT_KEY = "jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=";
+  public static final Validator<String> NEVER_EXPIRES =
       new StringValidator() {
         @Override
         public TemporalAmount getTimeToLive() {
           return Duration.ofSeconds(Instant.MAX.getEpochSecond());
         }
       };
+
+  private static final String KEY_SEPARATOR = ",";
+  private static final int FINGERPRINT_LENGTH = 12;
+  private static final SecureRandom RANDOM = new SecureRandom();
+  private static final String SHIPPED_DEFAULT_FINGERPRINT =
+      fingerprint(parse(SHIPPED_DEFAULT_KEY).keys.getFirst());
 
   private final List<Key> keys;
 
@@ -72,7 +73,7 @@ public final class KeyRing {
     }
     String normalized = configured.replace("/", "_").replace("+", "-").replace("=", "");
     try {
-      return new KeyRing(Arrays.stream(normalized.split(KEY_SEPARATOR)).map(Key::new).toList());
+      return new KeyRing(Arrays.stream(normalized.split(KEY_SEPARATOR, -1)).map(Key::new).toList());
     } catch (RuntimeException e) {
       throw new IllegalArgumentException("A configured Fernet key is not valid");
     }
@@ -99,17 +100,18 @@ public final class KeyRing {
 
   /** For example {@code 9f3a1c2e7b40 (primary), 51d0e8aa02c7}. */
   public String describe() {
-    List<String> fingerprints = fingerprints();
+    return describe(fingerprints());
+  }
+
+  /** Formats key fingerprints with the first labeled {@code (primary)}. */
+  public static String describe(List<String> fingerprints) {
     return IntStream.range(0, fingerprints.size())
         .mapToObj(i -> i == 0 ? fingerprints.get(i) + " (primary)" : fingerprints.get(i))
-        .reduce((left, right) -> left + ", " + right)
-        .orElse("");
+        .collect(Collectors.joining(", "));
   }
 
   public boolean isPrimaryTheShippedDefault() {
-    return !keys.isEmpty()
-        && fingerprint(keys.getFirst())
-            .equals(fingerprint(parse(SHIPPED_DEFAULT_KEY).keys.getFirst()));
+    return !keys.isEmpty() && fingerprint(keys.getFirst()).equals(SHIPPED_DEFAULT_FINGERPRINT);
   }
 
   /** Opens {@code plainToken} with each key on its own. Never throws. */
@@ -147,7 +149,23 @@ public final class KeyRing {
     if (keys.isEmpty()) {
       throw new IllegalStateException("No Fernet key is configured");
     }
-    return Fernet.FERNET_PREFIX + Token.generate(RANDOM, keys.getFirst(), plaintext).serialise();
+    return Fernet.FERNET_PREFIX + generateToken(keys.getFirst(), plaintext).serialise();
+  }
+
+  /** Generates a Fernet token for {@code plaintext} using the shared CSPRNG. */
+  public static Token generateToken(Key key, String plaintext) {
+    return Token.generate(RANDOM, key, plaintext);
+  }
+
+  /** Returns the raw 32-byte key material (signing key followed by encryption key). */
+  public static byte[] keyBytes(Key key) {
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    try {
+      key.writeTo(bytes);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+    return bytes.toByteArray();
   }
 
   /** The token sealed again under the primary key when an older key opens it, else the argument. */
@@ -156,15 +174,6 @@ public final class KeyRing {
   }
 
   private static String fingerprint(Key key) {
-    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-    try {
-      key.writeTo(bytes);
-      byte[] digest = MessageDigest.getInstance("SHA-256").digest(bytes.toByteArray());
-      return HexFormat.of().formatHex(digest).substring(0, FINGERPRINT_LENGTH);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException(e);
-    }
+    return DigestUtils.sha256Hex(keyBytes(key)).substring(0, FINGERPRINT_LENGTH);
   }
 }

@@ -14,18 +14,9 @@
 package org.openmetadata.service.secrets;
 
 import com.macasaet.fernet.Key;
-import com.macasaet.fernet.StringValidator;
 import com.macasaet.fernet.Token;
 import com.macasaet.fernet.TokenValidationException;
-import com.macasaet.fernet.Validator;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.temporal.TemporalAmount;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -53,14 +44,6 @@ public final class BoundCiphertext {
   private static final int FERNET_KEY_LENGTH = 32;
   private static final String NO_KEY = "No Fernet key is configured";
   private static final char SEPARATOR = '\u0000';
-  private static final SecureRandom RANDOM = new SecureRandom();
-  private static final Validator<String> NEVER_EXPIRES =
-      new StringValidator() {
-        @Override
-        public TemporalAmount getTimeToLive() {
-          return Duration.ofSeconds(Instant.MAX.getEpochSecond());
-        }
-      };
 
   private BoundCiphertext() {}
 
@@ -75,13 +58,13 @@ public final class BoundCiphertext {
 
   /** The secret {@code value} holds, when it was written for {@code owner} at {@code field}. */
   public static Optional<String> decrypt(SecretOwner owner, String field, String value) {
-    return plaintext(open(requireKeys(), owner, field, value), false);
+    return plaintext(open(requireKeys(), owner, field, value, false));
   }
 
   /** As {@link #decrypt}, with the primary key only, the one {@link #encrypt} uses. */
   public static Optional<String> decryptWithPrimaryKey(
       SecretOwner owner, String field, String value) {
-    return plaintext(open(requireKeys(), owner, field, value), true);
+    return plaintext(open(requireKeys(), owner, field, value, true));
   }
 
   /** Encrypts {@code secret} for {@code owner} at {@code field} with the primary key of {@code keys}. */
@@ -90,7 +73,7 @@ public final class BoundCiphertext {
       throw new IllegalStateException(NO_KEY);
     }
     return PREFIX
-        + Token.generate(RANDOM, derive(keys.keys().getFirst(), owner, field), secret).serialise();
+        + KeyRing.generateToken(derive(keys.keys().getFirst(), owner, field), secret).serialise();
   }
 
   /**
@@ -98,6 +81,11 @@ public final class BoundCiphertext {
    * Anything that is not bound text for this owner and field gives {@link Opening.NoKey}.
    */
   public static Opening open(KeyRing keys, SecretOwner owner, String field, String token) {
+    return open(keys, owner, field, token, false);
+  }
+
+  private static Opening open(
+      KeyRing keys, SecretOwner owner, String field, String token, boolean primaryOnly) {
     if (!isBound(token) || keys.size() == 0) {
       return new Opening.NoKey();
     }
@@ -108,14 +96,16 @@ public final class BoundCiphertext {
       LOG.debug("A stored secret is not a well-formed token", e);
       return new Opening.NoKey();
     }
-    return openWithEach(keys.keys(), parsed, owner, field);
+    List<Key> candidates = primaryOnly ? List.of(keys.keys().getFirst()) : keys.keys();
+    return openWithEach(candidates, parsed, owner, field);
   }
 
   private static Opening openWithEach(
       List<Key> keys, Token token, SecretOwner owner, String field) {
     for (int i = 0; i < keys.size(); i++) {
       try {
-        String secret = token.validateAndDecrypt(derive(keys.get(i), owner, field), NEVER_EXPIRES);
+        String secret =
+            token.validateAndDecrypt(derive(keys.get(i), owner, field), KeyRing.NEVER_EXPIRES);
         return i == 0 ? new Opening.Primary(secret) : new Opening.Older(i, secret);
       } catch (TokenValidationException e) {
         LOG.debug("A stored secret does not open for this owner and field with key {}", i, e);
@@ -124,10 +114,10 @@ public final class BoundCiphertext {
     return new Opening.NoKey();
   }
 
-  private static Optional<String> plaintext(Opening opening, boolean primaryOnly) {
+  private static Optional<String> plaintext(Opening opening) {
     return switch (opening) {
       case Opening.Primary primary -> Optional.of(primary.plaintext());
-      case Opening.Older older -> primaryOnly ? Optional.empty() : Optional.of(older.plaintext());
+      case Opening.Older older -> Optional.of(older.plaintext());
       case Opening.NoKey ignored -> Optional.empty();
     };
   }
@@ -141,7 +131,8 @@ public final class BoundCiphertext {
   }
 
   private static Key derive(Key key, SecretOwner owner, String field) {
-    return new Key(hkdfSha256(material(key), SALT, context(owner, field), FERNET_KEY_LENGTH));
+    return new Key(
+        hkdfSha256(KeyRing.keyBytes(key), SALT, context(owner, field), FERNET_KEY_LENGTH));
   }
 
   /** HKDF-SHA256 (RFC 5869): {@code length} bytes derived from {@code inputKey}. */
@@ -151,16 +142,6 @@ public final class BoundCiphertext {
     byte[] derived = new byte[length];
     hkdf.generateBytes(derived, 0, length);
     return derived;
-  }
-
-  private static byte[] material(Key key) {
-    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-    try {
-      key.writeTo(bytes);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
-    return bytes.toByteArray();
   }
 
   // Owner segments hold only [a-z0-9], so the separators below cannot appear inside one.

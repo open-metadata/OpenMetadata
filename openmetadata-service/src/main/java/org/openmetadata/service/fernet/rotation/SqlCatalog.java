@@ -30,9 +30,6 @@ import org.jdbi.v3.core.Handle;
  */
 final class SqlCatalog {
   static final int MIN_LENGTH = 100;
-  private static final String VIRTUAL_GENERATED = "virtual generated";
-  private static final String STORED_GENERATED = "stored generated";
-  private static final String ALWAYS = "always";
 
   enum ColumnType {
     JSON,
@@ -63,8 +60,15 @@ final class SqlCatalog {
     }
 
     boolean hasColumn(String column) {
-      return columns.stream().anyMatch(it -> it.name().equalsIgnoreCase(column))
-          || primaryKey.stream().anyMatch(it -> it.equalsIgnoreCase(column));
+      return columnName(column).isPresent();
+    }
+
+    Optional<String> columnName(String column) {
+      return columns.stream()
+          .map(SqlColumn::name)
+          .filter(it -> it.equalsIgnoreCase(column))
+          .findFirst()
+          .or(() -> primaryKey.stream().filter(it -> it.equalsIgnoreCase(column)).findFirst());
     }
 
     Optional<SqlColumn> column(String name) {
@@ -97,29 +101,18 @@ final class SqlCatalog {
   }
 
   private static Optional<ColumnType> eligible(RawColumn raw, Dialect dialect) {
-    boolean generated = raw.generated() != null && isGenerated(raw.generated(), dialect);
+    boolean generated = raw.generated() != null && dialect.isGenerated(raw.generated());
     boolean wideEnough = raw.maxLength() == null || raw.maxLength() >= MIN_LENGTH;
     return generated || !wideEnough
         ? Optional.empty()
         : dialect.columnType(raw.dataType().toLowerCase(Locale.ROOT));
   }
 
-  // MySQL reports DEFAULT_GENERATED for an expression default, a column the database does not
-  // recompute, so only the VIRTUAL and STORED forms count.
-  private static boolean isGenerated(String marker, Dialect dialect) {
-    String lower = marker.toLowerCase(Locale.ROOT);
-    return dialect == Dialect.MYSQL
-        ? lower.contains(VIRTUAL_GENERATED) || lower.contains(STORED_GENERATED)
-        : lower.equals(ALWAYS);
-  }
-
-  // MySQL marks a generated column in EXTRA ("VIRTUAL GENERATED"); PostgreSQL in is_generated.
   private static List<RawColumn> columns(Handle handle, Dialect dialect) {
-    String generated = dialect == Dialect.MYSQL ? "c.extra" : "c.is_generated";
     return handle
         .createQuery(
             "SELECT c.table_name, c.column_name, c.data_type, c.character_maximum_length, "
-                + generated
+                + dialect.generatedColumn()
                 + " FROM information_schema.columns c"
                 + " JOIN information_schema.tables t"
                 + " ON t.table_schema = c.table_schema AND t.table_name = c.table_name"
@@ -139,20 +132,9 @@ final class SqlCatalog {
   }
 
   private static Map<String, List<String>> primaryKeys(Handle handle, Dialect dialect) {
-    String sql =
-        dialect == Dialect.MYSQL
-            ? "SELECT table_name, column_name FROM information_schema.key_column_usage"
-                + " WHERE table_schema = DATABASE() AND constraint_name = 'PRIMARY'"
-                + " ORDER BY table_name, ordinal_position"
-            : "SELECT tc.table_name, kcu.column_name FROM information_schema.table_constraints tc"
-                + " JOIN information_schema.key_column_usage kcu"
-                + " ON kcu.constraint_schema = tc.constraint_schema"
-                + " AND kcu.constraint_name = tc.constraint_name AND kcu.table_name = tc.table_name"
-                + " WHERE tc.table_schema = current_schema() AND tc.constraint_type = 'PRIMARY KEY'"
-                + " ORDER BY tc.table_name, kcu.ordinal_position";
     Map<String, List<String>> keys = new LinkedHashMap<>();
     handle
-        .createQuery(sql)
+        .createQuery(dialect.primaryKeysSql())
         .map((rs, ctx) -> List.of(rs.getString(1), rs.getString(2)))
         .forEach(
             row ->

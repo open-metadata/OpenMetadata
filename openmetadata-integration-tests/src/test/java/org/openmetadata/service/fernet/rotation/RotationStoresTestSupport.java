@@ -147,14 +147,21 @@ public final class RotationStoresTestSupport {
             keys));
   }
 
+  /** Writes {@code replacement} to a Redis string ({@code field} empty) or hash field via CAS. */
+  public static boolean compareAndSetRedis(
+      RedisCommands<String, String> commands,
+      String key,
+      String field,
+      String readText,
+      String replacement) {
+    RedisTokenStore store = new RedisTokenStore(commands, List.of());
+    StoredText read = StoredText.writable(Location.ofRedis(key, field), readText, Encoding.TEXT);
+    return store.compareAndSet(read, replacement);
+  }
+
   private static SqlTableStore store(Handle handle, ConnectionType type, String table) {
     Dialect dialect = Dialect.of(type);
-    SqlTable sqlTable =
-        SqlCatalog.read(handle, dialect).stream()
-            .filter(it -> it.name().equalsIgnoreCase(table))
-            .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Not in the catalog: " + table));
-    return new SqlTableStore(handle, dialect, sqlTable);
+    return new SqlTableStore(handle, dialect, named(SqlCatalog.read(handle, dialect), table));
   }
 
   private static StoredText stored(Value value, SqlTable table) {

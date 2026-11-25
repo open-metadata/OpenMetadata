@@ -44,6 +44,8 @@ class KeyRingTest {
     assertThrows(IllegalArgumentException.class, () -> KeyRing.parse(null));
     assertThrows(IllegalArgumentException.class, () -> KeyRing.parse("  "));
     assertThrows(IllegalArgumentException.class, () -> KeyRing.parse(Fernet.FERNET_NO_ENCRYPTION));
+    assertThrows(IllegalArgumentException.class, () -> KeyRing.parse(NEW + ","));
+    assertThrows(IllegalArgumentException.class, () -> KeyRing.parse("," + NEW));
     IllegalArgumentException invalid =
         assertThrows(IllegalArgumentException.class, () -> KeyRing.parse(NEW + ",not-a-key-zzz"));
     assertFalse(invalid.getMessage().contains(NEW));
@@ -112,10 +114,9 @@ class KeyRingTest {
 
   @Test
   void theShippedDefaultKeyIsRecognisedAsPrimaryOnly() {
-    String shipped = "jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=";
-
-    assertTrue(KeyRing.parse(shipped + "," + OLD).isPrimaryTheShippedDefault());
-    assertFalse(KeyRing.parse(NEW + "," + shipped).isPrimaryTheShippedDefault());
+    assertTrue(KeyRing.parse(KeyRing.SHIPPED_DEFAULT_KEY + "," + OLD).isPrimaryTheShippedDefault());
+    assertFalse(
+        KeyRing.parse(NEW + "," + KeyRing.SHIPPED_DEFAULT_KEY).isPrimaryTheShippedDefault());
     assertFalse(KeyRing.NONE.isPrimaryTheShippedDefault());
   }
 

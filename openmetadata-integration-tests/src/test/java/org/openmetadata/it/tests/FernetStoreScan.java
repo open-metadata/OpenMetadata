@@ -16,6 +16,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jdbi.v3.core.Handle;
@@ -66,7 +68,8 @@ final class FernetStoreScan {
           + "'tinyblob','blob','mediumblob','longblob'";
   private static final String POSTGRES_TYPES =
       "'json','jsonb','text','character varying','character','bytea'";
-  private static final String MYSQL_BINARY = "binary,varbinary,tinyblob,blob,mediumblob,longblob";
+  private static final Set<String> MYSQL_BINARY =
+      Set.of("binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob");
 
   private FernetStoreScan() {}
 
@@ -116,9 +119,8 @@ final class FernetStoreScan {
                 + ") ORDER BY c.table_name, c.ordinal_position")
         .map(
             (rs, ctx) -> {
-              String type = rs.getString("typ").toLowerCase();
-              boolean binary =
-                  mysql ? List.of(MYSQL_BINARY.split(",")).contains(type) : "bytea".equals(type);
+              String type = rs.getString("typ").toLowerCase(Locale.ROOT);
+              boolean binary = mysql ? MYSQL_BINARY.contains(type) : "bytea".equals(type);
               return new Column(rs.getString("tbl"), rs.getString("col"), binary);
             })
         .list();

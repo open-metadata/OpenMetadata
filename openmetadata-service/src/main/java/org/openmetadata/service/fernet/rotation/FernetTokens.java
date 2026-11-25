@@ -24,9 +24,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.exception.JsonParsingException;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.fernet.KeyRing;
 import org.openmetadata.service.fernet.Opening;
@@ -45,7 +44,8 @@ final class FernetTokens {
    * A token's alphabet needs no escaping in JSON, XML or Java's modified UTF-8, so a token reads
    * the same at any depth. The match may run past the token: in bytes the next byte can be a letter.
    */
-  static final Pattern TOKEN = Pattern.compile("fernet:(?:bound:)?[A-Za-z0-9_-]+={0,2}");
+  static final Pattern TOKEN =
+      Pattern.compile("fernet:(?:bound:)?(?:(?!fernet:)[A-Za-z0-9_-])+={0,2}");
 
   // A Fernet token is a version byte, an 8-byte timestamp, a 16-byte IV, 16n bytes of ciphertext
   // and a 32-byte HMAC, so its padded base64url length is one of a known series.
@@ -175,22 +175,19 @@ final class FernetTokens {
 
   private static Optional<Located.Token> open(
       String text, TokenKind kind, KeyRing keys, List<Binding> bindings) {
-    Optional<Located.Token> opened = Optional.empty();
     if (kind == TokenKind.PLAIN) {
-      opened = asToken(text, kind, keys.open(text), null);
-    } else {
-      for (Binding binding : bindings) {
-        if (opened.isEmpty()) {
-          opened =
-              asToken(
-                  text,
-                  kind,
-                  BoundCiphertext.open(keys, binding.owner(), binding.field(), text),
-                  binding);
-        }
-      }
+      return asToken(text, kind, keys.open(text), null);
     }
-    return opened;
+    return bindings.stream()
+        .map(
+            binding ->
+                asToken(
+                    text,
+                    kind,
+                    BoundCiphertext.open(keys, binding.owner(), binding.field(), text),
+                    binding))
+        .flatMap(Optional::stream)
+        .findFirst();
   }
 
   private static Optional<Located.Token> asToken(
@@ -336,7 +333,7 @@ final class FernetTokens {
     Optional<JsonNode> get() {
       if (!parsed) {
         parsed = true;
-        root = parse(text);
+        root = JsonDocument.parseContainer(text);
       }
       return root;
     }
@@ -344,14 +341,6 @@ final class FernetTokens {
     /** The JSON pointer of the first string that holds {@code token}, or empty text otherwise. */
     String pointerOf(String token) {
       return get().flatMap(node -> pointerOf(node, JsonPointer.empty(), token)).orElse("");
-    }
-
-    private static Optional<JsonNode> parse(String text) {
-      try {
-        return Optional.of(JsonUtils.readTree(text)).filter(JsonNode::isContainerNode);
-      } catch (JsonParsingException e) {
-        return Optional.empty();
-      }
     }
 
     private static Optional<String> pointerOf(JsonNode node, JsonPointer at, String token) {
@@ -365,11 +354,11 @@ final class FernetTokens {
                 .flatMap(Optional::stream)
                 .findFirst();
       } else if (node.isArray()) {
-        List<Optional<String>> found = new ArrayList<>();
-        for (int i = 0; i < node.size(); i++) {
-          found.add(pointerOf(node.get(i), at.appendIndex(i), token));
-        }
-        pointer = found.stream().flatMap(Optional::stream).findFirst();
+        pointer =
+            IntStream.range(0, node.size())
+                .mapToObj(i -> pointerOf(node.get(i), at.appendIndex(i), token))
+                .flatMap(Optional::stream)
+                .findFirst();
       }
       return pointer;
     }
