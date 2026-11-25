@@ -207,6 +207,8 @@ def _resolve_shard_family(resolver, service: str, reference: TableReference, fie
 
 
 class BigQueryTableBindingResolution(DefaultTableBindingResolution):
+    supports_wildcard_tables = True
+
     def resolve(
         self,
         reference: TableReference,
