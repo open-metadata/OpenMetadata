@@ -73,6 +73,7 @@ export interface CellValue {
   isEmpty?: boolean;
 }
 
+// ADR:2026-11-25-audit-log-rows-show-five-records-and-three-lines-of-a-change
 export const MAX_RECORDS = 5;
 
 const UUID_PREVIEW_LENGTH = 8;

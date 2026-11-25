@@ -41,6 +41,7 @@ import {
   AuditLogListItemProps,
   AuditLogListProps,
 } from './AuditLogList.interface';
+import './AuditLogList.less';
 import {
   ChangeRef,
   ChangeRow,
@@ -57,7 +58,6 @@ import {
   LineageEdge,
   REF_DOT_CLASSES,
 } from './AuditLogList.utils';
-import './AuditLogList.less';
 
 /** How a value is drawn: plain, or red/struck (old / removed) and green (new) on an update. */
 type ValueTone = 'plain' | 'before' | 'after';
@@ -215,7 +215,10 @@ const TEXT_TONE_CLASSES: Record<ValueTone, string> = {
   after: 'tw:text-utility-success-700',
 };
 
-/** Long values such as descriptions are cut to three lines so one entry cannot fill the list. */
+/**
+ * Long values such as descriptions are cut to three lines so one entry cannot fill the list
+ * (ADR:2026-11-25-audit-log-rows-show-five-records-and-three-lines-of-a-change).
+ */
 const TextValue: FC<{ text: string; tone: ValueTone }> = ({ text, tone }) => (
   <span
     className={classNames(
