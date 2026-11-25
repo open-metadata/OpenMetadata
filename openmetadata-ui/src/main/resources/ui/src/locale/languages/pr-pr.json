@@ -4158,6 +4158,7 @@
     "value-count": "تعداد مقادیر",
     "value-plural": "مقادیر",
     "value-type-or-target": "نوع مقدار یا مقصد",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "واریانس",
     "variant": "گونه",
     "variant-plural": "گونه‌ها",

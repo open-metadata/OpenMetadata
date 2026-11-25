@@ -54,7 +54,7 @@ public class VectorDocBuilder {
    * Schema version of the denormalized chunk document (issue #862/#858). Stamped on every chunk doc
    * as {@code docVersion} and mirrored on the chunk index mapping as {@code _meta.chunkDocVersion}.
    * Bump this whenever {@link #buildDenormalizedFields} materializes a new field or changes an existing one
-   * so {@code OpenSearchVectorService} triggers an additive {@code PUT _mapping} and an
+   * so {@code AbstractVectorIndexService} triggers an additive {@code PUT _mapping} and an
    * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
    * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
    */
@@ -630,6 +630,33 @@ public class VectorDocBuilder {
     fields.put("parentId", parentId);
     fields.put("fingerprint", fingerprint);
 
+    return fields;
+  }
+
+  /** The embedding fields an entity document carries; the {@code _source} a reindex reuses. */
+  static final List<String> EMBEDDING_SOURCE_FIELDS =
+      List.of(
+          "fingerprint",
+          "embedding",
+          "textToLLMContext",
+          "textToEmbed",
+          "chunkIndex",
+          "chunkCount",
+          "parentId");
+
+  /**
+   * The legacy entity-doc embedding payload extracted from a chunk document: only the embedding
+   * fields, never the chunk doc's trimmed filter fields (tags/domains/tier), which would clobber
+   * the entity doc's rich versions of those fields on partial update.
+   */
+  public static Map<String, Object> legacyEmbeddingFields(Map<String, Object> chunkDoc) {
+    Map<String, Object> fields = new HashMap<>();
+    for (String key : EMBEDDING_SOURCE_FIELDS) {
+      Object value = chunkDoc.get(key);
+      if (value != null) {
+        fields.put(key, value);
+      }
+    }
     return fields;
   }
 
