@@ -15,6 +15,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.type.DataModelType;
 
 /**
  * Regression coverage for the silent-drop bug introduced in commit {@code bb1395fc72} (PR
@@ -65,6 +66,9 @@ class BuilderExtensionTest {
                 () ->
                     new DashboardDataModelBuilder(null)
                         .name("dm")
+                        .service("svc")
+                        .dataModelType(DataModelType.SupersetDataModel)
+                        .columns(List.of())
                         .extension(EXTENSION)
                         .build()
                         .getExtension()),
