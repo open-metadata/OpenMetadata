@@ -156,8 +156,9 @@ class HeapBackpressureTest {
     // The only thing we can assert independent of the runner's heap state is that it returns
     // within the test escape-valve bound (set in @BeforeEach) — i.e. it never wedges. The
     // gate-engaged flag is NOT heap-state independent: if the runner is under sustained pressure
-    // for the whole escape valve, the bypass path intentionally leaves the gate engaged (the
-    // multi-worker cascade design), so it is not asserted here.
+    // for the whole escape valve the escape valve fires, and whether the timeout handoff leaves
+    // the gate engaged or cleared depends on whether other workers happen to be queued on the
+    // lock at that instant, so it is not asserted here.
     long maxWaitMs = 2_000L; // matches the @BeforeEach setMaxWaitMsForTest(2_000L)
     long start = System.nanoTime();
     HeapBackpressure.awaitHeadroom();
@@ -242,15 +243,16 @@ class HeapBackpressureTest {
   }
 
   /**
-   * Reproduces the second bug from the report: under sustained pressure each paused worker runs its
-   * own 30 s escape valve, so they all bypass in lockstep. The fix installs a single shared
-   * deadline (epoch ms) when the gate first engages; later workers reaching the gate join the same
-   * deadline. After the deadline expires, the first worker proceeds; subsequent workers do NOT
-   * restart their own 30 s timer — they see the already-expired deadline and pass through
-   * immediately, which is the property this test asserts.
+   * Reproduces the sustained-pressure failure from #38021: when heap stays at/above
+   * {@code PAUSE_ABOVE} past the escape valve, the gate must NOT leave an expired deadline in place
+   * for every later batch to reuse — that would permanently disable backpressure and let every
+   * subsequent worker skip the drain and allocate immediately (the {@code N × batchSize} burst the
+   * gate targets). With no other worker queued, the timeout handoff clears the gate, so the next
+   * call re-engages with a fresh deadline and waits the full escape valve again instead of
+   * bypassing instantly on the expired one.
    */
   @Test
-  void awaitHeadroom_sustainedPressure_sharedDeadlinePreventsPerWorkerBypassRestart() {
+  void awaitHeadroom_sustainedPressure_soloTimeoutReArmsFreshDeadline() {
     HeapBackpressure.setMaxWaitMsForTest(400L); // short escape valve for the test budget
     Supplier<MemoryUsage> pressure = () -> new MemoryUsage(0L, 90L, 100L, 100L);
 
@@ -263,59 +265,173 @@ class HeapBackpressureTest {
         "first worker should drain past the escape valve before bypassing (took "
             + elapsed1Ms
             + "ms)");
-    assertTrue(HeapBackpressure.gateEngaged(), "engaged flag must remain after a timeout bypass");
-    long expiredDeadline = HeapBackpressure.gateDeadlineMs();
-    assertTrue(
-        expiredDeadline > 0 && expiredDeadline <= System.currentTimeMillis(),
-        "deadline must be expired after the bypass");
+    // Solo timeout: no one is queued, so the handoff clears the gate so the next batch re-arms.
+    assertFalse(
+        HeapBackpressure.gateEngaged(),
+        "solo escape-valve timeout must clear the gate so the next batch re-arms");
+    assertEquals(
+        0L, HeapBackpressure.gateDeadlineMs(), "solo escape-valve timeout must clear the deadline");
 
-    // Second call (after the first bypassed) must NOT restart its own 400 ms clock: it sees the
-    // already-expired shared deadline and passes through immediately. Without the fix the second
-    // call would wait the full 400 ms (its own MAX_WAIT_MS), making this test fail.
+    // Second call must re-arm a fresh deadline and wait the full escape valve again, NOT bypass
+    // immediately on the expired deadline. With the bug (expired deadline left in place) this
+    // call would return in ~0ms; with the fix it waits ~400ms again.
     long start2 = System.nanoTime();
     HeapBackpressure.awaitHeadroom(pressure);
     long elapsed2Ms = (System.nanoTime() - start2) / 1_000_000L;
     assertTrue(
-        elapsed2Ms < 200L,
-        "second worker should bypass immediately via the shared expired deadline (took "
+        elapsed2Ms >= 350L,
+        "second call must re-arm a fresh deadline and wait the escape valve again (took "
             + elapsed2Ms
-            + "ms); without coordination every worker would restart the 30 s escape valve in lockstep");
-    assertEquals(
-        expiredDeadline,
-        HeapBackpressure.gateDeadlineMs(),
-        "second worker must NOT touch the shared deadline");
-    assertTrue(HeapBackpressure.gateEngaged(), "engaged flag must remain after timeout cascade");
+            + "ms); reusing the expired deadline would bypass immediately and permanently "
+            + "disable backpressure under sustained pressure");
+    assertFalse(HeapBackpressure.gateEngaged());
+    assertEquals(0L, HeapBackpressure.gateDeadlineMs());
   }
 
   /**
-   * If a worker bypassed via the shared deadline (heap still at/above {@code PAUSE_ABOVE}) and the
-   * heap then drifts into the hysteresis band without headroom, a worker reaching the gate must
-   * clear the stale engaged + expired-deadline state and proceed (so the next pressure wave starts
-   * with a fresh deadline), not block forever on stale episode state.
+   * Multi-worker sustained-pressure test for #38021: with several workers each pulling multiple
+   * batches while heap stays at/above {@code PAUSE_ABOVE}, every admission escapes via the timeout
+   * valve. The fix paces admission after each timeout (one worker per {@code releasePaceMs}) and
+   * re-arms a fresh deadline for the next admission, so admissions are spread across many
+   * escape-valve windows rather than clustering into a single synchronized burst right after the
+   * first timeout. This records every (worker, batch) admission timestamp and asserts the span
+   * exceeds a single escape-valve window — with the bug, all admissions would cluster within one
+   * poll interval of the first timeout and the span would be ~0.
    */
   @Test
-  void awaitHeadroom_staleBypassStateInBandClearsAndProceeds() {
-    HeapBackpressure.setMaxWaitMsForTest(200L);
+  void awaitHeadroom_sustainedPressure_multipleWorkersPacedAcrossBatches() throws Exception {
+    int workers = 3;
+    int batches = 2;
+    long maxWaitMs = 300L;
+    long paceMs = 80L;
+    HeapBackpressure.setMaxWaitMsForTest(maxWaitMs);
+    HeapBackpressure.setReleasePaceMsForTest(paceMs);
     Supplier<MemoryUsage> pressure = () -> new MemoryUsage(0L, 90L, 100L, 100L);
 
-    // Step 1: drive the gate through the deadline-bypass path so engaged=true and deadline=past.
-    long start1 = System.nanoTime();
-    HeapBackpressure.awaitHeadroom(pressure);
-    long elapsed1Ms = (System.nanoTime() - start1) / 1_000_000L;
-    assertTrue(elapsed1Ms >= 150L, "first worker should wait ~200ms before bypassing");
-    assertTrue(HeapBackpressure.gateEngaged());
-    long expiredDeadline = HeapBackpressure.gateDeadlineMs();
-    assertTrue(expiredDeadline <= System.currentTimeMillis());
+    AtomicLongArray admitNs = new AtomicLongArray(workers * batches);
+    CountDownLatch ready = new CountDownLatch(workers);
+    AtomicInteger completed = new AtomicInteger(0);
 
-    // Step 2: heap has since drifted into the hysteresis band [RESUME_BELOW, PAUSE_ABOVE). The
-    // next worker must take the lock, see no pressure, clear stale state, and return quickly.
-    Supplier<MemoryUsage> inBand = () -> new MemoryUsage(0L, 75L, 100L, 100L);
-    long start2 = System.nanoTime();
-    HeapBackpressure.awaitHeadroom(inBand);
-    long elapsed2Ms = (System.nanoTime() - start2) / 1_000_000L;
-    assertTrue(elapsed2Ms < 100L, "stale-episode in-band worker should clear and proceed fast");
-    assertFalse(HeapBackpressure.gateEngaged(), "stale engaged flag should be cleared");
-    assertEquals(0L, HeapBackpressure.gateDeadlineMs(), "stale deadline should be cleared");
+    ExecutorService pool = Executors.newFixedThreadPool(workers);
+    try {
+      for (int w = 0; w < workers; w++) {
+        final int worker = w;
+        pool.submit(
+            () -> {
+              ready.countDown();
+              for (int b = 0; b < batches; b++) {
+                HeapBackpressure.awaitHeadroom(pressure);
+                admitNs.set(worker * batches + b, System.nanoTime());
+                completed.incrementAndGet();
+              }
+              return null;
+            });
+      }
+      assertTrue(ready.await(2L, TimeUnit.SECONDS), "all workers should start");
+
+      // Wait until all workers have reached the gate: one draining, the rest queued on the lock,
+      // so the first escape-valve timeout installs a paced handoff (hasQueuedThreads()==true).
+      await()
+          .pollDelay(Duration.ZERO)
+          .pollInterval(Duration.ofMillis(5))
+          .atMost(Duration.ofSeconds(3))
+          .until(() -> HeapBackpressure.gateQueueLength() == workers - 1);
+
+      await()
+          .atMost(Duration.ofSeconds(20))
+          .untilAsserted(
+              () ->
+                  assertEquals(workers * batches, completed.get(), "all batches should complete"));
+
+      // Under sustained pressure every admission escapes via the timeout valve. With the fix,
+      // each admission is paced one-per-releasePaceMs and the deadline is re-armed, so admissions
+      // span many escape-valve windows. With the bug, every queued worker and every later batch
+      // bypasses instantly on the expired deadline, clustering all admissions within a single
+      // poll interval of the first timeout — the span would be ~0, far below maxWaitMs.
+      long[] ts = new long[workers * batches];
+      for (int i = 0; i < ts.length; i++) {
+        ts[i] = admitNs.get(i);
+      }
+      Arrays.sort(ts);
+      long spanMs = (ts[ts.length - 1] - ts[0]) / 1_000_000L;
+      assertTrue(
+          spanMs > maxWaitMs,
+          "admissions must span more than one escape-valve window under sustained pressure "
+              + "(span="
+              + spanMs
+              + "ms, maxWait="
+              + maxWaitMs
+              + "ms); a single synchronized timeout burst would cluster all admissions within "
+              + "maxWaitMs");
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
+  /**
+   * If a worker's escape valve fired (heap still at/above {@code PAUSE_ABOVE}) and installed a paced
+   * handoff (engaged=true, deadline cleared to 0, next admission paced), and the heap then drifts
+   * into the hysteresis band [RESUME_BELOW, PAUSE_ABOVE) without headroom while a queued worker is
+   * waiting out the pace, that queued worker — on its post-pace re-check — must clear the stale
+   * engaged + pace state and proceed, not wedge on stale episode state. This exercises the
+   * hysteresis-band clear branch in the paced-handoff context.
+   */
+  @Test
+  void awaitHeadroom_pacedHandoff_heapDriftsToBandDuringPace_clearsAndProceeds() throws Exception {
+    int workers = 2;
+    long paceMs = 400L;
+    HeapBackpressure.setReleasePaceMsForTest(paceMs);
+    HeapBackpressure.setMaxWaitMsForTest(200L);
+    AtomicLong usedRef = new AtomicLong(90L); // both workers initially sample under-pressure heap
+    AtomicInteger completed = new AtomicInteger(0);
+    CountDownLatch ready = new CountDownLatch(workers);
+
+    Supplier<MemoryUsage> supplier = () -> new MemoryUsage(0L, usedRef.get(), 100L, 100L);
+
+    ExecutorService pool = Executors.newFixedThreadPool(workers);
+    try {
+      for (int i = 0; i < workers; i++) {
+        pool.submit(
+            () -> {
+              ready.countDown();
+              HeapBackpressure.awaitHeadroom(supplier);
+              completed.incrementAndGet();
+              return null;
+            });
+      }
+      assertTrue(ready.await(2L, TimeUnit.SECONDS), "all workers should start");
+
+      // Wait until the drainer is parked and the peer is queued on the lock, so the escape-valve
+      // timeout installs a paced handoff (hasQueuedThreads()==true).
+      await()
+          .pollDelay(Duration.ZERO)
+          .pollInterval(Duration.ofMillis(5))
+          .atMost(Duration.ofSeconds(3))
+          .until(() -> HeapBackpressure.gateQueueLength() == workers - 1);
+
+      // Drainer times out and installs a paced handoff (engaged=true, deadline=0,
+      // nextAdmission=now+pace); the queued worker acquires the lock and waits the pace under it.
+      await()
+          .pollDelay(Duration.ZERO)
+          .pollInterval(Duration.ofMillis(5))
+          .atMost(Duration.ofSeconds(3))
+          .until(() -> completed.get() == 1);
+
+      // While the queued worker is in its pace wait, drift the heap into the hysteresis band. Its
+      // post-pace re-check sees the band (no pressure, no headroom) and must clear the stale
+      // engaged + pace state and proceed, not wedge.
+      usedRef.set(75L);
+
+      await()
+          .atMost(Duration.ofSeconds(3))
+          .untilAsserted(() -> assertEquals(workers, completed.get(), "queued worker should exit"));
+      assertFalse(HeapBackpressure.gateEngaged(), "stale engaged flag should be cleared in band");
+      assertEquals(
+          0L, HeapBackpressure.gateDeadlineMs(), "stale deadline should be cleared in band");
+      assertEquals(0L, HeapBackpressure.nextAdmissionMs(), "stale pace should be cleared in band");
+    } finally {
+      pool.shutdownNow();
+    }
   }
 
   /**

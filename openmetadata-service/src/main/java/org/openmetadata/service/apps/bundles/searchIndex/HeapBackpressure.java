@@ -62,19 +62,25 @@ import lombok.extern.slf4j.Slf4j;
  * before proceeding, so resume is staggered one worker at a time rather than a synchronized herd.
  * The {@link #MAX_WAIT_MS} forward-progress escape valve is applied against a single shared
  * deadline ({@link #GATE_DEADLINE_MS}) installed when the gate first engages — not one per worker —
- * so the timeout can never collapse into a synchronized multi-worker bypass.
+ * so the timeout can never collapse into a synchronized multi-worker bypass. After an escape-valve
+ * timeout the same paced handoff used after a successful drain re-arms a fresh deadline for the
+ * next admission, so sustained pressure bounds admission to one worker per
+ * {@code releasePaceMs + maxWaitMs} and never permanently disables the gate.
  *
- * <p><b>Paced handoff after a drain.</b> Serializing the heap check is not enough on its own: the
- * lock is released before the released worker calls {@code processBatch()} and reads its next
- * batch, so queued workers can all acquire the lock in succession and see the same healthy heap
- * sample before the first batch read has returned its entities — an {@code N × batchSize} burst
- * across the resume boundary. To prevent that, every released worker installs an admission pace
- * ({@link #NEXT_ADMISSION_MS} = now + {@link #RELEASE_PACE_MS}) and leaves the gate engaged while
- * the pace window is open; the next queued worker acquires the lock, waits out the pace under the
- * lock, then re-checks the heap — so each released worker's batch allocation has time to be
- * reflected in heap usage before the next worker is admitted. If the previous worker's allocation
- * pushed the heap back to pressure, the next worker re-enters the drain instead of admitting, so
- * the gate reacts to the actual post-resume heap, not a stale sample taken before the burst.
+ * <p><b>Paced handoff after a drain or escape-valve timeout.</b> Serializing the heap check is not
+ * enough on its own: the lock is released before the released worker calls {@code processBatch()}
+ * and reads its next batch, so queued workers can all acquire the lock in succession and see the
+ * same healthy heap sample before the first batch read has returned its entities — an
+ * {@code N × batchSize} burst across the resume boundary. To prevent that, every released worker
+ * installs an admission pace ({@link #NEXT_ADMISSION_MS} = now + {@link #RELEASE_PACE_MS}) and
+ * leaves the gate engaged while the pace window is open; the next queued worker acquires the
+ * lock, waits out the pace under the lock, then re-checks the heap — so each released worker's
+ * batch allocation has time to be reflected in heap usage before the next worker is admitted. If
+ * the previous worker's allocation pushed the heap back to pressure, the next worker re-enters
+ * the drain instead of admitting, so the gate reacts to the actual post-resume heap, not a stale
+ * sample taken before the burst. The escape valve uses the same handoff so a timeout does not let
+ * queued workers (or later batches) all rush the next batch read together on the expired
+ * deadline.
  */
 @Slf4j
 public final class HeapBackpressure {
@@ -140,9 +146,10 @@ public final class HeapBackpressure {
   /**
    * Single shared deadline (epoch ms) installed when the gate first engages. Replaces the
    * per-worker 30 s escape valve in the original design, which let all paused workers bypass in
-   * lockstep under sustained pressure. Cleared when the gate releases with headroom restored; an
-   * expired deadline is left in place so workers queued behind the timeout pass through
-   * immediately instead of restarting their own 30 s clock.
+   * lockstep under sustained pressure. Cleared when the gate releases with headroom restored, and
+   * cleared to {@code 0} by {@link #admitWithPacedHandoff()} after an escape-valve timeout so the
+   * next admitted worker re-arms a fresh deadline and drains again instead of bypassing
+   * indefinitely on the expired one.
    */
   private static final AtomicLong GATE_DEADLINE_MS = new AtomicLong(0L);
 
@@ -346,22 +353,25 @@ public final class HeapBackpressure {
     }
     logResume(usedBytes, maxBytes, waited);
 
-    if (hasHeadroom(usedBytes, maxBytes)) {
-      // Episode resolved: install a paced handoff so queued workers do not all rush the next
-      // batch read together. Leave GATE_ENGAGED=true while the pace window is open; the next
-      // admitted worker clears everything if no one is queued behind it.
-      admitWithPacedHandoff();
-    }
-    // Otherwise leave engaged=true and the (expired) deadline in place so workers queued behind
-    // this bypass flow through immediately instead of each restarting their own 30 s clock.
+    // Whether the episode resolved with headroom or the escape valve fired under sustained
+    // pressure, install a paced handoff. Queued workers are then admitted one at a time (one per
+    // releasePaceMs), and on the next admission each re-checks the heap and either re-arms a fresh
+    // deadline (still under pressure) or clears the gate (headroom or hysteresis band). Leaving an
+    // expired deadline in place here — the old behaviour — let every queued worker and every later
+    // batch skip the drain loop and allocate immediately, permanently disabling the gate under
+    // sustained pressure (the N × batchSize burst #38021 targets). With no worker queued,
+    // admitWithPacedHandoff clears the gate so the next batch re-engages with a fresh deadline.
+    admitWithPacedHandoff();
   }
 
   /**
-   * Admits the current lock-holding worker after a successful drain (or after waiting out a peer's
-   * admission pace and confirming headroom). If other workers are queued behind us, stay engaged
-   * and install the next pace so they are admitted one at a time, each with time for their
-   * predecessor's batch allocation to be reflected in heap usage. If no one is queued, clear the
-   * gate so the fast path returns immediately for healthy heap.
+   * Admits the current lock-holding worker after a successful drain (or after an escape-valve
+   * timeout, or after waiting out a peer's admission pace and confirming headroom). If other
+   * workers are queued behind us, stay engaged and install the next pace so they are admitted one
+   * at a time, each with time for their predecessor's batch allocation to be reflected in heap
+   * usage; the cleared deadline forces the next admission to re-arm a fresh one (or clear the gate)
+   * based on the live heap sample rather than bypassing on an expired deadline. If no one is
+   * queued, clear the gate so the fast path returns immediately for healthy heap.
    */
   private static void admitWithPacedHandoff() {
     if (GATE_LOCK.hasQueuedThreads()) {
