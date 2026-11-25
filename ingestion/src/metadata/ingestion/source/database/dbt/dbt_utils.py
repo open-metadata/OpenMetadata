@@ -823,12 +823,13 @@ def _resolve_without_model(upstream_list, upstream_by_name, kwargs) -> str | Non
     The ``to:`` upstream of a ``relationships`` test is the referenced parent, never the tested
     table, so it is excluded and only a single remaining candidate is trusted. None left means
     the tested model's table is not in OpenMetadata; several left would be an arbitrary pick.
-    Tests without ``to:`` keep the first upstream.
+    A ``to:`` that cannot be identified cannot be excluded, and dbt lists it first, so the
+    first-upstream fallback is kept only for tests without ``to:``.
     """
-    referenced_fqn = _resolve_upstream_fqn(upstream_list, upstream_by_name, kwargs.get("to"))
-    if referenced_fqn:
+    if kwargs.get("to"):
+        referenced_fqn = _resolve_upstream_fqn(upstream_list, upstream_by_name, kwargs.get("to"))
         candidates = [fqn for fqn in upstream_list if fqn != referenced_fqn]
-        return candidates[0] if len(candidates) == 1 else None
+        return candidates[0] if referenced_fqn and len(candidates) == 1 else None
     return upstream_list[0] if upstream_list else None
 
 
