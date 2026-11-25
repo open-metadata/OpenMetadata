@@ -169,15 +169,21 @@ borders, foreground/icon, utility/badge colors) plus a `dark-gray-red-green`
 
 | Raw pattern | Use instead |
 |---|---|
-| `tw:bg-white` / `tw:bg-gray-50` | `tw:bg-primary` / `tw:bg-secondary` |
-| `tw:text-gray-900` / `tw:text-gray-500` | `tw:text-primary` / `tw:text-quaternary` |
+| `tw:bg-white` on a card/panel | `<Card>` or `tw:bg-surface` — never `tw:bg-primary`, the page colour in dark mode (the card disappears) |
+| `tw:bg-white` on the page / a modal or drawer / a popover or menu | `tw:bg-page` / `tw:bg-overlay-surface` / `tw:bg-floating` |
+| `tw:bg-gray-50` (subtle fill) | `tw:bg-secondary` |
+| `tw:text-gray-900` / `tw:text-gray-500` | `tw:text-primary` / `tw:text-tertiary` (`quaternary` only for de-emphasised text) |
 | `tw:border-gray-300` | `tw:border-primary` |
 | `tw:text-red-600` / `tw:border-red-500` | `tw:text-error-primary` / `tw:border-error` |
 | `tw:bg-green-50 tw:text-green-700` (badge) | `tw:bg-utility-success-50 tw:text-utility-success-700` |
 | `style={{ color: '#1570ef' }}` | `tw:text-fg-brand-primary` |
 
 Icons use `tw:text-fg-*` tokens, not `tw:text-*` — foreground tokens are
-tuned for icon contrast, text tokens aren't.
+tuned for icon contrast, text tokens aren't. Text colour on `Typography` is its
+`color` prop, not a class: `color="secondary"` renders `tw:text-tertiary`, and
+`quaternary`/`success`/`warning`/`danger`/`brand` map the same way. `Box` and
+`Grid` are layout only — never give them a background or border. The surface
+rules are in `.claude/rules/frontend-styling.md` (Dark mode section).
 
 ## Verify
 

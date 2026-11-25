@@ -21,6 +21,8 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   Modal, Table, Tabs, Pagination, Badge, Avatar, Checkbox, Dropdown, Form, Card, Tooltip, Toggle,
   Slider, Textarea, Tags, and more. When building layout/color, invoke the `ui-core-components` skill
   before reaching for a raw `<div>` + Tailwind.
+- **Planning UI work? Invoke `planning` first** — its component map ties each screen piece to an
+  existing component before any code. Layout and colour reference: the `ui-core-components` skill.
 - **Building or restructuring a component? Invoke these first** — they do not fire on their own:
   `react-best-practices` (waterfalls, re-renders, barrel imports, bundle) and `composition-patterns`
   (prop proliferation, compound components). When the component is done, invoke

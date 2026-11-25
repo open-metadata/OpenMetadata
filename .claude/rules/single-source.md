@@ -38,6 +38,17 @@ Every one started as "quicker to write than to find". This rule makes finding ma
 | Search input | `common/SearchBarComponent` | per-file `<Input>` + hand-rolled debounce |
 | Owner/user display | ui-core `Owner` / `OwnerChip` (`application/owner`) | per-feature owner renderers |
 | Rich text preview | one previewer (`RichTextEditorPreviewerV1`) | another `*New`/`*V2` previewer |
+| Page header (title, breadcrumb, actions) | ui-core `PageLayout.PageHeader` + common `HeaderBreadcrumb` | feature `*Header` wrappers |
+| Panel / section surface | ui-core `Card` (`Card.Header/Content/Footer`) | `div`/`Box` with background + border |
+| Choose one of a few options (Off/Warn/Block) | ui-core `ButtonGroup` | `*SegmentedControl`, button rows with own selected state |
+| On/off setting | ui-core `Toggle` (`label`, `hint`, `isReadOnly`) | `*Toggle` wrappers |
+| Action / ⋯ menu | ui-core `Dropdown` (`Dropdown.DotsButton`) | hand-rolled menus or popovers of buttons |
+| Inline "are you sure?" | ui-core `ConfirmPopover` | popover + two-button compositions |
+| Info / warning banner | ui-core `Alert` | bordered `div`/`Box` banners |
+| Multi-step flow | ui-core `ProgressSteps` | custom steppers |
+| Filter toolbar | ui-core `FilterBar` + `FilterSelect` | per-page filter bars |
+| Tabs | ui-core `Tabs` (`.List/.Item/.Panel`) | button rows that switch content |
+| Copy to clipboard | common `CopyButton` | per-feature copy buttons |
 
 ## Variants are forks
 
@@ -56,9 +67,7 @@ an interface in `rest/` that mirrors a schema. One `defaultFields` mechanism, no
 
 ## Downstream consumers
 
-openmetadata-collate imports this repo's sources through a generated mirror. When a Collate feature
-needs an OSS component with a different data source (another preview API, another id), add a
-callback prop here and let Collate import it — never a Collate copy of the file. Before deleting or
+openmetadata-collate imports this repo's sources through a generated mirror. Before deleting or
 renaming an exported symbol knip calls unused, grep openmetadata-collate too — `knip.jsonc`'s ignore
 list documents the known Collate-consumed keeps (`rest/index.ts`, `styles/index.ts`,
 `DataInsightProvider`, `useLogStream`, …).

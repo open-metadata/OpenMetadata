@@ -341,8 +341,8 @@ row than on many: an `EXISTS` over `JSON_TABLE` in a MySQL `UPDATE` matched zero
   one cannot serve. The same for a copied component with a tweaked body (`FooV2`, `FooNew`): the fix
   is a prop/variant on the original, or a core-component extension. Name the existing component in
   the finding. A sanctioned migration's successor is done only when the old variant's importer count
-  is zero and the file is deleted. Collate copying an OSS component to swap one API call or prop is
-  the same finding: the fix is a callback prop in OSS, imported by Collate.
+  is zero and the file is deleted. A copy that only swaps one API call or id is the same finding:
+  the fix is a callback prop on the original.
 - **No pass-through wrapper around a core component.** A local `FooHeader`/`FooToggle` that only
   forwards props to `PageLayout.PageHeader`/`Toggle`/`ButtonGroup` is a finding: use the core
   component at the call site. When core lacks a prop the call site needs, add it to core in
