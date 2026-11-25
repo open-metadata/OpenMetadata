@@ -1816,10 +1816,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             null, term.getGlossary().getFullyQualifiedName(), glossaryRepository.getFields("tags"));
     // Check if the tags are mutually exclusive for the glossary
     checkMutuallyExclusive(glossary.getTags());
-    // On a non-dry-run add the term's own tags are merged with the glossary's, so a
-    // term that directly carries a tag mutually exclusive with one of its glossary's
-    // tags must be rejected here -- before any asset is saved or any term tag deleted.
-    if (!Boolean.TRUE.equals(request.getDryRun()) && !CommonUtil.nullOrEmpty(glossary.getTags())) {
+    // The term's own tags are merged with the glossary's on the real add, so a term
+    // that directly carries a tag mutually exclusive with one of its glossary's tags
+    // must be rejected here -- before any asset is saved or any term tag is deleted.
+    // Run the same check on dry runs so a successful preview guarantees a successful
+    // real add.
+    if (!CommonUtil.nullOrEmpty(glossary.getTags())) {
       List<TagLabel> mergedForCheck = new ArrayList<>(getUniqueTags(glossary.getTags()));
       EntityUtil.mergeTags(mergedForCheck, getUniqueTags(term.getTags()));
       checkMutuallyExclusive(mergedForCheck);

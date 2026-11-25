@@ -4825,6 +4825,86 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertTermLacksTag(client, term.getId(), glossaryLabel.getTagFQN());
   }
 
+  @Test
+  void test_bulkAddGlossaryToAssets_dryRun_rejectsWhenTermOwnTagConflictsWithGlossaryTag(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    // Same conflict as the non-dry-run reject test, but run as a preview so a
+    // successful dryRun can be trusted to succeed for the real add.
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.shortPrefix("tdr_cls"))
+                    .withMutuallyExclusive(true)
+                    .withDescription(
+                        "Mutually-exclusive classification for dry-run term-conflict test"));
+    Tag glossaryTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("tdr_g_tag"))
+                    .withClassification(classification.getName())
+                    .withDescription("tag carried by the glossary"));
+    Tag termTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("tdr_t_tag"))
+                    .withClassification(classification.getName())
+                    .withDescription("conflicting sibling tag applied directly to the term"));
+    TagLabel glossaryLabel = classificationTagLabel(glossaryTag);
+    TagLabel termDirectLabel = classificationTagLabel(termTag);
+
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("tdr_g"))
+                    .withDescription("Glossary carrying a mutually-exclusive tag")
+                    .withTags(List.of(glossaryLabel)));
+    GlossaryTerm term =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.shortPrefix("tdr_t"))
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("Term carrying a conflicting direct tag"));
+    term.setTags(List.of(termDirectLabel));
+    patchEntity(term.getId().toString(), term);
+    assertTermHasTag(client, term.getId(), termDirectLabel.getTagFQN());
+
+    Table table = createBareTable(ns, "tdr_conflict");
+    AddGlossaryToAssetsRequest add =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(true)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/add";
+    Exception conflict =
+        assertThrows(
+            Exception.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .execute(HttpMethod.PUT, path, add, BulkOperationResult.class),
+            "A dry-run add must reject a term whose own tag conflicts with its glossary's tag");
+    assertTrue(
+        conflict.getMessage().contains("mutually exclusive"),
+        "error should mention mutually exclusive, got: " + conflict.getMessage());
+
+    // The preview must not have tagged the asset or touched the term's tags.
+    assertFalse(
+        tableHasTag(client, table.getId(), term.getFullyQualifiedName()),
+        "rejected dry-run must not tag the asset");
+    assertTermHasTag(client, term.getId(), termDirectLabel.getTagFQN());
+    assertTermLacksTag(client, term.getId(), glossaryLabel.getTagFQN());
+  }
+
   private static final class MutualExclusiveGlossarySetup {
     final GlossaryTerm term;
     final TagLabel glossaryTagLabel;
