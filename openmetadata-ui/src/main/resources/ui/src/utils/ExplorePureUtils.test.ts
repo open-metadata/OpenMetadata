@@ -34,6 +34,7 @@ import {
   isEntityTypeBucketSelected,
   isSelectionWithinBrowsePath,
   parseBrowsePathFields,
+  parseExploreQueryFilterParam,
   reconcilePresentRoots,
   refreshRootCounts,
   truncateBrowsePath,
@@ -154,6 +155,64 @@ describe('getExploreClearQueryFilterSearchParams', () => {
     expect(searchParams.get('search')).toBe('orders');
     expect(searchParams.get('showDeleted')).toBe('true');
     expect(searchParams.has('queryFilter')).toBe(false);
+  });
+
+  it('writes the advanced search as its Elasticsearch filter', () => {
+    const queryFilter = {
+      query: {
+        bool: {
+          must: [{ bool: { should: [{ term: { 'tier.tagFQN': 'Tier1' } }] } }],
+        },
+      },
+    };
+    const search = getExploreClearQueryFilterSearchParams(
+      { currentPage: '3', search: 'orders' },
+      queryFilter
+    );
+    const searchParams = new URLSearchParams(search);
+
+    expect(JSON.parse(searchParams.get('queryFilter') ?? '')).toEqual(
+      queryFilter
+    );
+    expect(searchParams.get('currentPage')).toBe('1');
+    expect(searchParams.get('search')).toBe('orders');
+  });
+
+  it('writes no advanced search for a filter with no conditions', () => {
+    const search = getExploreClearQueryFilterSearchParams(
+      { queryFilter: '{"query":{}}' },
+      { query: undefined }
+    );
+
+    expect(new URLSearchParams(search).has('queryFilter')).toBe(false);
+  });
+});
+
+describe('parseExploreQueryFilterParam', () => {
+  it('reads the Elasticsearch filter Explore writes', () => {
+    const queryFilter = { query: { bool: { must: [{ term: { a: 'b' } }] } } };
+
+    expect(parseExploreQueryFilterParam(JSON.stringify(queryFilter))).toEqual({
+      queryFilter,
+    });
+  });
+
+  it('reads the builder tree older links carry', () => {
+    const tree = { id: 'root', type: 'group', children1: {} };
+
+    expect(parseExploreQueryFilterParam(JSON.stringify(tree))).toEqual({
+      tree,
+    });
+  });
+
+  it.each([
+    ['no value', undefined],
+    ['a value that is not JSON', '{not json'],
+    ['JSON that is neither', '{"some":"value"}'],
+    ['a filter with no query', '{"query":null}'],
+    ['a list of values', ['{"query":{}}']],
+  ])('reads nothing from %s', (_name, value) => {
+    expect(parseExploreQueryFilterParam(value)).toEqual({});
   });
 });
 

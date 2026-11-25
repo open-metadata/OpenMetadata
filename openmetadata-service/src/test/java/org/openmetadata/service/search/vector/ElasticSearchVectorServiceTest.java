@@ -13,6 +13,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
@@ -33,12 +37,16 @@ import org.apache.hc.core5.http.HttpEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.slf4j.LoggerFactory;
 
 class ElasticSearchVectorServiceTest {
 
@@ -161,6 +169,46 @@ class ElasticSearchVectorServiceTest {
 
     verify(mockEmbeddingClient).embedQuery("test query");
     verify(mockEmbeddingClient, never()).embed("test query");
+  }
+
+  /**
+   * The 2-arg {@code updateEntityEmbeddings} overload must refuse ontology terms: the
+   * release-aware writer needs the published release-snapshot body, and embedding from the mutable
+   * working (draft) row would publish drafts into search with no publication check. Manual term
+   * reindexing goes through the release-aware bulk writer (reindex). Mirrors the OpenSearch fix.
+   */
+  @Test
+  void twoArgOverloadRefusesOntologyConceptWithoutWritingOrEmbedding() throws Exception {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(
+        "ontologyconcept", Entity.ONTOLOGY_CONCEPT);
+    OntologyConcept term =
+        new OntologyConcept()
+            .withId(UUID.randomUUID())
+            .withName("order")
+            .withFullyQualifiedName("shop.order")
+            .withDescription("A purchase")
+            .withDeleted(false);
+
+    Logger logger = (Logger) LoggerFactory.getLogger(ElasticSearchVectorService.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      vectorService.updateEntityEmbeddings(term, "entityIndex");
+
+      verify(mockRestClient, never()).performRequest(any(Request.class));
+      verify(mockEmbeddingClient, never()).embed(any(String.class));
+      assertTrue(
+          appender.list.stream()
+              .anyMatch(
+                  event ->
+                      event.getLevel() == Level.WARN
+                          && event.getFormattedMessage().contains("release-aware reindex path")),
+          "must warn that term rebuilds go through the release-aware path");
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
   }
 
   @Test

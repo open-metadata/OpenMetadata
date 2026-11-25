@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { OldJsonTree } from '@react-awesome-query-builder/ui';
 import type { AxiosError } from 'axios';
-import { get, isEmpty, isString, isUndefined } from 'lodash';
+import { get, isEmpty, isObject, isString, isUndefined } from 'lodash';
 import type { Bucket } from 'Models';
 import Qs, { ParsedQs } from 'qs';
 import type { Key } from 'react';
@@ -961,12 +962,40 @@ export const getExploreResetFiltersSearchParams = (parsedSearch: ParsedQs) =>
     showDeleted: undefined,
   });
 
+// What the URL's `queryFilter` holds: the Elasticsearch filter Explore writes, or — on links written before that, and
+// links other screens still build — the query builder's tree.
+export const parseExploreQueryFilterParam = (
+  value: unknown
+): { queryFilter?: QueryFilterInterface; tree?: OldJsonTree } => {
+  if (!isString(value)) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+
+    if (parsed?.type === 'group') {
+      return { tree: parsed };
+    }
+    if (isObject(parsed?.query)) {
+      return { queryFilter: parsed };
+    }
+  } catch {
+    return {};
+  }
+
+  return {};
+};
+
+// The URL keeps the advanced search as the Elasticsearch filter it applies, not the builder tree it came from: the tree
+// repeats ids, paths and widget state per rule, and a long one overflows the server's request header limit (HTTP 431).
 export const getExploreClearQueryFilterSearchParams = (
   parsedSearch: ParsedQs,
-  tree?: unknown
+  // `query` is absent when the builder holds no complete condition.
+  queryFilter?: Partial<QueryFilterInterface>
 ) =>
   Qs.stringify({
     ...parsedSearch,
     currentPage: '1',
-    queryFilter: tree ? JSON.stringify(tree) : undefined,
+    queryFilter: queryFilter?.query ? JSON.stringify(queryFilter) : undefined,
   });

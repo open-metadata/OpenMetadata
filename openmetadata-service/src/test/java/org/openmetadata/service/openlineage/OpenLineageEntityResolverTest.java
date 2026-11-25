@@ -24,6 +24,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.api.lineage.openlineage.SymlinksFacet;
 import org.openmetadata.schema.api.lineage.openlineage.UnresolvedReason;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -62,6 +64,33 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.slf4j.LoggerFactory;
 
 class OpenLineageEntityResolverTest {
+
+  @Test
+  void storedColumns_readsTheColumnsOfATable() {
+    UUID tableId = UUID.randomUUID();
+    List<Column> columns = List.of(new Column().withName("a__reserved__arrow__b"));
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntity(Entity.TABLE, tableId, Entity.FIELD_COLUMNS, NON_DELETED))
+          .thenReturn(new Table().withColumns(columns));
+
+      assertEquals(
+          columns,
+          resolver.storedColumns(new EntityReference().withId(tableId).withType(Entity.TABLE)));
+    }
+  }
+
+  @Test
+  void storedColumns_isEmptyForADatasetThatIsNotATable() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    assertTrue(
+        resolver
+            .storedColumns(new EntityReference().withId(UUID.randomUUID()).withType(Entity.TOPIC))
+            .isEmpty());
+  }
 
   @Test
   void resolveTable_nullDataset_returnsNull() {

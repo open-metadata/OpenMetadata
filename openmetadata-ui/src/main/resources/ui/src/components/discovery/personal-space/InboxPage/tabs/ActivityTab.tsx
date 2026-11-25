@@ -210,6 +210,12 @@ const ActivityEmptyState = ({
   );
 };
 
+const showsEveryUnread = (
+  isCapped: boolean,
+  cutAt: number | undefined,
+  seenTs: number | null
+) => seenTs === null || !isCapped || (cutAt !== undefined && cutAt <= seenTs);
+
 // Looking at the viewer's own Inbox list is what clears the sidebar's unread
 // badge; feeds have no server-side read state to update. Another user's feed,
 // or an entity's, is not the viewer's Inbox. The badge stays until a view that
@@ -225,7 +231,12 @@ const useMarkInboxSeen = ({
   isOtherUser: boolean;
   feed: Pick<
     UseInboxActivity,
-    'isLoading' | 'error' | 'taskMentionsLoaded' | 'taskMentionsReadAt'
+    | 'isLoading'
+    | 'error'
+    | 'isCapped'
+    | 'cutAt'
+    | 'taskMentionsLoaded'
+    | 'taskMentionsReadAt'
   >;
   isFiltered: boolean;
   typeKeyCount: number;
@@ -233,17 +244,31 @@ const useMarkInboxSeen = ({
   const markInboxActivitySeen = usePersonalSpaceStore(
     (s) => s.markInboxActivitySeen
   );
-  const { isLoading, error, taskMentionsLoaded, taskMentionsReadAt } = feed;
+  const inboxActivitySeenTs = usePersonalSpaceStore(
+    (s) => s.inboxActivitySeenTs
+  );
+  const {
+    isLoading,
+    error,
+    isCapped,
+    cutAt,
+    taskMentionsLoaded,
+    taskMentionsReadAt,
+  } = feed;
 
   useEffect(() => {
     const isViewerInbox = scope.type === 'inbox' && !isOtherUser;
-    const isLoaded = !isLoading && !error && taskMentionsLoaded;
+    const isLoaded =
+      !isLoading &&
+      !error &&
+      taskMentionsLoaded &&
+      taskMentionsReadAt !== undefined;
     const isUnfiltered = !isFiltered && typeKeyCount === 0;
     if (
       isViewerInbox &&
       isLoaded &&
       isUnfiltered &&
-      taskMentionsReadAt !== undefined
+      showsEveryUnread(isCapped, cutAt, inboxActivitySeenTs)
     ) {
       markInboxActivitySeen(taskMentionsReadAt);
     }
@@ -252,6 +277,9 @@ const useMarkInboxSeen = ({
     isOtherUser,
     isLoading,
     error,
+    isCapped,
+    cutAt,
+    inboxActivitySeenTs,
     taskMentionsLoaded,
     taskMentionsReadAt,
     isFiltered,

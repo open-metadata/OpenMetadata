@@ -5957,6 +5957,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Alerts/AlertEnabledSwitch/AlertEnabledSwitch.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Alerts/AlertSourcePicker/AlertSourcePicker.tsx"
       ],
       "specs": [
@@ -8753,10 +8761,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/SearchedData/SearchEmptyState/SearchEmptyState.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ExploreUrlState.spec.ts",
-        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
-        "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
-        "playwright/e2e/Flow/ServiceForm.spec.ts"
+        "playwright/e2e/Features/ExploreUrlState.spec.ts"
       ]
     },
     {
@@ -12164,6 +12169,14 @@
         "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
         "playwright/e2e/Pages/IntakeForm.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/IncidentManager/IncidentGroups/IncidentTrendSparkline.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts"
       ]
     },
     {

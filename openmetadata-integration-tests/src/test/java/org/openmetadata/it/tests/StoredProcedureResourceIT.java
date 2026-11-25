@@ -40,6 +40,8 @@ public class StoredProcedureResourceIT
 
   {
     supportsSearchIndex = false;
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
