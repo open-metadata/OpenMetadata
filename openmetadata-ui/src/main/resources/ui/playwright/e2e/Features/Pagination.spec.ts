@@ -693,52 +693,60 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test Stored Procedures normal pagination', async ({
-      page,
-    }) => {
-      await page.goto(
-        `/databaseSchema/${schemaFqn}/stored_procedure?pageSize=15`
-      );
-      await testPaginationNavigation(
-        page,
-        '/api/v1/storedProcedures',
-        '[data-testid="stored-procedure-table"]'
-      );
-      const responsePromise = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/tables')
-      );
-      await page.getByTestId('table').click();
-      const response = await responsePromise;
-      expect(response.status()).toBe(200);
-      await waitForAllLoadersToDisappear(page);
-      await page.getByTestId('stored_procedure').click();
-      await page.waitForLoadState('domcontentloaded');
-      const paginationText = page
-        .getByRole('tabpanel')
-        .getByTestId('pagination')
-        .getByTestId('page-indicator');
-      await expect(paginationText).toBeVisible();
+    test(
+      'should test Stored Procedures normal pagination',
+      migratedTo.browser(
+        'src/pages/StoredProcedure/StoredProcedureTab.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto(
+          `/databaseSchema/${schemaFqn}/stored_procedure?pageSize=15`
+        );
+        await testPaginationNavigation(
+          page,
+          '/api/v1/storedProcedures',
+          '[data-testid="stored-procedure-table"]'
+        );
+        const responsePromise = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/tables')
+        );
+        await page.getByTestId('table').click();
+        const response = await responsePromise;
+        expect(response.status()).toBe(200);
+        await waitForAllLoadersToDisappear(page);
+        await page.getByTestId('stored_procedure').click();
+        await page.waitForLoadState('domcontentloaded');
+        const paginationText = page
+          .getByRole('tabpanel')
+          .getByTestId('pagination')
+          .getByTestId('page-indicator');
+        await expect(paginationText).toBeVisible();
 
-      const paginationTextContent = await paginationText.textContent();
-      expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
-    });
+        const paginationTextContent = await paginationText.textContent();
+        expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
+      }
+    );
 
-    test('should test Stored Procedures complete flow with search', async ({
-      page,
-    }) => {
-      test.slow(true);
+    test(
+      'should test Stored Procedures complete flow with search',
+      migratedTo.browser(
+        'src/pages/StoredProcedure/StoredProcedureTab.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        test.slow(true);
 
-      await testCompletePaginationWithSearch({
-        page,
-        baseUrl: `/databaseSchema/${schemaFqn}/stored_procedure?pageSize=15`,
-        normalApiPattern: '/api/v1/storedProcedures',
-        searchApiPattern: '/api/v1/search/query',
-        searchTestTerm: 'pw',
-        searchParamName: 'schema',
-        waitForLoadSelector: '[data-testid="stored-procedure-table"]',
-        deleteBtnTestId: 'show-deleted-stored-procedure',
-      });
-    });
+        await testCompletePaginationWithSearch({
+          page,
+          baseUrl: `/databaseSchema/${schemaFqn}/stored_procedure?pageSize=15`,
+          normalApiPattern: '/api/v1/storedProcedures',
+          searchApiPattern: '/api/v1/search/query',
+          searchTestTerm: 'pw',
+          searchParamName: 'schema',
+          waitForLoadSelector: '[data-testid="stored-procedure-table"]',
+          deleteBtnTestId: 'show-deleted-stored-procedure',
+        });
+      }
+    );
   });
 
   test.describe('Pagination tests for Database Schemas page', () => {
@@ -847,49 +855,59 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
-    test('should test Data Models normal pagination', async ({ page }) => {
-      await page.goto(
-        `/service/dashboardServices/${serviceFqn}/data-model?pageSize=15`
-      );
-      await testPaginationNavigation(
-        page,
-        '/api/v1/dashboard/datamodels',
-        '[data-testid="data-models-table"]'
-      );
-      const responsePromise = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/dashboard/datamodels')
-      );
-      await page.getByTestId('dashboards').click();
-      const response = await responsePromise;
-      expect(response.status()).toBe(200);
-      await waitForAllLoadersToDisappear(page);
-      await page.getByTestId('data-model').click();
-      await page.waitForLoadState('domcontentloaded');
-      const paginationText = page
-        .getByRole('tabpanel')
-        .getByTestId('pagination')
-        .getByTestId('page-indicator');
-      await expect(paginationText).toBeVisible();
+    test(
+      'should test Data Models normal pagination',
+      migratedTo.browser(
+        'src/pages/ServiceDetailsPage/ServiceDataModels.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        await page.goto(
+          `/service/dashboardServices/${serviceFqn}/data-model?pageSize=15`
+        );
+        await testPaginationNavigation(
+          page,
+          '/api/v1/dashboard/datamodels',
+          '[data-testid="data-models-table"]'
+        );
+        const responsePromise = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/dashboard/datamodels')
+        );
+        await page.getByTestId('dashboards').click();
+        const response = await responsePromise;
+        expect(response.status()).toBe(200);
+        await waitForAllLoadersToDisappear(page);
+        await page.getByTestId('data-model').click();
+        await page.waitForLoadState('domcontentloaded');
+        const paginationText = page
+          .getByRole('tabpanel')
+          .getByTestId('pagination')
+          .getByTestId('page-indicator');
+        await expect(paginationText).toBeVisible();
 
-      const paginationTextContent = await paginationText.textContent();
-      expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
-    });
+        const paginationTextContent = await paginationText.textContent();
+        expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
+      }
+    );
 
-    test('should test Data Models complete flow with search', async ({
-      page,
-    }) => {
-      test.slow(true);
+    test(
+      'should test Data Models complete flow with search',
+      migratedTo.browser(
+        'src/pages/ServiceDetailsPage/ServiceDataModels.browser.test.tsx'
+      ),
+      async ({ page }) => {
+        test.slow(true);
 
-      await testCompletePaginationWithSearch({
-        page,
-        baseUrl: `/service/dashboardServices/${serviceFqn}/data-model?pageSize=15`,
-        normalApiPattern: '/api/v1/dashboard/datamodels',
-        searchApiPattern: '/api/v1/search/query',
-        searchTestTerm: 'pw',
-        searchParamName: 'dataModel',
-        waitForLoadSelector: '[data-testid="data-models-table"]',
-      });
-    });
+        await testCompletePaginationWithSearch({
+          page,
+          baseUrl: `/service/dashboardServices/${serviceFqn}/data-model?pageSize=15`,
+          normalApiPattern: '/api/v1/dashboard/datamodels',
+          searchApiPattern: '/api/v1/search/query',
+          searchTestTerm: 'pw',
+          searchParamName: 'dataModel',
+          waitForLoadSelector: '[data-testid="data-models-table"]',
+        });
+      }
+    );
   });
 
   test.describe('Pagination tests for Drive Service Directories page', () => {

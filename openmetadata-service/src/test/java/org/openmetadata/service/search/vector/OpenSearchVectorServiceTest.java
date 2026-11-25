@@ -6,9 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,18 +23,19 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Function;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
+import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -43,17 +45,11 @@ import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
 import org.slf4j.LoggerFactory;
-import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
-import os.org.opensearch.client.opensearch.core.MgetRequest;
-import os.org.opensearch.client.opensearch.core.MgetResponse;
-import os.org.opensearch.client.opensearch.core.get.GetResult;
-import os.org.opensearch.client.opensearch.core.mget.MultiGetResponseItem;
 import os.org.opensearch.client.opensearch.generic.Body;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
 import os.org.opensearch.client.opensearch.generic.Request;
 import os.org.opensearch.client.opensearch.generic.Response;
-import os.org.opensearch.client.util.ObjectBuilder;
 
 class OpenSearchVectorServiceTest {
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -65,25 +61,25 @@ class OpenSearchVectorServiceTest {
     int current = VectorDocBuilder.CHUNK_DOC_VERSION;
 
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.NONE,
+        AbstractVectorIndexService.ChunkRefresh.NONE,
         refresh(memory, header(fingerprint, current, "Approved", "unanchored")));
-    assertEquals(OpenSearchVectorService.ChunkRefresh.REEMBED, refresh(memory, null));
+    assertEquals(AbstractVectorIndexService.ChunkRefresh.REEMBED, refresh(memory, null));
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.REEMBED,
+        AbstractVectorIndexService.ChunkRefresh.REEMBED,
         refresh(memory, header("stale", current, "Approved", "unanchored")));
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        AbstractVectorIndexService.ChunkRefresh.RESTAMP,
         refresh(memory, header(fingerprint, current - 1, "Approved", "unanchored")));
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        AbstractVectorIndexService.ChunkRefresh.RESTAMP,
         refresh(memory, header(fingerprint, current, "Deprecated", "unanchored")));
     UUID anchorId = UUID.randomUUID();
     memory.setPrimaryEntity(new EntityReference().withId(anchorId).withType("table"));
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        AbstractVectorIndexService.ChunkRefresh.RESTAMP,
         refresh(memory, header(fingerprint, current, "Approved", "unanchored")));
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.NONE,
+        AbstractVectorIndexService.ChunkRefresh.NONE,
         refresh(memory, header(fingerprint, current, "Approved", anchorId.toString())));
   }
 
@@ -100,15 +96,15 @@ class OpenSearchVectorServiceTest {
     memory.withPinned(true);
     assertEquals(fingerprint, VectorDocBuilder.computeFingerprintForEntity(memory));
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        AbstractVectorIndexService.ChunkRefresh.RESTAMP,
         refresh(memory, header(fingerprint, current, "Approved", "unanchored")));
 
     memory.withPinned(false).withMemoryType(ContextMemoryType.PREFERENCE);
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        AbstractVectorIndexService.ChunkRefresh.RESTAMP,
         refresh(memory, header(fingerprint, current, "Approved", "unanchored")));
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        AbstractVectorIndexService.ChunkRefresh.RESTAMP,
         refresh(memory, header(fingerprint, current, "Approved", "unanchored", null)),
         "a chunk stamped before the kind existed is restamped");
   }
@@ -119,8 +115,95 @@ class OpenSearchVectorServiceTest {
     String fingerprint = VectorDocBuilder.computeFingerprintForEntity(table);
 
     assertEquals(
-        OpenSearchVectorService.ChunkRefresh.NONE,
+        AbstractVectorIndexService.ChunkRefresh.NONE,
         refresh(table, header(fingerprint, VectorDocBuilder.CHUNK_DOC_VERSION, null, null, null)));
+  }
+
+  /**
+   * The 2-arg {@code updateEntityEmbeddings} overload (used only by the {@code reembed} CLI) must
+   * refuse ontology terms: the release-aware writer needs the published release-snapshot body,
+   * and embedding from the mutable working (draft) row would publish drafts, deprecated, and
+   * not-in-active-release terms straight into the searchable ontology chunk index. Manual term
+   * reindexing goes through the release-aware bulk writer (reindex), which passes the body into the
+   * 3-arg overload. This is the regression for the {@code reembed} draft-leak bug.
+   */
+  @Test
+  void twoArgOverloadRefusesOntologyConceptWithoutWritingOrEmbedding() throws Exception {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(
+        "ontologyconcept", Entity.ONTOLOGY_CONCEPT);
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    OntologyConcept term =
+        new OntologyConcept()
+            .withId(UUID.randomUUID())
+            .withName("order")
+            .withFullyQualifiedName("shop.order")
+            .withDescription("A purchase")
+            .withDeleted(false);
+
+    Logger logger = (Logger) LoggerFactory.getLogger(AbstractVectorIndexService.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      vectorService.updateEntityEmbeddings(term, "entityIndex");
+
+      // No chunk write, no entity-doc partial update, and crucially no embedding provider call:
+      // the guard refuses before building chunk docs, so drafts are never paid for or published.
+      verify(mockGenericClient, never()).execute(any());
+      verify(mockEmbeddingClient, never()).embed(any(String.class));
+      assertTrue(
+          appender.list.stream()
+              .anyMatch(
+                  event ->
+                      event.getLevel() == Level.WARN
+                          && event.getFormattedMessage().contains("release-aware reindex path")),
+          "must warn that term rebuilds go through the release-aware path");
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  /** The refusal must cover both ontology term types (concept and property). */
+  @Test
+  void twoArgOverloadRefusesOntologyPropertyWithoutWritingOrEmbedding() throws Exception {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(
+        "ontologyproperty", Entity.ONTOLOGY_PROPERTY);
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    OntologyProperty term =
+        new OntologyProperty()
+            .withId(UUID.randomUUID())
+            .withName("code")
+            .withFullyQualifiedName("shop.code")
+            .withDescription("An order code")
+            .withDeleted(false);
+
+    vectorService.updateEntityEmbeddings(term, "entityIndex");
+
+    verify(mockGenericClient, never()).execute(any());
+    verify(mockEmbeddingClient, never()).embed(any(String.class));
+  }
+
+  /**
+   * A non-term entity passed to the 2-arg overload is unaffected: it still writes its chunks and
+   * entity-doc embedding. Guards against an over-broad fix that would skip every entity.
+   */
+  @Test
+  void twoArgOverloadStillWritesNonTermEntities() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withDescription("orders"),
+        "entityIndex");
+
+    assertFalse(capturedBulkTargets().isEmpty(), "a non-term entity must still write its chunks");
   }
 
   /** A recreate in flight would otherwise promote the chunks it copied before this update. */
@@ -307,7 +390,7 @@ class OpenSearchVectorServiceTest {
     setField("cachedSinkTargetAt", System.currentTimeMillis());
     mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
 
-    Logger logger = (Logger) LoggerFactory.getLogger(OpenSearchVectorService.class);
+    Logger logger = (Logger) LoggerFactory.getLogger(AbstractVectorIndexService.class);
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
     appender.start();
     logger.addAppender(appender);
@@ -328,38 +411,38 @@ class OpenSearchVectorServiceTest {
     }
   }
 
-  private static OpenSearchVectorService.ChunkRefresh refresh(
+  private static AbstractVectorIndexService.ChunkRefresh refresh(
       org.openmetadata.schema.EntityInterface<?> entity,
-      OpenSearchVectorService.ChunkHeader header) {
-    return OpenSearchVectorService.chunkRefresh(
+      AbstractVectorIndexService.ChunkHeader header) {
+    return AbstractVectorIndexService.chunkRefresh(
         entity, VectorDocBuilder.computeFingerprintForEntity(entity), header);
   }
 
   /** A header stamped with the kind {@link #refreshableMemory} has. */
-  private static OpenSearchVectorService.ChunkHeader header(
+  private static AbstractVectorIndexService.ChunkHeader header(
       String fingerprint, int docVersion, String status, String anchorId) {
     return header(fingerprint, docVersion, status, anchorId, MEMORY_KIND);
   }
 
-  private static OpenSearchVectorService.ChunkHeader header(
+  private static AbstractVectorIndexService.ChunkHeader header(
       String fingerprint,
       int docVersion,
       String status,
       String anchorId,
-      OpenSearchVectorService.MemoryKind kind) {
-    return new OpenSearchVectorService.ChunkHeader(
+      AbstractVectorIndexService.MemoryKind kind) {
+    return new AbstractVectorIndexService.ChunkHeader(
         fingerprint, 1, docVersion, status, anchorId, kind);
   }
 
-  private static final OpenSearchVectorService.MemoryKind MEMORY_KIND =
-      OpenSearchVectorService.MemoryKind.of(refreshableMemory());
+  private static final AbstractVectorIndexService.MemoryKind MEMORY_KIND =
+      AbstractVectorIndexService.MemoryKind.of(refreshableMemory());
 
   private static String jsonString(String value) {
     return value == null ? "null" : "\"" + value + "\"";
   }
 
   private void setField(String name, Object value) throws ReflectiveOperationException {
-    java.lang.reflect.Field field = OpenSearchVectorService.class.getDeclaredField(name);
+    java.lang.reflect.Field field = AbstractVectorIndexService.class.getDeclaredField(name);
     field.setAccessible(true);
     field.set(vectorService, value);
   }
@@ -978,10 +1061,12 @@ class OpenSearchVectorServiceTest {
     // Stand-in for the text an older release built for the same entity: same updatedAt, other text.
     Table textChangedAsLastEmbedded =
         reuseTable("payments", "Customer payments", updatedAt).withId(textChanged.getId());
+    Table unfingerprintable = reuseTable("refunds", "Refunds issued", updatedAt);
     answerMgetsFrom(
         Map.of(
             textId(unchanged), storedEntityDoc(unchanged, unchanged),
-            textId(textChanged), storedEntityDoc(textChanged, textChangedAsLastEmbedded)));
+            textId(textChanged), storedEntityDoc(textChanged, textChangedAsLastEmbedded),
+            textId(unfingerprintable), storedEntityDoc(unfingerprintable, unfingerprintable)));
 
     Map<String, JsonNode> reusable =
         vectorService.getExistingEmbeddingsBatch(
@@ -989,12 +1074,30 @@ class OpenSearchVectorServiceTest {
             Map.of(
                 textId(unchanged), () -> VectorDocBuilder.computeFingerprintForEntity(unchanged),
                 textId(textChanged),
-                    () -> VectorDocBuilder.computeFingerprintForEntity(textChanged)));
+                    () -> VectorDocBuilder.computeFingerprintForEntity(textChanged),
+                textId(unfingerprintable),
+                    () -> {
+                      throw new IllegalStateException("tag without an FQN");
+                    },
+                UUID.randomUUID().toString(),
+                    () -> VectorDocBuilder.computeFingerprintForEntity(unchanged)));
 
     assertEquals(java.util.Set.of(textId(unchanged)), reusable.keySet());
     assertEquals(
         VectorDocBuilder.computeFingerprintForEntity(unchanged),
         reusable.get(textId(unchanged)).path("fingerprint").asText());
+    ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+    verify(mockGenericClient, times(2)).execute(sent.capture());
+    Request fingerprints = sent.getAllValues().getFirst();
+    Request embeddings = sent.getAllValues().getLast();
+    assertEquals("POST", fingerprints.getMethod());
+    assertEquals(
+        "/table_search_index/_mget?_source_includes=fingerprint", fingerprints.getEndpoint());
+    assertEquals(
+        "/table_search_index/_mget?_source_includes=fingerprint,embedding,textToLLMContext,"
+            + "textToEmbed,chunkIndex,chunkCount,parentId",
+        embeddings.getEndpoint());
+    assertEquals("{\"ids\":[\"" + textId(unchanged) + "\"]}", bodyOf(embeddings));
   }
 
   private static Table reuseTable(String name, String description, long updatedAt) {
@@ -1022,24 +1125,34 @@ class OpenSearchVectorServiceTest {
   }
 
   /** Answers an mget like the engine: only stored ids, only the requested _source fields. */
-  @SuppressWarnings("unchecked")
   private void answerMgetsFrom(Map<String, ObjectNode> storedById) throws IOException {
-    when(mockClient.mget(any(Function.class), eq(JsonData.class)))
+    when(mockGenericClient.execute(any()))
         .thenAnswer(
             invocation -> {
-              Function<MgetRequest.Builder, ObjectBuilder<MgetRequest>> build =
-                  invocation.getArgument(0);
-              MgetRequest request = build.apply(new MgetRequest.Builder()).build();
-              List<MultiGetResponseItem<JsonData>> items = new ArrayList<>();
-              for (String id : request.ids()) {
-                ObjectNode stored = storedById.get(id);
+              Request request = invocation.getArgument(0);
+              String[] sourceFields =
+                  request.getEndpoint().split("_source_includes=")[1].split(",");
+              ObjectNode answer = JsonUtils.getObjectNode();
+              for (JsonNode id : MAPPER.readTree(bodyOf(request)).path("ids")) {
+                ObjectNode stored = storedById.get(id.asText());
+                ObjectNode doc = answer.withArray("docs").addObject().put("_id", id.asText());
+                doc.put("found", stored != null);
                 if (stored != null) {
-                  ObjectNode source = JsonUtils.getObjectNode();
-                  request.sourceIncludes().forEach(field -> copyField(stored, source, field));
-                  items.add(foundItem(request.index(), id, source));
+                  ObjectNode source = doc.putObject("_source");
+                  for (String field : sourceFields) {
+                    copyField(stored, source, field);
+                  }
                 }
               }
-              return new MgetResponse.Builder<JsonData>().docs(items).build();
+              Response response = mock(Response.class);
+              when(response.getStatus()).thenReturn(200);
+              when(response.getBody())
+                  .thenReturn(
+                      Optional.of(
+                          Body.from(
+                              answer.toString().getBytes(StandardCharsets.UTF_8),
+                              "application/json")));
+              return response;
             });
   }
 
@@ -1047,18 +1160,6 @@ class OpenSearchVectorServiceTest {
     if (from.has(field)) {
       to.set(field, from.get(field));
     }
-  }
-
-  private static MultiGetResponseItem<JsonData> foundItem(
-      String index, String id, ObjectNode source) {
-    GetResult<JsonData> result =
-        new GetResult.Builder<JsonData>()
-            .index(index)
-            .id(id)
-            .found(true)
-            .source(JsonData.of(source))
-            .build();
-    return new MultiGetResponseItem.Builder<JsonData>().result(result).build();
   }
 
   private void mockOpenSearchResponse(String responseJson) throws IOException {
@@ -1087,7 +1188,7 @@ class OpenSearchVectorServiceTest {
 
   @Test
   void chunkMappingUpgradeBody_omitsKnnVectorButAddsDenormalizedFields() throws Exception {
-    Method m = OpenSearchVectorService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+    Method m = AbstractVectorIndexService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
     m.setAccessible(true);
     String body = (String) m.invoke(vectorService);
 
@@ -1120,7 +1221,8 @@ class OpenSearchVectorServiceTest {
 
   @Test
   void chunkMappingUpgradeBody_mapsTheMemoryStatusAsAKeyword() throws Exception {
-    Method method = OpenSearchVectorService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+    Method method =
+        AbstractVectorIndexService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
     method.setAccessible(true);
     JsonNode body = new ObjectMapper().readTree((String) method.invoke(vectorService));
 

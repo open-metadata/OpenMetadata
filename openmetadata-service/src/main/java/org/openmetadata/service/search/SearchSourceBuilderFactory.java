@@ -181,6 +181,16 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
   default AssetTypeConfiguration findAssetTypeConfig(
       String indexName, SearchSettings searchSettings) {
+    return assetTypeConfiguration(indexName, searchSettings);
+  }
+
+  /**
+   * The asset type configuration of {@code searchSettings} that applies to {@code indexName}, or the
+   * default configuration when no asset type matches. Needs no engine factory, so callers that hold
+   * none can use it.
+   */
+  static AssetTypeConfiguration assetTypeConfiguration(
+      String indexName, SearchSettings searchSettings) {
     final var repository = Entity.getSearchRepository();
     final String index =
         repository == null ? indexName : repository.getIndexNameWithoutAlias(indexName);

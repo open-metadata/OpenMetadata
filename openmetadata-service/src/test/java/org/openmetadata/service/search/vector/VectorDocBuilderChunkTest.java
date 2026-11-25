@@ -113,8 +113,7 @@ class VectorDocBuilderChunkTest {
 
     Map<String, Object> legacy = VectorDocBuilder.buildEmbeddingFields(table, client);
     Map<String, Object> fromChunkZero =
-        OpenSearchVectorService.legacyEmbeddingFields(
-            VectorDocBuilder.fromEntity(table, client).get(0));
+        VectorDocBuilder.legacyEmbeddingFields(VectorDocBuilder.fromEntity(table, client).get(0));
 
     assertEquals(legacy.keySet(), fromChunkZero.keySet(), "legacy payload keys must match");
     for (String key : legacy.keySet()) {

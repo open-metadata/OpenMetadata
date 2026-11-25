@@ -21,7 +21,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
@@ -32,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -52,6 +55,7 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -74,6 +78,8 @@ import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -263,6 +269,32 @@ class AIContextBuilderTest {
     assertTrue(
         article.getContent().length() <= AIContextBuilder.EXCERPT_CHARS + 1,
         "excerpted article bounded to the excerpt length");
+  }
+
+  @Test
+  void applyKnowledgeBudget_excerptsAnOversizedItemWithThePassageMostRelevantToTheQuery() {
+    KnowledgeItem article = knowledgeItem("article", "z".repeat(4000));
+    UUID articleId = UUID.randomUUID();
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(vectorService.searchChunksByParent(articleId.toString(), "refund window", 1, null))
+        .thenReturn(List.of("Refunds are accepted within 30 days."));
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entity
+          .when(() -> Entity.getEntityReferenceByName("page", "kb.article", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(articleId));
+
+      new AIContextBuilder("table", "svc.db.sch.orders")
+          .withQuery("refund window")
+          .applyKnowledgeBudget(new AIContext().withArticles(List.of(article)));
+    }
+
+    assertEquals("Refunds are accepted within 30 days.", article.getContent());
+    assertTrue(article.getContentTruncated());
   }
 
   @Test

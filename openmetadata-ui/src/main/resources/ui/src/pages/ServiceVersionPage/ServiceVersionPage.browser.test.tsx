@@ -48,8 +48,4 @@ describePaginatedList({
       )
     );
   },
-  knownIssues: {
-    duplicateFetchOnPageChange:
-      'ServiceVersionPage.pagingHandler fetches, then the URL effect fetches again',
-  },
 });
