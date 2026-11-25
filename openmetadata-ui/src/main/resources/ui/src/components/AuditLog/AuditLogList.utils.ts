@@ -21,7 +21,6 @@ import {
   FieldChange,
 } from '../../generated/type/changeEvent';
 import { AuditLogEntry } from '../../types/auditLogs.interface';
-import { getTextFromHtmlString } from '../../utils/BlockEditorPureUtils';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import Fqn from '../../utils/Fqn';
@@ -40,6 +39,9 @@ export type ChangeRefKind =
   | 'entity';
 
 export interface ChangeRef {
+  /** Entity id of a referenced user, team or entity; tags have none. */
+  id?: string;
+  name?: string;
   label: string;
   fqn: string;
   refKind: ChangeRefKind;
@@ -209,6 +211,8 @@ const toChangeRef = (object: Record<string, unknown>): ChangeRef => {
   const entityType = object.type as string;
 
   return {
+    id: object.id as string | undefined,
+    name,
     fqn,
     entityType,
     refKind: DOMAIN_REF_TYPES.has(entityType) ? 'domain' : 'entity',
@@ -216,9 +220,21 @@ const toChangeRef = (object: Record<string, unknown>): ChangeRef => {
   };
 };
 
+// Closing block tags become spaces so `<p>a</p><p>b</p>` reads "a b", not "ab".
+const BLOCK_END_PATTERN = /<\/(p|div|li|h[1-6])>|<br\s*\/?>/gi;
+
+/** Plain text of an HTML/markdown value, with entities such as `&amp;` decoded. */
+const toPlainText = (value: string): string => {
+  const html = value.replace(BLOCK_END_PATTERN, ' ');
+  const text = new DOMParser().parseFromString(html, 'text/html').body
+    .textContent;
+
+  return text?.replace(/\s+/g, ' ').trim() || value;
+};
+
 const toTextValue = (value: unknown): string => {
   if (typeof value === 'string') {
-    return getTextFromHtmlString(value) || value;
+    return toPlainText(value);
   }
   if (Array.isArray(value)) {
     return value.map(toTextValue).filter(Boolean).join(', ');
@@ -356,6 +372,19 @@ export const formatCellValue = (key: string, value: unknown): CellValue => {
   return formatScalar(value);
 };
 
+export const findEntityType = (value?: string): EntityType | undefined => {
+  const normalized = value?.toLowerCase();
+
+  return normalized
+    ? Object.values(EntityType).find(
+        (entityType) => entityType.toLowerCase() === normalized
+      )
+    : undefined;
+};
+
+export const isOwnerRef = (ref: ChangeRef): boolean =>
+  ref.entityType === EntityType.USER || ref.entityType === EntityType.TEAM;
+
 /** Href for a referenced user, team or entity; `undefined` when it has no page. */
 export const getEntityRefLink = (ref: ChangeRef): string | undefined => {
   switch (ref.entityType) {
@@ -364,9 +393,7 @@ export const getEntityRefLink = (ref: ChangeRef): string | undefined => {
     case EntityType.TEAM:
       return getSettingsLink(getTeamsWithFqnPath(ref.fqn));
     default: {
-      const entityType = Object.values(EntityType).find(
-        (type) => type.toLowerCase() === ref.entityType?.toLowerCase()
-      );
+      const entityType = findEntityType(ref.entityType);
 
       return (
         (entityType && getEntityLinkFromType(ref.fqn, entityType)) || undefined

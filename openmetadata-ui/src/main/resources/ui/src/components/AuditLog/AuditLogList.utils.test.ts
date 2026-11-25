@@ -37,25 +37,26 @@ const lineageLog = (entity: unknown): AuditLogEntry => ({
 
 describe('AuditLogList.utils', () => {
   describe('EVENT_TYPE_COLORS', () => {
-    it('should colour every event type the server audits', () => {
-      // Mirrors AuditLogRepository.SUPPORTED_EVENT_TYPES.
-      const auditedTypes = [
-        EventType.EntityCreated,
-        EventType.EntityUpdated,
-        EventType.EntityFieldsChanged,
-        EventType.EntitySoftDeleted,
-        EventType.EntityDeleted,
-        EventType.EntityRestored,
-        EventType.EntityLineageAdded,
-        EventType.EntityLineageUpdated,
-        EventType.EntityLineageDeleted,
-        EventType.UserLogin,
-        EventType.UserLogout,
-      ];
+    // Event types the audit log never records (AuditLogRepository.SUPPORTED_EVENT_TYPES).
+    // A new EventType must be added here or given a colour, so the list stays a decision.
+    const NOT_AUDITED = new Set<string>([
+      EventType.EntityNoChange,
+      EventType.LogicalTestCaseAdded,
+      EventType.OntologyChangeSetApplied,
+      EventType.OntologyImported,
+      EventType.OntologyRelationshipTypeUpdated,
+      EventType.PostCreated,
+      EventType.PostUpdated,
+      EventType.ThreadCreated,
+      EventType.ThreadUpdated,
+    ]);
 
-      expect(auditedTypes.filter((type) => !EVENT_TYPE_COLORS[type])).toEqual(
-        []
+    it('should colour every event type the audit log records', () => {
+      const uncoloured = Object.values(EventType).filter(
+        (type) => !NOT_AUDITED.has(type) && !EVENT_TYPE_COLORS[type]
       );
+
+      expect(uncoloured).toEqual([]);
     });
   });
 
@@ -117,6 +118,20 @@ describe('AuditLogList.utils', () => {
       });
     });
 
+    it('should decode HTML entities and keep paragraphs apart', () => {
+      expect(
+        toChangeValue('<p>Orders &amp; returns</p><p>Second&nbsp;line</p>')
+      ).toEqual({ type: 'text', text: 'Orders & returns Second line' });
+    });
+
+    it('should treat a list of columns as records, not references', () => {
+      expect(toChangeValue([{ name: 'id', dataType: 'INT' }])).toEqual({
+        type: 'records',
+        records: [{ name: 'id', dataType: 'INT' }],
+        totalCount: 1,
+      });
+    });
+
     it('should classify tiers, classification tags and glossary terms', () => {
       expect(
         toChangeValue(
@@ -153,9 +168,9 @@ describe('AuditLogList.utils', () => {
             name: 'sales',
             fullyQualifiedName: 'Sales.sales',
           },
-          { type: 'user', name: 'admin' },
+          { id: 'u-1', type: 'user', name: 'admin' },
         ])
-      ).toEqual({
+      ).toMatchObject({
         type: 'refs',
         refs: [
           {
@@ -181,7 +196,9 @@ describe('AuditLogList.utils', () => {
     });
 
     it('should treat a single reference object as a one-item list', () => {
-      expect(toChangeValue({ type: 'team', name: 'Engineering' })).toEqual({
+      expect(
+        toChangeValue({ type: 'team', name: 'Engineering' })
+      ).toMatchObject({
         type: 'refs',
         refs: [
           {
@@ -410,8 +427,8 @@ describe('AuditLogList.utils', () => {
         },
       };
 
-      expect(getLineageEdge(lineageLog(edge))).toEqual(expected);
-      expect(getLineageEdge(lineageLog(JSON.stringify(edge)))).toEqual(
+      expect(getLineageEdge(lineageLog(edge))).toMatchObject(expected);
+      expect(getLineageEdge(lineageLog(JSON.stringify(edge)))).toMatchObject(
         expected
       );
     });

@@ -14,6 +14,7 @@
 import {
   Badge,
   Box,
+  OwnerChip,
   Skeleton,
   Tag,
   TagGroup,
@@ -33,6 +34,7 @@ import {
 } from '../../utils/date-time/DateTimeUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { toOwnerRef } from '../../utils/Owner/ownerConversionUtils';
 import Fqn from '../../utils/Fqn';
 import { getUserPath } from '../../utils/RouterUtils';
 import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
@@ -50,12 +52,14 @@ import {
   ChangeValue,
   CHANGE_ACTION_STYLES,
   EVENT_TYPE_COLORS,
+  findEntityType,
   formatCellValue,
   getChangeRows,
   getEntityRefLink,
   getLineageEdge,
   getReadableSummary,
   isAuthEvent,
+  isOwnerRef,
   LineageEdge,
   REF_DOT_CLASSES,
 } from './AuditLogList.utils';
@@ -67,17 +71,6 @@ type RecordsValue = Extract<ChangeValue, { type: 'records' }>;
 
 const LINK_CLASS =
   'tw:font-semibold tw:text-fg-brand-primary tw:hover:underline';
-
-const resolveEntityType = (value?: string): EntityType | undefined => {
-  if (!value) {
-    return undefined;
-  }
-  const normalized = value.toLowerCase();
-
-  return Object.values(EntityType).find(
-    (entityType) => entityType.toLowerCase() === normalized
-  );
-};
 
 const resolveEntityLabel = (
   log: AuditLogListItemProps['log'],
@@ -159,18 +152,33 @@ const RefValue: FC<{
           </TagList>
         </TagGroup>
       )}
-      {entities.map((ref) => (
-        <Badge
-          className={classNames({ 'tw:line-through': isStruck })}
-          color="gray"
-          data-testid="change-ref"
-          href={getEntityRefLink(ref)}
-          key={`${ref.entityType}-${ref.fqn}`}
-          size="sm"
-          type="pill-color">
-          {ref.entityType ? `${ref.label} (${ref.entityType})` : ref.label}
-        </Badge>
-      ))}
+      {entities.map((ref) =>
+        isOwnerRef(ref) && ref.id ? (
+          <OwnerChip
+            avatarSize={20}
+            className={classNames({ 'tw:line-through': isStruck })}
+            isCompactView={false}
+            key={`${ref.entityType}-${ref.fqn}`}
+            owner={toOwnerRef({
+              id: ref.id,
+              name: ref.name ?? ref.fqn,
+              displayName: ref.label,
+              type: ref.entityType,
+            })}
+          />
+        ) : (
+          <Badge
+            className={classNames({ 'tw:line-through': isStruck })}
+            color="gray"
+            data-testid="change-ref"
+            href={getEntityRefLink(ref)}
+            key={`${ref.entityType}-${ref.fqn}`}
+            size="sm"
+            type="pill-color">
+            {ref.entityType ? `${ref.label} (${ref.entityType})` : ref.label}
+          </Badge>
+        )
+      )}
     </>
   );
 };
@@ -232,8 +240,6 @@ const InlineValue: FC<{
   tone: ValueTone;
   label: string;
 }> = ({ value, tone, label }) => {
-  const { t } = useTranslation();
-
   switch (value.type) {
     case 'refs':
       return (
@@ -246,15 +252,8 @@ const InlineValue: FC<{
     case 'keyValue':
       return <InlineEntries entries={value.entries} />;
     case 'records':
-      return (
-        <span>
-          {`${value.totalCount} ${
-            value.totalCount === 1
-              ? t('label.result')
-              : t('label.result-plural')
-          }`}
-        </span>
-      );
+      // Shown as records under the line by `RecordList`.
+      return null;
     default:
       return <TextValue text={value.text} tone={tone} />;
   }
@@ -485,7 +484,7 @@ const AuditLogItemSubject: FC<{
   return (
     <AuditLogItemEntity
       entityFQN={entityFQN}
-      entityHref={getEntityHref(log, resolveEntityType(entityType), entityFQN)}
+      entityHref={getEntityHref(log, findEntityType(entityType), entityFQN)}
       entityLabel={entityLabel}
     />
   );

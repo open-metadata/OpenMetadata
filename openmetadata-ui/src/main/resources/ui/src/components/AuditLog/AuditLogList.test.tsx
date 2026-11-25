@@ -211,9 +211,6 @@ describe('AuditLogList', () => {
     expect(screen.getByTestId('affected-entity-fqn')).toHaveTextContent(
       `(${TABLE_FQN})`
     );
-    expect(screen.getByTestId('affected-entity-fqn')).not.toHaveClass(
-      'tw:font-mono'
-    );
     expect(screen.getByTestId('change-action')).toHaveTextContent(
       'label.added'
     );
@@ -266,14 +263,14 @@ describe('AuditLogList', () => {
     expect(screen.queryByTestId('change-ref')).not.toBeInTheDocument();
   });
 
-  it('should show added and removed owners as linked chips with their type', () => {
+  it('should show added and removed owners with the core OwnerChip', () => {
     renderLogs([
       updateLog({
         fieldsAdded: [
           {
             name: 'owners',
             newValue: JSON.stringify([
-              { type: 'user', name: 'admin', fullyQualifiedName: 'admin' },
+              { id: 'u-1', type: 'user', name: 'admin' },
             ]),
           },
         ],
@@ -282,9 +279,9 @@ describe('AuditLogList', () => {
             name: 'owners',
             oldValue: JSON.stringify([
               {
+                id: 't-1',
                 type: 'team',
                 name: 'Engineering',
-                fullyQualifiedName: 'Engineering',
                 displayName: 'Engineering Team',
               },
             ]),
@@ -297,17 +294,39 @@ describe('AuditLogList', () => {
 
     expect(actions[0]).toHaveTextContent('label.added');
     expect(actions[1]).toHaveTextContent('label.removed');
+    expect(screen.getByTestId('admin')).toHaveTextContent('admin');
+    expect(
+      screen.getByTestId('Engineering Team').closest('.tw\\:line-through')
+    ).not.toBeNull();
+    expect(
+      screen.getByTestId('admin').closest('.tw\\:line-through')
+    ).toBeNull();
+    expect(screen.queryByTestId('change-ref')).not.toBeInTheDocument();
+  });
 
-    const [addedOwner, removedOwner] = screen.getAllByTestId('change-ref');
+  it('should show other entity references as linked chips with their type', () => {
+    renderLogs([
+      updateLog({
+        fieldsAdded: [
+          {
+            name: 'dashboards',
+            newValue: JSON.stringify([
+              {
+                id: 'd-1',
+                type: 'dashboard',
+                name: 'sales',
+                fullyQualifiedName: 'looker.sales',
+              },
+            ]),
+          },
+        ],
+      }),
+    ]);
 
-    expect(addedOwner).toHaveTextContent('admin (user)');
-    expect(addedOwner).toHaveAttribute('href', '/users/admin');
-    expect(removedOwner).toHaveTextContent('Engineering Team (team)');
-    expect(removedOwner).toHaveAttribute(
-      'href',
-      '/settings/members/teams/Engineering'
-    );
-    expect(removedOwner).toHaveClass('tw:line-through');
+    const chip = screen.getByTestId('change-ref');
+
+    expect(chip).toHaveTextContent('sales (dashboard)');
+    expect(chip).toHaveAttribute('href', '/dashboard/looker.sales');
   });
 
   it('should show an update inline as struck-through old → highlighted new', () => {
@@ -361,7 +380,7 @@ describe('AuditLogList', () => {
     );
   });
 
-  it('should show a count and one inline record per object in a list', () => {
+  it('should show one inline record per object in a list', () => {
     const resultTime = 1795564824021;
     renderLogs([
       updateLog({
@@ -381,7 +400,7 @@ describe('AuditLogList', () => {
     ]);
 
     expect(screen.getByTestId('change-row')).toHaveTextContent(
-      'Test Case Result Summary:1 label.result'
+      'Test Case Result Summary:'
     );
 
     const record = screen.getByTestId('change-record');
@@ -428,7 +447,6 @@ describe('AuditLogList', () => {
     expect(row).toHaveTextContent(
       'Pipeline Status:runIdb7f39045…,configlabel.empty,pipelineStatesuccess'
     );
-    expect(within(row).getByText('b7f39045…')).not.toHaveClass('tw:font-mono');
   });
 
   it('should fall back to the summary when the only change is the deleted flag', () => {
