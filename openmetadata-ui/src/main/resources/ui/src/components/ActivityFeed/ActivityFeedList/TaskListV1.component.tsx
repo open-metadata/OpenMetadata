@@ -14,11 +14,35 @@
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useMemo, useRef } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
-import { Task } from '../../../rest/tasksAPI';
+import { getTaskById, Task } from '../../../rest/tasksAPI';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import { useLinkedTaskId } from '../../discovery/personal-space/InboxPage/useLinkedTaskId';
 import TaskFeedCardFromTask from '../TaskFeedCard/TaskFeedCardFromTask.component';
+
+// What the task panel shows, as the feed provider fetches a single task.
+const LINKED_TASK_FIELDS = 'assignees,createdBy,about,comments,payload';
+
+/** Opens the task a link names, loading it when it is not on the loaded page. */
+const openLinkedTask = (
+  linkedTaskId: string,
+  taskList: Task[],
+  selectedTask: Task | undefined,
+  onTaskClick: (task: Task) => void
+) => {
+  const linked = taskList.find((t) => t.id === linkedTaskId);
+  if (linked) {
+    if (selectedTask?.id !== linked.id) {
+      onTaskClick(linked);
+    }
+
+    return;
+  }
+  // The list loads a page at a time, so the linked task may not be on this page yet.
+  getTaskById(linkedTaskId, { fields: LINKED_TASK_FIELDS })
+    .then(({ data }) => onTaskClick(data))
+    .catch(() => onTaskClick(taskList[0]));
+};
 
 interface TaskListV1Props {
   taskList: Task[];
@@ -53,21 +77,18 @@ const TaskListV1 = ({
     if (!onTaskClick || taskList.length === 0) {
       return;
     }
-    const linked =
-      linkedTaskId && openedLinkRef.current !== linkedTaskId
-        ? taskList.find((t) => t.id === linkedTaskId)
-        : undefined;
-    if (linked) {
+    if (linkedTaskId && openedLinkRef.current !== linkedTaskId) {
       openedLinkRef.current = linkedTaskId;
-      if (selectedTask?.id !== linked.id) {
-        onTaskClick(linked);
-      }
+      openLinkedTask(linkedTaskId, taskList, selectedTask, onTaskClick);
 
       return;
     }
     const task = taskList.find((t) => t.id === selectedTask?.id);
+    // The linked task stays open even when it is not on a loaded page.
+    const isLinkedTask =
+      selectedTask !== undefined && selectedTask.id === openedLinkRef.current;
 
-    if (!selectedTask || !task) {
+    if (!selectedTask || (!task && !isLinkedTask)) {
       onTaskClick(taskList[0]);
     }
   }, [taskList, selectedTask, onTaskClick, linkedTaskId]);

@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Task } from '../../../rest/tasksAPI';
 import TaskListV1 from './TaskListV1.component';
+
+const mockGetTaskById = jest.fn();
+
+jest.mock('../../../rest/tasksAPI', () => ({
+  getTaskById: (...args: unknown[]) => mockGetTaskById(...args),
+}));
 
 jest.mock('../TaskFeedCard/TaskFeedCardFromTask.component', () =>
   jest.fn(() => <div />)
@@ -82,9 +88,63 @@ describe('TaskListV1', () => {
     expect(onTaskClick).not.toHaveBeenCalled();
   });
 
-  it('falls back to the first task when the linked one is not listed', () => {
+  it('loads the linked task when it is not on the loaded page, and keeps it open', async () => {
+    const offPage = { id: 'off-page' } as Task;
+    mockGetTaskById.mockResolvedValueOnce({ data: offPage });
+    const { onTaskClick, rerender } = renderList('?taskId=off-page');
+
+    await waitFor(() => expect(onTaskClick).toHaveBeenLastCalledWith(offPage));
+
+    onTaskClick.mockClear();
+    rerender(
+      <MemoryRouter
+        initialEntries={[
+          '/dataProduct/Sales/activity_feed/tasks?taskId=off-page',
+        ]}>
+        <TaskListV1
+          emptyPlaceholderText=""
+          isLoading={false}
+          selectedTask={offPage}
+          taskList={tasks}
+          onTaskClick={onTaskClick}
+        />
+      </MemoryRouter>
+    );
+
+    expect(onTaskClick).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the first task when the linked one cannot be loaded', async () => {
+    mockGetTaskById.mockRejectedValueOnce(new Error('Not found'));
     const { onTaskClick } = renderList('?taskId=missing');
 
-    expect(onTaskClick).toHaveBeenCalledWith(tasks[0]);
+    await waitFor(() => expect(onTaskClick).toHaveBeenLastCalledWith(tasks[0]));
+  });
+
+  it('does not reopen the linked task when a later page brings it in', () => {
+    mockGetTaskById.mockReturnValueOnce(new Promise(() => undefined));
+    const { onTaskClick, rerender } = renderList(
+      '?taskId=request-late',
+      tasks[0]
+    );
+    onTaskClick.mockClear();
+    const late = { id: 'request-late' } as Task;
+
+    rerender(
+      <MemoryRouter
+        initialEntries={[
+          '/dataProduct/Sales/activity_feed/tasks?taskId=request-late',
+        ]}>
+        <TaskListV1
+          emptyPlaceholderText=""
+          isLoading={false}
+          selectedTask={tasks[0]}
+          taskList={[...tasks, late]}
+          onTaskClick={onTaskClick}
+        />
+      </MemoryRouter>
+    );
+
+    expect(onTaskClick).not.toHaveBeenCalledWith(late);
   });
 });
