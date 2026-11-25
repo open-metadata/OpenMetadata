@@ -69,7 +69,6 @@ export interface ChangeRow {
 export interface CellValue {
   text: string;
   color?: BadgeColors;
-  isMono?: boolean;
   isEmpty?: boolean;
 }
 
@@ -333,7 +332,7 @@ const formatScalar = (value: unknown): CellValue => {
   const text = String(value);
 
   return UUID_PATTERN.test(text)
-    ? { text: `${text.slice(0, UUID_PREVIEW_LENGTH)}…`, isMono: true }
+    ? { text: `${text.slice(0, UUID_PREVIEW_LENGTH)}…` }
     : { text };
 };
 

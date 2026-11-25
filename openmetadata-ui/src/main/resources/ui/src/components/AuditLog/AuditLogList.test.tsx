@@ -211,6 +211,9 @@ describe('AuditLogList', () => {
     expect(screen.getByTestId('affected-entity-fqn')).toHaveTextContent(
       `(${TABLE_FQN})`
     );
+    expect(screen.getByTestId('affected-entity-fqn')).not.toHaveClass(
+      'tw:font-mono'
+    );
     expect(screen.getByTestId('change-action')).toHaveTextContent(
       'label.added'
     );
@@ -325,12 +328,15 @@ describe('AuditLogList', () => {
     expect(row).toHaveTextContent(
       'Columns › customer_id › Description:The ID of the customer.→Unique customer identifier.'
     );
-    expect(within(row).getByText('The ID of the customer.').tagName).toBe(
-      'DEL'
-    );
-    expect(within(row).getByText('Unique customer identifier.').tagName).toBe(
-      'INS'
-    );
+
+    const [before, after] = within(row).getAllByTestId('change-text');
+
+    expect(before).toHaveTextContent('The ID of the customer.');
+    expect(before).toHaveClass('tw:line-through');
+    expect(after).toHaveTextContent('Unique customer identifier.');
+    // Long descriptions are cut to three lines on both sides of the change.
+    expect(before).toHaveClass('tw:line-clamp-3');
+    expect(after).toHaveClass('tw:line-clamp-3');
   });
 
   it('should keep false as a real new value and unquote quoted column names', () => {
@@ -422,7 +428,7 @@ describe('AuditLogList', () => {
     expect(row).toHaveTextContent(
       'Pipeline Status:runIdb7f39045…,configlabel.empty,pipelineStatesuccess'
     );
-    expect(within(row).getByText('b7f39045…')).toHaveClass('tw:font-mono');
+    expect(within(row).getByText('b7f39045…')).not.toHaveClass('tw:font-mono');
   });
 
   it('should fall back to the summary when the only change is the deleted flag', () => {

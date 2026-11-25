@@ -188,10 +188,7 @@ const InlineCell: FC<{ name: string; value: unknown }> = ({ name, value }) => {
   }
 
   return (
-    <span
-      className={classNames('tw:text-primary', {
-        'tw:font-mono tw:text-xs': cell.isMono,
-      })}>
+    <span className="tw:text-primary">
       {cell.isEmpty ? t('label.empty').toLowerCase() : cell.text}
     </span>
   );
@@ -212,22 +209,23 @@ const InlineEntries: FC<{ entries: [string, unknown][] }> = ({ entries }) => (
   </span>
 );
 
-const TextValue: FC<{ text: string; tone: ValueTone }> = ({ text, tone }) => {
-  if (tone === 'before') {
-    return (
-      <del className="tw:break-words tw:text-utility-error-700">{text}</del>
-    );
-  }
-  if (tone === 'after') {
-    return (
-      <ins className="tw:break-words tw:text-utility-success-700 tw:no-underline">
-        {text}
-      </ins>
-    );
-  }
-
-  return <span className="tw:break-words">{text}</span>;
+const TEXT_TONE_CLASSES: Record<ValueTone, string> = {
+  plain: '',
+  before: 'tw:line-through tw:text-utility-error-700',
+  after: 'tw:text-utility-success-700',
 };
+
+/** Long values such as descriptions are cut to three lines so one entry cannot fill the list. */
+const TextValue: FC<{ text: string; tone: ValueTone }> = ({ text, tone }) => (
+  <span
+    className={classNames(
+      'tw:line-clamp-3 tw:break-words',
+      TEXT_TONE_CLASSES[tone]
+    )}
+    data-testid="change-text">
+    {text}
+  </span>
+);
 
 const InlineValue: FC<{
   value: ChangeValue;
@@ -396,7 +394,7 @@ const AuditLogItemEntity: FC<{
     )}
     {entityFQN && entityFQN !== entityLabel && (
       <Typography
-        className="tw:font-mono tw:break-all tw:text-tertiary"
+        className="tw:break-all tw:text-tertiary"
         data-testid="affected-entity-fqn"
         size="text-xs">
         ({entityFQN})
