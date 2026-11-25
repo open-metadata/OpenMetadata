@@ -44,12 +44,14 @@ independently of its host interpreter.
 
 PR and merge-queue Airflow API tests are selected only by changes to the API module or its reusable
 workflow. Shared SDK, schema, backend and tooling changes are covered by the full nightly API run.
+Backend-only paths select Python workloads in the merge queue. PRs select ingestion workloads
+from Python paths, including model-generation inputs and shared Python build tools.
 
 `ci-pr.yml`, `ci-merge-queue.yml` and `ci-nightly.yml` own their respective triggers, workload
 selection, Python matrices, dependencies, permissions and required `py-tests-status` check.
 The `py-static-checks` job also stays in the entrypoints. Reusable workflows execute
-the supplied Python version and source revision. The unit runner selects nightly tooling checks
-from the caller workflow name and the highest Python version in project configuration. Shared
+the supplied Python version and source revision. The nightly entrypoint enables tooling checks
+on its highest Python version through the unit runner's `run-tooling-tests` input. Shared
 backend construction uses a complete reusable job. Aggregate jobs run on `ubuntu-slim`, verify
 the selected results without checking out the repository, and retain the required
 `py-tests-status` aggregate check. Other Python CI jobs run on `ubuntu-latest`. Playwright

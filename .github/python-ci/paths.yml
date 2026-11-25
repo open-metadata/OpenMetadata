@@ -1,17 +1,4 @@
 python:
-  - '**/pom.xml'
-  - bin/openmetadata.sh
-  - bin/openmetadata-server-start.sh
-  - bootstrap/openmetadata-ops.sh
-  - bootstrap/sql/**
-  - conf/openmetadata.yaml
-  - conf/openmetadata-env.sh
-  - conf/operations.yaml
-  - conf/public_key.der
-  - conf/private_key.der
-  - docker/run_local_docker.sh
-  - docker/run_local_docker_common.sh
-  - docker/development/docker-compose.yml
   - ingestion/src/**/!(*.md)
   - ingestion/tests/**/!(*.md)
   - ingestion/stubs/**
@@ -34,32 +21,46 @@ python:
   - .github/actions/prepare-classification-model/**
   - .github/actions/prepare-python-environment/**
   - .github/actions/prepare-python-build/**
-  - .github/actions/setup-openmetadata-test-environment/action.yml
   - openmetadata-spec/**
-  - openmetadata-service/src/main/java/org/openmetadata/service/resources/**
-  - openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java
-  - openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java
-  - openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java
   - .github/workflows/ci-pr.yml
-  - .github/workflows/ci-merge-queue.yml
   - .github/workflows/reusable-py-unit.yml
-  - .github/workflows/reusable-py-integration.yml
   - .github/python-ci/**
-  - .github/workflows/reusable-build-backend.yml
-  - .github/scripts/ci_backend_image.sh
   - .github/actions/python-static-checks/**
   - .github/actions/python-suite/**
-  - .github/actions/python-diagnostics/**
   - .github/actions/report-test-results/**
   - .github/actions/setup-uv/**
   - .github/actions/setup-python/**
   - scripts/python_ci.py
   - scripts/python_tools.py
-  - .github/scripts/python_ci_diagnostics.sh
-  - .github/scripts/configure_docker_storage.sh
-  - docker/development/docker-compose-postgres.yml
   - .github/scripts/classify_test_outcome.py
   - Makefile
+backend:
+  - '**/pom.xml'
+  - bin/openmetadata.sh
+  - bin/openmetadata-server-start.sh
+  - bootstrap/openmetadata-ops.sh
+  - bootstrap/sql/**
+  - conf/openmetadata.yaml
+  - conf/openmetadata-env.sh
+  - conf/operations.yaml
+  - conf/public_key.der
+  - conf/private_key.der
+  - docker/run_local_docker.sh
+  - docker/run_local_docker_common.sh
+  - docker/development/docker-compose.yml
+  - docker/development/docker-compose-postgres.yml
+  - openmetadata-service/src/main/java/org/openmetadata/service/resources/**
+  - openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java
+  - openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java
+  - openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java
+  - .github/actions/python-diagnostics/**
+  - .github/actions/setup-openmetadata-test-environment/action.yml
+  - .github/workflows/ci-merge-queue.yml
+  - .github/workflows/reusable-py-integration.yml
+  - .github/workflows/reusable-build-backend.yml
+  - .github/scripts/ci_backend_image.sh
+  - .github/scripts/configure_docker_storage.sh
+  - .github/scripts/python_ci_diagnostics.sh
 airflow-apis:
   - openmetadata-airflow-apis/**/!(*.md)
   - .github/workflows/reusable-py-airflow-apis.yml

@@ -30,6 +30,10 @@ on:
         type: boolean
         required: false
         default: false
+      run-tooling-tests:
+        description: Run CI tooling and offline E2E framework tests before the unit suite
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -51,12 +55,8 @@ jobs:
           python-version: ${{ inputs.python-version }}
           profile: test-classification
           prepare-models: ${{ inputs.prepare-models }}
-      - name: Read nightly Python versions
-        id: versions
-        if: ${{ github.workflow == 'ci-nightly' }}
-        run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
       - name: Test CI and Python tooling
-        if: ${{ github.workflow == 'ci-nightly' && inputs.python-version == steps.versions.outputs.highest }}
+        if: ${{ inputs.run-tooling-tests }}
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
         run: |
@@ -66,7 +66,7 @@ jobs:
             ingestion/tests/tooling
         shell: bash
       - name: Run offline E2E framework tests
-        if: ${{ github.workflow == 'ci-nightly' && inputs.python-version == steps.versions.outputs.highest }}
+        if: ${{ inputs.run-tooling-tests }}
         run: |
           source env/bin/activate
           cd ingestion

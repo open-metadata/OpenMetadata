@@ -27,9 +27,9 @@ jobs:
       python-lowest: ${{ steps.versions.outputs.lowest }}
       python-highest: ${{ steps.versions.outputs.highest }}
       ref: ${{ github.sha }}
-      python: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' }}
+      python: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' || steps.filter.outputs.backend == 'true' }}
       airflow-apis: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.airflow-apis == 'true' }}
-      static: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' || steps.filter.outputs.airflow-apis == 'true' || steps.filter.outputs.static == 'true' }}
+      static: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' || steps.filter.outputs.backend == 'true' || steps.filter.outputs.airflow-apis == 'true' || steps.filter.outputs.static == 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
