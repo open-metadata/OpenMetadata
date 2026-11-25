@@ -51,6 +51,7 @@ import { ProviderType } from '../../generated/entity/bot';
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { EntityReference } from '../../generated/entity/type';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
@@ -227,6 +228,7 @@ const TagsPage = () => {
     try {
       const res = await createClassification(data);
       await fetchClassifications();
+      setCurrentClassification({ ...res, termCount: 0 });
       navigate(getTagPath(res.fullyQualifiedName));
     } catch (error) {
       if (
@@ -397,6 +399,14 @@ const TagsPage = () => {
       }
     },
     [updateClassification]
+  );
+
+  const handleClassificationDomainsUpdate = useCallback(
+    (id: string, domains?: EntityReference[]) =>
+      setCurrentClassification((prev) =>
+        prev?.id === id ? { ...prev, domains } : prev
+      ),
+    []
   );
 
   const handleCreatePrimaryTag = async (data: CreateTag) => {
@@ -894,6 +904,9 @@ const TagsPage = () => {
                   handleActionDeleteTag={handleActionDeleteTag}
                   handleAddNewTagClick={handleAddNewTagClick}
                   handleAfterDeleteAction={handleAfterDeleteAction}
+                  handleClassificationDomainsUpdate={
+                    handleClassificationDomainsUpdate
+                  }
                   handleEditClassificationClick={handleEditClassificationClick}
                   handleEditTagClick={handleEditTagClick}
                   handleToggleDisable={handleToggleDisable}

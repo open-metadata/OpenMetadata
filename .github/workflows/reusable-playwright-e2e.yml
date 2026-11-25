@@ -411,12 +411,7 @@ jobs:
       - name: Restore Maven Dependencies
         id: maven-cache
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
-        uses: actions/cache/restore@v6
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+        uses: ./.github/actions/hydrate-maven-cache
 
       - name: Install antlr cli
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
@@ -1346,8 +1341,42 @@ jobs:
       - name: Initialize ingestion cache path
         run: echo "INGESTION_CACHE_DIR=$RUNNER_TEMP/playwright-ingestion-cache" >> "$GITHUB_ENV"
 
+      # Primary store: GHCR (outside GitHub's 10 GB Actions cache cap, freeing ~2.6 GB;
+      # see ADR:2026-11-24-ci-caches-live-in-ghcr-with-actions-cache-fallback).
+      - name: Restore ingestion image from GHCR
+        id: ghcr-ingestion
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          EXPECTED_FINGERPRINT: ${{ needs.cache-keys.outputs.ingestion }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          owner=$(printf '%s' "$REPO_OWNER" | tr '[:upper:]' '[:lower:]')
+          ghcr_ref="ghcr.io/${owner}/ci-playwright-ingestion:${EXPECTED_FINGERPRINT}"
+          echo "ghcr_ref=$ghcr_ref" >> "$GITHUB_OUTPUT"
+          if [[ -n "$GHCR_TOKEN" ]]; then
+            printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin >/dev/null 2>&1 || true
+          fi
+          if docker pull --quiet "$ghcr_ref" >/dev/null 2>&1; then
+            .github/scripts/pack_playwright_ingestion_image.sh \
+              "$ghcr_ref" \
+              "$INGESTION_CACHE_DIR/playwright-ingestion-image.tar.zst"
+            if .github/scripts/validate_playwright_ingestion_image.sh \
+              "$INGESTION_CACHE_DIR/playwright-ingestion-image.tar.zst" \
+              "$EXPECTED_FINGERPRINT"; then
+              echo "Restored Playwright ingestion image from $ghcr_ref"
+              echo "hit=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            rm -rf "$INGESTION_CACHE_DIR"
+          fi
+          echo "hit=false" >> "$GITHUB_OUTPUT"
+
+      # Fallback during cutover if GHCR does not yet hold this fingerprint.
       - name: Restore ingestion image cache
         id: restore-ingestion
+        if: ${{ steps.ghcr-ingestion.outputs.hit != 'true' }}
         uses: actions/cache/restore@v6
         with:
           path: ${{ env.INGESTION_CACHE_DIR }}
@@ -1360,7 +1389,9 @@ jobs:
         run: |
           usable=false
           image="$INGESTION_CACHE_DIR/playwright-ingestion-image.tar.zst"
-          if [[ "${{ steps.restore-ingestion.outputs.cache-hit }}" == "true" && -s "$image" ]] && \
+          if [[ "${{ steps.ghcr-ingestion.outputs.hit }}" == "true" ]]; then
+            usable=true
+          elif [[ "${{ steps.restore-ingestion.outputs.cache-hit }}" == "true" && -s "$image" ]] && \
             .github/scripts/validate_playwright_ingestion_image.sh "$image" "$EXPECTED_FINGERPRINT"; then
             usable=true
           else
@@ -1389,18 +1420,33 @@ jobs:
             "$INGESTION_CACHE_DIR/playwright-ingestion-image.tar.zst" \
             "${{ needs.cache-keys.outputs.ingestion }}"
 
-      # Same guards as the fixture save: never from an ephemeral merge-queue
-      # ref or a pull_request run.
-      - name: Save ingestion image cache
+      # Publish to GHCR from main/schedule/dispatch warmers instead of consuming
+      # ~1.3 GB per entry in GitHub's 10 GB Actions cache budget, then prune
+      # untagged manifests and superseded tags older than the 2h overlap grace window.
+      - name: Push ingestion image to GHCR
         if: >-
           steps.validate-ingestion.outputs.usable != 'true' &&
           github.event_name != 'merge_group' &&
           github.event_name != 'pull_request'
         continue-on-error: true
-        uses: actions/cache/save@v6
-        with:
-          path: ${{ env.INGESTION_CACHE_DIR }}
-          key: playwright-ingestion-image-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.ingestion }}
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_ACTOR: ${{ github.actor }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          GHCR_REF: ${{ steps.ghcr-ingestion.outputs.ghcr_ref }}
+          BUILT_IMAGE: ${{ steps.build-image.outputs.image }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin
+          docker image tag "$BUILT_IMAGE" "$GHCR_REF"
+          docker push "$GHCR_REF"
+          python3 .github/scripts/prune_ghcr_package.py \
+            --owner "$REPO_OWNER" \
+            --package ci-playwright-ingestion \
+            --keep-newest-tagged 1 \
+            --grace-hours 2 \
+            --delete-untagged || true
 
       - name: Upload ingestion image
         uses: actions/upload-artifact@v7
