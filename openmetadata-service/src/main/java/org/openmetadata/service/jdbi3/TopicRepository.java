@@ -62,6 +62,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.topics.TopicResource;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityFieldPath;
+import org.openmetadata.service.util.EntityPolicyTags;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -510,13 +511,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
-    List<TagLabel> allTags = new ArrayList<>();
-    Topic topic = (Topic) entity;
-    EntityUtil.mergeTags(allTags, topic.getTags());
-    List<Field> schemaFields =
-        topic.getMessageSchema() != null ? topic.getMessageSchema().getSchemaFields() : null;
-    EntityUtil.mergeFieldTags(allTags, schemaFields);
-    return allTags;
+    return EntityPolicyTags.collect(entity);
   }
 
   @Override

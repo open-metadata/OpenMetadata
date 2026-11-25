@@ -54,6 +54,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.searchindex.SearchIndexResource;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityFieldPath;
+import org.openmetadata.service.util.EntityPolicyTags;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -383,19 +384,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
   @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
-    List<TagLabel> allTags = new ArrayList<>();
-    SearchIndex searchIndex = (SearchIndex) entity;
-    EntityUtil.mergeTags(allTags, searchIndex.getTags());
-    mergeSearchIndexFieldTags(allTags, searchIndex.getFields());
-    return allTags;
-  }
-
-  private static void mergeSearchIndexFieldTags(
-      List<TagLabel> allTags, List<SearchIndexField> fields) {
-    for (SearchIndexField field : listOrEmpty(fields)) {
-      EntityUtil.mergeTags(allTags, field.getTags());
-      mergeSearchIndexFieldTags(allTags, field.getChildren());
-    }
+    return EntityPolicyTags.collect(entity);
   }
 
   @Override

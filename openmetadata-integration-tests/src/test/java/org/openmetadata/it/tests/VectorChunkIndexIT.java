@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
@@ -31,6 +32,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.vector.AbstractVectorIndexService;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
@@ -122,6 +124,19 @@ class VectorChunkIndexIT {
     }
 
     @Test
+    void legacyChunksGainPolicyMetadataWithoutEmbedding() {
+      String index = "legacy_chunks_" + UUID.randomUUID();
+      var upgraded =
+          new OpenSearchVectorService(client, provider) {
+            @Override
+            public String getChunkIndexName() {
+              return index;
+            }
+          };
+      assertLegacyPolicyMigration(service, upgraded, provider);
+    }
+
+    @Test
     void aFullRecreateServesOnlyTheEntitiesItIndexed() {
       assertAFullRecreateServesOnlyTheEntitiesItIndexed(service, provider);
     }
@@ -185,6 +200,22 @@ class VectorChunkIndexIT {
     void stop() throws Exception {
       restClient.close();
       container.stop();
+    }
+
+    @Test
+    void legacyChunksGainPolicyMetadataWithoutEmbedding() {
+      String index = "legacy_chunks_" + UUID.randomUUID();
+      var upgraded =
+          new ElasticSearchVectorService(
+              new ElasticsearchClient(
+                  new Rest5ClientTransport(restClient, new JacksonJsonpMapper())),
+              provider) {
+            @Override
+            public String getChunkIndexName() {
+              return index;
+            }
+          };
+      assertLegacyPolicyMigration(service, upgraded, provider);
     }
 
     @Test
@@ -435,6 +466,100 @@ class VectorChunkIndexIT {
           "A document the bulk never indexed is a miss");
     } finally {
       service.executeGenericRequest("DELETE", "/" + entityIndex, null);
+    }
+  }
+
+  private static void assertLegacyPolicyMigration(
+      AbstractVectorIndexService source,
+      AbstractVectorIndexService upgraded,
+      CountingProvider provider) {
+    Table table =
+        table("legacyorders", "revenue ".repeat(1000))
+            .withOwners(
+                List.of(
+                    new EntityReference()
+                        .withId(UUID.randomUUID())
+                        .withType("user")
+                        .withName("owner")));
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, provider);
+    assertTrue(docs.size() > 1);
+    // Initialize a template, then create the old mapping without the new access fields.
+    writeChunks(source, table, null);
+    ObjectNode mapping =
+        (ObjectNode)
+            JsonUtils.readTree(
+                    source.executeGenericRequest(
+                        "GET", "/" + source.getChunkIndexName() + "/_mapping", null))
+                .elements()
+                .next()
+                .path("mappings");
+    ((ObjectNode) mapping.path("_meta")).put("chunkDocVersion", 8);
+    ((ObjectNode) mapping.path("properties"))
+        .remove(
+            List.of(
+                "accessMetadataVersion", "accessMetadataFingerprint", "policyTags", "reviewers"));
+    String index = upgraded.getChunkIndexName();
+    Map<String, Object> creation = new HashMap<>();
+    creation.put("mappings", mapping);
+    if (source instanceof OpenSearchVectorService)
+      creation.put("settings", Map.of("index.knn", true));
+    source.executeGenericRequest("PUT", "/" + index, JsonUtils.pojoToJson(creation));
+    try {
+      for (int i = 0; i < docs.size(); i++) {
+        Map<String, Object> legacy = new HashMap<>(docs.get(i));
+        legacy.put("docVersion", 8);
+        legacy
+            .keySet()
+            .removeAll(
+                List.of(
+                    "accessMetadataVersion",
+                    "accessMetadataFingerprint",
+                    "policyTags",
+                    "reviewers"));
+        source.executeGenericRequest(
+            "PUT", "/" + index + "/_doc/" + id(table) + "_" + i, JsonUtils.pojoToJson(legacy));
+      }
+      int before = provider.textsEmbedded();
+      provider.failing(true);
+      assertTrue(
+          upgraded.backfillEntityChunks(table, null),
+          "A metadata migration must reuse all stored vectors");
+      assertEquals(before, provider.textsEmbedded());
+      for (int i = 0; i < docs.size(); i++) {
+        JsonNode doc =
+            JsonUtils.readTree(
+                    source.executeGenericRequest(
+                        "GET",
+                        "/"
+                            + index
+                            + "/_doc/"
+                            + id(table)
+                            + "_"
+                            + i
+                            + "?_source_includes=embedding,docVersion,accessMetadataVersion,accessMetadataFingerprint,owners",
+                        null))
+                .path("_source");
+        assertEquals(VectorDocBuilder.CHUNK_DOC_VERSION, doc.path("docVersion").asInt());
+        assertEquals(1, doc.path("accessMetadataVersion").asInt());
+        assertFalse(doc.path("accessMetadataFingerprint").asText().isBlank());
+        assertEquals(
+            JsonUtils.readTree(JsonUtils.pojoToJson(docs.get(i).get("embedding"))),
+            doc.path("embedding"));
+        assertEquals(
+            table.getOwners().getFirst().getId().toString(),
+            doc.path("owners").get(0).path("id").asText());
+      }
+      JsonNode live =
+          JsonUtils.readTree(source.executeGenericRequest("GET", "/" + index + "/_mapping", null))
+              .path(index)
+              .path("mappings");
+      assertEquals(
+          VectorDocBuilder.CHUNK_DOC_VERSION, live.path("_meta").path("chunkDocVersion").asInt());
+      assertEquals("keyword", live.path("properties").path("policyTags").path("type").asText());
+    } finally {
+      provider.failing(false);
+      source.executeGenericRequest("DELETE", "/" + index, null);
+      source.deleteEntityChunks(id(table));
     }
   }
 

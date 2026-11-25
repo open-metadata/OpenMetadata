@@ -106,6 +106,9 @@ public class VectorSearchResource {
               subjectContext);
       if (!subjectContext.isAdmin()) {
         response.hits = viewableHits(securityContext, response.hits);
+        // Parent authorization covers this page, not the engine's unseen candidates.
+        response.totalHits = null;
+        response.hasMore = null;
       }
       return Response.ok(response).build();
     } catch (Exception e) {

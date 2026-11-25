@@ -63,6 +63,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.WorksheetResource;
+import org.openmetadata.service.util.EntityPolicyTags;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -347,11 +348,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
 
   @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
-    List<TagLabel> allTags = new ArrayList<>();
-    Worksheet worksheet = (Worksheet) entity;
-    EntityUtil.mergeTags(allTags, worksheet.getTags());
-    EntityUtil.mergeColumnTags(allTags, worksheet.getColumns());
-    return allTags;
+    return EntityPolicyTags.collect(entity);
   }
 
   @Override

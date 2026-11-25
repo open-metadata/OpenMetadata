@@ -42,6 +42,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 import org.openmetadata.service.util.ChildFieldResolver;
+import org.openmetadata.service.util.EntityPolicyTags;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -280,11 +281,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
-    List<TagLabel> allTags = new ArrayList<>();
-    DashboardDataModel dashboardDataModel = (DashboardDataModel) entity;
-    EntityUtil.mergeTags(allTags, dashboardDataModel.getTags());
-    EntityUtil.mergeColumnTags(allTags, dashboardDataModel.getColumns());
-    return allTags;
+    return EntityPolicyTags.collect(entity);
   }
 
   @Override

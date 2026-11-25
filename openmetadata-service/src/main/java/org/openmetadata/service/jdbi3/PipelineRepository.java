@@ -88,6 +88,7 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.util.EntityFieldPath;
+import org.openmetadata.service.util.EntityPolicyTags;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -898,13 +899,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
-    List<TagLabel> allTags = new ArrayList<>();
-    Pipeline pipeline = (Pipeline) entity;
-    EntityUtil.mergeTags(allTags, pipeline.getTags());
-    for (Task task : listOrEmpty(pipeline.getTasks())) {
-      EntityUtil.mergeTags(allTags, task.getTags());
-    }
-    return allTags;
+    return EntityPolicyTags.collect(entity);
   }
 
   private void populateService(Pipeline pipeline) {
