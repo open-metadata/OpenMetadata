@@ -14,9 +14,12 @@ package org.openmetadata.service.aicontext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -36,6 +39,27 @@ class PromptTextTest {
     assertEquals(
         "<p>x <= 1 & y >= 2 + tax, \"orders\" by owner@corp.com, 'a' = `b`</p>",
         PromptText.forContentRead(stored));
+    assertEquals(
+        "<p>Write &lt;script&gt; as text.</p>",
+        PromptText.forContentRead(
+            "<p>Write &amp;lt;script&amp;gt; as text.</p>"
+                + "&lt;img src=&quot;data:image/png;base64,AAAA&quot;&gt;"));
+    assertEquals(
+        "Before  after",
+        PromptText.forContentRead(
+            "Before &lt;img alt=&quot;x &gt; y&quot; src=&quot;data:image/png;base64,AAAA&quot;&gt;"
+                + " after"));
+    assertEquals(
+        "Diagram  end.",
+        PromptText.forContentRead("Diagram ![architecture](data:image/png;base64,AAAA) end."));
+  }
+
+  @Test
+  void contentReadStaysLinearOnManyUnclosedImages() {
+    String unclosed =
+        ("&lt;img &quot;" + "A".repeat(200) + " ![x](data:" + "A".repeat(200)).repeat(5_000);
+    assertTimeoutPreemptively(
+        Duration.ofSeconds(2), () -> assertNotNull(PromptText.forContentRead(unclosed)));
   }
 
   @Test
