@@ -1,7 +1,7 @@
 # Redis entity cache uses FQN-to-UUID indirection, value compression, and memory guards
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-24 (initial)
+- **Revisions:** v1 2026-11-24 (initial), v2 2026-11-25 (rollout notes, full relationship-cache exclusion, legacy ZSET TTL guard)
 - **Deciders:** Sriharsha Chintalapani
 - **Guard:** `CachedEntityDaoIndirectionTest`, `CacheValueCodecTest`, `CachedMemoryGuardsTest`, `EntityLoaderIndirectionTest`, `SessionStoreFactoryTest`, `RedisSessionStoreTest`
 - **Related:** ADR:2026-10-15-redis-commands-keep-their-keys-in-one-hash-slot
@@ -30,24 +30,28 @@ Production deployments running large ingestion workloads against Redis filled an
    (ADR:2026-10-15-redis-commands-keep-their-keys-in-one-hash-slot). Writers populate `:e:` before
    `:enid:`, and ID-based loads also populate `:enid:` when `:e:` succeeds. Name-key invalidations
    evict `:enid:`, legacy `:en:`, and `:rn:` in one `DEL` for rolling-upgrade coherence.
-   `EntityLoaderWithName` verifies FQN hash equality on cache hits to reject stale aliases after
-   renames.
+   `EntityLoaderWithName` verifies FQN hash equality on cache hits and evicts stale aliases at
+   `DEBUG` level (keeping `ERROR` for missing id/FQN).
 2. **Transparent GZIP+Base64 compression (`om:gz1:`):** `CacheValueCodec` compresses entity and
-   read-bundle JSON at or above `compressionThresholdBytes` (default `2048`, `0` disables) when
-   the encoded value is strictly smaller than the raw string. Readers decode both plain JSON and
-   `om:gz1:` payloads and evict corrupted entries.
+   read-bundle JSON at or above `compressionThresholdBytes` (measured in UTF-8 bytes; default `2048`
+   on `main`, `0` opt-in on `2.0`/`2.1` patch backports) when the encoded value is strictly smaller
+   than the raw UTF-8 byte length. Readers decode both plain JSON and `om:gz1:` payloads and evict
+   corrupted entries.
 3. **Configurable cache guards:** `CacheConfig` adds `excludedEntityTypes` (YAML list or
-   comma-separated env var, extending `UNCACHED_ENTITY_TYPES` and skipped by `CacheWarmupApp`),
-   `maxEntrySizeBytes` (post-compression cap; default `0` unlimited; skipped entries do not write
-   `:enid:` pointers), and wires `tagTtlSeconds` in `CachedTagUsageDao` (`<= 0` disables).
+   comma-separated env var, extending `UNCACHED_ENTITY_TYPES` across entity JSON, read bundles,
+   tags, owners, domains, CONTAINS parent lookups, and `CacheWarmupApp`), `maxEntrySizeBytes`
+   (post-compression UTF-8 byte cap; default `0` unlimited; skipped entries do not write `:enid:`
+   pointers), and wires `tagTtlSeconds` in `CachedTagUsageDao` (`<= 0` disables).
 4. **Read-only cache on upsert lookups:** `EntityCacheBypass.skipPopulate()` allows reads to hit
    warm Redis entries while suppressing miss write-backs. `createOrUpdate`,
    `createOrUpdateForImport`, and `createOrUpdateBatchForImport` wrap their original lookup with
    `skipPopulate()` unless `cache.populateOnUpsert` is `true` (default `false`).
 5. **Session store isolation and bounded ZSET TTL:** `cache.sessionStore` supports `auto`
    (default), `jdbc` (keep sessions in SQL even with Redis cache enabled), and `redis`.
-   `RedisSessionStore` updates per-user ZSET indexes via a single-key Lua script that sets or
-   extends the ZSET TTL monotonically without shortening an existing longer TTL.
+   `RedisSessionStore` updates per-user ZSET indexes via a single-key Lua script that checks `TTL`
+   before `ZADD` so newly created keys (`-2`) receive a bounded TTL and finite TTLs extend
+   monotonically, while pre-upgrade persistent indexes (`-1`) are not shortened to a single short
+   session's TTL.
 
 ## Consequences
 
@@ -55,6 +59,23 @@ Entity cache memory drops by roughly 50% from deduplication alone and an additio
 table JSON via compression, while ingestion sweeps stop populating Redis with cold entities. FQN
 cache misses on L1 Guava pay one extra single-key 36-byte Redis `GET`. Operators can safely enable
 Redis `maxmemory-policy allkeys-lfu` by setting `cache.sessionStore: jdbc` so eviction cannot log
-users out. During rolling upgrades from versions without `om:gz1:` decode support, operators who
-need zero-noise rollouts can temporarily set `CACHE_COMPRESSION_THRESHOLD_BYTES=0` until all nodes
-are upgraded.
+users out.
+
+### Rollout & operational notes
+
+- **Reclaiming existing `:en:` keys immediately:** Upgrading does not proactively delete pre-existing
+  `:en:` full-JSON copies; each entry clears only on the next write to that entity or when
+  `entityTtlSeconds` expires (48 hours in shipped `openmetadata.yaml`). To reclaim memory right away
+  once every pod is running this version (nothing reads `:en:` anymore), scan `<keyspace>:en:*`
+  (default keyspace `om:prod`) and delete with non-blocking `UNLINK`, e.g.:
+  `redis-cli --scan --pattern 'om:prod:en:*' | xargs -r -n 1000 redis-cli UNLINK`.
+- **Rolling upgrades and compression (`CACHE_COMPRESSION_THRESHOLD_BYTES`):** Old pods without
+  `om:gz1:` decode support treat compressed entries as malformed JSON, log a `WARN` with stack
+  trace, evict the key, and reload from the database. Patch backports (`2.0` / `2.1`) default
+  `compressionThresholdBytes` to `0` so rolling patch upgrades and rollbacks are silent by default;
+  operators opt in by setting `CACHE_COMPRESSION_THRESHOLD_BYTES=2048` once all pods are upgraded.
+- **Switching `cache.sessionStore`:** Changing `sessionStore` (for example `auto` to `jdbc` on a
+  Redis deployment) switches to an empty session store. `JwtFilter` rejects missing sessions with
+  `"Invalid session"`, and mixed values across pods fail requests that hit a pod pointing at the
+  other store. Change `sessionStore` on all pods together and expect one forced sign-in for active
+  users.

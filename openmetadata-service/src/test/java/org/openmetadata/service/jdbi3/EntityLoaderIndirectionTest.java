@@ -22,6 +22,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
@@ -32,12 +33,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheKeys;
 import org.openmetadata.service.cache.CachedEntityDao;
+import org.openmetadata.service.cache.CachedRelationshipDao;
 import org.openmetadata.service.cache.EntityCacheBypass;
 import org.openmetadata.service.cache.InMemoryCacheProvider;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -56,6 +60,7 @@ class EntityLoaderIndirectionTest {
   private final CachedEntityDao cachedEntityDao =
       new CachedEntityDao(redis, keys, new CacheConfig());
   private CollectionDAO.PipelineDAO pipelineDao;
+  private StubPipelineRepository pipelineRepository;
   private MockedStatic<CacheBundle> cacheBundle;
 
   private static final class StubPipelineRepository extends EntityRepository<Pipeline> {
@@ -89,7 +94,8 @@ class EntityLoaderIndirectionTest {
     when(pipelineDao.getNameHashColumn()).thenReturn("fqnHash");
     when(pipelineDao.getCondition(any())).thenReturn("");
     Entity.setCollectionDAO(daoCollection);
-    new StubPipelineRepository(pipelineDao);
+    Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(daoCollection));
+    pipelineRepository = new StubPipelineRepository(pipelineDao);
     cacheBundle = mockStatic(CacheBundle.class);
     cacheBundle.when(CacheBundle::getCachedEntityDao).thenReturn(cachedEntityDao);
   }
@@ -97,6 +103,7 @@ class EntityLoaderIndirectionTest {
   @AfterEach
   void tearDown() {
     cacheBundle.close();
+    Entity.setEntityRelationshipRepository(null);
     Entity.setCollectionDAO(null);
   }
 
@@ -172,6 +179,35 @@ class EntityLoaderIndirectionTest {
     assertFalse(EntityRepository.isCacheableEntityType(Entity.TABLE));
     assertFalse(EntityRepository.isCacheableEntityType(Entity.TEST_CASE));
     assertTrue(EntityRepository.isCacheableEntityType(Entity.PIPELINE));
+  }
+
+  @Test
+  void excludedEntityTypesSkipRelationshipCachesForOwnersDomainsAndContainer() {
+    final CacheConfig config = new CacheConfig();
+    config.setExcludedEntityTypes(Entity.PIPELINE);
+    cacheBundle.when(CacheBundle::getCacheConfig).thenReturn(config);
+    final CachedRelationshipDao relationshipCache = mock(CachedRelationshipDao.class);
+    cacheBundle.when(CacheBundle::getCachedRelationshipDao).thenReturn(relationshipCache);
+
+    final UUID id = UUID.randomUUID();
+    final Pipeline pipeline =
+        new Pipeline().withId(id).withName("excluded").withFullyQualifiedName("svc.excluded");
+
+    pipelineRepository.getOwners(pipeline, Include.NON_DELETED);
+    pipelineRepository.getDomains(pipeline, Include.NON_DELETED);
+    pipelineRepository.getFromEntityRef(id, Entity.PIPELINE, Relationship.CONTAINS, null, false);
+
+    verifyNoInteractions(relationshipCache);
+
+    // Control check: once not excluded, the same three calls consult the relationship cache.
+    config.setExcludedEntityTypes("");
+    pipelineRepository.getOwners(pipeline, Include.NON_DELETED);
+    pipelineRepository.getDomains(pipeline, Include.NON_DELETED);
+    pipelineRepository.getFromEntityRef(id, Entity.PIPELINE, Relationship.CONTAINS, null, false);
+
+    verify(relationshipCache).getOwners(Entity.PIPELINE, id);
+    verify(relationshipCache).getDomains(Entity.PIPELINE, id);
+    verify(relationshipCache).getContainer(Entity.PIPELINE, id, Relationship.CONTAINS.ordinal());
   }
 
   @Test

@@ -31,9 +31,10 @@ public class CacheConfig {
   public int relationshipTtlSeconds = 3600; // 1 hour
   public int tagTtlSeconds = 3600; // 1 hour
 
-  // Compress cached entity and read-bundle JSON above this byte threshold using GZIP+Base64.
-  // Set to 0 to disable compression.
-  public int compressionThresholdBytes = 2048;
+  // Compress cached entity and read-bundle JSON at/above this UTF-8 byte threshold using
+  // GZIP+Base64. Defaults to 0 (disabled) on 2.1 patch releases for silent rolling upgrades and
+  // rollbacks; set to e.g. 2048 via CACHE_COMPRESSION_THRESHOLD_BYTES once all pods are upgraded.
+  public int compressionThresholdBytes = 0;
 
   // Maximum post-compression byte length for a single cached entity or read-bundle entry.
   // Entries exceeding this limit are not written to Redis. Set to 0 for unlimited.
@@ -47,10 +48,13 @@ public class CacheConfig {
   // auto (default): Redis when provider=redis, else JDBC;
   // jdbc: always store sessions in JDBC so Redis eviction policies cannot evict user sessions;
   // redis: require Redis for sessions.
+  // Changing this setting switches to an empty store, so change all pods together and expect one
+  // forced sign-in for active users.
   public SessionStoreMode sessionStore = SessionStoreMode.auto;
 
   // Additional entity types excluded from Redis caching (appended to UNCACHED_ENTITY_TYPES).
-  // Accepts a YAML list or a comma-separated string (e.g. from CACHE_EXCLUDED_ENTITY_TYPES).
+  // Applies to entity JSON, read bundles, tags, owners, domains, CONTAINS parent lookups, and
+  // CacheWarmupApp. Accepts a YAML list or comma-separated string (CACHE_EXCLUDED_ENTITY_TYPES).
   private Set<String> excludedEntityTypes = Set.of();
 
   public Set<String> getExcludedEntityTypes() {
