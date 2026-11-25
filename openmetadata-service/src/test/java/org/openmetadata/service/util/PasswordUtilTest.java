@@ -1,11 +1,13 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
+import org.passay.EnglishCharacterData;
 
 public class PasswordUtilTest {
 
@@ -51,6 +53,29 @@ public class PasswordUtilTest {
   void testValidatePassword_WithWhitespace() {
     assertThrows(
         IllegalArgumentException.class, () -> PasswordUtil.validatePassword("Has Space1!"));
+  }
+
+  /**
+   * The UI mirrors this set in `PASSWORD_SPECIAL_CHAR_REGEX` (regex.constants.ts). If a Passay
+   * upgrade changes it, update that regex and the list in PasswordStrength.utils.test.ts.
+   */
+  @Test
+  void testSpecialCharacterSet_PinnedToPassay166() {
+    assertEquals(
+        "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~–—―‗‘’‚‛“”„†‡•…‰′″‹›‼‾⁄⁊₠₡₢₣₤₥₦₧₨₩₪₫€₭₮₯₰₱₲₳₴₵₶₷₸₹₺₻₼₽₾"
+            + "¡¢£¤¥¦§¨©ª«¬\u00AD®¯°±²³´µ¶·¸¹º»¼½¾¿×÷",
+        EnglishCharacterData.Special.getCharacters());
+  }
+
+  @Test
+  void testValidatePassword_UnderscoreAndColonAreSpecial() {
+    assertDoesNotThrow(() -> PasswordUtil.validatePassword("Abcdef1_"));
+    assertDoesNotThrow(() -> PasswordUtil.validatePassword("Abcdef1:"));
+  }
+
+  @Test
+  void testValidatePassword_AccentedLetterIsNotSpecial() {
+    assertThrows(IllegalArgumentException.class, () -> PasswordUtil.validatePassword("Abcdef1é"));
   }
 
   @Test
