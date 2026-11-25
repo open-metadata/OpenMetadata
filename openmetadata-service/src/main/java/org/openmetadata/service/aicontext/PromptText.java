@@ -107,7 +107,7 @@ public final class PromptText {
   private static final Pattern DECODED_IMAGE =
       Pattern.compile(
           "(?i)<img\\b(?:[^<>\"']|\"[^\"<]*+\"|'[^'<]*+')*+>"
-              + "|!\\[[^\\]\\n]*+\\]\\(\\s*+data:[^()!\\[\\]]*+\\)");
+              + "|!\\[[^\\]\\[!\\n]*+\\]\\(\\s*+data:[^()!\\[\\]]*+\\)");
 
   private PromptText() {}
 

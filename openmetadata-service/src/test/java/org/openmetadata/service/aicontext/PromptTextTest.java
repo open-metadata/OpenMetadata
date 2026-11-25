@@ -56,10 +56,15 @@ class PromptTextTest {
 
   @Test
   void contentReadStaysLinearOnManyUnclosedImages() {
-    String unclosed =
-        ("&lt;img &quot;" + "A".repeat(200) + " ![x](data:" + "A".repeat(200)).repeat(5_000);
+    String run = "A".repeat(200);
+    Stream<String> unclosed =
+        Stream.of(
+            ("&lt;img &quot;" + run).repeat(5_000),
+            (" ![x](data:" + run).repeat(5_000),
+            ("![" + run).repeat(10_000));
     assertTimeoutPreemptively(
-        Duration.ofSeconds(2), () -> assertNotNull(PromptText.forContentRead(unclosed)));
+        Duration.ofSeconds(2),
+        () -> unclosed.forEach(text -> assertNotNull(PromptText.forContentRead(text))));
   }
 
   @Test
