@@ -48,6 +48,7 @@ import org.openmetadata.schema.entity.ai.LLMModel;
 import org.openmetadata.schema.entity.ai.McpGovernanceMetadata;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.ai.McpServerType;
+import org.openmetadata.schema.entity.ai.PolicyType;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -104,7 +105,9 @@ public class AIGovernanceVisibilityIT {
             SdkClients.adminClient(),
             HttpMethod.POST,
             GOVERNANCE + "Policies",
-            new CreateAIGovernancePolicy().withName(ns.prefix("pii_policy")),
+            new CreateAIGovernancePolicy()
+                .withName(ns.prefix("pii_policy"))
+                .withPolicyType(PolicyType.DataAccess),
             AIGovernancePolicy.class);
     assertContainsOnlyVisible(
         get(reader, GOVERNANCE + "/policies/" + policy.getId() + "/violations?limit=500"),
@@ -282,7 +285,8 @@ public class AIGovernanceVisibilityIT {
   private static void assertReportCounts(
       final OpenMetadataClient client, final AuditReport report, final int expected) {
     final String query = "index=auditReport&q=" + encodeURIComponent("id:" + report.getId());
-    final JsonNode aggregation = get(client, "/v1/search/aggregate?field=entityType&" + query);
+    final JsonNode aggregation =
+        get(client, "/v1/search/aggregate?field=entityType&value=.*&" + query);
     int count = 0;
     for (final JsonNode field : aggregation.path("aggregations")) {
       for (final JsonNode bucket : field.path("buckets")) {
