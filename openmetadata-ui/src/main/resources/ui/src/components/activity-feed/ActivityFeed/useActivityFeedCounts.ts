@@ -39,7 +39,7 @@ export const useActivityFeedCounts = (
   const taskScope = useMemo(() => getTaskListScope(entityLink), [entityLink]);
 
   // All only: the feed counts Mentions itself, once it is open.
-  const { total, isCapped, isLoading } = useInboxActivity(
+  const { total, isCapped, isLoading, error } = useInboxActivity(
     ActivityFilter.All,
     dateRange,
     activityScope
@@ -48,7 +48,8 @@ export const useActivityFeedCounts = (
   return {
     activityScope,
     taskScope,
-    activityCount: isLoading ? undefined : { total, isCapped },
+    // A failed read has no count; it never reads as no activity.
+    activityCount: isLoading || error ? undefined : { total, isCapped },
     taskCounts: useTaskStatusCounts(taskScope),
   };
 };

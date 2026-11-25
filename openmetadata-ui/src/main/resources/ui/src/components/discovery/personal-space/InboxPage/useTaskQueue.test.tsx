@@ -103,27 +103,42 @@ describe('useTaskQueue', () => {
     expect(mockListTasks).not.toHaveBeenCalled();
   });
 
-  it('lists every task about an entity', () => {
-    renderHook(() => useTaskQueue({ scope: ENTITY }));
+  // The whole request, so a scope that dropped the Status, search or cursor
+  // would fail here.
+  const CLOSED_PAGE = {
+    statusGroup: 'closed',
+    fields: 'assignees,createdBy,about,comments,payload,resolution',
+    limit: 25,
+    after: 'cur',
+    q: undefined,
+    sortOrder: 'desc',
+  };
 
-    capturedFetchPage(undefined);
+  it('lists every task about an entity, with the Status and cursor', () => {
+    const { result } = renderHook(() => useTaskQueue({ scope: ENTITY }));
 
-    expect(mockListTasks).toHaveBeenCalledWith(
-      expect.objectContaining({ aboutEntity: 'svc.db.schema.table' })
-    );
+    act(() => result.current.handleStatusChange('closed'));
+    capturedFetchPage('cur');
+
+    expect(mockListTasks).toHaveBeenCalledWith({
+      ...CLOSED_PAGE,
+      aboutEntity: 'svc.db.schema.table',
+    });
     expect(mockListVisibleTasks).not.toHaveBeenCalled();
   });
 
-  it("lists a user's assigned tasks", () => {
-    renderHook(() =>
+  it("lists a user's assigned tasks, with the Status and cursor", () => {
+    const { result } = renderHook(() =>
       useTaskQueue({ scope: { type: 'assignee', assignee: 'harsh.vador' } })
     );
 
-    capturedFetchPage(undefined);
+    act(() => result.current.handleStatusChange('closed'));
+    capturedFetchPage('cur');
 
-    expect(mockListTasks).toHaveBeenCalledWith(
-      expect.objectContaining({ assignee: 'harsh.vador' })
-    );
+    expect(mockListTasks).toHaveBeenCalledWith({
+      ...CLOSED_PAGE,
+      assignee: 'harsh.vador',
+    });
   });
 
   // Each scope keeps its own cached pages, so an entity's list never shows
@@ -181,22 +196,8 @@ describe('useTaskQueue', () => {
     mockLinkedTaskId = undefined;
   });
 
-  // A narrowed list stops at a bounded scan; "Load more" scans one more.
-  it('raises the scan cap by one scan when the cap stopped the list', () => {
-    loadedTasks = tasksOf(200);
-    const { result } = renderHook(() => useTaskQueue());
-
-    act(() => result.current.setTypeFilter(['Incident']));
-
-    expect(capturedCanLoadMore?.(loadedTasks)).toBe(false);
-
-    act(() => result.current.handleScanFurther());
-
-    expect(capturedCanLoadMore?.(tasksOf(399))).toBe(true);
-    expect(capturedCanLoadMore?.(tasksOf(400))).toBe(false);
-  });
-
-  // Tasks paged in before the narrowing can exceed the cap many times over;
+  // A narrowed list stops at a bounded scan; "Load more" scans one more. Tasks
+  // paged in before the narrowing can exceed the cap many times over;
   // one click must still scan further, not raise a cap still below them.
   it('raises the scan cap past tasks loaded before the narrowing in one click', () => {
     loadedTasks = tasksOf(1000);

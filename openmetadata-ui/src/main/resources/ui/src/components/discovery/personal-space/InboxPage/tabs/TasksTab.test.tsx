@@ -1226,6 +1226,42 @@ describe('TasksTab', () => {
     });
   });
 
+  // The glossary Review tab: an entity's tasks, never the viewer's own Inbox.
+  describe('scoped to an entity', () => {
+    const ABOUT = 'svc.db.schema.table.tc';
+
+    it('lists every task about the entity, keyed on it', async () => {
+      renderTab({ aboutEntity: ABOUT });
+
+      await capturedFetchPage(undefined);
+
+      expect(capturedQueryKey[1]).toBe(`entity:${ABOUT}`);
+      expect(mockListTasks).toHaveBeenCalledWith(
+        expect.objectContaining({ aboutEntity: ABOUT, statusGroup: 'open' })
+      );
+      expect(mockListVisibleTasks).not.toHaveBeenCalled();
+    });
+
+    it('keeps the entity scope when a user is also given', async () => {
+      renderTab({
+        aboutEntity: ABOUT,
+        user: { id: 'u1', name: 'alice' } as unknown as User,
+      });
+
+      await capturedFetchPage(undefined);
+
+      expect(capturedQueryKey[1]).toBe(`entity:${ABOUT}`);
+      expect(mockListTasks).toHaveBeenCalledTimes(1);
+      expect(mockListTasks).toHaveBeenCalledWith(
+        expect.objectContaining({ aboutEntity: ABOUT })
+      );
+      expect(mockListTasks).not.toHaveBeenCalledWith(
+        expect.objectContaining({ createdById: 'u1' })
+      );
+      expect(mockListVisibleTasks).not.toHaveBeenCalled();
+    });
+  });
+
   describe('scoped to a user', () => {
     const user = {
       id: 'u1',

@@ -57,18 +57,21 @@ jest.mock('../../common/TabsLabel/TabsLabel.component', () => ({
   ),
 }));
 
-const renderLabel = (entityLink = TABLE_LINK) => {
+const label = (isActive: boolean) => (
+  <ActivityFeedTabLabel
+    count={40}
+    entityType={EntityType.TABLE}
+    fqn="svc.db.schema.customers"
+    id="activity_feed"
+    isActive={isActive}
+    name="Activity"
+  />
+);
+
+const renderLabel = (entityLink = TABLE_LINK, isActive = true) => {
   mockEntityLink = entityLink;
 
-  return render(
-    <ActivityFeedTabLabel
-      count={40}
-      entityType={EntityType.TABLE}
-      fqn="svc.db.schema.customers"
-      id="activity_feed"
-      name="Activity"
-    />
-  );
+  return render(label(isActive));
 };
 
 describe('ActivityFeedTabLabel', () => {
@@ -127,6 +130,47 @@ describe('ActivityFeedTabLabel', () => {
     renderLabel();
 
     expect(screen.getByTestId('tab-label')).toHaveTextContent('Activity:219+');
+  });
+
+  // A page view that never opens the tab does not read the feed.
+  it("keeps the page's count until the tab is opened", () => {
+    renderLabel(TABLE_LINK, false);
+
+    expect(screen.getByTestId('tab-label')).toHaveTextContent('Activity:40');
+    expect(mockUseActivityFeedCounts).not.toHaveBeenCalled();
+  });
+
+  it('counts the feed once the tab is opened, and keeps it after leaving', () => {
+    const { rerender } = renderLabel(TABLE_LINK, false);
+
+    rerender(label(true));
+
+    expect(screen.getByTestId('tab-label')).toHaveTextContent('Activity:39');
+
+    rerender(label(false));
+
+    expect(screen.getByTestId('tab-label')).toHaveTextContent('Activity:39');
+  });
+
+  it("goes back to the page's count for another entity until its tab is opened", () => {
+    const { rerender } = renderLabel();
+    mockUseActivityFeedCounts.mockClear();
+    mockEntityLink = '<#E::table::svc.db.schema.orders>';
+
+    rerender(label(false));
+
+    expect(screen.getByTestId('tab-label')).toHaveTextContent('Activity:40');
+    expect(mockUseActivityFeedCounts).not.toHaveBeenCalled();
+  });
+
+  it('shows no count when the task counts are missing', () => {
+    mockUseActivityFeedCounts.mockReturnValue({
+      activityCount: { total: 20, isCapped: false },
+      taskCounts: { all: undefined, open: undefined, closed: undefined },
+    });
+    renderLabel();
+
+    expect(screen.getByTestId('tab-label')).toHaveTextContent('Activity:none');
   });
 
   it('shows no count until the activity arrives', () => {
