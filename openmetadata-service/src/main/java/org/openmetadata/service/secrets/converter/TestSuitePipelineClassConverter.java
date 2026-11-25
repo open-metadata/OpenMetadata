@@ -99,18 +99,30 @@ public class TestSuitePipelineClassConverter extends ClassConverter {
     }
   }
 
-  private static ServiceConnectionEntityInterface typed(String serviceName, Object connection) {
-    String connectionType = connectionType(connection);
-    ConnectionClasses classes =
-        classesFor(connectionType)
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        String.format(
-                            "Connection of service [%s] has no known connection type",
-                            serviceName)));
+  private static ServiceConnectionEntityInterface typed(
+      final String serviceName, final Object connection) {
+    final String connectionType = connectionType(connection);
+    final ConnectionClasses classes = requireConnectionClasses(serviceName, connectionType);
+    return convertConnection(serviceName, connectionType, connection, classes);
+  }
+
+  private static ConnectionClasses requireConnectionClasses(
+      final String serviceName, final String connectionType) {
+    return classesFor(connectionType)
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    String.format(
+                        "Connection of service [%s] has no known connection type", serviceName)));
+  }
+
+  private static ServiceConnectionEntityInterface convertConnection(
+      final String serviceName,
+      final String connectionType,
+      final Object connection,
+      final ConnectionClasses classes) {
     try {
-      ServiceConnectionEntityInterface typedConnection =
+      final ServiceConnectionEntityInterface typedConnection =
           JsonUtils.convertValue(connection, classes.connection());
       typedConnection.setConfig(
           ClassConverterFactory.getConverter(classes.config())

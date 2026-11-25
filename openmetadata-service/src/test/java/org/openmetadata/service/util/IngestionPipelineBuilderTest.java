@@ -156,6 +156,28 @@ class IngestionPipelineBuilderTest {
     assertTrue(decryptedJson.contains(DATABRICKS_TOKEN), decryptedJson);
   }
 
+  /** Removing or reordering connections must restore each service's own secret by serviceName. */
+  @Test
+  void removingOrReorderingTestSuiteConnectionsRestoresEachServicesOwnSecret() {
+    final SecretsManager secretsManager = dbSecretsManager();
+    final IngestionPipeline pipeline = testSuitePipeline(mysqlConnection(), databricksConnection());
+    secretsManager.encryptIngestionPipeline(pipeline);
+    final String stored = JsonUtils.pojoToJson(pipeline);
+
+    final IngestionPipeline trimmed = JsonUtils.readValue(stored, IngestionPipeline.class);
+    EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(trimmed);
+    final TestSuitePipeline trimmedConfig =
+        (TestSuitePipeline) trimmed.getSourceConfig().getConfig();
+    trimmedConfig.setServiceConnections(List.of(trimmedConfig.getServiceConnections().getLast()));
+    EntityMaskerFactory.getEntityMasker()
+        .unmaskIngestionPipeline(trimmed, JsonUtils.readValue(stored, IngestionPipeline.class));
+    secretsManager.decryptIngestionPipeline(trimmed);
+
+    final String trimmedJson = JsonUtils.pojoToJson(trimmed);
+    assertFalse(trimmedJson.contains(DATABASE_PASSWORD), trimmedJson);
+    assertTrue(trimmedJson.contains(DATABRICKS_TOKEN), trimmedJson);
+  }
+
   @Test
   void aTestSuiteConnectionOfNoKnownTypeIsRefusedWhenWritten() {
     IngestionPipeline pipeline = testSuitePipeline(unknownConnection());

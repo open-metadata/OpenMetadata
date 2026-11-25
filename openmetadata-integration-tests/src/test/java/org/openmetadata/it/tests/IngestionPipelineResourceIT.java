@@ -1805,27 +1805,14 @@ public class IngestionPipelineResourceIT
 
   /** The connections a test suite pipeline carries are masked for readers, as a service's are. */
   @Test
-  void test_testSuiteConnectionSecretsAreMaskedForReaders(TestNamespace ns) {
-    String password = "suite-password-" + ns.uniqueShortId();
-    TestSuitePipeline testSuitePipeline =
-        new TestSuitePipeline()
-            .withServiceConnections(
-                List.of(
-                    new ServiceConnections()
-                        .withServiceName("suite_mysql")
-                        .withServiceConnection(
-                            new DatabaseConnection()
-                                .withConfig(
-                                    new MysqlConnection()
-                                        .withHostPort("localhost:3306")
-                                        .withUsername("suite_user")
-                                        .withAuthType(new basicAuth().withPassword(password))))));
-    IngestionPipeline pipeline = createEntity(testSuitePipelineRequest(ns, testSuitePipeline));
-    String path = getResourcePath() + pipeline.getId();
-
-    String asAdmin =
+  void test_testSuiteConnectionSecretsAreMaskedForReaders(final TestNamespace ns) {
+    final String password = "suite-password-" + ns.uniqueShortId();
+    final IngestionPipeline pipeline =
+        createEntity(testSuitePipelineRequest(ns, mysqlTestSuiteConfig(password)));
+    final String path = getResourcePath() + pipeline.getId();
+    final String asAdmin =
         SdkClients.adminClient().getHttpClient().executeForString(HttpMethod.GET, path, null);
-    String asBot =
+    final String asBot =
         SdkClients.ingestionBotClient()
             .getHttpClient()
             .executeForString(HttpMethod.GET, path, null);
@@ -1833,6 +1820,114 @@ public class IngestionPipelineResourceIT
     assertFalse(asAdmin.contains(password), asAdmin);
     assertTrue(asAdmin.contains(PasswordEntityMasker.PASSWORD_MASK), asAdmin);
     assertTrue(asBot.contains(password), "the ingestion bot runs the suite with the stored secret");
+  }
+
+  /**
+   * An owner who sees a test suite connection's password masked must re-enter it when pointing the
+   * connection at another host.
+   */
+  @Test
+  void test_testSuiteConnectionSecretsMustBeReenteredWhenRetargeted(final TestNamespace ns)
+      throws Exception {
+    final User owner = createSuiteOwner(ns);
+    final OpenMetadataClient asOwner =
+        SdkClients.createClient(owner.getName(), owner.getEmail(), new String[] {});
+    final IngestionPipeline pipeline =
+        createEntity(
+            testSuitePipelineRequest(
+                    ns, mysqlTestSuiteConfig("suite-password-" + ns.uniqueShortId()))
+                .withOwners(List.of(owner.getEntityReference())));
+
+    assertTestSuiteRetargetPatchRefused(asOwner, pipeline);
+    assertTestSuiteRetargetPutRefused(asOwner, pipeline);
+    asOwner
+        .ingestionPipelines()
+        .patch(pipeline.getId(), replace("/sourceConfig/config/testCases", List.of("tc1")));
+    asOwner
+        .ingestionPipelines()
+        .patch(
+            pipeline.getId(),
+            JsonUtils.getObjectMapper()
+                .createArrayNode()
+                .add(
+                    replaceOp(
+                        "/sourceConfig/config/serviceConnections/0/serviceConnection/config/hostPort",
+                        "retargeted.example:3306"))
+                .add(
+                    replaceOp(
+                        "/sourceConfig/config/serviceConnections/0/serviceConnection/config/authType/password",
+                        "entered-again")));
+  }
+
+  private static User createSuiteOwner(final TestNamespace ns) {
+    final String ownerName = "suiteowner" + ns.shortPrefix();
+    return SdkClients.adminClient()
+        .users()
+        .create(new CreateUser().withName(ownerName).withEmail(ownerName + "@test.com"));
+  }
+
+  private static void assertTestSuiteRetargetPatchRefused(
+      final OpenMetadataClient asOwner, final IngestionPipeline pipeline) {
+    final OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                asOwner
+                    .ingestionPipelines()
+                    .patch(
+                        pipeline.getId(),
+                        replace(
+                            "/sourceConfig/config/serviceConnections/0/serviceConnection/config/hostPort",
+                            "elsewhere.example:3306")));
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
+  }
+
+  private static void assertTestSuiteRetargetPutRefused(
+      final OpenMetadataClient asOwner, final IngestionPipeline pipeline) {
+    final IngestionPipeline masked = asOwner.ingestionPipelines().get(pipeline.getId().toString());
+    final TestSuitePipeline maskedSuite =
+        JsonUtils.convertValue(masked.getSourceConfig().getConfig(), TestSuitePipeline.class);
+    final DatabaseConnection conn =
+        JsonUtils.convertValue(
+            maskedSuite.getServiceConnections().getFirst().getServiceConnection(),
+            DatabaseConnection.class);
+    final MysqlConnection mysql = JsonUtils.convertValue(conn.getConfig(), MysqlConnection.class);
+    conn.setConfig(mysql.withHostPort("elsewhere.example:3306"));
+    maskedSuite.getServiceConnections().getFirst().setServiceConnection(conn);
+    final CreateIngestionPipeline putRequest =
+        new CreateIngestionPipeline()
+            .withName(pipeline.getName())
+            .withPipelineType(PipelineType.TEST_SUITE)
+            .withService(pipeline.getService())
+            .withSourceConfig(new SourceConfig().withConfig(maskedSuite))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+    final OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                asOwner
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PUT,
+                        INGESTION_PIPELINES_PATH,
+                        putRequest,
+                        IngestionPipeline.class));
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
+  }
+
+  private static TestSuitePipeline mysqlTestSuiteConfig(final String password) {
+    return new TestSuitePipeline()
+        .withServiceConnections(
+            List.of(
+                new ServiceConnections()
+                    .withServiceName("suite_mysql")
+                    .withServiceConnection(
+                        new DatabaseConnection()
+                            .withConfig(
+                                new MysqlConnection()
+                                    .withHostPort("localhost:3306")
+                                    .withUsername("suite_user")
+                                    .withAuthType(new basicAuth().withPassword(password))))));
   }
 
   /** A test suite connection that cannot be typed would keep its secrets out of reach. */
@@ -2045,45 +2140,59 @@ public class IngestionPipelineResourceIT
    * readers, and kept when an edit sends the masks back.
    */
   @Test
-  void test_dbtHttpSslSecretsAreEncryptedAndMasked(TestNamespace ns) {
-    String unique = ns.uniqueShortId();
-    ValidateSSLClientConfig sslConfig =
-        new ValidateSSLClientConfig()
-            .withCaCertificate("dbt-ca-" + unique)
-            .withSslCertificate("dbt-cert-" + unique)
-            .withSslKey("dbt-key-" + unique);
-    DbtPipeline dbt =
+  void test_dbtHttpSslSecretsAreEncryptedAndMasked(final TestNamespace ns) {
+    final ValidateSSLClientConfig sslConfig = dbtSslConfig(ns.uniqueShortId());
+    final IngestionPipeline pipeline = createDbtHttpSslPipeline(ns, sslConfig);
+
+    assertDbtSslEncryptedAndMasked(pipeline.getId(), sslConfig);
+    patchDbtPipelineWithMaskedSsl(pipeline.getId());
+    assertEquals(sslConfig, botDbtSslConfig(pipeline.getId()));
+    assertHoldsNoDbtSslSecret(storedPipelineJson(pipeline.getId()), sslConfig);
+  }
+
+  private static ValidateSSLClientConfig dbtSslConfig(final String unique) {
+    return new ValidateSSLClientConfig()
+        .withCaCertificate("dbt-ca-" + unique)
+        .withSslCertificate("dbt-cert-" + unique)
+        .withSslKey("dbt-key-" + unique);
+  }
+
+  private IngestionPipeline createDbtHttpSslPipeline(
+      final TestNamespace ns, final ValidateSSLClientConfig sslConfig) {
+    final DbtPipeline dbt =
         new DbtPipeline()
             .withDbtConfigSource(
                 new DbtHttpConfig()
                     .withDbtManifestHttpPath("https://dbt.example.com/manifest.json")
                     .withDbtVerifySSL(VerifySSL.VALIDATE)
                     .withDbtSSLConfig(sslConfig));
-    IngestionPipeline pipeline =
-        createEntity(
-            createMinimalRequest(ns)
-                .withName(ns.prefix("dbt_http_ssl"))
-                .withPipelineType(PipelineType.DBT)
-                .withSourceConfig(new SourceConfig().withConfig(dbt)));
+    return createEntity(
+        createMinimalRequest(ns)
+            .withName(ns.prefix("dbt_http_ssl"))
+            .withPipelineType(PipelineType.DBT)
+            .withSourceConfig(new SourceConfig().withConfig(dbt)));
+  }
 
-    String stored = storedPipelineJson(pipeline.getId());
+  private void assertDbtSslEncryptedAndMasked(
+      final UUID pipelineId, final ValidateSSLClientConfig sslConfig) {
+    final String stored = storedPipelineJson(pipelineId);
     assertHoldsNoDbtSslSecret(stored, sslConfig);
     assertTrue(stored.contains(Fernet.FERNET_PREFIX), "Stored certificates must be encrypted");
-    IngestionPipeline asAdmin = SdkClients.adminClient().ingestionPipelines().get(pipeline.getId());
-    String asAdminJson = JsonUtils.pojoToJson(asAdmin);
+    final IngestionPipeline asAdmin = SdkClients.adminClient().ingestionPipelines().get(pipelineId);
+    final String asAdminJson = JsonUtils.pojoToJson(asAdmin);
     assertHoldsNoDbtSslSecret(asAdminJson, sslConfig);
     assertTrue(asAdminJson.contains(PasswordEntityMasker.PASSWORD_MASK), asAdminJson);
-    assertEquals(sslConfig, botDbtSslConfig(pipeline.getId()));
+    assertEquals(sslConfig, botDbtSslConfig(pipelineId));
+  }
 
-    DbtPipeline maskedDbt =
+  private static void patchDbtPipelineWithMaskedSsl(final UUID pipelineId) {
+    final IngestionPipeline asAdmin = SdkClients.adminClient().ingestionPipelines().get(pipelineId);
+    final DbtPipeline maskedDbt =
         JsonUtils.convertValue(asAdmin.getSourceConfig().getConfig(), DbtPipeline.class)
             .withDbtUpdateDescriptions(true);
-    ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    final ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
     patch.add(replaceOp("/sourceConfig", new SourceConfig().withConfig(maskedDbt)));
-    SdkClients.adminClient().ingestionPipelines().patch(pipeline.getId(), patch);
-
-    assertEquals(sslConfig, botDbtSslConfig(pipeline.getId()));
-    assertHoldsNoDbtSslSecret(storedPipelineJson(pipeline.getId()), sslConfig);
+    SdkClients.adminClient().ingestionPipelines().patch(pipelineId, patch);
   }
 
   private static void assertHoldsNoDbtSslSecret(String json, ValidateSSLClientConfig sslConfig) {
