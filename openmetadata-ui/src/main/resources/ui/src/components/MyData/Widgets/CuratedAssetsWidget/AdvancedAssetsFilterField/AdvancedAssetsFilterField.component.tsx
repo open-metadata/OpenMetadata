@@ -69,9 +69,8 @@ export const AdvancedAssetsFilterField = ({
     return getExploreURLForAdvancedFilter({
       queryFilter,
       selectedResource,
-      config,
     });
-  }, [queryFilter, config, selectedResource]);
+  }, [queryFilter, selectedResource]);
 
   // The provider holds an ImmutableTree; the builder takes a plain JsonTree.
   const treeJson = useMemo(() => QbUtils.getTree(treeInternal), [treeInternal]);

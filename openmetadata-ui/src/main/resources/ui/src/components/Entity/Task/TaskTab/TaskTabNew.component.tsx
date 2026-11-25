@@ -163,6 +163,7 @@ import {
   isApproveTransition,
   isRejectTransition,
 } from '../../../discovery/personal-space/InboxPage/taskList.utils';
+import { rankByIncidentStage } from '../../../discovery/personal-space/InboxPage/taskResolve.utils';
 import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
 import LifecycleApprovalCard from '../LifecycleApprovalCard/LifecycleApprovalCard';
 import { getLifecycleMove } from '../LifecycleApprovalCard/LifecycleApprovalCard.utils';
@@ -448,15 +449,24 @@ export const TaskTabNew = ({
         : task.availableTransitions,
     [hasVoted, task.availableTransitions]
   );
+  const defaultTransition = useMemo(
+    () =>
+      (rankByIncidentStage(
+        availableTransitions ?? [],
+        (transition) => transition.targetStageId,
+        task.workflowStageId
+      ) ?? availableTransitions)?.[0],
+    [availableTransitions, task.workflowStageId]
+  );
   const [selectedTransitionId, setSelectedTransitionId] = useState<
     string | undefined
-  >(availableTransitions?.[0]?.id);
+  >(defaultTransition?.id);
   const selectedTransition = useMemo(
     () =>
       availableTransitions?.find(
         (transition) => transition.id === selectedTransitionId
-      ) ?? availableTransitions?.[0],
-    [selectedTransitionId, availableTransitions]
+      ) ?? defaultTransition,
+    [selectedTransitionId, availableTransitions, defaultTransition]
   );
   const activeTaskFormSchema = useMemo(() => {
     if (!taskFormSchema || !isWorkflowDrivenTask) {
@@ -1518,8 +1528,8 @@ export const TaskTabNew = ({
   }, [task.category, task.type, task.taskFormSchemaId, task.payload]);
 
   useEffect(() => {
-    setSelectedTransitionId(availableTransitions?.[0]?.id);
-  }, [availableTransitions, task.id]);
+    setSelectedTransitionId(defaultTransition?.id);
+  }, [defaultTransition, task.id]);
 
   useEffect(() => {
     setEditablePayload(initialFormValue.payload);
