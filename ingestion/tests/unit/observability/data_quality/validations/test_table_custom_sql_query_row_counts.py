@@ -274,7 +274,7 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.compute_row_count"
     )
     def test_equal_operator_success(self, mock_compute_row_count, mock_run_results, mock_get_runtime_params):
-        """Test == operator when test passes: no row is in excess, so none failed"""
+        """Test == operator when test passes: the returned rows are the failed rows, as for <="""
         self.mock_test_case.parameterValues = self._create_mock_param_values("==", 10)
         mock_run_results.return_value = 10
         mock_compute_row_count.return_value = 1000
@@ -283,8 +283,8 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         result = self.validator.run_validation()
 
         self.assertEqual(result.testCaseStatus, TestCaseStatus.Success)
-        self.assertEqual(result.passedRows, 1000)
-        self.assertEqual(result.failedRows, 0)
+        self.assertEqual(result.passedRows, 990)
+        self.assertEqual(result.failedRows, 10)
 
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.get_runtime_parameters"

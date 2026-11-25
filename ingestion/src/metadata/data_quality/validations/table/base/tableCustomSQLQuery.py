@@ -231,14 +231,11 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         if operator in (">", ">="):
             passed_rows = len_rows
             failed_rows = (row_count - len_rows) if row_count else 0
-        elif operator in ("<", "<="):
+        elif operator in ("<", "<=", "=="):
+            # The query returns the rows that break the rule (the failed rows sample stores the
+            # same rows), so they stay failed even when their count passes the threshold.
             passed_rows = (row_count - len_rows) if row_count else 0
             failed_rows = len_rows
-        elif operator == "==":
-            # The query returned exactly the expected count, so no row is in excess
-            # (the failure path counts the excess over the threshold as failed).
-            passed_rows = row_count if row_count else len_rows
-            failed_rows = 0
         else:
             passed_rows = len_rows
             failed_rows = 0
