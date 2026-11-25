@@ -307,6 +307,22 @@ def test_azuresql_get_data_diff_url_carries_connection_options():
     assert result["MultiSubnetFailover"] == "Yes"
 
 
+def test_azuresql_connection_options_with_empty_values_are_dropped():
+    """The rendered URL skipped empty-valued options; the dict must too.
+
+    Otherwise pyodbc receives a bare `Key=` it never got before the dict path.
+    """
+    db_service = azuresql_service()
+    db_service.connection.config.connectionOptions = ConnectionOptions(
+        root={"ApplicationIntent": "ReadOnly", "MultiSubnetFailover": ""}
+    )
+
+    result = AzureSQLTableParameter().get_data_diff_url(db_service, "azuresql_service.my_db.my_schema.my_table")
+
+    assert result["ApplicationIntent"] == "ReadOnly"
+    assert "MultiSubnetFailover" not in result
+
+
 def test_azuresql_connection_options_cannot_override_the_derived_keys():
     """Derived essentials and the authentication-mode keywords are authoritative.
 
