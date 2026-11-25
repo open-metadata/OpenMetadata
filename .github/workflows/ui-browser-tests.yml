@@ -416,7 +416,7 @@ jobs:
 
   # GitHub emails only the last person to edit the schedule when a scheduled
   # run fails. A failed full run on main is how a selection miss surfaces, so
-  # it goes to Slack.
+  # it goes to #pw-health, with the daily Playwright report.
   notify:
     needs: [select, browser-tests, browser-tests-report]
     if: ${{ always() && github.event_name == 'schedule' && contains(needs.*.result, 'failure') }}
@@ -430,10 +430,10 @@ jobs:
         uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         with:
           method: chat.postMessage
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
           errors: true
           payload: |
             {
-              "channel": "C03DGRKFH1D",
+              "channel": "C0C008ZAK0V",
               "text": "🔥 *UI Browser Tests* full run failed on `main`: a pull request may have merged a regression its browser-test selection missed.\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }

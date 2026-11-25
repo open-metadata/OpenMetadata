@@ -5,7 +5,7 @@
 - **Deciders:** Chirag Madlani
 - **Guard:** `scripts/select-browser-tests.test.mjs` (selection rules); `ui-browser-tests.yml` (pull requests
   and merge-queue entries select; the scheduled run on main runs every test file and reports a failure to
-  Slack)
+  #pw-health)
 - **Related:** open-metadata/OpenMetadata#38673, #38679,
   ADR:2026-10-28-page-behaviour-is-tested-in-vitest-browser-mode-and-e2e-tests-leave-by-marking;
   supersedes ADR:2026-11-23-browser-tests-run-by-impact-on-pull-requests-and-in-full-in-the-merge-queue
@@ -39,7 +39,7 @@ costs a full run per merge.
 - Core components are treated like a library: a change there runs core's own tests and build, not the
   browser tests.
 - Only main runs every test file: every 6 hours, skipped when no UI file changed since the last passing
-  full run, and on demand (`workflow_dispatch`). A failed scheduled run posts to Slack, since GitHub emails
+  full run, and on demand (`workflow_dispatch`). A failed scheduled run posts to #pw-health, since GitHub emails
   only the last person to edit the schedule.
 - If selection itself fails, the reporting check fails rather than being skipped, since a skipped required
   check would pass with no tests run.
@@ -47,7 +47,7 @@ costs a full run per merge.
 ## Consequences
 UI pull requests run a fraction of the suite. A selection miss, including a core change that breaks the
 app, passes the pull request and the merge queue, lands on main, and fails the next scheduled full run (up
-to 6 hours later), which posts to Slack.
+to 6 hours later), which posts to #pw-health.
 
 Two known gaps in map freshness, each fixed by the next full run, and neither able to hide a test (a test
 missing from the map always runs):
