@@ -56,7 +56,9 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
   const isAsync = Boolean(useAsyncSearch && asyncFetch);
   const [searchText, setSearchText] = useState('');
   const filteredItems = staticItems.filter((item) =>
-    item.label.toLocaleLowerCase().includes(searchText.toLocaleLowerCase())
+    String(item.label ?? '')
+      .toLocaleLowerCase()
+      .includes(searchText.toLocaleLowerCase())
   );
   // Seed with the current value as a placeholder so the widget shows something while the async fetch is in-flight.
   const [items, setItems] = useState<SelectItemType[]>(() => {

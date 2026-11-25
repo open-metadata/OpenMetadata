@@ -41,6 +41,40 @@ const renderTable = (props: Partial<Parameters<typeof Table>[0]> = {}) =>
 const firstCell = () =>
   screen.getAllByRole('row')[1].querySelector('td, th') as HTMLElement;
 
+const renderLabelledHead = (wrapLabel?: boolean) =>
+  render(
+    <Table aria-label="label-table">
+      <Table.Header>
+        <Table.Head isRowHeader id="name" label="Name" wrapLabel={wrapLabel} />
+      </Table.Header>
+      <Table.Body>
+        <Table.Row id="r1">
+          <Table.Cell>alpha</Table.Cell>
+        </Table.Row>
+      </Table.Body>
+    </Table>
+  );
+
+describe('Table.Head wrapLabel', () => {
+  it('keeps the label on one line by default', () => {
+    renderLabelledHead();
+
+    expect(screen.getByText('Name')).toHaveClass('tw:whitespace-nowrap');
+  });
+
+  // A width-capped column must wrap its header, or it spills into the next one.
+  it('wraps the label and lets its wrappers shrink when wrapLabel is set', () => {
+    renderLabelledHead(true);
+
+    const label = screen.getByText('Name');
+
+    expect(label).not.toHaveClass('tw:whitespace-nowrap');
+    expect(label).toHaveClass('tw:whitespace-normal', 'tw:wrap-anywhere');
+    expect(label.parentElement).toHaveClass('tw:min-w-0');
+    expect(label.parentElement?.parentElement).toHaveClass('tw:min-w-0');
+  });
+});
+
 describe('Table header accessibility', () => {
   it('names the columnheader from its title content', () => {
     renderTable();

@@ -55,8 +55,7 @@ export interface TestCaseIncidentGroup {
      */
     incidentCount: number;
     /**
-     * Timestamp of the most recent status change across the group's open incidents. Not used
-     * for the `trend` bucket span, which runs over the incident open times.
+     * Timestamp of the most recent status change across the group's open incidents.
      */
     lastSeen?: number;
     /**
@@ -98,15 +97,25 @@ export interface TestCaseIncidentGroup {
      */
     testDefinitions?: EntityReference[];
     /**
-     * Number of incidents opened in each of 8 equal time buckets spanning the group's earliest
-     * incident open time to its latest incident open time (`firstSeen` to `max(createdAt)`).
-     * `lastSeen` is a status-change timestamp, not a bucket boundary.
+     * Open-incident counts at 9 equally spaced instants from trendStart to trendEnd (the last 7
+     * days). Includes incidents resolved since the start and incidents already open at the
+     * start. Uses current group membership, domain, test, assignee and severity filters; status
+     * and incident-date filters select rows but do not narrow this history. Retained history of
+     * non-deleted test cases only.
      */
     trend?: number[];
     /**
-     * Direction of the incident-creation trend for the group.
+     * Change from the first to the last open-incident count: Rising, Falling or Steady.
      */
     trendDirection?: IncidentTrendDirection;
+    /**
+     * End of the open-incident history window, in milliseconds since epoch.
+     */
+    trendEnd?: number;
+    /**
+     * Beginning of the open-incident history window, in milliseconds since epoch.
+     */
+    trendStart?: number;
 }
 
 /**
@@ -213,10 +222,10 @@ export interface IncidentStatusCount {
 }
 
 /**
- * Direction of the incident-creation trend for the group.
+ * Change from the first to the last open-incident count: Rising, Falling or Steady.
  *
- * Direction of the group's incident-creation trend, comparing the second half of the
- * `trend` buckets against the first half.
+ * Change in the group's open-incident count from the first to the last sample of the trend
+ * window.
  */
 export enum IncidentTrendDirection {
     Falling = "Falling",

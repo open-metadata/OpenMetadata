@@ -48,6 +48,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.status import Status
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import ManualProgress
 from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.profiler.metrics.system.system import (
@@ -799,6 +800,39 @@ class TestGetTableEntities:
         fetcher.metadata.list_all_entities.return_value = iter([REVENUE_VIEW])
 
         assert list(fetcher._get_table_entities(PROD_DB)) == ([] if filtered else [REVENUE_VIEW])
+
+    def test_unparseable_table_is_skipped_and_recorded_as_failed(self):
+        """A table the client cannot parse (here, a certification served without the
+        expiryDate the model requires) is reported, and the rest are profiled."""
+        broken = ORDERS_TABLE.model_dump(mode="json", exclude_none=True)
+        broken.update(
+            id=str(uuid.uuid4()),
+            name="broken",
+            fullyQualifiedName="my_service.prod.finance.broken",
+            certification={
+                "tagLabel": {
+                    "tagFQN": "Certification.Gold",
+                    "source": "Classification",
+                    "labelType": "Manual",
+                    "state": "Confirmed",
+                },
+                "appliedDate": 1700000000000,
+            },
+        )
+        ometa = object.__new__(OpenMetadata)
+        ometa._use_raw_data = False
+        ometa.client = MagicMock()
+        ometa.client.get.return_value = {
+            "data": [ORDERS_TABLE.model_dump(mode="json", exclude_none=True), broken],
+            "paging": {"total": 2},
+        }
+        fetcher = _make_fetcher()
+        fetcher.metadata = ometa
+
+        profiled = [table.fullyQualifiedName.root for table in fetcher._get_table_entities(PROD_DB)]
+
+        assert profiled == ["my_service.prod.finance.orders"]
+        assert [failure.name for failure in fetcher.status.failures] == ["my_service.prod.finance.broken"]
 
 
 class TestFetch:

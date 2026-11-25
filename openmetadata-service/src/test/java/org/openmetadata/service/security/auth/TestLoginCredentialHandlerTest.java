@@ -14,6 +14,7 @@ package org.openmetadata.service.security.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -38,6 +39,7 @@ import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.system.TestLoginCredentialsRequest;
 import org.openmetadata.schema.system.TestLoginResult;
 import org.openmetadata.schema.system.TestLoginStage;
 import org.openmetadata.schema.system.TestLoginStageResult;
@@ -85,6 +87,31 @@ class TestLoginCredentialHandlerTest {
   @AfterAll
   static void stopDirectory() {
     directory.shutDown(true);
+  }
+
+  @Test
+  void unexpectedCredentialFailureCompletesTheSessionAndRemovesSecrets() {
+    SecurityConfiguration config = candidate(ldap(LOOKUP_PASSWORD), openAuthorizer());
+    config
+        .getAuthenticationConfiguration()
+        .getLdapConfiguration()
+        .setAuthRolesMapping("{not-json-secret");
+    InMemoryTestLoginSessionStore store = new InMemoryTestLoginSessionStore();
+    TestLoginRoundTrip roundTrip = new TestLoginRoundTrip(store);
+    var session = roundTrip.start("admin", config);
+    TestLoginResult result =
+        roundTrip.submitCredentials(
+            "admin",
+            new TestLoginCredentialsRequest()
+                .withTestSessionId(session.getTestSessionId())
+                .withEmail("alice@example.com")
+                .withPassword(ALICE_PASSWORD));
+    assertEquals(TestLoginResult.Status.FAILED, result.getStatus());
+    assertFalse(result.getErrors().toString().contains("not-json-secret"));
+    assertNull(store.find(session.getTestSessionId()).orElseThrow().candidate());
+    assertEquals(
+        TestLoginResult.Status.FAILED,
+        roundTrip.result("admin", session.getTestSessionId()).getStatus());
   }
 
   @Test

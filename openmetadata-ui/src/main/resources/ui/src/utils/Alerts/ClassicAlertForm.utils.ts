@@ -33,6 +33,7 @@ export const getClassicAlertInitialValues = (
   provider: alert.provider,
   owners: alert.owners,
   notificationTemplate: alert.notificationTemplate,
+  enabled: alert.enabled ?? true,
 });
 
 /**

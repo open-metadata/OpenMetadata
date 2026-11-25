@@ -23,7 +23,9 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -93,8 +95,7 @@ public class SamlSettingsHolder {
     samlData.put(
         SettingsBuilder.IDP_SINGLE_LOGOUT_SERVICE_BINDING_PROPERTY_KEY,
         "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect");
-    samlData.put(
-        SettingsBuilder.IDP_X509CERT_PROPERTY_KEY, samlConfig.getIdp().getIdpX509Certificate());
+    putIdpCertificates(samlData, samlConfig.getIdp().getIdpX509Certificate());
 
     // Security Settings
     SamlSecurityConfig securityConfig = samlConfig.getSecurity();
@@ -124,6 +125,20 @@ public class SamlSettingsHolder {
     putSpCredentials(samlData, samlConfig.getSp(), securityConfig);
     samlData.put(SettingsBuilder.UNIQUE_ID_PREFIX_PROPERTY_KEY, "OPENMETADATA_");
     return new SettingsBuilder().fromValues(samlData).build();
+  }
+
+  private static void putIdpCertificates(Map<String, Object> samlData, String pem)
+      throws CertificateException {
+    if (!CommonUtil.nullOrEmpty(pem)) {
+      // Runtime keys are explicitly pinned. Expiry must not turn a later restart into a server
+      // outage; validity is checked when validating new settings. Remove retired keys explicitly.
+      // ADR:2026-11-20-saml-runtime-trust-preserves-configured-signing-keys
+      final List<X509Certificate> certificates = SamlCertificates.parse(pem);
+      samlData.put(SettingsBuilder.IDP_X509CERT_PROPERTY_KEY, certificates.getFirst());
+      for (int i = 0; i < certificates.size(); i++) {
+        samlData.put(SettingsBuilder.IDP_X509CERTMULTI_PROPERTY_KEY + "." + i, certificates.get(i));
+      }
+    }
   }
 
   /**

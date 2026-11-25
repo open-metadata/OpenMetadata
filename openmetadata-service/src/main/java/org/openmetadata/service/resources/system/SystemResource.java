@@ -1289,20 +1289,23 @@ public class SystemResource {
     try {
       SecurityConfigurationManager.getInstance().reloadSecuritySystem();
     } catch (AuthenticationException notApplied) {
-      throw refusalOf(written, previous, ExceptionUtils.getRootCauseMessage(notApplied));
+      throw refusalOf(written, stored, previous, ExceptionUtils.getRootCauseMessage(notApplied));
     }
   }
 
   /**
-   * Puts {@code previous} back over {@code written}, a save this server could not apply, but only
-   * while the rows still hold it, and answers for what is left: 400 when it was put back, 412 when
-   * another save replaced it meanwhile and was kept, 500 when putting it back failed and the
-   * refused configuration may still be stored.
+   * Undoes {@code written}, a save this server could not apply, but only while the rows still hold
+   * it, and answers for what is left: 400 when it was undone, 412 when another save replaced it
+   * meanwhile and was kept, 500 when undoing it failed and the refused configuration may still be
+   * stored.
    */
   private WebApplicationException refusalOf(
-      StoredSecurityConfiguration written, SecurityConfiguration previous, String reason) {
+      final StoredSecurityConfiguration written,
+      final StoredSecurityConfiguration stored,
+      final SecurityConfiguration previous,
+      final String reason) {
     try {
-      systemRepository.updateSecurityConfigurationIfCurrent(previous, written);
+      putBack(written, stored, previous);
     } catch (PreconditionFailedException savedMeanwhile) {
       LOG.warn(
           "Kept a security configuration saved while one that could not be applied ({}) was in"
@@ -1330,6 +1333,22 @@ public class SystemResource {
     }
     return new BadRequestException(
         "The security configuration could not be applied, so it was not saved: " + reason);
+  }
+
+  /**
+   * Puts the rows {@code written} replaced back as they were read. When a row was missing there
+   * were none to put back, so the configuration this server runs, {@code previous}, is stored as
+   * any other write is.
+   */
+  private void putBack(
+      final StoredSecurityConfiguration written,
+      final StoredSecurityConfiguration stored,
+      final SecurityConfiguration previous) {
+    if (stored == null) {
+      systemRepository.updateSecurityConfigurationIfCurrent(previous, written);
+    } else {
+      systemRepository.restoreSecurityConfigurationIfCurrent(stored, written);
+    }
   }
 
   /**

@@ -125,7 +125,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "pattern": "^(username|email):[a-zA-Z0-9_-]+$"
+        "pattern": "^(username|email):[^\\s]+$"
       }
     },
     "emailClaim": {
@@ -378,7 +378,7 @@
               "deprecated": true
             },
             "idpX509Certificate": {
-              "description": "X509 Certificate ",
+              "description": "IdP signing certificate(s): a PEM certificate or concatenated PEM bundle; a single base64 DER certificate is also accepted. Saving requires at least one currently valid certificate. At runtime every configured certificate is trusted, including expired and future rollover ones, so remove a retired key explicitly.",
               "type": "string"
             },
             "nameId": {
@@ -433,7 +433,7 @@
           "type": "object",
           "properties": {
             "strictMode": {
-              "description": "Only accept valid signed and encrypted assertions if the relevant flags are set",
+              "description": "Enable strict SAML protocol checks and the Want Messages Signed / Want Assertions Signed policies. Require Encrypted Assertions applies independently of strict mode.",
               "type": "boolean",
               "default": false
             },
@@ -474,7 +474,7 @@
               "default": false
             },
             "wantAssertionEncrypted": {
-              "description": "SP requires the assertion received to be encrypted.",
+              "description": "Reject plaintext assertions even when Strict Mode is off. Optional and disabled by default. Requires an SP private key and matching certificate; configure token encryption at the IdP too. Providing an SP key alone does not require encryption.",
               "type": "boolean",
               "default": false
             },
@@ -515,7 +515,7 @@
               "deprecated": true
             },
             "idpX509Certificate": {
-              "description": "X509 Certificate ",
+              "description": "IdP signing certificate(s): a PEM certificate or concatenated PEM bundle; a single base64 DER certificate is also accepted. Saving requires at least one currently valid certificate. At runtime every configured certificate is trusted, including expired and future rollover ones, so remove a retired key explicitly.",
               "type": "string"
             },
             "nameId": {
@@ -570,7 +570,7 @@
           "type": "object",
           "properties": {
             "strictMode": {
-              "description": "Only accept valid signed and encrypted assertions if the relevant flags are set",
+              "description": "Enable strict SAML protocol checks and the Want Messages Signed / Want Assertions Signed policies. Require Encrypted Assertions applies independently of strict mode.",
               "type": "boolean",
               "default": false
             },
@@ -611,7 +611,7 @@
               "default": false
             },
             "wantAssertionEncrypted": {
-              "description": "SP requires the assertion received to be encrypted.",
+              "description": "Reject plaintext assertions even when Strict Mode is off. Optional and disabled by default. Requires an SP private key and matching certificate; configure token encryption at the IdP too. Providing an SP key alone does not require encryption.",
               "type": "boolean",
               "default": false
             },
