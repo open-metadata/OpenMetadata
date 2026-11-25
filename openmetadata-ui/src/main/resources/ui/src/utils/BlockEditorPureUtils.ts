@@ -230,11 +230,20 @@ const markdownConverter = new Marked({
       tokenizer(source) {
         const match = /^:[a-zA-Z0-9_+-]+:/.exec(source);
 
-        return match ? { type: 'emoji', raw: match[0] } : undefined;
+        if (!match) {
+          return undefined;
+        }
+
+        // A shortcode renders as one paragraph; only its inline content is needed.
+        const html = emojiConverter.makeHtml(match[0]).slice(3, -4);
+
+        // Unknown shortcodes can contain URL schemes; leave them to Marked's autolinker.
+        return html === match[0]
+          ? undefined
+          : { type: 'emoji', raw: match[0], html };
       },
       renderer(token) {
-        // A shortcode renders as one paragraph; only its inline content is needed.
-        return emojiConverter.makeHtml(token.raw).slice(3, -4);
+        return token.html;
       },
     },
   ],
