@@ -261,17 +261,70 @@ describe('GlobalSearchModal', () => {
       jest.advanceTimersByTime(400);
     });
 
-    expect(screen.getByTestId('explore-quick-filters')).toBeInTheDocument();
-
+    // Pick an owner filter on the Data assets tab, then hand off.
+    fireEvent.click(screen.getByTestId('explore-quick-filters'));
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+    });
     fireEvent.click(screen.getByTestId('global-search-footer-action'));
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      expect.stringContaining('search=customer')
-    );
-    expect(mockNavigate).toHaveBeenCalledWith(
-      expect.stringContaining('sort=_score')
-    );
+    const url = decodeURIComponent(mockNavigate.mock.calls[0][0]);
+
+    expect(url).toContain('search=customer');
+    expect(url).toContain('sort=_score');
+    expect(url).toContain('quickFilter=');
+    expect(url).toContain('"nobody"');
     expect(useGlobalSearchStore.getState().isOpen).toBe(false);
+  });
+
+  it('moves down the list with the arrows and opens the row with Enter', async () => {
+    useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
+    renderModal();
+    await type('customer');
+
+    // Option 0 is the query action; the rows follow it.
+    press('ArrowDown');
+    press('ArrowDown');
+    press('Enter');
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining('customer_orders')
+    );
+  });
+
+  it('previews a data asset on the first Enter and opens it on the second', async () => {
+    useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
+    renderModal();
+    await type('customer');
+    press('Tab');
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+    });
+
+    press('ArrowDown');
+    press('Enter');
+
+    expect(screen.getByTestId('global-search-summary')).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    press('Enter');
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining('customer')
+    );
+  });
+
+  it('leaves Enter to an IME while it is composing', async () => {
+    useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
+    renderModal();
+    await type('customer');
+
+    press('ArrowDown');
+    press('Enter', { isComposing: true });
+    press('Escape', { isComposing: true });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(screen.getByTestId('global-search-input')).toHaveValue('customer');
   });
 
   it('puts the plugin query action first and runs it with ⌘↵', async () => {
@@ -289,7 +342,7 @@ describe('GlobalSearchModal', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/?prompt=customer');
   });
 
-  it('opens scoped to the source that takes ⌥⌘K and closes on Backspace', async () => {
+  it('opens scoped to the source that takes ⌥⌘K and stays open on Backspace', async () => {
     renderModal();
 
     await act(async () => {
@@ -315,7 +368,13 @@ describe('GlobalSearchModal', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('global-search-everything')).toBeInTheDocument();
 
+    // Holding Backspace to clear the text keeps firing on the empty input.
     press('Backspace');
+    press('Backspace', { repeat: true });
+
+    expect(useGlobalSearchStore.getState().isOpen).toBe(true);
+
+    press('Escape');
 
     expect(useGlobalSearchStore.getState().isOpen).toBe(false);
   });
@@ -347,6 +406,10 @@ describe('GlobalSearchModal', () => {
       await new Promise((resolve) => requestAnimationFrame(resolve));
     });
 
+    expect(screen.getByTestId('global-search-tab-domain')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
     expect(screen.getByTestId('global-search-input')).toHaveFocus();
   });
 

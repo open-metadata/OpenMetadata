@@ -12,9 +12,10 @@
  */
 import { FeaturedIcon } from '@openmetadata/ui-core-components';
 import { ClipboardCheck } from '@openmetadata/ui-core-components/icons';
-import { get, isString, startCase } from 'lodash';
+import { get, isString } from 'lodash';
 import { useEffect, useRef, useState } from 'react';
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
+import { SORT_ORDER } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { TaskStatus, TaskType } from '../../../../generated/entity/tasks/task';
@@ -30,6 +31,7 @@ import { getEntityNameLabel } from '../../../../utils/EntityNameUtils';
 import Fqn from '../../../../utils/Fqn';
 import { t } from '../../../../utils/i18next/LocalUtil';
 import searchClassBase from '../../../../utils/SearchClassBase';
+import { getTaskTypeLabelKey } from '../../../discovery/personal-space/InboxPage/taskLabel.utils';
 import {
   INBOX_TASK_ID_PARAM,
   PERSONAL_SPACE_ROUTES,
@@ -40,6 +42,7 @@ import {
   ALL_TAB_OTHER_ROWS,
   ASSETS_CATEGORY,
   BREADCRUMB_SEPARATOR,
+  DEFAULT_ASSET_SORT,
   GLOBAL_SEARCH_DEBOUNCE_MS,
   TASKS_CATEGORY,
 } from './GlobalSearch.constants';
@@ -118,7 +121,7 @@ const toTaskRow = (task: Task): GlobalSearchRow => ({
   meta: [
     task.taskId,
     task.createdBy?.displayName ?? task.createdBy?.name,
-    startCase(task.type),
+    t(getTaskTypeLabelKey(task.type)),
     task.createdAt ? getRelativeTime(task.createdAt) : '',
   ]
     .filter(Boolean)
@@ -191,6 +194,7 @@ const pageSizeFor = (
   });
 
 const fetchAssets = async (params: GlobalSearchQuery, signal: AbortSignal) => {
+  const isAssetsTab = params.filter === ASSETS_CATEGORY;
   const res = await searchQuery({
     query: params.query,
     searchIndex: SearchIndex.DATA_ASSET,
@@ -199,11 +203,10 @@ const fetchAssets = async (params: GlobalSearchQuery, signal: AbortSignal) => {
     trackTotalHits: true,
     // Facets belong to the active tab; another type's filters must not
     // narrow the asset count.
-    queryFilter: getFacetQueryFilter(
-      params.filter === ASSETS_CATEGORY ? params.facets : {}
-    ),
-    sortField: params.sort,
-    sortOrder: params.sortOrder,
+    queryFilter: getFacetQueryFilter(isAssetsTab ? params.facets : {}),
+    // The sort control lives on the Data assets tab only.
+    sortField: isAssetsTab ? params.sort : DEFAULT_ASSET_SORT,
+    sortOrder: isAssetsTab ? params.sortOrder : SORT_ORDER.DESC,
     signal,
   });
 
@@ -242,13 +245,18 @@ const fetchEntityType = async (
   };
 };
 
-const fetchTasks = async (params: GlobalSearchQuery) => {
-  const res = await listTasks({
-    q: params.query,
-    status: params.taskStatus,
-    type: params.taskType,
-    limit: pageSizeFor(TASKS_CATEGORY, params.filter),
-  });
+const fetchTasks = async (params: GlobalSearchQuery, signal: AbortSignal) => {
+  // The task filters live on the Tasks tab only.
+  const isTasksTab = params.filter === TASKS_CATEGORY;
+  const res = await listTasks(
+    {
+      q: params.query,
+      status: isTasksTab ? params.taskStatus : undefined,
+      type: isTasksTab ? params.taskType : undefined,
+      limit: pageSizeFor(TASKS_CATEGORY, params.filter),
+    },
+    signal
+  );
 
   return {
     count: res.paging?.total ?? res.data.length,
@@ -269,10 +277,12 @@ const fetchEntityCategories = async (
     searchEntityTypeCounts({
       query: params.query,
       searchIndex: [SearchIndex.DATA_ASSET],
+      signal,
     }),
     searchEntityTypeCounts({
       query: params.query,
       searchIndex: [SearchIndex.ALL],
+      signal,
     }),
   ]);
   const assetTypes = new Set(
@@ -307,15 +317,48 @@ const fetchEntityCategories = async (
   );
 };
 
-const fetchAll = async (
-  params: GlobalSearchQuery,
-  signal: AbortSignal
-): Promise<{ results: GlobalSearchResults; failed: boolean }> => {
-  const sources = params.scopedSources
+interface FetchOutcome {
+  results: GlobalSearchResults;
+  /** At least one request failed. */
+  failed: boolean;
+}
+
+const getSearchedSources = (params: GlobalSearchQuery) =>
+  params.scopedSources
     ? params.sources.filter((source) =>
         params.scopedSources?.includes(source.key)
       )
     : params.sources;
+
+/** Refetches only the open tab's type, e.g. after a filter or sort change. */
+const fetchActiveCategory = async (
+  params: GlobalSearchQuery,
+  signal: AbortSignal
+): Promise<FetchOutcome> => {
+  const { filter } = params;
+  const source = params.sources.find((item) => item.key === filter);
+  const fetchers: Record<string, () => Promise<GlobalSearchSection>> = {
+    [ASSETS_CATEGORY]: () => fetchAssets(params, signal),
+    [TASKS_CATEGORY]: () => fetchTasks(params, signal),
+  };
+  const fetchSection =
+    fetchers[filter] ??
+    (source
+      ? () => source.search(params.query, signal)
+      : () => fetchEntityType(filter, params, signal));
+
+  try {
+    return { results: { [filter]: await fetchSection() }, failed: false };
+  } catch {
+    return { results: {}, failed: true };
+  }
+};
+
+const fetchAll = async (
+  params: GlobalSearchQuery,
+  signal: AbortSignal
+): Promise<FetchOutcome> => {
+  const sources = getSearchedSources(params);
   const jobs: Promise<[GlobalSearchCategory, GlobalSearchSection][]>[] = [
     ...sources.map((source) =>
       source
@@ -328,7 +371,7 @@ const fetchAll = async (
   if (!params.scopedSources) {
     jobs.push(fetchEntityCategories(params, signal));
     jobs.push(
-      fetchTasks(params).then((section) => [[TASKS_CATEGORY, section]])
+      fetchTasks(params, signal).then((section) => [[TASKS_CATEGORY, section]])
     );
   }
   const settled = await Promise.allSettled(jobs);
@@ -343,14 +386,33 @@ const fetchAll = async (
 
   return {
     results,
-    failed: settled.every((result) => result.status === 'rejected'),
+    failed: settled.some((result) => result.status === 'rejected'),
   };
 };
 
 /**
+ * A failed load shows the error, not an empty state: whenever something failed
+ * and what the user is looking at came back empty.
+ */
+export const isFailedView = (
+  outcome: FetchOutcome,
+  filter: GlobalSearchFilter
+) => {
+  const visible =
+    filter === 'all'
+      ? Object.values(outcome.results)
+      : [outcome.results[filter]].filter(Boolean);
+
+  return (
+    outcome.failed &&
+    visible.every((section) => !section || section.count === 0)
+  );
+};
+
+/**
  * Fetches every result type for the query, debounced. Each type settles on its
- * own so one failing source doesn't blank the others; the error state shows
- * only when all of them fail.
+ * own so one failing source doesn't blank the others. Once a query has loaded,
+ * a tab, filter or sort change on a type tab refetches only that type.
  */
 export const useGlobalSearchResults = (params: GlobalSearchQuery) => {
   const [results, setResults] = useState<GlobalSearchResults>({});
@@ -373,11 +435,15 @@ export const useGlobalSearchResults = (params: GlobalSearchQuery) => {
   ].join('|');
   // The list shape the current results were loaded for.
   const loadedListKey = useRef(listKey);
+  // The query (and scope) every type's counts were last loaded for.
+  const queryKey = [trimmed, scopeKey, sourceKey, params.retryKey].join('|');
+  const loadedQueryKey = useRef('');
 
   useEffect(() => {
     if (!trimmed) {
       // With no query there is no list to keep; the next search starts fresh.
       loadedListKey.current = listKey;
+      loadedQueryKey.current = '';
       setResults({});
       setIsLoading(false);
       setHasError(false);
@@ -386,17 +452,23 @@ export const useGlobalSearchResults = (params: GlobalSearchQuery) => {
     }
     const controller = new AbortController();
     setIsLoading(true);
+    // Back on All, every type is listed again with its All-tab page size.
+    const isRefine =
+      loadedQueryKey.current === queryKey && params.filter !== 'all';
     const timer = setTimeout(async () => {
-      const next = await fetchAll(
-        { ...params, query: trimmed },
-        controller.signal
-      );
+      const request = { ...params, query: trimmed };
+      const next = isRefine
+        ? await fetchActiveCategory(request, controller.signal)
+        : await fetchAll(request, controller.signal);
       if (controller.signal.aborted) {
         return;
       }
       loadedListKey.current = listKey;
-      setResults(next.results);
-      setHasError(next.failed);
+      loadedQueryKey.current = queryKey;
+      setResults((previous) =>
+        isRefine ? { ...previous, ...next.results } : next.results
+      );
+      setHasError(isFailedView(next, params.filter));
       setIsLoading(false);
     }, GLOBAL_SEARCH_DEBOUNCE_MS);
 

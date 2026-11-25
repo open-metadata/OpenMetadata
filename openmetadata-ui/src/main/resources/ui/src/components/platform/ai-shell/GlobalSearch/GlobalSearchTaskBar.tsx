@@ -19,6 +19,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { TaskStatus, TaskType } from '../../../../generated/entity/tasks/task';
 import {
+  getTaskTypeLabelKey,
+  toStatusLabelKey,
+} from '../../../discovery/personal-space/InboxPage/taskLabel.utils';
+import {
   TASK_STATUS_OPTIONS,
   TASK_TYPE_OPTIONS,
 } from './GlobalSearch.constants';
@@ -53,7 +57,7 @@ const GlobalSearchTaskBar = ({
           label={t('label.status')}
           options={TASK_STATUS_OPTIONS.map((value) => ({
             value,
-            label: value,
+            label: t(toStatusLabelKey(value)),
           }))}
           selectedValues={status ? [status] : []}
           selectionMode="single"
@@ -66,7 +70,10 @@ const GlobalSearchTaskBar = ({
         <FilterSelect
           data-testid="global-search-task-type"
           label={t('label.type')}
-          options={TASK_TYPE_OPTIONS.map((value) => ({ value, label: value }))}
+          options={TASK_TYPE_OPTIONS.map((value) => ({
+            value,
+            label: t(getTaskTypeLabelKey(value)),
+          }))}
           selectedValues={type ? [type] : []}
           selectionMode="single"
           size="sm"

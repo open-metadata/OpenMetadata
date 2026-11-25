@@ -123,6 +123,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   untitledDropdown = false,
   bordered = false,
   searchText: searchTextOverride,
+  ignoreHostSearchState = false,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -137,7 +138,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const isLatestOptionsRequest = (requestId: number) =>
     requestId === optionsRequestIdRef.current;
   const { queryFilter } = useAdvanceSearch();
-  const { isNLPActive } = useSearchStore();
+  const { isNLPActive: isPageNLPActive } = useSearchStore();
+  const isNLPActive = !ignoreHostSearchState && isPageNLPActive;
   const getStaticOptions = useCallback(
     (key: string) => fields.find((item) => item.key === key)?.options,
     [fields]
@@ -151,10 +153,10 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     );
 
     return {
-      showDeleted: parsed.showDeleted === 'true',
+      showDeleted: !ignoreHostSearchState && parsed.showDeleted === 'true',
       searchText: searchTextOverride ?? (parsed.search as string) ?? '',
     };
-  }, [location.search, searchTextOverride]);
+  }, [location.search, searchTextOverride, ignoreHostSearchState]);
 
   const hasSelectedFieldValues = useMemo(
     () => fields.some((field) => !isEmpty(field.value)),

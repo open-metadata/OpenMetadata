@@ -64,7 +64,3 @@ export const OPEN_SCOPED_SEARCH_SHORTCUT = IS_APPLE ? '⌥⌘K' : 'Ctrl+Alt+K';
 export const QUERY_ACTION_OPTION_ID = 'global-search-query-action';
 export const RESULTS_LIST_ID = 'global-search-results';
 export const BREADCRUMB_SEPARATOR = ' › ';
-
-/** Shared shape of the tab bar's tabs and its "+N more" trigger. */
-export const TAB_CLASS =
-  'tw:flex tw:h-7.5 tw:min-w-0 tw:max-w-60 tw:cursor-pointer tw:items-center tw:gap-1.5 tw:rounded-lg tw:px-2.5 tw:outline-hidden';

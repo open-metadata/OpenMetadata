@@ -20,14 +20,9 @@ import {
 } from '../../../../generated/entity/tasks/task';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { isTaskOpen, isTaskPendingViewer } from './inbox.utils';
+import { toStatusLabelKey } from './taskLabel.utils';
 
 export type TaskStatusTone = 'brand' | 'success' | 'error' | 'gray';
-
-// A task status enum value ("InProgress") → its kebab i18n label key
-// ("label.in-progress"). Generic over any TaskStatus, so the status badge needs
-// no task-type-specific knowledge.
-const toStatusLabelKey = (status: string): string =>
-  `label.${status.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()}`;
 
 // An approval-shaped end state reads green, a denial-shaped one red; work in
 // flight and end states that are neither (expiry, withdrawal) stay neutral.

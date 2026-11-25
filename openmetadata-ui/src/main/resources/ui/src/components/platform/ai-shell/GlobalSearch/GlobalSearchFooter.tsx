@@ -10,10 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { KEY_HINT } from './GlobalSearch.constants';
 import { GlobalSearchFooterAction } from './GlobalSearch.types';
@@ -29,7 +33,8 @@ export interface GlobalSearchFooterProps {
   hasQuery: boolean;
 }
 
-// The prototype's floating pills; core buttons and cards have no pill shape.
+// The key-hint strip is not a control, so it is a plain pill-shaped box; the
+// footer link beside it is a core pill Button.
 const PILL_CLASS =
   'tw:pointer-events-auto tw:flex tw:h-10 tw:items-center tw:rounded-full tw:border tw:border-secondary tw:bg-overlay-surface tw:shadow-lg';
 
@@ -73,23 +78,16 @@ const GlobalSearchFooter = ({
       justify="between">
       <Box>
         {action ? (
-          <AriaButton
-            className={classNames(
-              PILL_CLASS,
-              'tw:cursor-pointer tw:gap-1.5 tw:px-3.5 tw:text-brand-secondary',
-              'tw:outline-focus-ring tw:hover:border-utility-brand-300 tw:hover:bg-brand-primary tw:focus-visible:outline-2'
-            )}
+          <Button
+            pill
+            className="tw:pointer-events-auto"
+            color="secondary"
             data-testid="global-search-footer-action"
-            onPress={action.onPress}>
-            <Typography
-              as="span"
-              color="brand"
-              size="text-xs"
-              weight="semibold">
-              {action.label}
-            </Typography>
-            <ArrowRight className="tw:size-3.5" />
-          </AriaButton>
+            iconTrailing={ArrowRight}
+            size="sm"
+            onClick={action.onPress}>
+            {action.label}
+          </Button>
         ) : null}
       </Box>
       <Box className={`${PILL_CLASS} tw:pr-2 tw:pl-4`} gap={4}>

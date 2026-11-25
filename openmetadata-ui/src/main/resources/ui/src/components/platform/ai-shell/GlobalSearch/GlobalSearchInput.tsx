@@ -97,6 +97,7 @@ const GlobalSearchInput = ({
         // The header's bottom edge turns into a sweeping line while loading,
         // reusing core's skeleton-wave keyframes.
         <Box
+          aria-label={t('label.loading')}
           className={classNames(
             'tw:h-0.5 tw:w-full tw:flex-none tw:bg-size-[200%_100%]',
             'tw:bg-linear-to-r tw:from-transparent tw:via-bg-brand-solid tw:to-transparent',

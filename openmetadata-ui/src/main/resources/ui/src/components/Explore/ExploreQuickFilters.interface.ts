@@ -41,4 +41,7 @@ export interface ExploreQuickFiltersProps {
   // Query the facet counts narrow to, for hosts outside Explore whose URL
   // carries no `search` param (e.g. the AI-mode global search).
   searchText?: string;
+  // Hosts outside Explore (e.g. the AI-mode global search) set this so facet
+  // counts ignore the page behind them: its `showDeleted` URL param and NLP mode.
+  ignoreHostSearchState?: boolean;
 }

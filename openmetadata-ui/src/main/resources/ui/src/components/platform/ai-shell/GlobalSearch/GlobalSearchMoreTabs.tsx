@@ -13,15 +13,14 @@
 import {
   Badge,
   Box,
+  Button,
+  ButtonUtility,
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
 import { Key } from 'react';
-import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { TAB_CLASS } from './GlobalSearch.constants';
 import { GlobalSearchCategory, GlobalSearchFilter } from './GlobalSearch.types';
 
 export interface GlobalSearchMoreTabsProps {
@@ -55,29 +54,21 @@ const GlobalSearchMoreTabs = ({
   return (
     <Dropdown.Root>
       {slot ? (
-        <AriaButton
-          aria-label={t('label.more')}
-          className={classNames(
-            'tw:flex tw:h-7.5 tw:w-6.5 tw:flex-none tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-r-lg',
-            slot === filter
-              ? 'tw:bg-secondary_hover'
-              : 'tw:hover:bg-primary_hover'
-          )}
-          data-testid="global-search-more-tabs">
-          <ChevronDown className="tw:size-3.5 tw:text-fg-quaternary" />
-        </AriaButton>
+        <ButtonUtility
+          color="tertiary"
+          data-testid="global-search-more-tabs"
+          icon={ChevronDown}
+          size="xs"
+          tooltip={t('label.more')}
+        />
       ) : (
-        <AriaButton
-          className={classNames(
-            TAB_CLASS,
-            'tw:ml-2 tw:flex-none tw:hover:bg-primary_hover'
-          )}
-          data-testid="global-search-more-tabs">
-          <Typography color="secondary" size="text-sm" weight="medium">
-            {t('label.plus-count-more', { count: more.length })}
-          </Typography>
-          <ChevronDown className="tw:size-3.5 tw:text-fg-quaternary" />
-        </AriaButton>
+        <Button
+          color="tertiary"
+          data-testid="global-search-more-tabs"
+          iconTrailing={ChevronDown}
+          size="sm">
+          {t('label.plus-count-more', { count: more.length })}
+        </Button>
       )}
       <Dropdown.Popover>
         <Dropdown.Menu

@@ -19,15 +19,6 @@ import AssetSummaryPanel from './AssetSummaryPanel';
 import { GlobalSearchRow } from './GlobalSearch.types';
 import { useAssetSummaryStats } from './useAssetSummaryStats';
 
-// The rules come from RuleEnforcementProvider, which the app shell mounts.
-jest.mock('../../../../hooks/useEntityRules', () => ({
-  useEntityRules: () => ({
-    entityRules: { canAddMultipleDomains: true, maxDomains: Infinity },
-    rules: [],
-    isLoading: false,
-  }),
-}));
-
 jest.mock('./useAssetSummaryStats', () => ({
   useAssetSummaryStats: jest.fn(),
 }));
@@ -123,6 +114,7 @@ describe('AssetSummaryPanel', () => {
     expect(screen.queryByTestId('tag-Tier.Tier1')).not.toBeInTheDocument();
     expect(screen.getByText('Revenue')).toBeInTheDocument();
     expect(screen.queryByText('2')).not.toBeInTheDocument();
+    expect(screen.getByText('label.no-entity')).toBeInTheDocument();
   });
 
   it('opens and closes through its buttons', () => {

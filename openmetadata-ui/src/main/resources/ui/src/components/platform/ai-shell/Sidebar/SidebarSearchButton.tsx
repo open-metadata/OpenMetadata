@@ -10,40 +10,54 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Input } from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
-import { FocusEvent } from 'react';
+import classNames from 'classnames';
+import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { OPEN_SEARCH_SHORTCUT } from '../GlobalSearch/GlobalSearch.constants';
 import { useGlobalSearchStore } from '../GlobalSearch/useGlobalSearchStore';
 
-/**
- * The search field at the top of the expanded sidebar. It is only a trigger:
- * focusing it opens the global search, and it gives focus straight back so
- * closing the search doesn't land on it and reopen it.
- */
+// The prototype's search field: a button that only opens the global search.
+// Core Input is a text field (its border, radius and shortcut key differ), and
+// core Button has no field shape, so the trigger is a react-aria button.
+const TRIGGER_CLASS = classNames(
+  'tw:flex tw:h-9.5 tw:w-full tw:flex-none tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:pr-1.5 tw:pl-3',
+  'tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-secondary',
+  'tw:transition-[outline-color,box-shadow] tw:duration-150',
+  'tw:hover:shadow-sm tw:hover:outline-primary',
+  'tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2 tw:focus-visible:outline-brand'
+);
+
 const SidebarSearchButton = () => {
   const { t } = useTranslation();
   const openSearch = useGlobalSearchStore((state) => state.openSearch);
 
-  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
-    event.target.blur();
-    openSearch('all');
-  };
-
   return (
-    <Input
-      isReadOnly
-      aria-label={`${t('label.search')} (${OPEN_SEARCH_SHORTCUT})`}
-      icon={Search}
-      inputDataTestId="ask-nav-item-search"
-      placeholder={t('label.search')}
-      shortcut={OPEN_SEARCH_SHORTCUT}
-      size="md"
-      // The prototype's resting glow around the field.
-      wrapperClassName="tw:shadow-xs tw:outline-4 tw:outline-utility-brand-50"
-      onFocus={handleFocus}
-    />
+    <AriaButton
+      aria-label={t('label.name-with-shortcut', {
+        name: t('label.search'),
+        shortcut: OPEN_SEARCH_SHORTCUT,
+      })}
+      className={TRIGGER_CLASS}
+      data-testid="ask-nav-item-search"
+      onPress={() => openSearch('all')}>
+      <Search aria-hidden className="tw:size-4 tw:text-fg-quaternary" />
+      <Typography
+        className="tw:min-w-0 tw:flex-1 tw:text-left"
+        color="quaternary"
+        size="text-sm">
+        {t('label.search')}
+      </Typography>
+      <Typography
+        as="kbd"
+        className="tw:rounded-md tw:bg-tertiary tw:px-1.5 tw:py-0.5"
+        color="quaternary"
+        size="text-xs"
+        weight="medium">
+        {OPEN_SEARCH_SHORTCUT}
+      </Typography>
+    </AriaButton>
   );
 };
 

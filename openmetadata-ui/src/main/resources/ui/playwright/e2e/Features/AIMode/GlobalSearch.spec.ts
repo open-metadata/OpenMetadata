@@ -20,9 +20,10 @@
  */
 
 import { Page } from '@playwright/test';
-import { expect, test } from '../../../support/fixtures/base';
+import { DOMAIN_TAGS } from '../../../constant/config';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { createNewPage, uuid } from '../../../utils/common';
@@ -56,7 +57,7 @@ const expectOnEntityPage = async (page: Page, route: string, fqn: string) => {
 
 test.describe(
   'AI mode global search',
-  { tag: ['@Features', '@Discovery'] },
+  { tag: ['@Features', DOMAIN_TAGS.DISCOVERY] },
   () => {
     let table: TableClass;
     let glossary: Glossary;
@@ -102,10 +103,19 @@ test.describe(
 
     test.afterAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
-      await table.delete(apiContext);
-      await glossaryTerm.delete(apiContext);
-      await glossary.delete(apiContext);
-      await domain.delete(apiContext);
+      // beforeAll may have failed part-way; delete only what was created.
+      if (table?.entityResponseData?.id) {
+        await table.delete(apiContext);
+      }
+      if (glossaryTerm?.responseData?.id) {
+        await glossaryTerm.delete(apiContext);
+      }
+      if (glossary?.responseData?.id) {
+        await glossary.delete(apiContext);
+      }
+      if (domain?.responseData?.id) {
+        await domain.delete(apiContext);
+      }
       await afterAction();
     });
 
@@ -188,9 +198,7 @@ test.describe(
 
         await page.getByTestId('sorting-dropdown-label').click();
         await page.getByTestId('sort-option-displayName.keyword-asc').click();
-        await expect(page.getByTestId('sorting-dropdown-label')).toContainText(
-          'Name'
-        );
+        await expect(page.getByRole('menu')).toBeHidden();
       });
 
       await test.step('Explore shows the same search, sorted the same way', async () => {

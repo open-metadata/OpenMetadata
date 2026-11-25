@@ -13,6 +13,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { TaskStatus, TaskType } from '../../../../generated/entity/tasks/task';
 import {
   searchEntityTypeCounts,
   searchQuery,
@@ -189,7 +190,11 @@ describe('useGlobalSearchResults', () => {
 
     expect(searchEntityTypeCounts).toHaveBeenCalledTimes(2);
     expect(listTasks).toHaveBeenCalledWith(
-      expect.objectContaining({ q: 'customer' })
+      expect.objectContaining({ q: 'customer' }),
+      expect.any(AbortSignal)
+    );
+    expect(searchEntityTypeCounts).toHaveBeenCalledWith(
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
     );
     expect(result.current.isLoading).toBe(false);
   });
@@ -243,6 +248,60 @@ describe('useGlobalSearchResults', () => {
     expect(result.current.results.tasks).toBeUndefined();
     expect(result.current.results.chats.count).toBe(1);
     expect(result.current.results.assets.count).toBe(3);
+  });
+
+  it('shows the error when one source fails and nothing else matched', async () => {
+    (searchEntityTypeCounts as jest.Mock).mockRejectedValue(new Error('500'));
+    const { result } = renderHook(() => useGlobalSearchResults(baseParams));
+    await flushDebounce();
+
+    expect(result.current.results.tasks.count).toBe(0);
+    expect(result.current.hasError).toBe(true);
+  });
+
+  it('sends the task filters and sort only from their own tab', async () => {
+    const filtered = {
+      ...baseParams,
+      sort: 'updatedAt',
+      sortOrder: 'asc',
+      taskStatus: TaskStatus.Open,
+      taskType: TaskType.DescriptionUpdate,
+    };
+    renderHook(() => useGlobalSearchResults(filtered));
+    await flushDebounce();
+
+    expect(listTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ status: undefined, type: undefined }),
+      expect.any(AbortSignal)
+    );
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        searchIndex: SearchIndex.DATA_ASSET,
+        sortField: '_score',
+        sortOrder: 'desc',
+      })
+    );
+  });
+
+  it('refetches only the open tab when its filters change after a query loaded', async () => {
+    const { rerender } = renderHook(
+      (props: GlobalSearchQuery) => useGlobalSearchResults(props),
+      { initialProps: baseParams }
+    );
+    await flushDebounce();
+    (searchEntityTypeCounts as jest.Mock).mockClear();
+    (listTasks as jest.Mock).mockClear();
+    (searchQuery as jest.Mock).mockClear();
+
+    rerender({ ...baseParams, filter: 'tasks', taskStatus: TaskStatus.Open });
+    await flushDebounce();
+
+    expect(listTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ status: TaskStatus.Open }),
+      expect.any(AbortSignal)
+    );
+    expect(searchEntityTypeCounts).not.toHaveBeenCalled();
+    expect(searchQuery).not.toHaveBeenCalled();
   });
 
   it('reports an error only when every source fails', async () => {

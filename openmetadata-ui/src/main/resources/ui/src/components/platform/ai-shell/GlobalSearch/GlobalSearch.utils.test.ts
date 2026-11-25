@@ -12,10 +12,13 @@
  */
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import {
+  getActiveOption,
   getAdjacentFilter,
   getExploreParams,
   getFacetQueryFilter,
+  getKeyAction,
   getTabCounts,
+  getUsableSources,
   getVisibleTabs,
   splitHighlight,
 } from './GlobalSearch.utils';
@@ -204,5 +207,132 @@ describe('facet carry-over to Explore', () => {
         },
       },
     });
+  });
+});
+
+describe('getKeyAction for Backspace', () => {
+  const backspace = {
+    key: 'Backspace',
+    shiftKey: false,
+    metaKey: false,
+    ctrlKey: false,
+  };
+  const context = {
+    query: '',
+    filter: 'all',
+    isScoped: false,
+    isActionActive: false,
+    tabCount: 3,
+  };
+
+  it('never closes search, scoped or not', () => {
+    expect(
+      getKeyAction(backspace, { ...context, isScoped: true, filter: 'chats' })
+    ).toBeUndefined();
+    expect(getKeyAction(backspace, context)).toBeUndefined();
+  });
+
+  it('widens an empty type tab back to All and leaves typing alone', () => {
+    expect(getKeyAction(backspace, { ...context, filter: 'assets' })).toBe(
+      'show-all'
+    );
+    expect(
+      getKeyAction(backspace, { ...context, query: 'o', filter: 'assets' })
+    ).toBeUndefined();
+  });
+});
+
+describe('getKeyAction', () => {
+  const key = (
+    name: string,
+    mods: Partial<Record<'shiftKey' | 'metaKey' | 'ctrlKey', boolean>> = {}
+  ) => ({
+    key: name,
+    shiftKey: false,
+    metaKey: false,
+    ctrlKey: false,
+    ...mods,
+  });
+  const typed = {
+    query: 'orders',
+    filter: 'all',
+    isScoped: false,
+    isActionActive: false,
+    tabCount: 3,
+  };
+
+  it.each([
+    ['ArrowDown', key('ArrowDown'), typed, 'next'],
+    ['ArrowUp', key('ArrowUp'), typed, 'previous'],
+    ['Enter on a row', key('Enter'), typed, 'select'],
+    [
+      'Enter on the query action',
+      key('Enter'),
+      { ...typed, isActionActive: true },
+      'run-action',
+    ],
+    ['⌘Enter anywhere', key('Enter', { metaKey: true }), typed, 'run-action'],
+    [
+      'Ctrl+Enter anywhere',
+      key('Enter', { ctrlKey: true }),
+      typed,
+      'run-action',
+    ],
+    ['Tab', key('Tab'), typed, 'next-tab'],
+    ['Shift+Tab', key('Tab', { shiftKey: true }), typed, 'previous-tab'],
+    ['Tab before typing', key('Tab'), { ...typed, query: '' }, undefined],
+    ['Tab with a single tab', key('Tab'), { ...typed, tabCount: 1 }, undefined],
+    ['Escape with text', key('Escape'), typed, 'clear'],
+    ['Escape when empty', key('Escape'), { ...typed, query: '' }, 'close'],
+    ['a letter', key('a'), typed, undefined],
+  ])('%s', (_name, event, context, expected) => {
+    expect(getKeyAction(event, context)).toBe(expected);
+  });
+});
+
+describe('getActiveOption', () => {
+  const rows = [{ key: 'a' }, { key: 'b' }];
+
+  it('makes the query action option 0 and offsets the rows after it', () => {
+    expect(getActiveOption(rows, 0, true)).toMatchObject({
+      index: 0,
+      count: 3,
+      isActionActive: true,
+      optionId: 'global-search-query-action',
+    });
+    expect(getActiveOption(rows, 2, true)).toMatchObject({
+      row: { key: 'b' },
+      optionId: 'global-search-option-b',
+    });
+  });
+
+  it('clamps past either end instead of wrapping', () => {
+    expect(getActiveOption(rows, 9, false).row).toEqual({ key: 'b' });
+    expect(getActiveOption(rows, -3, false).row).toEqual({ key: 'a' });
+  });
+});
+
+describe('getUsableSources', () => {
+  const source = (key: string, labelKey = key) => ({
+    key,
+    labelKey,
+    search: jest.fn(),
+  });
+
+  it('drops sources whose key is a built-in category, an entity type or a duplicate', () => {
+    const usable = getUsableSources([
+      source('chats'),
+      source('assets'),
+      source('tasks'),
+      source('all'),
+      source('table'),
+      source('chats', 'second'),
+      source('notes'),
+    ]);
+
+    expect(usable.map((item) => [item.key, item.labelKey])).toEqual([
+      ['chats', 'chats'],
+      ['notes', 'notes'],
+    ]);
   });
 });

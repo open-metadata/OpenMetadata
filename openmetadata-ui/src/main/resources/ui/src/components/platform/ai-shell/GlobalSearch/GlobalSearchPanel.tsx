@@ -57,14 +57,15 @@ import {
   getActiveOption,
   getAdjacentFilter,
   getContributedLabelKeys,
-  getTabCounts,
   getExploreParams,
   getKeyAction,
   getPanelView,
   getSearchScope,
+  getTabCounts,
   getTotalCount,
   getVisibleTabs,
   GlobalSearchKeyAction,
+  hasFacetSelection,
 } from './GlobalSearch.utils';
 import GlobalSearchFilterBar from './GlobalSearchFilterBar';
 import GlobalSearchFooter from './GlobalSearchFooter';
@@ -197,18 +198,32 @@ const GlobalSearchPanel = () => {
   // strand the user on a tab they can no longer see. A zero the user's own
   // filters caused keeps the tab, so they can see and undo the selection.
   useEffect(() => {
-    const hasFacets = Object.values(facets).some((values) => values.length);
+    const hasOwnFilters =
+      hasFacetSelection(facets) || Boolean(taskStatus || taskType);
     const isTypeEmpty = filter !== 'all' && !results[filter]?.count;
-    const isStranded = trimmed && !isLoading && !hasFacets && isTypeEmpty;
+    const isStranded = trimmed && !isLoading && !hasOwnFilters && isTypeEmpty;
     if (isStranded && !isScoped) {
       setFilter('all');
     }
-  }, [trimmed, isLoading, isScoped, filter, facets, results]);
+  }, [
+    trimmed,
+    isLoading,
+    isScoped,
+    filter,
+    facets,
+    taskStatus,
+    taskType,
+    results,
+  ]);
 
   const changeFilter = useCallback((next: GlobalSearchFilter) => {
     setFilter(next);
-    // Filters belong to one type; a new tab starts unfiltered.
+    // Filters and sort belong to one type; a new tab starts unfiltered.
     setFacets({});
+    setTaskStatus(undefined);
+    setTaskType(undefined);
+    setSort(DEFAULT_ASSET_SORT);
+    setSortOrder(SORT_ORDER.DESC);
     setActiveIndex(0);
     setPreviewId(undefined);
     // Pressing a tab focuses it after this runs; hand focus back to the input
@@ -377,6 +392,12 @@ const GlobalSearchPanel = () => {
   };
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    // Enter and Esc confirm or cancel an IME composition (Japanese, Chinese,
+    // Korean); they must not act on the list. 229 is the composing keyCode
+    // some browsers report instead of isComposing.
+    if (event.nativeEvent.isComposing || event.keyCode === 229) {
+      return;
+    }
     const action = getKeyAction(event, {
       query,
       filter,

@@ -313,11 +313,12 @@ export const searchEntityTypeCounts = async (
   request: Pick<
     SearchRequest<SearchIndex[]>,
     'query' | 'searchIndex' | 'queryFilter' | 'postFilter' | 'includeDeleted'
-  > & { includeTopHit?: boolean }
+  > & { includeTopHit?: boolean; signal?: AbortSignal }
 ) => {
   const response = await APIClient.get<SearchResponse<SearchIndex>>(
     '/search/entityTypeCounts',
     {
+      signal: request.signal,
       params: {
         q: request.query,
         index: request.searchIndex?.join(','),

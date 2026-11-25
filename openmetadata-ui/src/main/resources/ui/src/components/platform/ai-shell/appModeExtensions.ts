@@ -21,6 +21,7 @@ import {
   GlobalSearchQueryActionContribution,
   GlobalSearchSourceContribution,
 } from './GlobalSearch/GlobalSearch.types';
+import { getUsableSources } from './GlobalSearch/GlobalSearch.utils';
 
 /**
  * Typed read helpers over the app-mode extension points.
@@ -124,8 +125,10 @@ export const useAppModeSidebarRecentRail = (): AppModeSlotContribution[] => {
 export const useGlobalSearchSources = (): GlobalSearchSourceContribution[] => {
   const { extensionRegistry } = useApplicationsProvider();
 
-  return extensionRegistry.getContributions<GlobalSearchSourceContribution>(
-    EXTENSION_POINTS.APP_MODE_GLOBAL_SEARCH_SOURCES
+  return getUsableSources(
+    extensionRegistry.getContributions<GlobalSearchSourceContribution>(
+      EXTENSION_POINTS.APP_MODE_GLOBAL_SEARCH_SOURCES
+    )
   );
 };
 

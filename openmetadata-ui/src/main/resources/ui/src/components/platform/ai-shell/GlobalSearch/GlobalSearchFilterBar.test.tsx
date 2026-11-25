@@ -10,96 +10,85 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { ExploreQuickFiltersProps } from '../../../Explore/ExploreQuickFilters.interface';
+import { getAggregateFieldOptions } from '../../../../rest/miscAPI';
 import GlobalSearchFilterBar from './GlobalSearchFilterBar';
 
-const mockQuickFilters = jest.fn();
-
-jest.mock('../../../Explore/ExploreQuickFilters', () => ({
-  __esModule: true,
-  default: (props: ExploreQuickFiltersProps) => {
-    mockQuickFilters(props);
-
-    return <div data-testid="explore-quick-filters" />;
-  },
+jest.mock('../../../../rest/miscAPI', () => ({
+  ...jest.requireActual('../../../../rest/miscAPI'),
+  getAggregateFieldOptions: jest.fn(),
 }));
 
-const lastProps = (): ExploreQuickFiltersProps =>
-  mockQuickFilters.mock.calls[mockQuickFilters.mock.calls.length - 1][0];
+// The advanced-search context is mounted by the Explore page, not the modal.
+jest.mock(
+  '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
+  () => ({ useAdvanceSearch: () => ({ queryFilter: undefined }) })
+);
+
+const renderBar = (category?: string, hostUrl = '/') =>
+  render(
+    <MemoryRouter initialEntries={[hostUrl]}>
+      <GlobalSearchFilterBar
+        category={category}
+        facets={{}}
+        query="customer"
+        onFacetChange={jest.fn()}
+      />
+    </MemoryRouter>
+  );
 
 describe('GlobalSearchFilterBar', () => {
   beforeEach(() => {
-    mockQuickFilters.mockClear();
+    (getAggregateFieldOptions as jest.Mock).mockResolvedValue({
+      data: { aggregations: {} },
+    });
   });
 
   it('renders nothing without a tab or for a type without filters', () => {
-    const { rerender } = render(
-      <GlobalSearchFilterBar
-        facets={{}}
-        query="customer"
-        onFacetChange={jest.fn()}
-      />
-    );
+    const { unmount } = renderBar();
 
     expect(
       screen.queryByTestId('global-search-filter-bar')
     ).not.toBeInTheDocument();
 
-    rerender(
-      <GlobalSearchFilterBar
-        category="user"
-        facets={{}}
-        query="customer"
-        onFacetChange={jest.fn()}
-      />
-    );
+    unmount();
+    renderBar('user');
 
     expect(
       screen.queryByTestId('global-search-filter-bar')
     ).not.toBeInTheDocument();
-  });
-
-  it('shows the glossary term filters narrowed to the query, with the selection', () => {
-    const onFacetChange = jest.fn();
-    render(
-      <GlobalSearchFilterBar
-        category="glossaryTerm"
-        facets={{
-          [EntityFields.OWNERS]: [{ key: 'Finance', label: 'Finance' }],
-        }}
-        query="customer"
-        onFacetChange={onFacetChange}
-      />
-    );
-
-    const props = lastProps();
-
-    expect(screen.getByTestId('global-search-filter-bar')).toBeInTheDocument();
-    expect(props.index).toBe(SearchIndex.GLOSSARY_TERM);
-    expect(props.searchText).toBe('customer');
-    expect(props.immediateApply).toBe(true);
-    expect(props.onFieldValueSelect).toBe(onFacetChange);
-    expect(
-      props.fields.find((field) => field.key === EntityFields.OWNERS)?.value
-    ).toEqual([{ key: 'Finance', label: 'Finance' }]);
   });
 
   it('shows the Domains listing filters on the domain tab', () => {
-    render(
-      <GlobalSearchFilterBar
-        category="domain"
-        facets={{}}
-        query="customer"
-        onFacetChange={jest.fn()}
-      />
-    );
+    renderBar('domain');
 
-    expect(lastProps().index).toBe(SearchIndex.DOMAIN);
-    expect(lastProps().fields.map((field) => field.key)).toContain(
-      EntityFields.DOMAIN_TYPE
+    expect(
+      screen.getByTestId(`search-dropdown-${EntityFields.DOMAIN_TYPE}`)
+    ).toBeInTheDocument();
+  });
+
+  it('counts a glossary term filter for the typed query, ignoring the page behind', async () => {
+    // The host page shows deleted entities; the search's facets must not.
+    renderBar('glossaryTerm', '/explore?showDeleted=true');
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`search-dropdown-${EntityFields.OWNERS}`)
+      );
+    });
+
+    expect(getAggregateFieldOptions).toHaveBeenCalledWith(
+      SearchIndex.GLOSSARY_TERM,
+      EntityFields.OWNERS,
+      '',
+      expect.stringContaining('"deleted":false'),
+      EntityFields.OWNERS,
+      false,
+      false,
+      'customer'
     );
   });
 });

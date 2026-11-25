@@ -144,9 +144,13 @@ export interface ListDataAccessRequestsParams {
 /**
  * Get a list of tasks with optional filters.
  */
-export const listTasks = async (params?: ListTasksParams) => {
+export const listTasks = async (
+  params?: ListTasksParams,
+  signal?: AbortSignal
+) => {
   const response = await APIClient.get<PagingResponse<Task[]>>(BASE_URL, {
     params,
+    signal,
   });
 
   return response.data;

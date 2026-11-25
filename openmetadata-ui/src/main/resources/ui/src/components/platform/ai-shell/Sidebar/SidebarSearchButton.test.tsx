@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { OPEN_SEARCH_SHORTCUT } from '../GlobalSearch/GlobalSearch.constants';
 import { useGlobalSearchStore } from '../GlobalSearch/useGlobalSearchStore';
 import SidebarSearchButton from './SidebarSearchButton';
@@ -20,26 +20,34 @@ describe('SidebarSearchButton', () => {
     useGlobalSearchStore.setState({ isOpen: false, entry: 'chats' });
   });
 
-  it('shows the search shortcut', () => {
+  it('is a button that names the search and its shortcut', () => {
     render(<SidebarSearchButton />);
 
-    expect(screen.getByTestId('ask-nav-item-search')).toHaveAttribute(
-      'placeholder',
-      'label.search'
-    );
-    expect(screen.getByText(OPEN_SEARCH_SHORTCUT)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'label.name-with-shortcut' })
+    ).toBeInTheDocument();
+    expect(screen.getByText(OPEN_SEARCH_SHORTCUT).tagName).toBe('KBD');
   });
 
-  it('opens global search for everything on focus and gives up focus', () => {
+  it('opens global search for everything when pressed', () => {
     render(<SidebarSearchButton />);
-    const input = screen.getByTestId('ask-nav-item-search');
 
-    act(() => input.focus());
+    fireEvent.click(screen.getByTestId('ask-nav-item-search'));
 
     expect(useGlobalSearchStore.getState()).toMatchObject({
       isOpen: true,
       entry: 'all',
     });
-    expect(input).not.toHaveFocus();
+  });
+
+  it('opens from the keyboard', () => {
+    render(<SidebarSearchButton />);
+    const trigger = screen.getByTestId('ask-nav-item-search');
+
+    act(() => trigger.focus());
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    fireEvent.keyUp(trigger, { key: 'Enter' });
+
+    expect(useGlobalSearchStore.getState().isOpen).toBe(true);
   });
 });

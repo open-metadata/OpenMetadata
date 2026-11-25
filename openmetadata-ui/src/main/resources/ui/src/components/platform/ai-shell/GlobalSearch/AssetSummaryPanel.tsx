@@ -16,7 +16,9 @@ import {
   Button,
   ButtonUtility,
   Card,
+  ClassificationTag,
   Divider,
+  GlossaryTag,
   Owner,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -33,12 +35,16 @@ import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/type/entityReference';
-import { TagLabel } from '../../../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
 import { EntityIconSize } from '../../../../utils/EntityIconUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import DomainsSection from '../../../common/DomainsSection/DomainsSection';
-import GlossaryTermsSection from '../../../common/GlossaryTermsSection/GlossaryTermsSection';
-import TagsSection from '../../../common/TagsSection/TagsSection';
+import {
+  getTagName,
+  getTagRedirectLink,
+} from '../../../../utils/TagsPureUtils';
+import DomainTags from '../../../common/DomainTags/DomainTags';
 import { BREADCRUMB_SEPARATOR } from './GlobalSearch.constants';
 import { GlobalSearchRow } from './GlobalSearch.types';
 import { useAssetSummaryStats } from './useAssetSummaryStats';
@@ -54,6 +60,11 @@ export interface AssetSummaryPanelProps {
 
 const lastSegment = (fqn: string) => fqn.split('.').pop() ?? fqn;
 
+const isClassificationTag = (tag: TagLabel) =>
+  tag.source !== TagSource.Glossary &&
+  !tag.tagFQN.startsWith('Tier.') &&
+  !tag.tagFQN.startsWith('Certification.');
+
 const AssetSummaryPanel = ({
   row,
   onClose,
@@ -68,6 +79,8 @@ const AssetSummaryPanel = ({
 
   const source = row.source;
   const entityType = (source?.entityType ?? '') as EntityType;
+  const entityTypeLabel =
+    entityUtilClassBase.getFormattedEntityType(entityType);
   const tags: TagLabel[] = get(source, 'tags', []);
   const tier: string | undefined = get(source, 'tier.tagFQN');
   const certification: string | undefined = get(
@@ -110,14 +123,74 @@ const AssetSummaryPanel = ({
       : lineage;
   };
 
+  const owners = get(source, 'owners', []) as EntityReference[];
+  const domains = get(source, 'domains', []) as EntityReference[];
+  const glossaryTerms = tags.filter((tag) => tag.source === TagSource.Glossary);
+  const classificationTags = tags.filter(isClassificationTag);
+
+  // The chips and avatars Explore's summary panel shows, in this panel's
+  // compact label-and-value layout.
+  const details = [
+    {
+      key: t('label.owner-plural'),
+      isEmpty: owners.length === 0,
+      content: (
+        <Owner isCompactView={false} owners={owners} showLabel={false} />
+      ),
+    },
+    {
+      key: t('label.domain-plural'),
+      isEmpty: domains.length === 0,
+      content: <DomainTags domains={domains} />,
+    },
+    {
+      key: t('label.glossary-term-plural'),
+      isEmpty: glossaryTerms.length === 0,
+      content: (
+        <Box gap={1} wrap="wrap">
+          {glossaryTerms.map((term) => (
+            <GlossaryTag
+              color={term.style?.color}
+              data-testid={`tag-${term.tagFQN}`}
+              icon={term.style?.iconURL}
+              key={term.tagFQN}
+              label={getEntityName(term)}
+              tooltip={getEntityName(term)}
+            />
+          ))}
+        </Box>
+      ),
+    },
+    {
+      key: t('label.tag-plural'),
+      isEmpty: classificationTags.length === 0,
+      content: (
+        <Box gap={1} wrap="wrap">
+          {classificationTags.map((tag) => (
+            <ClassificationTag
+              color={tag.style?.color}
+              data-testid={`tag-${tag.tagFQN}`}
+              href={getTagRedirectLink(tag)}
+              icon={tag.style?.iconURL}
+              key={tag.tagFQN}
+              label={getTagName(tag)}
+              maxWidth={200}
+              size="sm"
+              tooltip={getTagName(tag)}
+            />
+          ))}
+        </Box>
+      ),
+    },
+  ];
+
   return (
     <Box className="tw:w-90 tw:flex-none" data-testid="global-search-summary">
       <Divider orientation="vertical" />
-      <Box
+      {/* Core Box has no `as`; the panel is a landmark, so a real <aside>. */}
+      <aside
         aria-label={t('label.summary')}
-        className="tw:min-w-0 tw:flex-1"
-        direction="col"
-        role="complementary">
+        className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
         <Box align="center" className="tw:px-5 tw:py-4" gap={3}>
           {searchClassBase.getEntityIconWithBg(
             entityType,
@@ -155,7 +228,7 @@ const AssetSummaryPanel = ({
               iconLeading={Database01}
               size="sm"
               type="modern">
-              {startCase(entityType)}
+              {entityTypeLabel}
             </BadgeWithIcon>
             {tier ? (
               <BadgeWithIcon
@@ -215,26 +288,22 @@ const AssetSummaryPanel = ({
             </Card.Content>
           </Card>
 
-          <Box direction="col" gap={1}>
-            <Typography size="text-xs" weight="semibold">
-              {t('label.owner-plural')}
-            </Typography>
-            <Owner
-              isCompactView={false}
-              owners={get(source, 'owners', []) as EntityReference[]}
-              showLabel={false}
-            />
+          <Box direction="col" gap={3}>
+            {details.map((detail) => (
+              <Box direction="col" gap={1} key={detail.key}>
+                <Typography color="quaternary" size="text-xs" weight="medium">
+                  {detail.key}
+                </Typography>
+                {detail.isEmpty ? (
+                  <Typography color="quaternary" size="text-xs">
+                    {t('label.no-entity', { entity: detail.key })}
+                  </Typography>
+                ) : (
+                  detail.content
+                )}
+              </Box>
+            ))}
           </Box>
-          <DomainsSection
-            domains={get(source, 'domains', []) as EntityReference[]}
-            entityType={entityType}
-          />
-          <GlossaryTermsSection
-            entityType={entityType}
-            maxVisibleGlossaryTerms={3}
-            tags={tags}
-          />
-          <TagsSection entityType={entityType} tags={tags} />
         </Box>
 
         <Divider />
@@ -246,10 +315,10 @@ const AssetSummaryPanel = ({
             iconTrailing={ArrowRight}
             size="md"
             onClick={() => onOpen(row)}>
-            {t('label.open-entity', { entity: startCase(entityType) })}
+            {t('label.open-entity', { entity: entityTypeLabel })}
           </Button>
         </Box>
-      </Box>
+      </aside>
     </Box>
   );
 };

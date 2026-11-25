@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import { escapeRegExp } from 'lodash';
+import { EntityType } from '../../../../enums/entity.enum';
 import { getQuickFilterQuery } from '../../../../utils/ExplorePureUtils';
 import {
   ASSETS_CATEGORY,
   MAX_VISIBLE_TABS,
   QUERY_ACTION_OPTION_ID,
+  TASKS_CATEGORY,
 } from './GlobalSearch.constants';
 import {
   GlobalSearchCategory,
@@ -118,6 +120,9 @@ export const getFacetQueryFilter = (
       }))
   );
 
+export const hasFacetSelection = (selection: GlobalSearchFacetSelection) =>
+  Object.values(selection).some((values) => values.length > 0);
+
 export const getExploreParams = (
   selection: GlobalSearchFacetSelection,
   sort: string,
@@ -183,18 +188,12 @@ const getTabAction = (event: KeyInput, context: GlobalSearchKeyContext) => {
   return event.shiftKey ? 'previous-tab' : 'next-tab';
 };
 
-// Opened scoped to one source, an empty Backspace leaves search; elsewhere it widens a
-// scoped tab back to All.
-const getBackspaceAction = (context: GlobalSearchKeyContext) => {
-  if (context.query) {
-    return undefined;
-  }
-  if (context.isScoped) {
-    return 'close';
-  }
-
-  return context.filter === 'all' ? undefined : 'show-all';
-};
+// An empty Backspace widens a type tab back to All. It never closes search:
+// holding Backspace to clear the text keeps repeating once the input is empty.
+const getBackspaceAction = (context: GlobalSearchKeyContext) =>
+  context.query || context.isScoped || context.filter === 'all'
+    ? undefined
+    : 'show-all';
 
 const KEY_ACTIONS: Record<
   string,
@@ -344,6 +343,30 @@ export const getTabCounts = ({
   }
 
   return { results, hideCounts: !query || isCounting };
+};
+
+const RESERVED_SOURCE_KEYS = new Set<string>([
+  'all',
+  ASSETS_CATEGORY,
+  TASKS_CATEGORY,
+  ...Object.values(EntityType),
+]);
+
+/**
+ * A contributed source's key is its tab id, so it must not collide with a
+ * built-in category, an entity type or another source; such a contribution is
+ * dropped (the first one with a key wins).
+ */
+export const getUsableSources = (sources: GlobalSearchSourceContribution[]) => {
+  const seen = new Set<string>();
+
+  return sources.filter((source) => {
+    const isUsable =
+      !RESERVED_SOURCE_KEYS.has(source.key) && !seen.has(source.key);
+    seen.add(source.key);
+
+    return isUsable;
+  });
 };
 
 /** Opened from a scoped trigger (e.g. a source's own search button) or not. */

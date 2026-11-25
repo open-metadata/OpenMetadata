@@ -185,7 +185,10 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
           item={{
             key: 'search',
             icon: Search,
-            label: `${t('label.search')} (${OPEN_SEARCH_SHORTCUT})`,
+            label: t('label.name-with-shortcut', {
+              name: t('label.search'),
+              shortcut: OPEN_SEARCH_SHORTCUT,
+            }),
             onClick: () => openSearch('all'),
             isActive: false,
           }}

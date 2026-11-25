@@ -12,7 +12,6 @@
  */
 import { renderHook, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../../enums/entity.enum';
-import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getLineagePagingData } from '../../../../rest/lineageAPI';
@@ -44,25 +43,21 @@ const lineage = {
 describe('useAssetSummaryStats', () => {
   beforeEach(() => {
     (getLineagePagingData as jest.Mock).mockResolvedValue(lineage);
+    // The server's total, not the length of one page of rows.
     (getListTestCaseIncidentStatus as jest.Mock).mockResolvedValue({
-      data: [
-        { testCaseResolutionStatusType: TestCaseResolutionStatusTypes.New },
-        { testCaseResolutionStatusType: TestCaseResolutionStatusTypes.ACK },
-        {
-          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
-        },
-      ],
+      data: [],
+      paging: { total: 137 },
     });
   });
 
-  it('counts lineage at depth one and open incidents', async () => {
+  it('counts lineage at depth one and the incident total from the server', async () => {
     const { result } = renderHook(() => useAssetSummaryStats(tableSource));
 
     await waitFor(() =>
       expect(result.current).toEqual({
         upstream: 2,
         downstream: 4,
-        incidents: 2,
+        incidents: 137,
       })
     );
 
@@ -74,6 +69,9 @@ describe('useAssetSummaryStats', () => {
       expect.objectContaining({
         originEntityFQN: 'svc.db.schema.orders',
         latest: true,
+        limit: 0,
+        startTs: expect.any(Number),
+        endTs: expect.any(Number),
       })
     );
   });

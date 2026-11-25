@@ -12,19 +12,21 @@
  */
 import { get } from 'lodash';
 import { useEffect, useState } from 'react';
+import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
 import { EntityType } from '../../../../enums/entity.enum';
-import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getLineagePagingData } from '../../../../rest/lineageAPI';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityCountAtDepth } from '../../../../utils/EntityLineageNodeUtils';
-
-const INCIDENT_PAGE_SIZE = 100;
 
 export interface AssetSummaryCounts {
   upstream?: number;
   downstream?: number;
-  /** Open (not resolved) incidents on the asset. */
+  /** Incidents on the asset in the last 30 days, as Explore's summary counts them. */
   incidents?: number;
 }
 
@@ -53,7 +55,11 @@ export const useAssetSummaryStats = (
         ? getListTestCaseIncidentStatus({
             originEntityFQN: fqn,
             latest: true,
-            limit: INCIDENT_PAGE_SIZE,
+            limit: 0,
+            startTs: getEpochMillisForPastDays(
+              PROFILER_FILTER_RANGE.last30days.days
+            ),
+            endTs: getCurrentMillis(),
           })
         : Promise.reject(new Error('no incidents for this type')),
     ]).then(([lineage, incidents]) => {
@@ -71,11 +77,7 @@ export const useAssetSummaryStats = (
             : undefined,
         incidents:
           incidents.status === 'fulfilled'
-            ? incidents.value.data.filter(
-                (incident) =>
-                  incident.testCaseResolutionStatusType !==
-                  TestCaseResolutionStatusTypes.Resolved
-              ).length
+            ? incidents.value.paging.total
             : undefined,
       });
     });

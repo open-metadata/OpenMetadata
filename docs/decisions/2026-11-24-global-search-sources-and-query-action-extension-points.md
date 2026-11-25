@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-24 (initial)
 - **Deciders:** Rohit0301
-- **Guard:** `GlobalSearchModal.test.tsx` (contributed sources and query action)
+- **Guard:** `GlobalSearchModal.test.tsx` (contributed sources and query action), `GlobalSearch.utils.test.ts` (`getUsableSources`)
 - **Related:** #38564, open-metadata/openmetadata-collate#8916
 
 ## Context
@@ -14,13 +14,22 @@ row on the typed query. OSS must not import Collate code or ship assistant or ch
 ## Decision
 - `app-mode.globalSearch.sources` (`EXTENSION_POINTS.APP_MODE_GLOBAL_SEARCH_SOURCES`) takes
   `GlobalSearchSourceContribution`s, one per result type. `key` is the type's
-  `GlobalSearchCategory` and its tab id; it must differ from `assets`, `tasks` and every entity type.
-  `search(query, signal)` returns its section; `recent`, `placeholderKey`, `hasScopeShortcut`
-  (⌥⌘K opens search scoped to it) and `footer` are optional.
+  `GlobalSearchCategory` and its tab id. It must differ from `all`, `assets`, `tasks`, every
+  `EntityType` and every other source's key; `useGlobalSearchSources` drops a contribution that
+  breaks this (the first one with a key wins).
+  - `search(query, signal)` returns its section; `labelKey` names its tab.
+  - Optional: `recent(signal)` rows shown before typing under `recentLabelKey` (falls back to
+    `labelKey`); `placeholderKey` for the input when search opens scoped to it;
+    `hasScopeShortcut` (⌥⌘K opens search scoped to it); `footer` (`labelKey`, `path`).
+  - A row may carry `addon` (e.g. an avatar stack) and `enterLabel` (what Enter does on it).
 - `app-mode.globalSearch.queryAction` (`EXTENSION_POINTS.APP_MODE_GLOBAL_SEARCH_QUERY_ACTION`)
-  takes a `GlobalSearchQueryActionContribution`; the last contribution wins. OSS renders its
-  `component` first in the list on every tab, keeps it keyboard reachable, and navigates to
-  `getPath(query)` on select or ⌘↵.
+  takes a `GlobalSearchQueryActionContribution`; the last contribution wins. Once the user has
+  typed, and unless the search failed, OSS renders its `component` above the results on every tab,
+  keeps it keyboard reachable as the first option, and navigates to `getPath(query)` on select or
+  ⌘↵. `hintLabelKey` names it in the footer key hints; `emptyHintKey` replaces the no-results hint.
+- Any surface opens the search through `useGlobalSearchStore.getState().openSearch(key)`:
+  `'all'` for everything, or a source's `key` to open scoped to that source (Collate's chat
+  search buttons call `openSearch('chats')`).
 - Contributors supply every i18n key for their copy (labels, placeholders, hints). OSS ships no
   assistant or chat wording.
 

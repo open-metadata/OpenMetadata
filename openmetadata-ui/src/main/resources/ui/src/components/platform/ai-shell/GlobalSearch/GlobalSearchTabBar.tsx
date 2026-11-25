@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
 import { useState } from 'react';
-import { Tab, TabList, Tabs } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { DomainFilterChip } from '../../../common/DomainFilterChip/DomainFilterChip.component';
-import { TAB_CLASS } from './GlobalSearch.constants';
 import {
   GlobalSearchCategory,
   GlobalSearchFilter,
@@ -39,30 +41,6 @@ export interface GlobalSearchTabBarProps {
   onChange: (filter: GlobalSearchFilter) => void;
   onSearchEverything: () => void;
 }
-
-// Core `Tabs` render counts as pill badges; the design wants a plain count
-// beside the label, so the tabs are react-aria tabs styled to the prototype.
-
-const getTabClass =
-  (isPinned: boolean, isSlot = false) =>
-  ({
-    isSelected,
-    isHovered,
-    isFocusVisible,
-  }: {
-    isSelected: boolean;
-    isHovered: boolean;
-    isFocusVisible: boolean;
-  }) =>
-    classNames(TAB_CLASS, {
-      // "All" never truncates; type tabs shrink so "+N more" stays visible.
-      'tw:flex-none': isPinned || isSlot,
-      // The overflow slot is one pill with the chevron that switches it.
-      'tw:rounded-r-none tw:pr-0.5': isSlot,
-      'tw:bg-secondary_hover': isSelected,
-      'tw:bg-primary_hover': isHovered && !isSelected,
-      'tw:outline-2 tw:outline-focus-ring': isFocusVisible,
-    });
 
 const GlobalSearchTabBar = ({
   isVisible,
@@ -92,14 +70,10 @@ const GlobalSearchTabBar = ({
     more.find((key) => key === filter) ??
     more.find((key) => key === pickedMore);
 
-  const renderTab = (
-    id: string,
-    label: string,
-    count: number,
-    isSlot = false
-  ) => (
-    <Tab
-      className={getTabClass(id === 'all', isSlot)}
+  const renderTab = (id: string, label: string, count: number) => (
+    <Tabs.Item
+      // "All" never truncates; type tabs shrink so "+N more" stays visible.
+      className={id === 'all' ? 'tw:flex-none' : 'tw:min-w-0 tw:max-w-60'}
       data-testid={`global-search-tab-${id}`}
       id={id}
       key={id}>
@@ -119,7 +93,7 @@ const GlobalSearchTabBar = ({
           )}
         </>
       )}
-    </Tab>
+    </Tabs.Item>
   );
 
   return (
@@ -127,24 +101,24 @@ const GlobalSearchTabBar = ({
       align="center"
       className="tw:px-2.5 tw:py-2"
       data-testid="global-search-tabs"
-      gap={2}>
+      gap={1}>
       <Tabs
-        className="tw:-mr-2 tw:min-w-0"
+        className="tw:w-auto tw:min-w-0"
         selectedKey={filter}
         onSelectionChange={(key) => onChange(String(key))}>
-        <TabList
+        <Tabs.List
           aria-label={t('label.filter-plural')}
-          className="tw:flex tw:items-center tw:gap-0.5 tw:overflow-hidden">
+          className="tw:min-w-0 tw:overflow-hidden"
+          size="sm"
+          type="button-gray">
           {[
             ...(scopedCategory
               ? []
               : [renderTab('all', t('label.all'), totalCount)]),
             ...tabs.map((key) => renderTab(key, labelFor(key), countOf(key))),
-            ...(slot
-              ? [renderTab(slot, labelFor(slot), countOf(slot), true)]
-              : []),
+            ...(slot ? [renderTab(slot, labelFor(slot), countOf(slot))] : []),
           ]}
-        </TabList>
+        </Tabs.List>
       </Tabs>
       <GlobalSearchMoreTabs
         countOf={countOf}
@@ -157,10 +131,9 @@ const GlobalSearchTabBar = ({
           onChange(key);
         }}
       />
-      <Box className="tw:flex-1" />
       {scopedCategory ? (
         <Button
-          color="link-gray"
+          color="tertiary"
           data-testid="global-search-everything"
           iconTrailing={ArrowRight}
           size="sm"
@@ -168,7 +141,10 @@ const GlobalSearchTabBar = ({
           {t('label.search-everything')}
         </Button>
       ) : (
-        <DomainFilterChip />
+        <>
+          <Box className="tw:flex-1" />
+          <DomainFilterChip />
+        </>
       )}
     </Box>
   );

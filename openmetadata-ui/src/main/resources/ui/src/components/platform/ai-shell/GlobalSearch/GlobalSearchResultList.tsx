@@ -121,7 +121,7 @@ const GlobalSearchResultList = ({
           title={
             isScoped
               ? t('message.global-search-no-type-match', {
-                  type: scopeLabel.toLowerCase(),
+                  type: scopeLabel,
                   query,
                 })
               : t('message.global-search-no-result', { query })
