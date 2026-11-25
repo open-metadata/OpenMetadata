@@ -47,10 +47,10 @@ public class ChartCollection implements Iterable<Chart> {
     }
 
     try {
-      ListParams pageParams = new ListParams();
-      pageParams.setLimit(params.getLimit());
+      ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<Chart> response = client.charts().list(pageParams);

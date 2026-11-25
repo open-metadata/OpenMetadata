@@ -79,7 +79,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -324,7 +324,7 @@ public class AIContextBuilder {
   private String queryRelevantExcerpt(KnowledgeItem item, int limit) {
     String result = null;
     try {
-      OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+      VectorIndexService vectorService = Entity.getSearchRepository().getVectorIndexService();
       if (item.getType() != null
           && vectorService != null
           && Entity.getSearchRepository().isVectorEmbeddingEnabled()) {

@@ -53,7 +53,7 @@ from the caller workflow name and the highest Python version in project configur
 backend construction uses a complete reusable job. Aggregate jobs run on `ubuntu-slim`, verify
 the selected results without checking out the repository, and retain the required
 `py-tests-status` aggregate check. Other Python CI jobs run on `ubuntu-latest`. Playwright
-workflows and their cache warmer remain on `ubuntu-24.04`, matching the validated browser dependencies.
+workflows and their cache warmer also use `ubuntu-latest`, with Chromium apt caches keyed by Ubuntu release.
 
 Nightly connector and operator image tests share one ingestion image built at the tested revision, in parallel with
 backend and classification preparation. Consumers verify its revision and dependency selection

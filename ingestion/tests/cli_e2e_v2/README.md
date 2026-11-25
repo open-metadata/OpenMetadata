@@ -192,8 +192,8 @@ types, per-table system metrics, foreign keys to the current database, `ARRAY`/`
 STRUCT-subfield sampling and unique counts, and a shared-session race between profiler metric threads.
 
 Do not relax these expectations to report a green run. Running with ADC as a user without project-level
-`bigquery.tables.list` on the second project also fails `catalog.multi-project` on the region-scoped
-life-cycle query (403). That is a permission difference in the environment, not a product defect.
+`bigquery.tables.list` on the second project also fails `catalog.multi-project` (403). That is a
+permission difference in the environment, not a product defect.
 
 Remove the v1 BigQuery tests and their `ci-nightly.yml` default connector entries only after this suite has
 passed for the agreed stability window.

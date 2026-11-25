@@ -32,7 +32,7 @@ import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.VectorSearchParameters;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
@@ -48,7 +48,7 @@ class SemanticSearchToolTest {
   private Authorizer authorizer;
   private CatalogSecurityContext securityContext;
   private SearchRepository searchRepository;
-  private OpenSearchVectorService vectorService;
+  private VectorIndexService vectorService;
   private final List<Metric> knownMetrics = new ArrayList<>();
   private final List<String> requestedMetricNames = new ArrayList<>();
 
@@ -65,7 +65,7 @@ class SemanticSearchToolTest {
     authorizer = mock(Authorizer.class);
     securityContext = mock(CatalogSecurityContext.class);
     searchRepository = mock(SearchRepository.class);
-    vectorService = mock(OpenSearchVectorService.class);
+    vectorService = mock(VectorIndexService.class);
 
     Entity.setSearchRepository(searchRepository);
     lenient().when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
