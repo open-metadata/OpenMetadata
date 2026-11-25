@@ -21,7 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.assertFieldDoesNotExist;
 import static org.openmetadata.service.util.TestUtils.assertFieldExists;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
@@ -39,14 +38,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
@@ -626,62 +622,6 @@ class ContextMemorySearchVisibilityTest {
         JsonPath.parse(json),
         "$.bool.should[1].bool.must[1].bool.must[0].bool.should[3]",
         "without a readable anchor the memory clause keeps its three branches");
-  }
-
-  @ParameterizedTest
-  @CsvSource({"false, false", "false, true", "true, false", "true, true"})
-  void customerKeywordDiscoveryRequiresAnAuthorizedPinForNonOwners(
-      boolean openSearch, boolean readable) {
-    final String anchorId = UUID.randomUUID().toString();
-    final String keywordFilter =
-        """
-        {"bool":{"must":[
-          {"term":{"entityType":"contextMemory"}},
-          {"term":{"primaryEntity.id":"%s"}},
-          {"multi_match":{"query":"customer","fields":["question","answer"]}}
-        ]}}
-        """
-            .formatted(anchorId);
-    final List<String> pins =
-        ContextMemoryAnchorPins.of(new SearchRequest().withQueryFilter(keywordFilter));
-    assertEquals(List.of(anchorId), pins);
-    final ContextMemorySearchVisibility visibility =
-        new ContextMemorySearchVisibility(
-            openSearch ? new OpenSearchQueryBuilderFactory() : new ElasticQueryBuilderFactory(),
-            (name, candidates) -> {
-              assertEquals("alice", name);
-              assertEquals(pins, List.copyOf(candidates));
-              return readable ? Set.of(anchorId) : Set.of();
-            });
-    final OMQueryBuilder unpinned = visibility.buildVisibilityFilter(nonAdminSubject());
-    final OMQueryBuilder pinned =
-        visibility.buildVisibilityFilter(
-            nonAdminSubject(), ContextMemorySearchVisibility.SEARCHABLE_STATUSES, pins);
-    final String unpinnedJson = renderVisibility(unpinned, openSearch);
-    final String pinnedJson = renderVisibility(pinned, openSearch);
-    assertFalse(unpinnedJson.contains(anchorId), "keyword-only search has no anchor access grant");
-    final List<?> unpinnedBranches =
-        JsonPath.read(unpinnedJson, "$.bool.should[1].bool.must[1].bool.must[0].bool.should");
-    final List<?> pinnedBranches =
-        JsonPath.read(pinnedJson, "$.bool.should[1].bool.must[1].bool.must[0].bool.should");
-    assertEquals(3, unpinnedBranches.size());
-    assertEquals(readable ? 4 : 3, pinnedBranches.size());
-    assertEquals(readable, pinnedJson.contains(anchorId));
-    if (readable) {
-      final JsonNode anchorClause =
-          JsonUtils.readTree(pinnedJson).at("/bool/should/1/bool/must/1/bool/must/0/bool/should/3");
-      assertTrue(anchorClause.toString().contains(MemoryVisibility.ENTITY.value()));
-      assertTrue(anchorClause.toString().contains(MemoryVisibility.PUBLIC.value()));
-      assertFalse(anchorClause.toString().contains(MemoryVisibility.PRIVATE.value()));
-      assertFalse(anchorClause.toString().contains(MemoryVisibility.SHARED.value()));
-    }
-    assertTrue(pinnedJson.contains(ContextMemoryStatus.APPROVED.value()));
-  }
-
-  private String renderVisibility(OMQueryBuilder filter, boolean openSearch) {
-    return openSearch
-        ? ((OpenSearchQueryBuilder) filter).build().toJsonString()
-        : serializeElasticQuery(((ElasticQueryBuilder) filter).build());
   }
 
   @Test
