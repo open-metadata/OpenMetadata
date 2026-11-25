@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { render, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Task } from '../../../rest/tasksAPI';
 import TaskListV1 from './TaskListV1.component';
@@ -23,8 +29,29 @@ jest.mock('../../../rest/tasksAPI', () => ({
 }));
 
 jest.mock('../TaskFeedCard/TaskFeedCardFromTask.component', () =>
-  jest.fn(() => <div />)
+  jest.fn(
+    ({
+      task,
+      onTaskClick,
+    }: {
+      task: { id: string };
+      onTaskClick: (task: { id: string }) => void;
+    }) => (
+      <button data-testid={`card-${task.id}`} onClick={() => onTaskClick(task)}>
+        {task.id}
+      </button>
+    )
+  )
 );
+
+const deferred = <T,>() => {
+  let resolve: (value: T) => void = () => undefined;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+
+  return { promise, resolve };
+};
 
 const tasks = [{ id: 'first' }, { id: 'request' }] as Task[];
 
@@ -146,5 +173,37 @@ describe('TaskListV1', () => {
     );
 
     expect(onTaskClick).not.toHaveBeenCalledWith(late);
+  });
+
+  it('drops a late linked task once the user has picked another', async () => {
+    const pending = deferred<{ data: Task }>();
+    mockGetTaskById.mockReturnValueOnce(pending.promise);
+    const { onTaskClick } = renderList('?taskId=off-page');
+
+    fireEvent.click(screen.getByTestId('card-request'));
+
+    expect(onTaskClick).toHaveBeenLastCalledWith(tasks[1]);
+
+    await act(async () => {
+      pending.resolve({ data: { id: 'off-page' } as Task });
+      await pending.promise;
+    });
+
+    expect(onTaskClick).not.toHaveBeenCalledWith({ id: 'off-page' });
+    expect(onTaskClick).toHaveBeenLastCalledWith(tasks[1]);
+  });
+
+  it('drops a linked task that arrives after the list has gone', async () => {
+    const pending = deferred<{ data: Task }>();
+    mockGetTaskById.mockReturnValueOnce(pending.promise);
+    const { onTaskClick, unmount } = renderList('?taskId=off-page');
+
+    unmount();
+    await act(async () => {
+      pending.resolve({ data: { id: 'off-page' } as Task });
+      await pending.promise;
+    });
+
+    expect(onTaskClick).not.toHaveBeenCalled();
   });
 });
