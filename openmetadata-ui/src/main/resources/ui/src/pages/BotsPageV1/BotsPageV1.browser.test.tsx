@@ -70,7 +70,7 @@ const botLimit = (currentCount: number) => ({
   ],
 });
 
-// Issue #32676: the banner kept the pre-delete count until the page unmounted.
+// GitHub issue 32676: the banner kept the pre-delete count until the page unmounted.
 describe('Settings › Bots › plan limit banner', () => {
   afterEach(() => {
     useLimitStore.setState(useLimitStore.getInitialState(), true);
@@ -113,9 +113,7 @@ describe('Settings › Bots › plan limit banner', () => {
 
       const banner = page.getByText(/8\/10 \(FREE, 80%\)/);
 
-      await expect
-        .element(banner, { timeout: scaled(60_000) })
-        .toBeVisible();
+      await expect.element(banner, { timeout: scaled(60_000) }).toBeVisible();
 
       await userEvent.click(page.getByTestId(`bot-delete-${stored[0].name}`));
       await userEvent.click(page.getByTestId('confirm-button'));
@@ -124,7 +122,9 @@ describe('Settings › Bots › plan limit banner', () => {
       await expect.element(page.getByText('PW bot 01')).not.toBeInTheDocument();
       await expect
         .poll(() =>
-          document.querySelector('header.pricing-banner')?.hasAttribute('hidden')
+          document
+            .querySelector('header.pricing-banner')
+            ?.hasAttribute('hidden')
         )
         .toBe(true);
       await expect.element(banner).not.toBeInTheDocument();
