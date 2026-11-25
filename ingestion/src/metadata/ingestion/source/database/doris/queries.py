@@ -20,6 +20,15 @@ SHOW FULL COLUMNS FROM {table_name}
     """
 )
 
+# DISTINCT: Doris master returns one row per partition here, released versions one row per table
+DORIS_GET_TABLE_KEY_MODELS = textwrap.dedent(
+    """
+SELECT DISTINCT TABLE_NAME, TABLE_MODEL, TABLE_MODEL_KEY
+FROM information_schema.table_options
+WHERE TABLE_SCHEMA = :schema
+    """
+)
+
 # Async materialized views of a schema: SHOW FULL TABLES and information_schema.tables list them as base tables
 DORIS_GET_MATERIALIZED_VIEW_NAMES = textwrap.dedent(
     """

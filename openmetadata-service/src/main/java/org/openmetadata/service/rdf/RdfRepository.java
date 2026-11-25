@@ -665,27 +665,57 @@ public class RdfRepository {
   }
 
   /**
-   * Replays an added relationship. The graph holds the live catalog only, so an edge one of whose
-   * ends was soft-deleted or removed after the add was queued is left out; the delete already
-   * removed every edge of that end.
+   * Replays an added relationship against current SQL state. The graph holds the live catalog only,
+   * so an edge whose SQL row was deleted or one of whose ends was soft-deleted after the add was
+   * queued removes it instead of resurrecting it.
    */
   public void refreshRelationship(final EntityRelationship relationship) {
+    if (!isEnabled() || relationship == null || relationship.getRelationshipType() == null) {
+      return;
+    }
     if (relationship.getRelationshipType() == Relationship.UPSTREAM) {
       refreshLineage(relationship);
-    } else if (hasLiveEnds(relationship)) {
+    } else if (!projectionLoaders.relationshipExists(relationship) || !hasLiveEnds(relationship)) {
+      removeRelationship(relationship);
+    } else {
       addRelationship(relationship);
     }
   }
 
-  /** Replays an added typed glossary relation, leaving it out unless both terms are live. */
+  /**
+   * Replays an added typed glossary relation against current SQL state. The graph holds the live
+   * catalog only, so an edge whose SQL row was deleted or one of whose terms was soft-deleted after
+   * the add was queued removes its stale triples instead of resurrecting them.
+   */
   public void refreshGlossaryTermRelation(
       final UUID fromTermId, final UUID toTermId, final String relationType) {
+    if (!isEnabled() || fromTermId == null || toTermId == null) {
+      return;
+    }
+    final Optional<RelationshipType> resolvedType = findGlossaryRelationType(relationType);
+    if (resolvedType.isEmpty()) {
+      return;
+    }
+    final RelationshipType type = resolvedType.get();
+    final Optional<RelationshipType> inverse =
+        relationshipTypeResolver().inverseOf(type, Include.ALL);
     final RdfEntityLiveness.Endpoint from =
         new RdfEntityLiveness.Endpoint(Entity.GLOSSARY_TERM, fromTermId);
     final RdfEntityLiveness.Endpoint to =
         new RdfEntityLiveness.Endpoint(Entity.GLOSSARY_TERM, toTermId);
-    if (projectionLoaders.liveness().areLive(from, to)) {
-      addGlossaryTermRelation(fromTermId, toTermId, relationType);
+    final boolean exists =
+        !Boolean.TRUE.equals(type.getDeleted())
+            && projectionLoaders.liveness().areLive(from, to)
+            && RdfProjectionLoaders.hasGlossaryTermRelation(
+                projectionLoaders.glossaryTermRelationRows().load(fromTermId, toTermId),
+                fromTermId,
+                toTermId,
+                type.getName(),
+                inverse.map(RelationshipType::getName).orElse(null));
+    if (exists) {
+      addGlossaryTermRelation(fromTermId, toTermId, type.getName());
+    } else {
+      removeDirectedGlossaryTermRelation(fromTermId, toTermId, type, inverse.orElse(null));
     }
   }
 
@@ -4191,6 +4221,71 @@ public class RdfRepository {
         .inverseOf(type, Include.ALL)
         .ifPresent(inverse -> predicateUris.add(inverse.getRdfPredicate().toString()));
     return predicateUris;
+  }
+
+  private Optional<RelationshipType> findGlossaryRelationType(final String relationType) {
+    final String requested =
+        relationType == null || relationType.isBlank() ? "relatedTo" : relationType;
+    final RelationshipTypeResolver resolver = relationshipTypeResolver();
+    for (final RelationshipType active : resolver.list()) {
+      if (active.getName() != null && active.getName().equalsIgnoreCase(requested)) {
+        return Optional.of(active);
+      }
+    }
+    return resolver.findReferenced(new EntityReference().withName(requested), Include.ALL);
+  }
+
+  private void removeDirectedGlossaryTermRelation(
+      final UUID fromTermId,
+      final UUID toTermId,
+      final RelationshipType type,
+      final RelationshipType inverse) {
+    if (type.getRdfPredicate() == null) {
+      return;
+    }
+    try {
+      final String fromUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + fromTermId;
+      final String toUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + toTermId;
+      final String predicateUri = type.getRdfPredicate().toString();
+      final String inversePredicateUri =
+          inverse != null && inverse.getRdfPredicate() != null
+              ? inverse.getRdfPredicate().toString()
+              : null;
+      storageService.executeSparqlUpdate(
+          buildDirectedGlossaryTermRelationDeleteUpdate(
+              fromUri, toUri, predicateUri, inversePredicateUri));
+      LOG.debug(
+          "Removed stale glossary term relation {} -> {} ({})",
+          fromTermId,
+          toTermId,
+          type.getName());
+    } catch (RuntimeException e) {
+      recordFailure(e);
+      LOG.error(
+          "Failed to remove glossary term relation {} -> {} ({})",
+          fromTermId,
+          toTermId,
+          type.getName(),
+          e);
+      throw new IllegalStateException("Failed to remove glossary term relation from RDF", e);
+    }
+  }
+
+  /**
+   * Removes only the directed semantic pair ({@code from -> pred -> to} and its paired inverse
+   * {@code to -> inversePred -> from}) so replaying a stale add after the user flipped an
+   * asymmetric relation's direction cannot erase the live reversed edge.
+   */
+  static String buildDirectedGlossaryTermRelationDeleteUpdate(
+      final String fromUri,
+      final String toUri,
+      final String predicateUri,
+      final String inversePredicateUri) {
+    final String reversePredicate =
+        inversePredicateUri != null ? inversePredicateUri : predicateUri;
+    return String.format(
+        "DELETE DATA { GRAPH <%s> { <%s> <%s> <%s> . <%s> <%s> <%s> . } }",
+        KNOWLEDGE_GRAPH, fromUri, predicateUri, toUri, toUri, reversePredicate, fromUri);
   }
 
   static String buildGlossaryTermRelationDeleteUpdate(

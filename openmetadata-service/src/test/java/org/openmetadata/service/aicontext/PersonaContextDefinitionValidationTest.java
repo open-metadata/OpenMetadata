@@ -16,12 +16,66 @@ package org.openmetadata.service.aicontext;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import jakarta.validation.Validation;
+import java.util.UUID;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.teams.CreatePersona;
+import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.PersonaContextDefinition;
+import org.openmetadata.schema.type.personaContext.ContextRule;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.PersonaRepository;
 
 class PersonaContextDefinitionValidationTest {
+  @Test
+  void personaResponsesAndPutBodiesAcceptProjectedRules() {
+    var rules =
+        IntStream.rangeClosed(1, 51)
+            .mapToObj(
+                index -> new ContextRule().withName("Rule " + index).withEntityType(Entity.TABLE))
+            .toList();
+    var definition = new PersonaContextDefinition().withRules(rules.subList(0, 30));
+    var persona =
+        new Persona()
+            .withId(UUID.randomUUID())
+            .withName("company")
+            .withContextDefinition(definition);
+    var request = new CreatePersona().withName(persona.getName()).withContextDefinition(definition);
+    try (var factory = Validation.buildDefaultValidatorFactory()) {
+      var validator = factory.getValidator();
+      var violations = validator.validate(persona);
+      assertTrue(violations.isEmpty(), violations::toString);
+      definition.setRules(rules.subList(0, 50));
+      assertTrue(validator.validate(request).isEmpty());
+      definition.setRules(rules);
+      assertEquals(
+          "contextDefinition.rules",
+          validator.validate(request).iterator().next().getPropertyPath().toString());
+    }
+  }
+
+  @Test
+  void enforcesTwentyFiveRulesForAuthoredDefinitions() {
+    var rules =
+        IntStream.rangeClosed(1, 26)
+            .mapToObj(
+                index -> new ContextRule().withName("Rule " + index).withEntityType(Entity.TABLE))
+            .toList();
+    PersonaRepository.validateContextDefinition(
+        new PersonaContextDefinition().withRules(rules.subList(0, 25)));
+    var failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                PersonaRepository.validateContextDefinition(
+                    new PersonaContextDefinition().withRules(rules)));
+
+    assertEquals("Persona context supports at most 25 rules", failure.getMessage());
+  }
+
   @Test
   void trimsThePromptAndTreatsBlankAsUnset() {
     PersonaContextDefinition written =

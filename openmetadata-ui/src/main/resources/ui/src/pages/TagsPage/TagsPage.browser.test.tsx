@@ -55,8 +55,4 @@ describePaginatedList({
         HttpResponse.json(classification)
       )
     ),
-  knownIssues: {
-    duplicateFetchOnPageChange:
-      'ClassificationDetails.handlePageChange fetches, then the URL effect fetches again',
-  },
 });

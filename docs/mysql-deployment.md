@@ -1,10 +1,17 @@
 # MySQL deployment and upgrade
 
-OpenMetadata's metadata store requires MySQL 8.4 LTS or later. The bundled database,
-development environments, ingestion image client stage, and MySQL test containers use
-**MySQL 8.4.13**, an exact patch pin. PostgreSQL deployments are unaffected.
-This requirement concerns OpenMetadata's own metadata store; it does not change the
-MySQL ingestion connector's support for customer source databases running MySQL 8.0.
+OpenMetadata ships and tests its metadata store on **MySQL 8.4.13**, an exact patch pin
+used by the bundled database, development environments, the ingestion image client stage
+and the metadata store tests. A metadata database you run yourself, such as
+Amazon RDS for MySQL 8.0, Aurora MySQL 3 or Cloud SQL for MySQL 8.0, remains supported on
+MySQL 8.0. PostgreSQL deployments are unaffected. The MySQL ingestion connector keeps
+supporting source databases running MySQL 8.0.
+
+MySQL 8.4 is the LTS line an 8.0 database can upgrade to directly. MySQL does not allow
+skipping an LTS series, so a later LTS such as 9.7 is reached through 8.4.
+
+The Kubernetes dependencies Helm chart (`openmetadata-helm-charts`, `charts/deps`) deploys
+its own MySQL 8.0 image; the pins on this page do not apply to it.
 
 ## Fresh installations
 
