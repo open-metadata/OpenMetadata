@@ -8,6 +8,7 @@ import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -16,7 +17,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 
@@ -47,6 +47,9 @@ final class FakeSearchCluster implements AutoCloseable {
        replica_bytes=335672130, all_bytes=506047703, primary_operation_bytes=11466,\
        max_coordinating_and_primary_bytes=429496729]"}}}""";
   private static final String BULK_ITEMS_REJECTED = "{\"took\":1,\"errors\":true,\"items\":[%s]}";
+  private static final String ITEM_WRITTEN =
+      """
+      {"index":{"_index":"%s","_id":"%s","_version":1,"result":"created","status":201}}""";
   private static final String GZIP = "gzip";
   private static final String CONTENT_ENCODING = "Content-Encoding";
   private static final String CONTENT_TYPE = "Content-Type";
@@ -63,6 +66,7 @@ final class FakeSearchCluster implements AutoCloseable {
   private final AtomicInteger indexedDocuments = new AtomicInteger();
   private final AtomicInteger bulksToReject = new AtomicInteger();
   private final AtomicInteger bulksToRejectPerItem = new AtomicInteger();
+  private final AtomicInteger bulksToRejectFirstItem = new AtomicInteger();
   private final AtomicInteger rejectedBulks = new AtomicInteger();
   private final AtomicInteger rejectedItems = new AtomicInteger();
 
@@ -89,6 +93,15 @@ final class FakeSearchCluster implements AutoCloseable {
    */
   void rejectItemsInNextBulks(int count) {
     bulksToRejectPerItem.set(count);
+  }
+
+  /**
+   * Answers the next {@code count} bulks the way a node with just enough budget left does: HTTP
+   * 200, the first item rejected with a 429 and the rest written. A bulk that settles both ways at
+   * once is what tells a double count apart from a correct one.
+   */
+  void rejectFirstItemInNextBulks(int count) {
+    bulksToRejectFirstItem.set(count);
   }
 
   int maxConcurrentBulks() {
@@ -139,26 +152,44 @@ final class FakeSearchCluster implements AutoCloseable {
     boolean rejected = bulksToReject.getAndUpdate(remaining -> Math.max(0, remaining - 1)) > 0;
     boolean itemsRejected =
         !rejected && bulksToRejectPerItem.getAndUpdate(remaining -> Math.max(0, remaining - 1)) > 0;
+    boolean firstItemRejected =
+        !rejected
+            && !itemsRejected
+            && bulksToRejectFirstItem.getAndUpdate(remaining -> Math.max(0, remaining - 1)) > 0;
+    Outcome outcome = new Outcome(rejected, itemsRejected, firstItemRejected);
     responder.schedule(
-        () -> completeBulk(exchange, actions, rejected, itemsRejected),
-        bulkLatencyMillis,
-        TimeUnit.MILLISECONDS);
+        () -> completeBulk(exchange, actions, outcome), bulkLatencyMillis, TimeUnit.MILLISECONDS);
   }
 
-  private void completeBulk(
-      HttpExchange exchange, List<IndexAction> actions, boolean rejected, boolean itemsRejected) {
+  private void completeBulk(HttpExchange exchange, List<IndexAction> actions, Outcome outcome) {
     bulksInFlight.decrementAndGet();
-    if (rejected) {
+    if (outcome.wholeBulkRejected()) {
       rejectedBulks.incrementAndGet();
-    } else if (itemsRejected) {
-      rejectedItems.addAndGet(actions.size());
     } else {
-      indexedDocuments.addAndGet(actions.size());
+      int turnedAway = outcome.rejectedItemCount(actions.size());
+      rejectedItems.addAndGet(turnedAway);
+      indexedDocuments.addAndGet(actions.size() - turnedAway);
     }
     try {
-      respond(exchange, responseStatus(rejected), responseBody(actions, rejected, itemsRejected));
+      respond(
+          exchange, responseStatus(outcome.wholeBulkRejected()), responseBody(actions, outcome));
     } catch (IOException e) {
       throw new UncheckedIOException(e);
+    }
+  }
+
+  /** How this node decided to answer one bulk. */
+  private record Outcome(
+      boolean wholeBulkRejected, boolean everyItemRejected, boolean firstItemRejected) {
+
+    int rejectedItemCount(int actions) {
+      int rejected = 0;
+      if (everyItemRejected) {
+        rejected = actions;
+      } else if (firstItemRejected) {
+        rejected = Math.min(1, actions);
+      }
+      return rejected;
     }
   }
 
@@ -166,19 +197,27 @@ final class FakeSearchCluster implements AutoCloseable {
     return rejected ? 429 : 200;
   }
 
-  private static String responseBody(
-      List<IndexAction> actions, boolean rejected, boolean itemsRejected) {
-    if (rejected) {
-      return BULK_REJECTED;
+  private static String responseBody(List<IndexAction> actions, Outcome outcome) {
+    String body;
+    if (outcome.wholeBulkRejected()) {
+      body = BULK_REJECTED;
+    } else if (outcome.rejectedItemCount(actions.size()) == 0) {
+      body = BULK_SUCCESS;
+    } else {
+      body = String.format(BULK_ITEMS_REJECTED, itemsFor(actions, outcome));
     }
-    if (!itemsRejected) {
-      return BULK_SUCCESS;
+    return body;
+  }
+
+  private static String itemsFor(List<IndexAction> actions, Outcome outcome) {
+    int rejected = outcome.rejectedItemCount(actions.size());
+    List<String> items = new ArrayList<>();
+    for (int i = 0; i < actions.size(); i++) {
+      IndexAction action = actions.get(i);
+      String template = i < rejected ? ITEM_REJECTED : ITEM_WRITTEN;
+      items.add(String.format(template, action.index(), action.docId()));
     }
-    String items =
-        actions.stream()
-            .map(action -> String.format(ITEM_REJECTED, action.index(), action.docId()))
-            .collect(Collectors.joining(","));
-    return String.format(BULK_ITEMS_REJECTED, items);
+    return String.join(",", items);
   }
 
   private static List<IndexAction> indexActions(HttpExchange exchange) throws IOException {

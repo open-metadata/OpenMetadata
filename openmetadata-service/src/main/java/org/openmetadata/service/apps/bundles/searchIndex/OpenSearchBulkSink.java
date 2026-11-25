@@ -1664,8 +1664,14 @@ public class OpenSearchBulkSink implements BulkSink {
     private boolean handlePartialFailure(
         BulkAttempt<BulkOperation> attempt, BulkResponse response) {
       List<BulkResponseItem> items = response.items();
-      boolean retrying = scheduleCapacityRetry(attempt, rejectedForCapacity(attempt, items));
+      List<BulkOperation> rejected = rejectedForCapacity(attempt, items);
+      boolean retrying = canRetryCapacityRejections(attempt, rejected);
+      // Record what the cluster did settle before scheduling, so each item is counted once even
+      // when the re-send is refused and only the deferred items are then recorded as failed.
       recordItemOutcomes(attempt, items, retrying);
+      if (retrying) {
+        scheduleCapacityRetry(attempt, rejected);
+      }
       return retrying;
     }
 
@@ -1677,36 +1683,41 @@ public class OpenSearchBulkSink implements BulkSink {
     private List<BulkOperation> rejectedForCapacity(
         BulkAttempt<BulkOperation> attempt, List<BulkResponseItem> items) {
       List<BulkOperation> operations = attempt.operations();
-      if (items.size() != operations.size()) {
-        return List.of();
-      }
       List<BulkOperation> rejected = new ArrayList<>();
-      for (int i = 0; i < items.size(); i++) {
-        if (isCapacityRejection(items.get(i))) {
-          rejected.add(operations.get(i));
+      if (items.size() == operations.size()) {
+        for (int i = 0; i < items.size(); i++) {
+          if (isCapacityRejection(items.get(i))) {
+            rejected.add(operations.get(i));
+          }
         }
       }
       return rejected;
     }
 
-    private boolean scheduleCapacityRetry(
+    private boolean canRetryCapacityRejections(
+        BulkAttempt<BulkOperation> attempt, List<BulkOperation> rejected) {
+      return !rejected.isEmpty()
+          && attempt.attemptNumber() < retryPolicy.maxRetries()
+          && attempt.outlasts(retryPolicy.backoffMillis(attempt.attemptNumber()));
+    }
+
+    /**
+     * Sends the rejected items again as the next attempt of this bulk. The re-send carries only
+     * those items, so a processor that has already shut down fails them alone rather than the
+     * whole bulk, whose other items the cluster wrote.
+     */
+    private void scheduleCapacityRetry(
         BulkAttempt<BulkOperation> attempt, List<BulkOperation> rejected) {
       long backoffMillis = retryPolicy.backoffMillis(attempt.attemptNumber());
-      if (rejected.isEmpty()
-          || attempt.attemptNumber() >= retryPolicy.maxRetries()
-          || !attempt.outlasts(backoffMillis)) {
-        return false;
-      }
+      BulkAttempt<BulkOperation> resend = attempt.nextWith(rejected);
       LOG.warn(
           "Bulk request {} had {} of {} actions rejected for indexing capacity (attempt {}), re-sending them in {}ms",
           attempt.executionId(),
           rejected.size(),
           attempt.size(),
-          attempt.attemptNumber() + 1,
+          resend.attemptNumber(),
           backoffMillis);
-      scheduleAttempt(
-          () -> executeBulkWithRetry(attempt.nextWith(rejected)), backoffMillis, attempt);
-      return true;
+      scheduleAttempt(() -> executeBulkWithRetry(resend), backoffMillis, resend);
     }
 
     private boolean isCapacityRejection(BulkResponseItem item) {
@@ -1722,9 +1733,7 @@ public class OpenSearchBulkSink implements BulkSink {
       for (BulkResponseItem item : items) {
         if (retryingRejected && isCapacityRejection(item)) {
           outcomes.deferred++;
-          continue;
-        }
-        if (item.error() != null) {
+        } else if (item.error() != null) {
           recordItemFailure(item, outcomes);
         } else {
           recordItemSuccess(item, outcomes);

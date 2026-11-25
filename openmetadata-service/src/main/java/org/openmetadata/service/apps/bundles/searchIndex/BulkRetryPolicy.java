@@ -78,11 +78,10 @@ public record BulkRetryPolicy(
    * ADR:2026-11-24-bulk-items-rejected-for-capacity-are-re-sent
    */
   public static boolean isCapacityRejection(int status, String reason) {
-    if (status == TOO_MANY_REQUESTS || status == SERVICE_UNAVAILABLE) {
-      return true;
-    }
-    return reason != null
-        && containsMarker(reason.toLowerCase(Locale.ROOT), CAPACITY_REJECTION_MARKERS);
+    return status == TOO_MANY_REQUESTS
+        || status == SERVICE_UNAVAILABLE
+        || (reason != null
+            && containsMarker(reason.toLowerCase(Locale.ROOT), CAPACITY_REJECTION_MARKERS));
   }
 
   private static boolean isRetryable(Throwable error) {

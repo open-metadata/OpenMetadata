@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-24 (initial)
 - **Deciders:** Mohit Yadav
-- **Guard:** `itemsRejectedForIndexingCapacityAreReSentInsteadOfRecordedAsFailed` and `itemsStillRejectedWhenTheRetryBudgetRunsOutAreRecordedAsFailed` in `OpenSearchBulkProcessorConnectionPoolTest` and `ElasticSearchBulkProcessorConnectionPoolTest` drive the real clients against a node that answers 200 with per-item 429s; `BulkRetryPolicyTest` pins which item errors count as capacity
+- **Guard:** `itemsRejectedForIndexingCapacityAreReSentInsteadOfRecordedAsFailed`, `itemsStillRejectedWhenTheRetryBudgetRunsOutAreRecordedAsFailed` and `closingWhileItemsAwaitAReSendCountsEachDocumentOnce` in `OpenSearchBulkProcessorConnectionPoolTest` and `ElasticSearchBulkProcessorConnectionPoolTest` drive the real clients against a node that answers 200 with per-item 429s; `BulkRetryPolicyTest` pins which item errors count as capacity
 - **Related:** [ADR:2026-10-27-bulk-requests-never-outnumber-search-connections](2026-10-27-bulk-requests-never-outnumber-search-connections.md)
 
 ## Context
@@ -36,6 +36,12 @@ missing document is a property of the document and is recorded as a failure on t
 
 A bulk whose items are re-sent keeps its processor slot until that send settles, so producers back
 off behind it, and it releases its connection in between, so other writers keep sending.
+
+The re-send is a bulk in its own right, carrying only the rejected items. That matters when the
+processor has already shut down: the refused schedule records the items of the attempt it was given
+as failed, so handing it the subset fails only the items still owed a send, and not the items of the
+original bulk that the cluster wrote. The outcome of everything the cluster did settle is recorded
+before the re-send is scheduled, so no item is counted twice on that path.
 
 ## Consequences
 
