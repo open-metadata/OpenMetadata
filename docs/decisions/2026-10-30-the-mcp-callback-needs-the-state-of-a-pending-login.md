@@ -34,10 +34,19 @@ For a public OIDC client, MCP uses the top-level client ID and discovers the pro
 The public flow derives its own settings independently of the confidential `oidcConfiguration`.
 The MCP base URL comes from the MCP settings, falling back to the system OpenMetadata URL.
 
+After the first successful discovery, the public MCP handler checks for endpoint changes on demand,
+at most once per minute. If a refresh fails, sign-ins that need discovery receive that failure until
+the next attempt. This bounds traffic during an outage. The issuer must match the initial document.
+A provider can rotate endpoints while keeping that issuer. To switch issuers, reload the provider
+configuration. For discovery, token exchanges and signing-key downloads, the server checks the
+outbound URL before connecting and disables HTTP redirects. `PublicOidcConfigurationTest` covers
+endpoint rotation, refusal of a changed issuer, recovery and redirect handling.
+
 Register `<external MCP base URL>/mcp/callback` at the identity provider
 for a server-side authorization-code exchange using the public client ID and S256 PKCE. Include
 the deployment base path, if configured. OpenMetadata sends this same URI when it requests and
-redeems the code. The browser application retains its own registered redirect. MCP requires a pending login and asks for consent before issuing a grant.
+redeems the code. The browser application retains its own registered redirect. MCP requires a pending
+login and asks for consent before issuing a grant.
 
 A Microsoft Entra redirect registered as a single-page application requires a browser origin
 during redemption. Keep the browser redirect registered for the SPA and configure the MCP redirect
