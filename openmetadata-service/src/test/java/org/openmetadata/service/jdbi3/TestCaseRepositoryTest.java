@@ -363,6 +363,8 @@ class TestCaseRepositoryTest {
       when(collectionDAO.relationshipDAO())
           .thenReturn(mock(CollectionDAO.EntityRelationshipDAO.class));
       when(collectionDAO.testCaseDAO()).thenReturn(mock(CollectionDAO.TestCaseDAO.class));
+      when(collectionDAO.testCaseResolutionStatusTimeSeriesDao())
+          .thenReturn(mock(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class));
       when(collectionDAO.testCaseResultTimeSeriesDao())
           .thenReturn(mock(CollectionDAO.TestCaseResultTimeSeriesDAO.class));
       when(collectionDAO.dataQualityDataTimeSeriesDao()).thenReturn(dataQualityDao);

@@ -1,9 +1,12 @@
 package org.openmetadata.service.search.vector;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -13,6 +16,29 @@ public interface VectorIndexService {
 
   Map<String, Object> generateEmbeddingFields(EntityInterface<?> entity);
 
+  default EmbeddingClient getEmbeddingClient() {
+    return null;
+  }
+
+  default Map<String, JsonNode> getExistingEmbeddingsBatch(
+      String indexName, Map<String, Supplier<String>> fingerprints) {
+    return Map.of();
+  }
+
+  /** A matching content fingerprint can still come from an embedding model of another dimension. */
+  static boolean canReuseCachedEmbedding(JsonNode cached, int dimension) {
+    if (cached == null || !cached.isObject()) {
+      return false;
+    }
+    final var vector = cached.path("embedding");
+    final var fingerprint = cached.path("fingerprint");
+    return vector.isArray()
+        && !vector.isEmpty()
+        && (dimension <= 0 || vector.size() == dimension)
+        && fingerprint.isTextual()
+        && !fingerprint.asText().isBlank();
+  }
+
   void updateEntityEmbedding(EntityInterface<?> entity, String entityIndexName);
 
   /**
@@ -21,6 +47,11 @@ public interface VectorIndexService {
    * chunk support.
    */
   default void updateEntityEmbeddingChunks(EntityInterface<?> entity) {}
+
+  default void updateEntityEmbeddings(
+      EntityInterface<?> entity, String indexName, String ontologyBody) {
+    updateEntityEmbeddings(entity, indexName);
+  }
 
   /** Remove all chunk documents for the given parent entity (hard/soft delete cleanup). */
   default void deleteEntityChunks(String parentId) {}

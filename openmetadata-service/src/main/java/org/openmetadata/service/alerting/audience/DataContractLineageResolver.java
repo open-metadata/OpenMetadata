@@ -103,9 +103,4 @@ public class DataContractLineageResolver implements EntityLineageResolver {
 
     return parents;
   }
-
-  @Override
-  public String getEntityType() {
-    return Entity.DATA_CONTRACT;
-  }
 }
