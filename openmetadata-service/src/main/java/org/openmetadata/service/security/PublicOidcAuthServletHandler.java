@@ -1,6 +1,10 @@
 package org.openmetadata.service.security;
 
+import com.nimbusds.oauth2.sdk.ParseException;
+import com.nimbusds.oauth2.sdk.util.JSONObjectUtils;
+import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import java.util.Objects;
+import net.minidev.json.JSONObject;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -60,7 +64,21 @@ final class PublicOidcAuthServletHandler extends NoopAuthServeletHandler {
         .withDiscoveryUri(discovery)
         .withDisablePkce(false)
         .withServerUrl(base)
-        .withCallbackUrl(
-            StringUtils.defaultIfBlank(authentication.getCallbackUrl(), base + "/callback"));
+        .withCallbackUrl(base + AuthenticationCodeFlowHandler.MCP_CALLBACK_PATH);
+  }
+
+  static OIDCProviderMetadata parseDiscovery(String document, AuthProvider provider)
+      throws ParseException {
+    final JSONObject metadata = JSONObjectUtils.parse(document);
+    if (provider == AuthProvider.AZURE) {
+      // Entra's tenant-independent issuer contains braces, which Nimbus rejects in a URI.
+      final String issuer = JSONObjectUtils.getString(metadata, "issuer");
+      metadata.put(
+          "issuer",
+          issuer.replace(
+              ProviderTokenValidator.TENANT_ID_PLACEHOLDER,
+              ProviderTokenValidator.ENCODED_TENANT_ID_PLACEHOLDER));
+    }
+    return OIDCProviderMetadata.parse(metadata);
   }
 }

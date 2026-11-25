@@ -20,7 +20,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
@@ -48,6 +47,9 @@ public final class IdentityProviderKeys implements JwkProvider {
       "JWT Token keyID doesn't match the configured keyID. This usually happens if you didn't"
           + " configure proper publicKeyUrls under authentication configuration.";
 
+  /** The key-set URL matters for providers whose shared keys carry issuer restrictions. */
+  public record PublishedKey(Jwk key, String keySetUrl) {}
+
   private final KeySetFetchPolicy fetchPolicy;
   private final Ticker ticker;
   private final List<KeySetSource> configuredSources;
@@ -55,9 +57,9 @@ public final class IdentityProviderKeys implements JwkProvider {
   private final Supplier<List<URL>> discoveredKeySetUrls;
   private final Cache<String, KeySetSource> discoveredSources =
       CacheBuilder.newBuilder().maximumSize(MAX_DISCOVERED_KEY_SETS).build();
-  private final Cache<String, Map<String, Jwk>> downloadedSets;
+  private final Cache<String, Map<String, PublishedKey>> downloadedSets;
   private final Cache<String, Boolean> failedDownloads;
-  private final LoadingCache<String, Jwk> keysById;
+  private final LoadingCache<String, PublishedKey> keysById;
 
   /**
    * The keys published at {@code keySetUrls}, downloaded with the default timeouts and budget, each
@@ -66,6 +68,12 @@ public final class IdentityProviderKeys implements JwkProvider {
   public static IdentityProviderKeys forUrls(List<URL> keySetUrls, Duration keyLifetime) {
     return new IdentityProviderKeys(
         keySetUrls, List::of, KeySetFetchPolicy.DEFAULT, keyLifetime, Ticker.systemTicker());
+  }
+
+  /** Each public MCP key download applies the same connection policy as provider discovery. */
+  public static IdentityProviderKeys forPublicMcp(List<URL> keySetUrls, Duration keyLifetime) {
+    return forUrls(
+        keySetUrls.stream().map(PublicOidcConfiguration::checkedKeySetUrl).toList(), keyLifetime);
   }
 
   /**
@@ -97,6 +105,10 @@ public final class IdentityProviderKeys implements JwkProvider {
 
   @Override
   public Jwk get(String keyId) throws JwkException {
+    return getWithSource(keyId).key();
+  }
+
+  public PublishedKey getWithSource(String keyId) throws JwkException {
     try {
       return keysById.get(requireKeyId(keyId));
     } catch (ExecutionException | UncheckedExecutionException e) {
@@ -121,7 +133,7 @@ public final class IdentityProviderKeys implements JwkProvider {
 
   // One load per key id at a time, so the requests that arrive with a newly rotated key share it.
   // A resolved key is reused only briefly: how long a key lives is decided by downloadedSets.
-  private LoadingCache<String, Jwk> keyLookup(Ticker ticker) {
+  private LoadingCache<String, PublishedKey> keyLookup(Ticker ticker) {
     return CacheBuilder.newBuilder()
         .maximumSize(MAX_RESOLVED_KEY_IDS)
         .expireAfterWrite(RESOLVED_KEY_REUSE)
@@ -129,7 +141,7 @@ public final class IdentityProviderKeys implements JwkProvider {
         .build(
             new CacheLoader<>() {
               @Override
-              public @NotNull Jwk load(@NotNull String keyId) throws JwkException {
+              public @NotNull PublishedKey load(@NotNull String keyId) throws JwkException {
                 return loadKey(keyId);
               }
             });
@@ -137,26 +149,26 @@ public final class IdentityProviderKeys implements JwkProvider {
 
   // Bounded by the number of keys across all sets. One segment, so a set of up to the whole bound
   // fits: Guava divides a weight bound between its segments.
-  private static Cache<String, Map<String, Jwk>> downloadCache(
+  private static Cache<String, Map<String, PublishedKey>> downloadCache(
       Duration keyLifetime, Ticker ticker) {
     return CacheBuilder.newBuilder()
         .concurrencyLevel(1)
         .maximumWeight(MAX_CACHED_KEYS)
-        .weigher((String keySetUrl, Map<String, Jwk> keys) -> Math.max(1, keys.size()))
+        .weigher((String keySetUrl, Map<String, PublishedKey> keys) -> Math.max(1, keys.size()))
         .expireAfterWrite(keyLifetime)
         .ticker(ticker)
         .build();
   }
 
-  private Jwk loadKey(String keyId) throws SigningKeyNotFoundException {
+  private PublishedKey loadKey(String keyId) throws SigningKeyNotFoundException {
     List<KeySetSource> sources = candidateSources();
-    Optional<Jwk> cached = cachedKey(sources, keyId);
+    Optional<PublishedKey> cached = cachedKey(sources, keyId);
     return cached.isPresent() ? cached.get() : downloadedKey(sources, keyId);
   }
 
   // Cached sets answer only up to the first set nothing is known about: an earlier set may publish
   // the id too, and it must be asked before a later set's copy wins.
-  private Optional<Jwk> cachedKey(List<KeySetSource> sources, String keyId) {
+  private Optional<PublishedKey> cachedKey(List<KeySetSource> sources, String keyId) {
     return sources.stream()
         .map(this::knownKeys)
         .takeWhile(Objects::nonNull)
@@ -168,15 +180,15 @@ public final class IdentityProviderKeys implements JwkProvider {
   // A set's cached download, no keys for a set marked as failed, or null when neither is known and
   // the set must be asked. A failed set is asked again only on a lookup of an unknown id, or once a
   // key lifetime has passed: asking it here would hold the request up for its timeouts.
-  private Map<String, Jwk> knownKeys(KeySetSource source) {
-    Map<String, Jwk> cached = downloadedSets.getIfPresent(source.url());
+  private Map<String, PublishedKey> knownKeys(KeySetSource source) {
+    Map<String, PublishedKey> cached = downloadedSets.getIfPresent(source.url());
     boolean isMarkedFailed = failedDownloads.getIfPresent(source.url()) != null;
     return cached == null && isMarkedFailed ? Map.of() : cached;
   }
 
   // The sets are asked in order. One whose cached download holds the id answers without a download;
   // any other is downloaded, because an id it lacks may be newly rotated in.
-  private Jwk downloadedKey(List<KeySetSource> sources, String keyId)
+  private PublishedKey downloadedKey(List<KeySetSource> sources, String keyId)
       throws SigningKeyNotFoundException {
     SigningKeyNotFoundException notFound = new SigningKeyNotFoundException(KEY_NOT_FOUND, null);
     return sources.stream()
@@ -186,8 +198,9 @@ public final class IdentityProviderKeys implements JwkProvider {
         .orElseThrow(() -> notFound);
   }
 
-  private Jwk keyIn(KeySetSource source, String keyId, SigningKeyNotFoundException notFound) {
-    Map<String, Jwk> cached = downloadedSets.getIfPresent(source.url());
+  private PublishedKey keyIn(
+      KeySetSource source, String keyId, SigningKeyNotFoundException notFound) {
+    Map<String, PublishedKey> cached = downloadedSets.getIfPresent(source.url());
     return cached != null && cached.containsKey(keyId)
         ? cached.get(keyId)
         : download(source, notFound).get(keyId);
@@ -195,10 +208,11 @@ public final class IdentityProviderKeys implements JwkProvider {
 
   // The key is read from the download itself, never back from the bounded cache. A refused or
   // failed download falls back to the set's cached copy, which a concurrent download may fill.
-  private Map<String, Jwk> download(KeySetSource source, SigningKeyNotFoundException notFound) {
-    Map<String, Jwk> keys;
+  private Map<String, PublishedKey> download(
+      KeySetSource source, SigningKeyNotFoundException notFound) {
+    Map<String, PublishedKey> keys;
     try {
-      keys = indexById(source.fetchAll());
+      keys = indexById(source.url(), source.fetchAll());
       downloadedSets.put(source.url(), keys);
       failedDownloads.invalidate(source.url());
     } catch (RateLimitReachedException refused) {
@@ -220,16 +234,16 @@ public final class IdentityProviderKeys implements JwkProvider {
     }
   }
 
-  private Map<String, Jwk> cachedOrNone(KeySetSource source) {
+  private Map<String, PublishedKey> cachedOrNone(KeySetSource source) {
     return Objects.requireNonNullElse(downloadedSets.getIfPresent(source.url()), Map.of());
   }
 
-  private static Map<String, Jwk> indexById(List<Jwk> keySet) {
+  private static Map<String, PublishedKey> indexById(String keySetUrl, List<Jwk> keySet) {
     return keySet.stream()
         .filter(key -> key.getId() != null)
         .collect(
             Collectors.toUnmodifiableMap(
-                Jwk::getId, Function.identity(), (first, repeated) -> first));
+                Jwk::getId, key -> new PublishedKey(key, keySetUrl), (first, repeated) -> first));
   }
 
   private List<KeySetSource> candidateSources() {

@@ -103,17 +103,17 @@ class ProviderTokenValidatorTest {
         () ->
             validate(
                 entra,
-                token("https://login.microsoftonline.com/tenant-a/v2.0")
+                token("https://login.microsoftonline.com/11111111-2222-3333-4444-555555555555/v2.0")
                     .withAudience(CLIENT_ID)
-                    .withClaim("tid", "tenant-a")));
+                    .withClaim("tid", "11111111-2222-3333-4444-555555555555")));
     assertThrows(
         AuthenticationException.class,
         () ->
             validate(
                 entra,
-                token("https://login.microsoftonline.com/tenant-a/v2.0")
+                token("https://login.microsoftonline.com/11111111-2222-3333-4444-555555555555/v2.0")
                     .withAudience(CLIENT_ID)
-                    .withClaim("tid", "tenant-b")));
+                    .withClaim("tid", "99999999-8888-7777-6666-555555555555")));
   }
 
   /**

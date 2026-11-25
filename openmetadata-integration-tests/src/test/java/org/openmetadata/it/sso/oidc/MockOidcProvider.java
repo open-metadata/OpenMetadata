@@ -147,6 +147,11 @@ public final class MockOidcProvider implements AutoCloseable {
     tokens.defectNextIdToken(defect);
   }
 
+  /** Models a provider registration which permits redemption only from a browser. */
+  public void registerRedirectForBrowserOnly() {
+    tokenEndpoint.registerRedirectForBrowserOnly();
+  }
+
   public void answerRefreshesWith(RefreshOutcome outcome) {
     tokenEndpoint.answerRefreshesWith(outcome);
   }

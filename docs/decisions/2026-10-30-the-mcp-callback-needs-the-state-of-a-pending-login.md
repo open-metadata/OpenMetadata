@@ -29,9 +29,20 @@ when its pending request has expired (10 minutes), and that login has to be rest
 
 ## Amendment — public OIDC clients
 
-MCP uses the same pending login, registered callback and consent step when the OpenMetadata
-OIDC client is public. The server exchanges the provider's authorization code using the public
-client ID and an S256 PKCE verifier. The provider registration must allow that exchange from
-the server and register the OpenMetadata `/callback` URL. The browser's ordinary sign-in keeps
-its own flow. `SsoMcpSignInChecksIT.publicOidcClientSignsInAndCallsATool` exercises both the
-provider exchange and the agent's first tool call.
+For a public OIDC client, MCP uses the top-level client ID and discovers the provider at
+`<authority>/.well-known/openid-configuration`. For Azure, the authority gains `/v2.0` if needed.
+The public flow derives its own settings independently of the confidential `oidcConfiguration`.
+The MCP base URL comes from the MCP settings, falling back to the system OpenMetadata URL.
+
+Register `<external MCP base URL>/mcp/callback` at the identity provider
+for a server-side authorization-code exchange using the public client ID and S256 PKCE. Include
+the deployment base path, if configured. OpenMetadata sends this same URI when it requests and
+redeems the code. The browser application retains its own registered redirect. MCP requires a pending login and asks for consent before issuing a grant.
+
+A Microsoft Entra redirect registered as a single-page application requires a browser origin
+during redemption. Keep the browser redirect registered for the SPA and configure the MCP redirect
+for server-side redemption under the same public client ID. A browser-only registration
+fails before consent. [Microsoft Entra authorization code flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow#redirect-uris-for-single-page-apps)
+
+`SsoMcpSignInChecksIT` exercises the provider exchange, the agent's first tool call and refusal
+by a browser-only provider registration.

@@ -44,6 +44,7 @@ final class MockOidcTokenEndpoint implements HttpHandler {
   private final MockRequestJournal journal;
   private final String clientId;
   private final String clientSecret;
+  private volatile boolean browserOnlyRedirect;
   private final AtomicReference<RefreshOutcome> refreshOutcome =
       new AtomicReference<>(RefreshOutcome.renew());
   private final AtomicReference<RefreshOutcome> nextCodeExchangeFailure = new AtomicReference<>();
@@ -55,6 +56,10 @@ final class MockOidcTokenEndpoint implements HttpHandler {
     this.journal = journal;
     this.clientId = clientId;
     this.clientSecret = clientSecret;
+  }
+
+  void registerRedirectForBrowserOnly() {
+    browserOnlyRedirect = true;
   }
 
   void answerRefreshesWith(RefreshOutcome outcome) {
@@ -105,7 +110,9 @@ final class MockOidcTokenEndpoint implements HttpHandler {
   private void respondToCodeExchange(HttpExchange exchange, Map<String, String> form)
       throws IOException {
     RefreshOutcome failure = nextCodeExchangeFailure.getAndSet(null);
-    if (failure == null) {
+    if (browserOnlyRedirect && exchange.getRequestHeaders().getFirst("Origin") == null) {
+      respondError(exchange, BAD_REQUEST, "invalid_request");
+    } else if (failure == null) {
       respondWithTokens(exchange, redeemCode(form));
     } else {
       respondWith(exchange, failure);

@@ -58,7 +58,7 @@ public final class SsoConfigs {
         .withAuthority(provider.issuer())
         .withClientId(provider.clientId())
         .withOidcConfiguration(null)
-        .withCallbackUrl(SsoServer.url(SsoServer.CALLBACK_PATH))
+        .withCallbackUrl(SsoServer.url(SsoServer.SPA_CALLBACK_PATH))
         .withPublicKeyUrls(List.of(provider.jwksUri()));
     return config;
   }
