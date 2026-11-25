@@ -51,6 +51,7 @@ import { ProviderType } from '../../generated/entity/bot';
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { EntityReference } from '../../generated/entity/type';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
@@ -398,6 +399,12 @@ const TagsPage = () => {
       }
     },
     [updateClassification]
+  );
+
+  const handleClassificationDomainsUpdate = useCallback(
+    (domains?: EntityReference[]) =>
+      setCurrentClassification((prev) => prev && { ...prev, domains }),
+    []
   );
 
   const handleCreatePrimaryTag = async (data: CreateTag) => {
@@ -895,6 +902,9 @@ const TagsPage = () => {
                   handleActionDeleteTag={handleActionDeleteTag}
                   handleAddNewTagClick={handleAddNewTagClick}
                   handleAfterDeleteAction={handleAfterDeleteAction}
+                  handleClassificationDomainsUpdate={
+                    handleClassificationDomainsUpdate
+                  }
                   handleEditClassificationClick={handleEditClassificationClick}
                   handleEditTagClick={handleEditTagClick}
                   handleToggleDisable={handleToggleDisable}

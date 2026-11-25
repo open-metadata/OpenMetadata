@@ -174,6 +174,7 @@ const ClassificationDetails = forwardRef(
       handleAfterDeleteAction,
       classificationPermissions,
       handleUpdateClassification,
+      handleClassificationDomainsUpdate,
       handleEditTagClick,
       deleteTags,
       isAddingTag,
@@ -808,11 +809,14 @@ const ClassificationDetails = forwardRef(
               <DomainLabel
                 multiple
                 showDomainHeading
+                afterDomainUpdateAction={(updated) =>
+                  handleClassificationDomainsUpdate?.(updated.domains)
+                }
                 domains={currentClassification.domains}
                 entityFqn={currentClassification.fullyQualifiedName ?? ''}
                 entityId={currentClassification.id}
                 entityType={EntityType.CLASSIFICATION}
-                hasPermission={editDomainPermission}
+                hasPermission={!isVersionView && editDomainPermission}
                 variant="widget"
               />
               <WidgetCard

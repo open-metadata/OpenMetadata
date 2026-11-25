@@ -15,7 +15,11 @@ import { describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
-import { DESCRIPTION } from '../../test/browser/entity-matrix/entityMatrix';
+import {
+  DESCRIPTION,
+  openPicker,
+  setSelected,
+} from '../../test/browser/entity-matrix/entityMatrix';
 import { DOMAINS, serveDomains } from '../../test/browser/fixtures/domains';
 import { many, named } from '../../test/browser/fixtures/entities';
 import { serveEntity } from '../../test/browser/fixtures/entityPage';
@@ -105,14 +109,23 @@ describe('Classification › Domains', () => {
       .element(domainChip(assigned.fullyQualifiedName))
       .toHaveTextContent(assigned.displayName ?? '');
 
-    await userEvent.click(page.getByTestId('edit-domain'));
-    await userEvent.click(
-      page.getByTestId(`tree-node-${assigned.fullyQualifiedName}`)
+    const assignedNode = page.getByTestId(
+      `tree-node-${assigned.fullyQualifiedName}`
     );
-    await userEvent.click(
-      page.getByTestId(`tree-node-${other.fullyQualifiedName}`)
+    await openPicker(page.getByTestId('edit-domain'), assignedNode);
+
+    await expect.element(assignedNode).toHaveAttribute('data-selected', 'true');
+
+    await setSelected(assignedNode, false);
+    await setSelected(
+      page.getByTestId(`tree-node-${other.fullyQualifiedName}`),
+      true
     );
     await userEvent.click(page.getByTestId('update-btn'));
+
+    await expect
+      .element(page.getByTestId('update-btn'))
+      .not.toBeInTheDocument();
   };
 
   test('shows the assigned domain and saves a replacement to the classification', async () => {
@@ -127,6 +140,30 @@ describe('Classification › Domains', () => {
     await expect
       .element(domainChip(assigned.fullyQualifiedName))
       .not.toBeInTheDocument();
+  });
+
+  test('opens the edit form with the domains saved from the panel', async () => {
+    const server = serveGoverned();
+
+    await replaceAssignedDomain();
+
+    await expect
+      .poll(() => server.current().domains?.map((d) => d.id))
+      .toEqual([other.id]);
+
+    await userEvent.click(page.getByTestId('manage-button'));
+    await userEvent.click(page.getByTestId('edit-classification'));
+
+    const domainField = page
+      .getByTestId('classification-form-drawer')
+      .getByTestId('domain-select');
+
+    await expect
+      .element(domainField)
+      .toHaveTextContent(other.displayName ?? '');
+    await expect
+      .element(domainField)
+      .not.toHaveTextContent(assigned.displayName ?? '');
   });
 
   test('keeps the saved domain on screen when the save is rejected', async () => {

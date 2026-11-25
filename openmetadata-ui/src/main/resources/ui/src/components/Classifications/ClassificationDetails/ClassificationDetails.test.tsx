@@ -701,6 +701,10 @@ describe('ClassificationDetails', () => {
     );
 
     expect(screen.queryByTestId('add-new-tag-button')).not.toBeInTheDocument();
+    expect(screen.getByText('label.domain-plural')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Apply' })
+    ).not.toBeInTheDocument();
 
     unmount();
 
