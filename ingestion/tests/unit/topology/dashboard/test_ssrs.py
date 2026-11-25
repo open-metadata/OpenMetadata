@@ -1185,6 +1185,22 @@ class TestSsrsOutageProtection:
         assert "SSRS is down" in results[0].left.error
         assert ssrs_source.datamodel_listing.has_failed
 
+    def test_failed_definition_fetched_once_per_report(self, ssrs_source):
+        """The lineage stage reuses the data-model stage's failure instead of fetching
+        the same definition again, with retries. The next report is fetched normally."""
+        ssrs_source.source_config.includeDataModels = True
+        self._wire_outage_client(ssrs_source)
+
+        list(ssrs_source.yield_datamodel(self._outage_report()))
+        lineage = list(ssrs_source.yield_dashboard_lineage_details(self._outage_report()))
+
+        assert "SSRS is down" in lineage[0].left.error
+        ssrs_source.client.get_report_definition.assert_called_once_with("r-outage")
+
+        with pytest.raises(SourceConnectionException):
+            ssrs_source._get_report_definition(MOCK_REPORTS[0])
+        assert ssrs_source.client.get_report_definition.call_count == 2
+
     def test_mark_datamodels_as_deleted_skipped_when_listing_failed(self, ssrs_source):
         ssrs_source.source_config.markDeletedDataModels = True
         ssrs_source.source_config.includeDataModels = True

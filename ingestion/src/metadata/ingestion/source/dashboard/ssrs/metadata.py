@@ -136,7 +136,7 @@ class SsrsSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata)
         self.folder_path_map: dict[str, str] = {}
-        self._current_rdl: tuple[str, SsrsReportDefinition] | None = None
+        self._current_rdl: tuple[str, SsrsReportDefinition | SourceConnectionException] | None = None
 
     def prepare(self):
         self.folder_path_map = {folder.path: folder.name for folder in self.client.get_folders()}
@@ -175,11 +175,19 @@ class SsrsSource(DashboardServiceSource):
         are deleted as stale, see
         ADR:2026-11-25-an-ssrs-run-that-could-not-read-every-report-deletes-nothing-stale."""
         if self._current_rdl and self._current_rdl[0] == dashboard.id:
-            return self._current_rdl[1]
+            cached = self._current_rdl[1]
+            if isinstance(cached, SourceConnectionException):
+                raise cached
+            return cached
         self._current_rdl = None
         if dashboard.has_data_sources is False:
             return None
-        rdl_bytes = self.client.get_report_definition(dashboard.id)
+        try:
+            rdl_bytes = self.client.get_report_definition(dashboard.id)
+        except SourceConnectionException as exc:
+            # The lineage stage asks for the same report next; replaying the failure spares a second round of retries.
+            self._current_rdl = (dashboard.id, exc)
+            raise
         if not rdl_bytes:
             return None
         try:
