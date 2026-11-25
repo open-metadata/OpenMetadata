@@ -227,6 +227,7 @@ const TagsPage = () => {
     try {
       const res = await createClassification(data);
       await fetchClassifications();
+      setCurrentClassification({ ...res, termCount: 0 });
       navigate(getTagPath(res.fullyQualifiedName));
     } catch (error) {
       if (

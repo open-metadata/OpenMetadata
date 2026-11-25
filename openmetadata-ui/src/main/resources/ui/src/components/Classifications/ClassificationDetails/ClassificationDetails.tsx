@@ -724,7 +724,8 @@ const ClassificationDetails = forwardRef(
     }
 
     function renderTagsPanel() {
-      return isEmpty(tags) && !isLoading ? (
+      return isEmpty(tags) &&
+        (!isLoading || currentClassification?.termCount === 0) ? (
         <Box className="tw:relative tw:min-h-[360px]">
           <NoDataPlaceholder
             actions={

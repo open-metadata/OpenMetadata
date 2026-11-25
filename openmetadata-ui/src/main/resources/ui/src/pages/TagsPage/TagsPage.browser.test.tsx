@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
+import { DESCRIPTION } from '../../test/browser/entity-matrix/entityMatrix';
 import { DOMAINS, serveDomains } from '../../test/browser/fixtures/domains';
 import { many, named } from '../../test/browser/fixtures/entities';
 import { serveEntity } from '../../test/browser/fixtures/entityPage';
@@ -116,5 +117,89 @@ describe('Classification › Domains', () => {
     await expect
       .element(domainChip(assigned.fullyQualifiedName))
       .not.toBeInTheDocument();
+  });
+});
+
+describe('Classification › Create', () => {
+  test('a new classification opens on its empty state without showing the tags table', async () => {
+    const existing: Classification = {
+      ...classification,
+      id: '00000000-0000-4000-8000-0000000000c3',
+      name: 'PwExisting',
+      fullyQualifiedName: 'PwExisting',
+      termCount: 3,
+    };
+    const existingTags = tags.slice(0, 3);
+    const stored: Classification[] = [existing];
+
+    worker.use(
+      http.get('/api/v1/classifications', () =>
+        HttpResponse.json({ data: stored, paging: { total: stored.length } })
+      ),
+      http.get('/api/v1/classifications/name/:name', ({ params }) =>
+        HttpResponse.json(stored.find((c) => c.name === params.name))
+      ),
+      http.post('/api/v1/classifications', async ({ request }) => {
+        const body = (await request.json()) as Classification;
+        // The server's create response carries no termCount.
+        const created: Classification = {
+          id: '00000000-0000-4000-8000-0000000000c4',
+          name: body.name,
+          fullyQualifiedName: body.name,
+          description: body.description,
+          mutuallyExclusive: false,
+        };
+        stored.push({ ...created, termCount: 0 });
+
+        return HttpResponse.json(created, { status: 201 });
+      }),
+      http.get('/api/v1/tags', async ({ request }) => {
+        const parent = new URL(request.url).searchParams.get('parent');
+        if (parent !== existing.name) {
+          await delay(1_000);
+
+          return HttpResponse.json(EMPTY_LIST);
+        }
+
+        return HttpResponse.json({
+          data: existingTags,
+          paging: { total: existingTags.length },
+        });
+      })
+    );
+
+    await renderApp(`/tags/${existing.name}`);
+
+    await expect.element(page.getByTestId('table')).toBeVisible();
+
+    let tableGone = false;
+    let tableFlashed = false;
+    const observer = new MutationObserver(() => {
+      const table = document.querySelector('[data-testid="table"]');
+      tableFlashed ||= tableGone && table !== null;
+      tableGone ||= table === null;
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    await userEvent.click(page.getByTestId('add-classification'));
+    const drawer = page.getByTestId('classification-form-drawer');
+    await userEvent.fill(
+      drawer.getByTestId('name').getByRole('textbox'),
+      'PwCreated'
+    );
+    await userEvent.fill(
+      drawer.getByCSS('.om-block-editor[contenteditable="true"]'),
+      DESCRIPTION
+    );
+    await userEvent.click(drawer.getByTestId('save-button'));
+
+    await expect.element(page.getByText('Add the first tag')).toBeVisible();
+
+    observer.disconnect();
+
+    await expect
+      .element(page.getByTestId('entity-header-name'))
+      .toHaveTextContent('PwCreated');
+    expect(tableFlashed).toBe(false);
   });
 });
