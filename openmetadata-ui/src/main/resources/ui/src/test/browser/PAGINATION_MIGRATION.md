@@ -13,8 +13,9 @@ paging stays covered.
 The other 8 are not tagged:
 - 2 real-server smoke tests (Users search, Table columns pagination);
 - 2 Topic schema fields tests, added after this migration and not covered yet;
-- 4 Data Models and Stored Procedures tests, whose browser tests are pinned as
-  failing by a product bug (#38295). They stay in Playwright until it is fixed.
+- 4 Data Models and Stored Procedures tests, whose browser tests were pinned as
+  failing by a product bug (#38295, fixed in #38309). They remain in Playwright
+  pending `@migrated-browser` tagging.
 
 ## Where each Playwright test went
 
@@ -31,9 +32,9 @@ The other 8 are not tagged:
 | Notification Alerts | `pages/NotificationListPage/NotificationListPage.browser.test.tsx` | `PaginationIT`* |
 | Observability Alerts | `pages/ObservabilityAlertsPage/ObservabilityAlertsPage.browser.test.tsx` | `PaginationIT`* |
 | API Collection › normal / search | `pages/APICollectionPage/APIEndpointsTab.browser.test.tsx` | `PaginationIT`* |
-| Stored Procedures › normal / search | `pages/StoredProcedure/StoredProcedureTab.browser.test.tsx` (pinned failing, #38295) **kept in Playwright** | `PaginationIT`* |
+| Stored Procedures › normal / search | `pages/StoredProcedure/StoredProcedureTab.browser.test.tsx` **kept in Playwright** | `PaginationIT`* |
 | Database Schemas › normal / search | `pages/DatabaseDetailsPage/DatabaseSchemaTable.browser.test.tsx` | `PaginationIT`* |
-| Data Models › normal / search | `pages/ServiceDetailsPage/ServiceDataModels.browser.test.tsx` (pinned failing, #38295) **kept in Playwright** | `PaginationIT`* |
+| Data Models › normal / search | `pages/ServiceDetailsPage/ServiceDataModels.browser.test.tsx` **kept in Playwright** | `PaginationIT`* |
 | Topic schema fields › pagination / search | none yet **kept in Playwright** | `ChildFieldPaginationIT` |
 | Directories › normal / search | `pages/ServiceDetailsPage/DriveServiceDirectories.browser.test.tsx` | `PaginationIT`* |
 | Files › normal / search | `pages/ServiceDetailsPage/DriveServiceFiles.browser.test.tsx` | `PaginationIT`* |
@@ -66,7 +67,7 @@ once fixed, prompting cleanup.
 
 | Page | Issue | Pinned as |
 | --- | --- | --- |
-| Data Models tab, Stored Procedures tab | URL-sync effect resets `currentPage` to 1 after Next under router transitions; reload shows the wrong page number and search starts from page 2 (#38295) | `test.fails`; their Playwright tests stay untagged |
+| Data Models tab, Stored Procedures tab | URL-sync effect resets `currentPage` to 1 after Next under router transitions; reload shows the wrong page number and search starts from page 2 (#38295) | fixed in #38309 |
 | Roles, Policies, Bots, Notification alerts, Classification tags, Service version page | Page change fetches twice (click handler and URL effect) (#38296) | `duplicateFetchOnPageChange` |
 | Observability alerts | Table had no row-header column (react-aria error) | fixed separately on main |
 

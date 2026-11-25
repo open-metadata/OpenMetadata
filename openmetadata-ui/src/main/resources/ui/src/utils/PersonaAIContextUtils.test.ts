@@ -503,6 +503,30 @@ describe('getRuleExplorePath', () => {
       '"field":"extension.table.testCp.keyword"'
     );
   });
+
+  it("links with the rule's saved filter, not its tree, when it has one", () => {
+    const queryFilter = {
+      query: { bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] } },
+    };
+    const url = new URL(
+      getRuleExplorePath(
+        EntityType.TABLE,
+        filterJsonTree,
+        JSON.stringify(queryFilter)
+      ),
+      'http://localhost'
+    );
+
+    expect(JSON.parse(url.searchParams.get('queryFilter') ?? '')).toEqual({
+      query: { bool: { must: [queryFilter.query] } },
+    });
+  });
+
+  it('falls back to the tree when the saved filter cannot be read', () => {
+    expect(
+      fieldsIn(getRuleExplorePath(EntityType.TABLE, filterJsonTree, '{bad'))
+    ).toContain('"field":"extension.table.testCp.keyword"');
+  });
 });
 
 describe('getPersonaContextFreshness', () => {

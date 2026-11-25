@@ -24,7 +24,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.feed.TaskFormSchema;
 import org.openmetadata.schema.type.SuggestionPayload;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -48,18 +47,6 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
         TASK_FORM_SCHEMA,
         TaskFormSchema.class,
         Entity.getCollectionDAO().taskFormSchemaDAO(),
-        "",
-        "");
-    supportsSearch = false;
-    quoteFqn = false;
-  }
-
-  public TaskFormSchemaRepository(Jdbi jdbi) {
-    super(
-        COLLECTION_PATH,
-        TASK_FORM_SCHEMA,
-        TaskFormSchema.class,
-        initializeTaskFormSchemaDao(jdbi),
         "",
         "");
     supportsSearch = false;
@@ -102,16 +89,6 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
     }
     validateTransitionForms(schema);
     validateUniqueTaskSchemaBinding(schema);
-  }
-
-  private static CollectionDAO.TaskFormSchemaDAO initializeTaskFormSchemaDao(Jdbi jdbi) {
-    if (Entity.getJdbi() == null) {
-      Entity.setJdbi(jdbi);
-    }
-    if (Entity.getCollectionDAO() == null) {
-      Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
-    }
-    return Entity.getCollectionDAO().taskFormSchemaDAO();
   }
 
   @Override
