@@ -21,8 +21,8 @@ their coverage is not a baseline.
   (`src/test/browser/coverage/lcov.info`). No pull-request or merge-queue run feeds Sonar.
 - A failing test still fails the job and notifies Slack, but the scan runs on the coverage it wrote
   (Vitest's `reportOnFailure`).
-- The scan is skipped when the dependency install failed or either report is missing. A partial scan
-  would publish a false coverage drop on main.
+- The scan is skipped, and the job fails (so Slack is notified), when the dependency install failed or
+  either report is missing. A partial scan would publish a false coverage drop on main.
 - The job is capped at 180 minutes (Jest plus about 1,070 browser tests on one runner).
 
 ## Consequences

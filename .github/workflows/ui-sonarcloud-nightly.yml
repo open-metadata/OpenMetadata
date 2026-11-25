@@ -125,6 +125,8 @@ jobs:
             fi
           done
           echo "ready=$ready" >> "$GITHUB_OUTPUT"
+          # Fail the job (and so notify Slack) rather than silently skip the scan.
+          [ "$ready" = true ]
 
       - name: Install sonar-scanner
         if: ${{ !cancelled() && steps.coverage.outputs.ready == 'true' }}
