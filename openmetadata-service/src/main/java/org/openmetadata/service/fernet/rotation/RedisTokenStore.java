@@ -182,6 +182,19 @@ final class RedisTokenStore implements TokenStore {
                     Writability.REDIS_MEMBER));
   }
 
+  /** Escapes Redis glob metacharacters so {@code SCAN MATCH} matches the literal keyspace prefix. */
+  static String scanPattern(String prefix) {
+    StringBuilder escaped = new StringBuilder(prefix.length() + 2);
+    for (int i = 0; i < prefix.length(); i++) {
+      char c = prefix.charAt(i);
+      if (c == '\\' || c == '*' || c == '?' || c == '[' || c == ']') {
+        escaped.append('\\');
+      }
+      escaped.append(c);
+    }
+    return escaped.append(":*").toString();
+  }
+
   /** The keys under each prefix in turn, one SCAN page at a time. */
   private final class Keys implements Iterator<String> {
     private final Iterator<String> remaining = prefixes.iterator();
@@ -196,7 +209,7 @@ final class RedisTokenStore implements TokenStore {
           if (!remaining.hasNext()) {
             return false;
           }
-          args = ScanArgs.Builder.matches(remaining.next() + ":*").limit(SCAN_COUNT);
+          args = ScanArgs.Builder.matches(scanPattern(remaining.next())).limit(SCAN_COUNT);
           cursor = commands.scan(args);
         } else {
           cursor = commands.scan(cursor, args);

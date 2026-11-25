@@ -83,7 +83,7 @@ public final class FernetKeyRotation {
       String sql = "Read " + tables + " tables (" + columns + " text columns)";
       return redisKeys
           .map(keys -> sql + " and " + keys + " Redis keys under \"" + keyspace + "\".")
-          .orElse(sql + ".");
+          .orElse(sql + ". Redis: not read (cache.provider is not redis on this host).");
     }
   }
 
@@ -142,8 +142,7 @@ public final class FernetKeyRotation {
       RedisCacheProvider provider = new RedisCacheProvider(cache);
       if (!provider.available()) {
         provider.close();
-        throw new Refused(
-            "Redis is configured (cacheConfig.provider: redis) but cannot be reached.");
+        throw new Refused("Redis is configured (cache.provider: redis) but cannot be reached.");
       }
       redis = Optional.of(provider);
     }
@@ -327,10 +326,14 @@ public final class FernetKeyRotation {
     private String cleanLine() {
       String primary = fingerprints.getFirst();
       String older = String.join(", ", fingerprints.subList(1, fingerprints.size()));
+      String redisNote =
+          coverage.redisKeys().isEmpty()
+              ? " Redis was not read (cache.provider is not redis on this host); if the servers use Redis, run with cache.provider=redis before removing the key."
+              : "";
       String olderKeyLine =
           leftOut.isEmpty()
-              ? " Key " + older + " can be removed from the servers."
-              : " Before key " + older + " leaves the servers, confirm with --every-table.";
+              ? " Key " + older + " can be removed from the servers." + redisNote
+              : " An older key can be removed only after a run with --every-table exits 0.";
       return (leftOut.isEmpty() ? "Every stored value" : "Every value read")
           + " opens with key "
           + primary

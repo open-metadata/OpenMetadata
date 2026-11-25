@@ -72,8 +72,12 @@ public final class KeyRing {
       throw new IllegalArgumentException("No Fernet key is configured");
     }
     String normalized = configured.replace("/", "_").replace("+", "-").replace("=", "");
+    String[] parts = normalized.split(KEY_SEPARATOR);
+    if (parts.length == 0) {
+      throw new IllegalArgumentException("A configured Fernet key is not valid");
+    }
     try {
-      return new KeyRing(Arrays.stream(normalized.split(KEY_SEPARATOR, -1)).map(Key::new).toList());
+      return new KeyRing(Arrays.stream(parts).map(Key::new).toList());
     } catch (RuntimeException e) {
       throw new IllegalArgumentException("A configured Fernet key is not valid");
     }

@@ -421,31 +421,182 @@ class FernetRotationStoresIT {
   }
 
   @Test
-  void aTableWithoutAPrimaryKeyIsReportedAndNeverWritten() {
+  void aTableWithoutAPrimaryKeyIsRewrittenInPlaceIncludingIdenticalRows() {
     String table = "fernet_it_nopk_" + suffix();
     jdbi.useHandle(handle -> handle.execute("CREATE TABLE " + table + " (note text)"));
     try {
-      String token = OLD.seal("unkeyed");
+      String duplicate = OLD.seal("same");
+      String distinct = OLD.seal("other");
+      jdbi.useHandle(
+          handle -> {
+            for (String note : List.of(duplicate, duplicate, distinct)) {
+              handle
+                  .createUpdate("INSERT INTO " + table + " (note) VALUES (:note)")
+                  .bind("note", note)
+                  .execute();
+            }
+          });
+
+      Pass rewrite = RotationStoresTestSupport.rewrite(jdbi, type, table, RING);
+      Pass check = RotationStoresTestSupport.check(jdbi, type, table, RING);
+
+      assertEquals(0, rewrite.count("UNREWRITABLE"));
+      assertTrue(rewrite.count("REKEYED") >= 2, "distinct values rewritten");
+      assertEquals(3, check.count("PRIMARY"));
+      assertEquals(0, check.count("OLDER_KEY"));
+      assertEquals(List.of(), check.problems());
+      List<String> notes =
+          jdbi.withHandle(
+              handle -> handle.createQuery("SELECT note FROM " + table).mapTo(String.class).list());
+      assertEquals(3, notes.size());
+      long sameCount =
+          notes.stream().filter(note -> new Opening.Primary("same").equals(NEW.open(note))).count();
+      long otherCount =
+          notes.stream()
+              .filter(note -> new Opening.Primary("other").equals(NEW.open(note)))
+              .count();
+      assertEquals(2, sameCount);
+      assertEquals(1, otherCount);
+
+      String beforeRace = OLD.seal("before-race");
+      String afterRace = OLD.seal("after-race");
+      jdbi.useHandle(
+          handle -> {
+            handle.execute("DELETE FROM " + table);
+            handle
+                .createUpdate("INSERT INTO " + table + " (note) VALUES (:note)")
+                .bind("note", beforeRace)
+                .execute();
+          });
+      Value read = RotationStoresTestSupport.candidates(jdbi, type, table).getFirst();
       jdbi.useHandle(
           handle ->
               handle
-                  .createUpdate("INSERT INTO " + table + " (note) VALUES (:note)")
-                  .bind("note", token)
+                  .createUpdate("UPDATE " + table + " SET note = :note")
+                  .bind("note", afterRace)
                   .execute());
-
-      Pass rewrite = RotationStoresTestSupport.rewrite(jdbi, type, table, RING);
-
-      assertEquals(1, rewrite.count("UNREWRITABLE"));
-      assertEquals(0, rewrite.count("REKEYED"));
-      assertEquals(
-          List.of(
-              table
-                  + " (no primary key) note: token that will not be replaced: its table has no primary key"),
-          RotationStoresTestSupport.check(jdbi, type, table, RING).problems());
-      assertEquals(token, readText(table, "note"), "never written");
+      assertFalse(
+          RotationStoresTestSupport.compareAndSet(
+              jdbi, type, table, read, NEW.seal("before-race")));
+      assertEquals(afterRace, readText(table, "note"));
     } finally {
       jdbi.useHandle(handle -> handle.execute("DROP TABLE " + table));
     }
+  }
+
+  @Test
+  void encryptedAppRunHistoryInAppsExtensionTimeSeriesIsDiscoveredAndRotated() {
+    String appId = UUID.randomUUID().toString();
+    long timestamp = System.currentTimeMillis();
+    String secret = "app-run-secret-" + suffix();
+    String rowJson =
+        "{\"appId\":\""
+            + appId
+            + "\",\"appName\":\"FernetItApp\",\"timestamp\":"
+            + timestamp
+            + ",\"status\":\"success\",\"config\":{\"apiToken\":\""
+            + OLD.seal(secret)
+            + "\"}}";
+    try {
+      jdbi.useHandle(
+          handle ->
+              handle
+                  .createUpdate(
+                      "INSERT INTO apps_extension_time_series (json, extension) VALUES (CAST(:json AS "
+                          + jsonType()
+                          + "), 'status')")
+                  .bind("json", rowJson)
+                  .execute());
+
+      List<Value> defaultCandidates = RotationStoresTestSupport.defaultReadCandidates(jdbi, type);
+      assertTrue(
+          defaultCandidates.stream().anyMatch(value -> value.text().contains(appId)),
+          "default scope reads apps_extension_time_series");
+
+      Pass rewrite =
+          RotationStoresTestSupport.rewrite(jdbi, type, "apps_extension_time_series", RING);
+      Pass check = RotationStoresTestSupport.check(jdbi, type, "apps_extension_time_series", RING);
+
+      assertEquals(0, rewrite.count("UNREWRITABLE"));
+      assertEquals(0, check.count("OLDER_KEY"));
+      assertEquals(List.of(), check.problems());
+      String storedJson =
+          jdbi.withHandle(
+              handle ->
+                  handle
+                      .createQuery(
+                          "SELECT "
+                              + (type == ConnectionType.MYSQL ? "CAST(json AS CHAR)" : "json::text")
+                              + " FROM apps_extension_time_series WHERE appId = :appId")
+                      .bind("appId", appId)
+                      .mapTo(String.class)
+                      .one());
+      JsonNode parsed = JsonUtils.readTree(storedJson);
+      assertEquals(appId, parsed.path("appId").asText());
+      assertEquals(timestamp, parsed.path("timestamp").asLong());
+      assertEquals(
+          new Opening.Primary(secret), NEW.open(parsed.at("/config/apiToken").textValue()));
+    } finally {
+      jdbi.useHandle(
+          handle ->
+              handle
+                  .createUpdate("DELETE FROM apps_extension_time_series WHERE appId = :appId")
+                  .bind("appId", appId)
+                  .execute());
+    }
+  }
+
+  @Test
+  void aRedisKeyspaceWithGlobMetacharactersMatchesOnlyItsLiteralPrefix() {
+    assumeTrue(TestSuiteBootstrap.isRedisEnabled(), "the lane runs without Redis");
+    String tag = suffix();
+    String bracketNs = "om[fernet-it-" + tag + "]";
+    String bracketSession = bracketNs + ":session:1";
+    String bracketDecoy = "omf:session:" + tag;
+    String wildcardNs = "om*fernet-" + tag;
+    String wildcardSession = wildcardNs + ":session:1";
+    String wildcardDecoy = "omXfernet-" + tag + ":session:1";
+    String decoyBracketToken = OLD.seal("bracket-decoy");
+    String decoyWildcardToken = OLD.seal("wildcard-decoy");
+    withRedis(
+        redis -> {
+          try {
+            redis.set(
+                bracketSession, "{\"omRefreshToken\":\"" + OLD.seal("bracket-refresh") + "\"}");
+            redis.set(bracketDecoy, "{\"omRefreshToken\":\"" + decoyBracketToken + "\"}");
+            redis.set(
+                wildcardSession, "{\"omRefreshToken\":\"" + OLD.seal("wildcard-refresh") + "\"}");
+            redis.set(wildcardDecoy, "{\"omRefreshToken\":\"" + decoyWildcardToken + "\"}");
+
+            RotationStoresTestSupport.rewriteRedisKeyspace(redis, bracketNs, RING);
+
+            assertEquals(
+                new Opening.Primary("bracket-refresh"),
+                NEW.open(
+                    JsonUtils.readTree(redis.get(bracketSession))
+                        .get("omRefreshToken")
+                        .textValue()));
+            assertEquals(
+                decoyBracketToken,
+                JsonUtils.readTree(redis.get(bracketDecoy)).get("omRefreshToken").textValue(),
+                "a bracket character-class decoy outside the literal namespace is untouched");
+
+            RotationStoresTestSupport.rewriteRedisKeyspace(redis, wildcardNs, RING);
+
+            assertEquals(
+                new Opening.Primary("wildcard-refresh"),
+                NEW.open(
+                    JsonUtils.readTree(redis.get(wildcardSession))
+                        .get("omRefreshToken")
+                        .textValue()));
+            assertEquals(
+                decoyWildcardToken,
+                JsonUtils.readTree(redis.get(wildcardDecoy)).get("omRefreshToken").textValue(),
+                "a wildcard decoy outside the literal namespace is untouched");
+          } finally {
+            redis.del(bracketSession, bracketDecoy, wildcardSession, wildcardDecoy);
+          }
+        });
   }
 
   @Test

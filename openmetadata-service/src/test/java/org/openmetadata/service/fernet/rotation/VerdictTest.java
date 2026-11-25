@@ -102,6 +102,28 @@ class VerdictTest {
   }
 
   @Test
+  void aCleanRunOfEveryTableWithoutRedisWarnsThatRedisWasNotRead() {
+    Report report =
+        report(
+            Mode.REPORT,
+            false,
+            new Coverage(231, 402, Optional.empty(), ""),
+            List.of(),
+            List.of(tally("user_entity", Map.of(Outcome.PRIMARY, 4L))),
+            List.of());
+
+    List<String> lines = print(report, new CapturedTable());
+
+    assertEquals(0, report.exitCode());
+    assertEquals(
+        "Read 231 tables (402 text columns). Redis: not read (cache.provider is not redis on this host).",
+        lines.get(1));
+    assertEquals(
+        "Every stored value opens with key 9f3a1c2e7b40. Key 51d0e8aa02c7 can be removed from the servers. Redis was not read (cache.provider is not redis on this host); if the servers use Redis, run with cache.provider=redis before removing the key.",
+        lines.getLast());
+  }
+
+  @Test
   void aCleanRunThatLeftTablesOutAsksForEveryTableBeforeTheOldKeyGoes() {
     Report report =
         leavingOut(
@@ -113,7 +135,7 @@ class VerdictTest {
 
     assertEquals(0, report.exitCode());
     assertEquals(
-        "Every value read opens with key 9f3a1c2e7b40. Before key 51d0e8aa02c7 leaves the servers, confirm with --every-table.",
+        "Every value read opens with key 9f3a1c2e7b40. An older key can be removed only after a run with --every-table exits 0.",
         lines.getLast());
   }
 
@@ -161,7 +183,7 @@ class VerdictTest {
                 new Location("event_subscription_entity", "json", List.of("id"), List.of("4f1c")),
                 "/destinations/0/config/headers/X-Key",
                 Outcome.UNREWRITABLE,
-                "its table has no primary key"),
+                "could not be written (SQLException)"),
             new Problem(
                 new Location(
                     "entity_extension",
@@ -192,7 +214,7 @@ class VerdictTest {
     List<String> lines = print(report, new CapturedTable());
 
     assertEquals(
-        "event_subscription_entity id=4f1c json /destinations/0/config/headers/X-Key: token that will not be replaced: its table has no primary key",
+        "event_subscription_entity id=4f1c json /destinations/0/config/headers/X-Key: token that will not be replaced: could not be written (SQLException)",
         lines.get(2));
     assertEquals(
         "user_session key="
@@ -289,7 +311,9 @@ class VerdictTest {
 
     List<String> lines = print(report, new CapturedTable());
 
-    assertEquals("Read 10 tables (20 text columns).", lines.get(1));
+    assertEquals(
+        "Read 10 tables (20 text columns). Redis: not read (cache.provider is not redis on this host).",
+        lines.get(1));
     assertEquals(
         "Warning: the primary key is the default key shipped in openmetadata.yaml; values encrypted with it are not protected.",
         lines.get(2));

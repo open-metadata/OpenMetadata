@@ -34,6 +34,12 @@ class LargeTablesTest {
   }
 
   @Test
+  void appRunHistoryIsReadBecauseAppRunRecordsCanCarryEncryptedConfiguration() {
+    assertFalse(LargeTables.isLarge("apps_extension_time_series"));
+    assertFalse(LargeTables.isLarge("Apps_Extension_Time_Series"));
+  }
+
+  @Test
   void aTableNobodyListedIsRead() {
     assertFalse(LargeTables.isLarge("openmetadata_settings"));
     assertFalse(LargeTables.isLarge("a_table_a_distribution_adds"));

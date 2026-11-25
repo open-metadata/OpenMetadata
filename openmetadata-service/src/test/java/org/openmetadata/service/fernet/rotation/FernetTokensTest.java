@@ -242,17 +242,18 @@ class FernetTokensTest {
 
   @Test
   void anOlderKeyTokenInAValueThatCannotBeWrittenIsNotRewritable() {
-    Location noKey = new Location("fernet_it_nopk", "note", List.of(), List.of());
+    Location listMember = Location.ofRedis("om:list:1", "list member");
     String text = OLD.seal(SECRET) + " and " + NEW.seal(SECRET);
 
     Rewrite rewrite =
         FernetTokens.rewrite(
-            new StoredText(noKey, text, Encoding.TEXT, Writability.NO_PRIMARY_KEY), RING);
+            new StoredText(listMember, text, Encoding.TEXT, Writability.REDIS_MEMBER), RING);
 
     assertEquals(Optional.empty(), rewrite.replacement());
     assertEquals(
         List.of(
-            new Finding(Outcome.UNREWRITABLE, "", "its table has no primary key"),
+            new Finding(
+                Outcome.UNREWRITABLE, "", "it is a member of a Redis list, set or sorted set"),
             new Finding(Outcome.PRIMARY, "", "")),
         rewrite.findings());
   }

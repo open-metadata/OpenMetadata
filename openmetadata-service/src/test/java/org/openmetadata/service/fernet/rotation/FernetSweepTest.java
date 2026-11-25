@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.macasaet.fernet.Key;
 import java.sql.SQLException;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -160,9 +161,9 @@ class FernetSweepTest {
 
   @Test
   void anOlderKeyTokenWhereNothingCanBeWrittenIsNotRewritable() {
-    FakeStore store = new FakeStore("fernet_it_nopk");
-    Location noKey = new Location("fernet_it_nopk", "note", List.of(), List.of());
-    store.put(new StoredText(noKey, OLD.seal("x"), Encoding.TEXT, Writability.NO_PRIMARY_KEY));
+    FakeStore store = new FakeStore("redis");
+    Location member = Location.ofRedis("om:list:1", "list member");
+    store.put(new StoredText(member, OLD.seal("x"), Encoding.TEXT, Writability.REDIS_MEMBER));
 
     FernetSweep.Result written = FernetSweep.rewrite(List.of(store), RING);
     FernetSweep.Result result = FernetSweep.check(List.of(store), RING);
@@ -172,8 +173,56 @@ class FernetSweepTest {
     assertEquals(1L, result.tallies().getFirst().count(Outcome.UNREWRITABLE));
     assertEquals(
         List.of(
-            "fernet_it_nopk (no primary key) note: token that will not be replaced: its table has no primary key"),
+            "redis key="
+                + Location.digest("om:list:1")
+                + " list member: token that will not be replaced: it is a member of a Redis list, set or sorted set"),
         result.problems().shown().stream().map(Problem::line).toList());
+  }
+
+  @Test
+  void duplicateRowsInAnUnkeyedStoreRewriteTogetherWithoutReportingContended() {
+    String oldToken = OLD.seal("same");
+    Location unkeyed = new Location("apps_extension_time_series", "json", List.of(), List.of());
+    List<String> rows = new ArrayList<>(List.of(oldToken, oldToken));
+    TokenStore store =
+        new TokenStore() {
+          @Override
+          public String name() {
+            return "apps_extension_time_series";
+          }
+
+          @Override
+          public Stream<StoredText> candidates() {
+            return List.copyOf(rows).stream()
+                .map(text -> StoredText.writable(unkeyed, text, Encoding.TEXT));
+          }
+
+          @Override
+          public Optional<StoredText> reread(Location at) {
+            return Optional.empty();
+          }
+
+          @Override
+          public boolean compareAndSet(StoredText read, String replacement) {
+            boolean matched = false;
+            for (int i = 0; i < rows.size(); i++) {
+              if (rows.get(i).equals(read.text())) {
+                rows.set(i, replacement);
+                matched = true;
+              }
+            }
+            return matched;
+          }
+        };
+
+    FernetSweep.Result written = FernetSweep.rewrite(List.of(store), RING);
+    FernetSweep.Result check = FernetSweep.check(List.of(store), RING);
+
+    assertEquals(1L, written.tallies().getFirst().count(Outcome.REKEYED));
+    assertEquals(0L, written.tallies().getFirst().count(Outcome.CONTENDED));
+    assertEquals(2L, check.tallies().getFirst().count(Outcome.PRIMARY));
+    assertEquals(List.of(), check.problems().shown());
+    assertEquals(Verdict.CLEAN, Verdict.of(check.tallies()));
   }
 
   @Test

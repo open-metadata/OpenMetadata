@@ -30,4 +30,12 @@ class RedisPrefixesTest {
     assertEquals(List.of("", "om"), FernetKeyRotation.redisPrefixes(""));
     assertEquals(List.of("  ", "om"), FernetKeyRotation.redisPrefixes("  "));
   }
+
+  @Test
+  void scanPatternEscapesRedisGlobMetacharacters() {
+    assertEquals("om:prod:*", RedisTokenStore.scanPattern("om:prod"));
+    assertEquals(":*", RedisTokenStore.scanPattern(""));
+    assertEquals("om\\[prod\\]:*", RedisTokenStore.scanPattern("om[prod]"));
+    assertEquals("om\\*\\?\\\\:*", RedisTokenStore.scanPattern("om*?\\"));
+  }
 }

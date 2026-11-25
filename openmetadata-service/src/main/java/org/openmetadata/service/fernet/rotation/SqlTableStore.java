@@ -43,7 +43,8 @@ import org.openmetadata.service.fernet.rotation.SqlCatalog.SqlTable;
  * and one "holds {@code fernet:}" flag per eligible column, so each statement does bounded work
  * however rare tokens are; the text of flagged cells is then fetched by key, {@value #FETCH_BATCH}
  * rows at a time. A write is {@code UPDATE t SET c = v WHERE key AND c still equals what was read}.
- * A table without a primary key is read in one statement and never written.
+ * A table without a primary key is read in one statement and written where the column still equals
+ * the whole value read, rewriting any identical rows to the same new value.
  */
 final class SqlTableStore implements TokenStore {
   static final int PAGE_SIZE = 1000;
@@ -114,25 +115,33 @@ final class SqlTableStore implements TokenStore {
   public boolean compareAndSet(StoredText read, String replacement) {
     Optional<SqlColumn> column = table.column(read.at().container());
     boolean written = false;
-    if (table.hasPrimaryKey() && column.isPresent()) {
-      Update update =
-          handle.createUpdate(
-              "UPDATE "
-                  + dialect.quote(table.name())
-                  + " SET "
-                  + dialect.quote(column.get().name())
-                  + " = "
-                  + dialect.value(column.get(), VALUE)
-                  + " WHERE "
-                  + keyEquals()
-                  + " AND "
-                  + dialect.sameAs(column.get(), READ));
-      bindKey(update, read.at().keyValues());
+    if (column.isPresent()) {
+      Update update = compareAndSetUpdate(column.get());
+      if (table.hasPrimaryKey()) {
+        bindKey(update, read.at().keyValues());
+      }
       bindText(update, VALUE, replacement, column.get().type());
       bindText(update, READ, read.text(), column.get().type());
-      written = update.execute() == 1;
+      int updated = update.execute();
+      written = table.hasPrimaryKey() ? updated == 1 : updated >= 1;
     }
     return written;
+  }
+
+  private Update compareAndSetUpdate(SqlColumn column) {
+    String where =
+        table.hasPrimaryKey()
+            ? keyEquals() + " AND " + dialect.sameAs(column, READ)
+            : dialect.sameAs(column, READ);
+    return handle.createUpdate(
+        "UPDATE "
+            + dialect.quote(table.name())
+            + " SET "
+            + dialect.quote(column.name())
+            + " = "
+            + dialect.value(column, VALUE)
+            + " WHERE "
+            + where);
   }
 
   /** The token-holding cells of the rows that satisfy {@code condition}, bound by {@code binder}. */
@@ -252,11 +261,10 @@ final class SqlTableStore implements TokenStore {
           .ifPresent(
               text ->
                   cells.add(
-                      new StoredText(
+                      StoredText.writable(
                           new Location(table.name(), column.name(), List.of(), List.of()),
                           text,
-                          column.type().encoding(),
-                          Writability.NO_PRIMARY_KEY)));
+                          column.type().encoding())));
     }
     return cells;
   }

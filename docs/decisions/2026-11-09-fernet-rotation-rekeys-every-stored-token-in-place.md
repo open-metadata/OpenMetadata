@@ -1,9 +1,9 @@
 # Rotating the Fernet key re-encrypts every stored token in place, and a key leaves only after a full read finds nothing that needs it
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-09 (initial)
+- **Revisions:** v1 2026-11-09 (initial); v2 2026-11-25 (rewrite tables without a primary key via whole-cell compare-and-set, read `apps_extension_time_series` by default, escape Redis glob metacharacters, and report when Redis was not read)
 - **Deciders:** Sriharsha Chintalapani
-- **Guard:** `OpsFernetKeyRotationIT` (on MySQL and PostgreSQL, with Redis when the lane has it: a report run changes no byte; `--apply` exits 0 while a server keeps writing and a user keeps a session; an independent scan finds every token opening under the new key alone, with the original plaintexts; a second run writes nothing; a run with `--every-table` then exits 0 and names the key that can go; the suite server, which never held the old key, then authenticates the bot, sends the alert with its header, decrypts settings and refreshes the session; the old key alone never exits 0; a value no configured key opens exits 4 and is never written; a table without a primary key exits 3; every name on the large-table list is a table that holds no token), `FernetRotationStoresIT` (the columns discovery keeps and leaves out, compare-and-set on both engines and in Redis, a table without a primary key never written, a schema without OpenMetadata tables refused), `FernetTokensTest`, `CurrentKeySessionStoreTest`, `KeyRingTest`
+- **Guard:** `OpsFernetKeyRotationIT` (on MySQL and PostgreSQL, with Redis when the lane has it: a report run changes no byte; `--apply` exits 0 while a server keeps writing and a user keeps a session; an independent scan finds every token opening under the new key alone, with the original plaintexts, including `apps_extension_time_series`; a second run writes nothing; a run with `--every-table` then exits 0 and names the key that can go; the suite server, which never held the old key, then authenticates the bot, sends the alert with its header, decrypts settings and refreshes the session; the old key alone never exits 0; a value no configured key opens exits 4 and is never written; every name on the large-table list is a table that holds no token), `FernetRotationStoresIT` (the columns discovery keeps and leaves out, compare-and-set on both engines and in Redis, tables without a primary key and `apps_extension_time_series` rewritten via whole-cell compare-and-set, Redis keyspaces with glob metacharacters matched literally, a schema without OpenMetadata tables refused), `FernetTokensTest`, `CurrentKeySessionStoreTest`, `KeyRingTest`
 - **Related:** #36477, #35788, docs/fernet-key-rotation.md, ADR:2026-11-14-webhook-secrets-are-encrypted-with-the-server-fernet-key, ADR:2026-11-06-rotating-the-jwt-signing-key-is-a-hard-cut
 
 ## Context
@@ -28,15 +28,20 @@ values back from copies they hold in memory.
   characters. It reads every Redis key under the prefixes the servers build from the configured
   keyspace. The only list of names is the large tables that cannot hold a secret. A run leaves them
   out, and reads entity versions only for the entities of the tables it reads, unless
-  `--every-table` is given. The report names every table it left out, and only a run that left
-  nothing out says that an older key can be removed.
+  `--every-table` is given. `apps_extension_time_series` is not skipped because app run records
+  can carry encrypted app configuration. The report names every table it left out, says explicitly
+  when Redis was not read (`cache.provider` is not `redis` on the ops host), and only a run that
+  left nothing out says that an older key can be removed.
 - A table with a primary key is paged by that key 1000 rows at a time. A page returns only the key
   and whether each column holds `fernet:`, so one statement reads at most 1000 rows however rare
   the tokens are. The flagged cells are then fetched 100 rows at a time, because one cell can hold
-  a whole entity document. A table without a primary key is read in one statement. Entity versions
+  a whole entity document. A table without a primary key is read in one statement and written with
+  a compare-and-set matching the whole column value read (`WHERE column = read`), rewriting every
+  identical row to the same new value. Entity versions
   are read for 500 entity ids per statement, a copy of the 2.1 migration's batch for the same read.
   Redis keys, and the fields and members of hashes, sets and sorted sets, are scanned with
-  `COUNT 1000`, which Redis takes as a hint; a list is read whole. The report keeps at most 100
+  `COUNT 1000`, which Redis takes as a hint, escaping Redis glob metacharacters in each literal
+  keyspace prefix before appending `:*`; a list is read whole. The report keeps at most 100
   problems and 100 places that still need an older key, since a run before `--apply` can find such
   a place in nearly every row, and prints at most 100 of them, problems first. The log lists every
   problem, and at debug level every place that still needs an older key. None of these sizes

@@ -41,12 +41,21 @@ class KeyRingTest {
   }
 
   @Test
+  void parseDropsTrailingEmptyEntriesLikeFernetAlwaysDid() {
+    assertEquals(KeyRing.parse(NEW).fingerprints(), KeyRing.parse(NEW + ",").fingerprints());
+    assertEquals(
+        KeyRing.parse(NEW + "," + OLD).fingerprints(),
+        KeyRing.parse(NEW + "," + OLD + ",").fingerprints());
+  }
+
+  @Test
   void parseRejectsBlankMarkerAndInvalidKeysWithoutLeakingTheKey() {
     assertThrows(IllegalArgumentException.class, () -> KeyRing.parse(null));
     assertThrows(IllegalArgumentException.class, () -> KeyRing.parse("  "));
     assertThrows(IllegalArgumentException.class, () -> KeyRing.parse(Fernet.FERNET_NO_ENCRYPTION));
-    assertThrows(IllegalArgumentException.class, () -> KeyRing.parse(NEW + ","));
+    assertThrows(IllegalArgumentException.class, () -> KeyRing.parse(","));
     assertThrows(IllegalArgumentException.class, () -> KeyRing.parse("," + NEW));
+    assertThrows(IllegalArgumentException.class, () -> KeyRing.parse(NEW + ",," + OLD));
     IllegalArgumentException invalid =
         assertThrows(IllegalArgumentException.class, () -> KeyRing.parse(NEW + ",not-a-key-zzz"));
     assertFalse(invalid.getMessage().contains(NEW));

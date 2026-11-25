@@ -19,13 +19,16 @@ import java.util.Set;
 /**
  * The tables a run leaves out unless {@code --every-table} is given: the large tables of this
  * release that cannot hold a secret (data assets, event and execution logs, relationships, stored
- * documents) and every time series table. The names are a copy of the 2.1 migration's list, which
- * is frozen, without {@code change_revision}: an approval revision keeps a service connection's
- * secrets encrypted (ADR:2026-10-29-service-connection-secrets-are-written-only-during-storage).
- * Everything else, including a table nobody listed, is read in both scopes.
+ * documents) and every time series table except {@code apps_extension_time_series}, whose run
+ * records can copy an app's encrypted configuration. The names are a copy of the 2.1 migration's
+ * list, which is frozen, without {@code change_revision}: an approval revision keeps a service
+ * connection's secrets encrypted
+ * (ADR:2026-10-29-service-connection-secrets-are-written-only-during-storage). Everything else,
+ * including a table nobody listed, is read in both scopes.
  */
 final class LargeTables {
   private static final String TIME_SERIES_SUFFIX = "_time_series";
+  private static final Set<String> TIME_SERIES_WITH_SECRETS = Set.of("apps_extension_time_series");
   private static final Set<String> SKIPPED =
       Set.of(
           "table_entity",
@@ -84,6 +87,7 @@ final class LargeTables {
 
   static boolean isLarge(String table) {
     String name = table.toLowerCase(Locale.ROOT);
-    return name.endsWith(TIME_SERIES_SUFFIX) || SKIPPED.contains(name);
+    return (name.endsWith(TIME_SERIES_SUFFIX) && !TIME_SERIES_WITH_SECRETS.contains(name))
+        || SKIPPED.contains(name);
   }
 }

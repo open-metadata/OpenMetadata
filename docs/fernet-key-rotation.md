@@ -104,7 +104,7 @@ The report lists each table, and Redis, with its counts:
 | Primary | Tokens the primary key opens |
 | Older key | Tokens only an older configured key opens |
 | No key | Tokens that no configured key opens |
-| Not rewritable | Tokens the command will not replace, for example in a table without a primary key or where the database refused the write |
+| Not rewritable | Tokens the command will not replace, for example in a Redis list, set or sorted set or where the database refused the write |
 | Re-encrypted, Contended | With `--apply`: tokens replaced, and values that kept changing |
 
 Up to 100 lines follow the table: problems first, then places that still need an older key. The
@@ -138,8 +138,10 @@ instead. Then, still with `FERNET_KEY=NEW,OLD`, run the command with `--every-ta
 ```
 
 This is the one run of the procedure that reads every table, the large ones included, so it takes
-longer on a large catalog. Continue when it exits 0, or 4 for values you have checked. On exit 3,
-run `rotate-fernet-key --apply --every-table`, then run this step again.
+longer on a large catalog. Check the coverage line at the top of the report: if the servers use
+Redis (`cache.provider: redis`), confirm that the line reports Redis keys and does not say
+`Redis: not read`. Continue when it exits 0, or 4 for values you have checked. On exit 3, run
+`rotate-fernet-key --apply --every-table`, then run this step again.
 
 ## 5. Remove the old key from the servers
 
@@ -191,10 +193,11 @@ connections use.
   its time to live.
 
 By default, the command leaves out the large tables that cannot hold a secret, such as data assets,
-change events, relationships and time series. It then reads entity versions only for the entities
-of the tables it does read. The report names every table it left out. `--every-table` reads those
-tables and every entity version as well. Only a run that left nothing out says that an older key
-can be removed, so the procedure runs `--every-table` once, in step 4.
+change events, relationships and data time series (`apps_extension_time_series` is read by default
+because app run records can carry encrypted configuration). It then reads entity versions only for
+the entities of the tables it does read. The report names every table it left out. `--every-table`
+reads those tables and every entity version as well. Only a run that left nothing out says that an
+older key can be removed, so the procedure runs `--every-table` once, in step 4.
 
 The command does not read the contents of an external secrets manager, the search indexes (they
 hold no secrets) or anything outside the database and Redis, such as Airflow.

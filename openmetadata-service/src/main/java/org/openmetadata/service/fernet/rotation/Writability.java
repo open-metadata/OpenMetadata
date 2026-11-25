@@ -16,7 +16,6 @@ package org.openmetadata.service.fernet.rotation;
 /** Whether a stored value can be written back where it is, and if not, why. */
 enum Writability {
   WRITABLE(""),
-  NO_PRIMARY_KEY("its table has no primary key"),
   REDIS_MEMBER("it is a member of a Redis list, set or sorted set");
 
   final String reason;

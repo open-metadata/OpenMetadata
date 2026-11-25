@@ -62,12 +62,16 @@ final class FernetSweep {
     Tally tally = new Tally(store.name());
     try (Stream<StoredText> candidates = store.candidates()) {
       candidates.forEach(value -> sweepValue(store, value, keys, write, tally, problems));
-      LOG.info(
-          "{} {}: {} values hold tokens {}",
-          write ? "Rewrote" : "Read",
-          store.name(),
-          tally.values,
-          tally.counts);
+      if (tally.values > 0) {
+        LOG.info(
+            "{} {}: {} values hold tokens {}",
+            write ? "Rewrote" : "Read",
+            store.name(),
+            tally.values,
+            tally.counts);
+      } else {
+        LOG.debug("{} {}: 0 values hold tokens", write ? "Rewrote" : "Read", store.name());
+      }
       return tally.frozen();
     } catch (RuntimeException e) {
       LOG.warn("{} could not be read: {}", store.name(), describe(e));
@@ -158,7 +162,7 @@ final class FernetSweep {
       }
       Optional<StoredText> reread = store.reread(current.at());
       if (reread.isEmpty()) {
-        LOG.info("A value of {} was removed while it was re-encrypted", store.name());
+        LOG.debug("A value of {} could not be reread after a lost compare-and-set", store.name());
         return;
       }
       current = reread.get();

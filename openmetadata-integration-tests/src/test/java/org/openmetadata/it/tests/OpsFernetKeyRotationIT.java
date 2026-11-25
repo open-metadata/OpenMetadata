@@ -102,12 +102,13 @@ class OpsFernetKeyRotationIT {
   private static final Duration SERVER_CALL = Duration.ofSeconds(60);
   private static final Duration WAIT = Duration.ofSeconds(60);
   private static final String CLI = "rotate-fernet-key";
-  private static final String TABLE_WITHOUT_KEY = "fernet_it_nopk";
   private static final String UNLISTED_TABLE = "fernet_it_unlisted";
   private static final String TABLE_WITH_UNREADABLE_TOKEN = "fernet_it_nokey";
+  private static final String APPS_HISTORY_TABLE = "apps_extension_time_series";
   private static final String VERSIONS_TABLE = "entity_extension";
   private static final int OLDER_KEY_CELL = 4;
   private static final int NO_KEY_CELL = 5;
+  private static final int UNREWRITABLE_CELL = 6;
   private static final String SESSION_PASSWORD = "Str0ng!FernetIt";
   // A run without --every-table names the large tables it left out on a line that starts so.
   private static final Pattern LEFT_OUT_LINE = Pattern.compile("^Large tables left out");
@@ -169,6 +170,7 @@ class OpsFernetKeyRotationIT {
     try (ForkedServerNode rotating =
         ForkedServerNode.start(ForkedServerNode.Settings.DEFAULT.withFernetKey(rotatedKeys))) {
       reportOnly(rotatedKeys, tablesWithOldTokens);
+      warmCachedAlertBeforeApply(rotating, seed);
       rotateWhileTheNodeKeepsWorking(rotating, seed, rotatedKeys);
       requireEverythingOpensWithTheNewKeyAlone(seed);
       requireRedisKeptItsTtl(seed);
@@ -176,9 +178,6 @@ class OpsFernetKeyRotationIT {
     requireSecondRunIsANoOp(rotatedKeys);
     requireTheConfirmingRunOfEveryTableClearsTheOldKey(rotatedKeys);
     requireSuiteServerWorksWithoutTheOldKey(seed, receiver);
-    requireNewKeyAloneIsCleanAndOldKeyAloneIsNot();
-    requireATokenNoKeyOpensIsReportedAndLeftAlone(rotatedKeys);
-    requireATableWithoutAPrimaryKeyIsReportedNotRewritten(rotatedKeys);
     requireTheLeftOutTablesHoldNoToken();
   }
 
@@ -249,11 +248,26 @@ class OpsFernetKeyRotationIT {
         throw new AssertionError("Worker failed before rotation started", failure.get());
       }
 
+      // The tight PATCH loop on the same databaseService row can contend all 3 CAS attempts or
+      // commit an in-flight read taken before the rewrite, so the first run may legitimately exit 3
+      // with only CONTENDED / OLDER_KEY findings before a rerun converges to 0.
       Outcome applied = rotate(rotatedKeys, "--apply", "--yes");
+      assertTrue(
+          applied.exitCode() == 0 || applied.exitCode() == 3,
+          "first apply must succeed or report concurrent write contention, "
+              + tail(applied.output()));
+      if (applied.exitCode() == 3) {
+        assertTrue(
+            cell(applied.output(), APPS_HISTORY_TABLE, UNREWRITABLE_CELL) <= 0,
+            "app history must not be unrewritable, " + tail(applied.output()));
+      }
+      int runs = 1;
       for (int rerun = 0; rerun < 2 && applied.exitCode() == 3; rerun++) {
         applied = rotate(rotatedKeys, "--apply", "--yes");
+        runs++;
       }
-      assertEquals(0, applied.exitCode(), "applied, " + tail(applied.output()));
+      assertEquals(
+          0, applied.exitCode(), "applied after " + runs + " run(s), " + tail(applied.output()));
     } finally {
       stop.set(true);
       workers.shutdown();
@@ -292,12 +306,17 @@ class OpsFernetKeyRotationIT {
   /** Step 6b: the confirming run reads every table, exits 0 and names the key that can go. */
   private void requireTheConfirmingRunOfEveryTableClearsTheOldKey(String rotatedKeys) {
     List<String> fingerprints = KeyRing.parse(rotatedKeys).fingerprints();
+    String redisNote =
+        TestSuiteBootstrap.isRedisEnabled()
+            ? ""
+            : " Redis was not read (cache.provider is not redis on this host); if the servers use Redis, run with cache.provider=redis before removing the key.";
     String verdict =
         "Every stored value opens with key "
             + fingerprints.getFirst()
             + ". Key "
             + fingerprints.getLast()
-            + " can be removed from the servers.";
+            + " can be removed from the servers."
+            + redisNote;
 
     Outcome confirmed = rotate(rotatedKeys, "--every-table");
 
@@ -308,6 +327,42 @@ class OpsFernetKeyRotationIT {
     assertFalse(
         confirmed.output().lines().anyMatch(line -> LEFT_OUT_LINE.matcher(line).find()),
         "a run of every table leaves nothing out, " + tail(confirmed.output()));
+  }
+
+  /**
+   * Populates Redis with the seeded alert's old-key JSON right before {@code --apply}, because
+   * writers evict and only reads call {@code CachedEntityDao.putBase}.
+   */
+  private void warmCachedAlertBeforeApply(ForkedServerNode rotating, Seed seed) {
+    if (!TestSuiteBootstrap.isRedisEnabled()) {
+      return;
+    }
+    call(rotating.apiBase(), "GET", "/api/v1/events/subscriptions/" + seed.alertId, null);
+    String keyspace =
+        TestSuiteBootstrap.createApplicationConfigCopy().getCacheConfig().redis.keyspace;
+    List<String> keys = cachedAlertKeys(keyspace, seed.alertId);
+    assertFalse(keys.isEmpty(), "the seeded alert is cached in Redis before --apply");
+    KeyRing oldOnly = KeyRing.parse(oldKey);
+    KeyRing newOnly = KeyRing.parse(newKey);
+    boolean holdsOldToken = false;
+    for (String alertKey : keys) {
+      String base =
+          FernetStoreScan.redis("redis-cli --raw hget '" + alertKey + "' base").getStdout();
+      for (String token : tokensIn(base)) {
+        if (newOnly.open(token) instanceof Opening.NoKey
+            && oldOnly.open(token) instanceof Opening.Primary) {
+          holdsOldToken = true;
+        }
+      }
+    }
+    assertTrue(holdsOldToken, "the cached alert in Redis holds an old-key token before --apply");
+  }
+
+  private static List<String> cachedAlertKeys(String keyspace, UUID alertId) {
+    String alertKeys =
+        FernetStoreScan.redis("redis-cli --scan --pattern '" + keyspace + ":e:*:" + alertId + "'")
+            .getStdout();
+    return alertKeys.lines().filter(line -> !line.isBlank()).toList();
   }
 
   /** Step 11: Redis values hold new-key tokens and still expire. */
@@ -328,11 +383,7 @@ class OpsFernetKeyRotationIT {
             assertTrue(newOnly.open(token) instanceof Opening.Primary, "session token is new"));
     assertTrue(pttl(sessionKey) > 0, "the session still expires");
 
-    String alertKeys =
-        FernetStoreScan.redis(
-                "redis-cli --scan --pattern '" + keyspace + ":e:*:" + seed.alertId + "'")
-            .getStdout();
-    List<String> keys = alertKeys.lines().filter(line -> !line.isBlank()).toList();
+    List<String> keys = cachedAlertKeys(keyspace, seed.alertId);
     assertFalse(keys.isEmpty(), "the seeded alert is cached in Redis");
     for (String alertKey : keys) {
       String base =
@@ -405,21 +456,27 @@ class OpsFernetKeyRotationIT {
         "the SSO test login state decrypts");
   }
 
-  /** Step 8: the new key alone is clean; the old key alone opens nothing and never reads clean. */
-  private void requireNewKeyAloneIsCleanAndOldKeyAloneIsNot() {
-    Outcome newAlone = rotate(newKey);
-    assertEquals(0, newAlone.exitCode(), "new key alone, " + tail(newAlone.output()));
+  @Test
+  void theSuiteKeyAloneIsCleanAndAnUnrelatedKeyAloneNeverExitsZero() {
+    String suiteKey = suiteFernetKey();
+    String unrelatedKey = Key.generateKey().serialise();
 
-    Outcome oldAlone = rotate(oldKey);
-    assertEquals(3, oldAlone.exitCode(), "old key alone, " + tail(oldAlone.output()));
+    Outcome newAlone = rotate(suiteKey);
+    assertEquals(0, newAlone.exitCode(), "suite key alone, " + tail(newAlone.output()));
+
+    Outcome wrongAlone = rotate(unrelatedKey);
+    assertEquals(4, wrongAlone.exitCode(), "unrelated key alone, " + tail(wrongAlone.output()));
     assertTrue(
-        cell(oldAlone.output(), UNLISTED_TABLE, NO_KEY_CELL) > 0,
-        "the plain tokens no longer open with the old key, " + tail(oldAlone.output()));
+        cell(wrongAlone.output(), "user_entity", NO_KEY_CELL) > 0,
+        "stored tokens do not open with an unrelated key, " + tail(wrongAlone.output()));
   }
 
-  /** Step 8b: a plain token that no listed key opens gives exit 4 and is never touched. */
-  private void requireATokenNoKeyOpensIsReportedAndLeftAlone(String rotatedKeys) {
-    String token = KeyRing.parse(randomKey()).seal("a secret of a key nobody lists");
+  @Test
+  void aTokenNoConfiguredKeyOpensExitsFourAndIsLeftAlone() {
+    String suiteKey = suiteFernetKey();
+    String rotatedKeys = suiteKey + "," + Key.generateKey().serialise();
+    String token =
+        KeyRing.parse(Key.generateKey().serialise()).seal("a secret of a key nobody lists");
     TestSuiteBootstrap.getJdbi()
         .useHandle(
             handle -> {
@@ -436,51 +493,27 @@ class OpsFernetKeyRotationIT {
                   .bind("note", token)
                   .execute();
             });
-    UNDO.add(() -> dropTable(TABLE_WITH_UNREADABLE_TOKEN));
+    try {
+      Outcome report = rotate(rotatedKeys);
+      Outcome applied = rotate(rotatedKeys, "--apply", "--yes");
 
-    Outcome report = rotate(rotatedKeys);
-    Outcome applied = rotate(rotatedKeys, "--apply", "--yes");
-
-    assertEquals(4, report.exitCode(), "report, " + tail(report.output()));
-    assertEquals(1, cell(report.output(), TABLE_WITH_UNREADABLE_TOKEN, NO_KEY_CELL));
-    assertEquals(4, applied.exitCode(), "applied, " + tail(applied.output()));
-    assertEquals(
-        token,
-        TestSuiteBootstrap.getJdbi()
-            .withHandle(
-                handle ->
-                    handle
-                        .createQuery(
-                            "SELECT note FROM " + TABLE_WITH_UNREADABLE_TOKEN + " WHERE id = 1")
-                        .mapTo(String.class)
-                        .one()),
-        "a token no key opens is left byte for byte as it was");
-    dropTable(TABLE_WITH_UNREADABLE_TOKEN);
-  }
-
-  /** Step 9: a table that cannot be rewritten blocks exit 0 until it is gone. */
-  private void requireATableWithoutAPrimaryKeyIsReportedNotRewritten(String rotatedKeys) {
-    TestSuiteBootstrap.getJdbi()
-        .useHandle(
-            handle -> {
-              handle.execute("DROP TABLE IF EXISTS " + TABLE_WITHOUT_KEY);
-              handle.execute("CREATE TABLE " + TABLE_WITHOUT_KEY + " (note text)");
-              handle
-                  .createUpdate("INSERT INTO " + TABLE_WITHOUT_KEY + " (note) VALUES (:note)")
-                  .bind("note", KeyRing.parse(oldKey).seal("a secret in a table without a key"))
-                  .execute();
-            });
-    UNDO.add(() -> dropTable(TABLE_WITHOUT_KEY));
-
-    Outcome blocked = rotate(rotatedKeys, "--apply", "--yes");
-
-    assertEquals(3, blocked.exitCode(), "not safe, " + tail(blocked.output()));
-    assertTrue(
-        blocked.output().toLowerCase(Locale.ROOT).contains(TABLE_WITHOUT_KEY),
-        "the report names the table, " + tail(blocked.output()));
-    dropTable(TABLE_WITHOUT_KEY);
-    Outcome clean = rotate(rotatedKeys);
-    assertEquals(0, clean.exitCode(), "after the table is dropped, " + tail(clean.output()));
+      assertEquals(4, report.exitCode(), "report, " + tail(report.output()));
+      assertEquals(1, cell(report.output(), TABLE_WITH_UNREADABLE_TOKEN, NO_KEY_CELL));
+      assertEquals(4, applied.exitCode(), "applied, " + tail(applied.output()));
+      assertEquals(
+          token,
+          TestSuiteBootstrap.getJdbi()
+              .withHandle(
+                  handle ->
+                      handle
+                          .createQuery(
+                              "SELECT note FROM " + TABLE_WITH_UNREADABLE_TOKEN + " WHERE id = 1")
+                          .mapTo(String.class)
+                          .one()),
+          "a token no key opens is left byte for byte as it was");
+    } finally {
+      dropTable(TABLE_WITH_UNREADABLE_TOKEN);
+    }
   }
 
   /** Step 10: the large tables a default run leaves out hold no token in the suite database. */
@@ -1000,6 +1033,40 @@ class OpsFernetKeyRotationIT {
                   .execute();
             });
     UNDO.add(() -> dropTable(UNLISTED_TABLE));
+
+    String appId = UUID.randomUUID().toString();
+    String appRunToken = secret("app run config secret", seed);
+    String appRunJson =
+        "{\"appId\":\""
+            + appId
+            + "\",\"appName\":\"FernetItApp\",\"timestamp\":"
+            + System.currentTimeMillis()
+            + ",\"status\":\"success\",\"config\":{\"apiToken\":\""
+            + old.seal(appRunToken)
+            + "\"}}";
+    String jsonCast = mysql ? "CAST(:json AS JSON)" : "CAST(:json AS jsonb)";
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                handle
+                    .createUpdate(
+                        "INSERT INTO "
+                            + APPS_HISTORY_TABLE
+                            + " (json, extension) VALUES ("
+                            + jsonCast
+                            + ", 'status')")
+                    .bind("json", appRunJson)
+                    .execute());
+    UNDO.add(
+        () ->
+            TestSuiteBootstrap.getJdbi()
+                .useHandle(
+                    handle ->
+                        handle
+                            .createUpdate(
+                                "DELETE FROM " + APPS_HISTORY_TABLE + " WHERE appId = :appId")
+                            .bind("appId", appId)
+                            .execute()));
   }
 
   private static String secret(String label, Seed seed) {
