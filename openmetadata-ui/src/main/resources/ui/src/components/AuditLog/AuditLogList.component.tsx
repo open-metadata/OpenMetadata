@@ -530,7 +530,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           width="32"
         />
       </div>
-      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
         <AuditLogItemHeader entity={entity} log={log} userName={userName} />
         <Box data-testid="description-content" direction="col" gap={1}>
           {changeRows.length > 0
