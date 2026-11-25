@@ -34,9 +34,9 @@ class McpContextDiscoveryGuidanceTest {
   }
 
   @Test
-  void searchMetadataTellsAgentsHowToFindAnchoredMemories() {
+  void searchMetadataTellsAgentsToCheckMemoriesFirst() {
     assertThat(listedTools.get("search_metadata").path("description").asText())
-        .contains("entityType='contextMemory'", "primaryEntity.id", "fields='id'");
+        .contains("Before answering a business question", "entityType='contextMemory'");
   }
 
   @Test

@@ -200,8 +200,9 @@ public class ContextMemoryAnchorIT {
 
   /**
    * A search that pins the anchor it asks about returns that anchor's memories to its readers,
-   * exactly as REST does (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). Free text that
-   * pins nothing keeps the conservative rule above.
+   * exactly as REST does (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). A search of the
+   * memory index alone does so without the pin, as the Context Center listing does; a search over
+   * several indexes still needs it (ADR:2026-11-12-context-center-authorizes-memory-anchors-before-paging).
    */
   @Test
   void aSearchPinnedToAnAnchor_agreesWithRestOnItsMemories(TestNamespace ns) {
@@ -240,9 +241,17 @@ public class ContextMemoryAnchorIT {
     assertTrue(searchHits(clientOf(blocked), query, pinned).isEmpty());
     assertEquals(1, countedHits(clientOf(reader), query, pinned), "counts agree with the hits");
     assertEquals(0, countedHits(clientOf(blocked), query, pinned));
-    assertTrue(
-        searchHits(clientOf(reader), query, null).isEmpty(),
-        "free text that pins no anchor keeps anchored memories owner-only");
+    // A search of the memory index alone checks its matches' anchors, as the Context Center
+    // listing does, so free text without a pin finds them too (#36435).
+    assertEquals(
+        Set.of(shown.getId()),
+        searchHits(clientOf(reader), query, null),
+        "a memory-only search admits the anchored memories its reader may read, unpinned");
+    assertTrue(searchHits(clientOf(blocked), query, null).isEmpty());
+    assertEquals(1, countedHits(clientOf(reader), query, null), "counts agree with the hits");
+    assertFalse(
+        searchHits(clientOf(reader), "all", query, null).contains(shown.getId()),
+        "a search over several indexes keeps the pinned-anchor rule");
   }
 
   /** A file anchor is read by the file's own sharing too, in a pinned search as in REST. */
@@ -524,8 +533,13 @@ public class ContextMemoryAnchorIT {
 
   /** The memory ids {@code /v1/search/query} returns to {@code client}. */
   private static Set<UUID> searchHits(OpenMetadataClient client, String query, String queryFilter) {
-    SearchAPI.SearchBuilder search =
-        client.search().query(query).index("context_memory_search_index").size(100);
+    return searchHits(client, "context_memory_search_index", query, queryFilter);
+  }
+
+  /** The ids {@code /v1/search/query} on {@code index} returns to {@code client}. */
+  private static Set<UUID> searchHits(
+      OpenMetadataClient client, String index, String query, String queryFilter) {
+    SearchAPI.SearchBuilder search = client.search().query(query).index(index).size(100);
     if (queryFilter != null) {
       search.queryFilter(queryFilter);
     }
