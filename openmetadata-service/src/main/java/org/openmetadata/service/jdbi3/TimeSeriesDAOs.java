@@ -3122,6 +3122,7 @@ public interface TimeSeriesDAOs {
                 FROM entity_relationship er
                 INNER JOIN test_case tc ON er.toId = tc.id
                 WHERE fromEntity = 'testSuite' AND toEntity = 'testCase' AND fromId = :testSuiteId
+                AND (tc.deleted = FALSE OR tc.deleted IS NULL)
             ) ts ON dqdts1.entityFQNHash = ts.fqnHash
             LEFT JOIN data_quality_data_time_series dqdts2 FORCE INDEX (idx_entity_timestamp_desc) ON
                 (dqdts1.entityFQNHash = dqdts2.entityFQNHash AND dqdts1.timestamp < dqdts2.timestamp)
@@ -3137,6 +3138,7 @@ public interface TimeSeriesDAOs {
                 FROM entity_relationship er
                 INNER JOIN test_case tc ON er.toId = tc.id
                 WHERE fromEntity = 'testSuite' AND toEntity = 'testCase' AND fromId = :testSuiteId
+                AND (tc.deleted = FALSE OR tc.deleted IS NULL)
             ) ts ON dqdts1.entityFQNHash = ts.fqnHash
             LEFT JOIN data_quality_data_time_series dqdts2 ON
                 (dqdts1.entityFQNHash = dqdts2.entityFQNHash AND dqdts1.timestamp < dqdts2.timestamp)
@@ -3239,7 +3241,7 @@ public interface TimeSeriesDAOs {
                 FROM entity_relationship er
                 INNER JOIN test_case tc ON er.toId = tc.id
                 WHERE er.fromEntity = 'testSuite' AND er.toEntity = 'testCase'
-                AND er.fromId IN (<testSuiteIds>)
+                AND er.fromId IN (<testSuiteIds>) AND (tc.deleted = FALSE OR tc.deleted IS NULL)
             ),
             latest_results AS (
                 SELECT dqdts.entityFQNHash,
@@ -3264,7 +3266,7 @@ public interface TimeSeriesDAOs {
                 FROM entity_relationship er
                 INNER JOIN test_case tc ON er.toId = tc.id
                 WHERE er.fromEntity = 'testSuite' AND er.toEntity = 'testCase'
-                AND er.fromId IN (<testSuiteIds>)
+                AND er.fromId IN (<testSuiteIds>) AND (tc.deleted = FALSE OR tc.deleted IS NULL)
             ),
             latest_results AS (
                 SELECT dqdts.entityFQNHash,
@@ -3307,7 +3309,7 @@ public interface TimeSeriesDAOs {
                 FROM entity_relationship er
                 INNER JOIN test_case tc ON er.toId = tc.id
                 WHERE er.fromEntity = 'testSuite' AND er.toEntity = 'testCase'
-                AND er.fromId IN (<testSuiteIds>)
+                AND er.fromId IN (<testSuiteIds>) AND (tc.deleted = FALSE OR tc.deleted IS NULL)
             ) er_sub ON dqdts.entityFQNHash = er_sub.fqnHash
             GROUP BY er_sub.fromId""")
     @UseRowMapper(SuiteMaxTimestampMapper.class)
