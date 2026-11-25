@@ -12,7 +12,14 @@
  */
 
 import { isEmpty } from 'lodash';
-import { ReactNode, useEffect, useMemo, useRef } from 'react';
+import {
+  MutableRefObject,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
 import { getTaskById, Task } from '../../../rest/tasksAPI';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
@@ -23,12 +30,17 @@ import TaskFeedCardFromTask from '../TaskFeedCard/TaskFeedCardFromTask.component
 // What the task panel shows, as the feed provider fetches a single task.
 const LINKED_TASK_FIELDS = 'assignees,createdBy,about,comments,payload';
 
-/** Opens the task a link names, loading it when it is not on the loaded page. */
+/**
+ * Opens the task a link names, loading it when it is not on the loaded page. A load still in
+ * flight is recorded in `pendingLinkRef`; its result is dropped once that is cleared, by the user
+ * picking a task or the list unmounting, so a late response never replaces their pick.
+ */
 const openLinkedTask = (
   linkedTaskId: string,
   taskList: Task[],
   selectedTask: Task | undefined,
-  onTaskClick: (task: Task) => void
+  onTaskClick: (task: Task) => void,
+  pendingLinkRef: MutableRefObject<string | undefined>
 ) => {
   const linked = taskList.find((t) => t.id === linkedTaskId);
   if (linked) {
@@ -39,9 +51,16 @@ const openLinkedTask = (
     return;
   }
   // The list loads a page at a time, so the linked task may not be on this page yet.
+  pendingLinkRef.current = linkedTaskId;
+  const settle = (task: Task) => {
+    if (pendingLinkRef.current === linkedTaskId) {
+      pendingLinkRef.current = undefined;
+      onTaskClick(task);
+    }
+  };
   getTaskById(linkedTaskId, { fields: LINKED_TASK_FIELDS })
-    .then(({ data }) => onTaskClick(data))
-    .catch(() => onTaskClick(taskList[0]));
+    .then(({ data }) => settle(data))
+    .catch(() => settle(taskList[0]));
 };
 
 interface TaskListV1Props {
@@ -72,6 +91,23 @@ const TaskListV1 = ({
   const linkedTaskId = useLinkedTaskId();
   // The linked task is opened once; afterwards the user's own picks win.
   const openedLinkRef = useRef<string>();
+  const pendingLinkRef = useRef<string>();
+
+  useEffect(
+    () => () => {
+      pendingLinkRef.current = undefined;
+    },
+    []
+  );
+
+  // A task the user picks cancels a linked task still loading.
+  const handleTaskPick = useCallback(
+    (task: Task) => {
+      pendingLinkRef.current = undefined;
+      onTaskClick?.(task);
+    },
+    [onTaskClick]
+  );
 
   useEffect(() => {
     if (!onTaskClick || taskList.length === 0) {
@@ -79,7 +115,13 @@ const TaskListV1 = ({
     }
     if (linkedTaskId && openedLinkRef.current !== linkedTaskId) {
       openedLinkRef.current = linkedTaskId;
-      openLinkedTask(linkedTaskId, taskList, selectedTask, onTaskClick);
+      openLinkedTask(
+        linkedTaskId,
+        taskList,
+        selectedTask,
+        onTaskClick,
+        pendingLinkRef
+      );
 
       return;
     }
@@ -114,10 +156,10 @@ const TaskListV1 = ({
           key={task.id}
           task={task}
           onAfterClose={onAfterClose}
-          onTaskClick={onTaskClick}
+          onTaskClick={handleTaskPick}
         />
       )),
-    [taskList, activeFeedId, onAfterClose, onTaskClick]
+    [taskList, activeFeedId, onAfterClose, handleTaskPick]
   );
 
   if (isLoading) {
