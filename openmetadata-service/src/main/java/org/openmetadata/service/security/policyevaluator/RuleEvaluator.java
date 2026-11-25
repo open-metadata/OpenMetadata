@@ -274,8 +274,9 @@ public class RuleEvaluator {
       name = "matchAnyDomain",
       input = "List of comma separated Domain fully qualified names",
       description =
-          "Returns true if the entity being accessed belongs to at least one of the domains given as input",
-      examples = {"matchAnyDomain('Domain.Finance', 'Domain.Procurement')"})
+          "Returns true if the entity being accessed belongs to at least one of the domains given "
+              + "as input. Matches the exact domain FQN; sub-domains are not included.",
+      examples = {"matchAnyDomain('Finance')", "matchAnyDomain('Finance', 'Finance.Payments')"})
   @SuppressWarnings("unused")
   public boolean matchAnyDomain(String... domainFQNs) {
     if (expressionValidation) {
@@ -297,9 +298,7 @@ public class RuleEvaluator {
         Arrays.toString(domainFQNs),
         Arrays.toString(domains.toArray()));
     for (String domainFQN : domainFQNs) {
-      boolean found =
-          domains.stream()
-              .anyMatch(d -> domainFQN.equals(d.getFullyQualifiedName()));
+      boolean found = domains.stream().anyMatch(d -> domainFQN.equals(d.getFullyQualifiedName()));
       if (found) {
         return true;
       }

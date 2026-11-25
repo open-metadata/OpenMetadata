@@ -545,6 +545,25 @@ class RuleEvaluatorTest {
   }
 
   @Test
+  void test_matchAnyDomain_matchesTheExactSubDomainFqnOnly() {
+    EntityReference payments =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withName("Payments")
+            .withFullyQualifiedName("Finance.Payments");
+    CreateResourceContext<?> context = mock(CreateResourceContext.class);
+    Mockito.when(context.getDomains()).thenReturn(listOf(payments));
+    StandardEvaluationContext ctx =
+        new StandardEvaluationContext(new RuleEvaluator(null, subjectContext, context));
+
+    assertTrue(parseExpression("matchAnyDomain('Finance.Payments')").getValue(ctx, Boolean.class));
+    // Like matchAnyTag, the match is on the exact FQN: neither the parent domain nor the
+    // sub-domain's bare name matches. Widening this later would silently widen existing policies.
+    assertFalse(parseExpression("matchAnyDomain('Finance')").getValue(ctx, Boolean.class));
+    assertFalse(parseExpression("matchAnyDomain('Payments')").getValue(ctx, Boolean.class));
+  }
+
+  @Test
   void test_matchAnyDomain_duringExpressionValidation() {
     // The validating RuleEvaluator has no resource context; the function must only resolve the
     // referenced domains and return false instead of throwing or NPE-ing.

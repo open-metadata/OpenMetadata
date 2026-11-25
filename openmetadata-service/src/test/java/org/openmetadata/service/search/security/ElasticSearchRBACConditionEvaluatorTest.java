@@ -371,8 +371,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
   @Test
   void testMatchAnyDomain() {
-    setupMockPolicies(
-        "matchAnyDomain('Domain.Finance', 'Domain.Procurement')", "ALLOW");
+    setupMockPolicies("matchAnyDomain('Domain.Finance', 'Domain.Procurement')", "ALLOW");
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
@@ -406,6 +405,41 @@ class ElasticSearchRBACConditionEvaluatorTest {
     assertTrue(
         generatedQuery.contains("Domain.Finance"),
         "The query should contain the requested domain FQN.");
+  }
+
+  @Test
+  void testMatchAnyDomainUsesAnExactTermSoSubDomainsAreNotIncluded() {
+    setupMockPolicies("matchAnyDomain('Finance')", "ALLOW");
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    List<String> termValues =
+        jsonContext.read("$..term['domains.fullyQualifiedName'].value", List.class);
+    assertEquals(List.of("Finance"), termValues);
+    assertFalse(
+        generatedQuery.contains("\"prefix\"") || generatedQuery.contains("\"wildcard\""),
+        "An asset in Finance.Payments must not match matchAnyDomain('Finance')");
+  }
+
+  @Test
+  void testMatchAnyDomainMatchesTheNamedDomainDocument() {
+    setupMockPolicies("matchAnyDomain('Finance')", "ALLOW");
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    DocumentContext jsonContext = JsonPath.parse(serializeQueryToJson(elasticQuery));
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[*].bool.must[?(@.term['entityType'].value=='domain')]",
+        "Domain documents have no domains field, so they must be matched by entityType");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[*].bool.must[?(@.terms['fullyQualifiedName'])]",
+        "the named Domain document must be matched by its own FQN");
   }
 
   @Test
@@ -1698,6 +1732,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "no empty bool clause may be emitted, it is treated as match_all by Elasticsearch");
     // Safe against PathNotFoundException: a match_none query omits `must` entirely.
     assertFieldDoesNotExist(
-        jsonContext, "$.bool.must", "must (an empty bool is treated as match_all by Elasticsearch)");
+        jsonContext,
+        "$.bool.must",
+        "must (an empty bool is treated as match_all by Elasticsearch)");
   }
 }

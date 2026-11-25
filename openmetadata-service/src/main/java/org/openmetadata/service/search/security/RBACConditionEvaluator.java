@@ -436,19 +436,30 @@ public class RBACConditionEvaluator {
     collector.addMust(queryBuilderFactory.boolQuery().should(clauses));
   }
 
+  /**
+   * A Domain document carries no {@code domains} field, while the REST evaluator treats a domain as
+   * its own domain ({@code ResourceContext.getDomains}). The named Domain documents are matched by
+   * FQN as well, so an Allow does not hide them from search and a Deny does not leak them.
+   */
   public void matchAnyDomain(List<String> domainFqns, ConditionCollector collector) {
-    List<OMQueryBuilder> domainQueries = new ArrayList<>();
-    for (String domainFqn : domainFqns) {
-      domainQueries.add(queryBuilderFactory.termQuery("domains.fullyQualifiedName", domainFqn));
-    }
-    switch (domainQueries.size()) {
-      case 0 ->
-          // No domains requested: the condition can never match, so make the rule deny-all instead
-          // of adding an empty bool query (Elasticsearch/OpenSearch treat an empty bool query as
-          // match_all, which would turn an ALLOW rule into a full index grant).
-          collector.setMatchNothing(true);
-      case 1 -> collector.addMust(domainQueries.get(0));
-      default -> collector.addMust(queryBuilderFactory.boolQuery().should(domainQueries));
+    if (domainFqns.isEmpty()) {
+      // No domains requested: the condition can never match, so make the rule deny-all instead
+      // of adding an empty bool query (Elasticsearch/OpenSearch treat an empty bool query as
+      // match_all, which would turn an ALLOW rule into a full index grant).
+      collector.setMatchNothing(true);
+    } else {
+      List<OMQueryBuilder> domainQueries = new ArrayList<>();
+      for (String domainFqn : domainFqns) {
+        domainQueries.add(queryBuilderFactory.termQuery("domains.fullyQualifiedName", domainFqn));
+      }
+      domainQueries.add(
+          queryBuilderFactory
+              .boolQuery()
+              .must(
+                  List.of(
+                      queryBuilderFactory.termQuery("entityType", Entity.DOMAIN),
+                      queryBuilderFactory.termsQuery("fullyQualifiedName", domainFqns))));
+      collector.addMust(queryBuilderFactory.boolQuery().should(domainQueries));
     }
   }
 
@@ -461,9 +472,9 @@ public class RBACConditionEvaluator {
     }
     switch (certificationQueries.size()) {
       case 0 ->
-          // No certifications requested: deny-all instead of emitting an empty bool query, which
-          // Elasticsearch/OpenSearch evaluate as match_all and would turn an ALLOW into a grant.
-          collector.setMatchNothing(true);
+      // No certifications requested: deny-all instead of emitting an empty bool query, which
+      // Elasticsearch/OpenSearch evaluate as match_all and would turn an ALLOW into a grant.
+      collector.setMatchNothing(true);
       case 1 -> collector.addMust(certificationQueries.get(0));
       default -> collector.addMust(queryBuilderFactory.boolQuery().should(certificationQueries));
     }
