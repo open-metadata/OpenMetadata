@@ -70,7 +70,7 @@ jobs:
       SLACK_CHANNEL: C0AC5T013V1 # #ci-cleanup
     steps:
       # pull_request_target checks out the trusted base, never the PR head.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 

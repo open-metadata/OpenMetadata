@@ -62,7 +62,7 @@ jobs:
       shard-count: ${{ steps.plan.outputs.shard-count }}
       core: ${{ steps.changes.outputs.core }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
           # A pull request checks out its merge commit: HEAD^1 is the base.
@@ -192,7 +192,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-node@v5
@@ -225,7 +225,7 @@ jobs:
       matrix:
         shard: ${{ fromJSON(needs.select.outputs.shards) }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/ui-browser-setup
@@ -296,7 +296,7 @@ jobs:
         run: |
           echo "::error::Browser-test selection failed, so no tests ran."
           exit 1
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
           # The changed-code coverage diffs against the base (HEAD^1).
