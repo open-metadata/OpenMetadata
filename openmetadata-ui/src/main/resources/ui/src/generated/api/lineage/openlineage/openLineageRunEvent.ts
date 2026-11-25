@@ -184,7 +184,7 @@ export interface InputFieldTransformation {
     /**
      * The transformation type, such as DIRECT or INDIRECT.
      */
-    type: string;
+    type?: string;
     [property: string]: any;
 }
 

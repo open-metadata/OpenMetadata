@@ -102,8 +102,7 @@
         "subtype": { "type": "string", "description": "The transformation subtype, such as AGGREGATION or FILTER." },
         "description": { "type": "string", "description": "A description of the transformation." },
         "masking": { "type": "boolean", "description": "Whether the transformation masks data." }
-      },
-      "required": ["type"]
+      }
     },
     "inputField": {
       "description": "A reference to an input column in column lineage.",
