@@ -56,7 +56,7 @@ jobs:
   #      `excluded_tags` collects every spec, so wrong-provider tests fail
   #      loudly rather than silently not running.
   sso-login:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     environment: test
     timeout-minutes: 45
     strategy:
@@ -111,7 +111,7 @@ jobs:
         run: yarn --ignore-scripts --frozen-lockfile
 
       - name: Install Playwright Browsers
-        run: npx playwright@1.57.0 install chromium --with-deps
+        run: npx playwright@1.65.1 install chromium --with-deps
 
       - name: Start Keycloak SAML IdP
         if: startsWith(matrix.provider.name, 'keycloak-')

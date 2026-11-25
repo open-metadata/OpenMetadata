@@ -40,7 +40,7 @@ test.describe.configure({ mode: 'serial' });
 
 test.describe('Tag Page Assets - Right Panel', () => {
   test.beforeAll(async ({ browser }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
     const { apiContext, afterAction } = await performAdminLogin(browser);
     try {
       await testClassification.create(apiContext);

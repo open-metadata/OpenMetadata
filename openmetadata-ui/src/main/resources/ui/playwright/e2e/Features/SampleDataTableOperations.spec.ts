@@ -33,7 +33,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
   const tableWithReservedColumns = new TableClass();
 
   test.beforeAll('Setup tables with sample data', async ({ browser }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     tableWithReservedColumns.entity.columns = buildReservedNameColumns();
@@ -51,7 +51,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
   });
 
   test.afterAll('Cleanup tables', async ({ browser }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     await tableWithData.delete(apiContext);
