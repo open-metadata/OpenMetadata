@@ -14,34 +14,28 @@
 import {
   Badge,
   Box,
-  Button,
-  Card,
-  Dialog,
-  Modal,
-  ModalOverlay,
   Skeleton,
+  Tag,
+  TagGroup,
+  TagList,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import { FC, lazy, ReactNode, useMemo, useState } from 'react';
+import { FC, Fragment, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
-  formatDate,
   formatDateTime,
   getRelativeTime,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityIcon } from '../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import Fqn from '../../utils/Fqn';
 import { getUserPath } from '../../utils/RouterUtils';
 import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
-import { withSuspenseFallback } from '../AppRouter/withSuspenseFallback';
 import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from '../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
@@ -51,35 +45,28 @@ import {
   AuditLogListProps,
 } from './AuditLogList.interface';
 import {
-  AuditLogDayGroup,
   ChangeRef,
   ChangeRow,
   ChangeValue,
-  CHANGE_ACTION_BADGES,
-  EVENT_TYPE_BADGES,
+  CHANGE_ACTION_STYLES,
+  EVENT_TYPE_COLORS,
   formatCellValue,
-  getAuditLogJson,
-  getChangeRefLink,
   getChangeRows,
-  groupLogsByDay,
+  getEntityRefLink,
+  getLineageEdge,
+  getReadableSummary,
   isAuthEvent,
-  isToday,
+  LineageEdge,
+  REF_DOT_CLASSES,
 } from './AuditLogList.utils';
 
-const SchemaEditor = withSuspenseFallback(
-  lazy(() => import('../Database/SchemaEditor/SchemaEditor'))
-);
+/** How a value is drawn: plain, or red/struck (old / removed) and green (new) on an update. */
+type ValueTone = 'plain' | 'before' | 'after';
 
-const JSON_EDITOR_MODE = { name: CSMode.JAVASCRIPT, json: true };
+type RecordsValue = Extract<ChangeValue, { type: 'records' }>;
 
-const REF_BADGE_COLORS = {
-  tier: 'purple',
-  tag: 'blue',
-  entity: 'gray',
-} as const;
-
-/** How a value is drawn: struck through when removed, red/green when it is one side of an update. */
-type ValueTone = 'plain' | 'removed' | 'before' | 'after';
+const LINK_CLASS =
+  'tw:font-semibold tw:text-fg-brand-primary tw:hover:underline';
 
 const resolveEntityType = (value?: string): EntityType | undefined => {
   if (!value) {
@@ -109,21 +96,6 @@ const resolveEntityLabel = (
   );
 };
 
-const getAuditLogDisplayInfo = (log: AuditLogListItemProps['log']) => {
-  const entityType = log.entityType ?? log.changeEvent?.entityType;
-  const entityFQN =
-    log.entityFQN ??
-    log.changeEvent?.entityFullyQualifiedName ??
-    log.changeEvent?.entity?.fullyQualifiedName;
-
-  return {
-    entityType,
-    entityFQN,
-    entityLabel: resolveEntityLabel(log, entityFQN),
-    normalizedType: resolveEntityType(entityType),
-  };
-};
-
 const getEntityHref = (
   log: AuditLogListItemProps['log'],
   normalizedType?: EntityType,
@@ -145,36 +117,66 @@ const getEntityHref = (
   return getEntityLinkFromType(entityFQN, normalizedType) || undefined;
 };
 
-const ChangeRefList: FC<{ refs: ChangeRef[]; isRemoved: boolean }> = ({
-  refs,
-  isRemoved,
-}) => (
-  <Box direction="row" gap={2} wrap="wrap">
-    {refs.map((ref) => (
-      <Badge
-        className={classNames({ 'tw:line-through': isRemoved })}
-        color={REF_BADGE_COLORS[ref.refKind]}
-        data-testid="change-ref"
-        href={getChangeRefLink(ref)}
-        key={`${ref.refKind}-${ref.fqn}`}
-        size="md"
-        type="pill-color">
-        {ref.label}
-        {ref.entityType && (
-          <Typography
-            as="span"
-            className="tw:ml-1.5"
-            size="text-xs"
-            weight="semibold">
-            {startCase(ref.entityType)}
-          </Typography>
-        )}
-      </Badge>
-    ))}
-  </Box>
-);
+const getLineValues = (
+  row: ChangeRow
+): { value: ChangeValue; tone: ValueTone }[] => {
+  if (row.oldValue && row.newValue) {
+    return [
+      { value: row.oldValue, tone: 'before' },
+      { value: row.newValue, tone: 'after' },
+    ];
+  }
+  if (row.newValue) {
+    return [{ value: row.newValue, tone: 'plain' }];
+  }
 
-const CellContent: FC<{ name: string; value: unknown }> = ({ name, value }) => {
+  return row.oldValue ? [{ value: row.oldValue, tone: 'before' }] : [];
+};
+
+const RefValue: FC<{
+  refs: ChangeRef[];
+  label: string;
+  isStruck: boolean;
+}> = ({ refs, label, isStruck }) => {
+  const tags = refs.filter((ref) => ref.refKind !== 'entity');
+  const entities = refs.filter((ref) => ref.refKind === 'entity');
+
+  return (
+    <>
+      {tags.length > 0 && (
+        <TagGroup label={label}>
+          <TagList className="tw:flex tw:flex-wrap tw:gap-1.5">
+            {tags.map((ref) => (
+              <Tag
+                dot
+                className={classNames({ 'tw:line-through': isStruck })}
+                dotClassName={REF_DOT_CLASSES[ref.refKind]}
+                id={`${ref.refKind}-${ref.fqn}`}
+                key={`${ref.refKind}-${ref.fqn}`}>
+                {ref.label}
+              </Tag>
+            ))}
+          </TagList>
+        </TagGroup>
+      )}
+      {entities.map((ref) => (
+        <Badge
+          className={classNames({ 'tw:line-through': isStruck })}
+          color="gray"
+          data-testid="change-ref"
+          href={getEntityRefLink(ref)}
+          key={`${ref.entityType}-${ref.fqn}`}
+          size="sm"
+          type="pill-color">
+          {ref.entityType ? `${ref.label} (${ref.entityType})` : ref.label}
+        </Badge>
+      ))}
+    </>
+  );
+};
+
+const InlineCell: FC<{ name: string; value: unknown }> = ({ name, value }) => {
+  const { t } = useTranslation();
   const cell = formatCellValue(name, value);
 
   if (cell.color) {
@@ -187,245 +189,143 @@ const CellContent: FC<{ name: string; value: unknown }> = ({ name, value }) => {
 
   return (
     <span
-      className={classNames('tw:text-sm tw:text-primary tw:break-words', {
+      className={classNames('tw:text-primary', {
         'tw:font-mono tw:text-xs': cell.isMono,
       })}>
-      {cell.text}
+      {cell.isEmpty ? t('label.empty').toLowerCase() : cell.text}
     </span>
   );
 };
 
-const ChangeValueTable: FC<{
-  value: Extract<ChangeValue, { type: 'table' }>;
-}> = ({ value }) => {
+/** `key value, key value` on one line — keys muted, values formatted by key. */
+const InlineEntries: FC<{ entries: [string, unknown][] }> = ({ entries }) => (
+  <span className="tw:inline-flex tw:flex-wrap tw:items-center tw:gap-x-1.5 tw:gap-y-1">
+    {entries.map(([key, entryValue], index) => (
+      <span className="tw:inline-flex tw:items-center tw:gap-1.5" key={key}>
+        <span className="tw:text-tertiary">{key}</span>
+        <InlineCell name={key} value={entryValue} />
+        {index < entries.length - 1 && (
+          <span className="tw:text-tertiary">,</span>
+        )}
+      </span>
+    ))}
+  </span>
+);
+
+const TextValue: FC<{ text: string; tone: ValueTone }> = ({ text, tone }) => {
+  if (tone === 'before') {
+    return (
+      <del className="tw:break-words tw:text-utility-error-700">{text}</del>
+    );
+  }
+  if (tone === 'after') {
+    return (
+      <ins className="tw:break-words tw:text-utility-success-700 tw:no-underline">
+        {text}
+      </ins>
+    );
+  }
+
+  return <span className="tw:break-words">{text}</span>;
+};
+
+const InlineValue: FC<{
+  value: ChangeValue;
+  tone: ValueTone;
+  label: string;
+}> = ({ value, tone, label }) => {
   const { t } = useTranslation();
 
+  switch (value.type) {
+    case 'refs':
+      return (
+        <RefValue
+          isStruck={tone === 'before'}
+          label={label}
+          refs={value.refs}
+        />
+      );
+    case 'keyValue':
+      return <InlineEntries entries={value.entries} />;
+    case 'records':
+      return (
+        <span>
+          {`${value.totalCount} ${
+            value.totalCount === 1
+              ? t('label.result')
+              : t('label.result-plural')
+          }`}
+        </span>
+      );
+    default:
+      return <TextValue text={value.text} tone={tone} />;
+  }
+};
+
+const RecordList: FC<{ value: RecordsValue }> = ({ value }) => {
+  const { t } = useTranslation();
+  const hiddenCount = value.totalCount - value.records.length;
+
   return (
-    <Box direction="col" gap={1}>
-      <div className="tw:overflow-x-auto tw:rounded-md tw:border tw:border-secondary tw:bg-surface">
-        <table
-          className="tw:w-full tw:border-collapse"
-          data-testid="change-table">
-          <thead>
-            <tr className="tw:bg-secondary">
-              {value.columns.map((column) => (
-                <th
-                  className="tw:whitespace-nowrap tw:px-3 tw:py-2 tw:text-left tw:text-xs tw:font-semibold tw:text-tertiary"
-                  key={column}
-                  scope="col">
-                  {startCase(column)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {value.rows.map((row, rowIndex) => (
-              // Rows are untyped API objects with no stable id; their order is the change's order.
-              // eslint-disable-next-line react/no-array-index-key
-              <tr className="tw:border-t tw:border-secondary" key={rowIndex}>
-                {value.columns.map((column) => (
-                  <td
-                    className="tw:whitespace-nowrap tw:px-3 tw:py-2"
-                    key={column}>
-                    <CellContent name={column} value={row[column]} />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {value.hiddenRowCount > 0 && (
+    <Box className="tw:mt-1.5" direction="col" gap={1}>
+      {value.records.map((record, index) => (
+        <div
+          className="tw:rounded-md tw:bg-secondary tw:px-3 tw:py-2 tw:text-sm"
+          data-testid="change-record"
+          // Records are untyped API objects with no stable id; their order is the change's order.
+          // eslint-disable-next-line react/no-array-index-key
+          key={index}>
+          <InlineEntries entries={Object.entries(record)} />
+        </div>
+      ))}
+      {hiddenCount > 0 && (
         <Typography className="tw:text-tertiary" size="text-xs">
-          {t('label.plus-count-more', { count: value.hiddenRowCount })}
+          {t('label.plus-count-more', { count: hiddenCount })}
         </Typography>
       )}
     </Box>
   );
 };
 
-const ChangeValueKeyValue: FC<{
-  value: Extract<ChangeValue, { type: 'keyValue' }>;
-}> = ({ value }) => (
-  <dl
-    className="tw:m-0 tw:divide-y tw:divide-secondary tw:rounded-md tw:border tw:border-secondary tw:bg-surface"
-    data-testid="change-key-value">
-    {value.entries.map(([key, entryValue]) => (
-      <div
-        className="tw:flex tw:items-baseline tw:gap-3 tw:px-3 tw:py-2"
-        key={key}>
-        <dt className="tw:w-35 tw:shrink-0 tw:text-xs tw:text-tertiary">
-          {startCase(key)}
-        </dt>
-        <dd className="tw:m-0 tw:min-w-0">
-          <CellContent name={key} value={entryValue} />
-        </dd>
-      </div>
-    ))}
-  </dl>
-);
-
-const ChangeTextValue: FC<{ text: string; tone: ValueTone }> = ({
-  text,
-  tone,
-}) => {
-  const className = 'tw:rounded tw:px-1 tw:box-decoration-clone';
-
-  if (tone === 'before' || tone === 'removed') {
-    return (
-      <del
-        className={classNames(
-          className,
-          'tw:bg-utility-error-50 tw:text-utility-error-700'
-        )}>
-        {text}
-      </del>
-    );
-  }
-  if (tone === 'after') {
-    return (
-      <ins
-        className={classNames(
-          className,
-          'tw:bg-utility-success-50 tw:text-utility-success-700 tw:no-underline'
-        )}>
-        {text}
-      </ins>
-    );
-  }
-
-  return <span>{text}</span>;
-};
-
-const ChangeValueView: FC<{ value: ChangeValue; tone: ValueTone }> = ({
-  value,
-  tone,
-}) => {
-  switch (value.type) {
-    case 'refs':
-      return (
-        <ChangeRefList
-          isRemoved={tone === 'removed' || tone === 'before'}
-          refs={value.refs}
-        />
-      );
-    case 'table':
-      return <ChangeValueTable value={value} />;
-    case 'keyValue':
-      return <ChangeValueKeyValue value={value} />;
-    default:
-      return (
-        // Long descriptions are clamped; the full text stays available in View JSON.
-        <div className="tw:line-clamp-4 tw:text-sm tw:leading-6 tw:text-primary tw:break-words">
-          <ChangeTextValue text={value.text} tone={tone} />
-        </div>
-      );
-  }
-};
-
-const BeforeAfterRow: FC<{
-  label: string;
-  value: ChangeValue;
-  tone: ValueTone;
-}> = ({ label, value, tone }) => (
-  <div className="tw:flex tw:items-start tw:gap-2">
-    <Typography
-      as="span"
-      className="tw:w-12 tw:shrink-0 tw:pt-0.5 tw:text-tertiary"
-      size="text-xs">
-      {label}
-    </Typography>
-    <div className="tw:min-w-0 tw:flex-1">
-      <ChangeValueView tone={tone} value={value} />
-    </div>
-  </div>
-);
-
-const ChangeRowView: FC<{ row: ChangeRow }> = ({ row }) => {
+const ChangeLine: FC<{ row: ChangeRow }> = ({ row }) => {
   const { t } = useTranslation();
-  const badge = CHANGE_ACTION_BADGES[row.action];
-  // Before/After only when both sides exist; a one-sided update reads like an add or a removal.
-  const singleValue = row.newValue ?? row.oldValue;
-  const singleTone: ValueTone = row.newValue ? 'plain' : 'removed';
-
-  return (
-    <div
-      className="tw:flex tw:items-start tw:gap-3 tw:px-3.5 tw:py-3"
-      data-testid="change-row">
-      <Badge
-        className="tw:w-18 tw:shrink-0 tw:justify-center"
-        color={badge.color}
-        data-testid="change-action"
-        size="sm"
-        type="color">
-        {t(badge.labelKey)}
-      </Badge>
-      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
-        <Typography
-          className="tw:text-secondary"
-          data-testid="change-field-path"
-          size="text-sm"
-          title={row.name}
-          weight="semibold">
-          {row.path || t('label.field')}
-        </Typography>
-        {row.oldValue && row.newValue ? (
-          <Box direction="col" gap={1}>
-            <BeforeAfterRow
-              label={t('label.before')}
-              tone="before"
-              value={row.oldValue}
-            />
-            <BeforeAfterRow
-              label={t('label.after')}
-              tone="after"
-              value={row.newValue}
-            />
-          </Box>
-        ) : (
-          singleValue && (
-            <ChangeValueView tone={singleTone} value={singleValue} />
-          )
-        )}
-      </Box>
-    </div>
+  const action = CHANGE_ACTION_STYLES[row.action];
+  const values = getLineValues(row);
+  const records = [row.newValue, row.oldValue].find(
+    (value): value is RecordsValue => value?.type === 'records'
   );
-};
-
-const AuditLogJsonDialog: FC<{ json: string; onClose: () => void }> = ({
-  json,
-  onClose,
-}) => {
-  const { t } = useTranslation();
 
   return (
-    <ModalOverlay
-      isDismissable
-      isOpen
-      onOpenChange={(open) => !open && onClose()}>
-      <Modal>
-        <Dialog dividers="scroll" onClose={onClose}>
-          <Dialog.Header title={t('label.view-json')} />
-          <Dialog.Content>
-            <div data-testid="audit-log-json">
-              <SchemaEditor readOnly mode={JSON_EDITOR_MODE} value={json} />
-            </div>
-          </Dialog.Content>
-        </Dialog>
-      </Modal>
-    </ModalOverlay>
+    <div data-testid="change-row">
+      <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-x-1.5 tw:gap-y-1 tw:text-sm">
+        <span
+          className={classNames('tw:font-semibold', action.className)}
+          data-testid="change-action">
+          {t(action.labelKey)}
+        </span>
+        <span
+          className="tw:font-semibold tw:text-primary"
+          data-testid="change-field-path">
+          {`${row.path || t('label.field')}:`}
+        </span>
+        {values.map(({ value, tone }, index) => (
+          <Fragment key={tone}>
+            {index > 0 && <span className="tw:text-tertiary">→</span>}
+            <InlineValue label={row.path} tone={tone} value={value} />
+          </Fragment>
+        ))}
+      </div>
+      {records && <RecordList value={records} />}
+    </div>
   );
 };
 
 const AuditLogItemHeader: FC<{
   log: AuditLogListItemProps['log'];
   userName: string;
-  onViewJson: () => void;
-}> = ({ log, userName, onViewJson }) => {
+  entity: ReactNode;
+}> = ({ log, userName, entity }) => {
   const { t } = useTranslation();
-  const eventBadge = log.eventType
-    ? EVENT_TYPE_BADGES[log.eventType]
-    : undefined;
 
   return (
     <Box
@@ -433,42 +333,45 @@ const AuditLogItemHeader: FC<{
       data-testid="item-header"
       direction="row"
       gap={2}
-      justify="between"
       wrap="wrap">
-      <Box align="center" direction="row" gap={2} wrap="wrap">
-        {log.userName ? (
+      {log.userName ? (
+        <Link
+          className={LINK_CLASS}
+          to={getSettingsLink(getUserPath(log.userName))}>
+          {userName}
+        </Link>
+      ) : (
+        <Typography weight="semibold">{userName}</Typography>
+      )}
+      {log.actorType === 'BOT' && (
+        <Badge color="gray" data-testid="bot-badge" size="sm" type="color">
+          {t('label.bot')}
+        </Badge>
+      )}
+      <Typography className="tw:text-quaternary">–</Typography>
+      {log.eventType && (
+        <Badge
+          color={EVENT_TYPE_COLORS[log.eventType] ?? 'gray'}
+          data-testid="event-type"
+          size="sm"
+          type="color">
+          {startCase(log.eventType)}
+        </Badge>
+      )}
+      {log.impersonatedBy && (
+        <Typography
+          className="tw:text-tertiary"
+          data-testid="impersonated-by"
+          size="text-sm">
+          {t('label.impersonated-by-with-colon')}{' '}
           <Link
-            className="tw:text-md tw:font-semibold tw:text-primary tw:hover:underline"
-            to={getSettingsLink(getUserPath(log.userName))}>
-            {userName}
+            className={LINK_CLASS}
+            to={getSettingsLink(getUserPath(log.impersonatedBy))}>
+            {log.impersonatedBy}
           </Link>
-        ) : (
-          <Typography size="text-md" weight="semibold">
-            {userName}
-          </Typography>
-        )}
-        {log.actorType === 'BOT' && (
-          <Badge color="gray" data-testid="bot-badge" size="sm" type="color">
-            {t('label.bot')}
-          </Badge>
-        )}
-        {log.eventType && (
-          <Badge
-            color={eventBadge?.color ?? 'gray'}
-            data-testid="event-type"
-            size="sm"
-            type="color">
-            {eventBadge ? t(eventBadge.labelKey) : startCase(log.eventType)}
-          </Badge>
-        )}
-      </Box>
-      <Button
-        color="link-color"
-        data-testid="view-json-button"
-        size="sm"
-        onClick={onViewJson}>
-        {t('label.view-json')}
-      </Button>
+        </Typography>
+      )}
+      {entity}
     </Box>
   );
 };
@@ -485,15 +388,11 @@ const AuditLogItemEntity: FC<{
     gap={2}
     wrap="wrap">
     {entityHref ? (
-      <Link
-        className="tw:text-md tw:font-semibold tw:text-brand-secondary tw:hover:underline"
-        to={entityHref}>
+      <Link className={LINK_CLASS} to={entityHref}>
         {entityLabel}
       </Link>
     ) : (
-      <Typography size="text-md" weight="semibold">
-        {entityLabel}
-      </Typography>
+      <Typography weight="semibold">{entityLabel}</Typography>
     )}
     {entityFQN && entityFQN !== entityLabel && (
       <Typography
@@ -506,6 +405,31 @@ const AuditLogItemEntity: FC<{
   </Box>
 );
 
+const EntityRefLink: FC<{ entityRef: ChangeRef }> = ({ entityRef }) => {
+  const href = getEntityRefLink(entityRef);
+
+  return href ? (
+    <Link className={LINK_CLASS} to={href}>
+      {entityRef.label}
+    </Link>
+  ) : (
+    <Typography weight="semibold">{entityRef.label}</Typography>
+  );
+};
+
+const AuditLogItemLineage: FC<{ edge: LineageEdge }> = ({ edge }) => (
+  <Box
+    align="center"
+    data-testid="affected-entity"
+    direction="row"
+    gap={2}
+    wrap="wrap">
+    <EntityRefLink entityRef={edge.from} />
+    <Typography className="tw:text-tertiary">→</Typography>
+    <EntityRefLink entityRef={edge.to} />
+  </Box>
+);
+
 const AuditLogItemMeta: FC<{ entityType?: string; timestamp?: number }> = ({
   entityType,
   timestamp,
@@ -514,31 +438,27 @@ const AuditLogItemMeta: FC<{ entityType?: string; timestamp?: number }> = ({
     align="center"
     data-testid="item-meta"
     direction="row"
-    gap={3}
+    gap={2}
     wrap="wrap">
     {entityType && (
       <Typography
-        as="span"
-        className="tw:inline-flex tw:items-center tw:gap-1.5 tw:text-brand-secondary"
+        className="tw:text-fg-brand-primary"
         data-testid="entity-type-badge"
-        size="text-sm"
-        weight="medium">
-        {getEntityIcon(entityType, 'tw:size-3.5 tw:text-brand-secondary')}
+        size="text-xs">
         {startCase(entityType)}
       </Typography>
     )}
     {entityType && timestamp && (
       <span
         aria-hidden="true"
-        className="tw:h-3.5 tw:border-l tw:border-secondary"
+        className="tw:h-3 tw:border-l tw:border-secondary"
       />
     )}
     {timestamp && (
       <Typography
-        as="span"
         className="tw:text-tertiary"
         data-testid="timestamp"
-        size="text-sm">
+        size="text-xs">
         <time dateTime={new Date(timestamp).toISOString()}>
           {formatDateTime(timestamp)}
         </time>
@@ -548,122 +468,101 @@ const AuditLogItemMeta: FC<{ entityType?: string; timestamp?: number }> = ({
   </Box>
 );
 
+/** What the event happened to: the lineage edge, the changed asset, or nothing for login/logout. */
+const AuditLogItemSubject: FC<{
+  log: AuditLogListItemProps['log'];
+  entityType?: string;
+  entityFQN?: string;
+  entityLabel?: string;
+}> = ({ log, entityType, entityFQN, entityLabel }) => {
+  const lineageEdge = getLineageEdge(log);
+  if (lineageEdge) {
+    return <AuditLogItemLineage edge={lineageEdge} />;
+  }
+  // A login/logout's entity is the actor already shown in the header.
+  if (!entityLabel || isAuthEvent(log.eventType)) {
+    return null;
+  }
+
+  return (
+    <AuditLogItemEntity
+      entityFQN={entityFQN}
+      entityHref={getEntityHref(log, resolveEntityType(entityType), entityFQN)}
+      entityLabel={entityLabel}
+    />
+  );
+};
+
 const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
   const { t } = useTranslation();
-  const [isJsonOpen, setIsJsonOpen] = useState(false);
-  const { entityType, entityFQN, entityLabel, normalizedType } =
-    getAuditLogDisplayInfo(log);
+  const entityType = log.entityType ?? log.changeEvent?.entityType;
+  const entityFQN =
+    log.entityFQN ??
+    log.changeEvent?.entityFullyQualifiedName ??
+    log.changeEvent?.entity?.fullyQualifiedName;
+  const entityLabel = resolveEntityLabel(log, entityFQN);
   const userName = log.userName || t('label.system');
   const changeRows = useMemo(
     () => getChangeRows(log.changeEvent?.changeDescription),
     [log.changeEvent?.changeDescription]
   );
-  // A login/logout's entity is the actor already shown in the header.
-  const showEntity = entityLabel && !isAuthEvent(log.eventType);
-
-  return (
-    <Card data-testid="audit-log-list-item">
-      <Card.Content className="tw:flex tw:items-start tw:gap-3.5">
-        <div className="tw:shrink-0" data-testid="item-avatar">
-          <ProfilePicture
-            displayName={userName}
-            height="36"
-            name={log.userName || 'system'}
-            width="36"
-          />
-        </div>
-        <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={3}>
-          <AuditLogItemHeader
-            log={log}
-            userName={userName}
-            onViewJson={() => setIsJsonOpen(true)}
-          />
-          {log.impersonatedBy && (
-            <Typography
-              className="tw:text-tertiary"
-              data-testid="impersonated-by"
-              size="text-sm">
-              {t('label.impersonated-by-with-colon')}{' '}
-              <Link
-                className="tw:font-semibold tw:text-secondary tw:hover:underline"
-                to={getSettingsLink(getUserPath(log.impersonatedBy))}>
-                {log.impersonatedBy}
-              </Link>
-            </Typography>
-          )}
-          {showEntity && (
-            <AuditLogItemEntity
-              entityFQN={entityFQN}
-              entityHref={getEntityHref(log, normalizedType, entityFQN)}
-              entityLabel={entityLabel}
-            />
-          )}
-          <div data-testid="description-content">
-            {changeRows.length > 0 ? (
-              <div className="tw:divide-y tw:divide-secondary tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary">
-                {changeRows.map((row) => (
-                  <ChangeRowView key={row.key} row={row} />
-                ))}
-              </div>
-            ) : (
-              <Typography size="text-sm">
-                {log.summary ?? startCase(log.eventType)}
-              </Typography>
-            )}
-          </div>
-          <AuditLogItemMeta entityType={entityType} timestamp={log.eventTs} />
-        </Box>
-      </Card.Content>
-      {isJsonOpen && (
-        <AuditLogJsonDialog
-          json={getAuditLogJson(log)}
-          onClose={() => setIsJsonOpen(false)}
-        />
-      )}
-    </Card>
+  const summary = getReadableSummary(log);
+  const entity = (
+    <AuditLogItemSubject
+      entityFQN={entityFQN}
+      entityLabel={entityLabel}
+      entityType={entityType}
+      log={log}
+    />
   );
-};
-
-const AuditLogDayHeader: FC<{ group: AuditLogDayGroup }> = ({ group }) => {
-  const { t } = useTranslation();
-  const date = formatDate(group.timestamp);
 
   return (
-    <div
-      className="tw:flex tw:items-center tw:gap-3"
-      data-testid="audit-log-day-header">
-      <h2 className="tw:m-0 tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-tertiary">
-        {isToday(group.timestamp) ? `${t('label.today')} · ${date}` : date}
-      </h2>
-      <span
-        aria-hidden="true"
-        className="tw:flex-1 tw:border-t tw:border-secondary"
-      />
-    </div>
+    <Box
+      className="tw:p-4 tw:border-b tw:border-primary tw:transition-colors tw:hover:bg-secondary tw:last:border-b-0"
+      data-testid="audit-log-list-item"
+      direction="row"
+      gap={3}>
+      <div className="tw:shrink-0" data-testid="item-avatar">
+        <ProfilePicture
+          displayName={userName}
+          height="32"
+          name={log.userName || 'system'}
+          width="32"
+        />
+      </div>
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+        <AuditLogItemHeader entity={entity} log={log} userName={userName} />
+        <Box data-testid="description-content" direction="col" gap={1}>
+          {changeRows.length > 0
+            ? changeRows.map((row) => <ChangeLine key={row.key} row={row} />)
+            : summary && <Typography size="text-sm">{summary}</Typography>}
+        </Box>
+        <AuditLogItemMeta entityType={entityType} timestamp={log.eventTs} />
+      </Box>
+    </Box>
   );
 };
 
 const AuditLogListSkeleton: FC = () => (
-  <div
-    className="tw:flex tw:flex-col tw:gap-3 tw:p-4"
-    data-testid="audit-log-list-skeleton">
-    <Skeleton variant="text" width={200} />
+  <div data-testid="audit-log-list-skeleton">
     {[1, 2, 3, 4, 5].map((i) => (
-      <Card key={i}>
-        <Card.Content className="tw:flex tw:gap-3.5">
-          <Skeleton
-            className="tw:shrink-0"
-            height={36}
-            variant="circular"
-            width={36}
-          />
-          <Box className="tw:flex-1" direction="col" gap={1}>
-            <Skeleton variant="text" width="60%" />
-            <Skeleton variant="text" width="100%" />
-            <Skeleton variant="text" width="75%" />
-          </Box>
-        </Card.Content>
-      </Card>
+      <Box
+        className="tw:p-4 tw:border-b tw:border-primary tw:last:border-b-0"
+        direction="row"
+        gap={3}
+        key={i}>
+        <Skeleton
+          className="tw:shrink-0"
+          height={32}
+          variant="circular"
+          width={32}
+        />
+        <Box className="tw:flex-1" direction="col" gap={1}>
+          <Skeleton variant="text" width="60%" />
+          <Skeleton variant="text" width="100%" />
+          <Skeleton variant="text" width="75%" />
+        </Box>
+      </Box>
     ))}
   </div>
 );
@@ -676,7 +575,6 @@ const AuditLogList: FC<AuditLogListProps> = ({
   onClearFilters,
 }) => {
   const { t } = useTranslation();
-  const dayGroups = useMemo(() => groupLogsByDay(logs), [logs]);
 
   if (isLoading) {
     return <AuditLogListSkeleton />;
@@ -733,23 +631,12 @@ const AuditLogList: FC<AuditLogListProps> = ({
   }
 
   return (
-    <div
-      className="tw:flex tw:w-full tw:flex-col tw:gap-4 tw:p-4"
-      data-testid="audit-log-list">
-      {dayGroups.map((group) => (
-        <section className="tw:flex tw:flex-col tw:gap-3" key={group.dayKey}>
-          <AuditLogDayHeader group={group} />
-          {group.logs.map((log, index) => (
-            <AuditLogListItem
-              key={
-                log.id?.toString() ??
-                log.changeEventId ??
-                `${group.dayKey}-${index}`
-              }
-              log={log}
-            />
-          ))}
-        </section>
+    <div className="tw:w-full" data-testid="audit-log-list">
+      {logs.map((log, index) => (
+        <AuditLogListItem
+          key={log.id?.toString() ?? log.changeEventId ?? index.toString()}
+          log={log}
+        />
       ))}
     </div>
   );

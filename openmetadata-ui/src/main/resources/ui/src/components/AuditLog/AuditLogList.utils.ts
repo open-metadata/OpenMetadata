@@ -13,7 +13,6 @@
 
 import { BadgeColors } from '@openmetadata/ui-core-components';
 import { isNil, isPlainObject, startCase } from 'lodash';
-import { DateTime } from 'luxon';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -26,18 +25,19 @@ import { getTextFromHtmlString } from '../../utils/BlockEditorPureUtils';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import Fqn from '../../utils/Fqn';
-import {
-  getGlossaryPath,
-  getTagPath,
-  getTeamsWithFqnPath,
-  getUserPath,
-} from '../../utils/RouterUtils';
+import { getTeamsWithFqnPath, getUserPath } from '../../utils/RouterUtils';
 import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import { isValidJSONString } from '../../utils/StringUtils';
 
 export type ChangeAction = 'added' | 'updated' | 'removed';
 
-export type ChangeRefKind = 'tier' | 'tag' | 'entity';
+/** Tags, tiers, glossary terms and domains render as core `Tag`s; other references as entity chips. */
+export type ChangeRefKind =
+  | 'tier'
+  | 'classification'
+  | 'glossary'
+  | 'domain'
+  | 'entity';
 
 export interface ChangeRef {
   label: string;
@@ -45,17 +45,14 @@ export interface ChangeRef {
   refKind: ChangeRefKind;
   /** Entity type of an entity reference (`user`, `team`, `domain`, ...). */
   entityType?: string;
-  /** Tag source (`Classification` or `Glossary`). */
-  source?: string;
 }
 
 export type ChangeValue =
   | { type: 'refs'; refs: ChangeRef[] }
   | {
-      type: 'table';
-      columns: string[];
-      rows: Record<string, unknown>[];
-      hiddenRowCount: number;
+      type: 'records';
+      records: Record<string, unknown>[];
+      totalCount: number;
     }
   | { type: 'keyValue'; entries: [string, unknown][] }
   | { type: 'text'; text: string };
@@ -69,51 +66,59 @@ export interface ChangeRow {
   newValue?: ChangeValue;
 }
 
-export interface AuditLogDayGroup {
-  dayKey: string;
-  timestamp: number;
-  logs: AuditLogEntry[];
-}
-
 export interface CellValue {
   text: string;
   color?: BadgeColors;
   isMono?: boolean;
+  isEmpty?: boolean;
 }
 
-export const MAX_TABLE_ROWS = 5;
+export const MAX_RECORDS = 5;
 
-/** Event type → badge label key and colour; unknown types fall back to a gray humanized name. */
-export const EVENT_TYPE_BADGES: Partial<
-  Record<string, { labelKey: string; color: BadgeColors }>
-> = {
-  [EventType.EntityCreated]: { labelKey: 'label.created', color: 'success' },
-  [EventType.EntityUpdated]: { labelKey: 'label.updated', color: 'blue' },
-  [EventType.EntityFieldsChanged]: {
-    labelKey: 'label.updated',
-    color: 'blue',
-  },
-  [EventType.EntitySoftDeleted]: {
-    labelKey: 'label.soft-deleted',
-    color: 'warning',
-  },
-  [EventType.EntityDeleted]: { labelKey: 'label.deleted', color: 'error' },
-  [EventType.EntityRestored]: { labelKey: 'label.restored', color: 'success' },
-  [EventType.UserLogin]: { labelKey: 'label.logged-in', color: 'blue-light' },
-  [EventType.UserLogout]: {
-    labelKey: 'label.logged-out',
-    color: 'blue-light',
-  },
+const UUID_PREVIEW_LENGTH = 8;
+
+/**
+ * Colour per audited event type — the server records exactly these
+ * (`AuditLogRepository.SUPPORTED_EVENT_TYPES`); anything else renders gray.
+ */
+export const EVENT_TYPE_COLORS: Partial<Record<string, BadgeColors>> = {
+  [EventType.EntityCreated]: 'success',
+  [EventType.EntityUpdated]: 'blue',
+  [EventType.EntityFieldsChanged]: 'blue',
+  [EventType.EntitySoftDeleted]: 'warning',
+  [EventType.EntityDeleted]: 'error',
+  [EventType.EntityRestored]: 'success',
+  [EventType.EntityLineageAdded]: 'indigo',
+  [EventType.EntityLineageUpdated]: 'indigo',
+  [EventType.EntityLineageDeleted]: 'indigo',
+  [EventType.UserLogin]: 'blue-light',
+  [EventType.UserLogout]: 'blue-light',
 };
 
-export const CHANGE_ACTION_BADGES: Record<
+export const CHANGE_ACTION_STYLES: Record<
   ChangeAction,
-  { labelKey: string; color: BadgeColors }
+  { labelKey: string; className: string }
 > = {
-  added: { labelKey: 'label.added', color: 'success' },
-  updated: { labelKey: 'label.updated', color: 'blue' },
-  removed: { labelKey: 'label.removed', color: 'error' },
+  added: { labelKey: 'label.added', className: 'tw:text-utility-success-700' },
+  updated: { labelKey: 'label.updated', className: 'tw:text-utility-blue-700' },
+  removed: {
+    labelKey: 'label.removed',
+    className: 'tw:text-utility-error-700',
+  },
 };
+
+/** Dot colour that tells the kinds of `Tag` apart. */
+export const REF_DOT_CLASSES: Partial<Record<ChangeRefKind, string>> = {
+  tier: 'tw:text-utility-purple-500',
+  classification: 'tw:text-utility-blue-500',
+  glossary: 'tw:text-utility-success-500',
+  domain: 'tw:text-utility-orange-500',
+};
+
+const DOMAIN_REF_TYPES = new Set<string>([
+  EntityType.DOMAIN,
+  EntityType.DATA_PRODUCT,
+]);
 
 const STATUS_COLORS: [RegExp, BadgeColors][] = [
   [/^(success|successful|passed|completed)$/, 'success'],
@@ -125,6 +130,11 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Epoch-millisecond values only — avoids formatting small counts under a "time" key as 1970 dates.
 const MIN_EPOCH_MS = 1e11;
+
+export interface LineageEdge {
+  from: ChangeRef;
+  to: ChangeRef;
+}
 
 export const isAuthEvent = (eventType?: string) =>
   eventType === EventType.UserLogin || eventType === EventType.UserLogout;
@@ -173,27 +183,36 @@ const isRefObject = (value: unknown): value is Record<string, unknown> => {
   );
 };
 
+const getTagRefKind = (tagFQN: string, source?: unknown): ChangeRefKind => {
+  if (tagFQN.startsWith('Tier.')) {
+    return 'tier';
+  }
+
+  return source === 'Glossary' ? 'glossary' : 'classification';
+};
+
 const toChangeRef = (object: Record<string, unknown>): ChangeRef => {
   const name = object.name as string | undefined;
   const displayName = object.displayName as string | undefined;
   if (typeof object.tagFQN === 'string') {
-    const isTier = object.tagFQN.startsWith('Tier.');
+    const refKind = getTagRefKind(object.tagFQN, object.source);
 
     return {
       fqn: object.tagFQN,
-      refKind: isTier ? 'tier' : 'tag',
-      source: object.source as string | undefined,
-      label: isTier
-        ? displayName || name || object.tagFQN
-        : Fqn.split(object.tagFQN).join(' › '),
+      refKind,
+      label:
+        refKind === 'tier'
+          ? displayName || name || object.tagFQN
+          : object.tagFQN,
     };
   }
   const fqn = (object.fullyQualifiedName as string | undefined) ?? name ?? '';
+  const entityType = object.type as string;
 
   return {
     fqn,
-    refKind: 'entity',
-    entityType: object.type as string,
+    entityType,
+    refKind: DOMAIN_REF_TYPES.has(entityType) ? 'domain' : 'entity',
     label: displayName || name || fqn,
   };
 };
@@ -209,6 +228,24 @@ const toTextValue = (value: unknown): string => {
   return isPlainObject(value) ? JSON.stringify(value) : String(value);
 };
 
+const toArrayValue = (values: unknown[]): ChangeValue | undefined => {
+  if (values.length === 0) {
+    return undefined;
+  }
+  if (values.every(isRefObject)) {
+    return { type: 'refs', refs: values.map(toChangeRef) };
+  }
+  if (values.every(isPlainObject)) {
+    return {
+      type: 'records',
+      records: (values as Record<string, unknown>[]).slice(0, MAX_RECORDS),
+      totalCount: values.length,
+    };
+  }
+
+  return { type: 'text', text: toTextValue(values) };
+};
+
 /** Classifies a raw field value into the shape the list renders; `undefined` when there is nothing to show. */
 export const toChangeValue = (raw: unknown): ChangeValue | undefined => {
   const value = parseChangeValue(raw);
@@ -216,23 +253,7 @@ export const toChangeValue = (raw: unknown): ChangeValue | undefined => {
     return undefined;
   }
   if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return undefined;
-    }
-    if (value.every(isRefObject)) {
-      return { type: 'refs', refs: value.map(toChangeRef) };
-    }
-    if (value.every(isPlainObject)) {
-      const rows = value as Record<string, unknown>[];
-      const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))];
-
-      return {
-        type: 'table',
-        columns,
-        rows: rows.slice(0, MAX_TABLE_ROWS),
-        hiddenRowCount: Math.max(0, rows.length - MAX_TABLE_ROWS),
-      };
-    }
+    return toArrayValue(value);
   }
   if (isRefObject(value)) {
     return { type: 'refs', refs: [toChangeRef(value)] };
@@ -247,12 +268,10 @@ export const toChangeValue = (raw: unknown): ChangeValue | undefined => {
   return { type: 'text', text: toTextValue(value) };
 };
 
-const toChangeRow = (
-  action: ChangeAction,
-  change: FieldChange
-): ChangeRow | undefined => {
+const toChangeRow = (action: ChangeAction, change: FieldChange): ChangeRow => {
   const name = change.name ?? '';
-  const row: ChangeRow = {
+
+  return {
     key: `${action}-${name}`,
     action,
     name,
@@ -260,8 +279,6 @@ const toChangeRow = (
     oldValue: action === 'added' ? undefined : toChangeValue(change.oldValue),
     newValue: action === 'removed' ? undefined : toChangeValue(change.newValue),
   };
-
-  return row.oldValue || row.newValue || name ? row : undefined;
 };
 
 /** The `deleted` flag change is the soft-delete/restore event itself, already shown by its badge and summary. */
@@ -271,7 +288,8 @@ export const getChangeRows = (
   if (!changeDescription) {
     return [];
   }
-  const rows = [
+
+  return [
     ...(changeDescription.fieldsAdded ?? []).map((change) =>
       toChangeRow('added', change)
     ),
@@ -282,8 +300,6 @@ export const getChangeRows = (
       toChangeRow('removed', change)
     ),
   ];
-
-  return rows.filter((row): row is ChangeRow => Boolean(row));
 };
 
 export const getStatusColor = (value: string): BadgeColors =>
@@ -313,7 +329,15 @@ const getStructuredText = (value: unknown[] | object): string => {
   return Object.keys(value).length ? JSON.stringify(value) : '';
 };
 
-/** Formats one table / key-value cell, inferring timestamps, statuses and ids from the key. */
+const formatScalar = (value: unknown): CellValue => {
+  const text = String(value);
+
+  return UUID_PATTERN.test(text)
+    ? { text: `${text.slice(0, UUID_PREVIEW_LENGTH)}…`, isMono: true }
+    : { text };
+};
+
+/** Formats one inline `key value` pair, inferring timestamps, statuses and ids from the key. */
 export const formatCellValue = (key: string, value: unknown): CellValue => {
   if (isNil(value) || value === '') {
     return { text: NO_DATA_PLACEHOLDER };
@@ -325,23 +349,16 @@ export const formatCellValue = (key: string, value: unknown): CellValue => {
     return { text: value, color: getStatusColor(value) };
   }
   if (Array.isArray(value) || isPlainObject(value)) {
-    return {
-      text:
-        getStructuredText(value as unknown[] | object) || NO_DATA_PLACEHOLDER,
-    };
-  }
-  const text = String(value);
+    const text = getStructuredText(value as unknown[] | object);
 
-  return { text, isMono: UUID_PATTERN.test(text) };
+    return text ? { text } : { text: '', isEmpty: true };
+  }
+
+  return formatScalar(value);
 };
 
-/** Href for a referenced tag, user, team or entity; `undefined` when it has no page. */
-export const getChangeRefLink = (ref: ChangeRef): string | undefined => {
-  if (ref.refKind !== 'entity') {
-    return ref.source === 'Glossary'
-      ? getGlossaryPath(ref.fqn)
-      : getTagPath(ref.fqn);
-  }
+/** Href for a referenced user, team or entity; `undefined` when it has no page. */
+export const getEntityRefLink = (ref: ChangeRef): string | undefined => {
   switch (ref.entityType) {
     case EntityType.USER:
       return getSettingsLink(getUserPath(ref.fqn));
@@ -351,38 +368,32 @@ export const getChangeRefLink = (ref: ChangeRef): string | undefined => {
       const entityType = Object.values(EntityType).find(
         (type) => type.toLowerCase() === ref.entityType?.toLowerCase()
       );
-      const link = entityType
-        ? getEntityLinkFromType(ref.fqn, entityType)
-        : undefined;
 
-      return link || undefined;
+      return (
+        (entityType && getEntityLinkFromType(ref.fqn, entityType)) || undefined
+      );
     }
   }
 };
 
-/** Consecutive logs that fall on the same local day; the list arrives newest first. */
-export const groupLogsByDay = (logs: AuditLogEntry[]): AuditLogDayGroup[] =>
-  logs.reduce<AuditLogDayGroup[]>((groups, log) => {
-    const timestamp = log.eventTs ?? 0;
-    const dayKey = DateTime.fromMillis(timestamp).toISODate() ?? '';
-    const current = groups.at(-1);
-    if (current?.dayKey === dayKey) {
-      current.logs.push(log);
-    } else {
-      groups.push({ dayKey, timestamp, logs: [log] });
-    }
+/**
+ * A lineage event's "entity" is the edge (`a--upstream-->b`); its change event carries the
+ * two endpoints as `fromEntity` / `toEntity`, sometimes still as a JSON string.
+ */
+export const getLineageEdge = (log: AuditLogEntry): LineageEdge | undefined => {
+  const entity = parseChangeValue(log.changeEvent?.entity) as
+    | { fromEntity?: unknown; toEntity?: unknown }
+    | undefined;
+  if (!isRefObject(entity?.fromEntity) || !isRefObject(entity?.toEntity)) {
+    return undefined;
+  }
 
-    return groups;
-  }, []);
-
-export const isToday = (timestamp: number) =>
-  DateTime.fromMillis(timestamp).hasSame(DateTime.now(), 'day');
-
-/** Pretty JSON for the "View JSON" dialog: the stored raw event, else the parsed event. */
-export const getAuditLogJson = (log: AuditLogEntry): string => {
-  const parsed = log.rawEventJson
-    ? parseChangeValue(log.rawEventJson)
-    : log.changeEvent ?? log;
-
-  return JSON.stringify(parsed, null, 2);
+  return {
+    from: toChangeRef(entity.fromEntity),
+    to: toChangeRef(entity.toEntity),
+  };
 };
+
+/** The server's summary for lineage events is the bare event type, which says nothing. */
+export const getReadableSummary = (log: AuditLogEntry): string | undefined =>
+  log.summary && log.summary !== log.eventType ? log.summary : undefined;
