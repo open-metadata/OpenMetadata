@@ -86,6 +86,7 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.util.TestDatabaseImages;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.TriggerKey;
@@ -133,9 +134,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       IndexMappingLanguage.EN;
   private static final String ELASTIC_SEARCH_CLUSTER_ALIAS = "openmetadata";
 
-  // Default images (can be overridden by system properties)
-  private static final String DEFAULT_POSTGRES_IMAGE = "postgres:15";
-  private static final String DEFAULT_MYSQL_IMAGE = "mysql:8.4.13";
+  // Default images (can be overridden by system properties). The database image defaults to the
+  // shipped one; -DdatabaseImage replaces it for a run.
   private static final String DEFAULT_MYSQL_MAX_ALLOWED_PACKET = "64M";
   private static final String DEFAULT_ELASTICSEARCH_IMAGE =
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
@@ -335,7 +335,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
     if ("mysql".equalsIgnoreCase(databaseType)) {
       if (image == null) {
-        image = DEFAULT_MYSQL_IMAGE;
+        image = TestDatabaseImages.mysql();
       }
       LOG.info("Starting MySQL container with image: {}", image);
       String mysqlMaxAllowedPacket =
@@ -387,7 +387,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           mysqlMaxAllowedPacket);
     } else {
       if (image == null) {
-        image = DEFAULT_POSTGRES_IMAGE;
+        image = TestDatabaseImages.postgres();
       }
       LOG.info("Starting PostgreSQL container with image: {}", image);
       PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(image);
