@@ -879,11 +879,12 @@ def generate_entity_link(dbt_test):
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             model_reference = _extract_dbt_reference(_get_test_kwargs(manifest_node).get("model"))
             logger.warning(
-                "Skipping dbt test [%s]: the table of its model [%s] is not among its upstreams"
-                " found in OpenMetadata (missing or filtered out), and it is never attached to"
-                " the table it references",
+                "Skipping dbt test [%s]: the table of its model [%s] could not be identified among"
+                " its upstreams %s in OpenMetadata (missing, filtered out, or ambiguous); it is"
+                " never attached to the table it references",
                 getattr(manifest_node, "name", None),
                 model_reference[1] if model_reference else None,
+                dbt_test.get(DbtCommonEnum.UPSTREAM.value),
             )
         return []
 
