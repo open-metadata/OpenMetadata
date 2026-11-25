@@ -49,6 +49,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.custom_pydantic import format_validation_error
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.storage.s3.models import (
@@ -110,6 +111,11 @@ class S3Source(StorageServiceSource):
         self._bucket_cache: dict[str, Container] = {}
         self._unstructured_container_cache: dict[str, tuple[str, str]] = {}
         self.s3_reader = get_reader(config_source=S3Config(), client=self.s3_client)
+        # Set to True when an S3 listing failed mid-run. While set, the
+        # container source state is incomplete (containers we could not list
+        # are absent from it), so ``mark_containers_as_deleted`` must be
+        # skipped — otherwise live containers would be marked deleted.
+        self._listing_incomplete: bool = False
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
@@ -181,6 +187,22 @@ class S3Source(StorageServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def mark_containers_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """Skip deletion when an S3 listing failed mid-run.
+
+        ``container_source_state`` only carries containers we actually
+        yielded; an interrupted listing leaves the live-but-unlisted
+        containers out of it, so the base deletion step would mark them
+        deleted. Abort deletion in that case and let the recorded
+        ``status.failed`` entry surface the problem.
+        """
+        if self._listing_incomplete:
+            logger.warning(
+                "Skipping container deletion because an S3 listing failed; the container source state is incomplete."
+            )
+            return
+        yield from super().mark_containers_as_deleted()
 
     def _get_bucket_name_and_key(self, full_path: str | None) -> tuple[str, str]:
         """
@@ -445,10 +467,20 @@ class S3Source(StorageServiceSource):
                     if structured_container:
                         yield structured_container
         except Exception as err:
-            logger.warning(
-                f"Error while generating structured containers by depth for {metadata_entry.dataPath} - {err}"
+            # Surface the error on the workflow status (e.g. AccessDenied from
+            # list_s3_objects) instead of silently logging it, so a partial or
+            # empty listing is reported as a failure rather than success.
+            # Mark the listing incomplete so container deletion is skipped:
+            # the source state is missing every container we could not list,
+            # and deleting against it would drop live containers.
+            self._listing_incomplete = True
+            self.status.failed(
+                StackTraceError(
+                    name=metadata_entry.dataPath,
+                    error=f"Error while generating structured containers by depth for {metadata_entry.dataPath} - {err}",
+                    stackTrace=traceback.format_exc(),
+                )
             )
-            logger.debug(traceback.format_exc())
 
     def _generate_structured_containers(
         self,
