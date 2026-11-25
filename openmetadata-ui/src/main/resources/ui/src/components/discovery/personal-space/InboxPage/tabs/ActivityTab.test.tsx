@@ -372,7 +372,7 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'all',
       defaultWindow,
-      undefined
+      { type: 'inbox' }
     );
 
     fireEvent.click(screen.getByText('following'));
@@ -380,7 +380,7 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'following',
       defaultWindow,
-      undefined
+      { type: 'inbox' }
     );
   });
 
@@ -390,7 +390,7 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'my-assets',
       expect.objectContaining({ key: 'last30days' }),
-      undefined
+      { type: 'inbox' }
     );
   });
 
@@ -402,7 +402,7 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'all',
       { ...getInboxDateRange(7), key: 'last7days' },
-      undefined
+      { type: 'inbox' }
     );
     expect(screen.getByTestId('toolbar')).toHaveAttribute(
       'data-preset',
@@ -425,11 +425,9 @@ describe('ActivityTab', () => {
     fireEvent.click(screen.getByText('last-7-days'));
 
     expect(onDatePresetChange).toHaveBeenCalledWith('last7days');
-    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
-      'all',
-      dateRange,
-      undefined
-    );
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith('all', dateRange, {
+      type: 'inbox',
+    });
     expect(
       screen.getByText('label.activity-feed-starts-here')
     ).toBeInTheDocument();
@@ -441,7 +439,7 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'all',
       expect.anything(),
-      'alice-id'
+      { type: 'inbox', userId: 'alice-id' }
     );
   });
 

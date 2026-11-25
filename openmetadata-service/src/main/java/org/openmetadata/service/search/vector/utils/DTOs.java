@@ -33,7 +33,7 @@ public final class DTOs {
     public long tookMillis;
     public List<Map<String, Object>> hits;
 
-    // Total raw hits returned by OpenSearch before parent-level grouping.
+    // Total raw hits the search engine returned before parent-level grouping.
     public Long totalHits;
 
     // Indicates whether additional parent groups may be available after this page.

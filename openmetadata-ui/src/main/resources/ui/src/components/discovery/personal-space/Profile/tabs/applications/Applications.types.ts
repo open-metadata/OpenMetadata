@@ -50,7 +50,7 @@ export interface AppScheduleEditProps {
   appData: App;
   isSaving: boolean;
   onCancel: () => void;
-  onSave: (cron: string) => void;
+  onSave: (cron: string, timezone?: string) => void;
 }
 
 export interface McpConfigFormProps {
