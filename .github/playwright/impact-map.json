@@ -235,6 +235,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/ObservabilityAlertsPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/AddObservabilityPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/AlertDetailsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/NotificationListPage/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/testAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/incidentManagerAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/dataQualityDashboardAPI.ts",
@@ -1675,6 +1676,19 @@
       ],
       "projects": ["chromium"],
       "specs": [
+        "playwright/e2e/Pages/SourceUpdatedTime.spec.ts",
+        "playwright/e2e/Pages/TableCreationTime.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The header info builders and ExtraInfoLabel render the metadata row on every entity page header. Entity.spec.ts checks that row per entity type; the two life cycle specs read its Created Time and Updated at source fields.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/DataAssetsHeader.utils.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/utils/DataAssetsHeader.utils.test.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/SourceUpdatedTime.spec.ts",
         "playwright/e2e/Pages/TableCreationTime.spec.ts"
       ]

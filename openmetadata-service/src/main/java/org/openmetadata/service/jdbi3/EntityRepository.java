@@ -262,6 +262,8 @@ import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.StageOwnership;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.ApprovedGlossaryTermGuard.HeldTerm;
+import org.openmetadata.service.jdbi3.ApprovedGlossaryTermGuard.TaggedEntity;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
@@ -353,6 +355,7 @@ import software.amazon.awssdk.utils.Either;
 public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   public static final String BULK_IMPORT = "bulkImport";
+  private static final String DEFAULT_CERTIFICATION_VALIDITY = "P30D";
   private static final int RELATION_DELETE_BATCH_SIZE = 500;
 
   /**
@@ -1022,7 +1025,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     if (supportsTags) {
       List<String> fqns = entities.stream().map(EntityInterface<?>::getFullyQualifiedName).toList();
-      daoCollection.tagUsageDAO().deleteTagsByTargets(fqns);
+      daoCollection.tagUsageDAO().deleteShownTagsByTargets(fqns);
     }
     if (supportsOwners) {
       deleteToMany(ids, entityType, Relationship.OWNS, null);
@@ -2337,7 +2340,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         bundle.putTags(entity.getId(), dto.tags == null ? Collections.emptyList() : dto.tags);
         tagsFilledFromCache = true;
       }
-      if (dto.certificationLoaded && supportsCertification) {
+      if (dto.certificationLoaded && supportsCertification && hasBothDates(dto.certification)) {
         bundle.putCertification(entity.getId(), dto.certification);
         certificationFilledFromCache = true;
       }
@@ -2440,6 +2443,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
     return bundle;
+  }
+
+  /** Bundles cached by an older server can hold a certification without dates; rebuild those. */
+  private static boolean hasBothDates(AssetCertification certification) {
+    return certification == null
+        || (certification.getAppliedDate() != null && certification.getExpiryDate() != null);
   }
 
   private static boolean isReadPlanNonDeletedOnly(ReadPlan readPlan) {
@@ -5351,6 +5360,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return ApprovalGate.preview(original, updated, actor.userName(), edit);
   }
 
+  /** The ops a PATCH by {@code user} would make, gated or not, without storing anything. */
+  public final List<MutationOp> previewPatchOps(UUID id, String user, JsonPatch patch) {
+    T original = get(null, id, patchFields, NON_DELETED, false);
+    T updated = preparePatched(original, patch, user, null);
+    // The updater cleans a changed description before saving it; preview the text that is saved.
+    if (!Objects.equals(updated.getDescription(), original.getDescription())) {
+      updated.setDescription(
+          org.openmetadata.service.util.DescriptionSanitizer.sanitize(updated.getDescription()));
+    }
+    return ApprovalGate.previewOps(
+        original, updated, Edit.patch(JsonUtils.extractPatchedFields(patch)));
+  }
+
   /** Runs the preparation and validation a PATCH by {@code user} would, without storing anything. */
   public final void validatePatch(UUID id, String user, JsonPatch patch) {
     T original = get(null, id, patchFields, NON_DELETED, false);
@@ -6475,33 +6497,91 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private void createNewEntityFlush(T entity) {
-    checkAppliedGlossaryTermsApproved(entity);
+    List<HeldTerm> heldTerms = holdUnapprovedGlossaryTerms(null, entity);
     assignInitialEntityStatus(entity);
-    flushInOneTransaction(List.of(entity), () -> createNewEntityFlushBody(entity));
+    flushInOneTransaction(
+        List.of(entity),
+        () -> {
+          createNewEntityFlushBody(entity);
+          storePendingGlossaryTerms(heldTerms, entity.getUpdatedBy());
+        });
     try (var ignored = phase("createSetInheritedFields")) {
       setInheritedFields(entity, new Fields(allowedFields));
     }
   }
 
-  final void checkAppliedGlossaryTermsApproved(T entity) {
-    ApprovedGlossaryTermGuard.checkApplied(glossaryTagsByTarget(entity));
+  /**
+   * Takes out of {@code entity} each glossary term that is not Approved and that it newly applies
+   * to the entity or one of its fields, for {@link #storePendingGlossaryTerms} to keep as pending
+   * (ADR:2026-11-06-only-approved-glossary-terms-can-be-newly-applied-to-an-asset). {@code stored}
+   * is the entity as stored, or null for a create.
+   */
+  final List<HeldTerm> holdUnapprovedGlossaryTerms(T stored, T entity) {
+    return ApprovedGlossaryTermGuard.holdNewlyApplied(
+        new TaggedEntity(entity, taggedFieldContainers(entity)),
+        stored == null ? null : new TaggedEntity(stored, taggedFieldContainers(stored)));
   }
 
   /**
-   * Rejects a glossary term that is not Approved and that {@code updated} newly applies to the
-   * entity or one of its fields. Edits an approval workflow holds are checked when they are staged,
-   * so a term is rejected before a change request is opened for it, not when the request is
-   * approved.
+   * Stores held terms as pending labels, which no tag read returns until the term is approved. Once
+   * the write commits, a term approved while it ran is shown: its approval may have finished before
+   * these labels existed.
    */
-  public final void checkNewlyAppliedGlossaryTermsApproved(
-      final EntityInterface original, final EntityInterface updated) {
-    final T stored = entityClass.cast(original);
-    final T edited = entityClass.cast(updated);
-    ApprovedGlossaryTermGuard.checkNewlyApplied(
-        ApprovedGlossaryTermGuard.tagsByStoredTarget(
-            new ApprovedGlossaryTermGuard.TaggedEntity(edited, taggedFieldContainers(edited)),
-            new ApprovedGlossaryTermGuard.TaggedEntity(stored, taggedFieldContainers(stored))),
-        glossaryTagsByTarget(stored));
+  final void storePendingGlossaryTerms(List<HeldTerm> heldTerms, String appliedBy) {
+    if (!heldTerms.isEmpty()) {
+      Map<String, List<TagLabel>> labelsByTarget = new HashMap<>();
+      heldTerms.forEach(
+          held ->
+              labelsByTarget
+                  .computeIfAbsent(held.targetFqn(), target -> new ArrayList<>())
+                  .add(JsonUtils.deepCopy(held.label(), TagLabel.class).withAppliedBy(appliedBy)));
+      daoCollection.tagUsageDAO().applyPendingTagsBatch(labelsByTarget);
+      Set<String> termFqns = new HashSet<>();
+      heldTerms.forEach(held -> termFqns.add(held.label().getTagFQN()));
+      PostCommitActionQueue.runOrDefer(() -> GlossaryTermPendingLabels.showIfApproved(termFqns));
+    }
+  }
+
+  /**
+   * Shows an approved glossary term the entity holds as pending, as an ordinary edit by {@code
+   * user}: the term is added to the targets {@code labelsByTargetHash} names and the entity is
+   * patched, so it records a version and a change event and updates the cache, search and RDF like
+   * any other edit. The write's upsert turns the pending rows into shown ones. Returns whether there
+   * was anything to add.
+   */
+  public final boolean showApprovedTerm(
+      UUID id, Map<String, TagLabel> labelsByTargetHash, String user) {
+    T original = get(null, id, patchFields, NON_DELETED, false);
+    T updated = JsonUtils.deepCopy(original, entityClass);
+    boolean added =
+        ApprovedGlossaryTermGuard.addToTargets(
+                new TaggedEntity(updated, taggedFieldContainers(updated)), labelsByTargetHash)
+            > 0;
+    if (added) {
+      // The patch names columns by position, so it applies only to the version it was built from: a
+      // newer one is refused and the asset stays pending for the next attempt.
+      PatchResponse<T> response =
+          patch(
+              null,
+              id,
+              user,
+              JsonUtils.getJsonPatch(original, updated),
+              null,
+              EntityETag.generateWeakETag(original),
+              null);
+      // A background write has no response for the response filter to record a change event from.
+      storeChangeEventForAsyncOperation(response.entity(), response.changeType(), false, user);
+    }
+    return added;
+  }
+
+  /**
+   * The FQNs of the entity and of every inline field it holds labels on: its own targets, not those
+   * of other entities nested under its FQN.
+   */
+  public final Set<String> ownTargetFqns(UUID id) {
+    T entity = find(id, ALL);
+    return new HashSet<>(glossaryTagsByTarget(entity).keySet());
   }
 
   /** Labels on the entity and its tagged inline fields, keyed by target FQN. */
@@ -6852,15 +6932,48 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private void createManyEntitiesFlush(List<T> entities) {
-    entities.forEach(this::checkAppliedGlossaryTermsApproved);
+    // Each chunk commits on its own, so each stores its own held terms with its entities.
+    List<List<HeldTerm>> heldTerms = new ArrayList<>();
+    entities.forEach(entity -> heldTerms.add(holdUnapprovedGlossaryTerms(null, entity)));
     entities.forEach(this::assignInitialEntityStatus);
     for (int start = 0; start < entities.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
       int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, entities.size());
       List<T> chunk = entities.subList(start, end);
-      flushInOneTransaction(chunk, () -> createManyEntitiesFlushBody(chunk));
+      List<List<HeldTerm>> chunkHeldTerms = heldTerms.subList(start, end);
+      try {
+        flushInOneTransaction(
+            chunk,
+            () -> {
+              createManyEntitiesFlushBody(chunk);
+              for (int i = 0; i < chunk.size(); i++) {
+                storePendingGlossaryTerms(chunkHeldTerms.get(i), chunk.get(i).getUpdatedBy());
+              }
+            });
+      } catch (RuntimeException e) {
+        // The rollback dropped this chunk's pending rows and later chunks never ran, and callers
+        // retry or fall back with these same entities: give them their terms back so that write
+        // holds them again.
+        restoreHeldTerms(
+            entities.subList(start, entities.size()), heldTerms.subList(start, entities.size()));
+        throw e;
+      }
     }
     try (var ignored = phase("setInheritedFields")) {
       setInheritedFields(entities, new Fields(allowedFields));
+    }
+  }
+
+  private void restoreHeldTerms(List<T> entities, List<List<HeldTerm>> heldTerms) {
+    for (int i = 0; i < entities.size(); i++) {
+      TaggedEntity tagged =
+          new TaggedEntity(entities.get(i), taggedFieldContainers(entities.get(i)));
+      heldTerms
+          .get(i)
+          .forEach(
+              held ->
+                  ApprovedGlossaryTermGuard.addToTargets(
+                      tagged,
+                      Map.of(FullyQualifiedName.buildHash(held.targetFqn()), held.label())));
     }
   }
 
@@ -7974,13 +8087,48 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     bundle.putCertification(entity.getId(), certification);
   }
 
+  /**
+   * Certification is read from any tag_usage row under the configured classification, but rows
+   * applied as plain tags (on create, by a dbt data model, or under a classification that became the
+   * certification one later) carry no expiry. The schema requires both dates, so a row that lacks
+   * them reads as the server would have stamped it
+   * (ADR:2026-11-20-certification-reads-derive-a-missing-expiry-from-the-validity-period).
+   */
   private static AssetCertification buildCertificationFromCertTag(TagLabel tagLabel) {
     TagLabelUtil.applyTagCommonFieldsGracefully(tagLabel);
+    // appliedAt is NULL on pre-1.11.5 Postgres rows and on rows the 1.12.5 migration moved with no
+    // appliedDate; the epoch makes them read as expired.
+    long appliedDate = tagLabel.getAppliedAt() != null ? tagLabel.getAppliedAt().getTime() : 0L;
+    Long storedExpiry =
+        tagLabel.getMetadata() != null ? tagLabel.getMetadata().getExpiryDate() : null;
     return new AssetCertification()
         .withTagLabel(tagLabel)
-        .withAppliedDate(tagLabel.getAppliedAt() != null ? tagLabel.getAppliedAt().getTime() : null)
+        .withAppliedDate(appliedDate)
         .withExpiryDate(
-            tagLabel.getMetadata() != null ? tagLabel.getMetadata().getExpiryDate() : null);
+            storedExpiry != null
+                ? storedExpiry
+                : derivedExpiry(appliedDate, getCertificationSettings().getValidityPeriod()));
+  }
+
+  /** A read must not fail on a validity period that today only breaks certification writes. */
+  static long derivedExpiry(long appliedDate, String validityPeriod) {
+    String period = Objects.requireNonNullElse(validityPeriod, DEFAULT_CERTIFICATION_VALIDITY);
+    try {
+      return expiryFor(appliedDate, period);
+    } catch (DateTimeParseException e) {
+      LOG.warn(
+          "Certification validityPeriod '{}' is not an ISO-8601 period; deriving expiry with {}",
+          period,
+          DEFAULT_CERTIFICATION_VALIDITY);
+      return expiryFor(appliedDate, DEFAULT_CERTIFICATION_VALIDITY);
+    }
+  }
+
+  static long expiryFor(long appliedDate, String validityPeriod) {
+    return LocalDateTime.ofInstant(Instant.ofEpochMilli(appliedDate), ZoneOffset.UTC)
+        .plus(Period.parse(validityPeriod))
+        .toInstant(ZoneOffset.UTC)
+        .toEpochMilli();
   }
 
   /**
@@ -8001,10 +8149,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     long appliedDate = System.currentTimeMillis();
     certification.setAppliedDate(appliedDate);
-    LocalDateTime appliedDateTime =
-        LocalDateTime.ofInstant(Instant.ofEpochMilli(appliedDate), ZoneOffset.UTC);
-    LocalDateTime expiryDateTime = appliedDateTime.plus(Period.parse(settings.getValidityPeriod()));
-    certification.setExpiryDate(expiryDateTime.toInstant(ZoneOffset.UTC).toEpochMilli());
+    certification.setExpiryDate(expiryFor(appliedDate, settings.getValidityPeriod()));
   }
 
   protected static void validateCertification(
@@ -8121,7 +8266,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   protected void deleteTagsPreservingCertification(String entityFQN) {
     String certClassification = getCertificationClassification();
     if (certClassification == null) {
-      daoCollection.tagUsageDAO().deleteTagsByTarget(entityFQN);
+      daoCollection.tagUsageDAO().deleteShownTagsByTarget(entityFQN);
     } else {
       daoCollection
           .tagUsageDAO()
@@ -8139,15 +8284,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             TagLabel.TagSource.CLASSIFICATION.ordinal(), certClassification + ".%", entityFQN);
   }
 
+  private static AssetCertificationSettings getCertificationSettings() {
+    return SettingsCache.getSettingOrDefault(
+        SettingsType.ASSET_CERTIFICATION_SETTINGS,
+        new AssetCertificationSettings()
+            .withAllowedClassification("Certification")
+            .withValidityPeriod(DEFAULT_CERTIFICATION_VALIDITY),
+        AssetCertificationSettings.class);
+  }
+
   protected String getCertificationClassification() {
     if (!supportsCertification) return null;
-    return SettingsCache.getSettingOrDefault(
-            SettingsType.ASSET_CERTIFICATION_SETTINGS,
-            new AssetCertificationSettings()
-                .withAllowedClassification("Certification")
-                .withValidityPeriod("P30D"),
-            AssetCertificationSettings.class)
-        .getAllowedClassification();
+    return getCertificationSettings().getAllowedClassification();
   }
 
   private Optional<List<EntityReference>> getRelationsFromReadBundle(
@@ -11108,6 +11256,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * @see TableRepository.TableUpdater::entitySpecificUpdate() for example.
    */
   public class EntityUpdater {
+    // Glossary terms updateWithDeferredStore held back, stored once the caller writes the entity,
+    // and the user whose write held them.
+    private List<HeldTerm> heldTerms = List.of();
+    private String heldBy;
+
     private static volatile long sessionTimeoutMillis = 10L * 60 * 1000; // 10 minutes
     protected T previous;
     protected T original;
@@ -11321,7 +11474,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      * unchanged caller POJOs avoid a redundant restore.
      */
     private void flushUpdate(boolean useOptimisticStore, boolean importMode) {
-      checkNewlyAppliedGlossaryTermsApproved();
+      List<HeldTerm> heldTerms = holdUnapprovedGlossaryTerms();
+      // Read before the flush: a write that changes nothing reverts `updated`, and its updatedBy
+      // with it, to the stored version's.
+      String writer = updated.getUpdatedBy();
       UpdaterSnapshot snapshot = snapshotUpdaterState();
       boolean[] firstAttempt = {true};
       flushInOneTransaction(
@@ -11330,6 +11486,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             restoreUpdaterState(snapshot, !firstAttempt[0]);
             firstAttempt[0] = false;
             flushUpdateBody(useOptimisticStore || useOptimisticLocking, importMode);
+            storePendingGlossaryTerms(heldTerms, writer);
           });
       if (entityStored) {
         try (var ignored = phase("entityUpdateCacheEvict")) {
@@ -11339,9 +11496,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Runs before any write, and before consolidation rebases `original` onto the pre-session
-    // version, so the baseline is the stored entity this request changes.
-    private void checkNewlyAppliedGlossaryTermsApproved() {
-      EntityRepository.this.checkNewlyAppliedGlossaryTermsApproved(original, updated);
+    // version, so the baseline is the stored entity this request changes. A held term leaves
+    // `updated`, so it is not in the diff, the change description, the response or search.
+    private List<HeldTerm> holdUnapprovedGlossaryTerms() {
+      return EntityRepository.this.holdUnapprovedGlossaryTerms(original, updated);
+    }
+
+    /**
+     * Stores the terms {@link #updateWithDeferredStore} held back, once the caller has written the
+     * entity: a write that fails must not leave a pending label for its approval to show later.
+     */
+    public final void storeHeldGlossaryTerms() {
+      storePendingGlossaryTerms(heldTerms, heldBy);
     }
 
     private UpdaterSnapshot snapshotUpdaterState() {
@@ -11550,7 +11716,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      */
     @Transaction
     public final void updateWithDeferredStore() {
-      checkNewlyAppliedGlossaryTermsApproved();
+      heldTerms = holdUnapprovedGlossaryTerms();
+      heldBy = updated.getUpdatedBy();
       changeDescription = new ChangeDescription();
       try (var ignored = phase("entityUpdateDiffDeferred")) {
         updateInternal();
@@ -12116,7 +12283,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
       // Remove current entity tags in the database. It will be added back later from the merged tag
       // list.
-      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
+      daoCollection.tagUsageDAO().deleteShownTagsByTarget(fqn);
 
       List<TagLabel> addedTags = new ArrayList<>();
       List<TagLabel> deletedTags = new ArrayList<>();
@@ -13398,7 +13565,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // Delete tags related to deleted columns
       deletedColumns.forEach(
           deleted -> {
-            daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName());
+            daoCollection
+                .tagUsageDAO()
+                .deleteFieldTags(
+                    deleted.getFullyQualifiedName(), addedColumnMap.containsKey(deleted.getName()));
             deleteColumnExtension(entityId, deleted.getFullyQualifiedName());
           });
 
@@ -14383,12 +14553,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private void fetchAndSetCertification(List<T> entities, Fields fields) {
-    if (!fields.contains(FIELD_CERTIFICATION) || !supportsCertification || nullOrEmpty(entities)) {
+    if (!supportsCertification || nullOrEmpty(entities)) {
       return;
     }
-
-    Map<UUID, AssetCertification> certificationMap = batchFetchCertification(entities);
-
+    // A raw entity-row write can leave a stale certification copy in the row, so always overwrite
+    // it: with the tag_usage value when tags or certification is requested, otherwise with null.
+    Map<UUID, AssetCertification> certificationMap =
+        fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION)
+            ? batchFetchCertification(entities)
+            : Map.of();
     for (T entity : entities) {
       entity.setCertification(certificationMap.get(entity.getId()));
     }
@@ -14598,16 +14771,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       if (entityId == null || result.containsKey(entityId)) {
         continue;
       }
-      TagLabel tagLabel = tagWithHash.toTagLabel();
-      TagLabelUtil.applyTagCommonFieldsGracefully(tagLabel);
-      result.put(
-          entityId,
-          new AssetCertification()
-              .withTagLabel(tagLabel)
-              .withAppliedDate(
-                  tagLabel.getAppliedAt() != null ? tagLabel.getAppliedAt().getTime() : null)
-              .withExpiryDate(
-                  tagLabel.getMetadata() != null ? tagLabel.getMetadata().getExpiryDate() : null));
+      result.put(entityId, buildCertificationFromCertTag(tagWithHash.toTagLabel()));
     }
 
     LOG.debug(
@@ -15219,7 +15383,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     storeVersions(List.of(original));
 
     // Directly update the entity in the database without calling other versioning methods
-    dao.update(updated.getId(), updated.getFullyQualifiedName(), JsonUtils.pojoToJson(updated));
+    dao.update(updated.getId(), updated.getFullyQualifiedName(), serializeForStorage(updated));
     invalidate(updated); // Invalidate cache
 
     // Create a ChangeEvent for the feed
@@ -15399,8 +15563,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * Returns true when a connector-supplied entity is provably unchanged from what is stored, so
    * the bulk update path can skip field hydration and per-field diffing. Requires a non-empty
    * sourceHash on both the incoming entity and the stored original that match, an existing
-   * non-deleted original, and that the FQN appears only once in the batch (duplicate FQNs need
-   * the full updater path so each occurrence diffs against a fresh snapshot).
+   * non-deleted original, that the FQN appears only once in the batch (duplicate FQNs need the
+   * full updater path so each occurrence diffs against a fresh snapshot), and that the original
+   * still holds what the hash covered (see {@link #hasLostSourceFields}).
    */
   private boolean isSourceHashUnchanged(
       T entity, Map<String, T> hydratedOriginalByFqn, Map<String, Integer> updateFrequencyByFqn) {
@@ -15416,7 +15581,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (original == null || Boolean.TRUE.equals(original.getDeleted())) {
       return false;
     }
-    return incomingHash.equals(original.getSourceHash());
+    return incomingHash.equals(original.getSourceHash()) && !hasLostSourceFields(original, entity);
+  }
+
+  /**
+   * Whether the stored row lacks a field the incoming entity carries although their sourceHash
+   * matches. A write outside the updater can drop such a field and keep the hash, and skipping on
+   * the hash would then keep the field missing for good.
+   */
+  protected boolean hasLostSourceFields(T stored, T incoming) {
+    return false;
   }
 
   private void bulkUpdateEntities(
@@ -15565,6 +15739,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         if (!entitiesToStore.isEmpty()) {
           updateMany(entitiesToStore);
         }
+        updaters.forEach(EntityUpdater::storeHeldGlossaryTerms);
       }
 
       List<T> changedEntities = changedUpdaters.stream().map(EntityUpdater::getUpdated).toList();
@@ -15609,6 +15784,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             updater.storeUpdate();
             invalidate(updater.getUpdated());
           }
+          updater.storeHeldGlossaryTerms();
           succeededUpdaters.add(updater);
         } catch (Exception e) {
           failedRequests.add(

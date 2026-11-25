@@ -134,7 +134,9 @@ def _parse_type(_type):
 
 
 def _get_column(ordinal, field, _type, null, default, comment):
-    _type = _type.lower()
+    raw_type = _type.lower()
+    # Doris prints CHAR(255), and a CHAR without a length, as character(255).
+    _type = re.sub(r"\bcharacter\(", "char(", raw_type)
     system_data_type = _parse_type(_type)
     data_type = datatype.parse_sqltype(_type)
     if system_data_type in ["VARCHAR", "CHAR"]:
@@ -159,9 +161,9 @@ def _get_column(ordinal, field, _type, null, default, comment):
         "name": field,
         "default": default,
         "nullable": True if null == "YES" else None,
-        "type": _type,
+        "type": raw_type,
         "data_type": data_type,
-        "display_type": _type.lower(),
+        "display_type": raw_type,
         "system_data_type": system_data_type,
         "comment": comment,
         "ordinalPosition": ordinal,

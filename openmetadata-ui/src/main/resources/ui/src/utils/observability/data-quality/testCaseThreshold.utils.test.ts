@@ -66,15 +66,15 @@ describe('getThresholdTestSemantic', () => {
     ['columnValuesMissingCount', ThresholdTestSemantic.Statistical],
     ['tableRowCountToEqual', ThresholdTestSemantic.Statistical],
     ['tableRowInsertedCountToBeBetween', ThresholdTestSemantic.Statistical],
-    // The 6 validators that call `_apply_row_threshold`.
+    // The validators that call `_apply_row_threshold`.
     ['columnValuesToMatchRegex', ThresholdTestSemantic.RowCountable],
     ['columnValuesToBeNotNull', ThresholdTestSemantic.RowCountable],
     ['columnValuesToBeUnique', ThresholdTestSemantic.RowCountable],
     ['tableCustomSQLQuery', ThresholdTestSemantic.CustomSql],
-    // Declares the threshold params, but no validator reads them yet.
+    // Declares the threshold params and reads them as a row tolerance.
     ['columnValuesToBeBetween', ThresholdTestSemantic.RowCountable],
     ['columnValueLengthsToBeBetween', ThresholdTestSemantic.RowCountable],
-    ['columnValuesToBeAtExpectedLocation', ThresholdTestSemantic.NotEnforced],
+    ['columnValuesToBeAtExpectedLocation', ThresholdTestSemantic.RowCountable],
   ])('classifies %s as %s', (name, expected) => {
     expect(getThresholdTestSemantic(name)).toBe(expected);
   });
@@ -90,6 +90,7 @@ describe('getThresholdNoun', () => {
     ['columnValuesToNotMatchRegex', 'PERCENTAGE', ThresholdNoun.Rows],
     ['columnValuesToBeNotInSet', 'PERCENTAGE', ThresholdNoun.Rows],
     ['columnValuesToBeInSet', 'PERCENTAGE', ThresholdNoun.Rows],
+    ['columnValuesToBeAtExpectedLocation', 'PERCENTAGE', ThresholdNoun.Rows],
     ['columnValuesToMatchRegex', 'ABSOLUTE', ThresholdNoun.Rows],
     ['columnValueMeanToBeBetween', 'ABSOLUTE', ThresholdNoun.Units],
     ['columnValueMeanToBeBetween', 'PERCENTAGE', ThresholdNoun.Bound],
@@ -725,6 +726,22 @@ describe('getThresholdPreviewData', () => {
     });
     expect(data?.effectiveRange).toBeUndefined();
   });
+
+  it('reads an at-expected-location threshold as a row tolerance', () => {
+    // The validator counts invalid locations against the evaluated rows, the
+    // same shape as its row-counting siblings, so the preview promises the
+    // tolerance it actually applies rather than warning it is ignored.
+    const data = getThresholdPreviewData({
+      definition: definitionOf('columnValuesToBeAtExpectedLocation'),
+      params: { threshold: 5 },
+    });
+
+    expect(data).toMatchObject({
+      semantic: ThresholdTestSemantic.RowCountable,
+      isThresholdIgnored: false,
+      noun: ThresholdNoun.Rows,
+    });
+  });
 });
 
 const testCaseOf = (
@@ -827,33 +844,34 @@ describe('getRunThresholdData', () => {
     expect(data?.failedPercentage).toBeUndefined();
   });
 
-  it.each(['columnValuesToBeBetween', 'columnValueLengthsToBeBetween'])(
-    'shows the recorded row result for %s',
-    (definitionName) => {
-      const data = getRunThresholdData(
-        testCaseOf(definitionName, [
-          { name: 'threshold', value: '5' },
-          { name: 'thresholdUnit', value: 'PERCENTAGE' },
-        ]),
-        {
-          testCaseStatus: TestCaseStatus.Failed,
-          passedRows: 90,
-          failedRows: 10,
-          ...appliedThreshold(5, ThresholdUnit.Percentage),
-        }
-      );
-
-      expect(data).toMatchObject({
-        semantic: ThresholdTestSemantic.RowCountable,
-        threshold: 5,
-        isPercentage: true,
+  it.each([
+    'columnValuesToBeBetween',
+    'columnValueLengthsToBeBetween',
+    'columnValuesToBeAtExpectedLocation',
+  ])('shows the recorded row result for %s', (definitionName) => {
+    const data = getRunThresholdData(
+      testCaseOf(definitionName, [
+        { name: 'threshold', value: '5' },
+        { name: 'thresholdUnit', value: 'PERCENTAGE' },
+      ]),
+      {
+        testCaseStatus: TestCaseStatus.Failed,
+        passedRows: 90,
         failedRows: 10,
-        failedPercentage: 10,
-        evaluatedRows: 100,
-        populationNoun: ThresholdNoun.Rows,
-      });
-    }
-  );
+        ...appliedThreshold(5, ThresholdUnit.Percentage),
+      }
+    );
+
+    expect(data).toMatchObject({
+      semantic: ThresholdTestSemantic.RowCountable,
+      threshold: 5,
+      isPercentage: true,
+      failedRows: 10,
+      failedPercentage: 10,
+      evaluatedRows: 100,
+      populationNoun: ThresholdNoun.Rows,
+    });
+  });
 
   it('sets the configured range beside the range the run reports', () => {
     const data = getRunThresholdData(

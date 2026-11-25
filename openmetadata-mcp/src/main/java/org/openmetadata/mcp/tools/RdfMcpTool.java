@@ -32,7 +32,8 @@ import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 
-abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
+/** Shared authorization, RDF readiness and admission guards for graph tools. */
+public abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
 
   private final Supplier<RdfRepository> repositorySupplier;
   protected final Supplier<RdfProjectionState> projectionStateSupplier;
@@ -53,11 +54,17 @@ abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
   }
 
   protected final RdfRepository repository() {
-    RdfRepository repository = repositorySupplier.get();
-    if (repository == null || !repository.isEnabled()) {
+    RdfRepository repository = repositoryOrNull();
+    if (repository == null) {
       throw new RdfNotEnabledException();
     }
     return repository;
+  }
+
+  /** Returns null if this deployment has no enabled RDF repository. */
+  protected final RdfRepository repositoryOrNull() {
+    RdfRepository repository = repositorySupplier.get();
+    return repository == null || !repository.isEnabled() ? null : repository;
   }
 
   /**
@@ -92,7 +99,7 @@ abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
       final Map<String, Object> params)
       throws IOException {
     authorize(authorizer, securityContext, params);
-    return executeAuthorized(securityContext, params);
+    return executeAuthorized(authorizer, securityContext, params);
   }
 
   /**
@@ -105,6 +112,11 @@ abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
       final Authorizer authorizer,
       final CatalogSecurityContext securityContext,
       final Map<String, Object> params) {
+    authorizeSparql(authorizer, securityContext);
+  }
+
+  public static void authorizeSparql(
+      final Authorizer authorizer, final CatalogSecurityContext securityContext) {
     authorizer.authorize(
         securityContext,
         new OperationContext(Entity.RDF, MetadataOperation.EXECUTE_SPARQL_QUERY),
@@ -137,10 +149,21 @@ abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
         : securityContext.getUserPrincipal().getName();
   }
 
+  /** Gives composed tools the caller's authorizer for downstream operations. */
+  protected T executeAuthorized(
+      final Authorizer authorizer,
+      final CatalogSecurityContext securityContext,
+      final Map<String, Object> params)
+      throws IOException {
+    return executeAuthorized(securityContext, params);
+  }
+
   /** Runs after {@link #authorize}. */
-  protected abstract T executeAuthorized(
+  protected T executeAuthorized(
       final CatalogSecurityContext securityContext, final Map<String, Object> params)
-      throws IOException;
+      throws IOException {
+    throw new UnsupportedOperationException(getClass().getSimpleName() + " has no RDF operation.");
+  }
 
   @Override
   public final T execute(
