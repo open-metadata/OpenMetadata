@@ -2,7 +2,9 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-20 (initial); v2 2026-11-20 (a container's domain change moves its
-  inheritors in the write's transaction)
+  inheritors in the write's transaction); v3 2026-11-25 (review: lineage ends are every
+  domain-bearing type, discovery counts distinct ids under a cap, a rollup write invalidates the
+  lineage caches, and a manual row keeps its source when its last asset edge leaves)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `DomainLineageRefcountIT`, `DomainLineageInheritanceIT`, `DomainLineageRebuildIT`,
   `LineageDomainRollupsTest`, `LineageDomainInheritorsTest`, `IngestionPipelineMigrationEntryPointTest`
@@ -39,17 +41,22 @@ asset edge could delete it while others remained.
   `DomainLineageRebuild` repair, which recounts every pair from the edges.
 - **The live delta never ships without the repair.** A delta subtracts from what the store holds,
   so over drifted counts it deletes rollups that edges still stand for.
-- **A rollup another writer owns keeps its source.** The repair inserts and deletes only
-  `ChildAssets` rows. A row with another source keeps it and has only an `assetEdges` it already
-  carries rewritten; one without a count is left as written.
+- **A rollup another writer owns keeps its source.** The repair and the live move delete only
+  `ChildAssets` rows. A row with another source (a manual edge, or a rollup re-sent by hand) keeps
+  its source and metadata when its count reaches zero: only the `assetEdges` it carries is
+  cleared. One without a count is left as written, and a row whose stored details are `null` reads
+  as empty details, so it is never a reason to fail.
+- **A rollup write invalidates the lineage caches once it commits.** The search write for a
+  rollup add or delete runs after commit and calls `LineageUtil.invalidateLineageCaches`, the same
+  invalidation a regular lineage write makes, so an open domain scene does not keep the old edge
+  until its TTL.
 
 ## Consequences
 Domain lineage appears however the domains were assigned, and a second repair run changes
 nothing. Two writes still bring the drift back until they are re-projected, and a later asset
 move can then under-count, as a delta over a drifted store does; only the repair restores the
 invariant meanwhile:
-- a container's own domain change (service, database, schema), which is not re-projected onto
-  its descendants' edges yet;
+- a container's own domain change whose descendants exceed the cap (see the amendment);
 - a domain's hard delete, which drops its HAS rows with the domain's relationships, so an asset
   that falls back to an inherited domain is never counted under it.
 
@@ -62,11 +69,13 @@ rollup divergence, needs the same change in `LineageRepository`.
   descendants whose domains in effect follow it. `LineageDomainInheritors` finds them by FQN among
   the types that can inherit the container's domains and be a lineage end: the types search
   carries the container's inherited fields onto (`indexMapping.json` `childAliases`,
-  transitively), plus the container's own type when it nests (a directory), kept when their search
-  index carries lineage (`SearchIndex.carriesLineage`, a `LineageIndex` whose documents hold the
-  `upstreamLineage` the lineage views read). A table's or a container's own domain write runs no
-  discovery query. The descendants found are those that are an end of a lineage edge; their
-  domains in effect are read before the write and after it, in the write's transaction, with no
+  transitively), plus the container's own type when it nests (a directory), kept when the type has
+  domains, the gate `LineageRepository` applies to both ends of an edge it counts. So schemas are
+  lineage ends, and so are test suites and test cases, whose FQNs sit under their table's. A table's
+  own domain write therefore runs two prefix queries, and a container's runs one per such type under
+  it; the cost of those scans is not measured yet. The descendants found are those that are an end
+  of a lineage edge; their domains in effect are read before the write and after it, in the write's
+  transaction, with no
   cache answering or keeping the reads. Reading both sides gets each move right whether the
   descendant inherits from the container, holds its own domains or inherits from a nearer parent,
   so a move read this way replaces the caller's move for the same entity, even when it changes
@@ -103,15 +112,19 @@ rollup divergence, needs the same change in `LineageRepository`.
   descendant then costs two full-entity reads, its share of the edge reads and the neighbours'
   domain reads, all inside the request's transaction, which holds the rollup rows it writes. At
   5,000 the PATCH stays near a second, which leaves room under MySQL's 50 s lock wait for wider
-  tables (not measured), so the cap stays at 5,000. Above the cap nothing moves: the request succeeds and a WARN (`Domain lineage was
-  not moved for the descendants of …`) names the rebuild command. Those descendants' rollups stay
+  tables (not measured), so the cap stays at 5,000. The cap counts distinct descendants across
+  every container and type of the write: each prefix query asks for the cap plus one rows, so an
+  overlapping prefix cannot crowd out a sibling, and the scan stops once the union exceeds the cap.
+  Above the cap nothing moves: the request succeeds and a WARN (`Domain lineage was not moved for
+  the descendants of …`) names the rebuild command. Those descendants' rollups stay
   under their old domains, and a later delete of one of their edges is lost on the missing new
   pair, until the rebuild runs. Which durable fallback replaces the warning (queue the rebuild,
   re-project after commit in chunks, or persist a "rebuild due" marker) is a maintainer decision.
 - **The rebuild command**, `openmetadata-ops.sh rebuild-domain-lineage`, runs `DomainLineageRebuild`.
   It overwrites counts tallied from a full scan of `entity_relationship`, so it needs lineage and
-  domain writes paused (or the server stopped), its run time grows with that table, and a reindex
-  of domain and dataProduct follows.
+  domain writes paused (or the server stopped), its run time grows with that table, and a
+  `reindex --force --entities=domain,dataProduct` follows. `--force` is needed: a reindex without it
+  skips the mappings it finds unchanged, and the domain view would keep the old counts.
 - **Postgres prefix indexes.** Discovery's `fqnHash LIKE 'hash.%'` needs a `text_pattern_ops`
   index under a non-C collation (as in 1.13.0); 2.1.0 adds the four that lineage-end types lacked:
   `stored_procedure_entity`, `pipeline_entity`, `llm_model_entity`, `mcp_server_entity`.
@@ -119,5 +132,4 @@ rollup divergence, needs the same change in `LineageRepository`.
   deleted falls back to an inherited one nobody counts under; a directory moved to another parent
   (the update rewrites its CONTAINS row and keeps its FQN, so it and its files inherit from a parent
   whose prefix they are not under); inheritance that does not follow the FQN (a query's domains
-  come from its tables); and an edge on a type whose search documents carry no lineage (one written
-  through the API onto a schema). The rebuild command restores them.
+  come from its tables). The rebuild command restores them.

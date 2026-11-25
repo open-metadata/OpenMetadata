@@ -95,7 +95,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.lineage.LineageEdgePipeline;
 import org.openmetadata.service.lineage.LineageGraphPruner;
-import org.openmetadata.service.lineage.LineageSceneCache;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
@@ -105,6 +104,7 @@ import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -657,13 +657,7 @@ public class LineageRepository {
   }
 
   private void invalidateLineageCacheForEdge(EntityReference from, EntityReference to) {
-    LineageSceneCache.getInstance().invalidateAll();
-    if (from != null) {
-      searchClient.invalidateLineageCache(from.getFullyQualifiedName());
-    }
-    if (to != null) {
-      searchClient.invalidateLineageCache(to.getFullyQualifiedName());
-    }
+    LineageUtil.invalidateLineageCaches(from, to);
   }
 
   public static RelationshipRef buildEntityRefLineage(EntityReference entityRef) {

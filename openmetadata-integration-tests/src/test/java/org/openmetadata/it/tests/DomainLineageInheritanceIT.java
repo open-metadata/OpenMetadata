@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.it.tests.DomainLineageSteps.MAPPER;
 import static org.openmetadata.it.tests.DomainLineageSteps.assertEdgeAbsent;
+import static org.openmetadata.it.tests.DomainLineageSteps.assertSucceeded;
 import static org.openmetadata.it.tests.DomainLineageSteps.assetEdges;
 import static org.openmetadata.it.tests.DomainLineageSteps.awaitPlatformLineage;
 import static org.openmetadata.it.tests.DomainLineageSteps.client;
@@ -35,11 +36,8 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.StorageService;
-import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.api.BulkAssets;
-import org.openmetadata.schema.type.api.BulkOperationResult;
-import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Assets inherit their domains from their service, database, schema or other container, so a
@@ -243,10 +241,6 @@ public class DomainLineageInheritanceIT {
                 .withName(ns.prefix(name))
                 .withService(storage.getFullyQualifiedName())
                 .withParent(parent == null ? null : parent.getEntityReference()));
-  }
-
-  private static void assertSucceeded(BulkOperationResult result) {
-    assertEquals(ApiStatus.SUCCESS, result.getStatus(), JsonUtils.pojoToJson(result));
   }
 
   /** t1 in service A (D1) feeds t2 in service B (D2), with the domains set before the edge. */

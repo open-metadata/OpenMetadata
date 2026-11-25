@@ -25,8 +25,10 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -99,6 +101,10 @@ final class DomainLineageSteps {
                         .withFromEntity(from.getEntityReference())
                         .withToEntity(to.getEntityReference())
                         .withLineageDetails(new LineageDetails())));
+  }
+
+  static void assertSucceeded(BulkOperationResult result) {
+    assertEquals(ApiStatus.SUCCESS, result.getStatus(), JsonUtils.pojoToJson(result));
   }
 
   static void deleteEdge(EntityInterface<?> from, EntityInterface<?> to) {

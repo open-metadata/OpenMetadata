@@ -31,7 +31,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.lineage.LineageSceneCache;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 
 @Slf4j
@@ -236,7 +238,12 @@ public class LineageUtil {
 
   static void deleteLineageFromSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
-    deferOrRun(() -> doDeleteLineageFromSearch(fromEntity, toEntity), toEntity);
+    deferOrRun(
+        () -> {
+          doDeleteLineageFromSearch(fromEntity, toEntity);
+          invalidateLineageCaches(fromEntity, toEntity);
+        },
+        toEntity);
   }
 
   private static void doDeleteLineageFromSearch(
@@ -286,7 +293,32 @@ public class LineageUtil {
 
   static void addLineageToSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
-    deferOrRun(() -> doAddLineageToSearch(fromEntity, toEntity, lineageDetails), toEntity);
+    deferOrRun(
+        () -> {
+          doAddLineageToSearch(fromEntity, toEntity, lineageDetails);
+          invalidateLineageCaches(fromEntity, toEntity);
+        },
+        toEntity);
+  }
+
+  /**
+   * The lineage caches a changed edge can be served from: the scene cache, the search-side lineage
+   * cache of both ends, and the cached lineage rooted at them. A regular lineage write invalidates
+   * these after it changes an edge, and so does a rollup write, once its search write has run.
+   */
+  public static void invalidateLineageCaches(EntityReference from, EntityReference to) {
+    LineageSceneCache.getInstance().invalidateAll();
+    var searchClient = Entity.getSearchRepository().getSearchClient();
+    if (from != null) {
+      searchClient.invalidateLineageCache(from.getFullyQualifiedName());
+    }
+    if (to != null) {
+      searchClient.invalidateLineageCache(to.getFullyQualifiedName());
+    }
+    var cachedLineage = CacheBundle.getCachedLineage();
+    if (cachedLineage != null && from != null && to != null) {
+      cachedLineage.invalidateEdge(from.getId(), to.getId());
+    }
   }
 
   private static void doAddLineageToSearch(

@@ -70,7 +70,7 @@ public final class DomainLineageRebuild {
     forEachLineagePage(relationships, page -> tally(page, targets, stored));
     final Map<Change, Long> changes = reconcile(relationships, targets, stored);
     LOG.info(
-        "Domain lineage rebuilt: {}. Run `./bootstrap/openmetadata-ops.sh reindex"
+        "Domain lineage rebuilt: {}. Run `./bootstrap/openmetadata-ops.sh reindex --force"
             + " --entities=domain,dataProduct` so the lineage views read the rebuilt rows.",
         changes);
     return changes;
@@ -155,7 +155,7 @@ public final class DomainLineageRebuild {
       final DomainPair pair,
       final EntityRelationshipObject row,
       final int target) {
-    final LineageDetails details = JsonUtils.readValue(row.getJson(), LineageDetails.class);
+    final LineageDetails details = LineageDomainRollups.detailsOf(row.getJson());
     final boolean ownRollup = details.getSource() == LineageDetails.Source.CHILD_ASSETS;
     Change change = Change.NONE;
     if (ownRollup && target == 0) {

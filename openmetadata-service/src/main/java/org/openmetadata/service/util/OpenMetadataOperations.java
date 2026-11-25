@@ -1594,7 +1594,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
               + " migration does. It overwrites the counts, so pause lineage and domain writes"
               + " (ingestion, the lineage API, domain and data product edits, CSV imports) or stop"
               + " the server while it runs; it scans all of entity_relationship, so its run time"
-              + " grows with that table. Then run `reindex --entities=domain,dataProduct`.")
+              + " grows with that table. Then run `reindex --force --entities=domain,dataProduct`:"
+              + " without --force, a reindex skips mappings it finds unchanged and the domain view"
+              + " keeps the old counts.")
   public Integer rebuildDomainLineage() {
     try {
       parseConfig();

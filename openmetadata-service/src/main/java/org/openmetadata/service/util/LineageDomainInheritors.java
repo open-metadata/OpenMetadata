@@ -33,7 +33,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.EntityCacheBypass;
-import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.LineageDomainRollups.DomainMove;
 
 /**
@@ -74,10 +73,29 @@ public final class LineageDomainInheritors {
 
   /** Reads, before the containers' domains are written, the domains their descendants hold. */
   public static LineageDomainInheritors of(final Collection<EntityReference> containers) {
-    final List<EntityReference> found = descendantsWithLineage(containers, MAX_REPROJECTED + 1);
-    return movesInTheWrite(containers, found, MAX_REPROJECTED)
+    return of(
+        containers,
+        MAX_REPROJECTED,
+        LineageDomainInheritors::inheritingTypes,
+        LineageDomainInheritors::lineageEndIds);
+  }
+
+  static LineageDomainInheritors of(
+      final Collection<EntityReference> containers,
+      final int cap,
+      final Function<String, Set<String>> inheritingTypesOf,
+      final DescendantIds descendantIds) {
+    final List<EntityReference> found =
+        descendantsWithLineage(containers, cap, inheritingTypesOf, descendantIds);
+    return movesInTheWrite(containers, found, cap)
         ? new LineageDomainInheritors(found, domainsReadFresh(found))
         : NONE;
+  }
+
+  /** The lineage-end ids of one type under an FQN, at most {@code limit} of them. */
+  @FunctionalInterface
+  interface DescendantIds {
+    List<UUID> lineageEndIds(String type, String fqn, int limit);
   }
 
   /** As {@link #of}, for the entities whose own domains these moves change. */
@@ -137,15 +155,15 @@ public final class LineageDomainInheritors {
 
   static Set<String> inheritingTypes(final String containerType) {
     return inheritingTypes(
-        containerType,
-        LineageDomainInheritors::childTypes,
-        LineageDomainInheritors::canBeLineageEnd);
+        containerType, LineageDomainInheritors::childTypes, LineageDomainRollups::hasDomains);
   }
 
   /**
    * The types whose entities can inherit a container's domains and be an end of a lineage edge: the
    * types search carries the container's inherited fields onto, transitively, plus the container's
-   * own type when it nests. None for a table or a container, so their domain writes run no query.
+   * own type when it nests. A lineage end is any domain-bearing type, as {@code LineageRepository}
+   * counts an edge onto it, so schemas are included and so are test suites and test cases, whose
+   * FQNs sit under their table's.
    */
   static Set<String> inheritingTypes(
       final String containerType,
@@ -171,28 +189,32 @@ public final class LineageDomainInheritors {
     }
   }
 
-  // Lineage shows between entities whose search documents carry it, so a test case or a schema,
-  // whose documents carry none, is never an end worth finding.
-  private static boolean canBeLineageEnd(final String type) {
-    return LineageDomainRollups.hasDomains(type) && SearchIndex.carriesLineage(type);
-  }
-
   private static List<String> childTypes(final String type) {
     final IndexMapping mapping = Entity.getSearchRepository().getIndexMapping(type);
     return mapping == null ? List.of() : listOrEmpty(mapping.getChildAliases());
   }
 
-  private static List<EntityReference> descendantsWithLineage(
-      final Collection<EntityReference> containers, final int limit) {
+  /**
+   * Distinct by id across every container and type. Each prefix asks for {@code cap + 1} rows, not
+   * the budget left: an overlapping prefix returns rows already found, so a budget-limited query
+   * could crowd out a sibling. The scan stops once the union exceeds the cap.
+   */
+  static List<EntityReference> descendantsWithLineage(
+      final Collection<EntityReference> containers,
+      final int cap,
+      final Function<String, Set<String>> inheritingTypesOf,
+      final DescendantIds descendantIds) {
     final Map<UUID, EntityReference> found = new LinkedHashMap<>();
     containers.stream()
         .collect(groupingBy(EntityReference::getType))
         .forEach(
             (type, ofType) -> {
-              final Set<String> inheriting = inheritingTypes(type);
+              final Set<String> inheriting = inheritingTypesOf.apply(type);
               if (!inheriting.isEmpty()) {
                 withFqns(type, ofType)
-                    .forEach(container -> addDescendants(found, container, inheriting, limit));
+                    .forEach(
+                        container ->
+                            addDescendants(found, container, inheriting, cap, descendantIds));
               }
             });
     return List.copyOf(found.values());
@@ -202,15 +224,21 @@ public final class LineageDomainInheritors {
       final Map<UUID, EntityReference> found,
       final EntityReference container,
       final Set<String> types,
-      final int limit) {
+      final int cap,
+      final DescendantIds descendantIds) {
     for (String type : types) {
-      if (found.size() < limit) {
-        Entity.getEntityRepository(type)
-            .getDao()
-            .listDescendantIdsWithLineage(container.getFullyQualifiedName(), limit - found.size())
-            .forEach(id -> found.putIfAbsent(id, new EntityReference().withId(id).withType(type)));
+      if (found.size() > cap) {
+        return;
+      }
+      for (UUID id :
+          descendantIds.lineageEndIds(type, container.getFullyQualifiedName(), cap + 1)) {
+        found.putIfAbsent(id, new EntityReference().withId(id).withType(type));
       }
     }
+  }
+
+  private static List<UUID> lineageEndIds(final String type, final String fqn, final int limit) {
+    return Entity.getEntityRepository(type).getDao().listDescendantIdsWithLineage(fqn, limit);
   }
 
   // A data product's asset records carry ids only; the containers among them need their FQN.
@@ -246,7 +274,7 @@ public final class LineageDomainInheritors {
             + " lineage, so their domain lineage edges stay under their old domains. Run"
             + " `./bootstrap/openmetadata-ops.sh rebuild-domain-lineage` with lineage and domain"
             + " writes paused (or the server stopped), then `./bootstrap/openmetadata-ops.sh"
-            + " reindex --entities=domain,dataProduct`.",
+            + " reindex --force --entities=domain,dataProduct`.",
         containers.stream()
             .limit(CONTAINERS_NAMED_IN_WARNING)
             .map(container -> container.getType() + " " + container.getId())

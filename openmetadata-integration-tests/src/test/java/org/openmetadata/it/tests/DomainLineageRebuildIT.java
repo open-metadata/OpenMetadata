@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.it.tests.DomainLineageSteps.assertEdgeAbsent;
 import static org.openmetadata.it.tests.DomainLineageSteps.assetEdges;
+import static org.openmetadata.it.tests.DomainLineageSteps.awaitPlatformLineage;
 import static org.openmetadata.it.tests.DomainLineageSteps.client;
 import static org.openmetadata.it.tests.DomainLineageSteps.deleteEdge;
 import static org.openmetadata.it.tests.DomainLineageSteps.domain;
@@ -82,6 +83,28 @@ public class DomainLineageRebuildIT {
     assertEquals(rebuilt, storedJson(issue.d1(), issue.d2()));
   }
 
+  /**
+   * The documented recovery, run as an operator would, makes the repaired edge show in the domain
+   * view. The reindex runs with --force: without it a reindex skips mappings it finds unchanged.
+   */
+  @Test
+  void theDocumentedRecoveryShowsTheRepairedEdgeInTheDomainView(TestNamespace ns) {
+    IssueTopology issue = IssueTopology.create(ns);
+    awaitPlatformLineage(issue.d1(), issue.d2(), false);
+
+    assertEquals(
+        0,
+        ForkedOperations.run("rebuild-domain-lineage"),
+        "the ops command failed, see target/forked-ops-*.log");
+    assertEquals(
+        0,
+        ForkedOperations.run("reindex", "--force", "--entities=domain,dataProduct"),
+        "the reindex failed, see target/forked-ops-*.log");
+
+    assertEquals(3, assetEdges(issue.d1(), issue.d2()));
+    awaitPlatformLineage(issue.d1(), issue.d2(), true);
+  }
+
   /** An operator's script must see the command fail, here on a database it cannot log in to. */
   @Test
   void theOpsCommandExitsNonZeroWhenItCannotConnectToTheDatabase() {
@@ -108,6 +131,10 @@ public class DomainLineageRebuildIT {
     Domain manualTo = domain(ns, "manual_to");
     seed(manualFrom, manualTo, "{\"source\":\"Manual\",\"createdBy\":\"admin\"}");
     String manualBefore = storedJson(manualFrom, manualTo);
+    Domain detailsFreeFrom = domain(ns, "details_free_from");
+    Domain detailsFreeTo = domain(ns, "details_free_to");
+    seed(detailsFreeFrom, detailsFreeTo, "null");
+    String detailsFreeBefore = storedJson(detailsFreeFrom, detailsFreeTo);
     Domain countlessFrom = domain(ns, "countless_from");
     Domain countlessTo = domain(ns, "countless_to");
     DatabaseSchema schema = DomainLineageSteps.newSchema(ns);
@@ -126,6 +153,7 @@ public class DomainLineageRebuildIT {
     assertEdgeAbsent(orphanFrom, orphanTo);
     assertEdgeAbsent(looped, looped);
     assertEquals(manualBefore, storedJson(manualFrom, manualTo));
+    assertEquals(detailsFreeBefore, storedJson(detailsFreeFrom, detailsFreeTo));
     assertEquals(1, assetEdges(countlessFrom, countlessTo));
     String issueEdgeBefore = storedJson(issue.d1(), issue.d2());
 
@@ -185,8 +213,8 @@ public class DomainLineageRebuildIT {
   /**
    * The issue's topology: tables t1, t3, t5 in service A and t2, t4 in service B, with the edges
    * t1→t2, t3→t2 and t5→t4 written before the services got domains D1 and D2. The domain edge is
-   * then forgotten, as an older server never wrote it, so none exists until an asset edge is sent
-   * again.
+   * then removed through the API, from the store and the domain view alike, as an older server
+   * never wrote it there, so none exists until an asset edge is sent again.
    */
   private record IssueTopology(
       Domain d1, Domain d2, Table t1, Table t2, Table t3, Table t4, Table t5) {
@@ -210,7 +238,7 @@ public class DomainLineageRebuildIT {
       putEdge(issue.t5(), issue.t4());
       setDomains(client().databaseServices(), serviceA.getId(), issue.d1());
       setDomains(client().databaseServices(), serviceB.getId(), issue.d2());
-      forgetDomainEdge(issue.d1(), issue.d2());
+      deleteEdge(issue.d1(), issue.d2());
       return issue;
     }
   }

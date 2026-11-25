@@ -1,8 +1,10 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.it.tests.DomainLineageSteps.MAPPER;
 import static org.openmetadata.it.tests.DomainLineageSteps.assertEdgeAbsent;
+import static org.openmetadata.it.tests.DomainLineageSteps.assertSucceeded;
 import static org.openmetadata.it.tests.DomainLineageSteps.assetEdges;
 import static org.openmetadata.it.tests.DomainLineageSteps.awaitPlatformLineage;
 import static org.openmetadata.it.tests.DomainLineageSteps.client;
@@ -37,11 +39,9 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.StorageService;
-import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
 
 /**
@@ -405,15 +405,85 @@ public class DomainLineageRefcountIT {
     assertEquals(1, assetEdges(dc, dt));
   }
 
+  /** A schema is a domain-bearing endpoint the lineage API accepts, and it inherits from its service. */
+  @Test
+  void aSchemaEndpointMovesWithItsServicesDomain(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table downstream = table(ns, newSchema(ns), "downstream");
+    Domain d1 = domain(ns, "d1");
+    Domain d2 = domain(ns, "d2");
+    Domain d3 = domain(ns, "d3");
+    setDomains(client().databaseServices(), service.getId(), d1);
+    setTableDomains(downstream, d2);
+    putEdge(schema, downstream);
+    assertEquals(1, assetEdges(d1, d2));
+
+    setDomains(client().databaseServices(), service.getId(), d3);
+
+    assertEquals(1, assetEdges(d3, d2));
+    assertEdgeAbsent(d1, d2);
+  }
+
+  /** The manual edge keeps its row and its source when the last asset edge it counted leaves. */
+  @Test
+  void aManualDomainEdgeSurvivesItsLastAssetMovingAway(TestNamespace ns) {
+    DatabaseSchema schema = newSchema(ns);
+    Table t1 = table(ns, schema, "t1");
+    Table t2 = table(ns, schema, "t2");
+    Domain d1 = domain(ns, "d1");
+    Domain d2 = domain(ns, "d2");
+    Domain d3 = domain(ns, "d3");
+    setTableDomains(t1, d1);
+    setTableDomains(t2, d2);
+    putEdge(d1, d2);
+    assertEquals(LineageDetails.Source.MANUAL, edge(d1, d2).getSource());
+    putEdge(t1, t2);
+    assertEquals(1, assetEdges(d1, d2));
+
+    setTableDomains(t1, d3);
+
+    LineageDetails kept = edge(d1, d2);
+    assertEquals(LineageDetails.Source.MANUAL, kept.getSource());
+    assertNull(kept.getAssetEdges());
+    assertEquals(1, assetEdges(d3, d2));
+    awaitPlatformLineage(d1, d2, true);
+  }
+
+  /** The schema and its table are both moved by one data product write; the edge counts once. */
+  @Test
+  void overlappingContainersInOneDataProductMoveEachEdgeOnce(TestNamespace ns) {
+    DatabaseSchema schema = newSchema(ns);
+    Table t1 = table(ns, schema, "t1");
+    Table t2 = table(ns, newSchema(ns), "t2");
+    Domain d1 = domain(ns, "d1");
+    Domain d2 = domain(ns, "d2");
+    Domain d3 = domain(ns, "d3");
+    setDomains(client().databaseSchemas(), schema.getId(), d1);
+    setTableDomains(t1, d1);
+    setTableDomains(t2, d2);
+    DataProduct product = dataProduct(ns, d1);
+    assertSucceeded(
+        client()
+            .dataProducts()
+            .bulkAddAssets(
+                product.getFullyQualifiedName(),
+                new BulkAssets()
+                    .withAssets(List.of(schema.getEntityReference(), t1.getEntityReference()))));
+    putEdge(t1, t2);
+    assertEquals(1, assetEdges(d1, d2));
+
+    setDomains(client().dataProducts(), product.getId(), d3);
+
+    assertEquals(1, assetEdges(d3, d2));
+    assertEdgeAbsent(d1, d2);
+  }
+
   private static String csvRow(Table table, Domain domain) {
     return table.getName() + ",,,,,,,,,," + domain.getFullyQualifiedName() + ",";
   }
 
   private static JsonNode replace(String path, String value) {
     return patchAdd(path, MAPPER.getNodeFactory().textNode(value));
-  }
-
-  private static void assertSucceeded(BulkOperationResult result) {
-    assertEquals(ApiStatus.SUCCESS, result.getStatus(), JsonUtils.pojoToJson(result));
   }
 }

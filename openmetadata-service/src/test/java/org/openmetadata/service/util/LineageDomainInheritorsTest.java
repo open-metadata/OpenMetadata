@@ -1,5 +1,6 @@
 package org.openmetadata.service.util;
 
+import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -12,6 +13,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,27 +26,52 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.SearchIndexFactory;
-import org.openmetadata.service.search.indexes.LineageIndex;
+import org.openmetadata.service.util.LineageDomainInheritors.DescendantIds;
 import org.openmetadata.service.util.LineageDomainRollups.DomainMove;
 
-/** Against the shipped index mapping and search index classes, the two sources production reads. */
+/**
+ * Against the shipped index mapping, the two sources production reads. Discovery is driven by a
+ * fake lookup that answers the way {@code fqnHash LIKE 'hash.%' LIMIT n} does.
+ */
 class LineageDomainInheritorsTest {
 
   private static final Map<String, List<String>> CHILD_ALIASES = childAliases();
-  private static final SearchIndexFactory INDEXES = new SearchIndexFactory();
+  // A database and its schema in one write: the schema's tables sit under both prefixes.
+  private static final String DATABASE_FQN = "svc.db";
+  private static final String SCHEMA_FQN = "svc.db.schema";
+  private static final List<String> SCHEMA_TABLES =
+      List.of("svc.db.schema.t1", "svc.db.schema.t2", "svc.db.schema.t3", "svc.db.schema.t4");
+  private static final List<String> SIBLING_TABLES = List.of("svc.db.other.s1", "svc.db.other.s2");
+  private static final Set<String> NO_DOMAINS =
+      Set.of(Entity.DOMAIN, Entity.TABLE_COLUMN, "testCaseResolutionStatus", "testCaseResult");
   private static final EntityReference D1 = reference(Entity.DOMAIN);
   private static final EntityReference X = reference(Entity.DOMAIN);
 
   static Stream<Arguments> containers() {
-    Set<String> databaseAssets = Set.of(Entity.TABLE, Entity.STORED_PROCEDURE);
+    Set<String> serviceAssets =
+        Set.of(
+            Entity.DATABASE,
+            Entity.DATABASE_SCHEMA,
+            Entity.STORED_PROCEDURE,
+            Entity.TABLE,
+            Entity.TEST_SUITE,
+            Entity.TEST_CASE);
+    Set<String> databaseAssets =
+        Set.of(
+            Entity.DATABASE_SCHEMA,
+            Entity.STORED_PROCEDURE,
+            Entity.TABLE,
+            Entity.TEST_SUITE,
+            Entity.TEST_CASE);
+    Set<String> schemaAssets =
+        Set.of(Entity.STORED_PROCEDURE, Entity.TABLE, Entity.TEST_SUITE, Entity.TEST_CASE);
     Set<String> driveAssets =
         Set.of(Entity.DIRECTORY, Entity.FILE, Entity.SPREADSHEET, Entity.WORKSHEET);
     return Stream.of(
-        arguments(Entity.DATABASE_SERVICE, databaseAssets),
+        arguments(Entity.DATABASE_SERVICE, serviceAssets),
         arguments(Entity.DATABASE, databaseAssets),
-        arguments(Entity.DATABASE_SCHEMA, databaseAssets),
-        arguments(Entity.TABLE, Set.of()),
+        arguments(Entity.DATABASE_SCHEMA, schemaAssets),
+        arguments(Entity.TABLE, Set.of(Entity.TEST_SUITE, Entity.TEST_CASE)),
         arguments(Entity.STORAGE_SERVICE, Set.of(Entity.CONTAINER)),
         arguments(Entity.CONTAINER, Set.of()),
         arguments(Entity.DRIVE_SERVICE, driveAssets),
@@ -53,9 +80,9 @@ class LineageDomainInheritorsTest {
         arguments(
             Entity.DASHBOARD_SERVICE,
             Set.of(Entity.DASHBOARD, Entity.DASHBOARD_DATA_MODEL, Entity.CHART)),
-        arguments(Entity.API_SERVICE, Set.of(Entity.API_ENDPOINT)),
+        arguments(Entity.API_SERVICE, Set.of(Entity.API_COLLECTION, Entity.API_ENDPOINT)),
         arguments(Entity.API_COLLECTION, Set.of(Entity.API_ENDPOINT)),
-        arguments(Entity.GLOSSARY, Set.of()));
+        arguments(Entity.GLOSSARY, Set.of("glossaryTerm")));
   }
 
   @ParameterizedTest
@@ -65,9 +92,64 @@ class LineageDomainInheritorsTest {
         LineageDomainInheritors.inheritingTypes(
             container,
             type -> CHILD_ALIASES.getOrDefault(type, List.of()),
-            LineageDomainInheritorsTest::carriesLineage);
+            type -> !NO_DOMAINS.contains(type));
 
     assertEquals(expected, Set.copyOf(types));
+  }
+
+  @Test
+  void theUnionOfOverlappingPrefixesMovesEveryDistinctEndpointWithinTheCap() {
+    Map<String, UUID> tables = tables();
+    List<EntityReference> containers =
+        List.of(named(Entity.DATABASE, DATABASE_FQN), named(Entity.DATABASE_SCHEMA, SCHEMA_FQN));
+
+    List<EntityReference> found =
+        LineageDomainInheritors.descendantsWithLineage(
+            containers, 6, type -> Set.of(Entity.TABLE), tablesUnder(tables));
+
+    assertEquals(Set.copyOf(tables.values()), idsOf(found));
+    assertEquals(6, found.size(), "each table once");
+    assertTrue(
+        LineageDomainInheritors.movesInTheWrite(containers, found, 6),
+        "six distinct endpoints fit a cap of six");
+  }
+
+  @Test
+  void theUnionOneAboveTheCapMovesNone() {
+    Map<String, UUID> tables = tables();
+    List<EntityReference> containers =
+        List.of(named(Entity.DATABASE, DATABASE_FQN), named(Entity.DATABASE_SCHEMA, SCHEMA_FQN));
+
+    List<EntityReference> found =
+        LineageDomainInheritors.descendantsWithLineage(
+            containers, 5, type -> Set.of(Entity.TABLE), tablesUnder(tables));
+
+    assertFalse(LineageDomainInheritors.movesInTheWrite(containers, found, 5));
+  }
+
+  private static Map<String, UUID> tables() {
+    Map<String, UUID> tables = new LinkedHashMap<>();
+    SCHEMA_TABLES.forEach(fqn -> tables.put(fqn, UUID.randomUUID()));
+    SIBLING_TABLES.forEach(fqn -> tables.put(fqn, UUID.randomUUID()));
+    return tables;
+  }
+
+  /** The query's answer: the lineage ends under the prefix, in the order stored, at most limit. */
+  private static DescendantIds tablesUnder(Map<String, UUID> tables) {
+    return (type, fqn, limit) ->
+        tables.entrySet().stream()
+            .filter(table -> table.getKey().startsWith(fqn + "."))
+            .map(Map.Entry::getValue)
+            .limit(limit)
+            .toList();
+  }
+
+  private static Set<UUID> idsOf(List<EntityReference> references) {
+    return references.stream().map(EntityReference::getId).collect(toSet());
+  }
+
+  private static EntityReference named(String type, String fqn) {
+    return reference(type).withFullyQualifiedName(fqn);
   }
 
   @Test
@@ -98,16 +180,6 @@ class LineageDomainInheritorsTest {
             List.of(childRead), List.of(childFromCaller, parentFromCaller));
 
     assertEquals(List.of(childRead, parentFromCaller), moves);
-  }
-
-  private static boolean carriesLineage(String type) {
-    boolean carries;
-    try {
-      carries = INDEXES.buildIndex(type, null) instanceof LineageIndex;
-    } catch (IllegalArgumentException notIndexed) {
-      carries = false;
-    }
-    return carries;
   }
 
   private static Map<String, List<String>> childAliases() {

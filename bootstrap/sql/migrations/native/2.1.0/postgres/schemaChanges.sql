@@ -946,10 +946,13 @@ CREATE INDEX IF NOT EXISTS idx_context_file_visibility ON context_file (visibili
 -- text_pattern_ops for the reason given there. MySQL's ascii_bin fqnHash already serves the prefix.
 --
 -- OPERATOR RUNBOOK: an interrupted CONCURRENTLY build leaves an INVALID index that IF NOT EXISTS
--- then skips. Detect and remediate as for the 1.13.0 indexes:
+-- then skips. Detect and remediate the four built here, by name: the 1.13.0 indexes match the same
+-- pattern, and dropping one of them without its log entry would never be recreated.
 --   SELECT c.relname FROM pg_class c
 --    JOIN pg_index i ON i.indexrelid = c.oid
---    WHERE NOT i.indisvalid AND c.relname LIKE 'idx\_%\_fqnhash\_pattern' ESCAPE '\';
+--    WHERE NOT i.indisvalid AND c.relname IN (
+--      'idx_stored_procedure_entity_fqnhash_pattern', 'idx_pipeline_entity_fqnhash_pattern',
+--      'idx_llm_model_entity_fqnhash_pattern', 'idx_mcp_server_entity_fqnhash_pattern');
 --   DROP INDEX CONCURRENTLY <relname>;
 --   DELETE FROM server_migration_sql_logs
 --    WHERE version = '2.1.0'

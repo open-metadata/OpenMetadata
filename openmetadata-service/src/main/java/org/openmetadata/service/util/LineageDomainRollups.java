@@ -126,9 +126,14 @@ public final class LineageDomainRollups {
   }
 
   public static boolean isRollup(final String lineageJson) {
+    return detailsOf(lineageJson).getSource() == LineageDetails.Source.CHILD_ASSETS;
+  }
+
+  /** A row's lineage details; a row whose json holds none reads as empty details, not as null. */
+  public static LineageDetails detailsOf(final String lineageJson) {
     final LineageDetails details =
         lineageJson == null ? null : JsonUtils.readValue(lineageJson, LineageDetails.class);
-    return details != null && details.getSource() == LineageDetails.Source.CHILD_ASSETS;
+    return details == null ? new LineageDetails() : details;
   }
 
   /** Domains in effect (own, else inherited) per entity; ids that no longer exist are absent. */
@@ -218,20 +223,23 @@ public final class LineageDomainRollups {
             });
   }
 
-  // At 0 the rollup is released, as LineageRepository releases it when its last edge is deleted.
+  // At 0 a ChildAssets rollup is released, as LineageRepository releases it when its last edge is
+  // deleted. Another writer's row (a manual edge, or a rollup re-sent by hand) stays: only the
+  // count
+  // it carried is cleared, the same rule DomainLineageRebuild applies.
   private static void adjustAssetEdges(
       final EntityReference from, final EntityReference to, final int delta) {
     final EntityRelationshipObject stored =
         relationships().getRecord(from.getId(), to.getId(), UPSTREAM);
     final LineageDetails details =
-        stored == null
-            ? newRollupDetails(0)
-            : JsonUtils.readValue(stored.getJson(), LineageDetails.class);
+        stored == null ? newRollupDetails(0) : detailsOf(stored.getJson());
     final int assetEdges = nullOrDefault(details.getAssetEdges(), 0) + delta;
     if (assetEdges > 0) {
       storeRollup(from, to, details.withAssetEdges(assetEdges));
-    } else if (stored != null) {
+    } else if (stored != null && details.getSource() == LineageDetails.Source.CHILD_ASSETS) {
       deleteRollup(from, to, details);
+    } else if (stored != null && details.getAssetEdges() != null) {
+      storeRollup(from, to, details.withAssetEdges(null));
     }
   }
 
