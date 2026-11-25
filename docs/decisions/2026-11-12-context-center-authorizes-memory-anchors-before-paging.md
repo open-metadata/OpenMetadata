@@ -51,12 +51,17 @@ memory anchored to a glossary term, tag or asset it may read, because it cannot 
 pin (#36435). A keyword search of the memory index alone now builds its visibility filter the way
 the listing does: it collects the anchors of the memories the full query matches (text query and
 `queryFilter`), keeps those the caller may read, and admits Entity and Public memories anchored to
-them. This covers `/v1/search/query`, its NLQ variant (so the NLQ answer and its fallback agree),
-and `/v1/search/entityTypeCounts` when it counts the memory index alone, so counts and hits agree.
+them. "Alone" is decided on the resolved name, so `contextMemory` and
+`context_memory_search_index` count, and a list of indexes never does. This covers
+`/v1/search/query`, its NLQ variant (so the NLQ answer and its fallback agree), `/v1/search/preview`,
+`/v1/search/export` and its async form, and `/v1/search/entityTypeCounts` when it counts the memory
+index alone, so counts and hits agree.
 A search over several indexes keeps the pinned-anchor rule, and so does the memory bucket of a count
 over several indexes, so an Explore total matches what that search lists. Hybrid, vector,
 chat-grounding, direct-query and aggregation searches keep the pinned-anchor rule too.
 
-Each non-admin memory-only search costs one anchor aggregation and a policy check per distinct
-matching anchor, and fails, like a listing, when the aggregation is incomplete. Guard:
+Each non-admin memory-only search pages a composite aggregation of its matching anchors (100 per
+page) and checks the caller's access to each distinct one, once per query stage: a count with a
+fuzzy stage and an exact-identifier search run two stages. It fails, like a listing, when the
+aggregation is incomplete. Guard:
 `ContextMemoryAnchorIT#aSearchPinnedToAnAnchor_agreesWithRestOnItsMemories`.

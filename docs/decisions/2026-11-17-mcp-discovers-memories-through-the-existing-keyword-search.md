@@ -33,5 +33,5 @@ memory.
 
 - An agent that follows the description finds the memories, anchored or not, that the caller may
   read.
-- A non-admin memory-only search costs one anchor aggregation plus a policy check per distinct
-  matching anchor.
+- A non-admin memory-only search also aggregates its matching anchors and checks access to each
+  distinct one (ADR:2026-11-12-context-center-authorizes-memory-anchors-before-paging, v3).

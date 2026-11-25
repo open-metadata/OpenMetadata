@@ -249,9 +249,18 @@ public class ContextMemoryAnchorIT {
         "a memory-only search admits the anchored memories its reader may read, unpinned");
     assertTrue(searchHits(clientOf(blocked), query, null).isEmpty());
     assertEquals(1, countedHits(clientOf(reader), query, null), "counts agree with the hits");
+    assertEquals(
+        1,
+        countedHits(clientOf(reader), Entity.CONTEXT_MEMORY, query, null),
+        "the entity type names the same memory-only search");
+    assertEquals(0, countedHits(clientOf(blocked), query, null));
+    // The query matches these memories only, so the totals on "all" count them alone.
     assertFalse(
         searchHits(clientOf(reader), "all", query, null).contains(shown.getId()),
         "a search over several indexes keeps the pinned-anchor rule");
+    assertEquals(0, countedHits(clientOf(reader), "all", query, null));
+    assertTrue(searchHits(clientOf(reader), "all", query, pinned).contains(shown.getId()));
+    assertEquals(1, countedHits(clientOf(reader), "all", query, pinned));
   }
 
   /** A file anchor is read by the file's own sharing too, in a pinned search as in REST. */
@@ -520,12 +529,18 @@ public class ContextMemoryAnchorIT {
 
   /** The documents {@code /v1/search/entityTypeCounts} counts for {@code client}. */
   private static long countedHits(OpenMetadataClient client, String query, String queryFilter) {
+    return countedHits(client, "context_memory_search_index", query, queryFilter);
+  }
+
+  /** The documents {@code /v1/search/entityTypeCounts} on {@code index} counts for {@code client}. */
+  private static long countedHits(
+      OpenMetadataClient client, String index, String query, String queryFilter) {
     String response =
         client
             .search()
             .entityTypeCounts()
             .query(query)
-            .index("context_memory_search_index")
+            .index(index)
             .queryFilter(queryFilter)
             .execute();
     return JsonUtils.readTree(response).path("hits").path("total").path("value").asLong();

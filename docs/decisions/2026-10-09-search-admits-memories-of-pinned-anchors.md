@@ -96,5 +96,5 @@ A keyword search of the memory index alone (`/v1/search/query` and its NLQ varia
 `/v1/search/entityTypeCounts` on that index, MCP `search_metadata(entityType='contextMemory')`) now
 evaluates the anchors of its matching memories the way Context Center listings do
 (ADR:2026-11-12-context-center-authorizes-memory-anchors-before-paging, v3). A search or count over
-several indexes (`all`, `dataAsset`), and hybrid, vector, direct-query and aggregation searches,
-keep this record's pinned-anchor rule and cap.
+several indexes (`all`, or a comma-separated list), and hybrid, vector, direct-query and
+aggregation searches, keep this record's pinned-anchor rule and cap.

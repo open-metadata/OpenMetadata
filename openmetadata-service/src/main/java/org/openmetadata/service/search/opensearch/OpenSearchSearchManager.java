@@ -1289,7 +1289,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       boolean listsMemoryAnchors)
       throws IOException {
     if (listsMemoryAnchors
-        && ContextMemorySearchVisibility.isMemoryListingIndex(request.getIndex())) {
+        && ContextMemorySearchVisibility.isMemoryOnlySearch(request.getIndex())) {
       final List<ContextMemoryStatus> statuses = ContextMemorySearchVisibility.SEARCHABLE_STATUSES;
       applyQueryFilter(requestBuilder, request);
       applyContextMemoryVisibility(
@@ -1577,7 +1577,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                       perType,
                       subjectContext,
                       configured,
-                      ContextMemorySearchVisibility.isMemoryListingIndex(index)),
+                      ContextMemorySearchVisibility.isMemoryOnlySearch(index)),
               (body, indexes) -> executeCountAggregation(body, indexes, subjectContext),
               hint -> doSearch(hint, subjectContext, settings, clusterAlias))
           .search(request, index, settings);
