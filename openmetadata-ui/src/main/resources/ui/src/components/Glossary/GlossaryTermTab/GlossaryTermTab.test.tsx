@@ -24,6 +24,7 @@ import { omit } from 'lodash';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   EntityStatus,
   ProviderType,
@@ -32,7 +33,10 @@ import {
   mockedGlossaryTerms,
   MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
-import { findExpandableKeysForArray } from '../../../utils/GlossaryPureUtils';
+import {
+  findExpandableKeysForArray,
+  getGlossaryEntityLink,
+} from '../../../utils/GlossaryPureUtils';
 import GlossaryTermTab from './GlossaryTermTab.component';
 import { ModifiedGlossaryTerm } from './GlossaryTermTab.interface';
 const mockOnAddGlossaryTerm = jest.fn();
@@ -213,9 +217,23 @@ const mockUseGlossaryStore = {
   setGlossaryChildTerms: mockSetGlossaryChildTerms,
 };
 
-jest.mock('../useGlossary.store', () => ({
-  useGlossaryStore: jest.fn().mockImplementation(() => mockUseGlossaryStore),
-}));
+jest.mock('../useGlossary.store', () => {
+  const storeHook = jest
+    .fn()
+    .mockImplementation((selector?: unknown) =>
+      typeof selector === 'function'
+        ? (selector as (state: typeof mockUseGlossaryStore) => unknown)(
+            mockUseGlossaryStore
+          )
+        : mockUseGlossaryStore
+    );
+
+  return {
+    useGlossaryStore: Object.assign(storeHook, {
+      getState: () => mockUseGlossaryStore,
+    }),
+  };
+});
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
@@ -254,6 +272,7 @@ interface MockTableProps {
   loading?: boolean;
   locale?: { emptyText?: ReactNode };
   expandable?: {
+    expandedRowKeys?: string[];
     expandIcon?: (props: {
       expanded: boolean;
       onExpand: (record: unknown) => void;
@@ -277,6 +296,53 @@ jest.mock('../../common/Table/TableV2', () =>
       extraTableFilters,
       rowClassName,
     } = props;
+    const expandedSet = new Set(expandable?.expandedRowKeys ?? []);
+
+    const renderRows = (
+      rows: Record<string, unknown>[],
+      depth = 0,
+      parentKey = 'root'
+    ): ReactNode[] =>
+      rows.flatMap((record, index) => {
+        const rowKey = String(record.fullyQualifiedName ?? record.id ?? index);
+        const isExpanded = expandedSet.has(rowKey);
+        const children = Array.isArray(record.children)
+          ? (record.children as Record<string, unknown>[])
+          : [];
+
+        return [
+          <div
+            className={rowClassName?.(record, index)}
+            data-level={depth}
+            data-row-key={rowKey}
+            data-testid={
+              depth === 0
+                ? `glossary-row-${index}`
+                : `glossary-child-row-${depth}-${index}`
+            }
+            key={`${parentKey}::${rowKey}`}>
+            {expandable?.expandIcon?.({
+              expanded: isExpanded,
+              onExpand: (rec) => expandable?.onExpand?.(!isExpanded, rec),
+              record,
+            })}
+            {columns.map((col, colIndex) =>
+              col.render ? (
+                <span key={String(col.key ?? col.dataIndex ?? colIndex)}>
+                  {col.render(
+                    col.dataIndex ? record[col.dataIndex] : undefined,
+                    record,
+                    index
+                  )}
+                </span>
+              ) : null
+            )}
+          </div>,
+          ...(isExpanded && children.length > 0
+            ? renderRows(children, depth + 1, rowKey)
+            : []),
+        ];
+      });
 
     return (
       <div data-testid={props['data-testid']}>
@@ -284,29 +350,7 @@ jest.mock('../../common/Table/TableV2', () =>
         {loading && <div data-testid="table-loading">Loading...</div>}
         {dataSource.length === 0
           ? !loading && locale?.emptyText
-          : dataSource.map((record, index) => (
-              <div
-                className={rowClassName?.(record, index)}
-                data-testid={`glossary-row-${index}`}
-                key={record.fullyQualifiedName as string}>
-                {expandable?.expandIcon?.({
-                  expanded: false,
-                  onExpand: (rec) => expandable?.onExpand?.(true, rec),
-                  record,
-                })}
-                {columns.map((col, colIndex) =>
-                  col.render ? (
-                    <span key={col.key ?? col.dataIndex ?? colIndex}>
-                      {col.render(
-                        col.dataIndex ? record[col.dataIndex] : undefined,
-                        record,
-                        index
-                      )}
-                    </span>
-                  ) : null
-                )}
-              </div>
-            ))}
+          : renderRows(dataSource)}
       </div>
     );
   })
@@ -984,6 +1028,125 @@ describe('Test GlossaryTermTab component', () => {
     });
   });
 
+  describe('Task Pagination (more than one page of open approval tasks)', () => {
+    it('follows the response cursor to load every open approval task', async () => {
+      const firstPage = Array.from({ length: PAGE_SIZE_LARGE }, (_, i) => ({
+        id: `task-${i}`,
+        about: {
+          type: EntityType.GLOSSARY_TERM,
+          fullyQualifiedName: `Business Glossary.Term${i}`,
+        },
+      }));
+      const secondPage = [
+        {
+          id: `task-${PAGE_SIZE_LARGE}`,
+          about: {
+            type: EntityType.GLOSSARY_TERM,
+            fullyQualifiedName: 'Business Glossary.OldestPending',
+          },
+        },
+      ];
+      mockListTasks
+        .mockResolvedValueOnce({
+          data: firstPage,
+          paging: { after: 'cursor-2' },
+        })
+        .mockResolvedValueOnce({ data: secondPage, paging: { after: null } });
+
+      render(<GlossaryTermTab isGlossary />, { wrapper: MemoryRouter });
+
+      await waitFor(() => expect(mockListTasks).toHaveBeenCalledTimes(2));
+
+      expect(mockListTasks.mock.calls[0][0]).toEqual(
+        expect.objectContaining({ after: undefined })
+      );
+      expect(mockListTasks.mock.calls[1][0]).toEqual(
+        expect.objectContaining({ after: 'cursor-2' })
+      );
+    });
+
+    it('stops paging once the cursor is exhausted', async () => {
+      mockListTasks.mockResolvedValueOnce({
+        data: [
+          {
+            id: 'only-task',
+            about: {
+              type: EntityType.GLOSSARY_TERM,
+              fullyQualifiedName: 'Business Glossary.Only',
+            },
+          },
+        ],
+        paging: { after: undefined },
+      });
+
+      render(<GlossaryTermTab isGlossary />, { wrapper: MemoryRouter });
+
+      await waitFor(() => expect(mockListTasks).toHaveBeenCalledTimes(1));
+    });
+
+    it('keeps the oldest pending proposal decidable when its task lands on a later page', async () => {
+      const oldestFqn = 'Business Glossary.OldestPending';
+      const term = {
+        ...mockedGlossaryTerms[0],
+        name: 'OldestPending',
+        displayName: 'OldestPending',
+        fullyQualifiedName: oldestFqn,
+        entityStatus: EntityStatus.InReview,
+        childrenCount: 0,
+        children: undefined,
+      };
+      mockUseGlossaryStore.glossaryChildTerms = [term as ModifiedGlossaryTerm];
+
+      mockListTasks
+        .mockResolvedValueOnce({
+          data: Array.from({ length: PAGE_SIZE_LARGE }, (_, i) => ({
+            id: `newer-task-${i}`,
+            about: {
+              type: EntityType.GLOSSARY_TERM,
+              fullyQualifiedName: `Business Glossary.Newer${i}`,
+            },
+          })),
+          paging: { after: 'cursor-2' },
+        })
+        .mockResolvedValueOnce({
+          data: [
+            {
+              id: 'task-50',
+              about: {
+                type: EntityType.GLOSSARY_TERM,
+                fullyQualifiedName: oldestFqn,
+              },
+              assignees: [{ id: 'user-1' }],
+            },
+          ],
+          paging: { after: null },
+        });
+
+      mockPermissionForApproveOrReject.mockImplementation(
+        (record, _user, threads) => {
+          const entityLink = getGlossaryEntityLink(
+            record.fullyQualifiedName ?? ''
+          );
+          const task = threads[entityLink]?.[0];
+
+          return { permission: Boolean(task), taskId: task?.id ?? '' };
+        }
+      );
+
+      render(<GlossaryTermTab isGlossary={false} />, { wrapper: MemoryRouter });
+
+      await waitFor(() => expect(mockListTasks).toHaveBeenCalledTimes(2));
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('OldestPending-approve-btn')
+        ).toBeInTheDocument();
+        expect(
+          screen.getByTestId('OldestPending-reject-btn')
+        ).toBeInTheDocument();
+      });
+    });
+  });
+
   describe('Error Handling', () => {
     it('should handle API errors gracefully when fetching terms', async () => {
       mockGetFirstLevelGlossaryTermsPaginated.mockRejectedValue(
@@ -1596,6 +1759,438 @@ describe('Test GlossaryTermTab component', () => {
       await waitFor(() => {
         expect(screen.getByTestId('glossary-terms-table')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Search & Hierarchy Reconciliation (#37909)', () => {
+    const parentFqn = 'Business Glossary.AcmeParent';
+    const childFqn = 'Business Glossary.AcmeParent.AcmeChild';
+    const siblingFqn = 'Business Glossary.AcmeParent.AcmeSibling';
+
+    const parentTerm: ModifiedGlossaryTerm = {
+      ...mockedGlossaryTerms[0],
+      id: 'acme-parent-id',
+      name: 'AcmeParent',
+      displayName: 'Acme Platform',
+      fullyQualifiedName: parentFqn,
+      childrenCount: 2,
+      children: undefined,
+    };
+
+    const childTerm: ModifiedGlossaryTerm = {
+      ...mockedGlossaryTerms[1],
+      id: 'acme-child-id',
+      name: 'AcmeChild',
+      displayName: 'ACME:Platform data',
+      fullyQualifiedName: childFqn,
+      childrenCount: 0,
+      children: undefined,
+    };
+
+    const siblingTerm: ModifiedGlossaryTerm = {
+      ...mockedGlossaryTerms[1],
+      id: 'acme-sibling-id',
+      name: 'AcmeSibling',
+      displayName: 'Platform Metrics',
+      fullyQualifiedName: siblingFqn,
+      childrenCount: 0,
+      children: undefined,
+    };
+
+    beforeEach(() => {
+      mockSetGlossaryChildTerms.mockImplementation((terms) => {
+        mockUseGlossaryStore.glossaryChildTerms = terms;
+      });
+    });
+
+    afterEach(() => {
+      mockSetGlossaryChildTerms.mockReset();
+      jest.clearAllTimers();
+    });
+
+    it('deduplicates an expanded child term in search results and restores it at root on collapse', async () => {
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
+        data: [parentTerm],
+        paging: { total: 1, after: null },
+      });
+      mockSearchGlossaryTermsPaginated.mockResolvedValue({
+        data: [parentTerm, childTerm],
+        paging: { total: 2, after: null },
+      });
+      mockGetGlossaryTermChildrenLazy.mockResolvedValue({
+        data: [childTerm, siblingTerm],
+        paging: { after: null },
+      });
+
+      const { container } = render(<GlossaryTermTab isGlossary />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('Acme Platform')).toBeInTheDocument();
+      });
+
+      const searchInput = screen.getByPlaceholderText('label.search-entity');
+      fireEvent.change(searchInput, { target: { value: 'acme' } });
+
+      await waitFor(() => {
+        expect(mockSearchGlossaryTermsPaginated).toHaveBeenCalledWith(
+          expect.objectContaining({
+            q: 'acme',
+            fields:
+              'relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
+          })
+        );
+        expect(screen.getByTestId('ACME:Platform data')).toBeInTheDocument();
+      });
+
+      const rootChildRowsBeforeExpand = container.querySelectorAll(
+        `[data-row-key="${childFqn}"]`
+      );
+
+      expect(rootChildRowsBeforeExpand).toHaveLength(1);
+      expect(rootChildRowsBeforeExpand[0]).toHaveAttribute('data-level', '0');
+
+      const parentRow = container.querySelector(
+        `[data-row-key="${parentFqn}"]`
+      ) as HTMLElement;
+      fireEvent.click(within(parentRow).getByTestId('expand-icon'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('Platform Metrics')).toBeInTheDocument();
+      });
+
+      expect(screen.getAllByTestId('ACME:Platform data')).toHaveLength(1);
+
+      const childRowsWhileExpanded = container.querySelectorAll(
+        `[data-row-key="${childFqn}"]`
+      );
+
+      expect(childRowsWhileExpanded).toHaveLength(1);
+      expect(childRowsWhileExpanded[0]).toHaveAttribute('data-level', '1');
+
+      // Collapsing Parent while search is still active restores Parent.Child at root
+      const expandedParentRow = container.querySelector(
+        `[data-row-key="${parentFqn}"]`
+      ) as HTMLElement;
+      fireEvent.click(within(expandedParentRow).getByTestId('expand-icon'));
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('Platform Metrics')
+        ).not.toBeInTheDocument();
+      });
+
+      const childRowsAfterCollapse = container.querySelectorAll(
+        `[data-row-key="${childFqn}"]`
+      );
+
+      expect(childRowsAfterCollapse).toHaveLength(1);
+      expect(childRowsAfterCollapse[0]).toHaveAttribute('data-level', '0');
+    });
+
+    it('preserves loaded children on both parents when two terms are expanded concurrently', async () => {
+      const parentOneFqn = 'Business Glossary.ParentOne';
+      const parentTwoFqn = 'Business Glossary.ParentTwo';
+      const parentOne: ModifiedGlossaryTerm = {
+        ...parentTerm,
+        id: 'p1-id',
+        name: 'ParentOne',
+        displayName: 'Parent One',
+        fullyQualifiedName: parentOneFqn,
+        childrenCount: 1,
+      };
+      const parentTwo: ModifiedGlossaryTerm = {
+        ...parentTerm,
+        id: 'p2-id',
+        name: 'ParentTwo',
+        displayName: 'Parent Two',
+        fullyQualifiedName: parentTwoFqn,
+        childrenCount: 1,
+      };
+      const childOne: ModifiedGlossaryTerm = {
+        ...childTerm,
+        id: 'c1-id',
+        name: 'ChildOne',
+        displayName: 'Child One',
+        fullyQualifiedName: `${parentOneFqn}.ChildOne`,
+      };
+      const childTwo: ModifiedGlossaryTerm = {
+        ...childTerm,
+        id: 'c2-id',
+        name: 'ChildTwo',
+        displayName: 'Child Two',
+        fullyQualifiedName: `${parentTwoFqn}.ChildTwo`,
+      };
+
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
+        data: [parentOne, parentTwo],
+        paging: { total: 2, after: null },
+      });
+
+      let resolveFirstExpand!: (value: unknown) => void;
+      let resolveSecondExpand!: (value: unknown) => void;
+
+      mockGetGlossaryTermChildrenLazy.mockImplementation((fqn: string) => {
+        if (fqn === parentOneFqn) {
+          return new Promise((resolve) => {
+            resolveFirstExpand = resolve;
+          });
+        }
+
+        return new Promise((resolve) => {
+          resolveSecondExpand = resolve;
+        });
+      });
+
+      const { container } = render(<GlossaryTermTab isGlossary />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('Parent One')).toBeInTheDocument();
+        expect(screen.getByTestId('Parent Two')).toBeInTheDocument();
+      });
+
+      const rowOne = container.querySelector(
+        `[data-row-key="${parentOneFqn}"]`
+      ) as HTMLElement;
+      const rowTwo = container.querySelector(
+        `[data-row-key="${parentTwoFqn}"]`
+      ) as HTMLElement;
+
+      // Trigger both expansions before either lazy request resolves
+      fireEvent.click(within(rowOne).getByTestId('expand-icon'));
+      fireEvent.click(within(rowTwo).getByTestId('expand-icon'));
+
+      await waitFor(() => {
+        expect(mockGetGlossaryTermChildrenLazy).toHaveBeenCalledTimes(2);
+      });
+
+      await act(async () => {
+        resolveFirstExpand({ data: [childOne], paging: { after: null } });
+        resolveSecondExpand({ data: [childTwo], paging: { after: null } });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('Child One')).toBeInTheDocument();
+        expect(screen.getByTestId('Child Two')).toBeInTheDocument();
+      });
+    });
+
+    it('discards stale fetchChildTerms responses after search query changes', async () => {
+      const otherTerm: ModifiedGlossaryTerm = {
+        ...childTerm,
+        id: 'other-id',
+        name: 'OtherTerm',
+        displayName: 'Other Search Hit',
+        fullyQualifiedName: 'Business Glossary.OtherTerm',
+      };
+
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
+        data: [parentTerm],
+        paging: { total: 1, after: null },
+      });
+      // Include parentTerm in the superseding search page so an unguarded
+      // fetchChildTerms would still find parentFqn and attach stale children.
+      mockSearchGlossaryTermsPaginated.mockResolvedValue({
+        data: [parentTerm, otherTerm],
+        paging: { total: 2, after: null },
+      });
+
+      let resolveStaleChildFetch!: (value: unknown) => void;
+      mockGetGlossaryTermChildrenLazy.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveStaleChildFetch = resolve;
+        })
+      );
+
+      const { container } = render(<GlossaryTermTab isGlossary />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('Acme Platform')).toBeInTheDocument();
+      });
+
+      const parentRow = container.querySelector(
+        `[data-row-key="${parentFqn}"]`
+      ) as HTMLElement;
+      fireEvent.click(within(parentRow).getByTestId('expand-icon'));
+
+      await waitFor(() => {
+        expect(mockGetGlossaryTermChildrenLazy).toHaveBeenCalledWith(
+          parentFqn,
+          50,
+          undefined
+        );
+      });
+
+      // Change search query before the child fetch settles
+      const searchInput = screen.getByPlaceholderText('label.search-entity');
+      fireEvent.change(searchInput, { target: { value: 'other' } });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('Other Search Hit')).toBeInTheDocument();
+        expect(screen.getByTestId('Acme Platform')).toBeInTheDocument();
+      });
+
+      mockSetGlossaryChildTerms.mockClear();
+
+      await act(async () => {
+        resolveStaleChildFetch({
+          data: [childTerm, siblingTerm],
+          paging: { after: null },
+        });
+      });
+
+      expect(mockSetGlossaryChildTerms).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('Platform Metrics')).not.toBeInTheDocument();
+    });
+
+    it('keeps loadingChildren active when an earlier fetchChildTerms for the same parent is superseded', async () => {
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
+        data: [parentTerm],
+        paging: { total: 1, after: null },
+      });
+
+      let resolveFirstChildFetch!: (value: unknown) => void;
+      let resolveSecondChildFetch!: (value: unknown) => void;
+      mockGetGlossaryTermChildrenLazy
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveFirstChildFetch = resolve;
+          })
+        )
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveSecondChildFetch = resolve;
+          })
+        );
+
+      const { container } = render(<GlossaryTermTab isGlossary />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('Acme Platform')).toBeInTheDocument();
+      });
+
+      const parentRow = container.querySelector(
+        `[data-row-key="${parentFqn}"]`
+      ) as HTMLElement;
+      const expandButton = within(parentRow).getByTestId(
+        'expand-icon'
+      ) as HTMLButtonElement;
+
+      // Two rapid clicks in one frame trigger two overlapping fetchChildTerms
+      // calls for the same parentFQN before React commits setLoadingChildren.
+      act(() => {
+        expandButton.click();
+        expandButton.click();
+      });
+
+      await waitFor(() => {
+        expect(mockGetGlossaryTermChildrenLazy).toHaveBeenCalledTimes(2);
+      });
+
+      const activeParentRow = () =>
+        container.querySelector(`[data-row-key="${parentFqn}"]`) as HTMLElement;
+
+      expect(within(activeParentRow()).getByText('Loader')).toBeInTheDocument();
+
+      mockSetGlossaryChildTerms.mockClear();
+
+      // Resolving the superseded first request must neither write children nor
+      // clear loadingChildren[parentFqn] while the second request is in flight.
+      await act(async () => {
+        resolveFirstChildFetch({
+          data: [childTerm],
+          paging: { after: null },
+        });
+      });
+
+      expect(mockSetGlossaryChildTerms).not.toHaveBeenCalled();
+      expect(within(activeParentRow()).getByText('Loader')).toBeInTheDocument();
+
+      await act(async () => {
+        resolveSecondChildFetch({
+          data: [childTerm, siblingTerm],
+          paging: { after: null },
+        });
+      });
+
+      await waitFor(() => {
+        expect(
+          within(activeParentRow()).queryByText('Loader')
+        ).not.toBeInTheDocument();
+        expect(screen.getByTestId('Platform Metrics')).toBeInTheDocument();
+      });
+    });
+
+    it('discards stale fetchChildTerms responses when only activeGlossary changes during active search', async () => {
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
+        data: [parentTerm],
+        paging: { total: 1, after: null },
+      });
+      mockSearchGlossaryTermsPaginated.mockResolvedValue({
+        data: [parentTerm],
+        paging: { total: 1, after: null },
+      });
+
+      let resolveStaleChildFetch!: (value: unknown) => void;
+      mockGetGlossaryTermChildrenLazy.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveStaleChildFetch = resolve;
+        })
+      );
+
+      const { container, rerender } = render(<GlossaryTermTab isGlossary />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('Acme Platform')).toBeInTheDocument();
+      });
+
+      const searchInput = screen.getByPlaceholderText('label.search-entity');
+      fireEvent.change(searchInput, { target: { value: 'acme' } });
+
+      await waitFor(() => {
+        expect(mockSearchGlossaryTermsPaginated).toHaveBeenCalled();
+      });
+
+      const parentRow = container.querySelector(
+        `[data-row-key="${parentFqn}"]`
+      ) as HTMLElement;
+      fireEvent.click(within(parentRow).getByTestId('expand-icon'));
+
+      await waitFor(() => {
+        expect(mockGetGlossaryTermChildrenLazy).toHaveBeenCalledWith(
+          parentFqn,
+          50,
+          undefined
+        );
+      });
+
+      mockSetGlossaryChildTerms.mockClear();
+
+      // When searchTerm is non-empty, switching activeGlossary does not trigger
+      // the non-search mount effect, isolating the activeGlossary FQN guard.
+      mockUseGlossaryStore.activeGlossary = {
+        ...mockedGlossaryTerms[1],
+        fullyQualifiedName: 'Switched Glossary',
+      };
+      rerender(<GlossaryTermTab isGlossary />);
+
+      await act(async () => {
+        resolveStaleChildFetch({
+          data: [childTerm, siblingTerm],
+          paging: { after: null },
+        });
+      });
+
+      expect(mockSetGlossaryChildTerms).not.toHaveBeenCalled();
     });
   });
 });

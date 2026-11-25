@@ -108,10 +108,8 @@ const ChangePasswordForm: React.FC<ChangePasswordFormProps> = ({
             'input-newPassword',
             {
               required: requiredRule(t('label.new-password')),
-              // passwordRegex is global, so a shared instance keeps lastIndex
-              // between tests; test against a fresh copy.
               validate: (value) =>
-                new RegExp(passwordRegex.source).test(value ?? '') ||
+                passwordRegex.test(value ?? '') ||
                 t('message.password-error-message'),
             }
           )}

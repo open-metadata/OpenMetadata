@@ -21,13 +21,13 @@ import org.openmetadata.service.security.AuthorizationException;
  * Maps the stable agent-profile error codes onto the exception kinds {@code DefaultToolContext}
  * already classifies by name, keeping the code in the message so a client can act on it.
  */
-final class AgentSparqlToolErrors {
+public final class AgentSparqlToolErrors {
 
   private AgentSparqlToolErrors() {}
 
   private static final String ADMIN_RUNS_REBUILD = "an administrator needs to run RdfIndexApp";
 
-  static RuntimeException toToolException(final AgentSparqlException failure) {
+  public static RuntimeException toToolException(final AgentSparqlException failure) {
     final String message = "%s: %s".formatted(failure.getCode().value(), failure.getMessage());
     return switch (failure.getCode()) {
       case QUERY_INVALID,

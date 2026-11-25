@@ -29,6 +29,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -336,6 +338,50 @@ class BundleWarmupCertificationBackfillTest {
     CachedReadBundle.Dto afterTagsRead = bundleCache.get(Entity.PIPELINE, entityId);
     assertNotNull(afterTagsRead);
     assertTrue(afterTagsRead.certificationLoaded);
+  }
+
+  @Test
+  void cachedCertificationWithoutExpiryIsRebuiltAndReCached() {
+    // An older server cached the certification exactly as tag_usage stored it, without dates.
+    long appliedAt = 1_700_000_000_000L;
+    CachedReadBundle.Dto cachedBeforeFix = warmedDto(List.of());
+    cachedBeforeFix.certification =
+        new AssetCertification()
+            .withTagLabel(
+                new TagLabel()
+                    .withTagFQN("Certification.Gold")
+                    .withSource(TagLabel.TagSource.CLASSIFICATION));
+    cachedBeforeFix.certificationLoaded = true;
+    bundleCache.put(Entity.PIPELINE, entityId, cachedBeforeFix);
+
+    CollectionDAO.TagUsageDAO.TagLabelWithFQNHash row = certRow("Certification.Gold");
+    row.setAppliedAt(new Date(appliedAt));
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
+        .thenReturn(List.of(row));
+
+    AssetCertification first = readTagsOnly().getCertification();
+
+    long expectedExpiry = appliedAt + Duration.ofDays(30).toMillis(); // the default P30D
+    assertEquals(appliedAt, first.getAppliedDate());
+    assertEquals(expectedExpiry, first.getExpiryDate());
+    assertEquals(
+        expectedExpiry, bundleCache.get(Entity.PIPELINE, entityId).certification.getExpiryDate());
+
+    assertEquals(expectedExpiry, readTagsOnly().getCertification().getExpiryDate());
+    // Only the first hit rebuilds the entry; the second is served from the healed cache.
+    verify(tagUsageDAO, times(1)).getCertTagsInternalBatch(anyInt(), anyList(), anyString());
+  }
+
+  private Pipeline readTagsOnly() {
+    Pipeline result =
+        repo.get(
+            null,
+            entityId,
+            repo.getFields("tags"),
+            RelationIncludes.fromInclude(Include.NON_DELETED),
+            false);
+    RequestEntityCache.clear();
+    return result;
   }
 
   /** Minimal in-memory CacheProvider that counts SET calls so tests can assert write-back rate. */

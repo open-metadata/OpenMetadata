@@ -589,14 +589,19 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
           @QueryParam("refresh")
           @DefaultValue("false")
           String refresh) {
-    Persona persona = PersonaContextAccess.activePersona(securityContext);
-    return renderPersonaContext(persona, securityContext, format, Boolean.parseBoolean(refresh));
+    return renderPersonaContext(
+        PersonaContextAccess.materializeActive(
+            authorizer, securityContext, Boolean.parseBoolean(refresh)),
+        format);
   }
 
   private Response renderPersonaContext(
       Persona persona, SecurityContext securityContext, String format, boolean refresh) {
-    PersonaContextCache.CachedResult cached =
-        PersonaContextAccess.materialize(authorizer, securityContext, persona, refresh);
+    return renderPersonaContext(
+        PersonaContextAccess.materialize(authorizer, securityContext, persona, refresh), format);
+  }
+
+  private Response renderPersonaContext(PersonaContextCache.CachedResult cached, String format) {
     PersonaContextBuilder.MaterializedPersonaContext value = cached.value();
     Response.ResponseBuilder response =
         AIContextMarkdown.FORMAT_JSON.equalsIgnoreCase(format)

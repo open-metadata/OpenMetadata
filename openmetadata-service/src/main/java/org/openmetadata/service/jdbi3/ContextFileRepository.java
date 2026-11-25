@@ -350,6 +350,12 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     return user == null || user.getId() == null ? "" : user.getId().toString();
   }
 
+  /** A context file outside a folder has its bare name, dots included, as its FQN. */
+  @Override
+  protected boolean nestsUnderUnrelatedFqns() {
+    return true;
+  }
+
   @Override
   public void setFullyQualifiedName(ContextFile file) {
     if (file.getFolder() == null) {

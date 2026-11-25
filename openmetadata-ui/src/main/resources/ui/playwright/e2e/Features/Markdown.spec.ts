@@ -105,12 +105,6 @@ test.describe('Markdown', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // Verify various markdown elements are rendered correctly
     const container = page.getByTestId('asset-description-container');
 
-    // A glossary with no terms opens its description expanded, but the
-    // previewer renders collapsed first and expands in an effect. Clicking
-    // "more" raced that flip: the button became "less" and the click hung.
-    // Wait for the settled, expanded state instead of toggling it.
-    await expect(container.getByTestId('read-less-button')).toBeVisible();
-
     await expect(container.locator('h1')).toHaveText('Heading 1');
     await expect(container.locator('h2')).toHaveText('Heading 2');
     await expect(container.locator('strong')).toHaveText('bold');
@@ -122,6 +116,11 @@ test.describe('Markdown', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await expect(container.locator('table')).toBeVisible();
     await expect(container.locator('ol > li')).toHaveCount(2);
     await expect(container.locator('ul > li')).toHaveCount(3);
+    await expect(
+      container
+        .getByTestId('read-more-button')
+        .or(container.getByTestId('read-less-button'))
+    ).toHaveCount(0);
   });
 
   test('should render nested lists in an HTML description', async ({

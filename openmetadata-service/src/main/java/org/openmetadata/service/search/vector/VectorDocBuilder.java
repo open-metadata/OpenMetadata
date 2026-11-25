@@ -39,6 +39,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
@@ -172,13 +173,19 @@ public class VectorDocBuilder {
    */
   public static List<Map<String, Object>> fromEntity(
       EntityInterface<?> entity, EmbeddingClient embeddingClient) {
+    return fromEntity(entity, embeddingClient, null);
+  }
+
+  public static List<Map<String, Object>> fromEntity(
+      EntityInterface<?> entity, EmbeddingClient embeddingClient, String ontologyBody) {
     if (embeddingClient == null || !embeddingClient.isAvailable()) {
       // Signal the outage explicitly rather than returning an empty list, which callers cannot
       // distinguish from "entity has no chunks" and would treat as a delete of existing vectors.
       throw new EmbeddingUnavailableException(
           "Embedding provider unavailable; skipping chunk build for " + entity.getId());
     }
-    return fromEntity(entity, (index, textToEmbed) -> embeddingClient.embed(textToEmbed));
+    return fromEntity(
+        entity, (index, textToEmbed) -> embeddingClient.embed(textToEmbed), ontologyBody);
   }
 
   /**
@@ -190,6 +197,11 @@ public class VectorDocBuilder {
    */
   public static List<Map<String, Object>> fromEntityReusingEmbeddings(
       EntityInterface<?> entity, Map<Integer, float[]> reuseEmbeddings) {
+    return fromEntityReusingEmbeddings(entity, reuseEmbeddings, null);
+  }
+
+  static List<Map<String, Object>> fromEntityReusingEmbeddings(
+      EntityInterface<?> entity, Map<Integer, float[]> reuseEmbeddings, String ontologyBody) {
     return fromEntity(
         entity,
         (index, textToEmbed) -> {
@@ -199,12 +211,13 @@ public class VectorDocBuilder {
                 "No reusable embedding for chunk " + index + " of entity " + entity.getId());
           }
           return vector;
-        });
+        },
+        ontologyBody);
   }
 
   private static List<Map<String, Object>> fromEntity(
-      EntityInterface<?> entity, ChunkEmbeddingSource embeddingSource) {
-    List<Map<String, Object>> docs = buildChunkFields(entity, embeddingSource);
+      EntityInterface<?> entity, ChunkEmbeddingSource embeddingSource, String ontologyBody) {
+    List<Map<String, Object>> docs = buildChunkFields(entity, embeddingSource, ontologyBody);
     if (entity instanceof GlossaryTerm term) {
       List<Map<String, Object>> relatedTermDocs = buildRelatedTermRefs(term);
       if (!relatedTermDocs.isEmpty()) {
@@ -250,23 +263,27 @@ public class VectorDocBuilder {
   /** One embedding-field map per body chunk. See {@link #fromEntity} for the doc shape. */
   public static List<Map<String, Object>> buildChunkFields(
       EntityInterface<?> entity, EmbeddingClient embeddingClient) {
-    return buildChunkFields(entity, (index, textToEmbed) -> embeddingClient.embed(textToEmbed));
+    return buildChunkFields(
+        entity, (index, textToEmbed) -> embeddingClient.embed(textToEmbed), null);
   }
 
   private static List<Map<String, Object>> buildChunkFields(
-      EntityInterface<?> entity, ChunkEmbeddingSource embeddingSource) {
+      EntityInterface<?> entity, ChunkEmbeddingSource embeddingSource, String ontologyBody) {
     EntityReference reference = entity.getEntityReference();
     String entityType = reference == null ? null : reference.getType();
+    final String body = ontologyBody == null ? buildBodyText(entity, entityType) : ontologyBody;
+    final String semanticBody =
+        OntologyTermSearch.isTerm(entityType) ? body : buildSemanticBodyText(entity, entityType);
     ChunkContext ctx =
         new ChunkContext(
             entity,
             entityType,
             entity.getId().toString(),
-            computeFingerprintForEntity(entity),
+            computeFingerprintForEntity(entity, body),
             buildMetaLightText(entity, entityType),
             buildSemanticMetaLightText(entity, entityType),
-            TextChunkManager.chunk(buildBodyText(entity, entityType)),
-            TextChunkManager.chunk(buildSemanticBodyText(entity, entityType)),
+            TextChunkManager.chunk(body),
+            TextChunkManager.chunk(semanticBody),
             // Denormalized keyword/filter fields are entity-level constants — build them once and
             // share them across every chunk instead of recomputing (reflection, HTML strip,
             // fqnParts,
@@ -577,14 +594,20 @@ public class VectorDocBuilder {
    */
   public static Map<String, Object> buildEmbeddingFields(
       EntityInterface<?> entity, EmbeddingClient embeddingClient) {
+    return buildEmbeddingFields(entity, embeddingClient, null);
+  }
+
+  public static Map<String, Object> buildEmbeddingFields(
+      EntityInterface<?> entity, EmbeddingClient embeddingClient, String ontologyBody) {
     String parentId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
 
     String metaLight = buildMetaLightText(entity, entityType);
-    String body = buildBodyText(entity, entityType);
+    String body = ontologyBody == null ? buildBodyText(entity, entityType) : ontologyBody;
     String semanticMetaLight = buildSemanticMetaLightText(entity, entityType);
-    String semanticBody = buildSemanticBodyText(entity, entityType);
-    String fingerprint = computeFingerprintForEntity(entity);
+    String semanticBody =
+        OntologyTermSearch.isTerm(entityType) ? body : buildSemanticBodyText(entity, entityType);
+    String fingerprint = computeFingerprintForEntity(entity, body);
 
     List<String> chunks = TextChunkManager.chunk(body);
     int chunkCount = chunks.size();
@@ -612,8 +635,11 @@ public class VectorDocBuilder {
 
   public static String computeFingerprintForEntity(EntityInterface<?> entity) {
     String entityType = entity.getEntityReference().getType();
-    String metaLight = buildMetaLightText(entity, entityType);
-    String body = buildBodyText(entity, entityType);
+    return computeFingerprintForEntity(entity, buildBodyText(entity, entityType));
+  }
+
+  public static String computeFingerprintForEntity(EntityInterface<?> entity, String body) {
+    String metaLight = buildMetaLightText(entity, entity.getEntityReference().getType());
     return TextChunkManager.computeFingerprint(metaLight + "|" + body + shareConfigPart(entity));
   }
 
@@ -766,6 +792,9 @@ public class VectorDocBuilder {
   }
 
   static String buildBodyText(EntityInterface<?> entity, String entityType) {
+    if (OntologyTermSearch.isTerm(entityType)) {
+      return OntologyTermSearch.embeddingBody(entity, VectorDocBuilder::removeHtml);
+    }
     if (entityType != null) {
       BodyTextExtractor customExtractor = BODY_TEXT_EXTRACTORS.get(entityType);
       if (customExtractor != null) {
@@ -946,6 +975,9 @@ public class VectorDocBuilder {
   }
 
   static String buildSemanticBodyText(EntityInterface<?> entity, String entityType) {
+    if (OntologyTermSearch.isTerm(entityType)) {
+      return buildBodyText(entity, entityType);
+    }
     if (entityType != null) {
       BodyTextExtractor customExtractor = BODY_TEXT_EXTRACTORS.get(entityType);
       if (customExtractor != null) {
@@ -1068,7 +1100,7 @@ public class VectorDocBuilder {
     return null;
   }
 
-  static String removeHtml(String text) {
+  public static String removeHtml(String text) {
     if (text == null || text.isEmpty()) return "";
     return text.replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ").trim();
   }

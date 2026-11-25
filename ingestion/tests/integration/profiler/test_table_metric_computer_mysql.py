@@ -47,7 +47,7 @@ class NonExistentModel(Base):
 
 @pytest.fixture(scope="module")
 def mysql_engine():
-    container = MySqlContainer(image="mysql:8.4.5", dbname="test_metrics")
+    container = MySqlContainer(image="mysql:8.4.13", dbname="test_metrics")
     with container as container:
         engine = create_engine(container.get_connection_url())
         with engine.connect() as conn:

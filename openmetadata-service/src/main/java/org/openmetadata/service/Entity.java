@@ -26,6 +26,7 @@ import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -511,6 +512,10 @@ public final class Entity {
 
   public static Set<String> getEntityList() {
     return Collections.unmodifiableSet(ENTITY_LIST);
+  }
+
+  public static Collection<EntityRepository<? extends EntityInterface<?>>> getEntityRepositories() {
+    return Collections.unmodifiableCollection(ENTITY_REPOSITORY_MAP.values());
   }
 
   /**

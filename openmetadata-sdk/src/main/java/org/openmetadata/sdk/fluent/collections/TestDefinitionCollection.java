@@ -47,10 +47,10 @@ public class TestDefinitionCollection implements Iterable<TestDefinition> {
     }
 
     try {
-      ListParams pageParams = new ListParams();
-      pageParams.setLimit(params.getLimit());
+      ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<TestDefinition> response = client.testDefinitions().list(pageParams);

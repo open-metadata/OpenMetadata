@@ -662,16 +662,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
       String after,
       String runId,
       int limit) {
-    boolean useStreamableLogs =
-        Boolean.TRUE.equals(ingestionPipeline.getEnableStreamableLogs())
-            || (ingestionPipeline.getIngestionRunner() != null
-                && ingestionPipelineRepository.isIngestionRunnerStreamableLogsEnabled(
-                    ingestionPipeline.getIngestionRunner()));
-    if (useStreamableLogs) {
-      PipelineStatus latestStatus =
-          IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
-      String effectiveRunId =
-          !nullOrEmpty(runId) ? runId : (latestStatus != null ? latestStatus.getRunId() : null);
+    PipelineStatus latestStatus =
+        IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
+    String effectiveRunId =
+        !nullOrEmpty(runId) ? runId : (latestStatus != null ? latestStatus.getRunId() : null);
+    if (readsAppRunLogsFromStorage(
+        ingestionPipelineRepository, ingestionPipeline, effectiveRunId, latestStatus)) {
       if (!nullOrEmpty(effectiveRunId)) {
         UUID runUuid;
         try {
@@ -697,6 +693,18 @@ public class AppResource extends EntityResource<App, AppRepository> {
       }
     }
     return pipelineServiceClient.getIngestionLogs(ingestionPipeline, after, runId);
+  }
+
+  private static boolean readsAppRunLogsFromStorage(
+      IngestionPipelineRepository ingestionPipelineRepository,
+      IngestionPipeline ingestionPipeline,
+      String runId,
+      PipelineStatus latestStatus) {
+    boolean runGoing =
+        ingestionPipelineRepository.isRunGoing(
+            ingestionPipeline.getFullyQualifiedName(), runId, latestStatus);
+    return ingestionPipelineRepository.readsRunLogsThroughLogStorage(
+        ingestionPipeline, runId, runGoing);
   }
 
   @GET

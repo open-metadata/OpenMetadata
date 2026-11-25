@@ -259,18 +259,33 @@ def _download_clidriver(clidriver_version: str, archive: Path) -> None:
 def _extract_clidriver(archive: Path, destination: Path) -> Path:
     if archive.suffix == ".zip":
         with zipfile.ZipFile(archive) as zip_file:
+            _reject_escaping_zip_entries(archive, zip_file.namelist(), destination)
             zip_file.extractall(destination)
     else:
+        if not hasattr(tarfile, "data_filter"):
+            # An unfiltered extractall writes `..` members and follows links outside destination
+            # (ADR:2026-11-24-db2-clidriver-archives-extract-only-with-filters).
+            raise RuntimeError(
+                f"Extracting {archive.name} safely needs tarfile's extraction filters (Python 3.10.12+ or 3.11.4+)"
+            )
         with tarfile.open(archive) as tar:
-            if hasattr(tarfile, "data_filter"):
-                # Rejects members that would land outside destination (Python 3.10.12+).
-                tar.extractall(destination, filter="data")
-            else:
-                tar.extractall(destination)
+            tar.extractall(destination, filter="data")
     driver = destination / "clidriver"
     if not driver.is_dir():
         raise RuntimeError(f"{archive.name} does not contain a clidriver directory")
     return driver
+
+
+def _reject_escaping_zip_entries(archive: Path, names: list[str], destination: Path) -> None:
+    """Refuse a zip with an entry that would resolve outside ``destination``.
+
+    ``ZipFile.extractall`` silently rewrites such an entry to land inside ``destination``;
+    failing instead matches the tar branch, whose data filter refuses ``..`` members.
+    """
+    base = destination.resolve()
+    for name in names:
+        if not (base / name).resolve().is_relative_to(base):
+            raise RuntimeError(f"{archive.name} has an entry outside the extraction directory: {name!r}")
 
 
 _IBMI_PATCHED = False

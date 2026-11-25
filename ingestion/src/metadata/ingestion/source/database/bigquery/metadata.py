@@ -101,7 +101,6 @@ from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_TABLE_DDLS,
     BIGQUERY_GET_TABLE_DDLS_BY_REGION,
     BIGQUERY_LIFE_CYCLE_QUERY,
-    BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
 )
 from metadata.ingestion.source.database.bigquery.sharding import (
     MAX_FAMILIES,
@@ -264,6 +263,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     Database metadata from Bigquery Source
     """
 
+    life_cycle_query = BIGQUERY_LIFE_CYCLE_QUERY
+
     @retry_with_docker_host()
     def __init__(self, config, metadata, incremental_configuration: IncrementalConfig):
         # Check if the engine is established before setting project IDs
@@ -278,7 +279,6 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         # list of all project IDs. Subsequently, after the invokation,
         # we proceed to test the connections for each of these project IDs
         self.project_ids = self.set_project_id(self.service_connection)
-        self.life_cycle_query = BIGQUERY_LIFE_CYCLE_QUERY
         self.test_connection = self._test_connection
         self.test_connection()
 
@@ -293,7 +293,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self._policy_tag_cache = {}
         self._taxonomy_cache = {}
         self._taxonomy_to_tags = {}
-        self._table_ddl_cache = {}
+        # Each schema worker thread ingests one dataset at a time and reads each table's DDL
+        # once, so it holds only its current dataset's DDLs: memory is threads x one dataset,
+        # and concurrent datasets never share (or clear) each other's entries.
+        self._ddl_local = threading.local()
         self._policy_tag_client = None
         self._policy_tag_prefetch_key: tuple[str, ...] | None = None
         self._policy_tag_lock = threading.Lock()
@@ -691,16 +694,17 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
         """
-        Override to skip lifecycle data for schemas whose dataset location does not
-        match the configured usageLocation.
+        Override to skip shard-family lifecycle data for schemas whose dataset location
+        does not match the configured usageLocation.
 
         BigQuery routes INFORMATION_SCHEMA queries to the location specified in the
         connection (usageLocation). When a dataset lives in a different GCP region,
         the query returns a 404. Skipping early avoids one failed API call per table
-        in the affected schema.
+        in the affected schema. Other tables read their lifecycle from the BigQuery API,
+        which is not location-bound.
         """
         usage_location = getattr(self.service_connection, "usageLocation", None)
-        if usage_location:
+        if usage_location and self._is_shard_family():
             schema_name = self.context.get().database_schema
             try:
                 dataset_obj = self.get_dataset_obj(schema_name)
@@ -747,14 +751,34 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 cache.popitem(last=False)
         return cache[key]
 
+    def _is_shard_family(self) -> bool:
+        return self.sharding_enabled and bool(getattr(self._shard_context(), "shard_family", None))
+
     def life_cycle_query_dict(self, query: str):  # pyright: ignore[reportIncompatibleVariableOverride]
-        if not self.sharding_enabled:
-            return super().life_cycle_query_dict(query)
+        """
+        Read `updated` from the API table object, never from INFORMATION_SCHEMA.TABLE_STORAGE:
+        that view is only exposed per region and bills the whole region on every query
+        (ADR:2026-11-24-bigquery-lifecycle-reads-the-table-api).
+        """
         context = self._shard_context()
-        descriptor = context.shard_family
-        if not descriptor:
-            values = self._sharded_table_metadata(query, context.table)
-            return {context.table: LifeCycleQueryByTable.model_validate(values)} if values is not None else {}
+        family = getattr(context, "shard_family", None) if self.sharding_enabled else None
+        if family is None:
+            table = self.get_table_obj(context.table)
+            return {
+                context.table: LifeCycleQueryByTable.model_validate(
+                    {"table_name": context.table, "created_at": table.created, "updated_at": table.modified}
+                )
+            }
+        family_lifecycle = self._shard_family_created(query).get(context.table)
+        if family_lifecycle is None:
+            return {}
+        # The newest shard stands in for the family's last write, as it does for columns and DDL.
+        representative = self.get_table_obj(family.representative.tableName)
+        return {context.table: family_lifecycle.model_copy(update={"updated_at": representative.modified})}
+
+    def _shard_family_created(self, query: str) -> dict[str, LifeCycleQueryByTable]:
+        """Earliest shard creation per family, from one dataset-scoped query per dataset."""
+        context = self._shard_context()
         if context.shard_lifecycle is None:
             summaries = {}
             with self.engine.connect() as conn:
@@ -772,46 +796,9 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     else:
                         stored = summaries[logical]
                         created = [value for value in (stored.created_at, incoming.created_at) if value is not None]
-                        updated = [value for value in (stored.updated_at, incoming.updated_at) if value is not None]
                         stored.created_at = min(created) if created else None
-                        stored.updated_at = max(updated) if updated else None
             context.shard_lifecycle = summaries
         return context.shard_lifecycle
-
-    def _get_schema_region(self, schema_name: str) -> str | None:
-        """Resolve the dataset's region for region-scoped INFORMATION_SCHEMA queries."""
-        region = None
-        try:
-            dataset_obj = self.get_dataset_obj(schema_name)
-            region = getattr(dataset_obj, "location", None)
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.debug(
-                "Could not resolve dataset region for schema '%s', falling back to dataset-scoped query: %s",
-                schema_name,
-                exc,
-            )
-        return region
-
-    def get_life_cycle_query(self):
-        """
-        Build the life cycle query.
-
-        When the dataset region is resolvable we use the region-scoped variant that
-        also captures the last-modified timestamp from INFORMATION_SCHEMA.TABLE_STORAGE
-        (which is only exposed at region/org level). Otherwise we fall back to the
-        dataset-scoped created-only query.
-        """
-        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
-        schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
-        region = self._get_schema_region(schema_name)
-        if region:
-            query = BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION.format(
-                database_name=database, schema_name=schema_name, region=region
-            )
-        else:
-            query = BIGQUERY_LIFE_CYCLE_QUERY.format(database_name=database, schema_name=schema_name)
-        return query
 
     def _prefetch_policy_tags(self):
         """Pre-fetch all policy tags at schema level to avoid per-column API calls"""
@@ -878,10 +865,24 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         """Pre-fetch all table DDLs at schema level using INFORMATION_SCHEMA"""
         if not self.source_config.includeDDL:
             return
+        self._load_table_ddls(self.context.get().database, schema_name)  # pyright: ignore[reportAttributeAccessIssue]
 
-        self._table_ddl_cache.clear()
+    def _load_table_ddls(self, database: str, schema_name: str) -> dict[str, str]:
+        """Fetch the dataset's DDLs and make them this thread's current dataset."""
+        ddls = self._fetch_table_ddls(database, schema_name)
+        self._ddl_local.dataset_key = f"{database}.{schema_name}"
+        self._ddl_local.ddls = ddls
+        return ddls
 
-        database = self.context.get().database
+    def _get_table_ddls(self, schema_name: str) -> dict[str, str]:
+        """Return the dataset's DDLs, fetching them if this thread holds another dataset."""
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        if getattr(self._ddl_local, "dataset_key", None) == f"{database}.{schema_name}":
+            return self._ddl_local.ddls
+        return self._load_table_ddls(database, schema_name)
+
+    def _fetch_table_ddls(self, database: str, schema_name: str) -> dict[str, str]:
+        """Fetch every table's DDL in the dataset; an empty dict when the query fails."""
 
         try:
             dataset_obj = self.get_dataset_obj(schema_name)
@@ -909,11 +910,11 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             )
         )
 
+        ddls: dict[str, str] = {}
         try:
             with self.engine.connect() as conn:
                 results = conn.execute(text(query)).all()
-            for row in results:
-                self._table_ddl_cache[row.table_name] = row.ddl
+            ddls = {row.table_name: row.ddl for row in results}
         except Exception as exc:
             logger.warning(
                 "Error pre-fetching table DDLs for '%s.%s': %s",
@@ -922,6 +923,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 exc,
             )
             logger.debug(traceback.format_exc())
+        return ddls
 
     def _register_tag(
         self,
@@ -1329,7 +1331,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     )
                     values = self._sharded_table_metadata(query, table_name)
                     return values["ddl"] if values else None
-                return self._table_ddl_cache.get(table_name)
+                return self._get_table_ddls(schema_name).get(table_name)
         except NotImplementedError:
             logger.warning(f"Schema definition not implemented for {schema_name}.{table_name}")
         except Exception as exc:
