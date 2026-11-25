@@ -4163,6 +4163,7 @@
     "value-count": "Conteggio Valori",
     "value-plural": "Valori",
     "value-type-or-target": "Tipo di valore o destinazione",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "Varianza",
     "variant": "Variante",
     "variant-plural": "Varianti",

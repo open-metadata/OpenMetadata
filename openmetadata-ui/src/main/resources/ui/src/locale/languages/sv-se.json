@@ -4163,6 +4163,7 @@
     "value-count": "Värdeantal",
     "value-plural": "Värden",
     "value-type-or-target": "Värdetyp eller mål",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "Varians",
     "variant": "Metrikvariant",
     "variant-plural": "Varianter",

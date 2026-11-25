@@ -4163,6 +4163,7 @@
     "value-count": "Aantal waarden",
     "value-plural": "Waarden",
     "value-type-or-target": "Waardetype of doel",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "Variantie",
     "variant": "Metriekvariant",
     "variant-plural": "Varianten",
