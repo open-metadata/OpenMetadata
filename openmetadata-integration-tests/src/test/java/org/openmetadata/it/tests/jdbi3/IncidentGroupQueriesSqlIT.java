@@ -10,108 +10,56 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
-import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.core.statement.StatementContext;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jdbi.v3.sqlobject.SqlObjects;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.mockito.MockedStatic;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.tests.type.IncidentGroupBy;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers(disabledWithoutDocker = true)
 @Execution(ExecutionMode.SAME_THREAD)
-class IncidentGroupQueriesSqlTest {
-  private static final String PASSWORD = "incident-groups-test";
-
+class IncidentGroupQueriesSqlIT {
   @Test
-  void groupsPreservePreviewsWithoutRedundantQueriesOnPostgres() throws Exception {
-    try (var database =
-        new GenericContainer<>("postgres:15")
-            .withEnv("POSTGRES_PASSWORD", PASSWORD)
-            .withExposedPorts(5432)
-            .waitingFor(
-                Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2))) {
-      database.start();
-      runChecks(
-          connect(
-              "jdbc:postgresql://%s:%d/postgres"
-                  .formatted(database.getHost(), database.getMappedPort(5432)),
-              "postgres",
-              "org.postgresql.Driver"),
-          false);
-    }
+  void groupsPreservePreviewsWithoutRedundantQueriesOnPostgres() {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.POSTGRES, "PostgreSQL only");
+    ScratchDatabase.withJdbi(jdbi -> runChecks(jdbi, false));
   }
 
   @Test
-  void groupsPreservePreviewsWithoutRedundantQueriesOnMysql() throws Exception {
-    try (var database =
-        new GenericContainer<>("mysql:8.4.13")
-            .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-            .withEnv("MYSQL_DATABASE", "incident_groups")
-            .withEnv("MYSQL_ROOT_HOST", "%")
-            .withExposedPorts(3306)
-            .waitingFor(
-                Wait.forSuccessfulCommand(
-                    "mysql --protocol=TCP --host=127.0.0.1 --user=root --password="
-                        + PASSWORD
-                        + " --execute='SELECT 1'"))) {
-      database.start();
-      runChecks(
-          connect(
-              "jdbc:mysql://%s:%d/incident_groups?allowPublicKeyRetrieval=true&useSSL=false"
-                  .formatted(database.getHost(), database.getMappedPort(3306)),
-              "root",
-              "com.mysql.cj.jdbc.Driver"),
-          true);
-    }
+  void groupsPreservePreviewsWithoutRedundantQueriesOnMysql() {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.MYSQL, "MySQL only");
+    ScratchDatabase.withJdbi(jdbi -> runChecks(jdbi, true));
   }
 
-  private Jdbi connect(String url, String username, String driver) {
-    var jdbi = Jdbi.create(url, username, PASSWORD).installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class).setSqlLocator(new ConnectionAwareAnnotationSqlLocator(driver));
-    return jdbi;
-  }
-
-  private void runChecks(Jdbi jdbi, boolean mysql) throws Exception {
-    jdbi.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
+  private void runChecks(Jdbi jdbi, boolean mysql) {
     createFixture(jdbi, mysql);
-    var config = mock(DatasourceConfig.class);
-    when(config.isMySQL()).thenReturn(mysql);
-    try (MockedStatic<DatasourceConfig> datasource = mockStatic(DatasourceConfig.class)) {
-      datasource.when(DatasourceConfig::getInstance).thenReturn(config);
-      verifyGroups(jdbi);
-    }
+    DatasourceConfig.initialize(ScratchDatabase.dialect().label);
+    verifyGroups(jdbi);
   }
 
-  private void createFixture(Jdbi jdbi, boolean mysql) throws Exception {
+  private void createFixture(Jdbi jdbi, boolean mysql) {
     var schema =
         MigrationFile.parseSqlUnits(
-            new File(
-                "../bootstrap/sql/migrations/native/2.1.1/"
-                    + (mysql ? "mysql" : "postgres")
-                    + "/schemaChanges.sql"),
+            migrationFile(mysql ? "mysql" : "postgres"),
             mysql ? ConnectionType.MYSQL : ConnectionType.POSTGRES);
     jdbi.useHandle(
         handle -> {
@@ -151,6 +99,19 @@ class IncidentGroupQueriesSqlTest {
           handle.execute(
               "INSERT INTO test_case_incident VALUES ('i1','f1','Assigned','Severity1','alice',1,2),('i2','f1','New','Severity2',NULL,2,3),('i3','f2','Ack','Severity2','alice',3,4),('i4','f3','New','Severity3',NULL,4,5),('i5','f1','Resolved','Severity1','alice',5,6),('i6','f4','New','Severity1',NULL,6,7)");
         });
+  }
+
+  private static File migrationFile(String dialect) {
+    Path current = Path.of(System.getProperty("basedir", ".")).toAbsolutePath();
+    while (current != null && !Files.isDirectory(current.resolve("bootstrap/sql/migrations"))) {
+      current = current.getParent();
+    }
+    if (current == null) {
+      throw new IllegalStateException("Could not locate bootstrap/sql/migrations directory");
+    }
+    return current
+        .resolve("bootstrap/sql/migrations/native/2.1.1/%s/schemaChanges.sql".formatted(dialect))
+        .toFile();
   }
 
   private void verifyGroups(Jdbi jdbi) {
