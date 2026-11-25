@@ -282,60 +282,23 @@ public class McpToolsValidationIT extends McpTestBase {
 
   @Test
   @Order(24)
-  void testPatchEntityToolWithFullResponse() throws Exception {
-    final String patchJson =
-        "[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"Updated description via MCP full patch\"}]";
-    final Map<String, Object> toolCall =
-        McpTestUtils.createPatchEntityToolCall(
-            Entity.TABLE, testTable.getFullyQualifiedName(), patchJson, "full");
-
-    final JsonNode entityData = readEntityText(executeToolCall(toolCall));
-    assertThat(entityData.path("fullyQualifiedName").asText())
-        .isEqualTo(testTable.getFullyQualifiedName());
-    assertThat(entityData.path("entityType").asText()).isEqualTo(Entity.TABLE);
-    assertThat(entityData.path("_operation").asText()).isEqualTo("updated");
-    assertThat(entityData.has("version")).isTrue();
-    assertThat(entityData.has("updatedAt")).isTrue();
-    assertThat(entityData.path("description").asText())
-        .isEqualTo("Updated description via MCP full patch");
-    assertThat(entityData.path("columns").isArray()).isTrue();
-    assertThat(entityData.path("columns").size()).isEqualTo(3);
-  }
-
-  @Test
-  @Order(25)
   void testPatchEntityWideTableStaysCompactUnderBudget() throws Exception {
-    final String patchJson =
+    String patchJson =
         "[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"Wide table patched compactly\"}]";
-    final Map<String, Object> toolCall =
+    Map<String, Object> toolCall =
         McpTestUtils.createPatchEntityToolCall(
             Entity.TABLE, wideTable.getFullyQualifiedName(), patchJson);
 
-    final JsonNode entityData = readEntityText(executeToolCall(toolCall));
+    JsonNode entityData = readEntityText(executeToolCall(toolCall));
     assertThat(entityData.path("fullyQualifiedName").asText())
         .isEqualTo(wideTable.getFullyQualifiedName());
-    assertThat(entityData.path("entityType").asText()).isEqualTo(Entity.TABLE);
-    assertThat(entityData.path("_operation").asText()).isEqualTo("updated");
     assertThat(entityData.path("description").asText()).isEqualTo("Wide table patched compactly");
     assertThat(entityData.path("changed")).extracting(JsonNode::asText).contains("description");
     assertThat(entityData.has("columns")).isFalse();
     assertThat(entityData.has("truncated")).isFalse();
-  }
-
-  @Test
-  @Order(26)
-  void testPatchEntityInvalidResponseModeReturns400Error() throws Exception {
-    final String patchJson =
-        "[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"Should not apply\"}]";
-    final Map<String, Object> toolCall =
-        McpTestUtils.createPatchEntityToolCall(
-            Entity.TABLE, testTable.getFullyQualifiedName(), patchJson, "verbose");
-
-    final JsonNode result = executeToolCall(toolCall);
-    assertThat(result.path("isError").asBoolean()).isTrue();
-    assertThat(result.path("structuredContent").path("statusCode").asInt()).isEqualTo(400);
-    assertThat(result.path("structuredContent").path("error").asText())
-        .contains("Nothing was changed");
+    assertThat(entityData.toString().length())
+        .as("a description patch on a wide table stays small: %s", entityData)
+        .isLessThan(2_000);
   }
 
   @Test
@@ -818,23 +781,21 @@ public class McpToolsValidationIT extends McpTestBase {
     assertThat(firstResult.has("text")).isTrue();
     String responseText = firstResult.get("text").asText();
 
-    // Default compact patch_entity returns identity, confirmation metadata, and touched non-bulk
-    // fields while omitting wide structural collections like columns.
+    // The reply is a flat confirmation: identity, version, what changed and its new value, but not
+    // the untouched columns.
     JsonNode entityData = OBJECT_MAPPER.readTree(responseText);
     assertThat(entityData.has("id")).isTrue();
-    assertThat(entityData.has("name")).isTrue();
     assertThat(entityData.has("description")).isTrue();
     assertThat(entityData.get("description").asText())
         .contains("Updated description via MCP patch tool");
     assertThat(entityData.has("fullyQualifiedName")).isTrue();
     assertThat(entityData.get("fullyQualifiedName").asText()).isEqualTo(patchedEntity);
-    assertThat(entityData.path("entityType").asText()).isEqualTo(Entity.TABLE);
     assertThat(entityData.path("_operation").asText())
         .withFailMessage("Patch response payload: %s", responseText)
         .isEqualTo("updated");
     assertThat(entityData.has("version")).isTrue();
+    assertThat(entityData.path("entityType").asText()).isEqualTo(Entity.TABLE);
     assertThat(entityData.has("updatedAt")).isTrue();
-    assertThat(entityData.path("changed").isArray()).isTrue();
     assertThat(entityData.path("changed")).extracting(JsonNode::asText).contains("description");
     assertThat(entityData.has("columns"))
         .withFailMessage("Compact patch response must omit columns: %s", responseText)

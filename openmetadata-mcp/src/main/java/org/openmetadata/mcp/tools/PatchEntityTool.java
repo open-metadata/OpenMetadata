@@ -8,13 +8,11 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.mcp.tools.McpResponseUtils.PatchProjectionSpec;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
@@ -34,28 +32,24 @@ import org.openmetadata.service.util.RestUtil;
  * Applies a JSON Patch (RFC 6902) to an entity - the same document the REST PATCH API takes, passed
  * through as written.
  *
- * <p>Nothing here rewrites the operations, and only paths into a service's connection are refused
- * ({@link #requireConnectionUntouched}). A patch touches exactly the paths it names, which is the
- * point of the format; this tool's job is to authorize it and hand it to the repository. By
- * default, the reply carries a compact confirmation and touched non-bulk fields unless {@code
- * response="full"} is requested (ADR:2026-11-17-mcp-patch-entity-returns-compact-confirmation).
+ * <p>Nothing here rewrites the operations, and only paths into a service's connection are
+ * refused ({@link #requireConnectionUntouched}). A patch touches exactly the paths it names,
+ * which is the point of the format; this tool's job is to authorize it and hand it to the
+ * repository. The parts that are easy to get wrong - {@code /owners} replaces the whole list where
+ * {@code /owners/-} appends to it - are taught in the tool description, where the model reads them,
+ * rather than enforced by second-guessing a well-formed patch.
+ *
+ * <p>The reply confirms the write rather than echoing the entity
+ * (ADR:2026-11-17-mcp-patch-entity-returns-compact-confirmation).
  */
 @Slf4j
 public class PatchEntityTool implements McpTool {
 
-  private static final String ENTITY_TYPE_PARAM = "entityType";
-  private static final String FQN_PARAM = "fqn";
   private static final String PATCH_PARAM = "patch";
-  private static final String RESPONSE_PARAM = "response";
-  private static final String COMPACT_RESPONSE = "compact";
-  private static final String FULL_RESPONSE = "full";
   private static final String OP_KEY = "op";
   private static final String PATH_KEY = "path";
   private static final String VALUE_KEY = "value";
   private static final String FROM_KEY = "from";
-  private static final String TEST_OP = "test";
-  private static final String EXTENSION_FIELD = "extension";
-  private static final String POINTER_PREFIX = "/";
   private static final String CONNECTION_POINTER = "/connection";
 
   // Resources that do lifecycle work outside EntityRepository.patch(), which a direct repository
@@ -99,181 +93,69 @@ public class PatchEntityTool implements McpTool {
   /** The members RFC 6902 requires for each operation, beyond {@code op} itself. */
   private static final Map<String, List<String>> REQUIRED_MEMBERS =
       Map.of(
-          "add",
-          List.of(PATH_KEY, VALUE_KEY),
-          "replace",
-          List.of(PATH_KEY, VALUE_KEY),
-          TEST_OP,
-          List.of(PATH_KEY, VALUE_KEY),
-          "remove",
-          List.of(PATH_KEY),
-          "move",
-          List.of(PATH_KEY, FROM_KEY),
-          "copy",
-          List.of(PATH_KEY, FROM_KEY));
-
-  private record ValidatedPatchRequest(
-      String entityType, String fqn, JsonPatch jsonPatch, PatchProjectionSpec projection) {}
+          "add", List.of(PATH_KEY, VALUE_KEY),
+          "replace", List.of(PATH_KEY, VALUE_KEY),
+          "test", List.of(PATH_KEY, VALUE_KEY),
+          "remove", List.of(PATH_KEY),
+          "move", List.of(PATH_KEY, FROM_KEY),
+          "copy", List.of(PATH_KEY, FROM_KEY));
 
   @Override
   public Map<String, Object> execute(
-      final Authorizer authorizer,
-      final CatalogSecurityContext securityContext,
-      final Map<String, Object> params) {
-    final ValidatedPatchRequest request = validateRequest(securityContext, params);
-    authorizeAndEnforceVisibility(authorizer, securityContext, request);
-    final RestUtil.PatchResponse<? extends EntityInterface<?>> response =
-        applyPatch(securityContext, request);
-    final EntityInterface<?> visibleEntity =
-        CommonUtils.withVisibleEvidence(response.entity(), authorizer, securityContext);
-    return McpResponseUtils.markHeld(
-        McpResponseUtils.projectPatch(visibleEntity, response.changeType(), request.projection()),
-        response.pendingChangeRequestId());
-  }
-
-  private static ValidatedPatchRequest validateRequest(
-      final CatalogSecurityContext securityContext, final Map<String, Object> params) {
-    final String entityType = (String) params.get(ENTITY_TYPE_PARAM);
-    final String fqn = (String) params.get(FQN_PARAM);
+      Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params) {
+    String entityType = (String) params.get("entityType");
+    String fqn = (String) params.get("fqn");
     requireTarget(entityType, fqn);
-    final boolean fullResponse = wantsFullResponse(params);
     requireGenericPatchLifecycle(entityType);
     CommonUtils.refuseImpersonatedGrantWrite(securityContext, entityType);
-    final JsonPatch jsonPatch = parsePatch((String) params.get(PATCH_PARAM));
-    requireConnectionUntouched(entityType, jsonPatch);
-    final PatchProjectionSpec projection = buildProjectionSpec(entityType, fullResponse, jsonPatch);
-    return new ValidatedPatchRequest(entityType, fqn, jsonPatch, projection);
-  }
 
-  private static void authorizeAndEnforceVisibility(
-      final Authorizer authorizer,
-      final CatalogSecurityContext securityContext,
-      final ValidatedPatchRequest request) {
+    JsonPatch jsonPatch = parsePatch((String) params.get(PATCH_PARAM));
+    requireConnectionUntouched(entityType, jsonPatch);
+
     // The permission comes from the patch itself: the operations it carries decide which
     // MetadataOperations are checked, exactly as the REST resource does it.
     authorizer.authorize(
         securityContext,
-        new OperationContext(request.entityType(), request.jsonPatch()),
-        new ResourceContext<>(
-            request.entityType(), null, request.fqn(), ResourceContextInterface.Operation.PATCH));
-    // The response carries the patched entity, so this write answers a read as well: apply the
-    // per-entity visibility rules the authorize() above cannot see.
-    CommonUtils.enforceEntityVisibility(request.entityType(), request.fqn(), securityContext);
-  }
+        new OperationContext(entityType, jsonPatch),
+        new ResourceContext<>(entityType, null, fqn, ResourceContextInterface.Operation.PATCH));
 
-  private static RestUtil.PatchResponse<? extends EntityInterface<?>> applyPatch(
-      final CatalogSecurityContext securityContext, final ValidatedPatchRequest request) {
-    final EntityRepository<? extends EntityInterface<?>> repository =
-        Entity.getEntityRepository(request.entityType());
-    final String userName = securityContext.getUserPrincipal().getName();
-    final RestUtil.PatchResponse<? extends EntityInterface<?>> response =
+    // The response echoes the changed fields, so this write answers a read as well: apply the
+    // per-entity visibility rules the authorize() above cannot see, since they live outside the
+    // policy model.
+    CommonUtils.enforceEntityVisibility(entityType, fqn, securityContext);
+
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
+    String userName = securityContext.getUserPrincipal().getName();
+    RestUtil.PatchResponse<? extends EntityInterface<?>> response =
         repository.patch(
             null,
-            request.fqn(),
+            fqn,
             userName,
-            request.jsonPatch(),
+            jsonPatch,
             // AUTOMATED, not MANUAL: the write is made by an agent through MCP, not by a person
-            // editing in the UI.
+            // editing in the UI. RecognizerFeedbackRepository draws the same line - a human review
+            // is MANUAL, anything machine-made is AUTOMATED - and the change summary is what tells
+            // a stewardship report which is which.
             ChangeSource.AUTOMATED,
             null,
             ImpersonationContext.getImpersonatedBy());
     McpChangeEventUtil.publishChangeEvent(response.entity(), response.changeType(), userName);
-    return response;
+    return McpResponseUtils.markHeld(
+        McpResponseUtils.compactPatch(
+            CommonUtils.withVisibleEvidence(response.entity(), authorizer, securityContext),
+            entityType,
+            response.changeType()),
+        response.pendingChangeRequestId());
   }
 
-  private static boolean wantsFullResponse(final Map<String, Object> params) {
-    final Object rawMode = params.get(RESPONSE_PARAM);
-    if (rawMode == null) {
-      return false;
-    }
-    if (rawMode instanceof String mode) {
-      return switch (mode.isBlank() ? COMPACT_RESPONSE : mode) {
-        case COMPACT_RESPONSE -> false;
-        case FULL_RESPONSE -> true;
-        default -> throw invalidResponseMode(rawMode);
-      };
-    }
-    throw invalidResponseMode(rawMode);
-  }
-
-  private static IllegalArgumentException invalidResponseMode(final Object rawMode) {
-    return new IllegalArgumentException(
-        "Parameter 'response' must be 'compact' or 'full'. Received: "
-            + rawMode
-            + ". Nothing was changed.");
-  }
-
-  static PatchProjectionSpec buildProjectionSpec(
-      final String entityType, final boolean fullResponse, final JsonPatch jsonPatch) {
-    return fullResponse
-        ? PatchProjectionSpec.full(entityType)
-        : buildCompactProjectionSpec(entityType, jsonPatch);
-  }
-
-  private static PatchProjectionSpec buildCompactProjectionSpec(
-      final String entityType, final JsonPatch jsonPatch) {
-    final Set<String> touchedFields = new LinkedHashSet<>();
-    final Set<String> touchedExtensionKeys = new LinkedHashSet<>();
-    boolean replaceWholeExtension = false;
-    for (final JsonValue value : jsonPatch.toJsonArray()) {
-      final JsonObject op = value.asJsonObject();
-      if (!TEST_OP.equals(memberOrNull(op, OP_KEY))) {
-        replaceWholeExtension |=
-            collectPointerTarget(memberOrNull(op, PATH_KEY), touchedFields, touchedExtensionKeys);
-        replaceWholeExtension |=
-            collectPointerTarget(memberOrNull(op, FROM_KEY), touchedFields, touchedExtensionKeys);
-      }
-    }
-    return new PatchProjectionSpec(
-        entityType, false, touchedFields, touchedExtensionKeys, replaceWholeExtension);
-  }
-
-  private static boolean collectPointerTarget(
-      final String pointer,
-      final Set<String> touchedFields,
-      final Set<String> touchedExtensionKeys) {
-    if (pointer == null || !pointer.startsWith(POINTER_PREFIX)) {
-      return pointer != null && pointer.isEmpty();
-    }
-    final String body = pointer.substring(1);
-    final int slashIndex = body.indexOf('/');
-    final String topLevel =
-        unescapeJsonPointer(slashIndex < 0 ? body : body.substring(0, slashIndex));
-    if (!topLevel.isEmpty()) {
-      touchedFields.add(topLevel);
-    }
-    return EXTENSION_FIELD.equals(topLevel)
-        && collectExtensionSubkey(body, slashIndex, touchedExtensionKeys);
-  }
-
-  private static boolean collectExtensionSubkey(
-      final String body, final int slashIndex, final Set<String> touchedExtensionKeys) {
-    if (slashIndex < 0) {
-      return true;
-    }
-    final String remainder = body.substring(slashIndex + 1);
-    final int nextSlash = remainder.indexOf('/');
-    final String subkey =
-        unescapeJsonPointer(nextSlash < 0 ? remainder : remainder.substring(0, nextSlash));
-    if (subkey.isEmpty()) {
-      return true;
-    }
-    touchedExtensionKeys.add(subkey);
-    return false;
-  }
-
-  private static String unescapeJsonPointer(final String token) {
-    // RFC 6901 §4: decode '~1' before '~0' so '~01' becomes '~1' rather than '/'.
-    return token.replace("~1", "/").replace("~0", "~");
-  }
-
-  private static void requireTarget(final String entityType, final String fqn) {
+  private static void requireTarget(String entityType, String fqn) {
     if (nullOrEmpty(entityType) || nullOrEmpty(fqn)) {
       throw new IllegalArgumentException("Parameters 'entityType' and 'fqn' are required");
     }
   }
 
-  private static void requireGenericPatchLifecycle(final String entityType) {
+  private static void requireGenericPatchLifecycle(String entityType) {
     if (DEDICATED_PATCH_LIFECYCLES.contains(entityType)) {
       throw new IllegalArgumentException(
           "entityType '"
@@ -297,10 +179,11 @@ public class PatchEntityTool implements McpTool {
    * REST PATCH on purpose: an agent neither edits the connection nor reads the stored config back
    * through a {@code copy}, {@code move} or {@code test}; connection changes go through the
    * service's REST API. The root pointer is refused too: replacing the whole document replaces the
-   * connection with it. ADR:2026-10-20-mcp-responses-mask-stored-credentials
+   * connection with it.
+   * ADR:2026-10-20-mcp-responses-mask-stored-credentials
    */
-  private static void requireConnectionUntouched(final String entityType, final JsonPatch patch) {
-    final boolean touchesConnection =
+  private static void requireConnectionUntouched(String entityType, JsonPatch patch) {
+    boolean touchesConnection =
         Entity.getEntityRepository(entityType) instanceof ServiceEntityRepository<?, ?>
             && patch.toJsonArray().stream()
                 .map(JsonValue::asJsonObject)
@@ -315,21 +198,21 @@ public class PatchEntityTool implements McpTool {
     }
   }
 
-  private static boolean reachesConnection(final String pointer) {
+  private static boolean reachesConnection(String pointer) {
     return pointer != null
         && (pointer.isEmpty()
             || pointer.equals(CONNECTION_POINTER)
-            || pointer.startsWith(CONNECTION_POINTER + POINTER_PREFIX));
+            || pointer.startsWith(CONNECTION_POINTER + "/"));
   }
 
-  private static JsonPatch parsePatch(final String rawPatch) {
+  private static JsonPatch parsePatch(String rawPatch) {
     if (nullOrEmpty(rawPatch)) {
       throw new IllegalArgumentException(
           "Parameter 'patch' is required: a JSONPatch document (RFC 6902) as a JSON array string,"
               + " e.g. [{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"...\"}].");
     }
     // Bound the parse the same way the REST reader does, before anything is authorized.
-    final JsonArray operations;
+    JsonArray operations;
     try {
       operations = BoundedJsonPatch.readArray(rawPatch);
     } catch (BoundedJsonPatch.PatchTooLargeException e) {
@@ -357,12 +240,12 @@ public class PatchEntityTool implements McpTool {
    * those members, and both are perfectly valid patches. The repository answers that question
    * against the real entity.
    */
-  private static void requireOperationShape(final JsonValue operation) {
+  private static void requireOperationShape(JsonValue operation) {
     if (operation.getValueType() != JsonValue.ValueType.OBJECT) {
       throw invalidPatch("every operation must be a JSON object, and this one is not");
     }
-    final JsonObject fields = operation.asJsonObject();
-    final String op = memberOrNull(fields, OP_KEY);
+    JsonObject fields = operation.asJsonObject();
+    String op = memberOrNull(fields, OP_KEY);
     if (op == null || !REQUIRED_MEMBERS.containsKey(op)) {
       throw invalidPatch(
           "'op' must be one of " + REQUIRED_MEMBERS.keySet() + ", and this one is " + op);
@@ -376,14 +259,14 @@ public class PatchEntityTool implements McpTool {
             });
   }
 
-  private static String memberOrNull(final JsonObject fields, final String key) {
-    final JsonValue value = fields.get(key);
+  private static String memberOrNull(JsonObject fields, String key) {
+    JsonValue value = fields.get(key);
     return value != null && value.getValueType() == JsonValue.ValueType.STRING
         ? ((JsonString) value).getString()
         : null;
   }
 
-  private static IllegalArgumentException invalidPatch(final String reason) {
+  private static IllegalArgumentException invalidPatch(String reason) {
     return new IllegalArgumentException(
         "Parameter 'patch' is not a valid JSONPatch document: "
             + reason
@@ -392,10 +275,10 @@ public class PatchEntityTool implements McpTool {
 
   @Override
   public Map<String, Object> execute(
-      final Authorizer authorizer,
-      final Limits limits,
-      final CatalogSecurityContext securityContext,
-      final Map<String, Object> params) {
+      Authorizer authorizer,
+      Limits limits,
+      CatalogSecurityContext securityContext,
+      Map<String, Object> params) {
     throw new UnsupportedOperationException("PatchEntityTool does not support limits enforcement.");
   }
 }

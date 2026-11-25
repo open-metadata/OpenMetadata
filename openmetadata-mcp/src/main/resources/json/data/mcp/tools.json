@@ -611,7 +611,7 @@
         "idempotentHint": false,
         "openWorldHint": false
       },
-      "description": "Update an existing entity using an RFC 6902 JSON Patch document. This tool never creates entities; use create_entity for creation (create_test_case for test cases and create_lineage for lineage). Call get_entity_details on the target first and use field names present in that response. Array fields use plural paths such as /domains, /owners, /tags and /reviewers. Reference values must contain the referenced entity id and type. Writes take effect immediately and can overwrite existing state - confirm the target with the user before calling. By default, returns a compact confirmation (id, name, fullyQualifiedName, entityType, version, updatedAt, _operation, changed, and touched metadata fields, omitting bulk arrays like columns); pass response='full' only when the full entity is needed immediately. When an approval workflow holds the write instead, the response has _operation \"pendingApproval\" and a changeRequestId, and the entity is unchanged until a reviewer approves: tell the user it was submitted for approval, not applied.",
+      "description": "Update an existing entity using an RFC 6902 JSON Patch document. This tool never creates entities; use create_entity for creation (create_test_case for test cases and create_lineage for lineage). Call get_entity_details on the target first and use field names present in that response. Array fields use plural paths such as /domains, /owners, /tags and /reviewers. Reference values must contain the referenced entity id and type. Writes take effect immediately and can overwrite existing state - confirm the target with the user before calling. The response confirms the write rather than returning the entity: id, name, fullyQualifiedName, entityType, version, updatedAt, _operation, the changed field names, and the new values of changed top-level fields; a changed field without a value was removed or is too wide to echo (such as columns or extension). Call get_entity_details for the full entity. When an approval workflow holds the write instead, the response has _operation \"pendingApproval\" and a changeRequestId, and the entity is unchanged until a reviewer approves: tell the user it was submitted for approval, not applied.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -626,15 +626,6 @@
           "patch": {
             "type": "string",
             "description": "RFC 6902 operations as a JSON array string. Each operation has 'op', a JSON Pointer 'path' starting with '/', and 'value' when required. Use 'replace' for a field that exists, 'add' for an absent field or array entry, and 'remove' to clear one. Example: [{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"new description\"}]."
-          },
-          "response": {
-            "type": "string",
-            "description": "Response detail: 'compact' (default) returns identity fields, version, updatedAt, _operation, changed, and patched non-bulk metadata while omitting wide structural arrays such as columns; 'full' returns the entire patched entity.",
-            "enum": [
-              "compact",
-              "full"
-            ],
-            "default": "compact"
           }
         },
         "required": [

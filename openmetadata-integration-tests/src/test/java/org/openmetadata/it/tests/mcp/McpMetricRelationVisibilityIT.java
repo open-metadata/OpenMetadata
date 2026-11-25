@@ -138,56 +138,24 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
     assertThat(restricted.toString()).doesNotContain(hiddenMember.getName());
   }
 
-  /** A patch answers with the patched entity, so a write by the restricted caller is a read too. */
+  /** A patch echoes the fields it changed, so a write by the restricted caller is a read too. */
   @Test
   void patchResponse_omitsTheRelationsTheCallerCannotView() throws Exception {
-    final JsonNode compactUnrestricted =
-        patchDescription(current, "Patched compactly by the admin", null, authToken);
-    assertThat(isAbsent(compactUnrestricted.path("parent"))).isTrue();
-    assertThat(isAbsent(compactUnrestricted.path("relatedMetrics"))).isTrue();
+    // relatedMetrics links both ways, so this test uses metrics of its own, not the shared ones.
+    Metric target = createMetric(metric("mcp_rel_patch_" + suffix));
+    Metric hidden = createMetric(restricted(metric("mcp_rel_patch_hidden_" + suffix)));
+    Metric visible = createMetric(metric("mcp_rel_patch_visible_" + suffix));
+    Metric added = createMetric(metric("mcp_rel_patch_added_" + suffix));
 
-    final JsonNode compactRestricted =
-        patchDescription(
-            current, "Patched compactly by the restricted user", null, restrictedToken);
-    assertThat(isAbsent(compactRestricted.path("parent"))).isTrue();
-    assertThat(isAbsent(compactRestricted.path("relatedMetrics"))).isTrue();
-    assertThat(compactRestricted.toString())
-        .doesNotContain(hiddenParent.getName(), hiddenRelated.getName());
+    JsonNode unrestricted = patchRelatedMetrics(target, List.of(hidden, visible), authToken);
+    assertThat(idsOf(unrestricted.path("relatedMetrics")))
+        .containsExactlyInAnyOrder(hidden.getId().toString(), visible.getId().toString());
 
-    final Metric compactRelationTarget =
-        createMetric(
-            metric("mcp_rel_compact_patch_" + suffix)
-                .withParent(hiddenParent.getFullyQualifiedName()));
-    final JsonNode compactAdminRelated =
-        patchRelatedMetrics(compactRelationTarget, List.of(hiddenRelated, visibleChild), authToken);
-    assertThat(isAbsent(compactAdminRelated.path("parent"))).isTrue();
-    assertThat(idsOf(compactAdminRelated.path("relatedMetrics")))
-        .containsExactlyInAnyOrder(
-            hiddenRelated.getId().toString(), visibleChild.getId().toString());
-
-    final JsonNode compactRestrictedRelated =
-        patchRelatedMetrics(
-            compactRelationTarget,
-            List.of(hiddenRelated, visibleChild, memberOfHiddenGroup),
-            restrictedToken);
-    assertThat(isAbsent(compactRestrictedRelated.path("parent"))).isTrue();
-    assertThat(idsOf(compactRestrictedRelated.path("relatedMetrics")))
-        .containsExactlyInAnyOrder(
-            visibleChild.getId().toString(), memberOfHiddenGroup.getId().toString());
-    assertThat(compactRestrictedRelated.toString())
-        .doesNotContain(hiddenParent.getName(), hiddenRelated.getName());
-
-    final JsonNode unrestricted =
-        patchDescription(current, "Patched by the admin", "full", authToken);
-    assertThat(unrestricted.path("parent").path("id").asText())
-        .isEqualTo(hiddenParent.getId().toString());
-
-    final JsonNode restricted =
-        patchDescription(current, "Patched by the restricted user", "full", restrictedToken);
-    assertThat(isAbsent(restricted.path("parent"))).isTrue();
-    assertThat(idsOf(restricted.path("relatedMetrics"))).isEmpty();
-    assertThat(restricted.toString())
-        .doesNotContain(hiddenParent.getName(), hiddenRelated.getName());
+    JsonNode restricted =
+        patchRelatedMetrics(target, List.of(hidden, visible, added), restrictedToken);
+    assertThat(idsOf(restricted.path("relatedMetrics")))
+        .containsExactlyInAnyOrder(visible.getId().toString(), added.getId().toString());
+    assertThat(restricted.toString()).doesNotContain(hidden.getName());
   }
 
   /** A metric created below a parent inherits the parent's group, which the creator may not view. */
@@ -225,25 +193,13 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
     return callTool(McpTestUtils.createGetEntityToolCall(entityType, fqn), token);
   }
 
-  private JsonNode patchDescription(
-      final Metric metric, final String description, final String responseMode, final String token)
+  private JsonNode patchRelatedMetrics(Metric metric, List<Metric> related, String token)
       throws Exception {
-    final String patch =
-        OBJECT_MAPPER.writeValueAsString(
-            List.of(Map.of("op", "add", "path", "/description", "value", description)));
-    return callTool(
-        McpTestUtils.createPatchEntityToolCall(
-            Entity.METRIC, metric.getFullyQualifiedName(), patch, responseMode),
-        token);
-  }
-
-  private JsonNode patchRelatedMetrics(
-      final Metric metric, final List<Metric> related, final String token) throws Exception {
-    final List<Map<String, String>> refs =
+    List<Map<String, String>> refs =
         related.stream()
             .map(target -> Map.of("id", target.getId().toString(), "type", Entity.METRIC))
             .toList();
-    final String patch =
+    String patch =
         OBJECT_MAPPER.writeValueAsString(
             List.of(Map.of("op", "add", "path", "/relatedMetrics", "value", refs)));
     return callTool(
