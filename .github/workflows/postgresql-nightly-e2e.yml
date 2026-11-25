@@ -59,7 +59,7 @@ permissions:
 
 jobs:
   playwright:
-    uses: ./.github/workflows/playwright-e2e-reusable.yml
+    uses: ./.github/workflows/reusable-playwright-e2e.yml
     secrets: inherit
     permissions:
       actions: read

@@ -730,7 +730,12 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   private void postUpdate(SettingsType settingsType) {
-    SettingsChangeWatcher.acknowledgeLocalWrite(settingsType);
+    // MCP is not acknowledged: the generic settings API saves it without reloading it, so this
+    // server's watcher applies it like every other server's, retrying and reporting a failed
+    // reload. /system/mcp/config reloads it itself, which leaves the watcher nothing to do.
+    if (settingsType != SettingsType.MCP_CONFIGURATION) {
+      SettingsChangeWatcher.acknowledgeLocalWrite(settingsType);
+    }
     refreshLocalState(settingsType);
     // Rebuilding indexes changes shared state, so only the server that wrote the setting does it.
     if (settingsType == SettingsType.SEARCH_SETTINGS && Entity.getSearchRepository() != null) {
