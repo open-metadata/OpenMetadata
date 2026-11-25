@@ -149,7 +149,10 @@ class PatchEntityToolTest {
             .withName("salary-bands")
             .withFullyQualifiedName("salary-bands")
             .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY))
-            .withRelatedEntities(List.of(query));
+            .withRelatedEntities(List.of(query))
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsDeleted(List.of(new FieldChange().withName("relatedEntities"))));
     when(repository.patch(any(), anyString(), any(), any(), any(), any(), any()))
         .thenReturn(
             new RestUtil.PatchResponse<>(Response.Status.OK, memory, EventType.ENTITY_UPDATED));
@@ -163,7 +166,7 @@ class PatchEntityToolTest {
     Map<String, Object> params = new HashMap<>();
     params.put("entityType", Entity.CONTEXT_MEMORY);
     params.put("fqn", "salary-bands");
-    params.put("patch", "[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"x\"}]");
+    params.put("patch", "[{\"op\": \"remove\", \"path\": \"/relatedEntities/1\"}]");
     Map<String, Object> result;
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
@@ -614,8 +617,8 @@ class PatchEntityToolTest {
     assertThat(result)
         .containsEntry("_operation", "pendingApproval")
         .containsEntry("changeRequestId", changeRequestId.toString())
-        .containsEntry("description", "old")
-        .doesNotContainKey("changed");
+        .containsEntry("entityType", Entity.TABLE)
+        .doesNotContainKeys("changed", "description", "tags");
   }
 
   /** As REST's identity endpoints: an impersonated call never writes what grants privileges. */
