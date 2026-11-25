@@ -58,52 +58,63 @@ jobs:
         run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
 
   # Static checks, unit tests and Airflow API tests share one runner. Later suites still run
-  # after an earlier one fails so a single push reports every selected failure.
+  # after an earlier one fails so a single push reports every selected failure. The job runs
+  # even when nothing is selected or planning fails, so the required checks are always reported.
   python:
     name: python
     needs: plan
-    if: ${{ needs.plan.outputs.static == 'true' }}
+    if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    permissions:
+      contents: read
+      checks: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        if: ${{ needs.plan.outputs.static == 'true' }}
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
           fetch-depth: 1
       - name: Run Python static checks
+        id: static
+        if: ${{ needs.plan.outputs.static == 'true' }}
         uses: ./.github/actions/python-static-checks
         with:
           python-version: ${{ needs.plan.outputs.python-lowest }}
           check-types: ${{ needs.plan.outputs.python }}
       - name: Run Python unit tests
+        id: unit
         if: ${{ !cancelled() && needs.plan.outputs.python == 'true' }}
         uses: ./.github/actions/python-unit
         with:
           python-version: ${{ needs.plan.outputs.python-highest }}
           prepare-models: 'true'
       - name: Run Airflow API tests
+        id: airflow
         if: ${{ !cancelled() && needs.plan.outputs.airflow-apis == 'true' }}
         uses: ./.github/actions/python-airflow-apis
         with:
           python-version: ${{ needs.plan.outputs.python-lowest }}
-
-  py-tests-status:
-    name: py-tests-status
-    needs:
-      - plan
-      - python
-    if: ${{ always() && !github.event.pull_request.draft }}
-    runs-on: ubuntu-slim
-    timeout-minutes: 2
-    steps:
+      # The step result feeds the py-tests-status check; failing suites already fail the job.
       - name: Verify selected Python workloads
+        id: gate
+        if: ${{ always() }}
+        continue-on-error: true
         env:
-          NEEDS_JSON: ${{ toJSON(needs) }}
+          NEEDS_JSON: |
+            {
+              "plan": {"result": "${{ needs.plan.result }}"},
+              "py-checkstyle": {"result": "${{ steps.static.outcome }}"},
+              "python-unit": {"result": "${{ steps.unit.outcome }}"},
+              "airflow-apis": {"result": "${{ steps.airflow.outcome }}"}
+            }
           EXPECTED_RESULTS: |
             {
               "plan": "success",
-              "python": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}"
+              "py-checkstyle": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
+              "python-unit": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
+              "airflow-apis": "${{ needs.plan.outputs.airflow-apis == 'true' && 'success' || 'skipped' }}"
             }
         run: |
           jq -e -n --argjson needs "$NEEDS_JSON" --argjson expected "$EXPECTED_RESULTS" '
@@ -114,3 +125,30 @@ jobs:
               $needs[$job.key].result == $job.value)
           '
         shell: bash
+      - name: Report py-checkstyle
+        if: ${{ always() }}
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
+        with:
+          token: ${{ github.token }}
+          sha: ${{ github.event.pull_request.head.sha || github.sha }}
+          name: py-checkstyle
+          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || steps.static.outcome || 'skipped' }}
+          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      - name: Report airflow-apis
+        if: ${{ always() && steps.airflow.outcome != 'skipped' && steps.airflow.outcome != '' }}
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
+        with:
+          token: ${{ github.token }}
+          sha: ${{ github.event.pull_request.head.sha || github.sha }}
+          name: airflow-apis
+          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || steps.airflow.outcome }}
+          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      - name: Report py-tests-status
+        if: ${{ always() }}
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
+        with:
+          token: ${{ github.token }}
+          sha: ${{ github.event.pull_request.head.sha || github.sha }}
+          name: py-tests-status
+          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || steps.gate.outcome }}
+          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

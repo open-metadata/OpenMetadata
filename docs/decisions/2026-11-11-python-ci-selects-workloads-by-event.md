@@ -52,10 +52,13 @@ selection, Python matrices, dependencies, permissions and required `py-tests-sta
 Unit and Airflow API suites are composite actions (`python-unit`, `python-airflow-apis`) that
 run on the caller's checkout; each entrypoint owns the job, checkout and source revision. In
 `ci-pr.yml`, static checks, unit tests and Airflow API tests run as conditional steps of one
-`python` job, and later suites still run after an earlier step fails. Merge-queue and nightly
+`python` job, and later suites still run after an earlier step fails. That job runs for every
+non-draft PR, verifies the selected step results in its final steps and publishes them through the
+Checks API as `py-checkstyle`, `py-tests-status` (the required aggregate) and, only when the
+Airflow API step ran, `airflow-apis`; it has no separate aggregate job. Merge-queue and nightly
 keep separate jobs. The nightly entrypoint enables tooling checks on its highest Python version
 through the unit action's `run-tooling-tests` input. Shared
-backend construction uses a complete reusable job. Aggregate jobs run on `ubuntu-slim`, verify
+backend construction uses a complete reusable job. Merge-queue and nightly aggregate jobs run on `ubuntu-slim`, verify
 the selected results without checking out the repository, and retain the required
 `py-tests-status` aggregate check. Other Python CI jobs run on `ubuntu-latest`. Playwright
 workflows and their cache warmer also use `ubuntu-latest`, with Chromium apt caches keyed by Ubuntu release.
