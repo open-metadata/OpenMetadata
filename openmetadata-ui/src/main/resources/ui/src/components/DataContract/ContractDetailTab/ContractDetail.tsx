@@ -523,6 +523,25 @@ const ContractDetail: React.FC<{
                 showLabel={false}
               />
             </Box>
+
+            <Divider
+              className="tw:self-center tw:h-4.5 tw:mx-2"
+              orientation="vertical"
+            />
+
+            <Box align="center" data-testid="contract-reviewer-card" gap={2}>
+              <Typography data-testid="contract-reviewers-label">
+                {`${t('label.reviewer-plural')} : `}
+              </Typography>
+
+              <Owner
+                avatarSize={24}
+                isCompactView={false}
+                maxVisibleOwners={5}
+                owners={contract.reviewers ?? []}
+                showLabel={false}
+              />
+            </Box>
           </Box>
         </Box>
       </Box>

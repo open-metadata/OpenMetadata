@@ -2932,6 +2932,108 @@ class ODCSConverterTest {
     assertNull(exportedRole.getFirstLevelApprovers());
   }
 
+  @Test
+  void testFromODCS_ResolvesReviewersAndWarnsOnUnresolvedOrUnsupportedRoles() {
+    ODCSDataContract odcs = newODCSContract();
+    ODCSTeamMember owner = new ODCSTeamMember().withUsername("alice").withRole("owner");
+    ODCSTeamMember reviewer = new ODCSTeamMember().withUsername("bob").withRole("Reviewer");
+    ODCSTeamMember missingReviewer =
+        new ODCSTeamMember().withUsername("ghost").withRole("reviewer");
+    ODCSTeamMember steward = new ODCSTeamMember().withUsername("carol").withRole("steward");
+    odcs.setTeam(new ODCSTeam().withMembers(List.of(owner, reviewer, missingReviewer, steward)));
+
+    User alice = Mockito.mock(User.class);
+    User bob = Mockito.mock(User.class);
+    EntityReference aliceRef =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("alice");
+    EntityReference bobRef =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("bob");
+    Mockito.when(alice.getEntityReference()).thenReturn(aliceRef);
+    Mockito.when(bob.getEntityReference()).thenReturn(bobRef);
+
+    ODCSImportIssues issues = new ODCSImportIssues();
+    try (MockedStatic<Entity> mockedEntity = Mockito.mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.USER, "alice", "", Include.NON_DELETED))
+          .thenReturn(alice);
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.USER, "bob", "", Include.NON_DELETED))
+          .thenReturn(bob);
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.USER, "ghost", "", Include.NON_DELETED))
+          .thenThrow(new RuntimeException("not found"));
+
+      DataContract contract = ODCSConverter.fromODCS(odcs, tableRef("orders"), null, issues);
+
+      assertEquals(List.of(aliceRef), contract.getOwners());
+      assertEquals(List.of(bobRef), contract.getReviewers());
+      assertTrue(
+          issues.toList().stream()
+              .anyMatch(
+                  issue ->
+                      "team.members[2]".equals(issue.getPath())
+                          && issue.getMessage().contains("Reviewer `ghost`")));
+      assertTrue(
+          issues.toList().stream()
+              .anyMatch(
+                  issue ->
+                      "team.members[3].role".equals(issue.getPath())
+                          && issue.getMessage().contains("`owner` or `reviewer`")));
+    }
+  }
+
+  @Test
+  void testToODCS_ExportsReviewersAlongsideOwners() {
+    EntityReference ownerRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.USER)
+            .withName("alice")
+            .withDisplayName("Alice");
+    EntityReference reviewerRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.USER)
+            .withName("bob")
+            .withDisplayName("Bob");
+    DataContract contract =
+        new DataContract()
+            .withName("orders_contract")
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withOwners(List.of(ownerRef))
+            .withReviewers(List.of(reviewerRef));
+
+    ODCSDataContract exported = ODCSConverter.toODCS(contract);
+
+    assertNotNull(exported.getTeam());
+    assertEquals(2, exported.getTeam().getMembers().size());
+    assertEquals("alice", exported.getTeam().getMembers().get(0).getUsername());
+    assertEquals("owner", exported.getTeam().getMembers().get(0).getRole());
+    assertEquals("bob", exported.getTeam().getMembers().get(1).getUsername());
+    assertEquals("reviewer", exported.getTeam().getMembers().get(1).getRole());
+  }
+
+  @Test
+  void testSmartMerge_PreservesOrUpdatesReviewers() {
+    EntityReference existingReviewer =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("bob");
+    EntityReference newReviewer =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("carol");
+    DataContract existing =
+        new DataContract()
+            .withId(UUID.randomUUID())
+            .withName("orders_contract")
+            .withReviewers(List.of(existingReviewer));
+
+    DataContract mergedWithoutReviewers =
+        ODCSConverter.smartMerge(existing, new DataContract().withDescription("updated"));
+    assertEquals(List.of(existingReviewer), mergedWithoutReviewers.getReviewers());
+
+    DataContract mergedWithNewReviewers =
+        ODCSConverter.smartMerge(existing, new DataContract().withReviewers(List.of(newReviewer)));
+    assertEquals(List.of(newReviewer), mergedWithNewReviewers.getReviewers());
+  }
+
   private static EntityReference testCaseRef(String name) {
     return new EntityReference().withId(UUID.randomUUID()).withType("testCase").withName(name);
   }

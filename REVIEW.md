@@ -244,10 +244,8 @@ Run `python3 .github/scripts/check_pr_workflow_security.py` after workflow chang
   - Persisted workflow and job fields stay readable by the previous server version during a rolling
     upgrade.
 - **Background jobs.** A new `jobType` joins every list that enumerates its siblings: the
-  `markStaleRunningJobsFailed` reaper, the memory-job capacity check, `JobDAO` and Collate's own
-  copy of `backgroundJob.json` (a missing constant throws `NoSuchFieldError`, an `Error` that kills
-  the background-job poller). Long or LLM-bound job types get a per-type cap on
-  `GenericBackgroundWorker`.
+  `markStaleRunningJobsFailed` reaper, the memory-job capacity check and `JobDAO`. Long or LLM-bound
+  job types get a per-type cap on `GenericBackgroundWorker`.
 - **Bounded caches** (AGENTS.md), and the cap must not change behavior. If the cache is a working set
   read after it is filled (page cursors, per-schema remarks), a miss after eviction refetches
   instead of silently losing data. Bound the total retained items, not just the keys, and cache
@@ -441,7 +439,7 @@ Before renaming or removing any of the following, search `openmetadata-collate` 
 - an enum constant in a schema Collate copies;
 - a dependency major.
 
-Then ship a companion Collate PR, or keep a deprecated overload or no-op. `maven-collate-ci` breaks
+Then ship a companion Collate PR, or keep a deprecated overload or no-op. `Collate CI` breaks
 whichever repo merges first, and Collate's strict `tsc` fails on the next submodule bump. Provider
 rules stay behind their SPI, not keyed on a Collate provider in OSS core. A method whose only
 callers are in Collate says so in one line, so nobody deletes it as unused.
