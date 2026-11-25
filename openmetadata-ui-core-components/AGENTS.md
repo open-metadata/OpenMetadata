@@ -215,4 +215,6 @@ These are externalized in the build and must be provided by the consuming app:
 3. Use `cx()` for class merging and `sortCx()` for style variant maps
 4. Build on `react-aria-components` for accessibility
 5. Export from `src/components/index.ts`
-6. Run `yarn build` to verify compilation
+6. Add a one-line entry to "Components by job" in `skills/ui-core-components/SKILL.md`, so
+   feature work finds it instead of building a local copy
+7. Run `yarn build` to verify compilation

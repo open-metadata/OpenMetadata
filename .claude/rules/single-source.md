@@ -16,8 +16,12 @@ Every one started as "quicker to write than to find". This rule makes finding ma
    variant.
 2. **Search this repo for the concept, not just a name**: a "status chip" may be called Badge, Pill,
    Tag, or Chip. Grep the visual concept's words and the props you need.
-3. Only then create — and say in the PR why nothing existing fits. A new component with no such
+3. **Never copy an existing component or util to change one call or prop.** Add the prop/callback to
+   the original and import it. A file whose body is mostly another file's is a review blocker.
+4. Only then create — and say in the PR why nothing existing fits. A new component with no such
    justification is a review finding.
+5. **Before handing work back, list every new component file** and, for each, the core/common
+   component you checked. If one forwards props to a core component, delete it and use core.
 
 ## One component per concept — the canon
 
@@ -34,6 +38,17 @@ Every one started as "quicker to write than to find". This rule makes finding ma
 | Search input | `common/SearchBarComponent` | per-file `<Input>` + hand-rolled debounce |
 | Owner/user display | ui-core `Owner` / `OwnerChip` (`application/owner`) | per-feature owner renderers |
 | Rich text preview | one previewer (`RichTextEditorPreviewerV1`) | another `*New`/`*V2` previewer |
+| Page header (title, breadcrumb, actions) | ui-core `PageLayout.PageHeader` + common `HeaderBreadcrumb` | feature `*Header` wrappers |
+| Panel / section surface | ui-core `Card` (`Card.Header/Content/Footer`); nested in a `bg-surface` panel, modal or drawer → `variant="muted"`/`"tile"` | `div`/`Box` with background + border |
+| Choose one of a few options (Off/Warn/Block) | ui-core `ButtonGroup` | `*SegmentedControl`, button rows with own selected state |
+| On/off setting | ui-core `Toggle` (`label`, `hint`, `isReadOnly`) | `*Toggle` wrappers |
+| Action / ⋯ menu | ui-core `Dropdown` (`Dropdown.DotsButton`) | hand-rolled menus or popovers of buttons |
+| Inline "are you sure?" | ui-core `ConfirmPopover` | popover + two-button compositions |
+| Info / warning banner | ui-core `Alert` | bordered `div`/`Box` banners |
+| Multi-step flow | ui-core `ProgressSteps` | custom steppers |
+| Filter toolbar | ui-core `FilterBar` + `FilterSelect` | per-page filter bars |
+| Tabs | ui-core `Tabs` (`.List/.Item/.Panel`) | button rows that switch content |
+| Copy to clipboard | common `CopyButton` | per-feature copy buttons |
 
 ## Variants are forks
 
