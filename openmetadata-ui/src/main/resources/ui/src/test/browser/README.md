@@ -6,7 +6,7 @@ Chromium. Only the network is fake. No backend, no DB, no login.
 ```bash
 yarn test:ui           # watch mode; add --ui to watch the page render live
 yarn test:ui:run       # CI / headless
-yarn test:ui:coverage  # istanbul -> src/test/browser/coverage (CI job summary; not in Sonar yet)
+yarn test:ui:coverage  # istanbul -> src/test/browser/coverage (CI job summary; read by the nightly Sonar scan)
 HEADED=true yarn test:ui:run   # see the browser
 ```
 

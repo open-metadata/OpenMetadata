@@ -30,7 +30,8 @@ env:
 jobs:
   ui-coverage-sonar:
     name: Coverage + Sonar
-    timeout-minutes: 90
+    # Jest plus the unsharded browser suite (~1,070 tests).
+    timeout-minutes: 180
     runs-on: ubuntu-latest
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -91,12 +92,30 @@ jobs:
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: yarn test:cov-summary
 
+      # Deps and ANTLR come from the steps above, so only Chromium is added here
+      # (no --with-deps: the runner image has its libraries; see ui-browser-setup).
+      - name: Install Chromium
+        if: ${{ !cancelled() }}
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: npx playwright install chromium
+
+      # Writes src/test/browser/coverage/lcov.info even when a test fails.
+      - name: Run Browser Test Coverage
+        if: ${{ !cancelled() }}
+        continue-on-error: false
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn test:ui:coverage
+
+      # A failed test run still fails the job (and notifies Slack), but the
+      # scan runs on whatever coverage was written.
       - name: Install sonar-scanner
+        if: ${{ !cancelled() }}
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: npm install -g sonarqube-scanner@^4.3.0
 
       - name: SonarCloud Branch Scan
         id: sonar_branch_scan
+        if: ${{ !cancelled() }}
         continue-on-error: true
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
