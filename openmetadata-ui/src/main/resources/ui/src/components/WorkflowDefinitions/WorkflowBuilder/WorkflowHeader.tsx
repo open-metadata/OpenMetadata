@@ -50,9 +50,10 @@ const WorkflowManageMenu: React.FC<WorkflowManageMenuProps> = ({
   isSuspended = false,
 }) => {
   const { t } = useTranslation();
-  const { showDeleteButton, showEditButton } = useWorkflowModeContext();
-  // Suspending is allowed wherever the workflow can be edited; deleting is a separate capability.
-  const onToggleSuspend = showEditButton ? handleToggleSuspend : undefined;
+  const { showDeleteButton, showEditButton, isNoOp } = useWorkflowModeContext();
+  // System workflows expose settings without allowing their lifecycle to be suspended.
+  const onToggleSuspend =
+    showEditButton && !isNoOp ? handleToggleSuspend : undefined;
   const onDelete = showDeleteButton ? handleDeleteWorkflow : undefined;
 
   if (!onToggleSuspend && !onDelete) {

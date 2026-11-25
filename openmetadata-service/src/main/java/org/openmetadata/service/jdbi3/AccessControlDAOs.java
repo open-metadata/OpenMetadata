@@ -1086,6 +1086,17 @@ public interface AccessControlDAOs {
 
     @ConnectionAwareSqlUpdate(
         value =
+            "UPDATE user_entity SET json = JSON_SET(json, '$.lastLoginTime', :lastLoginTime) WHERE nameHash = :nameHash AND deleted = false",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE user_entity SET json = jsonb_set(json, '{lastLoginTime}', to_jsonb(:lastLoginTime::bigint)) WHERE nameHash = :nameHash AND deleted = false",
+        connectionType = POSTGRES)
+    void updateLastLoginTime(
+        @BindFQN("nameHash") String nameHash, @Bind("lastLoginTime") long lastLoginTime);
+
+    @ConnectionAwareSqlUpdate(
+        value =
             "UPDATE user_entity SET json = JSON_SET(json, '$.lastActivityTime', "
                 + "CASE nameHash "
                 + "<caseStatements> "

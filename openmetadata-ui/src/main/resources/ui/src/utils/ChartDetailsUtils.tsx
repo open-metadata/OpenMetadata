@@ -47,6 +47,12 @@ const EntityLineageTab = lazy(() =>
   )
 );
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import(
@@ -84,7 +90,7 @@ export const getChartDetailPageTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.DETAILS}
-          name={get(labelMap, EntityTabs.LINEAGE, t('label.detail-plural'))}
+          name={get(labelMap, EntityTabs.DETAILS, t('label.detail-plural'))}
         />
       ),
       key: EntityTabs.DETAILS,
@@ -92,13 +98,14 @@ export const getChartDetailPageTabs = ({
     },
     {
       label: (
-        <TabsLabel
+        <ActivityFeedTabLabel
           count={feedCount.totalCount}
+          entityType={EntityType.CHART}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={get(
             labelMap,
-            EntityTabs.LINEAGE,
+            EntityTabs.ACTIVITY_FEED,
             t('label.activity-feed-and-task-plural')
           )}
         />

@@ -32,10 +32,12 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.vector.VectorIndexService;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DefaultRecreateHandler Tests")
 class DefaultRecreateHandlerTest {
+  private static final String STAGED_CHUNKS = "data_asset_embeddings_chunks_g1700000000000";
 
   @Nested
   @DisplayName("promoteEntityIndex Tests")
@@ -150,6 +152,100 @@ class DefaultRecreateHandlerTest {
       }
 
       verify(tracker).updateMappingVersion("table");
+    }
+
+    @Test
+    @DisplayName("A promoted staged index tells the staged chunk generation it went live")
+    void aPromotedStagedIndexTellsTheChunkGenerationItWentLive() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index_rebuild_old", Set.of("table", "table_search_index"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      VectorIndexService vectorService = mock(VectorIndexService.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getVectorIndexService()).thenReturn(vectorService);
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        new RecreateWithEmbeddings().promoteEntityIndex(stagedTable(), true);
+      }
+
+      verify(vectorService).markEntityTypeReindexed("table", true, STAGED_CHUNKS);
+    }
+
+    @Test
+    @DisplayName("A run that could not record a staged chunk delete keeps the live chunks")
+    void aRunThatCouldNotRecordAStagedChunkDeleteKeepsTheLiveChunks() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index_rebuild_old", Set.of("table", "table_search_index"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+      SearchClient client = aliasState.toMock();
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(4L);
+      SearchRepository repo = mock(SearchRepository.class);
+      VectorIndexService vectorService = mock(VectorIndexService.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getVectorIndexService()).thenReturn(vectorService);
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+      EntityReindexContext context = stagedTable();
+      context.setStagedChunkDeleteUnrecorded(true);
+
+      boolean promoted;
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        promoted = new RecreateWithEmbeddings().promoteEntityIndex(context, false);
+      }
+
+      assertTrue(promoted, "the entity index still promotes its partial data");
+      verify(vectorService).markEntityTypeReindexed("table", false, STAGED_CHUNKS);
+    }
+
+    @Test
+    @DisplayName("A discarded empty staged index keeps the type's live chunks")
+    void aDiscardedEmptyStagedIndexKeepsTheTypesLiveChunks() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+      SearchClient client = aliasState.toMock();
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
+      SearchRepository repo = mock(SearchRepository.class);
+      VectorIndexService vectorService = mock(VectorIndexService.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getVectorIndexService()).thenReturn(vectorService);
+
+      boolean finished;
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        finished = new RecreateWithEmbeddings().promoteEntityIndex(stagedTable(), false);
+      }
+
+      assertTrue(finished, "discarding an empty staged index is a terminal outcome");
+      verify(vectorService).markEntityTypeReindexed("table", false, STAGED_CHUNKS);
+    }
+
+    private static EntityReindexContext stagedTable() {
+      return EntityReindexContext.builder()
+          .entityType("table")
+          .canonicalIndex("table_search_index")
+          .stagedIndex("table_search_index_rebuild_new")
+          .stagedChunkIndex(STAGED_CHUNKS)
+          .build();
     }
 
     @Test

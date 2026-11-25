@@ -288,6 +288,11 @@ Run `python3 .github/scripts/check_pr_workflow_security.py` after workflow chang
 repeatedly add the following.
 
 - **Java migrations** (`migration/utils/vNNN`):
+  - Carry their own logic: rows and SQL through the `Handle`, using only the classes
+    `MigrationArchitectureTest` allows, not `CollectionDAO`, repositories, `Entity` lookups or
+    generated classes, which keep changing after the step ships. An unavoidable call is a named
+    exception in that test.
+    ADR:2026-11-11-a-data-migration-carries-its-own-logic
   - Compute a fixed point that is safe to re-run, never a subtractive delta.
   - Guard on the current shape, so an admin-customized row is left alone.
   - Let unexpected failures propagate. A migration that logs and returns is recorded as applied in
@@ -295,11 +300,14 @@ repeatedly add the following.
   - Skip work already done. Data migrations re-run whenever `MigrationCodeFingerprint` changes.
   - Normalize legacy `null` values.
   - Rewrite the `entity_extension` `<entity>.version.*` snapshots as well as the live row.
-  - Remove the deployed pipelines of an entity type the migration removes.
+  - Remove the deployed pipelines of an entity type the migration removes. This needs the pipeline
+    service, so the step is a named exception.
+    ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
 - **SQL.**
   - Never edit a statement that already ran; statements are tracked by a hash of their text.
-    Appending a statement to the newest folder of the release in progress is fine:
-    `MigrationWorkflow` reprocesses it.
+    Appending a statement to the newest folder of the release in progress is fine while that
+    release has not shipped: `MigrationWorkflow` reprocesses it. A shipped folder never changes,
+    because a database that ran a later version of the same line never reads it again.
   - Size FQN-hash key columns like `entity_extension` (`VARCHAR(512)`).
   - Replace MySQL `INSERT IGNORE`, which turns truncation into a warning, with
     `ON DUPLICATE KEY UPDATE`.
@@ -641,8 +649,9 @@ Anything below is enforced by CI, or authors rejected it repeatedly in this wind
 - **Java micro-style quoted from [`java.md`](.claude/rules/java.md) without a defect**: fully qualified names, `final` on
   locals, method or class length, utility classes not `final`, literals in test assertions. These
   had zero acceptances across 18 bot threads. Authors still follow `java.md` while writing; a
-  reviewer does not post a finding for it. `java.md` says to *prefer* one successful return:
-  flat validation guards and throws are fine, so "use one trailing return" is not a finding. Size
+  reviewer does not post a finding for it. The one exception is the return rule
+  (ADR:2026-11-20-a-method-returns-once): a new or changed production method with more than one
+  `return`, or a `return` that is not its last statement, is a 🟡 finding. Throws are fine. Size
   rules target production code, not tests or verbatim backports.
 - **`@Isolated` or `@Execution(SAME_THREAD)`** on an IT that touches process-global state. That is a
   supported group (74 IT files use it), not a breach of the concurrent-IT rule.

@@ -60,7 +60,7 @@ const gotoAndSettle = async (page: Page, path: string) => {
 
 test.describe('AI mode — alert permissions match the classic alert pages', () => {
   test.beforeAll(async ({ browser }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     await commonPrerequisites({

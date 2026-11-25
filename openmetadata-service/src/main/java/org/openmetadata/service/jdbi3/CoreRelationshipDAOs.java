@@ -1444,6 +1444,32 @@ public interface CoreRelationshipDAOs {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
+    /**
+     * Names compare binary on MySQL, as on Postgres, so a type never counts another's rows.
+     * relationType takes the database character set, which can be utf8mb3 or latin1, where
+     * utf8mb4_bin is not a valid collation, so it is converted to utf8mb4 first.
+     */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM entity_relationship WHERE fromEntity = :entity "
+                + "AND toEntity = :entity AND relation = :relation "
+                + "AND (relationshipTypeId = :relationshipTypeId "
+                + "OR CONVERT(relationType USING utf8mb4) COLLATE utf8mb4_bin "
+                + "= :relationshipTypeName)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM entity_relationship WHERE fromEntity = :entity "
+                + "AND toEntity = :entity AND relation = :relation "
+                + "AND (relationshipTypeId = :relationshipTypeId "
+                + "OR relationType = :relationshipTypeName)",
+        connectionType = POSTGRES)
+    int countRelationsOfType(
+        @Bind("entity") String entity,
+        @Bind("relation") int relation,
+        @BindUUID("relationshipTypeId") UUID relationshipTypeId,
+        @Bind("relationshipTypeName") String relationshipTypeName);
+
     @SqlQuery(
         "SELECT COUNT(toId) FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation IN (<relation>) AND deleted = FALSE")
@@ -1863,6 +1889,37 @@ public interface CoreRelationshipDAOs {
     EntityRelationshipObject getRecord(
         @BindUUID("fromId") UUID fromId,
         @BindUUID("toId") UUID toId,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT EXISTS (SELECT 1 FROM entity_relationship "
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity "
+            + "AND toId = :toId AND toEntity = :toEntity "
+            + "AND relation = :relation AND deleted = FALSE)")
+    boolean exists(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @BindUUID("toId") UUID toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, relationType, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE fromId = :fromId AND toId = :toId "
+            + "AND fromEntity = :entityType AND toEntity = :entityType "
+            + "AND relation = :relation AND deleted = FALSE "
+            + "UNION ALL "
+            + "SELECT fromId, toId, fromEntity, toEntity, relation, relationType, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE fromId = :toId AND toId = :fromId AND fromId <> toId "
+            + "AND fromEntity = :entityType AND toEntity = :entityType "
+            + "AND relation = :relation AND deleted = FALSE")
+    @RegisterRowMapper(RelationshipWithTypeObjectMapper.class)
+    List<EntityRelationshipObject> findBetween(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("entityType") String entityType,
         @Bind("relation") int relation);
 
     @SqlQuery(
@@ -2305,17 +2362,45 @@ public interface CoreRelationshipDAOs {
      * them; an entity of another type that shares the name leaves them alone.
      */
     default void deleteAllByPrefix(String fqn, String entityType) {
-      String prefix = String.format("%s%s%%", FullyQualifiedName.buildHash(fqn), Entity.SEPARATOR);
-      String typeCondition =
-          Entity.TYPE.equals(entityType)
-              ? " AND fromType = :typeRow AND toType = :typeRow"
-              : " AND fromType <> :typeRow AND toType <> :typeRow";
+      Map<String, String> bindMap = prefixBindings(fqn);
       String condition =
-          "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)" + typeCondition;
-      Map<String, String> bindMap = new HashMap<>();
-      bindMap.put("prefix", prefix);
-      bindMap.put("typeRow", Entity.TYPE);
+          "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)" + typeCondition(entityType);
       deleteAllByPrefixInternal(condition, bindMap);
+    }
+
+    /**
+     * {@link #deleteAllByPrefix} except the rows at and under the kept subtrees, which belong to
+     * entities a hard delete leaves in place.
+     */
+    default void deleteAllByPrefixOutside(
+        String fqn, String entityType, List<String> keptSubtreeHashes) {
+      Map<String, String> bindMap = prefixBindings(fqn);
+      String toOutside =
+          FqnKeyedRowCleanup.outsideKeptSubtrees("toFQNHash", keptSubtreeHashes, bindMap);
+      String fromOutside =
+          FqnKeyedRowCleanup.outsideKeptSubtrees("fromFQNHash", keptSubtreeHashes, bindMap);
+      String condition =
+          "WHERE ((toFQNHash LIKE :prefix"
+              + toOutside
+              + ") OR (fromFQNHash LIKE :prefix"
+              + fromOutside
+              + "))"
+              + typeCondition(entityType);
+      deleteAllByPrefixInternal(condition, bindMap);
+    }
+
+    private static Map<String, String> prefixBindings(String fqn) {
+      Map<String, String> bindMap = new HashMap<>();
+      bindMap.put(
+          "prefix", String.format("%s%s%%", FullyQualifiedName.buildHash(fqn), Entity.SEPARATOR));
+      bindMap.put("typeRow", Entity.TYPE);
+      return bindMap;
+    }
+
+    private static String typeCondition(String entityType) {
+      return Entity.TYPE.equals(entityType)
+          ? " AND fromType = :typeRow AND toType = :typeRow"
+          : " AND fromType <> :typeRow AND toType <> :typeRow";
     }
 
     @SqlUpdate("DELETE from field_relationship <cond>")

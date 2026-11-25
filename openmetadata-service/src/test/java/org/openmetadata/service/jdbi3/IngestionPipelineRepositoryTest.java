@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,12 +61,14 @@ import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.logstorage.LogStorageInterface;
+import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 class IngestionPipelineRepositoryTest {
 
   private static IngestionPipelineRepository repository;
+  private static SecretsManager previousSecretsManager;
 
   @BeforeAll
   static void setup() {
@@ -79,9 +82,21 @@ class IngestionPipelineRepositoryTest {
             org.mockito.ArgumentMatchers.any(IngestionPipeline.class)))
         .thenCallRealMethod();
 
+    // createSecretsManager returns whatever manager an earlier test in this fork left behind;
+    // clear it so these tests run against the DB manager they configure.
+    previousSecretsManager = SecretsManagerFactory.getSecretsManager();
+    SecretsManagerFactory.setSecretsManager(null);
     SecretsManagerConfiguration smConfig = new SecretsManagerConfiguration();
     smConfig.setSecretsManager(SecretsManagerProvider.DB);
+    // createSecretsManager keeps whatever manager an earlier test in this JVM left behind.
+    previousSecretsManager = SecretsManagerFactory.getSecretsManager();
+    SecretsManagerFactory.setSecretsManager(null);
     SecretsManagerFactory.createSecretsManager(smConfig, "test");
+  }
+
+  @AfterAll
+  static void restoreSecretsManager() {
+    SecretsManagerFactory.setSecretsManager(previousSecretsManager);
   }
 
   @Test
@@ -779,6 +794,18 @@ class IngestionPipelineRepositoryTest {
     boolean requiresRedeployment = repository.hasScheduleChanged(original, updated);
 
     assertFalse(requiresRedeployment, "Same schedule should not require redeployment");
+  }
+
+  @Test
+  @DisplayName("requiresRedeployment should detect a timezone-only change")
+  void testRequiresRedeployment_TimezoneChange_ShouldReturnTrue() {
+    IngestionPipeline original = createPipelineWithSchedule("0 0 * * *");
+    IngestionPipeline updated = createPipelineWithSchedule("0 0 * * *");
+    updated.getAirflowConfig().setPipelineTimezone("Europe/Tallinn");
+
+    assertTrue(
+        repository.hasScheduleChanged(original, updated),
+        "A new timezone moves every run, so the CronJob must be redeployed");
   }
 
   @Test

@@ -11,27 +11,32 @@
  *  limitations under the License.
  */
 
+import { useTranslation } from 'react-i18next';
 import { PreviewRendererProps } from './FilePreviewer.types';
 
 const ImageRenderer = ({
   compact,
   fileName,
   objectUrl,
-}: PreviewRendererProps) =>
-  compact ? (
+}: PreviewRendererProps) => {
+  const { t } = useTranslation();
+  const alt = fileName ?? t('label.image');
+
+  return compact ? (
     <img
-      alt={fileName ?? ''}
+      alt={alt}
       className="tw:max-w-full tw:max-h-full tw:object-contain"
       src={objectUrl}
     />
   ) : (
     <div className="tw:flex tw:justify-center tw:p-4">
       <img
-        alt={fileName ?? ''}
+        alt={alt}
         className="tw:max-w-full tw:max-h-[75vh] tw:object-contain"
         src={objectUrl}
       />
     </div>
   );
+};
 
 export default ImageRenderer;

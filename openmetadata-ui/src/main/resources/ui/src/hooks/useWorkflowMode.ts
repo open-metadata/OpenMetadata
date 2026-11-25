@@ -18,6 +18,7 @@ import {
   WorkflowDefinition,
 } from '../generated/governance/workflows/workflowDefinition';
 import workflowClassBase from '../utils/WorkflowClassBase';
+import { isIncidentSettingsWorkflow } from '../utils/WorkflowConfigUtils';
 
 export type WorkflowMode = 'view' | 'edit';
 
@@ -56,6 +57,29 @@ const getIsNoOpTrigger = (workflowDefinition?: WorkflowDefinition): boolean => {
   const triggerType = isTriggerObject ? trigger.type : undefined;
 
   return triggerType === Type.NoOp;
+};
+
+const getWorkflowEditingState = (
+  mode: WorkflowMode,
+  workflowDefinition?: WorkflowDefinition
+) => {
+  const isViewMode = mode === 'view';
+  const isEditMode = mode === 'edit';
+  const isNoOpTrigger = getIsNoOpTrigger(workflowDefinition);
+  const editEnabled = isEditMode && !isNoOpTrigger;
+  const viewEnabled = isViewMode && !isNoOpTrigger;
+  const hasIncidentSettings = isIncidentSettingsWorkflow(workflowDefinition);
+  const settingsEditEnabled = isEditMode && hasIncidentSettings;
+
+  return {
+    isViewMode,
+    isEditMode,
+    isNoOpTrigger,
+    editEnabled,
+    viewEnabled,
+    canSave: editEnabled || settingsEditEnabled,
+    showEditButton: viewEnabled || (isViewMode && hasIncidentSettings),
+  };
 };
 
 export interface UseWorkflowModeReturn {
@@ -143,14 +167,18 @@ export const useWorkflowMode = (
   }, [internalMode, enterEditMode, enterViewMode]);
 
   const derivedStates = useMemo(() => {
-    const isViewMode = internalMode === 'view';
-    const isEditMode = internalMode === 'edit';
-    const isNoOpTrigger = getIsNoOpTrigger(workflowDefinition);
+    const {
+      isViewMode,
+      isEditMode,
+      isNoOpTrigger,
+      editEnabled,
+      viewEnabled,
+      canSave,
+      showEditButton,
+    } = getWorkflowEditingState(internalMode, workflowDefinition);
     const caps = workflowClassBase.getCapabilities(workflowDefinition);
     const structural = caps.allowStructuralGraphEdits;
 
-    const editEnabled = isEditMode && !isNoOpTrigger;
-    const viewEnabled = isViewMode && !isNoOpTrigger;
     const deleteEnabled = viewEnabled && caps.allowDeleteWorkflow;
 
     return {
@@ -160,29 +188,29 @@ export const useWorkflowMode = (
       isNoOp: isNoOpTrigger,
 
       canEdit: editEnabled,
-      canSave: editEnabled,
+      canSave,
       canDelete: deleteEnabled,
-      canDragNodes: isEditMode && structural,
+      canDragNodes: editEnabled && structural,
       canDragNodesInViewMode: isViewMode && caps.allowViewModeDrag,
       canAccessSidebar: isEditMode,
       allowStructuralGraphEdits: structural && editEnabled,
-      showWorkflowNodePalette: caps.showWorkflowNodePalette,
+      showWorkflowNodePalette: caps.showWorkflowNodePalette && !isNoOpTrigger,
       allowFullStartNodeConfiguration: caps.allowFullStartNodeConfiguration,
       allowStartNodeFilterScheduleAndBatchEdit:
         caps.allowStartNodeFilterScheduleAndBatchEdit,
       allowScheduledTrigger: caps.allowScheduledTrigger,
 
-      showEditButton: viewEnabled,
-      showSaveButton: editEnabled,
-      showCancelButton: editEnabled,
+      showEditButton,
+      showSaveButton: canSave,
+      showCancelButton: canSave,
       showTestButton: editEnabled,
       showDeleteButton: deleteEnabled,
       showRunButton:
         isViewMode && !!workflowFqn && shouldShowRunButton(workflowDefinition),
 
-      isFormDisabled: isViewMode,
-      isInputDisabled: isViewMode,
-      isDropdownDisabled: isViewMode,
+      isFormDisabled: !editEnabled,
+      isInputDisabled: !editEnabled,
+      isDropdownDisabled: !editEnabled,
     };
   }, [internalMode, workflowFqn, workflowDefinition]);
 
