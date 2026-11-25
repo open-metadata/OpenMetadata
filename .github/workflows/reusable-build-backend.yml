@@ -23,6 +23,7 @@ on:
         default: -Dmaven.test.skip=true -DonlyBackend package -pl openmetadata-dist -am
 permissions:
   contents: read
+  packages: read
 jobs:
   build:
     name: Build backend image
@@ -40,12 +41,7 @@ jobs:
           java-version: '21'
           distribution: temurin
       - name: Restore Maven dependencies
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+        uses: ./.github/actions/hydrate-maven-cache
       - name: Build
         env:
           BACKEND_MAVEN_ARGS: ${{ inputs.maven-args }}

@@ -41,14 +41,7 @@ excludes_pull_request = _security.excludes_pull_request
 # Exact PR-reachable cache writers outside this change's ownership. Each entry
 # must still be a real violation (see the staleness test), so the list can only
 # shrink, and any other writer in the same workflow still fails the guard.
-KNOWN_UNOWNED_WRITERS = {
-    # Saves ~/.m2 on every PR with no event gate; runs on pull_request and
-    # workflow_dispatch only, so it needs a main-scoped writer before gating.
-    (
-        ".github/workflows/maven-sonar-build.yml: jobs.maven-sonarcloud-ci"
-        " > Save Maven dependencies: actions/cache/save"
-    ),
-}
+KNOWN_UNOWNED_WRITERS: set[str] = set()
 
 # Third-party composites that save a cache internally, where the guard cannot
 # read their steps. Verified in each action.yml at the pinned version.
@@ -388,7 +381,17 @@ def test_guard_flags_third_party_composite_writers(tmp_path: Path) -> None:
     assert pull_request_cache_writers(tmp_path)
 
 
-def test_allowlist_covers_only_the_exact_existing_writer(tmp_path: Path) -> None:
+def test_allowlist_covers_only_the_exact_existing_writer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        __import__(__name__),
+        "KNOWN_UNOWNED_WRITERS",
+        {
+            ".github/workflows/maven-sonar-build.yml: jobs.maven-sonarcloud-ci"
+            " > Save Maven dependencies: actions/cache/save"
+        },
+    )
     write(
         tmp_path,
         ".github/workflows/maven-sonar-build.yml",
@@ -413,8 +416,16 @@ def test_allowlist_covers_only_the_exact_existing_writer(tmp_path: Path) -> None
 
 
 def test_allowlist_does_not_hide_a_second_writer_with_the_same_name(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr(
+        __import__(__name__),
+        "KNOWN_UNOWNED_WRITERS",
+        {
+            ".github/workflows/maven-sonar-build.yml: jobs.maven-sonarcloud-ci"
+            " > Save Maven dependencies: actions/cache/save"
+        },
+    )
     save = {"name": "Save Maven dependencies", "uses": "actions/cache/save@v6"}
     write(
         tmp_path,
@@ -478,25 +489,96 @@ MAVEN_JOBS = [
     "openmetadata-service-unit-tests",
     "k8s_operator-unit-tests",
     "docker-image-smoke-test",
+    "maven-sonarcloud-ci",
 ]
 
 
 @pytest.mark.parametrize("job", MAVEN_JOBS)
 def test_unit_test_jobs_still_restore_maven_on_prs_and_save_on_main(job: str) -> None:
     steps = steps_of("openmetadata-service-unit-tests.yml", job)
-    restore = index_of(
-        steps, lambda s: s.get("uses", "").startswith("actions/cache/restore@")
+    hydrate = index_of(
+        steps, lambda s: s.get("uses") == "./.github/actions/hydrate-maven-cache"
     )
     save = index_of(
         steps, lambda s: s.get("uses", "").startswith("actions/cache/save@")
     )
     first_mvn = index_of(steps, lambda s: "mvn " in s.get("run", ""))
-    assert restore < first_mvn < save
-    assert steps[restore]["with"]["path"] == steps[save]["with"]["path"] == "~/.m2"
-    assert not excludes_pull_request(steps[restore].get("if", ""))
+    assert hydrate < first_mvn < save
+    assert steps[save]["with"]["path"] == "~/.m2"
+    assert not excludes_pull_request(steps[hydrate].get("if", ""))
     # Saved after the build so the entry holds what the build downloaded, and
     # only from push (main), the scope every PR can read.
     assert steps[save]["if"].replace(" ", "").startswith("github.event_name=='push'")
+
+
+def test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests() -> (
+    None
+):
+    for retired in (
+        "java-checkstyle.yml",
+        "maven-sonar-build.yml",
+        "integration-tests-mysql-elasticsearch.yml",
+        "integration-tests-postgres-opensearch.yml",
+        "integration-tests-postgres-elasticsearch-redis.yml",
+    ):
+        assert not (WORKFLOWS / retired).exists(), f"{retired} should be consolidated"
+
+    backend = load(WORKFLOWS / "openmetadata-service-unit-tests.yml")
+    jobs = backend["jobs"]
+
+    # SonarCloud stays off PR and merge_group inside the unified backend workflow.
+    sonar_if = jobs["maven-sonarcloud-ci"]["if"]
+    assert excludes_pull_request(sonar_if)
+    assert "github.event_name != 'merge_group'" in sonar_if
+
+    # Integration-test build runs once and shares its artifact across all 3 profiles.
+    build_steps = jobs["integration-test-build"]["steps"]
+    assert any(
+        s.get("uses") == "./.github/actions/hydrate-maven-cache" for s in build_steps
+    )
+    assert not any(
+        s.get("uses", "").startswith("actions/cache@")
+        and (s.get("with") or {}).get("path") == "~/.m2"
+        for s in build_steps
+    )
+
+    reusable_steps = load(WORKFLOWS / "java-integration-lanes-reusable.yml")["jobs"][
+        "integration-test-lanes"
+    ]["steps"]
+    assert any(
+        s.get("uses") == "./.github/actions/hydrate-maven-cache" for s in reusable_steps
+    )
+    assert not any(
+        s.get("uses", "").startswith("actions/cache@")
+        and (s.get("with") or {}).get("path") == "~/.m2"
+        for s in reusable_steps
+    )
+
+    for profile_job in (
+        "it-mysql-elasticsearch",
+        "it-postgres-opensearch",
+        "it-postgres-elasticsearch-redis",
+    ):
+        job = jobs[profile_job]
+        assert job["uses"] == "./.github/workflows/java-integration-lanes-reusable.yml"
+        assert "openmetadata-service-unit-tests" in job["needs"]
+        assert "integration-test-build" in job["needs"]
+        assert excludes_pull_request(job["if"])
+        # `!cancelled()` overrides GitHub's implicit `success()`, so IT-only paths
+        # (where unit tests are legitimately skipped) still run Stage 2.
+        assert "!cancelled()" in job["if"]
+        assert "needs.changes.result == 'success'" in job["if"]
+        assert job["with"]["artifact_name"] == "java-it-build-${{ github.run_id }}"
+
+    # Required status check job names stay top-level so merge-rules matches them.
+    for required_check in (
+        "openmetadata-service-unit-tests",
+        "openmetadata-service-unit-tests-status",
+        "integration-tests-mysql-elasticsearch",
+        "integration-tests-postgres-opensearch",
+        "integration-tests-postgres-elasticsearch-redis",
+    ):
+        assert required_check in jobs
 
 
 # ---------------------------------------------------------------------------
@@ -541,26 +623,77 @@ def test_service_unit_tests_skip_the_unused_apt_and_antlr_installs() -> None:
 
 
 # ---------------------------------------------------------------------------
-# O-4: java-checkstyle restores Maven read-only and no longer purges disk.
+# O-4: unified fail-fast checkstyle + unit tests with structured summary, and
+# zero-runner `java-checkstyle` stub inside Backend CI until ruleset drops it.
 # ---------------------------------------------------------------------------
 
 
-def test_java_checkstyle_restores_the_shared_maven_cache_without_purging_disk() -> None:
-    steps = steps_of("java-checkstyle.yml", "java-checkstyle")
-    assert not any("free-disk-space" in s.get("uses", "") for s in steps)
-    restore = index_of(
-        steps, lambda s: s.get("uses", "").startswith("actions/cache/restore@")
-    )
-    assert restore < index_of(steps, lambda s: "mvn " in s.get("run", ""))
-    # Same key scheme the unit-test jobs save from main, so a PR hits it.
-    [unit_restore] = [
-        s
-        for s in steps_of(
-            "openmetadata-service-unit-tests.yml", "openmetadata-service-unit-tests"
-        )
-        if s.get("uses", "").startswith("actions/cache/restore@")
+def test_java_checkstyle_is_unified_fail_fast_in_backend_job() -> None:
+    assert not (WORKFLOWS / "java-checkstyle.yml").exists()
+    stub_job = load(WORKFLOWS / "openmetadata-service-unit-tests.yml")["jobs"][
+        "java-checkstyle"
     ]
-    assert steps[restore]["with"] == unit_restore["with"]
+    assert stub_job.get("if") == "false"
+
+    steps = steps_of(
+        "openmetadata-service-unit-tests.yml", "openmetadata-service-unit-tests"
+    )
+    checkstyle = index_of(steps, lambda s: s.get("id") == "checkstyle")
+    unit_tests = index_of(steps, lambda s: s.get("id") == "unit-tests")
+    summarize = index_of(
+        steps, lambda s: "summarize_surefire.py" in s.get("run", "")
+    )
+    assert checkstyle < unit_tests < summarize
+    assert "spotless:apply" in steps[checkstyle]["run"]
+    assert "steps.checkstyle.outcome == 'success'" in steps[unit_tests]["if"]
+
+
+def test_ghcr_cache_pulls_authenticate_with_github_token() -> None:
+    # Newly published GHCR packages default to private until an admin makes them
+    # public, so every GHCR cache pull must authenticate with GITHUB_TOKEN
+    # (ADR:2026-11-24-ci-caches-live-in-ghcr-with-actions-cache-fallback).
+    hydrate = load(ROOT / ".github/actions/hydrate-maven-cache/action.yml")
+    ghcr_step = next(
+        s for s in hydrate["runs"]["steps"] if s.get("id") == "ghcr"
+    )
+    assert "github.token" in ghcr_step["env"]["GHCR_TOKEN"]
+    assert "docker login ghcr.io" in ghcr_step["run"]
+
+    pw_steps = load(WORKFLOWS / "reusable-playwright-e2e.yml")["jobs"][
+        "prepare-ingestion-image"
+    ]["steps"]
+    pw_ghcr = next(s for s in pw_steps if s.get("id") == "ghcr-ingestion")
+    assert "GITHUB_TOKEN" in pw_ghcr["env"]["GHCR_TOKEN"]
+    assert "docker login ghcr.io" in pw_ghcr["run"]
+
+    # Playwright ingestion image publishes to GHCR (never Actions cache) and stays off PR/MQ.
+    push_steps = [s for s in pw_steps if "docker push" in s.get("run", "")]
+    assert len(push_steps) == 1
+    assert "github.event_name != 'merge_group'" in push_steps[0]["if"]
+    assert "github.event_name != 'pull_request'" in push_steps[0]["if"]
+    assert "prune_ghcr_package.py" in push_steps[0]["run"]
+    assert not any(
+        s.get("uses", "").startswith("actions/cache/save@") for s in pw_steps
+    )
+
+    for wf in (
+        "openmetadata-service-unit-tests.yml",
+        "java-integration-lanes-reusable.yml",
+        "reusable-build-backend.yml",
+        "ci-merge-queue.yml",
+        "ci-nightly.yml",
+        "py-cli-e2e-tests-v2.yml",
+    ):
+        perms = load(WORKFLOWS / wf).get("permissions") or {}
+        assert perms.get("packages") == "read", f"{wf} needs packages: read"
+
+    for wf in (
+        "playwright-postgresql-e2e.yml",
+        "postgresql-nightly-e2e.yml",
+        "mysql-nightly-e2e.yml",
+    ):
+        perms = load(WORKFLOWS / wf)["jobs"]["playwright"].get("permissions") or {}
+        assert perms.get("packages") == "read", f"{wf}:playwright needs packages: read"
 
 
 # ---------------------------------------------------------------------------

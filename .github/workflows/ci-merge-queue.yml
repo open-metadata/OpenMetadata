@@ -15,6 +15,7 @@ on:
   workflow_dispatch: null
 permissions:
   contents: read
+  packages: read
   pull-requests: read
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}

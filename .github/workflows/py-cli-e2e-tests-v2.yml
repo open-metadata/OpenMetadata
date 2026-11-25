@@ -20,6 +20,7 @@ on:
 permissions:
   id-token: write
   contents: read
+  packages: read
 env:
   DEFAULT_CONNECTORS: *default-connectors
 jobs:
