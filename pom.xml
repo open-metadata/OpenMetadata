@@ -154,8 +154,13 @@
          across the two, so client and server upgrade independently. That
          decoupling is what lets the server-side Fuseki bump roll out on its
          own schedule; it is not a reason to leave a server on 5.6, which is
-         still exposed to the CVE above. -->
-    <jena.version>6.3.0</jena.version>
+         still exposed to the CVE above.
+
+         Hold 6.2.0: Jena 6.3.0 hard-codes a 100 KB Thrift message cap
+         (TRDF.maxMessageSize), so any RDF value over ~100 KB (a long description,
+         view definition or stored SQL) fails to read back and blocks the live
+         RDF write queue. 6.2.0 uses Thrift's 100 MB default. -->
+    <jena.version>6.2.0</jena.version>
     <!-- CVE-2026-102554 (unbounded allocation), fixed in 33.7.2-jre. Managed here, not only in
          openmetadata-service, because common/spec/sdk/java-client otherwise resolve 33.4.8-jre
          via dropwizard-jersey and 33.3.1-android via google-auth-library. -->

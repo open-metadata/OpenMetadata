@@ -63,6 +63,14 @@ updates:
       # them silently kills the search I/O reactor. Remove once httpclient5 5.7 is GA.
       - dependency-name: "org.apache.httpcomponents.core5:*"
         versions: [">=5.5"]
+      # Jena 6.3.0 hard-codes a 100 KB RDF Thrift message cap (TRDF.maxMessageSize), so RDF values
+      # over ~100 KB stop reading back. RdfLiveProjectionIT guards later releases.
+      - dependency-name: "org.apache.jena:*"
+        versions: ["6.3.0"]
+      # elasticsearch-java 9.3+ cannot decode cluster.stats from Elasticsearch 9.0/9.1 (missing
+      # SearchUsageStats.extended). Remove once the minimum supported server is 9.3 or later.
+      - dependency-name: "co.elastic.clients:elasticsearch-java"
+        versions: [">=9.3.0"]
 
   - package-ecosystem: "npm"
     directory: "/openmetadata-ui/src/main/resources/ui"

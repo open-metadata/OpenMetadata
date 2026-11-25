@@ -17,11 +17,13 @@
              the dependency reduced pom is not reflected in a multi-module build
              correctly. -->
 
-        <!-- Elasticsearch Java API Client -->
+        <!-- Elasticsearch Java API Client. Hold the 9.2 line: from 9.3 the client requires
+             SearchUsageStats.extended in cluster.stats, which Elasticsearch 9.0 and 9.1 (still
+             supported servers) do not send, so cluster stats fail to decode against them. -->
         <dependency>
             <groupId>co.elastic.clients</groupId>
             <artifactId>elasticsearch-java</artifactId>
-            <version>9.5.6</version>
+            <version>9.2.9</version>
             <optional>true</optional>
             <exclusions>
                 <exclusion>
