@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.core5.http.HttpEntity;
+import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.elasticsearch.MeteredElasticsearchTransport;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
@@ -132,18 +133,20 @@ public class ElasticSearchVectorService extends AbstractVectorIndexService {
 
   @Override
   protected ObjectNode embeddingFieldMapping(int dimension) {
-    return MAPPER
-        .createObjectNode()
-        .put("type", "dense_vector")
-        .put("dims", dimension)
-        .put("index", true)
-        .put("similarity", "cosine");
+    return EsUtils.denseVectorMapping(dimension);
   }
 
   @Override
   protected String buildKnnSearch(
       float[] vector, VectorSearchParameters parameters, Set<String> readableAnchorIds) {
     return VectorSearchQueryBuilder.buildNativeESQuery(
+        vector, parameters, knnNumCandidatesMultiplier, readableAnchorIds);
+  }
+
+  @Override
+  protected String buildKnnQueryClause(
+      float[] vector, VectorSearchParameters parameters, Set<String> readableAnchorIds) {
+    return VectorSearchQueryBuilder.buildNativeESQueryClause(
         vector, parameters, knnNumCandidatesMultiplier, readableAnchorIds);
   }
 

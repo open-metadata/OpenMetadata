@@ -111,12 +111,21 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   protected abstract String buildKnnSearch(
       float[] vector, VectorSearchParameters parameters, Set<String> readableAnchorIds);
 
+  /** The engine's kNN clause, for use inside another query; see {@link #knnQueryClause}. */
+  protected abstract String buildKnnQueryClause(
+      float[] vector, VectorSearchParameters parameters, Set<String> readableAnchorIds);
+
   /**
    * Whether a kNN at {@code threshold} returns at most {@code k} hits. When it does, a larger page
    * fetches nothing extra and, at larger offsets, can push from+size past {@code
    * index.max_result_window}.
    */
   protected abstract boolean knnReturnsAtMostK(double threshold);
+
+  @Override
+  public String knnQueryClause(float[] vector, VectorSearchParameters parameters) {
+    return buildKnnQueryClause(vector, parameters, readableAnchors.apply(parameters));
+  }
 
   /**
    * Whether ontology terms keep their chunks in {@link OntologyChunkIndex}. When they do not, a

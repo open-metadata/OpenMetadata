@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import es.co.elastic.clients.elasticsearch._types.mapping.Property;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
 import es.co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
 import es.co.elastic.clients.elasticsearch.indices.DeleteIndexResponse;
@@ -13,6 +14,7 @@ import es.co.elastic.clients.elasticsearch.indices.ForcemergeRequest;
 import es.co.elastic.clients.elasticsearch.indices.ForcemergeResponse;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasRequest;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasResponse;
+import es.co.elastic.clients.elasticsearch.indices.GetMappingRequest;
 import es.co.elastic.clients.elasticsearch.indices.PutIndicesSettingsRequest;
 import es.co.elastic.clients.elasticsearch.indices.PutIndicesSettingsResponse;
 import es.co.elastic.clients.elasticsearch.indices.PutMappingRequest;
@@ -22,11 +24,14 @@ import es.co.elastic.clients.elasticsearch.indices.stats.IndicesStats;
 import es.co.elastic.clients.transport.endpoints.BooleanResponse;
 import java.io.IOException;
 import java.io.StringReader;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.IndexManagementClient;
@@ -97,7 +102,8 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
 
       String transformedContent =
           (indexMappingContent != null && !indexMappingContent.isEmpty())
-              ? EsUtils.enrichIndexMappingForElasticsearch(indexMappingContent)
+              ? EsUtils.enrichIndexMappingForElasticsearchUpdate(
+                  indexMappingContent, () -> readLiveEmbeddingField(indexName))
               : indexMappingContent;
       String mappingsJson = extractMappingsJson(transformedContent);
       PutMappingRequest request =
@@ -124,6 +130,34 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
           indexMapping.getIndexName(clusterAlias),
           e);
     }
+  }
+
+  /**
+   * The {@code embedding} field the live index maps now. The name may be an alias over several
+   * indexes after a recreate, so every index behind it is read.
+   */
+  private LiveEmbeddingField readLiveEmbeddingField(String indexName) {
+    try {
+      GetMappingRequest request = GetMappingRequest.of(builder -> builder.index(indexName));
+      List<Property> embeddingFields =
+          client.indices().getMapping(request).mappings().values().stream()
+              .map(record -> record.mappings().properties().get(EsUtils.EMBEDDING_FIELD))
+              .filter(Objects::nonNull)
+              .toList();
+      return new LiveEmbeddingField(
+          !embeddingFields.isEmpty(), declaredDimensions(embeddingFields));
+    } catch (IOException e) {
+      throw new UncheckedIOException(
+          String.format("Failed to read the live mapping of index %s", indexName), e);
+    }
+  }
+
+  private static Set<Integer> declaredDimensions(List<Property> embeddingFields) {
+    return embeddingFields.stream()
+        .filter(Property::isDenseVector)
+        .map(field -> field.denseVector().dims())
+        .filter(Objects::nonNull)
+        .collect(Collectors.toUnmodifiableSet());
   }
 
   @Override

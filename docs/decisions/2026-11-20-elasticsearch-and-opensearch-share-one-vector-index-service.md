@@ -3,8 +3,9 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-20 (initial); v2 2026-11-23 (an unwritable chunk index keeps the entity
   embedding; the chunk generation goes live with the entity indexes, and only a missed delete
-  blocks it; the header's count bounds every stored chunk id); v3 2026-11-24 (ontology terms keep
-  the engine split of their own record)
+  blocks it; the header's count bounds every stored chunk id); v3 2026-11-23 (the Revisit clause
+  is resolved by a kNN query clause hook; fusing the two legs stays out of OpenMetadata); v4
+  2026-11-24 (ontology terms keep the engine split of their own record)
 - **Deciders:** Search and AI context maintainers
 - **Guard:** `VectorChunkIndexIT` (each scenario on a real cluster of each engine),
   `ChunkSetBoundTest` (trims and deletes after a write that stopped part way),
@@ -150,3 +151,17 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   vector failure, on both engines. The next reindex adds the embedding.
 - **Revisit** when hybrid search is wanted on Elasticsearch. It needs its own retrieval request,
   which belongs behind a hook like the kNN search body.
+
+## Amendment (v3, 2026-11-23)
+
+The "Revisit when hybrid search is wanted on Elasticsearch" clause is resolved by a hook, not by a
+retrieval request in OpenMetadata. `VectorIndexService.knnQueryClause(vector, parameters)` returns
+the engine's kNN clause, usable inside `bool` and `function_score`, built by the new
+`AbstractVectorIndexService.buildKnnQueryClause` hook: OpenSearch's `knn` clause with
+`ignore_unmapped`, and Elasticsearch's `knn` query with `k` per shard and `similarity = 2 *
+threshold - 1`. A caller composes its own hybrid request around it. Fusing the keyword and the
+semantic leg is the caller's concern and stays out of OpenMetadata
+(ADR:2026-11-23-elasticsearch-vector-fields-pin-their-index-options records the index options
+that make the two engines' kNN legs comparable). The OpenSearch RRF search pipeline remains until
+its callers stop using it, and then leaves OpenMetadata
+(ADR:2026-11-23-the-hybrid-rrf-pipeline-leaves-openmetadata).
