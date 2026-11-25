@@ -23,6 +23,8 @@ export interface ConfirmationModalProps {
   bodyText: string | ReactNode;
   header: string | ReactNode;
   visible: boolean;
+  /** Panel width in pixels; 520 by default. */
+  width?: number;
   headerClassName?: string;
   bodyClassName?: string;
   footerClassName?: string;

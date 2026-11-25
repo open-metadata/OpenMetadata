@@ -12,11 +12,12 @@
  */
 
 import { isEmpty } from 'lodash';
-import { ReactNode, useEffect, useMemo } from 'react';
+import { ReactNode, useEffect, useMemo, useRef } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
 import { Task } from '../../../rest/tasksAPI';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
+import { useLinkedTaskId } from '../../discovery/personal-space/InboxPage/useLinkedTaskId';
 import TaskFeedCardFromTask from '../TaskFeedCard/TaskFeedCardFromTask.component';
 
 interface TaskListV1Props {
@@ -44,13 +45,32 @@ const TaskListV1 = ({
   onAfterClose,
   handlePanelResize,
 }: TaskListV1Props) => {
+  const linkedTaskId = useLinkedTaskId();
+  // The linked task is opened once; afterwards the user's own picks win.
+  const openedLinkRef = useRef<string>();
+
   useEffect(() => {
+    if (!onTaskClick || taskList.length === 0) {
+      return;
+    }
+    const linked =
+      linkedTaskId && openedLinkRef.current !== linkedTaskId
+        ? taskList.find((t) => t.id === linkedTaskId)
+        : undefined;
+    if (linked) {
+      openedLinkRef.current = linkedTaskId;
+      if (selectedTask?.id !== linked.id) {
+        onTaskClick(linked);
+      }
+
+      return;
+    }
     const task = taskList.find((t) => t.id === selectedTask?.id);
 
-    if (onTaskClick && (!selectedTask || !task) && taskList.length > 0) {
+    if (!selectedTask || !task) {
       onTaskClick(taskList[0]);
     }
-  }, [taskList, selectedTask, onTaskClick]);
+  }, [taskList, selectedTask, onTaskClick, linkedTaskId]);
 
   useEffect(() => {
     // While a fetch is in flight the list is intentionally empty; collapsing the

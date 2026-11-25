@@ -387,12 +387,45 @@ describe('EntityStatusBadge', () => {
     await user.click(screen.getByTestId('lifecycle-request-trigger'));
     await user.click(await screen.findByTestId('withdraw-lifecycle-request'));
 
-    expect(onWithdraw).toHaveBeenCalled();
+    expect(await screen.findByTestId('confirmation-modal')).toHaveTextContent(
+      'message.withdraw-stage-request-confirm'
+    );
+    expect(onWithdraw).not.toHaveBeenCalled();
+
+    await user.click(screen.getByTestId('cancel'));
+
+    expect(onWithdraw).not.toHaveBeenCalled();
+
+    await user.click(screen.getByTestId('lifecycle-request-trigger'));
+    await user.click(await screen.findByTestId('withdraw-lifecycle-request'));
+    await user.click(await screen.findByTestId('save-button'));
+
+    expect(onWithdraw).toHaveBeenCalledTimes(1);
 
     await user.click(screen.getByTestId('lifecycle-request-trigger'));
     await user.click(await screen.findByTestId('view-lifecycle-request'));
 
     expect(mockNavigate).toHaveBeenCalledWith('/tasks/task-id');
+  });
+
+  it("opens the pending request selected in the asset's tasks tab", async () => {
+    render(
+      <EntityStatusBadge
+        entityType="dataProduct"
+        fqn="Finance.Invoices"
+        requestTaskId="task-id"
+        requestedStage={EntityStatus.Deprecated}
+        showDivider={false}
+        status={EntityStatus.Approved}
+      />
+    );
+
+    await user.click(screen.getByTestId('lifecycle-request-trigger'));
+    await user.click(await screen.findByTestId('view-lifecycle-request'));
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/dataProduct/Finance.Invoices/activity_feed/tasks?taskId=task-id'
+    );
   });
 
   it('offers no withdraw on a request someone else raised', async () => {

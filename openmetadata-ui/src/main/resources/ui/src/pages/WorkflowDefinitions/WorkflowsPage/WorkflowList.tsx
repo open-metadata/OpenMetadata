@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Box,
-  ButtonGroup,
-  ButtonGroupItem,
-} from '@openmetadata/ui-core-components';
+import { Badge, Box, Tabs } from '@openmetadata/ui-core-components';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import WorkflowCard from '../../../components/WorkflowDefinitions/WorkflowCard/WorkflowCard.component';
@@ -62,23 +57,21 @@ const WorkflowListHeader = ({
           {count}
         </Badge>
       </Box>
-      <ButtonGroup
-        disallowEmptySelection
-        aria-label={t('label.workflow-plural')}
-        selectedKeys={activeTabId ? [activeTabId] : []}
-        size="sm"
-        onSelectionChange={(keys) => {
-          const [id] = keys;
-          if (id !== undefined) {
-            onTabChange(String(id));
-          }
-        }}>
-        {tabs.map((tab) => (
-          <ButtonGroupItem id={tab.id} key={tab.id}>
-            {t(tab.labelKey)}
-          </ButtonGroupItem>
-        ))}
-      </ButtonGroup>
+      <Tabs
+        className="tw:w-auto tw:shrink-0"
+        selectedKey={activeTabId}
+        onSelectionChange={(key) => onTabChange(String(key))}>
+        <Tabs.List
+          aria-label={t('label.workflow-plural')}
+          size="sm"
+          type="button-border">
+          {tabs.map((tab) => (
+            <Tabs.Item id={tab.id} key={tab.id}>
+              {t(tab.labelKey)}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+      </Tabs>
     </Box>
   );
 };
