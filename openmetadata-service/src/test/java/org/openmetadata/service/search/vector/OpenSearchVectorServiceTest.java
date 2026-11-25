@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,9 +30,12 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
+import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -113,6 +117,93 @@ class OpenSearchVectorServiceTest {
     assertEquals(
         AbstractVectorIndexService.ChunkRefresh.NONE,
         refresh(table, header(fingerprint, VectorDocBuilder.CHUNK_DOC_VERSION, null, null, null)));
+  }
+
+  /**
+   * The 2-arg {@code updateEntityEmbeddings} overload (used only by the {@code reembed} CLI) must
+   * refuse ontology terms: the release-aware writer needs the published release-snapshot body,
+   * and embedding from the mutable working (draft) row would publish drafts, deprecated, and
+   * not-in-active-release terms straight into the searchable ontology chunk index. Manual term
+   * reindexing goes through the release-aware bulk writer (reindex), which passes the body into the
+   * 3-arg overload. This is the regression for the {@code reembed} draft-leak bug.
+   */
+  @Test
+  void twoArgOverloadRefusesOntologyConceptWithoutWritingOrEmbedding() throws Exception {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(
+        "ontologyconcept", Entity.ONTOLOGY_CONCEPT);
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    OntologyConcept term =
+        new OntologyConcept()
+            .withId(UUID.randomUUID())
+            .withName("order")
+            .withFullyQualifiedName("shop.order")
+            .withDescription("A purchase")
+            .withDeleted(false);
+
+    Logger logger = (Logger) LoggerFactory.getLogger(AbstractVectorIndexService.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      vectorService.updateEntityEmbeddings(term, "entityIndex");
+
+      // No chunk write, no entity-doc partial update, and crucially no embedding provider call:
+      // the guard refuses before building chunk docs, so drafts are never paid for or published.
+      verify(mockGenericClient, never()).execute(any());
+      verify(mockEmbeddingClient, never()).embed(any(String.class));
+      assertTrue(
+          appender.list.stream()
+              .anyMatch(
+                  event ->
+                      event.getLevel() == Level.WARN
+                          && event.getFormattedMessage().contains("release-aware reindex path")),
+          "must warn that term rebuilds go through the release-aware path");
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  /** The refusal must cover both ontology term types (concept and property). */
+  @Test
+  void twoArgOverloadRefusesOntologyPropertyWithoutWritingOrEmbedding() throws Exception {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(
+        "ontologyproperty", Entity.ONTOLOGY_PROPERTY);
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    OntologyProperty term =
+        new OntologyProperty()
+            .withId(UUID.randomUUID())
+            .withName("code")
+            .withFullyQualifiedName("shop.code")
+            .withDescription("An order code")
+            .withDeleted(false);
+
+    vectorService.updateEntityEmbeddings(term, "entityIndex");
+
+    verify(mockGenericClient, never()).execute(any());
+    verify(mockEmbeddingClient, never()).embed(any(String.class));
+  }
+
+  /**
+   * A non-term entity passed to the 2-arg overload is unaffected: it still writes its chunks and
+   * entity-doc embedding. Guards against an over-broad fix that would skip every entity.
+   */
+  @Test
+  void twoArgOverloadStillWritesNonTermEntities() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withDescription("orders"),
+        "entityIndex");
+
+    assertFalse(capturedBulkTargets().isEmpty(), "a non-term entity must still write its chunks");
   }
 
   /** A recreate in flight would otherwise promote the chunks it copied before this update. */

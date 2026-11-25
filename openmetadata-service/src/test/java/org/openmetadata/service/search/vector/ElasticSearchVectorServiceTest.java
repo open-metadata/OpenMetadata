@@ -48,6 +48,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
@@ -161,6 +162,46 @@ class ElasticSearchVectorServiceTest {
 
     verify(mockEmbeddingClient).embedQuery("test query");
     verify(mockEmbeddingClient, never()).embed("test query");
+  }
+
+  /**
+   * The 2-arg {@code updateEntityEmbeddings} overload must refuse ontology terms: the
+   * release-aware writer needs the published release-snapshot body, and embedding from the mutable
+   * working (draft) row would publish drafts into search with no publication check. Manual term
+   * reindexing goes through the release-aware bulk writer (reindex). Mirrors the OpenSearch fix.
+   */
+  @Test
+  void twoArgOverloadRefusesOntologyConceptWithoutWritingOrEmbedding() throws Exception {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(
+        "ontologyconcept", Entity.ONTOLOGY_CONCEPT);
+    OntologyConcept term =
+        new OntologyConcept()
+            .withId(UUID.randomUUID())
+            .withName("order")
+            .withFullyQualifiedName("shop.order")
+            .withDescription("A purchase")
+            .withDeleted(false);
+
+    Logger logger = (Logger) LoggerFactory.getLogger(AbstractVectorIndexService.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      vectorService.updateEntityEmbeddings(term, "entityIndex");
+
+      verify(mockRestClient, never()).performRequest(any(Request.class));
+      verify(mockEmbeddingClient, never()).embed(any(String.class));
+      assertTrue(
+          appender.list.stream()
+              .anyMatch(
+                  event ->
+                      event.getLevel() == Level.WARN
+                          && event.getFormattedMessage().contains("release-aware reindex path")),
+          "must warn that term rebuilds go through the release-aware path");
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
   }
 
   @Test
