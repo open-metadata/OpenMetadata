@@ -380,6 +380,27 @@ class SessionServiceTest {
   }
 
   @Test
+  void isFromAnotherProvider_followsTheConfigurationThisServerRunsNow() {
+    SessionService service =
+        new SessionService(
+            new AuthenticationConfiguration().withProvider(AuthProvider.GOOGLE),
+            repository,
+            Caffeine.newBuilder().build(),
+            scheduler);
+    UserSession googleSession =
+        UserSession.builder().id(validSessionId('g')).provider(AuthProvider.GOOGLE.value()).build();
+
+    assertFalse(service.isFromAnotherProvider(googleSession));
+
+    service.updateConfiguration(new AuthenticationConfiguration().withProvider(AuthProvider.AZURE));
+    assertTrue(service.isFromAnotherProvider(googleSession));
+
+    service.updateConfiguration(
+        new AuthenticationConfiguration().withProvider(AuthProvider.GOOGLE));
+    assertFalse(service.isFromAnotherProvider(googleSession));
+  }
+
+  @Test
   void acquireRefreshLease_leasesANativePasswordSessionUnderEitherNativeProviderName() {
     String sessionId = validSessionId('n');
     long now = System.currentTimeMillis();

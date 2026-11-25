@@ -59,7 +59,9 @@ describe('incident group plural counts', () => {
   it('should read zero in the singular in French', async () => {
     const t = await translatorFor('fr-FR');
 
-    expect(t('label.recurring-count', { count: 0 })).toBe('<0>0</0> récurrent');
+    expect(t('label.rising-groups-count', { count: 0 })).toBe(
+      'Groupes en hausse : <0>0</0>'
+    );
     expect(t('label.table-count', { count: 2 })).toBe('2 tableaux');
   });
 
