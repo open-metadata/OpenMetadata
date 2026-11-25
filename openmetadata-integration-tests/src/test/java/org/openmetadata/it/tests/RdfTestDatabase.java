@@ -24,6 +24,7 @@ import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.util.TestDatabaseImages;
 import org.testcontainers.containers.GenericContainer;
 
 /** Isolated SQL database with the real RDF release migrations applied twice. */
@@ -41,7 +42,10 @@ final class RdfTestDatabase implements AutoCloseable {
     this.backend = backend;
     final int port = backend == Backend.POSTGRES ? 5432 : 3306;
     container =
-        new GenericContainer<>(backend == Backend.POSTGRES ? "postgres:15" : "mysql:8.0")
+        new GenericContainer<>(
+                backend == Backend.POSTGRES
+                    ? TestDatabaseImages.postgres()
+                    : TestDatabaseImages.mysql())
             .withExposedPorts(port)
             .withEnv("POSTGRES_PASSWORD", "rdf-test")
             .withEnv("POSTGRES_DB", "rdf")

@@ -1,7 +1,7 @@
 # Visual regression and RDF run as blocking lanes of the main Playwright workflow, and visual renders the regular UI bundle
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial)
+- **Revisions:** v1 2026-10-23 (initial) · v2 2026-11-19 (visual lane turned off; see Amendment)
 - **Deciders:** Chirag Madlani
 - **Guard:** `.github/scripts/tests/test_playwright_ci_planning.py` (lane gating), `.github/scripts/tests/test_playwright_cache_assets.py`; reviewer for the bundle default
 - **Related:** #35534, #35902, #35787
@@ -17,7 +17,7 @@ and the explore page loses its fixed height. Re-enabling `cssCodeSplit` or reord
 stylesheets only moves the tie somewhere else.
 
 ## Decision
-- `visual` and `rdf` are lanes of `playwright-e2e-reusable.yml`, and their shards count toward
+- `visual` and `rdf` are lanes of `reusable-playwright-e2e.yml`, and their shards count toward
   `playwright-summary`, so a failure blocks the merge. `visual` runs when its UI path filter matches,
   `rdf` when its RDF path filter matches, and both run on every manual and scheduled run. Neither
   runs on `protocol=h2`, because both start plain-HTTP Docker servers.
@@ -38,3 +38,9 @@ failure does. Functional specs still run on the coarse bundle and so still see i
 locally, 5 of 19 visual baselines differ by more than the 1% tolerance between the two bundles, and
 production renders the regular one. `build-visual-ui` and the static server can go once the coarse
 bundle keeps production CSS order, or once coarse is no longer the default.
+
+## Amendment
+
+v2 (2026-11-19): the visual lane no longer runs on any event, so the visual bullets of the
+Decision no longer hold. The RDF lane and the regular-bundle rule for when visual runs are
+unchanged. See ADR:2026-11-19-the-playwright-visual-lane-is-off-until-baselines-are-checked-before-merge.

@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-27 (initial)
 - **Deciders:** Pablo Takara
-- **Guard:** `ingestion/tests/unit/test_python_tooling.py`
+- **Guard:** reviewer
 - **Related:** https://github.com/open-metadata/OpenMetadata/pull/36338
 
 ## Context

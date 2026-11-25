@@ -41,6 +41,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -161,9 +162,7 @@ public final class EntityUtil {
       (constraint1, constraint2) ->
           constraint1.getConstraintType() == constraint2.getConstraintType()
               && constraint1.getColumns().equals(constraint2.getColumns())
-              && ((constraint1.getReferredColumns() == null
-                      && constraint2.getReferredColumns() == null)
-                  || (constraint1.getReferredColumns().equals(constraint2.getReferredColumns())));
+              && Objects.equals(constraint1.getReferredColumns(), constraint2.getReferredColumns());
 
   /**
    * Sort a constraint's column and referredColumn lists together as pairs keyed by the local
@@ -1118,8 +1117,12 @@ public final class EntityUtil {
     if (domainRestricted) {
       List<EntityReference> allowed = subjectContext.getUserDomains();
       if (!nullOrEmpty(allowed)) {
-        // The navbar selection narrows within the role's scope; it can never widen past it.
-        EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+        // The navbar selection narrows within the role's scope; it can never widen past it. Types
+        // the pick never narrows (e.g. a task list about an asset) keep the role's full scope.
+        EntityReference selected =
+            DomainFilterExclusions.isExcluded(entityType)
+                ? null
+                : resolveSelectedDomain(activeDomain(securityContext));
         boolean selectedAllowed =
             selected != null && allowed.stream().anyMatch(d -> coversDomain(d, selected));
         filter.addQueryParam(
@@ -1147,6 +1150,15 @@ public final class EntityUtil {
     if (!getSubjectContext(securityContext).isBot()) {
       applyNavbarDomain(securityContext, filter, entityType, parent);
     }
+  }
+
+  /**
+   * As above, for a count computed where no security context is at hand (e.g. a glossary's term
+   * count): the selection comes from the request, and there is none on bot or background threads.
+   */
+  public static void addNavbarDomainFilter(
+      ListFilter filter, String entityType, Supplier<ResourceContextInterface> parent) {
+    applyNavbarDomain(null, filter, entityType, parent);
   }
 
   // Global (navbar) domain filter: a view preference that narrows lists to the selected domain and
@@ -1254,7 +1266,7 @@ public final class EntityUtil {
 
   // Resolved up front so list queries bind plain ids: planners estimate an id list well, but not a
   // fqnHash LIKE inside the query (e.g. Postgres generic plans then probe every domain asset).
-  private static String domainAndSubDomainIds(EntityReference domain) {
+  public static String domainAndSubDomainIds(EntityReference domain) {
     String fqn = domain.getFullyQualifiedName();
     if (nullOrEmpty(fqn)) {
       return domain.getId().toString();

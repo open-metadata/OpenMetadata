@@ -63,7 +63,6 @@ import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
 } from '../../utils/EntityVersionUtilsPure';
-import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
   getServiceDetailsPath,
@@ -453,9 +452,6 @@ function ServiceVersionPage() {
   const pagingHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        getOtherDetails({
-          [cursorType]: paging[cursorType],
-        });
         handlePageChange(
           currentPage,
           {
@@ -466,7 +462,7 @@ function ServiceVersionPage() {
         );
       }
     },
-    [paging, pageSize, getOtherDetails, handlePageChange]
+    [paging, pageSize, handlePageChange]
   );
 
   const tabs: DetailsTabItem[] = useMemo(() => {
@@ -527,19 +523,13 @@ function ServiceVersionPage() {
       return (
         <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
           <PermissionPlaceholder
-            description={
-              <Transi18next
-                i18nKey="message.no-access-placeholder"
-                renderElement={<b />}
-                values={{
-                  entity: t('label.view-entity', {
-                    entity: `${getEntityName(currentVersionData)} ${t(
-                      'label.service'
-                    )}`,
-                  }),
-                }}
-              />
-            }
+            description={t('message.no-access-placeholder', {
+              entity: t('label.view-entity', {
+                entity: `${getEntityName(currentVersionData)} ${t(
+                  'label.service'
+                )}`,
+              }),
+            })}
             icon={<Lock01 />}
             title={t('label.access-denied')}
           />

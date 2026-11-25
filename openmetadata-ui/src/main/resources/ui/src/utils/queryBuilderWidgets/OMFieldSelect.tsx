@@ -131,7 +131,7 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
       items={filteredItems}
       placeholder={placeholder ?? t('label.condition-builder-select-field')}
       popoverClassName={QUERY_BUILDER_POPOVER_CLASS}
-      selectedKey={selectedKey ?? undefined}
+      selectedKey={selectedKey ?? null}
       shortcut={false}
       showSearchIcon={false}
       size="sm"
@@ -140,7 +140,12 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
         setInputValue(next);
       }}
       onSelectionChange={(key) => {
+        // On blur or Escape React Aria commits the current selection, as null when the filter has hidden it, and leaves
+        // a controlled box's text to us: show the selection again, or the filter reads as a field the rule never took.
         if (key == null) {
+          isUserFilterRef.current = false;
+          setInputValue(selectedLabel);
+
           return;
         }
         const id = String(key);

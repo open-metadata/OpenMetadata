@@ -11,31 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
-import { useState } from 'react';
-import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { PaletteKey } from '../../generated/entity/data/relationshipType';
-import { EntityStatus, Provenance } from '../../generated/type/termRelation';
 import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
-import {
-  addGlossaryTerm,
-  addTermRelation,
-  getGlossaryTermByFQN,
-  removeTermRelationById,
-  updateTermRelationById,
-} from '../../rest/glossaryAPI';
-import ontologyExplorerClassBase from '../../utils/OntologyExplorerClassBase';
-import {
-  OntologyAiProposals,
-  OntologyAiProposalsOptions,
-} from '../../utils/OntologyExplorerClassBase.interface';
 import { useOntologyExplorer } from './hooks/useOntologyExplorer';
 import OntologyExplorer from './OntologyExplorer';
 import { LayoutType } from './OntologyExplorer.constants';
@@ -63,25 +41,10 @@ interface OntologyGraphMockProps {
 
 const mockOntologyGraph = jest.fn<void, [OntologyGraphMockProps]>();
 const mockRelationPanelMount = jest.fn();
-let mockUseRealDraftInspector = false;
 let mockUseRealRelationPanel = false;
 
 jest.mock('./hooks/useOntologyExplorer', () => ({
   useOntologyExplorer: jest.fn(),
-}));
-
-jest.mock('../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
-  showSuccessToast: jest.fn(),
-}));
-
-jest.mock('../../rest/glossaryAPI', () => ({
-  ...jest.requireActual('../../rest/glossaryAPI'),
-  addTermRelation: jest.fn(),
-  addGlossaryTerm: jest.fn(),
-  updateTermRelationById: jest.fn(),
-  removeTermRelationById: jest.fn(),
-  getGlossaryTermByFQN: jest.fn(),
 }));
 
 const mockClearEdgeSelection = jest.fn();
@@ -122,29 +85,6 @@ jest.mock('./OntologyAuthoringInspector', () => ({
       inspector
     </button>
   ),
-}));
-
-jest.mock('./OntologyConceptDraftInspector', () => ({
-  __esModule: true,
-  default: (
-    props: import('react').ComponentProps<
-      typeof import('./OntologyConceptDraftInspector').default
-    >
-  ) => {
-    if (mockUseRealDraftInspector) {
-      const Inspector = jest.requireActual<
-        typeof import('./OntologyConceptDraftInspector')
-      >('./OntologyConceptDraftInspector').default;
-
-      return <Inspector {...props} />;
-    }
-
-    return (
-      <div data-testid="ontology-concept-draft-inspector">
-        {props.node.label}
-      </div>
-    );
-  },
 }));
 
 jest.mock('./OntologyRelationDetailsPanel', () => {
@@ -284,60 +224,9 @@ function createExplorerState(
   };
 }
 
-function useStatefulExplorerMock(): ReturnType<typeof useOntologyExplorer> {
-  const [selectedNode, setSelectedNode] = useState<OntologyNode | null>(null);
-
-  return createExplorerState({ selectedNode, setSelectedNode });
-}
-
 describe('OntologyExplorer Studio data controls', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  it('renders a hydrated display name instead of an isolated term UUID', () => {
-    const isolatedId = '002e5485-0c59-45cc-912e-15fbc7e350bf';
-    const isolatedNode: OntologyNode = {
-      fullyQualifiedName: `Finance.${isolatedId}`,
-      id: isolatedId,
-      label: isolatedId,
-      type: 'glossaryTermIsolated',
-    };
-    const graphData = { edges: [], nodes: [isolatedNode] };
-    mockUseOntologyExplorer.mockReturnValue(
-      createExplorerState({
-        combinedGraphData: graphData,
-        filteredGraphData: graphData,
-        graphDataToShow: graphData,
-        isolatedTermDetails: [
-          {
-            description: 'Customer account concept',
-            displayName: 'Customer Account',
-            fullyQualifiedName: 'Finance.customer_account',
-            glossary: {
-              id: 'cf650c10-4f15-4775-b737-d7936f3a43cb',
-              name: 'Finance',
-              type: 'glossary',
-            },
-            id: isolatedId,
-            name: 'customer_account',
-          },
-        ],
-      })
-    );
-
-    render(<OntologyExplorer showHealth scope="global" />);
-
-    fireEvent.click(screen.getByTestId('ontology-health-review'));
-    const isolatedRow = screen.getByTestId(
-      `ontology-isolated-term-${isolatedId}`
-    );
-
-    expect(isolatedRow).toHaveTextContent('Customer Account');
-    expect(isolatedRow).not.toHaveTextContent(isolatedId);
-    expect(screen.getByTestId('ontology-isolated-count')).toHaveTextContent(
-      '1'
-    );
   });
 
   it('exposes global Model and Data modes and dispatches the typed selection', () => {
@@ -539,77 +428,6 @@ describe('OntologyExplorer Studio data controls', () => {
     expect(state.handleGraphNodeClick).not.toHaveBeenCalled();
   });
 
-  it('uses the inline inspector instead of the entity slideout in authoring mode', () => {
-    const state = createExplorerState({ selectedNode: termNode });
-    const onSelectedNodeChange = jest.fn();
-    mockUseOntologyExplorer.mockReturnValue(state);
-
-    render(
-      <OntologyExplorer
-        isAuthoringMode
-        scope="global"
-        onSelectedNodeChange={onSelectedNodeChange}
-      />
-    );
-
-    expect(
-      screen.getByTestId('ontology-authoring-inspector')
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('ontology-entity-panel')
-    ).not.toBeInTheDocument();
-    expect(screen.getByTestId('ontology-explorer')).not.toHaveClass(
-      'ontology-slideout-open'
-    );
-    expect(onSelectedNodeChange).toHaveBeenCalledWith(termNode);
-  });
-
-  it('adds and selects an optimistic concept node for inline authoring', () => {
-    const onSelectedNodeChange = jest.fn();
-    mockUseOntologyExplorer.mockImplementation(useStatefulExplorerMock);
-
-    render(
-      <OntologyExplorer
-        isAuthoringMode
-        conceptDraftId="ontology-concept-draft-1"
-        scope="global"
-        onSelectedNodeChange={onSelectedNodeChange}
-      />
-    );
-
-    expect(
-      screen.getByTestId('ontology-concept-draft-inspector')
-    ).toHaveTextContent('label.new-entity');
-    expect(mockOntologyGraph).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        nodes: expect.arrayContaining([
-          expect.objectContaining({
-            id: 'ontology-concept-draft-1',
-            isDraft: true,
-          }),
-        ]),
-      })
-    );
-    expect(onSelectedNodeChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        id: 'ontology-concept-draft-1',
-        isDraft: true,
-      })
-    );
-  });
-
-  it('opens the entity slideout for a concept in an embedded graph', () => {
-    const state = createExplorerState({ selectedNode: termNode });
-    mockUseOntologyExplorer.mockReturnValue(state);
-
-    render(<OntologyExplorer scope="glossary" />);
-
-    expect(screen.getByTestId('ontology-entity-panel')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('ontology-authoring-inspector')
-    ).not.toBeInTheDocument();
-  });
-
   it('shows the search empty state when the query has no graph matches', () => {
     const state = createExplorerState({
       filters: {
@@ -653,75 +471,6 @@ describe('OntologyExplorer Studio data controls', () => {
       undefined,
       { dataModeLoadMoreBadgeClick: true }
     );
-  });
-
-  it('returns to the Model view when Edit mode is entered from Data', () => {
-    const state = createExplorerState({ explorationMode: 'data' });
-    mockUseOntologyExplorer.mockReturnValue(state);
-
-    const { rerender } = render(
-      <OntologyExplorer isAuthoringMode={false} scope="global" />
-    );
-
-    expect(state.handleModeChange).not.toHaveBeenCalled();
-
-    rerender(<OntologyExplorer isAuthoringMode scope="global" />);
-
-    expect(state.handleModeChange).toHaveBeenCalledWith('model');
-  });
-
-  it('keeps the Model view untouched when Edit mode is entered from Model', () => {
-    const state = createExplorerState({ explorationMode: 'model' });
-    mockUseOntologyExplorer.mockReturnValue(state);
-
-    const { rerender } = render(
-      <OntologyExplorer isAuthoringMode={false} scope="global" />
-    );
-
-    rerender(<OntologyExplorer isAuthoringMode scope="global" />);
-
-    expect(state.handleModeChange).not.toHaveBeenCalled();
-  });
-
-  it('hides the Model and Data switch while authoring concepts', () => {
-    const state = createExplorerState();
-    mockUseOntologyExplorer.mockReturnValue(state);
-
-    render(<OntologyExplorer isAuthoringMode scope="global" />);
-
-    expect(
-      screen.queryByTestId('ontology-layer-switch')
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('tab', { name: 'label.data' })
-    ).not.toBeInTheDocument();
-  });
-
-  it('opens the metric details panel instead of the concept inspector in authoring mode', () => {
-    const metricNode = {
-      id: 'metric-churn-rate',
-      label: 'Monthly Churn Rate %',
-      type: 'metric',
-    };
-    const state = createExplorerState({ selectedNode: metricNode });
-    mockUseOntologyExplorer.mockReturnValue(state);
-
-    render(<OntologyExplorer isAuthoringMode scope="global" />);
-
-    expect(screen.getByTestId('ontology-entity-panel')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('ontology-authoring-inspector')
-    ).not.toBeInTheDocument();
-  });
-
-  it('opens the concept entity page in a new tab from View Details', () => {
-    const state = createExplorerState({ selectedNode: termNode });
-    mockUseOntologyExplorer.mockReturnValue(state);
-
-    render(<OntologyExplorer scope="global" />);
-    fireEvent.click(screen.getByTestId('ontology-authoring-inspector'));
-
-    expect(state.handleGraphNodeDoubleClick).toHaveBeenCalledWith(termNode);
   });
 
   it('caps rendered Data clusters and shows a refine hint', () => {
@@ -769,274 +518,21 @@ describe('OntologyExplorer Studio data controls', () => {
     render(<OntologyExplorer scope="global" />);
 
     expect(
-      screen.getByRole('button', { name: 'label.load-more' })
+      screen.getByRole('button', { name: 'label.load-more-lowercase' })
     ).toBeEnabled();
     expect(
       screen.queryByTestId('ontology-data-render-cap')
     ).not.toBeInTheDocument();
-  });
-
-  it('remounts the relation details panel when the selected edge changes', () => {
-    const state = createExplorerState();
-    mockUseOntologyExplorer.mockReturnValue(state);
-
-    render(<OntologyExplorer isEditMode scope="global" />);
-
-    expect(
-      screen.queryByTestId('ontology-relation-details-panel')
-    ).not.toBeInTheDocument();
-
-    const graphProps = mockOntologyGraph.mock.calls[0][0] as unknown as {
-      onEdgeClick: (edge: MergedEdge | null) => void;
-    };
-    const edgeA: MergedEdge = {
-      from: 'a',
-      id: 'edge-a',
-      isBidirectional: false,
-      relationType: 'partOf',
-      to: 'b',
-    };
-    const edgeB: MergedEdge = {
-      from: 'c',
-      id: 'edge-b',
-      isBidirectional: false,
-      relationType: 'relatedTo',
-      to: 'd',
-    };
-
-    act(() => graphProps.onEdgeClick(edgeA));
-
-    expect(
-      screen.getByTestId('ontology-relation-details-panel')
-    ).toHaveTextContent('edge-a');
-    expect(mockRelationPanelMount).toHaveBeenCalledTimes(1);
-
-    act(() => graphProps.onEdgeClick(edgeB));
-
-    expect(
-      screen.getByTestId('ontology-relation-details-panel')
-    ).toHaveTextContent('edge-b');
-    expect(mockRelationPanelMount).toHaveBeenCalledTimes(2);
-  });
-});
-
-describe('OntologyExplorer AI proposals extension', () => {
-  const proposedNode: OntologyNode = {
-    fullyQualifiedName: 'DataStudio.Revenue',
-    id: 'proposed-op-revenue',
-    label: 'Revenue',
-    proposal: { changeSetId: 'cs-1', operationId: 'op-revenue' },
-    type: 'glossaryTerm',
-  };
-  const createdNode: OntologyNode = {
-    fullyQualifiedName: 'DataStudio.Revenue',
-    id: 'revenue-id',
-    label: 'Revenue',
-    type: 'glossaryTerm',
-  };
-  const openProposal = jest.fn();
-  const onReview = jest.fn();
-  let hookOptions: OntologyAiProposalsOptions | undefined;
-
-  const useStubAiProposals = (
-    options: OntologyAiProposalsOptions
-  ): OntologyAiProposals => {
-    hookOptions = options;
-
-    return {
-      canvasOverlay: <div data-testid="stub-ai-overlay" />,
-      drawer: <div data-testid="stub-ai-drawer" />,
-      edges: [
-        {
-          from: proposedNode.id,
-          label: 'relatedTo',
-          proposal: { changeSetId: 'cs-1', operationId: 'op-link' },
-          relationType: 'relatedTo',
-          to: termNode.id,
-        },
-      ],
-      hasCanvasOverlay: true,
-      healthEntry: { onReview, summary: '1 new term', title: '1', total: 1 },
-      nodes: [proposedNode],
-      openProposal,
-    };
-  };
-
-  // The explorer refreshes after a proposal is applied; the refreshed graph
-  // holds the concept the proposal created.
-  function useRefreshingExplorerMock(): ReturnType<typeof useOntologyExplorer> {
-    const [selectedNode, setSelectedNode] = useState<OntologyNode | null>(null);
-    const [nodes, setNodes] = useState<OntologyNode[]>([termNode]);
-    const graphData = { edges: [], nodes };
-
-    return createExplorerState({
-      combinedGraphData: graphData,
-      filteredGraphData: graphData,
-      graphDataToShow: graphData,
-      handleGraphNodeClick: (node: OntologyNode) => setSelectedNode(node),
-      handleRefresh: () => setNodes([termNode, createdNode]),
-      selectedNode,
-      setSelectedNode,
-    });
-  }
-
-  const lastGraphProps = () =>
-    mockOntologyGraph.mock.calls[mockOntologyGraph.mock.calls.length - 1][0];
-
-  const renderStudio = (onRequestEdit = jest.fn()) => {
-    render(
-      <OntologyExplorer
-        isAuthoringMode
-        isEditMode
-        showHealth
-        proposalPermissions={{ canApprove: true, canReject: false }}
-        scope="global"
-        onRequestEdit={onRequestEdit}
-      />
-    );
-
-    return onRequestEdit;
-  };
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    hookOptions = undefined;
-    mockUseOntologyExplorer.mockImplementation(useRefreshingExplorerMock);
-    jest
-      .spyOn(ontologyExplorerClassBase, 'getAiProposalsHook')
-      .mockReturnValue(useStubAiProposals);
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  it('draws the proposals on the canvas and renders the overlay, drawer and health entry', () => {
-    renderStudio();
-
-    expect(lastGraphProps().nodes).toContainEqual(proposedNode);
-    expect(screen.getByTestId('stub-ai-overlay')).toBeInTheDocument();
-    expect(screen.getByTestId('stub-ai-drawer')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('ontology-health-ai-proposals'));
-
-    expect(onReview).toHaveBeenCalled();
-    expect(hookOptions).toMatchObject({
-      isEnabled: true,
-      permissions: { canApprove: true, canReject: false },
-    });
-  });
-
-  it('opens a proposal from the canvas instead of the concept inspector', () => {
-    renderStudio();
-
-    act(() => lastGraphProps().onNodeClick(proposedNode));
-
-    expect(openProposal).toHaveBeenCalledWith(proposedNode.proposal);
-    expect(
-      screen.queryByTestId('ontology-authoring-inspector')
-    ).not.toBeInTheDocument();
-  });
-
-  it('opens a concept created from a proposal for editing even when the canvas has not loaded it', async () => {
-    (
-      getGlossaryTermByFQN as jest.MockedFunction<typeof getGlossaryTermByFQN>
-    ).mockResolvedValue({
-      description: '',
-      fullyQualifiedName: 'DataStudio.Revenue',
-      glossary: { id: 'glossary-id', type: 'glossary' },
-      id: '7d3c1a52-8a52-4f2c-9a3c-3b3c3e4f5a6b',
-      name: 'Revenue',
-    });
-    const onRequestEdit = renderStudio();
-
-    act(() => hookOptions?.onEditTerm('DataStudio.Revenue'));
-
-    expect(onRequestEdit).toHaveBeenCalledTimes(1);
-    expect(
-      await screen.findByTestId('ontology-authoring-inspector')
-    ).toBeInTheDocument();
-    expect(getGlossaryTermByFQN).toHaveBeenCalledWith('DataStudio.Revenue', {
-      fields: 'relatedTerms,owners',
-    });
-    expect(lastGraphProps().nodes).not.toContainEqual(
-      expect.objectContaining({
-        fullyQualifiedName: 'DataStudio.Revenue',
-        id: '7d3c1a52-8a52-4f2c-9a3c-3b3c3e4f5a6b',
-      })
-    );
-  });
-
-  it('opens a proposed relationship once per click, so later graph updates do not reopen it', () => {
-    renderStudio();
-    const proposedEdge = {
-      from: proposedNode.id,
-      proposal: { changeSetId: 'cs-1', operationId: 'op-link' },
-      relationType: 'relatedTo',
-      to: termNode.id,
-    } as MergedEdge;
-
-    act(() => lastGraphProps().onEdgeClick(proposedEdge));
-
-    expect(openProposal).toHaveBeenCalledWith(proposedEdge.proposal);
-    expect(mockClearEdgeSelection).toHaveBeenCalledTimes(1);
-    expect(
-      screen.queryByTestId('ontology-relation-details-panel')
-    ).not.toBeInTheDocument();
-  });
-
-  it('does not save a relationship drawn to a proposed concept', async () => {
-    renderStudio();
-
-    await act(() =>
-      lastGraphProps().onCreateRelation(
-        termNode.id,
-        proposedNode.id,
-        'relatedTo'
-      )
-    );
-
-    expect(addTermRelation).not.toHaveBeenCalled();
-  });
-
-  it('still saves a relationship drawn between two concepts', async () => {
-    (
-      addTermRelation as jest.MockedFunction<typeof addTermRelation>
-    ).mockResolvedValue({} as never);
-    renderStudio();
-
-    await act(() =>
-      lastGraphProps().onCreateRelation(
-        termNode.id,
-        'DataStudio.SecondaryCluster',
-        'relatedTo'
-      )
-    );
-
-    await waitFor(() =>
-      expect(addTermRelation).toHaveBeenCalledWith(termNode.id, {
-        relationType: 'relatedTo',
-        term: { id: 'DataStudio.SecondaryCluster', type: 'glossaryTerm' },
-      })
-    );
-  });
-
-  it('asks for no proposals outside the Studio canvas', () => {
-    render(<OntologyExplorer scope="glossary" />);
-
-    expect(hookOptions?.isEnabled).toBe(false);
   });
 });
 
 describe('OntologyExplorer legacy surfaces remain distinct from native placements', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseRealDraftInspector = false;
     mockUseRealRelationPanel = false;
   });
 
   afterEach(() => {
-    mockUseRealDraftInspector = false;
     mockUseRealRelationPanel = false;
   });
 
@@ -1082,262 +578,37 @@ describe('OntologyExplorer legacy surfaces remain distinct from native placement
     expect(screen.getByTestId(testId)).toBeVisible();
   });
 
-  it('uses the legacy grouped tree and requests editing when connecting an isolated term', () => {
-    const onRequestEdit = jest.fn();
-    const node = {
-      ...termNode,
-      type: 'glossaryTermIsolated',
-      glossaryId: 'glossary',
-    };
+  it('sends the onboarding call to action to the glossary, not back to the explorer', () => {
+    mockUseOntologyExplorer.mockReturnValue(
+      createExplorerState({
+        graphDataToShow: { nodes: [], edges: [] },
+        combinedGraphData: { nodes: [], edges: [] },
+      })
+    );
+    render(<OntologyExplorer scope="global" />);
+
+    expect(
+      screen.getByTestId('ontology-onboarding-view-glossary')
+    ).toHaveAttribute('href', '/glossary');
+  });
+
+  it('keeps the layer switch when the data layer has no linked assets', () => {
     const state = createExplorerState({
-      combinedGraphData: { nodes: [node], edges: [] },
-      glossaries: [{ id: 'glossary', name: 'Business', description: '' }],
+      explorationMode: 'data',
+      graphDataToShow: { nodes: [], edges: [] },
+      combinedGraphData: { nodes: [], edges: [] },
     });
     mockUseOntologyExplorer.mockReturnValue(state);
-    render(
-      <OntologyExplorer
-        scope="global"
-        surface="tree"
-        onRequestEdit={onRequestEdit}
-      />
-    );
+    render(<OntologyExplorer scope="global" />);
 
-    expect(screen.getByTestId('ontology-tree-unconnected')).toBeVisible();
-
-    fireEvent.click(screen.getByTestId('ontology-tree-connect-' + node.id));
-
-    expect(state.setSelectedNode).toHaveBeenCalledWith(node);
-    expect(onRequestEdit).toHaveBeenCalledTimes(1);
-  });
-
-  it.each([false, true])(
-    'saves an authored relationship with failed=%s without losing a failed edit',
-    async (fails) => {
-      mockUseRealRelationPanel = true;
-      const edge: MergedEdge = {
-        id: 'authored',
-        from: termNode.id,
-        to: secondaryTermNode.id,
-        relationType: 'partOf',
-        isBidirectional: false,
-        provenance: Provenance.Manual,
-        status: EntityStatus.Draft,
-      };
-      const graph = {
-        nodes: [termNode, secondaryTermNode],
-        edges: [{ ...edge, label: edge.relationType }],
-      };
-      const state = createExplorerState({
-        graphDataToShow: graph,
-        combinedGraphData: graph,
-        relationTypes: [createRelationshipTypeMock({ name: 'partOf' })],
-      });
-      mockUseOntologyExplorer.mockReturnValue(state);
-      const save = updateTermRelationById as jest.Mock;
-      if (fails) {
-        save.mockRejectedValue(new Error('Conflict'));
-      } else {
-        save.mockResolvedValue({});
-      }
-      render(<OntologyExplorer isAuthoringMode isEditMode scope="global" />);
-      act(() => mockOntologyGraph.mock.calls.at(-1)?.[0].onEdgeClick(edge));
-      fireEvent.click(
-        within(screen.getByTestId('relation-status-select')).getByRole('button')
-      );
-      fireEvent.click(
-        await screen.findByRole('option', { name: 'label.approved' })
-      );
-      fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
-      await waitFor(() =>
-        expect(save).toHaveBeenCalledWith(
-          termNode.id,
-          'authored',
-          expect.objectContaining({ status: 'Approved' })
-        )
-      );
-      if (fails) {
-        expect(
-          screen.getByTestId('ontology-relation-details-panel')
-        ).toBeVisible();
-      } else {
-        await waitFor(() =>
-          expect(
-            screen.queryByTestId('ontology-relation-details-panel')
-          ).not.toBeInTheDocument()
-        );
-
-        expect(state.handleRefresh).toHaveBeenCalledTimes(1);
-      }
-    }
-  );
-
-  it.each([false, true])(
-    'deletes an authored relationship with failed=%s and retains failure context',
-    async (fails) => {
-      mockUseRealRelationPanel = true;
-      const edge: MergedEdge = {
-        id: 'authored',
-        from: termNode.id,
-        to: secondaryTermNode.id,
-        relationType: 'partOf',
-        isBidirectional: false,
-        provenance: Provenance.Manual,
-        status: EntityStatus.Draft,
-      };
-      const graph = {
-        nodes: [termNode, secondaryTermNode],
-        edges: [{ ...edge, label: edge.relationType }],
-      };
-      const state = createExplorerState({
-        graphDataToShow: graph,
-        combinedGraphData: graph,
-      });
-      mockUseOntologyExplorer.mockReturnValue(state);
-      const remove = removeTermRelationById as jest.Mock;
-      if (fails) {
-        remove.mockRejectedValue(new Error('Conflict'));
-      } else {
-        remove.mockResolvedValue({});
-      }
-      render(<OntologyExplorer isAuthoringMode isEditMode scope="global" />);
-      act(() => mockOntologyGraph.mock.calls.at(-1)?.[0].onEdgeClick(edge));
-      fireEvent.click(screen.getByTestId('delete-relation-btn'));
-      fireEvent.click(screen.getByTestId('confirm-delete-relation-btn'));
-      await waitFor(() =>
-        expect(remove).toHaveBeenCalledWith(termNode.id, 'authored')
-      );
-      if (fails) {
-        expect(
-          screen.getByTestId('ontology-relation-details-panel')
-        ).toBeVisible();
-      } else {
-        await waitFor(() =>
-          expect(
-            screen.queryByTestId('ontology-relation-details-panel')
-          ).not.toBeInTheDocument()
-        );
-
-        expect(state.handleRefresh).toHaveBeenCalledTimes(1);
-      }
-    }
-  );
-
-  it('updates and saves a glossary draft, then replaces its optimistic node with the persisted concept', async () => {
-    mockUseRealDraftInspector = true;
-    const glossary = { id: 'g', name: 'Business', description: '' };
-    const created: GlossaryTerm = {
-      id: 'created',
-      name: 'Customer',
-      fullyQualifiedName: 'Business.Customer',
-      glossary: { id: 'g', type: 'glossary', name: 'Business' },
-      description: 'A customer',
-    };
-    let graph: OntologyGraphData = { nodes: [], edges: [] };
-    mockUseOntologyExplorer.mockImplementation(() => {
-      const [selectedNode, setSelectedNode] = useState<OntologyNode | null>(
-        null
-      );
-
-      return createExplorerState({
-        selectedNode,
-        setSelectedNode,
-        glossaries: [glossary],
-        graphDataToShow: graph,
-      });
-    });
-    (addGlossaryTerm as jest.Mock).mockResolvedValue(created);
-    const onCreated = jest.fn(),
-      onSelected = jest.fn();
-    const { rerender } = render(
-      <OntologyExplorer
-        isAuthoringMode
-        isEditMode
-        conceptDraftId="draft"
-        defaultConceptGlossaryId="g"
-        scope="global"
-        onConceptCreated={onCreated}
-        onSelectedNodeChange={onSelected}
-      />
-    );
-    fireEvent.change(screen.getByRole('textbox', { name: /^label.name/ }), {
-      target: { value: 'Customer' },
-    });
-    fireEvent.change(
-      screen.getByRole('textbox', { name: /^label.description/ }),
-      { target: { value: 'A customer' } }
-    );
-    fireEvent.click(screen.getByTestId('ontology-draft-save'));
-    await waitFor(() => expect(onCreated).toHaveBeenCalledWith(created));
-
+    expect(screen.getByTestId('ontology-data-empty')).toBeVisible();
     expect(
-      screen.queryByTestId('ontology-concept-draft-inspector')
+      screen.queryByTestId('ontology-graph-onboarding')
     ).not.toBeInTheDocument();
 
-    graph = {
-      nodes: [{ id: created.id, label: created.name, type: 'glossaryTerm' }],
-      edges: [],
-    };
-    rerender(
-      <OntologyExplorer
-        isAuthoringMode
-        isEditMode
-        scope="global"
-        onSelectedNodeChange={onSelected}
-      />
-    );
-    await waitFor(() =>
-      expect(onSelected).toHaveBeenLastCalledWith(graph.nodes[0])
-    );
-  });
+    fireEvent.click(screen.getByRole('tab', { name: 'label.model' }));
 
-  it('cancels a glossary draft and removes its temporary selection', () => {
-    mockUseRealDraftInspector = true;
-    mockUseOntologyExplorer.mockImplementation(useStatefulExplorerMock);
-    const onClose = jest.fn();
-    render(
-      <OntologyExplorer
-        isAuthoringMode
-        conceptDraftId="draft"
-        scope="global"
-        onConceptDraftClose={onClose}
-      />
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'label.close' }));
-
-    expect(onClose).toHaveBeenCalledTimes(1);
-    expect(
-      screen.queryByTestId('ontology-concept-draft-inspector')
-    ).not.toBeInTheDocument();
-  });
-
-  it('removes a draft when its parent closes the workflow', () => {
-    mockUseOntologyExplorer.mockImplementation(useStatefulExplorerMock);
-    const onSelectedNodeChange = jest.fn();
-    const { rerender } = render(
-      <OntologyExplorer
-        isAuthoringMode
-        conceptDraftId="draft"
-        scope="global"
-        onSelectedNodeChange={onSelectedNodeChange}
-      />
-    );
-
-    expect(
-      screen.getByTestId('ontology-concept-draft-inspector')
-    ).toBeVisible();
-
-    rerender(
-      <OntologyExplorer
-        isAuthoringMode
-        scope="global"
-        onSelectedNodeChange={onSelectedNodeChange}
-      />
-    );
-
-    expect(
-      screen.queryByTestId('ontology-concept-draft-inspector')
-    ).not.toBeInTheDocument();
-    expect(onSelectedNodeChange).toHaveBeenLastCalledWith(null);
+    expect(state.handleModeChange).toHaveBeenCalledWith('model');
   });
 
   it('changes a Data exploration back to Model and reflects an external search', () => {
@@ -1356,5 +627,69 @@ describe('OntologyExplorer legacy surfaces remain distinct from native placement
     rerender(<OntologyExplorer scope="global" />);
 
     expect(screen.getByTestId('ontology-graph-search')).toHaveValue('Customer');
+  });
+
+  it('opens the entity slideout for a concept in an embedded graph', () => {
+    mockUseOntologyExplorer.mockReturnValue(
+      createExplorerState({ selectedNode: termNode })
+    );
+
+    render(<OntologyExplorer scope="glossary" />);
+
+    expect(screen.getByTestId('ontology-entity-panel')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-authoring-inspector')
+    ).not.toBeInTheDocument();
+  });
+
+  it('inspects a concept in place in the global explorer and opens its page from View Details', () => {
+    const state = createExplorerState({ selectedNode: termNode });
+    mockUseOntologyExplorer.mockReturnValue(state);
+
+    render(<OntologyExplorer scope="global" />);
+
+    expect(
+      screen.queryByTestId('ontology-entity-panel')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-authoring-inspector'));
+
+    expect(state.handleGraphNodeDoubleClick).toHaveBeenCalledWith(termNode);
+  });
+
+  it('remounts the read-only relation details panel when the selected edge changes', () => {
+    mockUseOntologyExplorer.mockReturnValue(createExplorerState());
+
+    render(<OntologyExplorer scope="global" />);
+
+    expect(
+      screen.queryByTestId('ontology-relation-details-panel')
+    ).not.toBeInTheDocument();
+
+    const graphProps = mockOntologyGraph.mock.calls[0][0] as unknown as {
+      onEdgeClick: (edge: MergedEdge | null) => void;
+    };
+    const edgeA: MergedEdge = {
+      from: 'a',
+      id: 'edge-a',
+      isBidirectional: false,
+      relationType: 'partOf',
+      to: 'b',
+    };
+    const edgeB: MergedEdge = { ...edgeA, from: 'c', id: 'edge-b', to: 'd' };
+
+    act(() => graphProps.onEdgeClick(edgeA));
+
+    expect(
+      screen.getByTestId('ontology-relation-details-panel')
+    ).toHaveTextContent('edge-a');
+    expect(mockRelationPanelMount).toHaveBeenCalledTimes(1);
+
+    act(() => graphProps.onEdgeClick(edgeB));
+
+    expect(
+      screen.getByTestId('ontology-relation-details-panel')
+    ).toHaveTextContent('edge-b');
+    expect(mockRelationPanelMount).toHaveBeenCalledTimes(2);
   });
 });

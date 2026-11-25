@@ -70,7 +70,9 @@ import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryDsl;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
+import org.openmetadata.service.search.queries.SearchQueryDsl;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -239,6 +241,11 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public SearchQueryDsl getQueryDsl() {
+    return new OpenSearchQueryDsl(newClient._transport().jsonpMapper());
+  }
+
+  @Override
   public RawSearchResponse rawSearchRequest(String method, String endpoint, String jsonBody)
       throws IOException {
     var builder = Requests.builder().method(method).endpoint(endpoint);
@@ -352,6 +359,12 @@ public class OpenSearchClient implements SearchClient {
   public SearchResultListMapper searchForExport(
       SearchRequest request, SubjectContext subjectContext) throws IOException {
     return searchManager.searchForExport(request, subjectContext);
+  }
+
+  @Override
+  public SearchResultListMapper searchSimilarContextMemories(
+      String text, String filterJson, int size) throws IOException {
+    return searchManager.searchSimilarContextMemories(text, filterJson, size);
   }
 
   @Override

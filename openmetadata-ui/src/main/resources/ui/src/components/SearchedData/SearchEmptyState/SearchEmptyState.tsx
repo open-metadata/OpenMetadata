@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
 import { Database01 } from '@openmetadata/ui-core-components/icons';
 import Qs from 'qs';
 import { useMemo } from 'react';
@@ -19,19 +19,13 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import {
-  CONNECTORS_DOCS,
   DATA_DISCOVERY_DOCS,
   GLOSSARIES_DOCS,
-  INGESTION_DOCS,
-  LOCAL_DEPLOYMENT,
-  OMD_SLACK_LINK,
   TAGS_DOCS,
 } from '../../../constants/docs.constants';
-import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
-import { getLayoutGutter } from '../../../utils/common/layout.utils';
-import i18n, { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CreatePlaceholder from '../../common/EmptyPlaceholder/CreatePlaceholder';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
@@ -39,39 +33,10 @@ import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilter
 import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 
 type Props = {
-  type: ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE;
-  errorMessage?: string;
   query?: Qs.ParsedQs;
 };
 
-const stepsData = [
-  {
-    step: 1,
-    title: i18n.t('label.ingest-sample-data'),
-    description: i18n.t('message.run-sample-data-to-ingest-sample-data'),
-    link: INGESTION_DOCS,
-  },
-  {
-    step: 2,
-    title: i18n.t('label.start-elasticsearch-docker'),
-    description: i18n.t('message.ensure-elasticsearch-is-up-and-running'),
-    link: LOCAL_DEPLOYMENT,
-  },
-  {
-    step: 3,
-    title: i18n.t('label.install-service-connectors'),
-    description: i18n.t('message.checkout-service-connectors-doc'),
-    link: CONNECTORS_DOCS,
-  },
-  {
-    step: 4,
-    title: i18n.t('label.more-help'),
-    description: i18n.t('message.still-running-into-issue'),
-    link: OMD_SLACK_LINK,
-  },
-];
-
-const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
+const SearchEmptyState = ({ query }: Props) => {
   const { showDeleted, search, queryFilter, quickFilter, browsePath } =
     query ?? {};
   const { tab } = useRequiredParams<{ tab: string }>();
@@ -134,18 +99,12 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            description={
-              <Transi18next
-                i18nKey="message.add-data-asset-domain"
-                renderElement={<b />}
-                values={{
-                  domain: activeDomain,
-                }}
-              />
-            }
+            description={t('message.add-data-asset-domain', {
+              domain: activeDomain,
+            })}
             footer={
               <>
-                <Typography as="p" className="tw:text-secondary" size="text-xs">
+                <Typography as="p" color="secondary" size="text-xs">
                   <Transi18next
                     i18nKey="message.refer-to-our-doc"
                     renderElement={
@@ -165,85 +124,16 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
               </>
             }
             icon={<Database01 />}
-            title={
-              <Transi18next
-                i18nKey="message.no-data-available-entity"
-                renderElement={<b />}
-                values={{
-                  entity: activeDomain,
-                }}
-              />
-            }
+            title={t('message.no-data-available-entity', {
+              entity: activeDomain,
+            })}
           />
         </div>
       </div>
     );
   }, [isQuery, tab, activeDomain, search]);
 
-  const elasticSearchError = useMemo(() => {
-    const index = errorMessage?.split('[')[3]?.split(']')[0];
-    const errorText = errorMessage && index ? `find ${index} in` : 'access';
-
-    return (
-      <div data-testid="es-error">
-        <div className="m-b-lg text-center">
-          <p>
-            <span>{t('message.welcome-to-open-metadata')} </span>
-            <span data-testid="error-text">
-              {t('message.unable-to-error-elasticsearch', { error: errorText })}
-            </span>
-          </p>
-
-          <p>{t('message.elasticsearch-setup')}</p>
-        </div>
-        <Grid className="layout-row layout-grid" style={getLayoutGutter(16)}>
-          {stepsData.map((data) => (
-            <Grid.Item className="layout-column" key={data.step} span={6}>
-              <Box
-                inline
-                align="stretch"
-                className="layout-space justify-between h-full border rounded-4 p-sm"
-                direction="col"
-                gap={2}
-                itemClassName="layout-space-item">
-                <div>
-                  <div className="d-flex m-b-xs">
-                    <div className="flex-center rounded-full h-10 w-10 border-2-primary text-primary text-lg font-bold">
-                      {data.step}
-                    </div>
-                  </div>
-
-                  <h6
-                    className="text-base text-grey-body font-medium"
-                    data-testid="service-name">
-                    {data.title}
-                  </h6>
-
-                  <p className="text-grey-body text-sm m-b-lg">
-                    {data.description}
-                  </p>
-                </div>
-
-                <p>
-                  <a href={data.link} rel="noopener noreferrer" target="_blank">
-                    {`${t('label.click-here')} >>`}
-                  </a>
-                </p>
-              </Box>
-            </Grid.Item>
-          ))}
-        </Grid>
-      </div>
-    );
-  }, [errorMessage]);
-
-  return (
-    <div className="text-base font-medium tw:w-full">
-      {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA
-        ? noRecordForES
-        : elasticSearchError}
-    </div>
-  );
+  return <div className="text-base font-medium tw:w-full">{noRecordForES}</div>;
 };
 
 export default SearchEmptyState;

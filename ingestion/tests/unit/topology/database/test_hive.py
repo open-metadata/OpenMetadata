@@ -317,12 +317,7 @@ class HiveUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        test_connection,
-    ) -> None:
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_hive_config)
         self.hive = HiveSource.create(
@@ -335,8 +330,6 @@ class HiveUnitTest(TestCase):
         self.hive._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema_name: []
         self.hive._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
         self.hive._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
-
-    def setUp(self):
         context_patch = patch.dict(
             self.hive.context.get().__dict__,
             {

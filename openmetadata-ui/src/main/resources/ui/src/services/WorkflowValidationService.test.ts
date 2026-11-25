@@ -12,7 +12,10 @@
  */
 import i18next from 'i18next';
 import { Edge, Node } from 'reactflow';
-import { WorkflowType } from '../constants/WorkflowBuilder.constants';
+import {
+  TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+  WorkflowType,
+} from '../constants/WorkflowBuilder.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SinkType } from '../generated/governance/workflows/elements/nodes/automatedTask/sinkTask';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
@@ -72,6 +75,49 @@ const savedConfig = async (nodes: Node[], workflow: WorkflowDefinition) =>
   };
 
 describe('WorkflowValidationService.buildWorkflowForSave', () => {
+  it.each([true, false])(
+    'does not copy incident assignment %s from a start node into an unrelated workflow',
+    async (autoAssignOwners) => {
+      const saved = await buildWorkflowForSave(
+        [startNode({ ...editedStartNode('').data, autoAssignOwners })],
+        [],
+        savedWorkflow({})
+      );
+
+      expect(saved.config).toEqual({ storeStageStatus: true });
+    }
+  );
+
+  it.each([true, false])(
+    'saves incident owner assignment %s without rebuilding its system workflow',
+    async (autoAssignOwners) => {
+      const workflow: WorkflowDefinition = {
+        name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+        displayName: 'Test Case Resolution Task Workflow',
+        description: 'Incident lifecycle',
+        trigger: {
+          type: Type.NoOp,
+          config: {},
+          output: ['relatedEntity', 'updatedBy'],
+        },
+        nodes: [{ name: 'IncidentStart', type: NodeType.StartEvent }],
+        edges: [],
+        config: { autoAssignOwners: !autoAssignOwners, storeStageStatus: true },
+      };
+
+      const saved = await buildWorkflowForSave(
+        [startNode({ autoAssignOwners, userModified: true, dataAssets: [] })],
+        [],
+        workflow
+      );
+
+      expect(saved).toEqual({
+        ...workflow,
+        config: { ...workflow.config, autoAssignOwners },
+      });
+    }
+  );
+
   it('keeps the approval mode when the start node is untouched', async () => {
     const { config } = await savedConfig(
       [startNode({})],

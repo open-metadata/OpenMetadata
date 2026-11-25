@@ -3,17 +3,24 @@ Data quality validation utility functions.
 """
 
 import json
+import math
 from ast import literal_eval
 from collections.abc import Callable
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 from typing import Any, TypeVar
 from urllib.parse import quote
 
-from jinja2 import StrictUndefined, TemplateSyntaxError, UndefinedError
+from jinja2 import StrictUndefined, TemplateSyntaxError, UndefinedError, meta
 from jinja2.exceptions import SecurityError
 from jinja2.sandbox import SandboxedEnvironment
+from sqlalchemy import Boolean, Date, DateTime, Double, Float, Integer, Numeric, String, bindparam, text
 from sqlalchemy.engine import URL
+from sqlalchemy.sql.elements import TextClause
+from sqlalchemy.sql.type_api import TypeEngine
 
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
+from metadata.generated.schema.tests.testDefinition import TestDataType
 from metadata.profiler.orm.registry import is_boolean
 from metadata.utils.logger import test_suite_logger
 
@@ -148,7 +155,232 @@ def casefold_if_string(value: Any) -> Any:
     return value.casefold() if isinstance(value, str) else value
 
 
-def render_sql_expression(sql_template: str, params: dict[str, str]) -> str:
+def _normalize_test_data_type(data_type: Any) -> TestDataType | None:
+    if isinstance(data_type, TestDataType):
+        return data_type
+    if isinstance(data_type, str):
+        try:
+            return TestDataType(data_type.upper())
+        except ValueError:
+            return None
+    return None
+
+
+def get_test_definition_param_types(test_definition: Any) -> dict[str, TestDataType]:
+    """Build a mapping of parameter name to TestDataType from a TestDefinition."""
+    if test_definition is None:
+        return {}
+    param_defs = getattr(test_definition, "parameterDefinition", None)
+    if not isinstance(param_defs, (list, tuple)):
+        return {}
+    param_types: dict[str, TestDataType] = {}
+    for param_def in param_defs:
+        name = getattr(param_def, "name", None)
+        resolved = _normalize_test_data_type(getattr(param_def, "dataType", None))
+        if isinstance(name, str) and name and resolved is not None:
+            param_types[name] = resolved
+    return param_types
+
+
+def _coerce_int(value: str, data_type: TestDataType, label: str) -> int:
+    try:
+        return int(value.strip())
+    except ValueError as exc:
+        raise ValueError(f"Invalid {data_type.value} value {value!r}{label}") from exc
+
+
+def _coerce_float(value: str, data_type: TestDataType, label: str) -> float:
+    try:
+        parsed = float(value.strip())
+    except ValueError as exc:
+        raise ValueError(f"Invalid {data_type.value} value {value!r}{label}") from exc
+    if not math.isfinite(parsed):
+        raise ValueError(f"Non-finite {data_type.value} value {value!r}{label}")
+    return parsed
+
+
+def _coerce_decimal(value: str, data_type: TestDataType, label: str) -> Decimal:
+    try:
+        parsed = Decimal(value.strip())
+    except InvalidOperation as exc:
+        raise ValueError(f"Invalid {data_type.value} value {value!r}{label}") from exc
+    if not parsed.is_finite():
+        raise ValueError(f"Non-finite {data_type.value} value {value!r}{label}")
+    return parsed
+
+
+def _coerce_number(value: str, data_type: TestDataType, label: str) -> int | float:
+    stripped = value.strip()
+    try:
+        return int(stripped)
+    except ValueError:
+        return _coerce_float(value, data_type, label)
+
+
+def _coerce_boolean(value: str, data_type: TestDataType, label: str) -> bool:
+    lowered = value.strip().lower()
+    if lowered == "true":
+        return True
+    if lowered == "false":
+        return False
+    raise ValueError(f"Invalid {data_type.value} value {value!r}{label}: expected 'true' or 'false'")
+
+
+def _coerce_date(value: str, data_type: TestDataType, label: str) -> date | str:
+    stripped = value.strip()
+    if "-" in stripped:
+        try:
+            return date.fromisoformat(stripped)
+        except ValueError:
+            pass
+    logger.warning("Could not parse %s value %r%s as ISO-8601; keeping as string", data_type.value, value, label)
+    return value
+
+
+def _coerce_datetime(value: str, data_type: TestDataType, label: str) -> datetime | str:
+    stripped = value.strip()
+    # Python 3.10's datetime.fromisoformat does not accept a trailing 'Z' suffix.
+    iso_candidate = f"{stripped[:-1]}+00:00" if stripped.endswith(("Z", "z")) else stripped
+    if "-" in iso_candidate and any(sep in iso_candidate for sep in ("T", "t", " ")):
+        try:
+            return datetime.fromisoformat(iso_candidate)
+        except ValueError:
+            pass
+    logger.warning("Could not parse %s value %r%s as ISO-8601; keeping as string", data_type.value, value, label)
+    return value
+
+
+_PARAM_COERCERS: dict[TestDataType, Callable[[str, TestDataType, str], Any]] = {
+    TestDataType.INT: _coerce_int,
+    TestDataType.FLOAT: _coerce_float,
+    TestDataType.DOUBLE: _coerce_float,
+    TestDataType.DECIMAL: _coerce_decimal,
+    TestDataType.NUMBER: _coerce_number,
+    TestDataType.BOOLEAN: _coerce_boolean,
+    TestDataType.DATE: _coerce_date,
+    TestDataType.DATETIME: _coerce_datetime,
+    TestDataType.TIMESTAMP: _coerce_datetime,
+}
+
+
+def coerce_test_case_param_value(
+    value: str,
+    data_type: TestDataType | str | None,
+    param_name: str | None = None,
+) -> Any:
+    """Coerce a raw string TestCaseParameterValue into the Python type matching its TestDataType.
+
+    OpenMetadata stores every parameter value as a string. SQLAlchemy DBAPI drivers (such as
+    PyAthena, BigQuery, Trino, and Databricks) infer the SQL bind type from the Python value's
+    runtime type, so leaving numeric/boolean/temporal parameters as strings causes drivers to
+    bind or quote them as VARCHAR/STRING. Unparseable or legacy values fall back to the raw
+    string with a warning so existing test cases continue to run without aborting.
+    """
+    resolved_type = _normalize_test_data_type(data_type)
+    coercer = _PARAM_COERCERS.get(resolved_type) if resolved_type is not None else None
+    if coercer is None or resolved_type is None:
+        return value
+    label = f" for parameter '{param_name}'" if param_name else ""
+    try:
+        return coercer(value, resolved_type, label)
+    except ValueError as exc:
+        logger.warning("%s; keeping as string", exc)
+        return value
+
+
+def extract_rule_library_raw_user_params(
+    parameter_values: list[TestCaseParameterValue] | None,
+    reserved_params: set[str],
+) -> dict[str, str]:
+    """Extract raw string user-defined parameters for a Rule Library test case."""
+    params: dict[str, str] = {}
+    if not parameter_values:
+        return params
+    for param in parameter_values:
+        if param.name and param.value and param.name not in reserved_params:  # noqa: SIM102
+            if not param.name.endswith("RuntimeParameters"):
+                params[param.name] = param.value
+    return params
+
+
+def extract_rule_library_user_params(
+    parameter_values: list[TestCaseParameterValue] | None,
+    reserved_params: set[str],
+    param_types: dict[str, TestDataType] | None = None,
+    only_params: set[str] | None = None,
+) -> dict[str, Any]:
+    """Extract and type-coerce user-defined parameters for a Rule Library test case."""
+    raw_params = extract_rule_library_raw_user_params(parameter_values, reserved_params)
+    resolved_types = param_types or {}
+    return {
+        name: coerce_test_case_param_value(raw_value, resolved_types.get(name), param_name=name)
+        for name, raw_value in raw_params.items()
+        if only_params is None or name in only_params
+    }
+
+
+def get_template_variables(sql_template: str) -> set[str] | None:
+    """Return undeclared Jinja2 variable names referenced in ``sql_template``, or None on syntax error."""
+    env = SandboxedEnvironment()
+    try:
+        return meta.find_undeclared_variables(env.parse(sql_template))
+    except TemplateSyntaxError:
+        return None
+
+
+def _is_plain_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _sqla_number_type(value: Any) -> TypeEngine[Any] | None:
+    if _is_plain_int(value):
+        return Integer()
+    return Float() if isinstance(value, float) else None
+
+
+_SQLA_TYPE_BUILDERS: dict[TestDataType, Callable[[Any], TypeEngine[Any] | None]] = {
+    TestDataType.INT: lambda v: Integer() if _is_plain_int(v) else None,
+    TestDataType.FLOAT: lambda v: Float() if isinstance(v, float) else None,
+    TestDataType.DOUBLE: lambda v: Double() if isinstance(v, float) else None,
+    TestDataType.DECIMAL: lambda v: Numeric() if isinstance(v, Decimal) else None,
+    TestDataType.NUMBER: _sqla_number_type,
+    TestDataType.BOOLEAN: lambda v: Boolean() if isinstance(v, bool) else None,
+    TestDataType.DATE: lambda v: Date() if isinstance(v, date) and not isinstance(v, datetime) else None,
+    TestDataType.DATETIME: lambda v: DateTime(timezone=v.tzinfo is not None) if isinstance(v, datetime) else None,
+    TestDataType.TIMESTAMP: lambda v: DateTime(timezone=v.tzinfo is not None) if isinstance(v, datetime) else None,
+    TestDataType.STRING: lambda v: String() if isinstance(v, str) else None,
+}
+
+
+def _sqlalchemy_type_for_param(value: Any, data_type: TestDataType | None) -> TypeEngine[Any] | None:
+    builder = _SQLA_TYPE_BUILDERS.get(data_type) if data_type is not None else None
+    if builder is not None:
+        return builder(value)
+    return Numeric() if isinstance(value, Decimal) else None
+
+
+def build_typed_text_clause(
+    compiled_sql: str,
+    bind_params: dict[str, Any],
+    param_types: dict[str, TestDataType] | None = None,
+) -> TextClause:
+    """Attach explicit SQLAlchemy bind types to bound parameters present in a text() clause."""
+    stmt = text(compiled_sql)
+    present_binds = stmt._bindparams
+    resolved_types = param_types or {}
+    typed_binds = []
+    for name, value in bind_params.items():
+        if name not in present_binds:
+            continue
+        sa_type = _sqlalchemy_type_for_param(value, resolved_types.get(name))
+        if sa_type is not None:
+            typed_binds.append(bindparam(name, type_=sa_type))
+    if typed_binds:
+        stmt = stmt.bindparams(*typed_binds)
+    return stmt
+
+
+def render_sql_expression(sql_template: str, params: dict[str, Any]) -> str:
     """Render a Rule Library SQL expression, raising ``ValueError`` on any template error.
 
     The expression is user-authored, so it is rendered sandboxed: a plain Template

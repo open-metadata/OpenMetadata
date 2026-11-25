@@ -17,13 +17,21 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.io.TempDir;
 import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
+import org.openmetadata.service.governance.workflows.elements.NodeFactoryRegistry.NodeFactoryExtension;
 
 /**
  * Tests for {@link NodeFactoryRegistry}. Tests run in a fixed order because the registry is a
@@ -74,5 +82,69 @@ class NodeFactoryRegistryTest {
 
     assertTrue(result.isPresent());
     assertSame(mockNode, result.get());
+  }
+
+  @Test
+  @Order(5)
+  void testDiscoverRegistersTheFactoriesOfListedProviders(@TempDir Path servicesRoot)
+      throws IOException {
+    try (URLClassLoader loader = classLoaderListing(servicesRoot, PolicyAgentProvider.class)) {
+      NodeFactoryRegistry registry = NodeFactoryRegistry.discover(loader);
+
+      Optional<NodeInterface> result =
+          registry.create(NodeSubType.POLICY_AGENT_TASK, null, null, "TestWorkflow");
+
+      assertSame(PolicyAgentProvider.NODE, result.orElseThrow());
+    }
+  }
+
+  @Test
+  @Order(6)
+  void testDiscoverSkipsProvidersThatCannotBeLoadedOrAsked(@TempDir Path servicesRoot)
+      throws IOException {
+    try (URLClassLoader loader =
+        classLoaderListing(
+            servicesRoot,
+            "org.openmetadata.service.governance.workflows.elements.MissingProvider",
+            FailingProvider.class.getName(),
+            PolicyAgentProvider.class.getName())) {
+      NodeFactoryRegistry registry = NodeFactoryRegistry.discover(loader);
+
+      Optional<NodeInterface> result =
+          registry.create(NodeSubType.POLICY_AGENT_TASK, null, null, "TestWorkflow");
+
+      assertSame(PolicyAgentProvider.NODE, result.orElseThrow());
+    }
+  }
+
+  private static URLClassLoader classLoaderListing(Path servicesRoot, Class<?> provider)
+      throws IOException {
+    return classLoaderListing(servicesRoot, provider.getName());
+  }
+
+  private static URLClassLoader classLoaderListing(Path servicesRoot, String... providers)
+      throws IOException {
+    Path services = servicesRoot.resolve("META-INF/services");
+    Files.createDirectories(services);
+    Files.writeString(
+        services.resolve(NodeFactoryProvider.class.getName()), String.join("\n", providers));
+    return new URLClassLoader(
+        new URL[] {servicesRoot.toUri().toURL()}, NodeFactoryRegistryTest.class.getClassLoader());
+  }
+
+  public static class PolicyAgentProvider implements NodeFactoryProvider {
+    static final NodeInterface NODE = (model, process) -> {};
+
+    @Override
+    public Map<NodeSubType, NodeFactoryExtension> nodeFactories() {
+      return Map.of(NodeSubType.POLICY_AGENT_TASK, (def, cfg, name) -> NODE);
+    }
+  }
+
+  public static class FailingProvider implements NodeFactoryProvider {
+    @Override
+    public Map<NodeSubType, NodeFactoryExtension> nodeFactories() {
+      throw new IllegalStateException("provider failed to build its factories");
+    }
   }
 }

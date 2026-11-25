@@ -1319,7 +1319,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
       // A move or copy also touches its "from" location
       // (ADR:2026-11-03-a-patch-is-authorized-at-every-location-it-touches).
       List<String> locations = JsonPatchUtils.touchedLocations(patchOpObject);
-      String path = locations.get(0);
       boolean copiesValue = locations.size() > 1;
       if (!isSelf && locations.stream().anyMatch(l -> l.startsWith("/defaultDomain"))) {
         throw new AuthorizationException("Users can only update their own default domain");
@@ -1333,23 +1332,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
         if (!isSelf && locations.stream().anyMatch(l -> l.startsWith("/personaPreferences"))) {
           throw new AuthorizationException("Users can only update their own persona preferences");
         }
-        if (patchOpObject.containsKey("op")
-            && patchOpObject.getString("op").equals("add")
-            && path.startsWith("/teams/")) {
-          JsonObject value = null;
-          try {
-            value = patchOpObject.getJsonObject("value");
-          } catch (Exception ex) {
-            // ignore exception if value is not an object
-          }
-          if (value != null) {
-            repository.validateTeamAddition(id, UUID.fromString(value.getString("id")));
-          }
-        }
       }
     }
     if (JsonUtils.extractPatchedFields(patch).contains(TEAMS_FIELD)) {
-      authorizeTeamChangesByPatch(securityContext, containerRequestContext, id, patch);
+      checkTeamChangesByPatch(securityContext, containerRequestContext, id, patch);
     }
     if (changesDefaultPersona(patch)) {
       authorizeDefaultPersonaPatch(securityContext, containerRequestContext, id, patch);
@@ -1523,7 +1509,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   // write of the whole list or of one reference's id changes a membership as surely as an add or a
   // remove. The user is loaded with the fields the PATCH itself loads, so the operations apply here
   // as they will there.
-  private void authorizeTeamChangesByPatch(
+  private void checkTeamChangesByPatch(
       SecurityContext securityContext,
       ContainerRequestContext requestContext,
       UUID id,
@@ -1537,6 +1523,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (changesClosedTeamMembership(stored, patchedTeamIds)) {
       authorizeAdminForPrivilegedFields(securityContext, requestContext);
     }
+    repository.validateTeamsListedOnce(stored, patchedTeamIds);
   }
 
   private boolean isClosedTeam(UUID teamId) {

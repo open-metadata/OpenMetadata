@@ -62,6 +62,35 @@ describe('RuleQueryBuilderField', () => {
     (getAllCustomProperties as jest.Mock).mockResolvedValue({});
   });
 
+  it('keeps a saved DSL filter unchanged while the builder initializes', async () => {
+    const onChange = jest.fn();
+    const onValidityChange = jest.fn();
+    const onReconstructionStatusChange = jest.fn();
+    render(
+      <RuleQueryBuilderField
+        entityType={EntityType.TABLE}
+        queryFilter={JSON.stringify({
+          query: { term: { 'domains.fullyQualifiedName': 'DomainB' } },
+        })}
+        onChange={onChange}
+        onReconstructionStatusChange={onReconstructionStatusChange}
+        onValidityChange={onValidityChange}
+      />
+    );
+
+    await screen.findByTestId('query-builder-form-field');
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onValidityChange).not.toHaveBeenCalledWith(false);
+    expect(onReconstructionStatusChange).toHaveBeenLastCalledWith(false);
+
+    const addCondition = screen.getByTestId('add-context-condition');
+    fireEvent.pointerDown(addCondition);
+    fireEvent.click(addCondition);
+
+    await waitFor(() => expect(onValidityChange).toHaveBeenCalledWith(false));
+  });
+
   it('should serialise query tree changes', async () => {
     const onChange = jest.fn();
     render(
@@ -158,13 +187,17 @@ describe('RuleQueryBuilderField', () => {
   // A non-empty `queryFilter` that the reconstruction cannot parse should still
   // mount the builder, but the editor needs to know so it can warn the user
   // before the first builder edit overwrites the saved DSL.
-  it('reports rendered=true for a reconstructable queryFilter', async () => {
+  it('reports rendered=true for a filter supported by the builder', async () => {
     const onReconstructionStatusChange = jest.fn();
     render(
       <RuleQueryBuilderField
         entityType={EntityType.TABLE}
         queryFilter={JSON.stringify({
-          query: { bool: { must: [{ term: { name: 'x' } }] } },
+          query: {
+            bool: {
+              must: [{ wildcard: { description: '*orders*' } }],
+            },
+          },
         })}
         onChange={jest.fn()}
         onReconstructionStatusChange={onReconstructionStatusChange}

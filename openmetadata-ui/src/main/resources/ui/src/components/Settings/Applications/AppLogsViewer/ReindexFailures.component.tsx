@@ -35,7 +35,7 @@ import { getRdfReindexFailures } from '../../../../rest/rdfAPI';
 import { getReindexFailures } from '../../../../rest/searchAPI';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
+import CopyButton from '../../../common/CopyButton/CopyButton';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 import Table from '../../../common/Table/TableV2';
 import {
@@ -75,7 +75,13 @@ const ErrorMessage = ({ text }: { text: string }) => {
           </Button>
         )}
       </Box>
-      <CopyToClipboardButton copyText={text} />
+      <CopyButton
+        size="sm"
+        testId="copy-secret"
+        tooltip={t('message.copy-to-clipboard')}
+        tooltipPlacement="left"
+        value={text}
+      />
     </Box>
   );
 };
@@ -189,7 +195,15 @@ const ReindexFailures = ({
         render: (text: string) => (
           <Box inline align="center" direction="row" gap={1}>
             <Typography className="tw:text-primary">{text || '-'}</Typography>
-            {text && <CopyToClipboardButton copyText={text} />}
+            {text && (
+              <CopyButton
+                size="sm"
+                testId="copy-secret"
+                tooltip={t('message.copy-to-clipboard')}
+                tooltipPlacement="left"
+                value={text}
+              />
+            )}
           </Box>
         ),
       },

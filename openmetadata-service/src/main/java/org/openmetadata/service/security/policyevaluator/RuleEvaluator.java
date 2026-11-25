@@ -271,6 +271,42 @@ public class RuleEvaluator {
   }
 
   @Function(
+      name = "matchAnyDomain",
+      input = "List of comma separated Domain fully qualified names",
+      description =
+          "Returns true if the entity being accessed belongs to at least one of the domains given "
+              + "as input. Matches the exact domain FQN; sub-domains are not included.",
+      examples = {"matchAnyDomain('Finance')", "matchAnyDomain('Finance', 'Finance.Payments')"})
+  @SuppressWarnings("unused")
+  public boolean matchAnyDomain(String... domainFQNs) {
+    if (expressionValidation) {
+      for (String domainFQN : domainFQNs) {
+        validateEntityReference(Entity.DOMAIN, domainFQN);
+      }
+      return false;
+    }
+    if (resourceContext == null) {
+      return false;
+    }
+    List<EntityReference> domains = resourceContext.getDomains();
+    if (nullOrEmpty(domains)) {
+      LOG.debug("No Domains found for resource");
+      return false;
+    }
+    LOG.debug(
+        "matchAnyDomain {} resourceDomains {}",
+        Arrays.toString(domainFQNs),
+        Arrays.toString(domains.toArray()));
+    for (String domainFQN : domainFQNs) {
+      boolean found = domains.stream().anyMatch(d -> domainFQN.equals(d.getFullyQualifiedName()));
+      if (found) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Function(
       name = "matchAllTags",
       input = "List of comma separated tag or glossary fully qualified names",
       description = "Returns true if the entity being accessed has all the tags given as input",
@@ -660,8 +696,9 @@ public class RuleEvaluator {
   }
 
   /**
-   * Bot attribution carries a Bot entity name on the MCP path and the bot's user name on the
-   * X-Impersonate-User path, and for an application bot the two differ, so accept either.
+   * Bot attribution carries a Bot entity name on an MCP call without X-Impersonate-User and the
+   * bot's user name on any X-Impersonate-User call, REST or MCP, and for an application bot the two
+   * differ, so accept either.
    */
   private void validateBotName(String botName) {
     try {

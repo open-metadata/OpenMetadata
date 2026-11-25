@@ -445,6 +445,25 @@ describe('PersonaAIContextUtils', () => {
 // its custom-property keys omit the entity segment Explore expects — without
 // the rewrite the link landed on the unfiltered estate with no filter chip.
 describe('getRuleExplorePath', () => {
+  it('scopes a no-text persona link with an explicit entity-type quick filter', () => {
+    const url = new URL(
+      getRuleExplorePath(EntityType.TABLE),
+      'http://localhost'
+    );
+
+    expect(url.pathname).toBe('/explore/');
+    expect(url.searchParams.get('search')).toBe('');
+    expect(JSON.parse(url.searchParams.get('quickFilter') ?? '{}')).toEqual({
+      query: {
+        bool: {
+          must: [
+            { bool: { should: [{ term: { entityType: EntityType.TABLE } }] } },
+          ],
+        },
+      },
+    });
+  });
+
   const filterJsonTree = JSON.stringify({
     id: 'root',
     type: 'group',
@@ -483,6 +502,30 @@ describe('getRuleExplorePath', () => {
     expect(fieldsIn(getRuleExplorePath(EntityType.TABLE, already))).toContain(
       '"field":"extension.table.testCp.keyword"'
     );
+  });
+
+  it("links with the rule's saved filter, not its tree, when it has one", () => {
+    const queryFilter = {
+      query: { bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] } },
+    };
+    const url = new URL(
+      getRuleExplorePath(
+        EntityType.TABLE,
+        filterJsonTree,
+        JSON.stringify(queryFilter)
+      ),
+      'http://localhost'
+    );
+
+    expect(JSON.parse(url.searchParams.get('queryFilter') ?? '')).toEqual({
+      query: { bool: { must: [queryFilter.query] } },
+    });
+  });
+
+  it('falls back to the tree when the saved filter cannot be read', () => {
+    expect(
+      fieldsIn(getRuleExplorePath(EntityType.TABLE, filterJsonTree, '{bad'))
+    ).toContain('"field":"extension.table.testCp.keyword"');
   });
 });
 

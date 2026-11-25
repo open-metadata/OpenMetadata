@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -45,6 +46,7 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -1141,7 +1143,7 @@ public interface TimeSeriesDAOs {
                 + "  AND eets.timestamp >= :startTs "
                 + "  AND eets.timestamp <= :endTs "
                 + "  <pipelineFqnFilter> "
-                + "  <serviceTypeFilter> "
+                + "  <mysqlServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <mysqlStatusFilter> "
                 + "  <domainFilter> "
@@ -1163,7 +1165,7 @@ public interface TimeSeriesDAOs {
                 + "  AND eets.timestamp >= :startTs "
                 + "  AND eets.timestamp <= :endTs "
                 + "  <pipelineFqnFilter> "
-                + "  <serviceTypeFilter> "
+                + "  <postgresServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <postgresStatusFilter> "
                 + "  <domainFilter> "
@@ -1177,7 +1179,8 @@ public interface TimeSeriesDAOs {
         @Bind("startTs") Long startTs,
         @Bind("endTs") Long endTs,
         @Define("pipelineFqnFilter") String pipelineFqnFilter,
-        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
@@ -1204,7 +1207,7 @@ public interface TimeSeriesDAOs {
                 + "    AND eets.timestamp >= :startTs "
                 + "    AND eets.timestamp <= :endTs "
                 + "    <pipelineFqnFilter> "
-                + "    <serviceTypeFilter> "
+                + "    <mysqlServiceTypeFilter> "
                 + "    <serviceFilter> "
                 + "    <mysqlStatusFilter> "
                 + "    <domainFilter> "
@@ -1239,7 +1242,7 @@ public interface TimeSeriesDAOs {
                 + "    AND eets.timestamp >= :startTs "
                 + "    AND eets.timestamp <= :endTs "
                 + "    <pipelineFqnFilter> "
-                + "    <serviceTypeFilter> "
+                + "    <postgresServiceTypeFilter> "
                 + "    <serviceFilter> "
                 + "    <postgresStatusFilter> "
                 + "    <domainFilter> "
@@ -1263,7 +1266,8 @@ public interface TimeSeriesDAOs {
         @Bind("startTs") Long startTs,
         @Bind("endTs") Long endTs,
         @Define("pipelineFqnFilter") String pipelineFqnFilter,
-        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
@@ -1285,7 +1289,7 @@ public interface TimeSeriesDAOs {
                 + "  ON pe.fqnHash = eets.entityFQNHash "
                 + "  AND eets.extension = 'pipeline.pipelineStatus' "
                 + "WHERE pe.deleted = 0 "
-                + "  <serviceTypeFilter> "
+                + "  <mysqlServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <mysqlStatusFilter> "
                 + "  <domainFilter> "
@@ -1305,7 +1309,7 @@ public interface TimeSeriesDAOs {
                 + "  ON pe.fqnHash = eets.entityFQNHash "
                 + "  AND eets.extension = 'pipeline.pipelineStatus' "
                 + "WHERE pe.deleted = false "
-                + "  <serviceTypeFilter> "
+                + "  <postgresServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <postgresStatusFilter> "
                 + "  <domainFilter> "
@@ -1317,7 +1321,8 @@ public interface TimeSeriesDAOs {
         connectionType = POSTGRES)
     @RegisterRowMapper(SharedRowMappers.ServiceBreakdownRowMapper.class)
     List<SharedRowMappers.ServiceBreakdownRow> getServiceBreakdown(
-        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
@@ -1343,7 +1348,7 @@ public interface TimeSeriesDAOs {
                 + "  ON pe.fqnHash = eets.entityFQNHash "
                 + "  AND eets.extension = 'pipeline.pipelineStatus' "
                 + "WHERE pe.deleted = 0 "
-                + "  <serviceTypeFilter> "
+                + "  <mysqlServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <mysqlStatusFilter> "
                 + "  <domainFilter> "
@@ -1364,7 +1369,7 @@ public interface TimeSeriesDAOs {
                 + "  ON pe.fqnHash = eets.entityFQNHash "
                 + "  AND eets.extension = 'pipeline.pipelineStatus' "
                 + "WHERE pe.deleted = false "
-                + "  <serviceTypeFilter> "
+                + "  <postgresServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <postgresStatusFilter> "
                 + "  <domainFilter> "
@@ -1375,7 +1380,8 @@ public interface TimeSeriesDAOs {
         connectionType = POSTGRES)
     @RegisterRowMapper(SharedRowMappers.PipelineMetricsRowMapper.class)
     SharedRowMappers.PipelineMetricsRow getPipelineMetricsData(
-        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
@@ -1806,6 +1812,66 @@ public interface TimeSeriesDAOs {
     String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
     String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE <table> set json = :json where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json ->> '$.profileData.operation' = :operation",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE <table> set json = (:json :: jsonb) where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json #>>'{profileData,operation}' = :operation",
+        connectionType = POSTGRES)
+    void updateSystemProfile(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("extension") String extension,
+        @BindJson("json") String json,
+        @Bind("timestamp") Long timestamp,
+        @Bind("operation") String operation);
+
+    default void updateSystemProfile(
+        String entityFQNHash, String extension, String json, Long timestamp, String operation) {
+      updateSystemProfile(
+          getTimeSeriesTableName(), entityFQNHash, extension, json, timestamp, operation);
+    }
+
+    // System-profile operation is stored under profileData, and the unique key is built from that
+    // same path via the generated operation column, so the lookup must read the identical path.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp = :timestamp AND json ->> '$.profileData.operation' = :operation",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp = :timestamp AND json #>>'{profileData,operation}' = :operation",
+        connectionType = POSTGRES)
+    String getSystemProfileAtTimestamp(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("extension") String extension,
+        @Bind("timestamp") long timestamp,
+        @Bind("operation") String operation);
+
+    default String getSystemProfileAtTimestamp(
+        String entityFQNHash, String extension, long timestamp, String operation) {
+      return getSystemProfileAtTimestamp(
+          getTimeSeriesTableName(), entityFQNHash, extension, timestamp, operation);
+    }
+
+    default void storeSystemProfile(
+        String fqn,
+        String extension,
+        String jsonSchema,
+        String entityJson,
+        Long timestamp,
+        String operation,
+        boolean update) {
+      if (update) {
+        updateSystemProfile(fqn, extension, entityJson, timestamp, operation);
+      } else {
+        insert(fqn, extension, jsonSchema, entityJson);
+      }
+    }
+
     @SqlQuery(
         "SELECT json FROM profiler_data_time_series "
             + "WHERE entityFQNHash = :entityFQNHash AND extension = :extension "
@@ -2112,7 +2178,8 @@ public interface TimeSeriesDAOs {
     int deleteOrphanedRecords(@Bind("limit") int limit);
   }
 
-  interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
+  interface TestCaseResolutionStatusTimeSeriesDAO
+      extends EntityTimeSeriesDAO, IncidentOpenIntervalDAO {
     @Override
     default String getTimeSeriesTableName() {
       return "test_case_resolution_status_time_series";
@@ -2181,10 +2248,111 @@ public interface TimeSeriesDAOs {
     @SqlUpdate("DELETE FROM test_case_incident WHERE entityFQNHash = :entityFQNHash")
     void deleteIncidents(@BindFQN("entityFQNHash") String entityFQNHash);
 
+    @Transaction
     default void delete(String entityFQNHash) {
       deleteRecords(entityFQNHash);
       deleteIncidents(entityFQNHash);
     }
+
+    // FQNs can be reused after a test moves. A surviving parent relationship takes precedence.
+    String INCIDENT_OWNED_BY_MOVED_TEST =
+        """
+        SELECT 1 FROM test_case_resolution_status_time_series owned
+        INNER JOIN entity_relationship parent ON parent.toId = owned.id
+          AND parent.relation = 9 AND parent.fromEntity = 'testCase'
+          AND parent.toEntity = 'testCaseResolutionStatus'
+        INNER JOIN test_case owner ON owner.id = parent.fromId
+        WHERE owned.stateId = candidate.stateId AND owner.fqnHash != candidate.entityFQNHash
+        UNION ALL
+        SELECT 1 FROM test_case_incident owned
+        INNER JOIN entity_relationship parent ON parent.toId = owned.latestRecordId
+          AND parent.relation = 9 AND parent.fromEntity = 'testCase'
+          AND parent.toEntity = 'testCaseResolutionStatus'
+        INNER JOIN test_case owner ON owner.id = parent.fromId
+        WHERE owned.stateId = candidate.stateId AND owner.fqnHash != candidate.entityFQNHash
+        """;
+
+    @SqlQuery(
+        "SELECT id FROM test_case_resolution_status_time_series candidate "
+            + "WHERE entityFQNHash IN (<fqns>) AND NOT EXISTS ("
+            + INCIDENT_OWNED_BY_MOVED_TEST
+            + ")")
+    List<UUID> listStatusIdsForTestCases(@BindListFQN("fqns") List<String> fqns);
+
+    @SqlQuery(
+        "SELECT stateId FROM test_case_incident candidate "
+            + "WHERE entityFQNHash IN (<fqns>) AND NOT EXISTS ("
+            + INCIDENT_OWNED_BY_MOVED_TEST
+            + ")")
+    List<String> listIncidentIdsForTestCases(@BindListFQN("fqns") List<String> fqns);
+
+    @SqlQuery(
+        """
+        SELECT DISTINCT incident.stateId FROM test_case_incident incident
+        INNER JOIN entity_relationship parent ON parent.toId = incident.latestRecordId
+          AND parent.relation = 9 AND parent.fromEntity = 'testCase'
+          AND parent.toEntity = 'testCaseResolutionStatus'
+        WHERE parent.fromId IN (<ids>)
+        """)
+    List<String> listIncidentIdsForTestCaseIds(@BindList("ids") List<String> ids);
+
+    @SqlQuery(
+        "SELECT DISTINCT stateId FROM test_case_resolution_status_time_series WHERE id IN (<ids>) AND stateId IS NOT NULL")
+    List<String> listIncidentIdsForStatusRecords(@BindList("ids") List<String> ids);
+
+    @SqlQuery(
+        "SELECT id FROM test_case_resolution_status_time_series WHERE stateId IN (<stateIds>)")
+    List<UUID> listStatusIdsForIncidents(@BindList("stateIds") List<String> stateIds);
+
+    @SqlUpdate(
+        "DELETE FROM test_case_resolution_status_time_series WHERE id IN (<ids>) AND stateId IS NULL")
+    void deleteStatusRecordsWithoutIncident(@BindList("ids") List<String> ids);
+
+    @SqlUpdate("DELETE FROM test_case_incident WHERE stateId IN (<stateIds>)")
+    void deleteIncidentSummariesByStateIds(@BindList("stateIds") List<String> stateIds);
+
+    @SqlUpdate("DELETE FROM test_case_resolution_status_time_series WHERE stateId IN (<stateIds>)")
+    void deleteIncidentHistoryByStateIds(@BindList("stateIds") List<String> stateIds);
+
+    @Transaction
+    default void deleteIncidentsByStateIds(List<String> stateIds) {
+      deleteIncidentHistoryByStateIds(stateIds);
+      deleteIncidentSummariesByStateIds(stateIds);
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            """
+          UPDATE test_case_incident i
+          INNER JOIN (
+            SELECT id, timestamp, testCaseResolutionStatusType, assignee, json
+            FROM test_case_resolution_status_time_series WHERE stateId = :stateId
+            ORDER BY timestamp DESC, id DESC LIMIT 1
+          ) latest ON TRUE
+          SET i.testCaseResolutionStatusType = latest.testCaseResolutionStatusType,
+              i.assignee = latest.assignee, i.severity = JSON_UNQUOTE(JSON_EXTRACT(latest.json, '$.severity')),
+              i.updatedAt = latest.timestamp, i.latestRecordId = latest.id,
+              i.createdAt = (SELECT MIN(timestamp) FROM test_case_resolution_status_time_series WHERE stateId = :stateId)
+          WHERE i.stateId = :stateId
+          """,
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            """
+          UPDATE test_case_incident i
+          SET testCaseResolutionStatusType = latest.testCaseResolutionStatusType,
+              assignee = latest.assignee, severity = latest.json ->> 'severity',
+              updatedAt = latest.timestamp, latestRecordId = latest.id,
+              createdAt = (SELECT MIN(timestamp) FROM test_case_resolution_status_time_series WHERE stateId = :stateId)
+          FROM (
+            SELECT id, timestamp, testCaseResolutionStatusType, assignee, json
+            FROM test_case_resolution_status_time_series WHERE stateId = :stateId
+            ORDER BY timestamp DESC, id DESC LIMIT 1
+          ) latest
+          WHERE i.stateId = :stateId
+          """,
+        connectionType = POSTGRES)
+    void refreshIncidentSummary(@Bind("stateId") String stateId);
 
     @SqlQuery("SELECT stateId FROM test_case_resolution_status_time_series WHERE id = :id")
     String getStateId(@Bind("id") String id);
@@ -2196,10 +2364,14 @@ public interface TimeSeriesDAOs {
 
     // An incident row summarizes the records of its stateId, so it goes with the last of them.
     @Override
+    @Transaction
     default void deleteById(UUID id) {
       String stateId = getStateId(id.toString());
+      boolean hasIncident = stateId != null && lockIncident(stateId) != null;
       deleteById(getTimeSeriesTableName(), id.toString());
-      if (stateId != null) {
+      if (hasIncident) {
+        rebuildOpenIntervals(List.of(stateId));
+        refreshIncidentSummary(stateId);
         deleteIncidentWithoutRecords(stateId);
       }
     }
@@ -2228,7 +2400,7 @@ public interface TimeSeriesDAOs {
                 + "createdAt = LEAST(test_case_incident.createdAt, EXCLUDED.createdAt), "
                 + "updatedAt = EXCLUDED.updatedAt, latestRecordId = EXCLUDED.latestRecordId",
         connectionType = POSTGRES)
-    void upsertIncident(
+    void upsertIncidentSummary(
         @Bind("stateId") String stateId,
         @BindFQN("entityFQNHash") String entityFQNHash,
         @Bind("statusType") String statusType,
@@ -2236,6 +2408,28 @@ public interface TimeSeriesDAOs {
         @Bind("severity") String severity,
         @Bind("timestamp") long timestamp,
         @Bind("recordId") String recordId);
+
+    @Transaction
+    default void upsertIncident(
+        String stateId,
+        String entityFQNHash,
+        String statusType,
+        String assignee,
+        String severity,
+        long timestamp,
+        String recordId,
+        boolean migrationContext) {
+      upsertIncidentSummary(
+          stateId, entityFQNHash, statusType, assignee, severity, timestamp, recordId);
+      // Forced upgrades replay older task migrations before the interval schema is created.
+      // Their history is projected by the later backfill; normal writes must never skip it.
+      if (!migrationContext || openIntervalTableExists()) {
+        recordOpenInterval(
+            stateId,
+            timestamp,
+            OPEN_STATUSES.contains(TestCaseResolutionStatusTypes.fromValue(statusType)));
+      }
+    }
 
     // Keeps the incident row's denormalized severity in step with a severity edited on the
     // record that row points at; an edit on any older record of the chain leaves it alone.
@@ -2531,11 +2725,8 @@ public interface TimeSeriesDAOs {
             + "COUNT(DISTINCT i.assignee) AS assigneeCount, "
             + "MIN(i.createdAt) AS firstSeen, "
             + "MAX(i.updatedAt) AS lastSeen, "
-            + "<createdAtAgg> AS incidentCreatedAt, "
             + "COUNT(DISTINCT <tableFqn>) AS tableCount, "
-            + "COUNT(DISTINCT "
-            + TEST_DEFINITION_ID
-            + ") AS testDefinitionCount, "
+            + "COUNT(DISTINCT <testDefinitionId>) AS testDefinitionCount, "
             + "COUNT(*) OVER () AS totalGroups "
             + INCIDENT_GROUPS_FROM
             + "GROUP BY <groupByCols> "
@@ -2547,8 +2738,8 @@ public interface TimeSeriesDAOs {
         @Define("statusRank") String statusRank,
         @Define("statusCounts") String statusCounts,
         @Define("assigneesExpr") String assigneesExpr,
-        @Define("createdAtAgg") String createdAtAgg,
         @Define("tableFqn") String tableFqn,
+        @Define("testDefinitionId") String testDefinitionId,
         @Define("groupKey") String groupKey,
         @Define("groupType") String groupType,
         @Define("groupByCols") String groupByCols,
@@ -2582,6 +2773,84 @@ public interface TimeSeriesDAOs {
         @BindList("groupKeys") List<String> groupKeys,
         @BindMap Map<String, ?> params,
         @Bind("relatedLimit") int relatedLimit);
+
+    @SqlQuery(
+        """
+        WITH scoped_incidents AS (
+          SELECT DISTINCT <groupKey> AS groupKey, i.stateId
+          FROM test_case_incident i
+          INNER JOIN test_case tc ON tc.fqnHash = i.entityFQNHash
+          <dimensionJoin>
+          <cond> AND tc.deleted = FALSE AND <groupKey> IN (<groupKeys>)
+          AND i.createdAt <= :trendEnd
+        ), samples AS (<samples>)
+        SELECT scoped.groupKey, s.sample, COUNT(*) AS incidentCount
+        FROM scoped_incidents scoped
+        INNER JOIN test_case_incident_open_interval periods ON periods.stateId = scoped.stateId
+        INNER JOIN samples s ON periods.openedAt <= s.sampledAt
+          AND (periods.closedAt IS NULL OR periods.closedAt > s.sampledAt)
+        WHERE periods.openedAt <= :trendEnd
+          AND (periods.closedAt IS NULL OR periods.closedAt > :trendSample0)
+        GROUP BY scoped.groupKey, s.sample
+        """)
+    @RegisterRowMapper(IncidentGroupTrendCountMapper.class)
+    List<IncidentGroupTrendCount> listIncidentGroupTrendCounts(
+        @Define("groupKey") String groupKey,
+        @Define("dimensionJoin") String dimensionJoin,
+        @Define("cond") String condition,
+        @Define("samples") String samples,
+        @BindList("groupKeys") List<String> groupKeys,
+        @BindMap Map<String, ?> params);
+
+    default Map<String, List<Integer>> incidentGroupTrends(
+        IncidentGroupBy groupBy,
+        ListFilter filter,
+        List<String> groupKeys,
+        IncidentGroupTrend window) {
+      if (groupKeys.isEmpty()) {
+        return Map.of();
+      }
+      IncidentGroupDimension dimension = IncidentGroupDimension.from(groupBy);
+      ListFilter historyFilter = incidentTrendFilter(filter);
+      String condition = historyFilter.getCondition();
+      Map<String, Object> params = new HashMap<>(historyFilter.getQueryParams());
+      params.putAll(window.bindings());
+      List<IncidentGroupTrendCount> rows =
+          listIncidentGroupTrendCounts(
+              dimension.groupKey(),
+              dimension.join(),
+              condition,
+              IncidentGroupTrend.samplesSql(),
+              groupKeys,
+              params);
+      Map<String, List<IncidentGroupTrendCount>> byGroup =
+          rows.stream().collect(Collectors.groupingBy(IncidentGroupTrendCount::groupKey));
+      return groupKeys.stream()
+          .collect(
+              Collectors.toMap(
+                  key -> key,
+                  key -> IncidentGroupTrend.counts(byGroup.getOrDefault(key, List.of()))));
+    }
+
+    // Applying current status or creation-date filters to history would erase resolutions and
+    // incidents that were already open at the start of the window. The group key is applied by
+    // listIncidentGroups, outside ListFilter, and the trend query receives the page's keys
+    // directly.
+    Set<String> CURRENT_STATE_FILTER_KEYS =
+        Set.of(
+            "testCaseResolutionStatusType",
+            "incidentDateField",
+            "incidentStartTs",
+            "incidentEndTs",
+            "incidentGroupKey");
+
+    static ListFilter incidentTrendFilter(ListFilter filter) {
+      ListFilter history = new ListFilter(null);
+      filter.getQueryParams().entrySet().stream()
+          .filter(entry -> !CURRENT_STATE_FILTER_KEYS.contains(entry.getKey()))
+          .forEach(entry -> history.addQueryParam(entry.getKey(), entry.getValue()));
+      return history;
+    }
 
     @SqlQuery("SELECT COUNT(DISTINCT <groupKey>) " + INCIDENT_GROUPS_FROM)
     int countIncidentGroups(
@@ -2655,15 +2924,17 @@ public interface TimeSeriesDAOs {
               String.join(" ", statusRankWhens), OPEN_STATUSES.size() + 1);
       // A test case has one test definition, so this join does not multiply incident rows; it is
       // what lets a group of any dimension name its definitions.
-      String joins = dimension.join() + " " + TEST_DEFINITION_JOIN;
+      boolean definitionGroup = groupBy == IncidentGroupBy.TestDefinition;
+      String definitionId = definitionGroup ? dimension.groupKey() : TEST_DEFINITION_ID;
+      String joins = dimension.join() + (definitionGroup ? "" : " " + TEST_DEFINITION_JOIN);
       List<TestCaseIncidentGroupCount> counts =
           listIncidentGroups(
               openStatuses,
               statusRank,
               String.join(", ", statusCountExprs),
               assigneesExpr(),
-              createdAtAggExpr(),
               tableFqnExpr(),
+              definitionId,
               dimension.groupKey(),
               dimension.groupType(),
               dimension.groupByCols(),
@@ -2681,21 +2952,30 @@ public interface TimeSeriesDAOs {
       } else if (offset == 0) {
         total = 0;
       } else {
-        total = countIncidentGroups(openStatuses, dimension.groupKey(), joins, condition, params);
+        total =
+            countIncidentGroups(
+                openStatuses, dimension.groupKey(), dimension.join(), condition, params);
       }
-      IncidentGroupScope scope =
-          new IncidentGroupScope(dimension, openStatuses, joins, condition, params);
+      IncidentGroupScope scope = new IncidentGroupScope(dimension, openStatuses, condition, params);
       List<String> groupKeys = counts.stream().map(TestCaseIncidentGroupCount::groupKey).toList();
       return new IncidentGroupPage(
           counts,
           total,
-          topRelatedKeys(scope, tableFqnExpr(), groupKeys),
-          topRelatedKeys(scope, TEST_DEFINITION_ID, groupKeys));
+          groupBy == IncidentGroupBy.Table
+              ? selfRelatedKeys(groupKeys)
+              : topRelatedKeys(scope, tableFqnExpr(), dimension.join(), groupKeys),
+          definitionGroup
+              ? selfRelatedKeys(groupKeys)
+              : topRelatedKeys(scope, definitionId, joins, groupKeys));
+    }
+
+    private static Map<String, List<String>> selfRelatedKeys(List<String> groupKeys) {
+      return groupKeys.stream().collect(Collectors.toMap(key -> key, List::of));
     }
 
     // Related keys by group key, each group's list ordered from the most incidents down.
     private Map<String, List<String>> topRelatedKeys(
-        IncidentGroupScope scope, String relatedKey, List<String> groupKeys) {
+        IncidentGroupScope scope, String relatedKey, String joins, List<String> groupKeys) {
       List<IncidentGroupRelatedKey> rows =
           groupKeys.isEmpty()
               ? List.of()
@@ -2703,7 +2983,7 @@ public interface TimeSeriesDAOs {
                   scope.openStatuses(),
                   scope.dimension().groupKey(),
                   scope.dimension().groupByCols(),
-                  scope.joins(),
+                  joins,
                   scope.condition(),
                   relatedKey,
                   groupKeys,
@@ -2723,23 +3003,15 @@ public interface TimeSeriesDAOs {
       return jsonArrayAgg("i.assignee");
     }
 
-    private static String createdAtAggExpr() {
-      return jsonArrayAgg("i.createdAt");
-    }
-
     private static String jsonArrayAgg(String expression) {
       return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
           ? String.format("JSON_ARRAYAGG(%s)", expression)
           : String.format("JSON_AGG(%s)", expression);
     }
 
-    // test_case.entityFQN is column-level for column test cases, so the origin table FQN is
-    // extracted from the entityLink (<#E::table::fqn> or <#E::table::fqn::columns::col>)
-    // instead.
+    // This generated key preserves column tests' origin table without parsing JSON on each read.
     private static String tableFqnExpr() {
-      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-          ? "TRIM(TRAILING '>' FROM SUBSTRING_INDEX(SUBSTRING_INDEX(tc.entityLink, '::', 3), '::', -1))"
-          : "TRIM(TRAILING '>' FROM SPLIT_PART(tc.entityLink, '::', 3))";
+      return "tc.incidentTableFqn";
     }
 
     // Outer, so an incident whose test case lost its definition relationship still counts, as it
@@ -2766,7 +3038,6 @@ public interface TimeSeriesDAOs {
     record IncidentGroupScope(
         IncidentGroupDimension dimension,
         String openStatuses,
-        String joins,
         String condition,
         Map<String, Object> params) {}
 
@@ -2851,6 +3122,7 @@ public interface TimeSeriesDAOs {
                 FROM entity_relationship er
                 INNER JOIN test_case tc ON er.toId = tc.id
                 WHERE fromEntity = 'testSuite' AND toEntity = 'testCase' AND fromId = :testSuiteId
+                AND (tc.deleted = FALSE OR tc.deleted IS NULL)
             ) ts ON dqdts1.entityFQNHash = ts.fqnHash
             LEFT JOIN data_quality_data_time_series dqdts2 FORCE INDEX (idx_entity_timestamp_desc) ON
                 (dqdts1.entityFQNHash = dqdts2.entityFQNHash AND dqdts1.timestamp < dqdts2.timestamp)
@@ -2866,6 +3138,7 @@ public interface TimeSeriesDAOs {
                 FROM entity_relationship er
                 INNER JOIN test_case tc ON er.toId = tc.id
                 WHERE fromEntity = 'testSuite' AND toEntity = 'testCase' AND fromId = :testSuiteId
+                AND (tc.deleted = FALSE OR tc.deleted IS NULL)
             ) ts ON dqdts1.entityFQNHash = ts.fqnHash
             LEFT JOIN data_quality_data_time_series dqdts2 ON
                 (dqdts1.entityFQNHash = dqdts2.entityFQNHash AND dqdts1.timestamp < dqdts2.timestamp)
@@ -2902,6 +3175,50 @@ public interface TimeSeriesDAOs {
       return listLastTestCaseResultsForTestSuite(Map.of("testSuiteId", testSuiteId.toString()));
     }
 
+    /** Status of each live test case's latest result at or before {@code asOf}. */
+    @ConnectionAwareSqlQuery(
+        value =
+            """
+            WITH suite_test_cases AS (
+                SELECT tc.fqnHash
+                FROM entity_relationship er
+                INNER JOIN test_case tc ON er.toId = tc.id
+                WHERE er.fromEntity = 'testSuite' AND er.toEntity = 'testCase'
+                AND er.fromId = :testSuiteId AND (tc.deleted = FALSE OR tc.deleted IS NULL)
+            ),
+            latest_results AS (
+                SELECT JSON_UNQUOTE(JSON_EXTRACT(dqdts.json, '$.testCaseStatus')) as testCaseStatus,
+                       ROW_NUMBER() OVER (PARTITION BY dqdts.entityFQNHash ORDER BY dqdts.timestamp DESC) as rn
+                FROM data_quality_data_time_series dqdts
+                WHERE dqdts.entityFQNHash IN (SELECT fqnHash FROM suite_test_cases)
+                AND dqdts.timestamp <= :asOf
+            )
+            SELECT testCaseStatus FROM latest_results WHERE rn = 1
+            """,
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            """
+            WITH suite_test_cases AS (
+                SELECT tc.fqnHash
+                FROM entity_relationship er
+                INNER JOIN test_case tc ON er.toId = tc.id
+                WHERE er.fromEntity = 'testSuite' AND er.toEntity = 'testCase'
+                AND er.fromId = :testSuiteId AND (tc.deleted = FALSE OR tc.deleted IS NULL)
+            ),
+            latest_results AS (
+                SELECT dqdts.json->>'testCaseStatus' as testCaseStatus,
+                       ROW_NUMBER() OVER (PARTITION BY dqdts.entityFQNHash ORDER BY dqdts.timestamp DESC) as rn
+                FROM data_quality_data_time_series dqdts
+                WHERE dqdts.entityFQNHash IN (SELECT fqnHash FROM suite_test_cases)
+                AND dqdts.timestamp <= :asOf
+            )
+            SELECT testCaseStatus FROM latest_results WHERE rn = 1
+            """,
+        connectionType = POSTGRES)
+    List<String> listLatestTestCaseStatusesAsOf(
+        @Bind("testSuiteId") String testSuiteId, @Bind("asOf") long asOf);
+
     record ResultSummaryRow(
         String testSuiteId, String testCaseFQN, String testCaseStatus, long timestamp) {}
 
@@ -2924,7 +3241,7 @@ public interface TimeSeriesDAOs {
                 FROM entity_relationship er
                 INNER JOIN test_case tc ON er.toId = tc.id
                 WHERE er.fromEntity = 'testSuite' AND er.toEntity = 'testCase'
-                AND er.fromId IN (<testSuiteIds>)
+                AND er.fromId IN (<testSuiteIds>) AND (tc.deleted = FALSE OR tc.deleted IS NULL)
             ),
             latest_results AS (
                 SELECT dqdts.entityFQNHash,
@@ -2949,7 +3266,7 @@ public interface TimeSeriesDAOs {
                 FROM entity_relationship er
                 INNER JOIN test_case tc ON er.toId = tc.id
                 WHERE er.fromEntity = 'testSuite' AND er.toEntity = 'testCase'
-                AND er.fromId IN (<testSuiteIds>)
+                AND er.fromId IN (<testSuiteIds>) AND (tc.deleted = FALSE OR tc.deleted IS NULL)
             ),
             latest_results AS (
                 SELECT dqdts.entityFQNHash,
@@ -2992,7 +3309,7 @@ public interface TimeSeriesDAOs {
                 FROM entity_relationship er
                 INNER JOIN test_case tc ON er.toId = tc.id
                 WHERE er.fromEntity = 'testSuite' AND er.toEntity = 'testCase'
-                AND er.fromId IN (<testSuiteIds>)
+                AND er.fromId IN (<testSuiteIds>) AND (tc.deleted = FALSE OR tc.deleted IS NULL)
             ) er_sub ON dqdts.entityFQNHash = er_sub.fqnHash
             GROUP BY er_sub.fromId""")
     @UseRowMapper(SuiteMaxTimestampMapper.class)
@@ -3067,10 +3384,19 @@ public interface TimeSeriesDAOs {
       int assigneeCount,
       long firstSeen,
       long lastSeen,
-      String incidentCreatedAt,
       int tableCount,
       int testDefinitionCount,
       int totalGroups) {}
+
+  record IncidentGroupTrendCount(String groupKey, int sample, int incidentCount) {}
+
+  class IncidentGroupTrendCountMapper implements RowMapper<IncidentGroupTrendCount> {
+    @Override
+    public IncidentGroupTrendCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new IncidentGroupTrendCount(
+          rs.getString("groupKey"), rs.getInt("sample"), rs.getInt("incidentCount"));
+    }
+  }
 
   record IncidentGroupRelatedKey(String groupKey, String relatedKey) {}
 
@@ -3102,7 +3428,6 @@ public interface TimeSeriesDAOs {
           rs.getInt("assigneeCount"),
           rs.getLong("firstSeen"),
           rs.getLong("lastSeen"),
-          rs.getString("incidentCreatedAt"),
           rs.getInt("tableCount"),
           rs.getInt("testDefinitionCount"),
           rs.getInt("totalGroups"));
