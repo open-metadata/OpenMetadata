@@ -810,9 +810,10 @@ class DbtUnitTest(TestCase):
         assert get_dbt_test_primary_table_fqn(dbt_test) is None
         assert generate_entity_link(dbt_test=dbt_test) == []
 
-    def test_dbt_relationships_test_never_falls_back_to_referenced_table(self):
-        """With several unresolved candidates the fallback must still skip the `to:` table,
-        even though dbt lists it first in depends_on."""
+    def test_dbt_relationships_test_skipped_when_tested_table_is_ambiguous(self):
+        """An unresolved tested model with several non-`to:` candidates (e.g. an ephemeral
+        model expanded into its parents) must not be attached to an arbitrary one, nor to
+        the `to:` table dbt lists first in depends_on."""
         manifest_node = self._get_relationships_test_node()
         dbt_test = {
             "manifest_node": manifest_node,
@@ -820,7 +821,8 @@ class DbtUnitTest(TestCase):
             "upstream_by_name": {"customers": "svc.db.sch.CUSTOMERS"},
             "results": "",
         }
-        assert get_dbt_test_primary_table_fqn(dbt_test) == "svc.db.sch.STG_A"
+        assert get_dbt_test_primary_table_fqn(dbt_test) is None
+        assert generate_entity_link(dbt_test=dbt_test) == []
 
     def test_build_upstream_name_map_marks_duplicate_names_ambiguous(self):
         """A model and a source table can share a dbt name; the bare name must not
