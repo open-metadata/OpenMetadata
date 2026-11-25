@@ -30,6 +30,7 @@ import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Chart } from '../generated/entity/data/chart';
+import { PageType } from '../interface/knowledge-center.interface';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { SearchClassBase } from './SearchClassBase';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
@@ -309,6 +310,22 @@ describe('SearchClassBase', () => {
 
     expect(getEntityLinkFromType).not.toHaveBeenCalledWith();
     expect(result).toBe('/chart/test.chart');
+  });
+
+  it.each([
+    ['https://example.com/holidays', 'https://example.com/holidays'],
+    ['javascript:alert(1)', ''],
+    ['data:text/html,<script>alert(1)</script>', ''],
+  ])('links a quick link page with url %s to %p', (url, expected) => {
+    const result = searchClassBase.getEntityLink({
+      fullyQualifiedName: 'quickLink',
+      entityType: EntityType.KNOWLEDGE_PAGE,
+      name: 'quickLink',
+      pageType: PageType.QUICK_LINK,
+      page: { url },
+    } as Parameters<typeof searchClassBase.getEntityLink>[0]);
+
+    expect(result).toBe(expected);
   });
 
   it('should not call getTestSuiteDetailsPath if entity type is not TestSuite', () => {

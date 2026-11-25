@@ -17,11 +17,12 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { CheckCircle02 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-collate-support.svg';
-import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
@@ -30,6 +31,8 @@ import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 import Loader from '../Loader/Loader';
 
 export type SuccessScreenProps = {
+  /** Layout of the action container; button appearance remains owned by core. */
+  actionsClassName?: string;
   name: string;
   suffix?: string;
   successMessage?: ReactNode;
@@ -43,6 +46,7 @@ export type SuccessScreenProps = {
 };
 
 const SuccessScreen = ({
+  actionsClassName,
   name,
   suffix,
   showIngestionButton,
@@ -115,7 +119,11 @@ const SuccessScreen = ({
             className="layout-space layout-space-horizontal"
             gap={2}
             itemClassName="layout-space-item">
-            <IconSuccessBadge data-testid="success-icon" width="20px" />
+            <CheckCircle02
+              className="tw:text-utility-green-500"
+              data-testid="success-icon"
+              size={20}
+            />
             <Typography as="p" className="m-b-0" data-testid="success-line">
               {isUndefined(successMessage) ? (
                 <span>
@@ -153,7 +161,7 @@ const SuccessScreen = ({
         )}
       </div>
 
-      <div className="mt-7 text-center">
+      <div className={classNames('mt-7 text-center', actionsClassName)}>
         <Button
           color="secondary-brand"
           data-testid="view-service-button"

@@ -28,8 +28,10 @@ import { ColumnProfile } from '../../../generated/entity/data/table';
 import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import { ExecutionSource } from '../../observability/profiler/ExecutionSource/ExecutionSource';
 
 export interface CardinalityDistributionChartProps {
+  isSharded?: boolean;
   data: {
     firstDayData?: ColumnProfile;
     currentDayData?: ColumnProfile;
@@ -199,6 +201,7 @@ const CardinalityGraph = ({
 
 const CardinalityDistributionChart = ({
   data,
+  isSharded,
   noDataPlaceholderText,
 }: CardinalityDistributionChartProps) => {
   const { t } = useTranslation();
@@ -216,6 +219,7 @@ const CardinalityDistributionChart = ({
 
           return {
             key,
+            executionSource: columnProfile?.executionSource,
             isAllUnique: cardinality?.allValuesUnique ?? false,
             categoriesCount: cardinality?.categories?.length || 0,
             date: customFormatDateTime(
@@ -299,6 +303,10 @@ const CardinalityDistributionChart = ({
                       {`${chartAriaLabel}: ${entry.categoriesCount}`}
                     </Badge>
                   </div>
+                  <ExecutionSource
+                    isSharded={isSharded}
+                    source={entry.executionSource}
+                  />
                   <CardinalityGraph
                     ariaLabel={chartAriaLabel}
                     chartKey={entry.key}

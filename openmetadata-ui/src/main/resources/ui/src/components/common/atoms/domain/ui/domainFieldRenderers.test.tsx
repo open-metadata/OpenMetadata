@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { forwardRef, ReactNode } from 'react';
+import { NO_DATA } from '../../../../../constants/constants';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
 import {
   Domain,
@@ -25,6 +26,7 @@ import {
   renderDomainGlossaryTagsCell,
   renderDomainNameCell,
   renderDomainOwnersCell,
+  renderDomainsCell,
 } from './domainFieldRenderers';
 import { useDomainCardTemplates } from './useDomainCardTemplates';
 
@@ -85,6 +87,22 @@ jest.mock('../../../../../utils/TooltipUtils', () => ({
 
 jest.mock('../../../../../utils/IconUtils', () => ({
   getEntityAvatarProps: () => ({}),
+}));
+
+jest.mock('../../../DomainTags/DomainTags', () => ({
+  __esModule: true,
+  default: ({ domains }: { domains?: { fullyQualifiedName?: string }[] }) => (
+    <div data-testid="domain-tags">
+      {domains?.map((domain) => (
+        <a
+          data-testid="domain-tag-link"
+          href="/domain/x"
+          key={domain.fullyQualifiedName}>
+          {domain.fullyQualifiedName}
+        </a>
+      ))}
+    </div>
+  ),
 }));
 
 jest.mock('../../../../Tag/TagsViewer/TagsViewer', () => ({
@@ -224,6 +242,34 @@ describe('nested control clicks inside a clickable row', () => {
     fireEvent.click(screen.getByTestId('owner-label'));
 
     expect(rowClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('renderDomainsCell', () => {
+  it('renders the domains as styled domain chips whose link click stays with the chip', () => {
+    const rowClick = jest.fn();
+    render(
+      <div role="presentation" onClick={rowClick}>
+        {renderDomainsCell({
+          domains: [
+            { id: 'domain-id', fullyQualifiedName: 'engineering' },
+          ] as EntityReference[],
+        })}
+      </div>
+    );
+
+    expect(screen.getByTestId('domain-tags')).toHaveTextContent('engineering');
+
+    fireEvent.click(screen.getByTestId('domain-tag-link'));
+
+    expect(rowClick).not.toHaveBeenCalled();
+  });
+
+  it('renders the no-data dash when there are no domains', () => {
+    render(<>{renderDomainsCell({ domains: [] })}</>);
+
+    expect(screen.getByText(NO_DATA)).toBeInTheDocument();
+    expect(screen.queryByTestId('domain-tags')).not.toBeInTheDocument();
   });
 });
 

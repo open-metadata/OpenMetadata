@@ -17,11 +17,13 @@ import { PagingResponse } from 'Models';
 import {
   APPLICATION_JSON_CONTENT_TYPE_HEADER,
   PAGE_SIZE_MEDIUM,
+  SKIP_DOMAIN_FILTER_HEADER,
 } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { BulkAssets } from '../generated/api/bulkAssets';
 import { CreateDomain } from '../generated/api/domains/createDomain';
+import { DomainStyles } from '../generated/api/domains/domainStyles';
 import { Domain, EntityReference } from '../generated/entity/domains/domain';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -65,6 +67,12 @@ export const patchDomains = async (id: string, patch: Operation[]) => {
     `/domains/${id}`,
     patch
   );
+
+  return response.data;
+};
+
+export const getDomainStyles = async () => {
+  const response = await APIClient.get<DomainStyles>(`${BASE_URL}/styles`);
 
   return response.data;
 };
@@ -159,7 +167,8 @@ export const searchDomains = async (
   search: string,
   page = 1,
   queryFilter?: Record<string, unknown>,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  skipDomainFilter = false
 ) => {
   const apiUrl = `/search/query?q=*${search ?? ''}*`;
 
@@ -179,6 +188,9 @@ export const searchDomains = async (
   const { data } = await APIClient.get<Domain[]>(apiUrl, {
     params,
     signal,
+    ...(skipDomainFilter && {
+      headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
+    }),
   });
 
   return data;

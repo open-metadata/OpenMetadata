@@ -18,15 +18,17 @@ import {
   SimpleModal,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  MinusCircle,
+  Plus,
+  Upload01,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ExportIcon } from '../../../../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../../../../assets/svg/ic-import.svg';
-import { ReactComponent as IconRemove } from '../../../../../assets/svg/ic-remove.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { ExportTypes } from '../../../../../constants/Export.constants';
 import {
@@ -80,6 +82,7 @@ export const UserTab = ({
   const [deletingUser, setDeletingUser] = useState<EntityReference>();
   const { showModal } = useEntityExportModalProvider();
   const [isLoading, setIsLoading] = useState(true);
+  const latestUsersRequest = useRef(0);
   const [users, setUsers] = useState<User[]>([]);
   const [searchText, setSearchText] = useState('');
   const {
@@ -150,6 +153,8 @@ export const UserTab = ({
    * Make API call to fetch current team user data
    */
   const getCurrentTeamUsers = (team: string, paging: Partial<Paging> = {}) => {
+    const requestId = ++latestUsersRequest.current;
+    const isLatest = () => requestId === latestUsersRequest.current;
     setIsLoading(true);
     getUsers({
       fields: `${TabSpecificField.ROLES}`,
@@ -158,21 +163,27 @@ export const UserTab = ({
       ...paging,
     })
       .then((res) => {
-        if (res.data) {
+        if (isLatest() && res.data) {
           setUsers(res.data);
           handlePagingChange(res.paging);
         }
       })
       .catch(() => {
-        setUsers([]);
-        handlePagingChange({ total: 0 });
+        if (isLatest()) {
+          setUsers([]);
+          handlePagingChange({ total: 0 });
+        }
       })
       .finally(() => {
-        setIsLoading(false);
+        if (isLatest()) {
+          setIsLoading(false);
+        }
       });
   };
 
   const searchUsers = (text: string, currentPage: number) => {
+    const requestId = ++latestUsersRequest.current;
+    const isLatest = () => requestId === latestUsersRequest.current;
     setIsLoading(true);
     searchQuery({
       query: text,
@@ -203,6 +214,9 @@ export const UserTab = ({
       searchIndex: SearchIndex.USER,
     })
       .then((res) => {
+        if (!isLatest()) {
+          return;
+        }
         const data = formatUsersResponse(res.hits.hits);
         setUsers(data);
         handlePagingChange({
@@ -210,9 +224,15 @@ export const UserTab = ({
         });
       })
       .catch(() => {
-        setUsers([]);
+        if (isLatest()) {
+          setUsers([]);
+        }
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        if (isLatest()) {
+          setIsLoading(false);
+        }
+      });
   };
 
   const userPagingHandler = ({
@@ -221,11 +241,7 @@ export const UserTab = ({
   }: PagingHandlerParams) => {
     if (searchText) {
       handlePageChange(currentPage);
-      searchUsers(searchText, currentPage);
     } else if (cursorType) {
-      getCurrentTeamUsers(currentTeam.name, {
-        [cursorType]: paging[cursorType],
-      });
       handlePageChange(
         currentPage,
         { cursorType, cursorValue: paging[cursorType] },
@@ -234,31 +250,36 @@ export const UserTab = ({
     }
   };
 
-  const handleCurrentUserPage = (value?: number) => {
-    handlePageChange(value ?? INITIAL_PAGING_VALUE);
-  };
-
   const handleUsersSearchAction = (text: string) => {
     setSearchText(text);
-    handleCurrentUserPage(INITIAL_PAGING_VALUE);
-    if (text) {
-      searchUsers(text, INITIAL_PAGING_VALUE);
-    } else {
-      getCurrentTeamUsers(currentTeam.name);
-    }
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
   };
 
   useEffect(() => {
-    const { cursorType, cursorValue } = pagingCursor ?? {};
+    const {
+      cursorType,
+      cursorValue,
+      currentPage: cursorPage,
+    } = pagingCursor ?? {};
 
-    if (cursorType && cursorValue) {
+    // A search reset updates local paging before the router transition commits.
+    if (Number(cursorPage ?? currentPage) !== currentPage) {
+      return;
+    }
+
+    if (searchText) {
+      searchUsers(searchText, currentPage);
+    } else if (cursorType && cursorValue) {
       getCurrentTeamUsers(currentTeam.name, {
         [cursorType]: cursorValue,
       });
     } else {
       getCurrentTeamUsers(currentTeam.name);
     }
-  }, [currentTeam, pageSize, pagingCursor]);
+  }, [currentTeam, pageSize, pagingCursor, searchText, currentPage]);
 
   const columns: ColumnsType<User> = useMemo(() => {
     const tabColumns: ColumnsType<User> = [
@@ -276,23 +297,19 @@ export const UserTab = ({
             className="layout-space layout-space-horizontal w-full justify-center remove-icon"
             gap={2}
             itemClassName="layout-space-item">
-            <Tooltip
-              arrow
-              placement="left"
-              title={
+            <ButtonUtility
+              data-testid="remove-user-btn"
+              icon={MinusCircle}
+              isDisabled={!editUserPermission}
+              size="lg"
+              tooltip={
                 editUserPermission
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
-              }>
-              <ButtonUtility
-                color="tertiary"
-                data-testid="remove-user-btn"
-                icon={IconRemove}
-                isDisabled={!editUserPermission}
-                size="sm"
-                onClick={() => handleRemoveClick(record.id)}
-              />
-            </Tooltip>
+              }
+              tooltipPlacement="left"
+              onClick={() => handleRemoveClick(record.id)}
+            />
           </Box>
         ),
       },
@@ -335,7 +352,7 @@ export const UserTab = ({
             description={t('message.export-entity-help', {
               entity: t('label.user-lowercase'),
             })}
-            icon={ExportIcon}
+            icon={Download01}
             id="export"
             name={t('label.export')}
           />
@@ -354,7 +371,7 @@ export const UserTab = ({
             description={t('message.import-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={ImportIcon}
+            icon={Upload01}
             id="import-button"
             name={t('label.import')}
           />

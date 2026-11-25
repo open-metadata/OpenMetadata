@@ -22,11 +22,15 @@ import java.util.Map;
 import java.util.Optional;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelper;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperUsage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.util.email.EmailUtil;
 
 /**
@@ -144,6 +148,8 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
    * Builds the entity URL. When {@code view} is set ("tasks" or "all"), returns the deep link to
    * that entity's task / conversation feed. Test cases are special: incidents live on the flat
    * "issues" tab and the route has no activity_feed sub-route, so a generic feed suffix would 404.
+   * Tasks have no page at {@code /task/{fqn}} and their own page has no feed tabs, so they always
+   * link to {@code /tasks/{taskId}}.
    */
   private String buildEntityUrl(
       String entityType, String fqn, Map<String, Object> entityMap, String view) {
@@ -157,11 +163,18 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
       return buildUrl(baseUrl, "test-case", fqn, "issues");
     }
 
+    if (!nullOrEmpty(view) && Entity.DATA_CONTRACT.equals(entityType)) {
+      return buildDataContractFeedUrl(fqn, entityMap, view);
+    }
+
     String url =
         switch (entityType) {
           case Entity.TEST_CASE ->
           // TEST_CASE: /test-case/{fqn}/test-case-results
           buildUrl(baseUrl, "test-case", fqn, "test-case-results");
+          case Entity.TASK ->
+          // TASK: /tasks/{taskId}
+          buildUrl(baseUrl, "tasks", fqn, "");
           case Entity.TEST_SUITE ->
           // TEST_SUITE: /test-suites/{fqn}
           buildUrl(baseUrl, "test-suites", fqn, "");
@@ -178,7 +191,7 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
           buildIngestionPipelineUrl(baseUrl, entityMap);
           case Entity.DATA_CONTRACT ->
           // DATA_CONTRACT: Redirects to the table's contract tab
-          buildDataContractUrl(baseUrl, entityMap);
+          buildDataContractUrl(baseUrl, fqn, entityMap);
           case Entity.QUERY ->
           // QUERY: /query-view/{queryFqn}/{queryId} (standalone Query page)
           buildQueryUrl(baseUrl, entityMap);
@@ -218,7 +231,7 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
           buildUrl(baseUrl, entityType, fqn, "");
         };
 
-    if (!nullOrEmpty(view) && !nullOrEmpty(url)) {
+    if (!nullOrEmpty(view) && !nullOrEmpty(url) && !Entity.TASK.equals(entityType)) {
       String feed = "tasks".equals(view) ? "tasks" : "all";
       url = String.format("%s/activity_feed/%s", url, feed);
     }
@@ -291,33 +304,60 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
   }
 
   /**
-   * Builds URL for data contract entities
-   * Redirects to the table's contract tab
-   * Replicates EntityUrls.getDataContractUrl()
+   * Builds URL for data contract entities. A contract has no page of its own: it lives on the
+   * Contract tab of the asset it covers, {@code /{assetType}/{assetFqn}/contract}. Replicates
+   * EntityUrls.getDataContractUrl().
+   */
+  private String buildDataContractUrl(
+      String baseUrl, String contractFqn, Map<String, Object> entityMap) {
+    ContractAsset asset = resolveContractAsset(contractFqn, entityMap);
+    if (!asset.isKnown()) {
+      LOG.debug("Data contract {} has no asset with a type and FQN", contractFqn);
+      return null;
+    }
+    return buildUrl(baseUrl, asset.type(), asset.fqn(), "contract");
+  }
+
+  /** A contract's tasks and conversations show on the feed of the asset it covers. */
+  private String buildDataContractFeedUrl(
+      String contractFqn, Map<String, Object> entityMap, String view) {
+    ContractAsset asset = resolveContractAsset(contractFqn, entityMap);
+    if (!asset.isKnown()) {
+      LOG.debug("Data contract {} has no asset with a type and FQN", contractFqn);
+      return null;
+    }
+    return buildEntityUrl(asset.type(), asset.fqn(), Map.of(KEY_FQN, asset.fqn()), view);
+  }
+
+  /**
+   * A full contract names its asset in {@code entity}. A reference to a contract, such as a task's
+   * {@code about}, or a bare FQN does not, so the contract is loaded to find it. The stored
+   * contract may keep only the asset's id and type, so that reference is resolved for its FQN.
    */
   @SuppressWarnings("unchecked")
-  private String buildDataContractUrl(String baseUrl, Map<String, Object> entityMap) {
+  private ContractAsset resolveContractAsset(String contractFqn, Map<String, Object> entityMap) {
+    Map<String, Object> assetRef =
+        entityMap.get(KEY_ENTITY) instanceof Map<?, ?> ref
+            ? (Map<String, Object>) ref
+            : loadContractAssetRef(contractFqn);
+    return new ContractAsset(
+        getTrimmed(assetRef, KEY_TYPE).orElse(""), getTrimmed(assetRef, KEY_FQN).orElse(""));
+  }
+
+  private Map<String, Object> loadContractAssetRef(String contractFqn) {
     try {
-      Object entityObj = entityMap.get(KEY_ENTITY);
-      if (!(entityObj instanceof Map)) {
-        LOG.debug("Data contract missing entity reference");
-        return null;
-      }
+      DataContract contract =
+          Entity.getEntityByName(Entity.DATA_CONTRACT, contractFqn, "", Include.ALL);
+      return JsonUtils.getMap(Entity.getEntityReference(contract.getEntity(), Include.ALL));
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Data contract {} not found", contractFqn);
+      return Map.of();
+    }
+  }
 
-      Map<String, Object> tableRefMap = (Map<String, Object>) entityObj;
-      String tableFqn = getTrimmed(tableRefMap, KEY_FQN).orElse("");
-      String tableType = getTrimmed(tableRefMap, KEY_TYPE).orElse("");
-
-      if (tableFqn.isEmpty() || tableType.isEmpty()) {
-        LOG.debug("Data contract entity reference missing type or FQN");
-        return null;
-      }
-
-      // DATA_CONTRACT: /{tableType}/{tableFqn}/contract
-      return buildUrl(baseUrl, tableType, tableFqn, "contract");
-    } catch (Exception e) {
-      LOG.error("Error building data contract URL", e);
-      return null;
+  private record ContractAsset(String type, String fqn) {
+    boolean isKnown() {
+      return !type.isEmpty() && !fqn.isEmpty();
     }
   }
 
@@ -360,6 +400,6 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{buildEntityUrl }}")
-                    .withExample("{{buildEntityUrl entity}}")));
+                    .withExample("{{buildEntityUrl event.entityType entity}}")));
   }
 }

@@ -17,10 +17,9 @@ import {
   PageLayout,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Marketplace, Plus } from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as MarketplaceIcon } from '../../../assets/svg/marketplace-default.svg';
 import { ROUTES } from '../../../constants/constants';
 import HeaderBreadcrumb from '../HeaderBreadcrumb/HeaderBreadcrumb.component';
 import {
@@ -107,7 +106,7 @@ const ListPageHeader: FC<ListPageHeaderConfig & ListPageHeaderRenderProps> = ({
             {
               label: null,
               ariaLabel: t('label.data-marketplace'),
-              icon: MarketplaceIcon,
+              icon: Marketplace,
               href: ROUTES.DATA_MARKETPLACE,
             },
             { label: t(titleKey) },

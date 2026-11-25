@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, MetricTag } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  ButtonUtility,
+  MetricTag,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -21,10 +26,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './related-metrics.less';
@@ -153,9 +154,10 @@ const RelatedMetrics: FC = () => {
 
     if (isEmpty(relatedMetrics)) {
       return (
-        <WidgetPlusButton
+        <ButtonUtility
           data-testid="add-related-metrics-container"
-          title={t('label.add-entity', {
+          icon={Plus}
+          tooltip={t('label.add-entity', {
             entity: t('label.related-metric-plural'),
           })}
           onClick={() => setIsEdit(true)}
@@ -164,9 +166,10 @@ const RelatedMetrics: FC = () => {
     }
 
     return (
-      <WidgetEditButton
+      <ButtonUtility
         data-testid="edit-related-metrics"
-        title={t('label.edit-entity', {
+        icon={Edit01}
+        tooltip={t('label.edit-entity', {
           entity: t('label.related-metric-plural'),
         })}
         onClick={() => setIsEdit(true)}

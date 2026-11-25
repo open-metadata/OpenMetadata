@@ -22,7 +22,7 @@ import React from 'react';
 import { ProviderType } from '../../../../../../generated/entity/bot';
 import { Include } from '../../../../../../generated/type/include';
 import { useAuth } from '../../../../../../hooks/authHooks';
-import { getBots } from '../../../../../../rest/botsAPI';
+import { getBots, restoreBot } from '../../../../../../rest/botsAPI';
 import { deleteEntity } from '../../../../../../rest/miscAPI';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import BotsListPanel from './BotsListPanel';
@@ -40,6 +40,15 @@ jest.mock('../../../../../../hooks/authHooks', () => ({
 }));
 
 jest.mock('../../../../../../hooks/useSettingsHash', () => ({
+  useHashPagingParams: () => ({
+    page: 1,
+    pageSize: undefined,
+    resolvedPageSize: 15,
+    savePageSize: jest.fn(),
+    cursor: undefined,
+    cursorType: undefined,
+    setPage: jest.fn(),
+  }),
   useSettingsHash: () => ({
     state: { tab: 'bots', subPath: '', params: {} },
     updateParams: mockUpdateParams,
@@ -52,6 +61,7 @@ jest.mock('../../../../../../context/LimitsProvider/useLimitsStore', () => ({
 
 jest.mock('../../../../../../rest/botsAPI', () => ({
   getBots: jest.fn(),
+  restoreBot: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../../../../rest/searchAPI', () => ({
@@ -163,6 +173,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     ),
     // Real ones, so the delete confirmation opens from its trigger as in the app.
     ButtonUtility: actual.ButtonUtility,
+    Tooltip: actual.Tooltip,
     ConfirmPopover: actual.ConfirmPopover,
     RadioButton: actual.RadioButton,
     RadioGroup: actual.RadioGroup,
@@ -308,6 +319,39 @@ describe('BotsListPanel', () => {
 
     expect(screen.getByTestId('bot-delete-system-bot')).toBeDisabled();
     expect(screen.getByTestId('bot-delete-ingest')).not.toBeDisabled();
+
+    // The disabled button is the Tooltip's direct child, so core Tooltip wraps it in a hover
+    // span (core tooltip.test covers that the span opens the tooltip on hover).
+    const wrapper = screen.getByTestId('bot-delete-system-bot').parentElement;
+
+    expect(wrapper?.tagName).toBe('SPAN');
+    expect(wrapper?.className).toContain('tw:cursor-not-allowed');
+  });
+
+  it('restores a soft-deleted bot after confirmation and reloads the list', async () => {
+    renderPanel();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('bot-row-ingest')).toBeInTheDocument()
+    );
+
+    expect(screen.queryByTestId('bot-restore-ingest')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('switch-deleted'));
+
+    fireEvent.click(await screen.findByTestId('bot-restore-ingest'));
+
+    expect(screen.getByTestId('restore-bot-popover')).toBeInTheDocument();
+    expect(restoreBot).not.toHaveBeenCalled();
+
+    (getBots as jest.Mock).mockClear();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('restore-bot-popover-confirm'));
+    });
+
+    expect(restoreBot).toHaveBeenCalledWith('b1');
+
+    await waitFor(() => expect(getBots).toHaveBeenCalled());
   });
 
   it('should disable delete for non-admin users', async () => {

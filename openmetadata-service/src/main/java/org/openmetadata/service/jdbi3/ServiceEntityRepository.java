@@ -20,9 +20,11 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -35,6 +37,7 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -45,19 +48,25 @@ import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.secrets.SecretMapOwnership;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManager.SecretInventory;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 @Slf4j
 public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
     extends EntityRepository<T> {
   private static final String PIPELINES_FIELD = "pipelines";
+  private static final String CONNECTION_FIELD = "connection";
+  private static final String SERVICE_ATTRIBUTES_FIELD = "serviceAttributes";
 
   @Getter private final Class<S> serviceConnectionClass;
   @Getter private final ServiceType serviceType;
@@ -103,6 +112,17 @@ public abstract class ServiceEntityRepository<
               Entity.FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
     }
     return descriptors;
+  }
+
+  // The updater keeps both when a PUT leaves them out, so the approval gate must not stage that
+  // PUT as clearing them
+  // (ADR:2026-11-13-a-put-that-omits-a-service-connection-keeps-the-stored-one).
+  @Override
+  public Set<String> getFieldsKeptByPut() {
+    Set<String> kept = new HashSet<>(super.getFieldsKeptByPut());
+    kept.add(CONNECTION_FIELD);
+    kept.add(SERVICE_ATTRIBUTES_FIELD);
+    return Set.copyOf(kept);
   }
 
   @Override
@@ -173,15 +193,15 @@ public abstract class ServiceEntityRepository<
   @Override
   public void prepare(T service, boolean update) {
     if (service.getConnection() != null) {
-      service
-          .getConnection()
-          .setConfig(
-              SecretsManagerFactory.getSecretsManager()
-                  .encryptServiceConnectionConfig(
-                      service.getConnection().getConfig(),
-                      service.getServiceType().value(),
-                      service.getName(),
-                      serviceType));
+      Object config =
+          SecretsManagerFactory.getSecretsManager()
+              .prepareServiceConnectionConfig(
+                  service.getConnection().getConfig(),
+                  service.getServiceType().value(),
+                  service.getName(),
+                  serviceType);
+      SecretsUtil.validateSslConfig(config, service.getServiceType().value());
+      service.getConnection().setConfig(config);
     }
   }
 
@@ -203,6 +223,131 @@ public abstract class ServiceEntityRepository<
   @Override
   public void storeEntity(T service, boolean update) {
     store(service, update);
+  }
+
+  // ADR:2026-10-29-service-connection-secrets-are-written-only-during-storage
+  @Override
+  protected void store(T service, boolean update, Double expectedVersion) {
+    writeWithSecretOwnership(
+        List.of(service),
+        update,
+        () -> {
+          encryptConnection(service);
+          super.store(service, update, expectedVersion);
+        });
+  }
+
+  @Override
+  protected void storeMany(List<T> services) {
+    writeWithSecretOwnership(
+        services,
+        false,
+        () -> {
+          services.forEach(this::encryptConnection);
+          super.storeMany(services);
+        });
+  }
+
+  @Override
+  protected void updateMany(List<T> services) {
+    writeWithSecretOwnership(
+        services,
+        true,
+        () -> {
+          services.forEach(this::encryptConnection);
+          super.updateMany(services);
+        });
+  }
+
+  private SecretInventory secretInventory(SecretsManager manager, T entity) {
+    return manager.secretInventory(entity, serviceType);
+  }
+
+  private void writeWithSecretOwnership(List<T> entities, boolean update, Runnable write) {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
+      write.run();
+      return;
+    }
+    List<SecretInventory> inputs =
+        entities.stream().map(entity -> secretInventory(manager, entity)).toList();
+    executeInTransaction(
+        () -> {
+          SecretMapOwnership ownership =
+              new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+          ownership.lock();
+          List<SecretInventory> originals =
+              entities.stream()
+                  .map(
+                      entity ->
+                          update
+                              ? secretInventory(manager, lockStoredForSecretWrite(entity))
+                              : null)
+                  .toList();
+          SecretMapOwnership.preserveWriteInputs(daoCollection, entities);
+          write.run();
+          for (int i = 0; i < entities.size(); i++) {
+            T entity = entities.get(i);
+            ownership.recordWrite(
+                entity.getId(), originals.get(i), inputs.get(i), secretInventory(manager, entity));
+            String root = inputs.get(i).root();
+            PostCommitActionQueue.runOrDefer(() -> cleanOwnedSecrets(manager, root));
+          }
+          return null;
+        });
+  }
+
+  private T lockStoredForSecretWrite(T entity) {
+    String stored = dao.findJsonByIdForUpdate(entity.getId(), Include.ALL);
+    if (stored == null) {
+      throw EntityNotFoundException.byId(entity.getId().toString());
+    }
+    return JsonUtils.readValue(stored, entityClass);
+  }
+
+  private void cleanOwnedSecrets(SecretsManager manager, String root) {
+    executeInTransaction(
+        () -> {
+          SecretMapOwnership ownership =
+              new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+          ownership.lock();
+          ownership.clean(root);
+          return null;
+        });
+  }
+
+  private void scheduleSecretDeletion(T entity) {
+    SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+    if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
+      return;
+    }
+    SecretInventory deleted = secretInventory(manager, entity);
+    PostCommitActionQueue.runOrDefer(
+        () -> {
+          executeInTransaction(
+              () -> {
+                SecretMapOwnership ownership =
+                    new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
+                ownership.lock();
+                ownership.removeOwner(entity.getId(), deleted);
+                return null;
+              });
+          cleanOwnedSecrets(manager, deleted.root());
+        });
+  }
+
+  private void encryptConnection(T service) {
+    if (service.getConnection() != null) {
+      service
+          .getConnection()
+          .setConfig(
+              SecretsManagerFactory.getSecretsManager()
+                  .encryptServiceConnectionConfig(
+                      service.getConnection().getConfig(),
+                      service.getServiceType().value(),
+                      service.getName(),
+                      serviceType));
+    }
   }
 
   @Override
@@ -235,26 +380,21 @@ public abstract class ServiceEntityRepository<
   /** Remove the secrets from the secret manager only on hard delete */
   @Override
   protected void postDelete(T service, boolean hardDelete) {
+    if (hardDelete) {
+      scheduleSecretDeletion(service);
+    }
     super.postDelete(service, hardDelete);
     invalidateServiceAttributes(service);
-    // A matchAnyServiceName condition left pointing at a deleted service silently stops matching,
-    // so a Deny rule meant to hide that service's assets would quietly grant access instead.
-    // Only on hard delete: a soft-deleted service still resolves (the snapshot reads Include.ALL)
-    // and so still hides its assets, and rewriting the condition would not survive a restore.
+    // A hard-deleted service takes its assets with it, so a matchAnyServiceName call naming it
+    // can match nothing; it is rewritten to false so a later service reusing the name does not
+    // inherit the rule. Only on hard delete: a soft-deleted service still resolves (the snapshot
+    // reads Include.ALL) and so still hides its assets, and rewriting the condition would not
+    // survive a restore.
     if (hardDelete && !anotherServiceGoesByName(service.getName(), service.getId())) {
       PolicyConditionUpdater.updateAllPolicyConditions(
           condition ->
               PolicyConditionUpdater.removeFromCondition(
                   condition, service.getName(), PolicyConditionUpdater.SERVICE_FUNCTIONS));
-    }
-    // Only delete secrets on hard delete to allow soft delete to be reversible
-    if (hardDelete && service.getConnection() != null) {
-      SecretsManagerFactory.getSecretsManager()
-          .deleteSecretsFromServiceConnectionConfig(
-              service.getConnection().getConfig(),
-              service.getServiceType().value(),
-              service.getName(),
-              serviceType);
     }
   }
 
@@ -367,9 +507,9 @@ public abstract class ServiceEntityRepository<
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate("connection", this::updateConnection);
+      compareAndUpdate(CONNECTION_FIELD, this::updateConnection);
       compareAndUpdate("ingestionRunner", this::updateIngestionRunner);
-      compareAndUpdate("serviceAttributes", this::updateServiceAttributes);
+      compareAndUpdate(SERVICE_ATTRIBUTES_FIELD, this::updateServiceAttributes);
     }
 
     /**
@@ -388,6 +528,15 @@ public abstract class ServiceEntityRepository<
     }
 
     private void updateConnection() {
+      // A PUT that omits the connection keeps the stored one; only a PATCH clears it. Omitting it
+      // would otherwise delete the credentials, vault entries included
+      // (ADR:2026-11-13-a-put-that-omits-a-service-connection-keeps-the-stored-one).
+      if (operation == Operation.PUT
+          && updated.getConnection() == null
+          && original.getConnection() != null) {
+        keepStoredConnection();
+        return;
+      }
       ServiceConnectionEntityInterface origConn = original.getConnection();
       ServiceConnectionEntityInterface updatedConn = updated.getConnection();
       if (!CommonUtil.nullOrEmpty(updatedConn)) {
@@ -420,6 +569,15 @@ public abstract class ServiceEntityRepository<
       }
     }
 
+    /**
+     * Each generated service types its own connection setter, so the stored connection is copied
+     * onto the update in place through its JSON form.
+     */
+    private void keepStoredConnection() {
+      JsonUtils.overwriteFromTokenBuffer(
+          updated, JsonUtils.toTokenBuffer(new StoredConnection(original.getConnection())));
+    }
+
     private void updateIngestionRunner() {
       UUID originalAgentId =
           original.getIngestionRunner() != null ? original.getIngestionRunner().getId() : null;
@@ -439,4 +597,7 @@ public abstract class ServiceEntityRepository<
       }
     }
   }
+
+  /** The {@code connection} field alone, to overwrite it on a service in place. */
+  private record StoredConnection(ServiceConnectionEntityInterface connection) {}
 }

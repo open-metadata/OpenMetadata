@@ -6,7 +6,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -39,6 +39,7 @@ import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.TimezoneUtil;
 
 @Slf4j
 public class AppRepository extends EntityRepository<App> {
@@ -46,6 +47,11 @@ public class AppRepository extends EntityRepository<App> {
   public static final String APP_BOT_IMPERSONATION_ROLE = "ApplicationBotImpersonationRole";
 
   public static final String UPDATE_FIELDS = "appConfiguration,appSchedule";
+
+  // The alerts the app's own code created. The app->alert CONTAINS relationship is the only
+  // record: the list is filled from it on every read, never stored, and cannot be patched
+  // (ADR:2026-10-26-an-apps-alerts-come-from-its-code).
+  private static final String EVENT_SUBSCRIPTIONS = "eventSubscriptions";
 
   public AppRepository() {
     super(
@@ -58,6 +64,7 @@ public class AppRepository extends EntityRepository<App> {
     supportsSearch = false;
     quoteFqn = true;
     fieldFetchers.put("bot", this::fetchAndSetBotUser);
+    fieldFetchers.put(EVENT_SUBSCRIPTIONS, this::fetchAndSetEventSubscriptions);
   }
 
   @Override
@@ -65,6 +72,20 @@ public class AppRepository extends EntityRepository<App> {
     entity.setPipelines(
         fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
     entity.withBot(getBotUser(entity));
+    entity.withEventSubscriptions(getEventSubscriptions(entity));
+  }
+
+  private List<EntityReference> getEventSubscriptions(App app) {
+    return findTo(app.getId(), entityType, Relationship.CONTAINS, Entity.EVENT_SUBSCRIPTION);
+  }
+
+  // A list reads every app's alerts in one query, as a single read does in setFields.
+  private void fetchAndSetEventSubscriptions(final List<App> apps, final EntityUtil.Fields fields) {
+    setFieldFromMap(
+        true,
+        apps,
+        batchFetchFromIdsManyToOne(apps, Relationship.CONTAINS, Entity.EVENT_SUBSCRIPTION),
+        (app, subscriptions) -> app.setEventSubscriptions(listOrEmpty(subscriptions)));
   }
 
   @Override
@@ -87,6 +108,11 @@ public class AppRepository extends EntityRepository<App> {
 
   @Override
   public void prepare(App entity, boolean update) {
+    if (entity.getAppSchedule() != null && entity.getAppSchedule().getTimezone() != null) {
+      entity
+          .getAppSchedule()
+          .setTimezone(TimezoneUtil.normalize(entity.getAppSchedule().getTimezone()));
+    }
     // Encrypt sensitive fields in appConfiguration before saving
     if (entity.getAppConfiguration() != null && entity.getClassName() != null) {
       try {
@@ -199,14 +225,24 @@ public class AppRepository extends EntityRepository<App> {
   protected List<String> getFieldsStrippedFromStorageJson() {
     List<String> strippedFields = new ArrayList<>(RUNTIME_SECRET_FIELDS);
     strippedFields.add("bot");
+    strippedFields.add(EVENT_SUBSCRIPTIONS);
     return strippedFields;
   }
 
   @Override
-  protected String serializeForVersionHistory(App entity) {
-    ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
-    node.remove(RUNTIME_SECRET_FIELDS);
-    return node.toString();
+  protected List<String> getFieldsHiddenFromHistory() {
+    final List<String> hiddenFields = new ArrayList<>(RUNTIME_SECRET_FIELDS);
+    hiddenFields.add(EVENT_SUBSCRIPTIONS);
+    return hiddenFields;
+  }
+
+  @Override
+  protected void validatePatch(App original, App updated, JsonPatch patch) {
+    super.validatePatch(original, updated, patch);
+    if (JsonUtils.extractPatchedFields(patch).contains(EVENT_SUBSCRIPTIONS)) {
+      throw new BadRequestException(
+          "An app's eventSubscriptions are the alerts its own code created and cannot be patched");
+    }
   }
 
   @Override
@@ -584,26 +620,16 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   public App addEventSubscription(App app, EventSubscription eventSubscription) {
-    EntityReference existing =
-        listOrEmpty(app.getEventSubscriptions()).stream()
-            .filter(e -> e.getId().equals(eventSubscription.getId()))
-            .findFirst()
-            .orElse(null);
-    if (existing != null) {
-      return app;
-    }
     addRelationship(
         app.getId(),
         eventSubscription.getId(),
         Entity.APPLICATION,
         Entity.EVENT_SUBSCRIPTION,
         Relationship.CONTAINS);
-    List<EntityReference> newSubs = new ArrayList<>(listOrEmpty(app.getEventSubscriptions()));
-    newSubs.add(eventSubscription.getEntityReference());
-    App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
-    updated.setOpenMetadataServerConnection(null);
-    getUpdater(app, updated, Operation.PUT, null).update();
-    return updated;
+    List<EntityReference> subscriptions = new ArrayList<>(listOrEmpty(app.getEventSubscriptions()));
+    subscriptions.removeIf(sub -> sub.getId().equals(eventSubscription.getId()));
+    subscriptions.add(eventSubscription.getEntityReference());
+    return JsonUtils.deepCopy(app, App.class).withEventSubscriptions(subscriptions);
   }
 
   public App deleteEventSubscription(App app, UUID eventSubscriptionId) {
@@ -613,12 +639,9 @@ public class AppRepository extends EntityRepository<App> {
         eventSubscriptionId,
         Entity.EVENT_SUBSCRIPTION,
         Relationship.CONTAINS);
-    List<EntityReference> newSubs = new ArrayList<>(listOrEmpty(app.getEventSubscriptions()));
-    newSubs.removeIf(sub -> sub.getId().equals(eventSubscriptionId));
-    App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
-    updated.setOpenMetadataServerConnection(null);
-    getUpdater(app, updated, Operation.PUT, null).update();
-    return updated;
+    List<EntityReference> subscriptions = new ArrayList<>(listOrEmpty(app.getEventSubscriptions()));
+    subscriptions.removeIf(sub -> sub.getId().equals(eventSubscriptionId));
+    return JsonUtils.deepCopy(app, App.class).withEventSubscriptions(subscriptions);
   }
 
   public void updateAppStatus(UUID appID, AppRunRecord record) {
@@ -655,13 +678,6 @@ public class AppRepository extends EntityRepository<App> {
           "appSchedule",
           () -> recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule()));
       compareAndUpdate("bot", () -> recordChange("bot", original.getBot(), updated.getBot()));
-      compareAndUpdate(
-          "eventSubscriptions",
-          () ->
-              recordChange(
-                  "eventSubscriptions",
-                  original.getEventSubscriptions(),
-                  updated.getEventSubscriptions()));
     }
   }
 }

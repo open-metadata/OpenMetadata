@@ -20,6 +20,10 @@ public class EntityReindexContext {
    * callbacks must never complete or promote a stale staged generation). */
   String stagedChunkIndex;
 
+  /** A node could not record a delete it missed in {@link #stagedChunkIndex} and failed one of
+   * this type's partitions instead, so the run's chunk generation must keep its live chunks. */
+  boolean stagedChunkDeleteUnrecorded;
+
   String canonicalAliases;
   Set<String> existingAliases;
   Set<String> parentAliases;

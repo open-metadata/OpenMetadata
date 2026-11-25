@@ -20,9 +20,6 @@ import { getContractStatusType } from '../../../utils/DataContract/DataContractU
 import ContractSemantics from './ContractSemantics.component';
 
 // Every SVG import maps to one mocked module; render a real <svg> so className sticks.
-jest.mock('../../../assets/svg/ic-task.svg', () => ({
-  ReactComponent: (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />,
-}));
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => {
   return function MockRichTextEditorPreviewerNew({
@@ -99,15 +96,7 @@ jest.mock('../../../assets/svg/ic-fail.svg', () => ({
   ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
 }));
 
-jest.mock('../../../assets/svg/ic-inherit.svg', () => ({
-  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
-}));
-
 jest.mock('../../../assets/svg/ic-successful.svg', () => ({
-  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
-}));
-
-jest.mock('../../../assets/svg/ic-task.svg', () => ({
   ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
 }));
 

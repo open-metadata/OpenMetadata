@@ -70,7 +70,7 @@ export const getPopupContainer = (triggerNode: HTMLElement) =>
 export interface ScrollToErrorOptions {
   /** CSS selector for the scrollable container. Defaults to '.drawer-form-content' for drawer layouts */
   scrollContainer?: string;
-  /** CSS selector for form error elements. Defaults to '.ant-form-item-has-error' */
+  /** CSS selector for form error elements. Defaults to invalid react-aria fields */
   errorSelector?: string;
   /** Offset from top in pixels for better visibility. Defaults to 100 */
   offsetTop?: number;
@@ -85,7 +85,7 @@ export const createScrollToErrorHandler = (
 ) => {
   const {
     scrollContainer = '.drawer-form-content',
-    errorSelector = '.ant-form-item-has-error',
+    errorSelector = '[aria-invalid="true"], [data-invalid="true"]',
     offsetTop = 100,
     delay = 100,
     behavior = 'smooth',

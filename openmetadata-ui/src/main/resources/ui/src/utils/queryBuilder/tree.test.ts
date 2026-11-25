@@ -384,6 +384,39 @@ describe('loadQueryBuilderTree – fallbacks', () => {
     expect(rootType(loaded)).toBe('group');
   });
 
+  // The backend stores `queryFilter` as a free-form JSON object and embeds the
+  // DSL `query` node verbatim — it never requires `bool.must`. Before the fix,
+  // `loadQueryBuilderTree` fell back to a blank seed for every non-`must`
+  // shape, so rules created via the REST API showed an empty builder.
+  it.each([
+    [
+      'bool.should',
+      { query: { bool: { should: [{ term: { deleted: false } }] } } },
+    ],
+    [
+      'bool.filter',
+      { query: { bool: { filter: [{ term: { deleted: false } }] } } },
+    ],
+    [
+      'bool.must_not',
+      { query: { bool: { must_not: [{ term: { deleted: true } }] } } },
+    ],
+    ['bare query.term', { query: { term: { fullyQualifiedName: 'x' } } }],
+    ['bare term', { term: { 'tier.tagFQN': 'Tier.Tier1' } }],
+    [
+      'single must clause',
+      { query: { bool: { must: [{ term: { name: 'x' } }] } } },
+    ],
+  ])('should rebuild the tree from a %s filter', (_label, filter) => {
+    const loaded = loadQueryBuilderTree({
+      config: esConfig,
+      value: JSON.stringify(filter),
+      outputType: SearchOutputType.ElasticSearch,
+    });
+
+    expect(rootType(loaded)).toBe('group');
+  });
+
   it('should keep a JSONLogic tree that RAQB could load', () => {
     const seeded = QbUtils.loadTree(getEmptyFlatJsonTree('owners'));
     const spy = jest

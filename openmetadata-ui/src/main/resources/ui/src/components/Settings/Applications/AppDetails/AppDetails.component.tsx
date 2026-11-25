@@ -21,7 +21,10 @@ import {
 import {
   ChevronLeft,
   Clock,
+  LinkExternal01,
+  Restore,
   SlashCircle01,
+  Trash01,
   User01,
 } from '@openmetadata/ui-core-components/icons';
 import { IChangeEvent } from '@rjsf/core';
@@ -32,9 +35,6 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { TabSpecificField } from '../../../../enums/entity.enum';
@@ -75,6 +75,7 @@ import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/M
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
+import McpClientsTable from '../../../platform/settings/mcp/McpClientsTable/McpClientsTable';
 import { useApplicationsProvider } from '../ApplicationsProvider/ApplicationsProvider';
 import AppLiveIndexing from '../AppLiveIndexing/AppLiveIndexing.component';
 import AppLogo from '../AppLogo/AppLogo.component';
@@ -94,15 +95,8 @@ import applicationsClassBase from './ApplicationsClassBase';
 const getShowMcpConfigTab = (
   appData: App | undefined,
   isAdminUser: boolean | undefined,
-  jsonSchema: RJSFSchema | undefined,
-  isRuntimeDisabled: boolean
-) =>
-  Boolean(
-    isMcpApplication(appData?.name) &&
-      isAdminUser &&
-      jsonSchema &&
-      !isRuntimeDisabled
-  );
+  jsonSchema: RJSFSchema | undefined
+) => Boolean(isMcpApplication(appData?.name) && isAdminUser && jsonSchema);
 
 const getShowAppConfigTab = (
   appData: App | undefined,
@@ -249,7 +243,7 @@ const AppDetails = () => {
                   description={t('message.restore-action-description', {
                     entityType: getEntityName(appData),
                   })}
-                  icon={IconRestore}
+                  icon={Restore}
                   id="restore-button"
                   name={t('label.restore')}
                 />
@@ -292,7 +286,7 @@ const AppDetails = () => {
                   description={t('message.uninstall-app', {
                     app: getEntityName(appData),
                   })}
-                  icon={DeleteIcon}
+                  icon={Trash01}
                   id="uninstall-button"
                   name={t('label.uninstall')}
                 />
@@ -346,7 +340,7 @@ const AppDetails = () => {
   );
 
   const onAppScheduleSave = useCallback(
-    async (cron: string) => {
+    async (cron: string, timezone?: string) => {
       if (appData) {
         const updatedData = {
           ...appData,
@@ -355,6 +349,7 @@ const AppDetails = () => {
               ? ScheduleTimeline.None
               : ScheduleTimeline.Custom,
             ...(cron ? { cronExpression: cron } : {}),
+            ...(timezone ? { timezone } : {}),
           },
         };
 
@@ -425,8 +420,7 @@ const AppDetails = () => {
     const showMcpConfigTab = getShowMcpConfigTab(
       appData,
       isAdminUser,
-      jsonSchema,
-      isRuntimeDisabled
+      jsonSchema
     );
     const showAppConfigTab = getShowAppConfigTab(
       appData,
@@ -469,6 +463,25 @@ const AppDetails = () => {
               onConfigSave={onConfigSave}
             />
           ),
+        },
+      ];
+    };
+
+    const buildMcpClientsTab = () => {
+      if (!showMcpConfigTab) {
+        return [];
+      }
+
+      return [
+        {
+          label: (
+            <TabsLabel
+              id={ApplicationTabs.REGISTERED_CLIENTS}
+              name={t('label.mcp-registered-clients')}
+            />
+          ),
+          key: ApplicationTabs.REGISTERED_CLIENTS,
+          children: <McpClientsTable />,
         },
       ];
     };
@@ -556,6 +569,7 @@ const AppDetails = () => {
     return [
       ...buildScheduleTab(),
       ...buildConfigurationTab(),
+      ...buildMcpClientsTab(),
       ...buildRecentRunsTab(),
       ...buildLiveIndexingTab(),
     ];
@@ -624,7 +638,7 @@ const AppDetails = () => {
 
     return (
       <div className="flex-center gap-2">
-        <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
+        <LinkExternal01 className="tw:shrink-0" size={14} />
         <Typography>
           <a
             className="text-xs"

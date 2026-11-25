@@ -40,7 +40,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
-import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
@@ -221,7 +221,7 @@ public class AlertsRuleEvaluatorDeletedEntityIT {
     EventFilterRule rule =
         new EventFilterRule()
             .withName("matchAnyDomain")
-            .withEffect(ArgumentsInput.Effect.INCLUDE)
+            .withEffect(Effect.INCLUDE)
             .withCondition("matchAnyDomain({'" + domainFqn + "'})");
     return new EventSubscription()
         .withName("alertAllResourcesDomainSubscription")
@@ -236,7 +236,7 @@ public class AlertsRuleEvaluatorDeletedEntityIT {
     EventFilterRule rule =
         new EventFilterRule()
             .withName("matchAnyDomain")
-            .withEffect(ArgumentsInput.Effect.INCLUDE)
+            .withEffect(Effect.INCLUDE)
             .withCondition("matchAnyDomain({'" + domainFqn + "'})");
     return new EventSubscription()
         .withName("alertDomainSubscription")

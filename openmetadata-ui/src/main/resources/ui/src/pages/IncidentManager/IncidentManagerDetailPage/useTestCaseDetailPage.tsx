@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Dimension } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare, Operation as PatchOperation } from 'fast-json-patch';
@@ -17,7 +18,6 @@ import { isUndefined, toString } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DimensionIcon } from '../../../assets/svg/data-observability/dimension.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
@@ -56,7 +56,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import testCaseClassBase, { TestCaseTabType } from './TestCaseClassBase';
-import { useTestCaseStore } from './useTestCase.store';
+import { keepFetchedOnlyFields, useTestCaseStore } from './useTestCase.store';
 
 export interface UseTestCaseDetailPageProps {
   isVersionPage?: boolean;
@@ -98,7 +98,7 @@ export interface UseTestCaseDetailPageResult {
   handleDisplayNameChange: (entityName?: EntityName) => Promise<void>;
   handleRestore: () => Promise<boolean>;
   getEntityFeedCount: () => void;
-  setTestCase: (testCase: TestCase) => void;
+  mergeTestCase: (testCase: TestCase) => void;
 }
 
 /**
@@ -131,6 +131,7 @@ export const useTestCaseDetailPage = ({
   const {
     setIsLoading,
     setTestCase,
+    mergeTestCase,
     testCase,
     reset,
     setTestCasePermission,
@@ -333,7 +334,7 @@ export const useTestCaseDetailPage = ({
 
       try {
         const res = await updateTestCaseById(id, patch);
-        setEntityDetails(res);
+        setEntityDetails((prev) => keepFetchedOnlyFields(prev, res));
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -348,7 +349,7 @@ export const useTestCaseDetailPage = ({
 
     try {
       const restoredTestCase = await restoreTestCase(testCase.id);
-      setEntityDetails(restoredTestCase);
+      setEntityDetails((prev) => keepFetchedOnlyFields(prev, restoredTestCase));
       showSuccessToast(
         t('server.restore-entity-success', {
           entity: testCase.displayName ?? testCase.name,
@@ -490,7 +491,7 @@ export const useTestCaseDetailPage = ({
         label: (
           <ManageButtonItemLabel
             description={t('message.edit-dimension-description')}
-            icon={DimensionIcon}
+            icon={Dimension}
             id="profiler-setting-button"
             name={t('label.dimension-plural')}
           />
@@ -532,6 +533,6 @@ export const useTestCaseDetailPage = ({
     handleDisplayNameChange,
     handleRestore,
     getEntityFeedCount,
-    setTestCase,
+    mergeTestCase,
   };
 };

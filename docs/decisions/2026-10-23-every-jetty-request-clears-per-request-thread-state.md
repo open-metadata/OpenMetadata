@@ -1,7 +1,7 @@
 # Every request on the application context starts and ends with clean per-request thread state
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial)
+- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-29 (the personal access token loader is gone)
 - **Deciders:** Vishnu Jain
 - **Guard:** `PerRequestContextCleanupFilterTest` (the filter); `reviewer` (its registration and
   order in `OpenMetadataApplication.run`)
@@ -38,3 +38,11 @@ thread and could answer a later request's lookup, including a token check that r
 - Code that runs inside this filter starts with empty per-request state, whatever the thread
   served before.
 - A filter prepended later runs before this one; it must not read or set per-request state.
+
+## Amendment
+
+ADR:2026-10-25-stored-tokens-are-checked-by-a-per-server-verifier removed the personal access
+token loader. `BotTokenCache.getToken`, which reads a bot's stored token for server-side callers,
+still reads the user inside `FreshReadScope`. Requests check bot and personal access tokens through
+`CredentialVerifier`, whose reads run their own SQL on a handle they open, outside the repositories
+and the request entity cache.

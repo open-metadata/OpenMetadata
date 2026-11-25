@@ -100,7 +100,7 @@ const DataAssetsTab = ({
         type={entityType as CustomizeEntityType}
         onUpdate={saveUpdatedServiceData}>
         <div
-          className="tw:flex tw:w-80 tw:shrink-0 tw:flex-col tw:gap-4"
+          className="tw:flex tw:w-1/4 tw:shrink-0 tw:flex-col tw:gap-4"
           data-testid="service-right-panel">
           {RIGHT_PANEL_WIDGETS.map((widgetConfig) => (
             <CommonWidgets

@@ -23,6 +23,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
+import org.openmetadata.service.rdf.translator.ReferenceScope;
 
 /**
  * Proves that the column-lineage shape written by {@code RdfIndexApp} can be traversed and paged
@@ -142,7 +143,13 @@ class RdfColumnLineageTraversalTest {
   @Test
   void assetFilterPatternsAdvertisedToClientsMatchTheProjection() {
     final Table orders = projectedOrdersTable();
-    graph.add(new JsonLdTranslator(JsonUtils.getObjectMapper(), BASE).toRdf(orders));
+    graph.add(
+        new JsonLdTranslator(
+                JsonUtils.getObjectMapper(),
+                BASE,
+                RdfSchemaFixture.everyLabelLive(),
+                ReferenceScope.LIVE)
+            .toRdf(orders));
     final String assetFqn = orders.getFullyQualifiedName();
 
     assertTrue(ask("?a om:fullyQualifiedName \"%s\" . ?a a om:Table".formatted(assetFqn)));

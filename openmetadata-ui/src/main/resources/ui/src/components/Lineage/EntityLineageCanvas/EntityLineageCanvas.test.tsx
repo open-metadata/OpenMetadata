@@ -34,6 +34,10 @@ jest.mock('reactflow', () => ({
   ),
 }));
 
+jest.mock(
+  '../UncontrolledDragFlow/UncontrolledDragFlow',
+  () => jest.requireMock('reactflow').default
+);
 jest.mock('../../../utils/EntityLineageUtils', () => ({ nodeTypes: {} }));
 jest.mock(
   '../../Entity/EntityLineage/LineageControlButtons/LineageControlButtons',

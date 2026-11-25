@@ -13,7 +13,19 @@ name: Integration Tests - MySQL + Elasticsearch
 
 on:
   merge_group:
+  # Nightly, the suite runs MySQL on the oldest version an operator may run the metadata store on;
+  # the merge queue runs the version we ship.
+  schedule:
+    - cron: "0 2 * * *"
   workflow_dispatch:
+    inputs:
+      store-database-version:
+        description: Metadata store MySQL version, shipped or oldest
+        type: choice
+        options:
+          - shipped
+          - oldest
+        default: shipped
   push:
     branches:
       - main
@@ -32,6 +44,7 @@ on:
       - "bootstrap/**"
       - "docker/rdf-store/**"
       - ".github/scripts/classify_test_outcome.py"
+      - ".github/scripts/configure_docker_storage.sh"
       - ".github/workflows/integration-tests-mysql-elasticsearch.yml"
   # Integration tests run in the merge queue (plus main pushes and manual dispatch), not on
   # PRs: before review, `make java_affected_run` runs the ITs a PR impacts on the author's
@@ -63,9 +76,11 @@ jobs:
     # merge_group.base_sha and skip the heavy work when nothing backend-relevant
     # changed. Push and workflow_dispatch remain force-true — push is already
     # gated by the trigger paths above, and workflow_dispatch is an explicit
-    # "run the full suite" request. Keep the trigger paths and filter list in sync.
+    # "run the full suite" request. The nightly schedule is force-true as well, since it
+    # exists to run the full suite on the oldest store version. Keep the trigger paths and
+    # filter list in sync.
     outputs:
-      backend: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && 'true' || steps.filter.outputs.backend }}
+      backend: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'true' || steps.filter.outputs.backend }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -95,6 +110,7 @@ jobs:
               - 'bootstrap/**'
               - 'docker/rdf-store/**'
               - '.github/scripts/classify_test_outcome.py'
+              - '.github/scripts/configure_docker_storage.sh'
               - '.github/workflows/integration-tests-mysql-elasticsearch.yml'
 
   integration-test-build:
@@ -102,7 +118,7 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    if: ${{ needs.changes.outputs.backend == 'true' }}
+    if: ${{ github.event_name != 'pull_request' && needs.changes.outputs.backend == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -202,7 +218,7 @@ jobs:
     needs: [changes, integration-test-build]
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    if: ${{ needs.changes.outputs.backend == 'true' }}
+    if: ${{ github.event_name != 'pull_request' && needs.changes.outputs.backend == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -213,7 +229,18 @@ jobs:
           - name: retry-queue
           - name: rdf
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # The hosted runner starts with ~86 GB free and a lane adds ~6 GB, so the ~3 minute
+      # SDK purge only runs when the script finds less space than Docker needs.
+      - name: Check Docker storage
+        id: docker-storage
+        continue-on-error: true
+        run: bash .github/scripts/configure_docker_storage.sh
       - name: Free Disk Space (Ubuntu)
+        if: ${{ steps.docker-storage.outcome == 'failure' }}
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: true
@@ -223,11 +250,9 @@ jobs:
           large-packages: true
           docker-images: false
           swap-storage: true
-
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          persist-credentials: false
+      - name: Check Docker storage after freeing disk space
+        if: ${{ steps.docker-storage.outcome == 'failure' }}
+        run: bash .github/scripts/configure_docker_storage.sh
       - name: Cache Maven dependencies
         uses: actions/cache@v6
         with:
@@ -241,51 +266,6 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-
-      - name: Install Ubuntu dependencies
-        timeout-minutes: 15
-        run: |
-          # The hosted-runner Azure apt mirror intermittently blackholes connections;
-          # apt then falls back to archive.ubuntu.com and can hang forever with no
-          # output, burning the whole job timeout. Bound every fetch and retry.
-          sudo tee /etc/apt/apt.conf.d/99-ci-timeouts >/dev/null <<'APTCONF'
-          Acquire::Retries "3";
-          Acquire::http::Timeout "30";
-          Acquire::https::Timeout "30";
-          Acquire::http::No-Cache "true";
-          APTCONF
-          # Keep the whole retry budget strictly inside this step's timeout-minutes.
-          # Otherwise the outer deadline truncates a retry and kills the step before
-          # the helper can say why it gave up, which is the failure we're fixing.
-          APT_BUDGET=600
-          APT_DEADLINE=$((SECONDS + APT_BUDGET))
-          apt_retry() {
-            local limit=$1; shift
-            local i remaining
-            for i in 1 2 3; do
-              remaining=$((APT_DEADLINE - SECONDS))
-              if [ "$remaining" -le 30 ]; then
-                echo "::error::apt-get $1 gave up: exhausted the ${APT_BUDGET}s apt budget"
-                return 1
-              fi
-              if [ "$limit" -gt "$remaining" ]; then
-                limit=$remaining
-              fi
-              if sudo timeout "$limit" apt-get "$@"; then
-                return 0
-              fi
-              if [ "$i" -lt 3 ]; then
-                echo "::warning::apt-get $1 failed or hung (attempt $i/3); retrying in 10s"
-                sleep 10
-              fi
-            done
-            echo "::error::apt-get $1 failed after 3 attempts"
-            return 1
-          }
-          apt_retry 240 update
-          apt_retry 300 install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-          libevent-dev jq
-          sudo make install_antlr_cli
 
       - name: Download Integration Test Runtime
         uses: actions/download-artifact@v7
@@ -329,12 +309,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IT_LANE: ${{ matrix.lane.name }}
           IT_PARALLELISM: '4'
+          STORE_DATABASE_VERSION: ${{ github.event_name == 'schedule' && 'oldest' || inputs.store-database-version || 'shipped' }}
           IT_MAX_POOL_SIZE: '16'
         run: |
           {
             echo "### Java integration configuration"
             echo "- Profile: mysql-elasticsearch"
             echo "- Lane: ${IT_LANE}"
+            echo "- Store database version: ${STORE_DATABASE_VERSION}"
             echo "- Parallel workers: ${IT_PARALLELISM}"
             echo "- Compensation-thread ceiling: ${IT_MAX_POOL_SIZE}"
             echo "- Runner processors: $(nproc)"

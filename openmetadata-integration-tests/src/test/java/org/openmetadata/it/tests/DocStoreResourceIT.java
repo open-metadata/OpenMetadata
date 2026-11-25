@@ -1,11 +1,15 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.openmetadata.it.util.UriTestUtils.assertHttpStatusFor;
+import static org.openmetadata.it.util.UriTestUtils.encodeURIComponent;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.List;
@@ -15,18 +19,32 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreatePersona;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entities.docStore.CreateDocument;
 import org.openmetadata.schema.entities.docStore.Data;
 import org.openmetadata.schema.entities.docStore.Document;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.Persona;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.system.ui.Configuration;
 import org.openmetadata.schema.system.ui.KnowledgePanel;
 import org.openmetadata.schema.system.ui.Page;
 import org.openmetadata.schema.system.ui.PageType;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -34,6 +52,9 @@ public class DocStoreResourceIT {
 
   private static final ObjectMapper MAPPER =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+  private static final String EMAIL_TEMPLATE_NAME = "testMail";
+  private static final String EMAIL_TEMPLATE = "EmailTemplate";
+  private static final String KNOWLEDGE_PANEL = "KnowledgePanel";
 
   @BeforeAll
   public static void setup() {
@@ -346,9 +367,253 @@ public class DocStoreResourceIT {
     deleteDocument(pageDoc.getFullyQualifiedName());
   }
 
-  private Document createDocument(CreateDocument createRequest) throws Exception {
-    String response =
+  /**
+   * A persona's UI customization must load for every user the persona applies to, even when their
+   * roles grant no access to documents; otherwise the UI silently falls back to the stock
+   * navigation and landing page. Each way of holding a persona counts: assigned directly, inherited
+   * as a team's default persona, or set as the user's default persona. The relaxation stops at the
+   * caller's own personas.
+   */
+  @Test
+  void personaLayoutIsReadableThroughPersonaAssignment(TestNamespace ns) throws Exception {
+    String readerPrefix = ns.shortPrefix("layout_reader");
+    OpenMetadataClient reader =
+        DenyPolicyPrincipals.clientDenied(
+            readerPrefix, Entity.DOCUMENT, MetadataOperation.VIEW_BASIC);
+    Persona direct = createPersona(ns, "layout_direct");
+    Persona fromTeam = createPersona(ns, "layout_team");
+    Persona byDefault = createPersona(ns, "layout_default");
+    Persona other = createPersona(ns, "layout_other");
+    assignPersonas(readerPrefix + "_user", direct, byDefault);
+    assignTeamDefaultPersona(readerPrefix + "_team", fromTeam);
+    List<Document> assignedLayouts =
+        List.of(
+            createDocument(personaLayout(direct)),
+            createDocument(personaLayout(fromTeam)),
+            createDocument(personaLayout(byDefault)));
+    Document otherLayout = createDocument(personaLayout(other));
+    String panelName = ns.prefix("layout_reader_panel");
+    Document panel =
+        createDocument(
+            new CreateDocument()
+                .withName(panelName)
+                .withFullyQualifiedName(panelName)
+                .withEntityType("KnowledgePanel")
+                .withData(new Data().withAdditionalProperty("name", "panel")));
+
+    try {
+      for (Document layout : assignedLayouts) {
+        Document read =
+            assertDoesNotThrow(
+                () -> getDocumentByName(reader, layout.getFullyQualifiedName()),
+                layout.getFullyQualifiedName());
+
+        assertEquals(layout.getId(), read.getId());
+        assertEquals(layout.getData(), read.getData());
+      }
+      assertHttpStatusFor(
+          reader,
+          403,
+          HttpMethod.GET,
+          documentByNamePath(otherLayout.getFullyQualifiedName()),
+          null);
+      assertHttpStatusFor(
+          reader, 403, HttpMethod.GET, documentByNamePath(panel.getFullyQualifiedName()), null);
+    } finally {
+      for (Document layout : assignedLayouts) {
+        deleteDocument(layout.getFullyQualifiedName());
+      }
+      deleteDocument(otherLayout.getFullyQualifiedName());
+      deleteDocument(panel.getFullyQualifiedName());
+    }
+  }
+
+  /**
+   * Email templates are managed by admins on every write endpoint, whatever Document permissions
+   * the caller holds. The editor below can create, edit and delete other documents (see {@link
+   * #documentPatchKeepsEntityType}), so each 403 comes from the template rule.
+   */
+  @Test
+  void emailTemplatesAreManagedByAdminsOnly(TestNamespace ns) throws Exception {
+    OpenMetadataClient editor = documentEditor(ns.shortPrefix("template_editor"));
+    Document template = getDocumentByName(EMAIL_TEMPLATE_NAME);
+    String byId = "/v1/docStore/" + template.getId();
+    String byName = documentByNamePath(template.getFullyQualifiedName());
+    JsonNode edit = templatePatch("edited");
+    CreateDocument retyped =
+        new CreateDocument()
+            .withName(template.getName())
+            .withFullyQualifiedName(template.getFullyQualifiedName())
+            .withEntityType(KNOWLEDGE_PANEL)
+            .withData(new Data().withAdditionalProperty("name", "panel"));
+    String sameNameFqn = ns.prefix("same_name_template");
+    CreateDocument sameName =
+        new CreateDocument()
+            .withName(template.getName())
+            .withFullyQualifiedName(sameNameFqn)
+            .withEntityType(EMAIL_TEMPLATE)
+            .withData(template.getData());
+
+    try {
+      assertHttpStatusFor(editor, 403, HttpMethod.PATCH, byId, edit);
+      assertHttpStatusFor(editor, 403, HttpMethod.PATCH, byName, edit);
+      assertHttpStatusFor(editor, 403, HttpMethod.PUT, "/v1/docStore", retyped);
+      assertHttpStatusFor(editor, 403, HttpMethod.POST, "/v1/docStore", sameName);
+      assertHttpStatusFor(editor, 403, HttpMethod.PUT, "/v1/docStore", sameName);
+      assertHttpStatusFor(editor, 403, HttpMethod.DELETE, byId, null);
+      assertHttpStatusFor(
+          editor, 403, HttpMethod.DELETE, "/v1/docStore/async/" + template.getId(), null);
+      assertHttpStatusFor(editor, 403, HttpMethod.DELETE, byName, null);
+      assertEquals(template.getData(), getDocumentByName(EMAIL_TEMPLATE_NAME).getData());
+    } finally {
+      deleteDocument(sameNameFqn);
+    }
+
+    JsonNode unchanged =
+        templatePatch(template.getData().getAdditionalProperties().get("template"));
+    assertDoesNotThrow(
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(HttpMethod.PATCH, byId, unchanged));
+  }
+
+  /**
+   * The editor creates, patches and deletes a panel of its own, so its grants work outside email
+   * templates. A patch keeps the document's entityType.
+   */
+  @Test
+  void documentPatchKeepsEntityType(TestNamespace ns) throws Exception {
+    OpenMetadataClient editor = documentEditor(ns.shortPrefix("panel_editor"));
+    String panelName = ns.prefix("typed_panel");
+    Document panel =
+        createDocument(
+            editor,
+            new CreateDocument()
+                .withName(panelName)
+                .withFullyQualifiedName(panelName)
+                .withEntityType(KNOWLEDGE_PANEL)
+                .withData(new Data().withAdditionalProperty("name", "panel")));
+    JsonNode retype =
+        MAPPER.readTree(
+            "[{\"op\":\"replace\",\"path\":\"/entityType\",\"value\":\""
+                + EMAIL_TEMPLATE
+                + "\"},"
+                + "{\"op\":\"replace\",\"path\":\"/data/name\",\"value\":\"edited\"}]");
+
+    try {
+      Document patched =
+          MAPPER.readValue(
+              editor
+                  .getHttpClient()
+                  .executeForString(HttpMethod.PATCH, "/v1/docStore/" + panel.getId(), retype),
+              Document.class);
+
+      assertEquals(KNOWLEDGE_PANEL, patched.getEntityType());
+      assertEquals("edited", patched.getData().getAdditionalProperties().get("name"));
+      assertDoesNotThrow(
+          () ->
+              editor
+                  .getHttpClient()
+                  .executeForString(HttpMethod.DELETE, documentByNamePath(panelName), null));
+    } finally {
+      deleteDocument(panelName);
+    }
+  }
+
+  private static JsonNode templatePatch(Object template) {
+    return MAPPER
+        .createArrayNode()
+        .add(
+            MAPPER
+                .createObjectNode()
+                .put("op", "replace")
+                .put("path", "/data/template")
+                .set("value", MAPPER.valueToTree(template)));
+  }
+
+  private static OpenMetadataClient documentEditor(String prefix) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Rule rule =
+        new Rule()
+            .withName(prefix + "_edit")
+            .withResources(List.of(Entity.DOCUMENT))
+            .withOperations(
+                List.of(
+                    MetadataOperation.CREATE,
+                    MetadataOperation.EDIT_ALL,
+                    MetadataOperation.DELETE,
+                    MetadataOperation.VIEW_ALL))
+            .withEffect(Rule.Effect.ALLOW);
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(prefix + "_policy")
+                    .withDescription("Document editor for a docStore integration test")
+                    .withRules(List.of(rule)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(prefix + "_role")
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    CreateUser createUser = new CreateUser();
+    createUser.setName(prefix + "_user");
+    createUser.setEmail(prefix + "_user@test.openmetadata.org");
+    createUser.setRoles(List.of(role.getId()));
+    User user = admin.users().create(createUser);
+    return SdkClients.createClient(user.getName(), user.getEmail(), new String[] {});
+  }
+
+  private Persona createPersona(TestNamespace ns, String suffix) {
+    return ns.trackRoot(
+        Entity.PERSONA,
         SdkClients.adminClient()
+            .personas()
+            .create(
+                new CreatePersona()
+                    .withName(ns.shortPrefix(suffix))
+                    .withDescription("Persona layout document integration test")));
+  }
+
+  private void assignPersonas(String userName, Persona persona, Persona defaultPersona) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    User user = admin.users().getByName(userName, "personas,defaultPersona");
+    user.setPersonas(List.of(persona.getEntityReference()));
+    user.setDefaultPersona(defaultPersona.getEntityReference());
+    admin.users().update(user.getId().toString(), user);
+  }
+
+  private void assignTeamDefaultPersona(String teamName, Persona persona) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Team team = admin.teams().getByName(teamName, "defaultPersona");
+    team.setDefaultPersona(persona.getEntityReference());
+    admin.teams().update(team.getId().toString(), team);
+  }
+
+  private CreateDocument personaLayout(Persona persona) {
+    return new CreateDocument()
+        .withName(persona.getName() + "-layout")
+        .withFullyQualifiedName(Entity.PERSONA + Entity.SEPARATOR + persona.getFullyQualifiedName())
+        .withEntityType("page")
+        .withData(new Data().withAdditionalProperty("navigation", "glossary-only"));
+  }
+
+  private static String documentByNamePath(String fqn) {
+    return "/v1/docStore/name/" + encodeURIComponent(fqn);
+  }
+
+  private Document createDocument(CreateDocument createRequest) throws Exception {
+    return createDocument(SdkClients.adminClient(), createRequest);
+  }
+
+  private Document createDocument(OpenMetadataClient client, CreateDocument createRequest)
+      throws Exception {
+    String response =
+        client
             .getHttpClient()
             .executeForString(
                 HttpMethod.PUT, "/v1/docStore", createRequest, RequestOptions.builder().build());
@@ -365,11 +630,15 @@ public class DocStoreResourceIT {
   }
 
   private Document getDocumentByName(String fqn) throws Exception {
+    return getDocumentByName(SdkClients.adminClient(), fqn);
+  }
+
+  private Document getDocumentByName(OpenMetadataClient client, String fqn) throws Exception {
     String response =
-        SdkClients.adminClient()
+        client
             .getHttpClient()
             .executeForString(
-                HttpMethod.GET, "/v1/docStore/name/" + fqn, null, RequestOptions.builder().build());
+                HttpMethod.GET, documentByNamePath(fqn), null, RequestOptions.builder().build());
     return MAPPER.readValue(response, Document.class);
   }
 

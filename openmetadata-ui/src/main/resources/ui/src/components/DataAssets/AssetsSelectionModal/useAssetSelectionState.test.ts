@@ -28,7 +28,7 @@ import {
 } from '../../../rest/glossaryAPI';
 import { getMetricByFqn } from '../../../rest/metricsAPI';
 import { addMetricTabAssets } from '../../../rest/metricTabsAPI';
-import { searchQuery } from '../../../rest/searchAPI';
+import { searchQuery, searchQueryPost } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchPureUtils';
 import { getDomainDryRunImpacts } from '../../../utils/Domain/DomainDryRunUtils';
@@ -37,6 +37,7 @@ import { useAssetSelectionState } from './useAssetSelectionState';
 
 jest.mock('../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
+  searchQueryPost: jest.fn(),
 }));
 
 jest.mock('../../../rest/domainAPI', () => ({
@@ -111,6 +112,7 @@ describe('useAssetSelectionState', () => {
       socket: mockSocket,
     });
     (searchQuery as jest.Mock).mockResolvedValue(buildSearchResponse([]));
+    (searchQueryPost as jest.Mock).mockResolvedValue(buildSearchResponse([]));
     (getGlossaryTermByFQN as jest.Mock).mockResolvedValue({
       id: 'glossary-term-id',
       fullyQualifiedName: 'glossary.term',
@@ -196,6 +198,43 @@ describe('useAssetSelectionState', () => {
         expect.objectContaining({ searchIndex: SearchIndex.DATA_ASSET })
       );
     });
+  });
+
+  it('routes the search through POST /search/query when useQueryPost is set', async () => {
+    // A metric with hundreds of linked assets embeds every id in a `must_not` `ids`
+    // filter, which overflows the GET request-line size limit. The POST-body variant
+    // carries the same filter in the body so the URL stays small.
+    (searchQueryPost as jest.Mock).mockResolvedValue(
+      buildSearchResponse([buildHit('post-1')], 1)
+    );
+
+    const { result } = renderAssetSelectionState({ useQueryPost: true });
+
+    await waitFor(() => {
+      expect(result.current.items).toHaveLength(1);
+    });
+
+    expect(searchQueryPost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageNumber: 1,
+        pageSize: 25,
+        query: '',
+        includeDeleted: false,
+      })
+    );
+    // The GET path must NOT be used when the caller opts into POST.
+    expect(searchQuery).not.toHaveBeenCalled();
+  });
+
+  it('uses the GET path when useQueryPost is not set', async () => {
+    // Non-metric callers keep the existing GET behavior — explicit no-regression guard.
+    renderAssetSelectionState();
+
+    await waitFor(() => {
+      expect(searchQuery).toHaveBeenCalled();
+    });
+
+    expect(searchQueryPost).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -455,6 +494,254 @@ describe('useAssetSelectionState', () => {
     );
   });
 
+  describe('exact name', () => {
+    const exactNameClause = (value: string) => ({
+      term: { 'name.keyword': { value, case_insensitive: true } },
+    });
+
+    const lastSearchRequest = () =>
+      (searchQuery as jest.Mock).mock.calls.at(-1)[0];
+
+    const renderWithExactName = async (
+      search: string,
+      overrides: Parameters<typeof renderAssetSelectionState>[0] = {}
+    ) => {
+      const rendered = renderAssetSelectionState(overrides);
+
+      await act(async () => {
+        rendered.result.current.setSearch(search);
+        rendered.result.current.onExactNameChange(true);
+      });
+
+      return rendered;
+    };
+
+    it('searches loosely until it is turned on', async () => {
+      const { result } = renderAssetSelectionState();
+
+      await act(async () => {
+        result.current.setSearch('item_value');
+      });
+
+      expect(result.current.isExactName).toBe(false);
+      expect(lastSearchRequest().query).toBe('item_value');
+      expect(JSON.stringify(lastSearchRequest())).not.toContain('name.keyword');
+    });
+
+    it('matches the trimmed name as a filter instead of a relevance query', async () => {
+      await renderWithExactName('  item_value ');
+
+      expect(lastSearchRequest()).toEqual(
+        expect.objectContaining({
+          pageNumber: 1,
+          query: '',
+          queryFilter: {
+            query: { bool: { must: [exactNameClause('item_value')] } },
+          },
+        })
+      );
+    });
+
+    it('keeps the filters of the picker next to the name filter', async () => {
+      const linkedAssets = { term: { 'tags.tagFQN': 'glossary.term' } };
+      await renderWithExactName('item_value', {
+        type: AssetsOfEntity.DATA_PRODUCT_INPUT_PORT,
+        queryFilter: { query: { bool: { must_not: [linkedAssets] } } },
+      });
+
+      expect(lastSearchRequest().queryFilter).toEqual({
+        query: {
+          bool: {
+            must: [exactNameClause('item_value')],
+            must_not: [linkedAssets, { term: { entityType: 'tableColumn' } }],
+          },
+        },
+      });
+    });
+
+    it('lists every asset while the search is blank', async () => {
+      await renderWithExactName('   ');
+
+      expect(JSON.stringify(lastSearchRequest())).not.toContain('name.keyword');
+    });
+
+    it('goes back to the loose search when it is turned off', async () => {
+      const { result } = await renderWithExactName('item_value');
+
+      await act(async () => {
+        result.current.onExactNameChange(false);
+      });
+
+      expect(lastSearchRequest().query).toBe('item_value');
+      expect(lastSearchRequest().queryFilter).toBeUndefined();
+    });
+
+    it('keeps matching the exact name on the next pages', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(
+        buildSearchResponse([buildHit('1')], 5)
+      );
+      const { result } = await renderWithExactName('item_value');
+
+      await act(async () => {
+        result.current.onScroll({
+          currentTarget: {
+            scrollHeight: 500,
+            scrollTop: 470,
+            clientHeight: 100,
+          },
+        } as never);
+      });
+
+      expect(lastSearchRequest()).toEqual(
+        expect.objectContaining({
+          pageNumber: 2,
+          query: '',
+          queryFilter: {
+            query: { bool: { must: [exactNameClause('item_value')] } },
+          },
+        })
+      );
+    });
+
+    it('drops the loose matches that were selected before it was turned on', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(
+        buildSearchResponse([buildHit('item_value_adjusted')])
+      );
+      const { result } = renderAssetSelectionState();
+      await waitFor(() => {
+        expect(result.current.items).toHaveLength(1);
+      });
+
+      act(() => {
+        result.current.onSelectAll(true);
+      });
+      (searchQuery as jest.Mock).mockResolvedValue(
+        buildSearchResponse([buildHit('item_value')])
+      );
+      await act(async () => {
+        result.current.setSearch('item_value');
+        result.current.onExactNameChange(true);
+      });
+      act(() => {
+        result.current.onSelectAll(true);
+      });
+
+      expect([...(result.current.selectedItems?.keys() ?? [])]).toEqual([
+        'item_value',
+      ]);
+    });
+
+    it('ignores a loose search that answers after the exact one', async () => {
+      const { result } = renderAssetSelectionState();
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      const looseResponse = Promise.withResolvers<unknown>();
+      const exactResponse = Promise.withResolvers<unknown>();
+      (searchQuery as jest.Mock)
+        .mockReturnValueOnce(looseResponse.promise)
+        .mockReturnValueOnce(exactResponse.promise);
+
+      act(() => {
+        result.current.setSearch('item_value');
+      });
+      act(() => {
+        result.current.onExactNameChange(true);
+      });
+      await act(async () => {
+        exactResponse.resolve(buildSearchResponse([buildHit('item_value')]));
+      });
+      await act(async () => {
+        looseResponse.resolve(
+          buildSearchResponse([
+            buildHit('item_value'),
+            buildHit('item_value_adjusted'),
+          ])
+        );
+      });
+
+      expect(result.current.items.map(({ _id }) => _id)).toEqual([
+        'item_value',
+      ]);
+      expect(result.current.totalCount).toBe(1);
+    });
+
+    it('lists nothing when the exact search fails', async () => {
+      (searchQuery as jest.Mock).mockResolvedValueOnce(
+        buildSearchResponse([buildHit('item_value_adjusted')])
+      );
+      const { result } = renderAssetSelectionState();
+      await waitFor(() => {
+        expect(result.current.items).toHaveLength(1);
+      });
+
+      const error = new Error('search failed');
+      (searchQuery as jest.Mock).mockRejectedValue(error);
+      await act(async () => {
+        result.current.setSearch('item_value');
+        result.current.onExactNameChange(true);
+      });
+
+      expect(result.current.items).toEqual([]);
+      expect(result.current.totalCount).toBe(0);
+      expect(result.current.isLoading).toBe(false);
+      expect(showErrorToast).toHaveBeenCalledWith(error);
+    });
+
+    it('keeps the listed assets when the next page fails', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(
+        buildSearchResponse([buildHit('1')], 5)
+      );
+      const { result } = await renderWithExactName('item_value');
+
+      (searchQuery as jest.Mock).mockRejectedValue(new Error('search failed'));
+      await act(async () => {
+        result.current.onScroll({
+          currentTarget: {
+            scrollHeight: 500,
+            scrollTop: 470,
+            clientHeight: 100,
+          },
+        } as never);
+      });
+
+      expect(result.current.items).toHaveLength(1);
+      expect(showErrorToast).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays loading until the exact search answers', async () => {
+      const { result } = renderAssetSelectionState();
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      const looseResponse = Promise.withResolvers<unknown>();
+      const exactResponse = Promise.withResolvers<unknown>();
+      (searchQuery as jest.Mock)
+        .mockReturnValueOnce(looseResponse.promise)
+        .mockReturnValueOnce(exactResponse.promise);
+
+      act(() => {
+        result.current.setSearch('item_value');
+      });
+      act(() => {
+        result.current.onExactNameChange(true);
+      });
+      await act(async () => {
+        looseResponse.resolve(buildSearchResponse([]));
+      });
+
+      expect(result.current.isLoading).toBe(true);
+
+      await act(async () => {
+        exactResponse.resolve(buildSearchResponse([]));
+      });
+
+      expect(result.current.isLoading).toBe(false);
+    });
+  });
+
   describe('save flow', () => {
     beforeEach(() => {
       jest.useFakeTimers();
@@ -708,6 +995,48 @@ describe('useAssetSelectionState', () => {
           'server.add-entity-error'
         );
       });
+    });
+
+    it('shows each rejected row inline instead of a toast when the whole bulk add is rejected', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(
+        buildSearchResponse([buildHit('1')], 1)
+      );
+      (addAssetsToGlossaryTerm as jest.Mock).mockRejectedValue({
+        response: {
+          status: 400,
+          data: {
+            status: 'failure',
+            failedRequest: [
+              {
+                request: { id: '1' },
+                message:
+                  "Asset 'db.customers' is already an input port of this data product; an asset cannot be both an input and an output port",
+              },
+            ],
+          },
+        },
+      });
+
+      const { result } = renderAssetSelectionState({
+        type: AssetsOfEntity.GLOSSARY,
+        variant: 'drawer',
+      });
+
+      await selectOneItem(result);
+
+      await act(async () => {
+        result.current.onSaveAction();
+      });
+
+      await waitFor(() => {
+        expect(result.current.getErrorStatusAndMessage('1')).toEqual({
+          isError: true,
+          errorMessage:
+            "Asset 'db.customers' is already an input port of this data product; an asset cannot be both an input and an output port",
+        });
+      });
+
+      expect(showErrorToast).not.toHaveBeenCalled();
     });
 
     it('should show a raw error toast when save throws in modal variant', async () => {

@@ -67,16 +67,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockReturnValue(<div data-testid="tier-tag">Tier Tag</div>),
 }));
 
-jest.mock('../IconButtons/EditIconButton', () => ({
-  EditIconButton: jest
-    .fn()
-    .mockImplementation(({ 'data-testid': testId, onClick, title }) => (
-      <button data-testid={testId} title={title} onClick={onClick}>
-        Edit
-      </button>
-    )),
-}));
-
 jest.mock('../Loader/Loader', () => ({
   __esModule: true,
   default: jest

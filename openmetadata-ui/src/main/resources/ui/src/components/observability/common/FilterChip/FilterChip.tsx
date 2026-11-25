@@ -17,6 +17,7 @@ import {
   Table,
 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TestCaseType } from '../../../../enums/TestSuite.enum';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import DateRangeFilter from '../../../common/DateRangeFilter/DateRangeFilter';
@@ -102,6 +103,7 @@ const DateChip = ({
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) => {
+  const { t } = useTranslation();
   const range = (descriptor.value ?? {}) as {
     startTs?: number;
     endTs?: number;
@@ -111,8 +113,10 @@ const DateChip = ({
     <DateRangeFilter
       endTs={range.endTs != null ? Number(range.endTs) : undefined}
       isOpen={isOpen}
+      placeholder={`${descriptor.label}: ${t('label.all-time')}`}
       startTs={range.startTs != null ? Number(range.startTs) : undefined}
       onApply={(value) => descriptor.onChange(value)}
+      onClear={() => descriptor.onChange(undefined)}
       onOpenChange={onOpenChange}
     />
   );

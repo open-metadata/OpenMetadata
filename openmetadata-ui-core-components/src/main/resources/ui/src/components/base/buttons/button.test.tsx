@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
+import { Dialog, DialogTrigger, Popover } from 'react-aria-components';
 import { describe, expect, it, vi } from 'vitest';
 import { Edit01 } from '@/icons';
 import { Button } from './button';
@@ -124,6 +125,28 @@ describe('Button', () => {
   });
 });
 
+describe('Button — loading', () => {
+  it('stays natively disabled while loading but drops the disabled palette', () => {
+    render(
+      <Button isDisabled isLoading showTextWhileLoading>
+        Sign in
+      </Button>
+    );
+    const button = screen.getByRole('button', { name: 'Sign in' });
+
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('data-loading', 'true');
+    // Every disabled colour must be gated, or it paints over the loading look.
+    expect(
+      button.className
+        .split(' ')
+        .filter(
+          (c) => /disabled:/.test(c) && !/disabled:not-data-loading:/.test(c)
+        )
+    ).toEqual([]);
+  });
+});
+
 describe('Button — link box', () => {
   it('collapses a link button to an inline text box by default', () => {
     render(
@@ -204,18 +227,144 @@ describe('Button — tooltip prop', () => {
 });
 
 describe('Button — icon size and color', () => {
-  it('sizes compact icons to the 18px leading / 16px trailing frame', () => {
+  // One frame for leading and trailing icons per height: 16 / 18 / 18 / 18 / 20.
+  it.each([
+    ['xs', 'tw:*:data-icon:size-4', 'tw:*:data-icon:p-[0.5px]'],
+    ['sm', 'tw:*:data-icon:size-4.5', 'tw:*:data-icon:p-[0.25px]'],
+    ['md', 'tw:*:data-icon:size-4.5', 'tw:*:data-icon:p-[0.25px]'],
+    ['lg', 'tw:*:data-icon:size-4.5', 'tw:*:data-icon:p-[0.25px]'],
+    ['xl', 'tw:*:data-icon:size-5', undefined],
+  ] as const)(
+    'gives %s leading and trailing icons the same frame',
+    (size, frame, svgPadding) => {
+      render(
+        <Button iconLeading={Edit01} iconTrailing={Edit01} size={size}>
+          Edit
+        </Button>
+      );
+
+      const button = screen.getByRole('button', { name: 'Edit' });
+
+      expect(button).toHaveClass(frame);
+      if (svgPadding) {
+        expect(button).toHaveClass(svgPadding);
+      }
+      expect(button.className).not.toMatch(/data-\[icon=trailing\]:size/);
+      expect(button.querySelector('[data-icon="leading"]')).toBeInTheDocument();
+      expect(
+        button.querySelector('[data-icon="trailing"]')
+      ).toBeInTheDocument();
+    }
+  );
+
+  // A smaller frame needs 1px more padding to keep icon-only heights at
+  // 28 / 32 / 36 / 40 / 44.
+  it.each([
+    ['xs', 'tw:data-icon-only:p-1.5'],
+    ['sm', 'tw:data-icon-only:p-1.75'],
+    ['md', 'tw:data-icon-only:p-2.25'],
+    ['lg', 'tw:data-icon-only:p-2.75'],
+    ['xl', 'tw:data-icon-only:p-3'],
+  ] as const)('pads a %s icon-only button to its height', (size, padding) => {
+    render(<Button aria-label="Edit" iconLeading={Edit01} size={size} />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(padding);
+  });
+
+  // link-color keeps an 18px leading frame at xs, so it keeps the 18px-frame
+  // padding: 28px standalone, 30px inside an InputGroup.
+  it('keeps a boxed xs link-color icon-only button at its height', () => {
     render(
-      <Button iconLeading={Edit01} iconTrailing={Edit01} size="xs">
-        Edit
-      </Button>
+      <>
+        <Button
+          boxed
+          aria-label="Open"
+          color="link-color"
+          iconLeading={Edit01}
+          size="xs"
+        />
+        <div data-input-wrapper>
+          <Button
+            boxed
+            aria-label="Copy"
+            color="link-color"
+            iconLeading={Edit01}
+            size="xs"
+          />
+        </div>
+      </>
     );
 
+    for (const name of ['Open', 'Copy']) {
+      const button = screen.getByRole('button', { name });
+
+      expect(button).toHaveClass(
+        'tw:data-icon-only:p-1.25',
+        'tw:in-data-input-wrapper:data-icon-only:p-1.5'
+      );
+      expect(button).not.toHaveClass('tw:data-icon-only:p-1.5');
+    }
+  });
+
+  // Its trailing icon keeps the 16px xs frame, so the regular xs padding holds.
+  it('keeps the xs padding on a trailing-only link-color icon button', () => {
+    render(
+      <Button
+        boxed
+        aria-label="More"
+        color="link-color"
+        iconTrailing={Edit01}
+        size="xs"
+      />
+    );
+
+    const button = screen.getByRole('button', { name: 'More' });
+
+    expect(button).toHaveClass(
+      'tw:data-icon-only:p-1.5',
+      'tw:in-data-input-wrapper:data-icon-only:p-1.75'
+    );
+    expect(button).not.toHaveClass('tw:data-icon-only:p-1.25');
+  });
+
+  // Inside an InputGroup the button matches the input height: 30 / 40 / 44.
+  it.each([
+    ['xs', 'tw:in-data-input-wrapper:data-icon-only:p-1.75'],
+    ['md', 'tw:in-data-input-wrapper:data-icon-only:p-2.75'],
+    ['lg', 'tw:in-data-input-wrapper:data-icon-only:p-3.25'],
+  ] as const)(
+    'pads a %s icon-only button to the input height inside an InputGroup',
+    (size, padding) => {
+      render(
+        <div data-input-wrapper>
+          <Button aria-label="Edit" iconLeading={Edit01} size={size} />
+        </div>
+      );
+
+      expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(padding);
+    }
+  );
+
+  it('keeps the 6px label gap on an lg button inside an InputGroup', () => {
+    render(
+      <div data-input-wrapper>
+        <Button iconLeading={Edit01} size="lg">
+          Edit
+        </Button>
+      </div>
+    );
+
+    const button = screen.getByRole('button', { name: 'Edit' });
+
+    expect(button).toHaveClass('tw:gap-1');
+    expect(button).not.toHaveClass('tw:in-data-input-wrapper:gap-1.5');
+  });
+
+  it('keeps the drawn stroke weight when an icon is scaled down', () => {
+    render(<Button iconLeading={Edit01}>Edit</Button>);
+
     expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(
-      'tw:*:data-icon:size-4.5',
-      'tw:*:data-icon:p-[0.25px]',
-      'tw:*:data-[icon=trailing]:size-4',
-      'tw:*:data-[icon=trailing]:p-[0.5px]'
+      'tw:*:data-icon:**:[vector-effect:non-scaling-stroke]'
     );
   });
 
@@ -231,22 +380,37 @@ describe('Button — icon size and color', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(padding);
   });
 
-  it('keeps the 20px leading frame and an 18px trailing frame on regular sizes', () => {
-    render(
-      <Button iconLeading={Edit01} iconTrailing={Edit01} size="md">
-        Edit
-      </Button>
-    );
+  // The label adds 2px (px-0.5) to each boxed gap; unboxed links drop it, so
+  // their class is one step wider. Spec visible gap: 6px at every size.
+  it.each([
+    ['xs', 'tw:gap-1', 'tw:gap-1.5'],
+    ['sm', 'tw:gap-1', 'tw:gap-1.5'],
+    ['md', 'tw:gap-1', 'tw:gap-1.5'],
+    ['lg', 'tw:gap-1', 'tw:gap-1.5'],
+    ['xl', 'tw:gap-1', 'tw:gap-1.5'],
+  ] as const)(
+    'spaces the %s icon and label to the spec gap',
+    (size, boxedGap, linkGap) => {
+      render(
+        <>
+          <Button iconLeading={Edit01} size={size}>
+            Edit
+          </Button>
+          <Button color="link-gray" iconLeading={Edit01} size={size}>
+            Back
+          </Button>
+        </>
+      );
 
-    const button = screen.getByRole('button', { name: 'Edit' });
+      expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(
+        boxedGap
+      );
+      const link = screen.getByRole('button', { name: 'Back' });
 
-    expect(button).toHaveClass(
-      'tw:*:data-icon:size-5',
-      'tw:*:data-[icon=trailing]:size-4.5'
-    );
-    expect(button.querySelector('[data-icon="leading"]')).toBeInTheDocument();
-    expect(button.querySelector('[data-icon="trailing"]')).toBeInTheDocument();
-  });
+      expect(link).toHaveClass(linkGap);
+      expect(link).not.toHaveClass(boxedGap);
+    }
+  );
 
   it('uses gray-500 icons with a gray-600 hover on neutral buttons', () => {
     render(
@@ -271,6 +435,24 @@ describe('Button — icon size and color', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(
       'tw:*:data-icon:text-white'
     );
+  });
+});
+
+describe('Button — numeric label', () => {
+  it('treats a count of 0 as a label', () => {
+    render(<Button iconLeading={Edit01}>{0}</Button>);
+    const button = screen.getByRole('button');
+
+    expect(button).not.toHaveAttribute('data-icon-only');
+    expect(button.querySelector('[data-text]')).toHaveTextContent('0');
+  });
+
+  it('lets the label follow the root colour transition instead of running its own', () => {
+    render(<Button>Add</Button>);
+    const label = screen.getByRole('button').querySelector('[data-text]');
+
+    expect(label).not.toHaveClass('tw:transition-inherit-all');
+    expect(label).toHaveClass('tw:transition-[text-decoration-color]');
   });
 });
 
@@ -373,6 +555,118 @@ describe('ButtonUtility — icon size and color', () => {
       'tw:text-error-primary',
       'tw:*:data-icon:text-fg-error-secondary'
     );
+  });
+
+  it('defaults to the borderless tertiary color', () => {
+    render(<ButtonUtility icon={Edit01} tooltip="Edit" />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).not.toHaveClass(
+      'tw:after:outline-primary'
+    );
+  });
+
+  it('forwards its ref to the button', () => {
+    const ref = createRef<HTMLButtonElement>();
+    render(<ButtonUtility icon={Edit01} ref={ref} tooltip="Edit" />);
+
+    expect(ref.current).toBe(screen.getByRole('button', { name: 'Edit' }));
+  });
+
+  it('disables a button with a tooltip natively and keeps the tooltip reachable', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(
+      <ButtonUtility
+        isDisabled
+        icon={Edit01}
+        tooltip="Needs an owner first"
+        onClick={onClick}
+      />
+    );
+    const button = screen.getByRole('button', { name: 'Needs an owner first' });
+
+    expect(button).toBeDisabled();
+
+    // Tooltip wraps the disabled button in one focusable span, so the tooltip
+    // that explains why it is disabled still opens on hover.
+    const wrapper = button.parentElement as HTMLElement;
+
+    expect(wrapper.tagName).toBe('SPAN');
+    expect(wrapper).toHaveAttribute('tabindex', '0');
+
+    fireEvent.mouseMove(document);
+    await user.hover(wrapper);
+
+    await waitFor(() =>
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'Needs an owner first'
+      )
+    );
+
+    await user.click(wrapper);
+
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('does not open a parent trigger while disabled with a tooltip', async () => {
+    render(
+      <DialogTrigger>
+        <ButtonUtility isDisabled icon={Edit01} tooltip="Edit" />
+        <Popover>
+          <Dialog>Menu body</Dialog>
+        </Popover>
+      </DialogTrigger>
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.queryByText('Menu body')).not.toBeInTheDocument();
+
+    await userEvent.keyboard('{Enter}');
+
+    expect(screen.queryByText('Menu body')).not.toBeInTheDocument();
+  });
+
+  it('does not submit its form while disabled with a tooltip', async () => {
+    const onSubmit = vi.fn((event: SubmitEvent) => event.preventDefault());
+    render(
+      <form onSubmit={(event) => onSubmit(event.nativeEvent as SubmitEvent)}>
+        <ButtonUtility isDisabled icon={Edit01} tooltip="Save" type="submit" />
+      </form>
+    );
+    const button = screen.getByRole('button', { name: 'Save' });
+
+    await userEvent.click(button);
+    button.focus();
+    await userEvent.keyboard('{Enter}');
+    await userEvent.keyboard(' ');
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('disables a button without a tooltip natively', () => {
+    render(<ButtonUtility isDisabled aria-label="Edit" icon={Edit01} />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
+  });
+
+  it('swaps its icon for a spinner and ignores presses while loading', () => {
+    const onClick = vi.fn();
+    render(
+      <ButtonUtility
+        isLoading
+        aria-label="Save"
+        icon={Edit01}
+        onClick={onClick}
+      />
+    );
+    const button = screen.getByRole('button', { name: 'Save' });
+
+    fireEvent.click(button);
+
+    expect(button).toBeDisabled();
+    expect(button.querySelector('[data-icon="loading"]')).not.toBeNull();
+    expect(button.querySelector('[data-icon="true"]')).toBeNull();
+    expect(onClick).not.toHaveBeenCalled();
   });
 });
 

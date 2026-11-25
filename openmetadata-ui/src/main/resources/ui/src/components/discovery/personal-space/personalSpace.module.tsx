@@ -13,17 +13,12 @@
 
 import React from 'react';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import WelcomeScreenGate from '../../MyData/WelcomeScreen/WelcomeScreenGate';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 import { RoutePosition } from '../../Settings/Applications/plugins/AppPlugin';
 import { PERSONAL_SPACE_ROUTES } from './personalSpace.constants';
 
 const PersonalSpaceGate = withSuspenseFallback(
   React.lazy(() => import('./PersonalSpaceGate/PersonalSpaceGate'))
-);
-
-const MyData = withSuspenseFallback(
-  React.lazy(() => import('./MyData/MyData'))
 );
 
 const InboxContent = withSuspenseFallback(
@@ -36,28 +31,18 @@ const gatedInbox = (
   </PersonalSpaceGate>
 );
 
-// My Data is no longer an inbox tab: the inbox is Activity and Triage. Its own
-// route stays as a direct link to the page the user menu opens in the
-// personal-space modal; the AI landing page is `/`, not this route.
-// The welcome gate wraps the route element only: the modal's copy of My Data
-// must never show the first-login welcome screen.
-const gatedMyData = (
-  <PersonalSpaceGate>
-    <WelcomeScreenGate>
-      <MyData />
-    </WelcomeScreenGate>
-  </PersonalSpaceGate>
-);
-
 /**
- * Personal-space app-mode module (Inbox + My Data).
+ * Personal-space app-mode module (Inbox).
  *
  * Icon-less: the Inbox surface is reached from a header entry point (not a
  * top-level sidebar item), so the sidebar derivation skips this module — but
  * its routes still flatten into the app-mode route table. `/inbox` and its
- * `activity` / `tasks` sub-tabs plus `/my-data` all render the shared
- * {@link InboxPage} shell behind the {@link PersonalSpaceGate} view-permission
- * gate; the active tab is derived from the path.
+ * `activity` / `tasks` sub-tabs render the shared {@link InboxPage} shell
+ * behind the {@link PersonalSpaceGate} view-permission gate; the active tab is
+ * derived from the path. My Data has no route here: the user menu opens it in
+ * the personal-space modal, and `/my-data` falls through to the shell's page
+ * table, which renders the home landing page. It is not a redirect, so
+ * hash-link modals such as `/my-data#notification/alerts` still open.
  *
  * The Inbox is a single tabbed page, so it is registered as ONE `/inbox/*`
  * route rather than one route per sub-tab. Separate per-tab routes would each
@@ -72,17 +57,11 @@ export const personalSpaceModule: AppModule = {
   navOrder: 90,
   labelKey: 'label.inbox',
   prefix: PERSONAL_SPACE_ROUTES.INBOX,
-  additionalPrefixes: [PERSONAL_SPACE_ROUTES.MY_DATA],
   defaultPath: PERSONAL_SPACE_ROUTES.INBOX,
   routes: [
     {
       path: `${PERSONAL_SPACE_ROUTES.INBOX}/*`,
       element: gatedInbox,
-      position: RoutePosition.APP,
-    },
-    {
-      path: PERSONAL_SPACE_ROUTES.MY_DATA,
-      element: gatedMyData,
       position: RoutePosition.APP,
     },
   ],

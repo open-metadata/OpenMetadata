@@ -62,7 +62,8 @@ const fetchIncidentAssignees = async (domain?: string) => {
     // Composite aggregation in /search/aggregate if catalogs ever exceed it.
     size: AGGREGATE_PAGE_SIZE_LARGE,
     // Incident documents carry no top-level `deleted`, so the default
-    // `deleted: false` term would match none of them.
+    // `deleted: false` term would match none of them
+    // (ADR:2026-10-29-incident-assignee-filter-lists-aggregated-assignees).
     deleted: null as unknown as boolean,
     query: domain
       ? JSON.stringify(getQueryFilterForDataProducts(domain))
@@ -92,6 +93,7 @@ const fetchIncidentAssignees = async (domain?: string) => {
  * this list itself: sent as a filter, a large set of ids outgrows the URL of
  * the user/team search. Empty while it loads and when the read fails, so the
  * picker offers no one rather than everyone.
+ * ADR:2026-10-29-incident-assignee-filter-lists-aggregated-assignees
  */
 export const useIncidentAssignees = () => {
   const { activeDomain } = useDomainStore();

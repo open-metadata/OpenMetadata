@@ -48,8 +48,6 @@ jest.mock('utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('antd', () => ({ Select: () => <div /> }));
-
 jest.mock('./ChipBadgeList', () => ({
   __esModule: true,
   default: ({ values }: { values: unknown[] }) => (

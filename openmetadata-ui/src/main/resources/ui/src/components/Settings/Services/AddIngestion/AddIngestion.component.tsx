@@ -144,6 +144,11 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
     // lazy initialization to initialize the data only once
     const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
       () => ({
+        ...(!isEditMode &&
+          pipelineType === PipelineType.Metadata &&
+          serviceData.serviceType === 'BigQuery' && {
+            shardedTables: { enabled: true },
+          }),
         ...(data?.sourceConfig.config ?? {}),
         ...filterProperties,
         name: data?.name ?? generateUUID(),
@@ -302,6 +307,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
       const ingestionDetails: CreateIngestionPipeline = {
         airflowConfig: {
           scheduleInterval: extraData.cron,
+          pipelineTimezone: extraData.timezone,
           startDate: date,
           retries: extraData.retries,
         },
@@ -351,6 +357,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
           airflowConfig: {
             ...data.airflowConfig,
             scheduleInterval: extraData.cron,
+            pipelineTimezone: extraData.timezone ?? 'UTC',
             retries: extraData.retries,
           },
           raiseOnError: extraData.raiseOnError ?? true,
@@ -489,6 +496,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
               includePeriodOptions={periodOptions}
               initialData={{
                 cron: data?.airflowConfig.scheduleInterval,
+                timezone: data?.airflowConfig.pipelineTimezone,
                 raiseOnError: data?.raiseOnError ?? true,
                 retries,
               }}

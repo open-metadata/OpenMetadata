@@ -17,7 +17,7 @@ import { selectOptionWithRetry, uuid } from './common';
 import { hardDeleteEntity } from './entity';
 import { clickUntilVisible, waitForAriaOverlayToSettle } from './waitHelpers';
 
-const openMetricDefinitionEditor = async (page: Page) => {
+export const openMetricDefinitionEditor = async (page: Page) => {
   const dialog = page.getByTestId('metric-definition-edit-dialog');
   // Same re-layout as the related-metrics trigger: the press can be dropped.
   await clickUntilVisible(page.getByTestId('metric-definition-edit'), dialog);

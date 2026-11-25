@@ -44,9 +44,11 @@ export interface BackgroundJob {
      */
     jobArgs: EnumCleanupArgs;
     /**
-     * Type of the job.
+     * Type of the job. An open set: OpenMetadata's own types are constants in
+     * BackgroundJobTypes, and a distribution can add its own without changing this schema. The
+     * worker runs a job with the handler named by methodName.
      */
-    jobType: JobType;
+    jobType: string;
     /**
      * Latest human-readable job status message.
      */
@@ -88,6 +90,9 @@ export interface BackgroundJob {
  * Arguments for enum removal job.
  *
  * Typed payload persisted for an ontology bulk background job.
+ *
+ * Typed payload persisted for a library install job. It names the verified pack selection
+ * and never carries the pack body.
  */
 export interface EnumCleanupArgs {
     /**
@@ -104,6 +109,18 @@ export interface EnumCleanupArgs {
     removedEnumKeys?: string[];
     glossary?:        EntityReference;
     request?:         OntologyBulkRequest;
+    /**
+     * Selected modules with their dependencies, in catalogue order.
+     */
+    moduleIds?:  string[];
+    ontologyId?: string;
+    /**
+     * SHA-256 over the pack id, version and the checksum of each selected module, checked again
+     * when the job runs.
+     */
+    packDigest?: string;
+    packId?:     string;
+    version?:    string;
     [property: string]: any;
 }
 
@@ -206,21 +223,6 @@ export interface Retype {
      */
     termIds?:             string[];
     toRelationshipTypeId: string;
-}
-
-/**
- * Type of the job.
- */
-export enum JobType {
-    AuditExport = "AUDIT_EXPORT",
-    CSVExport = "CSV_EXPORT",
-    CSVImport = "CSV_IMPORT",
-    ContextMemoryExtraction = "CONTEXT_MEMORY_EXTRACTION",
-    CustomPropertyEnumCleanup = "CUSTOM_PROPERTY_ENUM_CLEANUP",
-    DeleteEntity = "DELETE_ENTITY",
-    DeleteToken = "DELETE_TOKEN",
-    MemoryGlossaryDerivation = "MEMORY_GLOSSARY_DERIVATION",
-    OntologyBulk = "ONTOLOGY_BULK",
 }
 
 /**

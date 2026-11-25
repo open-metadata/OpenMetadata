@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
@@ -115,6 +116,18 @@ public final class TestLoginOidcHandler {
       SecurityConfiguration candidate,
       TestLoginHandshake.Oidc handshake,
       Map<String, List<String>> callbackParameters) {
+    return complete(
+        candidate,
+        handshake,
+        callbackParameters,
+        TestLoginService.ResolvedAccountIdentity::userName);
+  }
+
+  public static TestLoginResult complete(
+      SecurityConfiguration candidate,
+      TestLoginHandshake.Oidc handshake,
+      Map<String, List<String>> callbackParameters,
+      Function<TestLoginService.ResolvedAccountIdentity, String> admitAccount) {
     TestLoginStageRecorder recorder = TestLoginStageRecorder.forProtocol(TestLoginProtocol.OIDC);
     recorder.pass(TestLoginStage.STARTED);
     recorder.pass(TestLoginStage.REDIRECTED);
@@ -122,15 +135,19 @@ public final class TestLoginOidcHandler {
         candidate.getAuthenticationConfiguration().getOidcConfiguration();
     return receive(clientConfig, handshake, callbackParameters, recorder)
         .flatMap(received -> redeem(received, handshake, recorder))
-        .map(redeemed -> renewThenResolve(candidate, redeemed, recorder))
+        .map(redeemed -> renewThenResolve(candidate, redeemed, recorder, admitAccount))
         .orElseGet(() -> TestLoginService.failure(TestLoginProtocol.OIDC, recorder));
   }
 
   /** A failed renewal still resolves the identity, so the admin sees everything that went wrong. */
   private static TestLoginResult renewThenResolve(
-      SecurityConfiguration candidate, RedeemedCallback redeemed, TestLoginStageRecorder recorder) {
+      SecurityConfiguration candidate,
+      RedeemedCallback redeemed,
+      TestLoginStageRecorder recorder,
+      Function<TestLoginService.ResolvedAccountIdentity, String> admitAccount) {
     checkSessionRenewal(redeemed.received().configuration(), redeemed.credentials(), recorder);
-    return TestLoginService.resolveOidcCallbackIdentity(candidate, redeemed.claims(), recorder);
+    return TestLoginService.resolveOidcCallbackIdentity(
+        candidate, redeemed.claims(), recorder, admitAccount);
   }
 
   private static void checkSessionRenewal(
@@ -239,14 +256,15 @@ public final class TestLoginOidcHandler {
     return redeemed;
   }
 
-  /** Mirrors the live callback: redeem the code when there is one, else use the returned token. */
+  /** Mirrors the live callback: only a code is accepted, and the token endpoint answers for it. */
   private static OidcCredentials credentialsFor(
       ReceivedCallback received, TestLoginHandshake.Oidc handshake) {
     OidcCredentials credentials =
         AuthenticationCodeFlowHandler.buildCredentials(received.response());
-    if (credentials.getCode() != null) {
-      redeemCode(received.configuration(), credentials, handshake);
+    if (credentials.getCode() == null) {
+      throw new TechnicalException(AuthenticationCodeFlowHandler.AUTHORIZATION_CODE_REQUIRED);
     }
+    redeemCode(received.configuration(), credentials, handshake);
     return credentials;
   }
 

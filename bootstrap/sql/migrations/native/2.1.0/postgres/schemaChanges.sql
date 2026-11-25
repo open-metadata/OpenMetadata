@@ -547,24 +547,27 @@ WHERE json->>'name' = 'DataConsumerPolicy'
   AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'DataConsumerPolicy-CreateContextMemory-Rule'))
   AND (json->'rules') @> jsonb_build_array(jsonb_build_object('effect', 'allow', 'operations', jsonb_build_array('EditDescription')));
 
--- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
--- the result polls, the credentials) that can reach different servers, so its state lives here
--- rather than in one server's memory. pending_state holds the candidate configuration with its
--- secrets, Fernet-encrypted, and is cleared when the test completes; rows expire minutes later.
-CREATE TABLE IF NOT EXISTS sso_test_login_session (
-    test_session_id VARCHAR(64) NOT NULL PRIMARY KEY,
-    admin_principal VARCHAR(256) NOT NULL,
-    protocol VARCHAR(16) NOT NULL,
-    status VARCHAR(16) NOT NULL,
-    pending_state TEXT,
-    result TEXT,
-    credentials_submitted_at BIGINT,
-    expires_at BIGINT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_admin
-    ON sso_test_login_session (admin_principal, credentials_submitted_at);
-CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_expires
-    ON sso_test_login_session (expires_at);
+-- DomainOnlyAccessPolicy: deny changes to policies, roles, bots and apps, and to teams and users that
+-- are in no domain.
+UPDATE policy_entity
+SET json = jsonb_set(json, '{rules}', (json->'rules') || '[
+    {"name": "DomainAccessDenyAdministrationRule",
+     "description": "Deny changing policies, roles, bots and apps, which control access, whatever their domain",
+     "effect": "deny", "resources": ["app", "bot", "policy", "role"],
+     "operations": ["Create", "Delete", "Deploy", "EditAll"]}
+  ]'::jsonb)
+WHERE name = 'DomainOnlyAccessPolicy'
+  AND NOT (json->'rules' @> '[{"name": "DomainAccessDenyAdministrationRule"}]'::jsonb);
+
+UPDATE policy_entity
+SET json = jsonb_set(json, '{rules}', (json->'rules') || '[
+    {"name": "DomainAccessDenyTeamAndUserRule",
+     "description": "Deny changing teams and users that are in no domain, and bot users",
+     "effect": "deny", "resources": ["team", "user"],
+     "operations": ["Create", "Delete", "EditAll"], "condition": "noDomain() || isBotUser()"}
+  ]'::jsonb)
+WHERE name = 'DomainOnlyAccessPolicy'
+  AND NOT (json->'rules' @> '[{"name": "DomainAccessDenyTeamAndUserRule"}]'::jsonb);
 
 -- Settings that exist both in openmetadata.yaml/environment and in this table (security, email,
 -- base URL, SCIM, MCP, app configuration) remember the deployment values they were last
@@ -681,6 +684,16 @@ ALTER TABLE rdf_active_dataset ADD COLUMN IF NOT EXISTS generation VARCHAR(36);
 ALTER TABLE rdf_projection_health
   ADD COLUMN IF NOT EXISTS enqueuedWatermark BIGINT NOT NULL DEFAULT 0;
 
+-- When storage maintenance last compacted the serving dataset, so a compaction that stops
+-- happening, for any reason, shows as a degraded projection instead of going unnoticed.
+ALTER TABLE rdf_projection_health
+  ADD COLUMN IF NOT EXISTS lastCompactedAt BIGINT NOT NULL DEFAULT 0;
+
+-- Transfer RDF delivery to pause-aware consumers before producing pipelineExecution payloads.
+-- Deleting first waits for an old in-flight delivery; old producers still use the enqueue guard.
+DELETE FROM rdf_live_write_guard WHERE id = 'drain';
+INSERT INTO rdf_live_write_guard (id) VALUES ('drain-v2') ON CONFLICT (id) DO NOTHING;
+
 -- A search that pins a memory anchor looks up the edges from the pinned ids into context memories
 -- (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). The existing fromId/relation index
 -- does not cover toEntity, so a pinned domain or team reads all its HAS edges before filtering.
@@ -693,6 +706,23 @@ CREATE INDEX IF NOT EXISTS idx_entity_relationship_memory_anchor
 -- non-C collation (seq scan); text_pattern_ops as for the 1.13.0 *_fqnhash_pattern indexes.
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_about_fqn_hash_pattern
   ON task_entity (aboutfqnhash text_pattern_ops);
+
+-- Credential verification joins user_entity to user_tokens on (userId, tokenType) and reads token;
+-- user_tokens had only PRIMARY KEY (token), so that predicate scanned the table. Including token
+-- makes the fingerprint read index-only. Built CONCURRENTLY so the migration takes no write lock
+-- on a table every login writes to, matching 2.0.0 and 1.11.0.
+--
+-- OPERATOR RUNBOOK: an interrupted CONCURRENTLY build leaves an INVALID index that IF NOT EXISTS
+-- then skips. Detect and remediate:
+--   SELECT c.relname FROM pg_class c
+--    JOIN pg_index i ON i.indexrelid = c.oid
+--    WHERE NOT i.indisvalid AND c.relname = 'idx_user_tokens_user_type';
+--   DROP INDEX CONCURRENTLY idx_user_tokens_user_type;
+--   DELETE FROM server_migration_sql_logs
+--    WHERE version = '2.1.0'
+--      AND sqlstatement LIKE '%idx\_user\_tokens\_user\_type%' ESCAPE '\';
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_user_tokens_user_type
+  ON user_tokens (userId, tokenType, token);
 
 -- Independent ontology definitions and releases.
 CREATE TABLE IF NOT EXISTS ontology_entity (
@@ -788,7 +818,6 @@ CREATE TABLE IF NOT EXISTS ontology_release_member (
   PRIMARY KEY (releaseId, memberKind, memberId)
 );
 
-
 CREATE TABLE IF NOT EXISTS ontology_release_event (
   id VARCHAR(36) NOT NULL,
   ontologyId VARCHAR(36) NOT NULL,
@@ -861,3 +890,32 @@ DELETE FROM entity_relationship WHERE
   (toEntity = 'ontologyChangeSet' AND toId IN (SELECT id FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration'))));
 DELETE FROM entity_extension WHERE jsonSchema = 'ontologyChangeSet' AND (json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration')));
 DELETE FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration'));
+
+-- Native concept bindings move from one document per concept to one row per concept and asset
+-- (ADR:2026-10-19-native-concept-bindings-remain-operational-metadata, amendment v2).
+CREATE TABLE IF NOT EXISTS ontology_concept_binding (
+  conceptId VARCHAR(36) NOT NULL,
+  assetId VARCHAR(36) NOT NULL,
+  assetType VARCHAR(32) NOT NULL,
+  assetFqnHash VARCHAR(768) NOT NULL,
+  columnBindings JSONB NOT NULL,
+  PRIMARY KEY (conceptId, assetId)
+);
+CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_concept_binding (assetId);
+
+-- MCP SSO sign-in waits for the user to approve the client on a consent page, and the pending
+-- approval lives on the pending request row. The consent feature ships in 2.1.0, so its columns are
+-- added here, where every database upgrading to 2.1 runs them. 2.0.7 shipped without them, and a
+-- database that has run a later 2.0.x never reads the 2.0.7 folder again.
+-- ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
+ALTER TABLE mcp_pending_auth_requests
+    ADD COLUMN IF NOT EXISTS consent_token_hash VARCHAR(64),
+    ADD COLUMN IF NOT EXISTS consent_user_name VARCHAR(256);
+
+-- A Context Center file's sharing as a column, so a listing counts the files everyone may see
+-- without reading each file
+-- (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+-- STORED rewrites context_file once.
+ALTER TABLE context_file ADD COLUMN IF NOT EXISTS visibility VARCHAR(16)
+    GENERATED ALWAYS AS (json -> 'shareConfig' ->> 'visibility') STORED;
+CREATE INDEX IF NOT EXISTS idx_context_file_visibility ON context_file (visibility);

@@ -32,6 +32,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
@@ -51,9 +52,11 @@ import org.mockito.quality.Strictness;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -518,5 +521,32 @@ class WorkflowEventConsumerTest {
     ref.setName("table");
     ref.setFullyQualifiedName("test.db.schema.table");
     return ref;
+  }
+
+  // A follow or a vote changes no field a workflow triggers on, so it starts no run; an edit, and
+  // any
+  // create, still does.
+  @Test
+  void changesNoTriggerField_followOrVote_true_editOrCreate_false() {
+    assertTrue(WorkflowEventConsumer.changesNoTriggerField(updateOf("followers")));
+    assertTrue(WorkflowEventConsumer.changesNoTriggerField(updateOf("votes")));
+    assertFalse(WorkflowEventConsumer.changesNoTriggerField(updateOf("tags")));
+    assertFalse(WorkflowEventConsumer.changesNoTriggerField(updateOf("followers", "description")));
+    assertFalse(
+        WorkflowEventConsumer.changesNoTriggerField(
+            updateOf("followers").withEventType(EventType.ENTITY_CREATED)));
+    assertFalse(
+        WorkflowEventConsumer.changesNoTriggerField(
+            new ChangeEvent().withEventType(EventType.ENTITY_UPDATED).withEntityType("table")));
+  }
+
+  private static ChangeEvent updateOf(String... fields) {
+    return new ChangeEvent()
+        .withEventType(EventType.ENTITY_UPDATED)
+        .withEntityType("table")
+        .withChangeDescription(
+            new ChangeDescription()
+                .withFieldsUpdated(
+                    Arrays.stream(fields).map(name -> new FieldChange().withName(name)).toList()));
   }
 }

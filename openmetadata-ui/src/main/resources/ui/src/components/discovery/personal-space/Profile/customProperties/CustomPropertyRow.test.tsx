@@ -110,6 +110,19 @@ describe('CustomPropertyRow', () => {
     );
   });
 
+  // A table value needs a definite width for its 3-column scroll layout;
+  // inside the shrink-to-fit header slot it collapses to zero.
+  it('renders a table value full-width below the header row', () => {
+    renderRow({
+      property: property('table-cp', 'matrix'),
+      value: { columns: ['a'], rows: [{ a: '1' }] },
+    });
+
+    expect(screen.getByTestId('table-type-property-value').parentElement).toBe(
+      screen.getByTestId('custom-property-row-matrix')
+    );
+  });
+
   it('keeps a narrow type editor inside the header row', () => {
     renderRow({ isEditing: true });
 

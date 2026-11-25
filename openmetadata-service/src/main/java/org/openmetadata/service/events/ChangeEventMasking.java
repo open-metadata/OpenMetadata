@@ -1,0 +1,80 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.events;
+
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.Optional;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.secrets.masker.MaskedFields;
+
+/**
+ * What a change event is stored as. The entity it carries leaves out every field its schema marks
+ * {@code "mask": true}, such as bot tokens, password hashes and connection secrets, whichever code
+ * made the event and whether it holds the entity as an object or as a string of JSON. Every alert,
+ * the audit log and {@code GET /v1/events} read the stored event.
+ */
+public final class ChangeEventMasking {
+
+  private static final JsonFactory JSON_FACTORY = new JsonFactory();
+  private static final String ENTITY = "entity";
+  private static final String ENTITY_TYPE = "entityType";
+
+  private ChangeEventMasking() {}
+
+  public static String masked(final String changeEventJson) {
+    return entityTypeOf(changeEventJson)
+        .map(Entity::getEntityClassFromType)
+        .filter(MaskedFields::anyIn)
+        .map(entityClass -> withMaskedEntity(changeEventJson, entityClass))
+        .orElse(changeEventJson);
+  }
+
+  private static String withMaskedEntity(final String changeEventJson, final Class<?> entityClass) {
+    final ObjectNode event = (ObjectNode) JsonUtils.readTree(changeEventJson);
+    final JsonNode entity = event.path(ENTITY);
+    final boolean isPresent = !entity.isMissingNode() && !entity.isNull();
+    if (isPresent) {
+      final Object typed =
+          entity.isTextual()
+              ? JsonUtils.readValueLenient(entity.asText(), entityClass)
+              : JsonUtils.convertValueLenient(entity, entityClass);
+      event.put(ENTITY, JsonUtils.pojoToMaskedJson(typed));
+    }
+    return isPresent ? JsonUtils.pojoToJson(event) : changeEventJson;
+  }
+
+  // entityType comes early in a stored event, so this reads a few tokens, not the whole event.
+  static Optional<String> entityTypeOf(final String changeEventJson) {
+    try (JsonParser parser = JSON_FACTORY.createParser(changeEventJson)) {
+      String entityType = null;
+      final boolean isInObject = parser.nextToken() == JsonToken.START_OBJECT;
+      while (isInObject && entityType == null && parser.nextToken() == JsonToken.FIELD_NAME) {
+        final String field = parser.currentName();
+        parser.nextToken();
+        entityType = ENTITY_TYPE.equals(field) ? parser.getValueAsString() : null;
+        parser.skipChildren();
+      }
+      return Optional.ofNullable(entityType);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+}

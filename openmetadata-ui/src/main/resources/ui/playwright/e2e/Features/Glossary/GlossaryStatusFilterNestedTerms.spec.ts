@@ -262,7 +262,8 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.create(apiContext);
-    // GlossaryTermApprovalWorkflow owns term stages; exclude this glossary while seeding them.
+    // GlossaryTermApprovalWorkflow owns term stages, so this glossary stays excluded until
+    // afterAll: a run its seeding events start late would otherwise approve the seeded terms.
     await excludeGlossaryFromApprovalWorkflow(apiContext, glossary);
 
     // Create basic hierarchy: Parent (Approved) -> Child (Draft)
@@ -366,7 +367,6 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     await draftChild.create(apiContext);
     await setTermStatus(apiContext, draftChild, 'Draft');
 
-    await includeGlossaryInApprovalWorkflow(apiContext, glossary);
     await afterAction();
   });
 

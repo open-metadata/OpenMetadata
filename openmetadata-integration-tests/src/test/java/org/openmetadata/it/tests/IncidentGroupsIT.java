@@ -75,6 +75,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.IncidentOpenIntervalDAO;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -983,6 +984,42 @@ public class IncidentGroupsIT {
   }
 
   @Test
+  void testOpenCountTrendIncludesResolvedHistoryAndExistingBaseline() throws Exception {
+    long now = System.currentTimeMillis();
+    long day = Duration.ofDays(1).toMillis();
+    Table table = createTable(schemaFqn, "incident_trend_" + now);
+    TestCase test =
+        createTestCase("trend_case_" + now, tableLink(table), tableDefinition, List.of());
+    String first = UUID.randomUUID().toString();
+    String second = UUID.randomUUID().toString();
+    insertStatusRecords(
+        test,
+        List.of(
+            seededRecord(first, now - 10 * day, TestCaseResolutionStatusTypes.New, null),
+            seededRecord(first, now - 2 * day, TestCaseResolutionStatusTypes.Resolved, null),
+            seededRecord(second, now - day, TestCaseResolutionStatusTypes.New, null),
+            seededRecord(
+                second,
+                now - day + 1000,
+                TestCaseResolutionStatusTypes.Assigned,
+                userA.getName())));
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("testCaseFQN", test.getFullyQualifiedName());
+    TestCaseIncidentGroup group = findGroup(fetchGroups(params), table.getFullyQualifiedName());
+    assertEquals(List.of(1, 1, 1, 1, 1, 1, 0, 1, 1), group.getTrend());
+    assertEquals(IncidentTrendDirection.Steady, group.getTrendDirection());
+    assertEquals(1, group.getIncidentCount());
+
+    params.put("status", TestCaseResolutionStatusTypes.Assigned.value());
+    params.put("dateField", TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT);
+    params.put("startTs", String.valueOf(now - 2 * day));
+    params.put("endTs", String.valueOf(now));
+    TestCaseIncidentGroup filtered = findGroup(fetchGroups(params), table.getFullyQualifiedName());
+    assertEquals(group.getTrend(), filtered.getTrend());
+    assertEquals(1, filtered.getIncidentCount());
+  }
+
+  @Test
   void testGroupAggregates() throws Exception {
     List<TestCaseIncidentGroup> groups = fetchGroups(groupParams(GROUP_BY_TABLE));
 
@@ -999,10 +1036,7 @@ public class IncidentGroupsIT {
     assertEquals(List.of(userA.getName()), groupA.getAssignees());
     assertEquals(1, groupA.getAssigneeCount());
     assertTrue(groupA.getFirstSeen() <= groupA.getLastSeen());
-    assertEquals(
-        2,
-        groupA.getTrend().stream().mapToInt(Integer::intValue).sum(),
-        "trend buckets must add up to the incident count");
+    assertEquals(2, groupA.getTrend().getLast(), "the last sample is the current open count");
     assertNotNull(groupA.getTrendDirection());
 
     TestCaseIncidentGroup groupB = findGroup(groups, tableB.getFullyQualifiedName());
@@ -1015,10 +1049,10 @@ public class IncidentGroupsIT {
     assertEquals(Severity.Severity2, groupB.getSeverity(), "case 3's explicit severity");
     assertEquals(0, groupB.getAssigneeCount());
     assertEquals(
-        List.of(1, 0, 0, 0, 0, 0, 0, 0),
+        List.of(0, 0, 0, 0, 0, 0, 0, 0, 1),
         groupB.getTrend(),
-        "a single open incident lands in the first bucket");
-    assertEquals(IncidentTrendDirection.Steady, groupB.getTrendDirection());
+        "the incident remains open through the end of the history window");
+    assertEquals(IncidentTrendDirection.Rising, groupB.getTrendDirection());
   }
 
   @Test
@@ -1484,7 +1518,7 @@ public class IncidentGroupsIT {
   }
 
   @Test
-  void testBulkNewOnOpenIncidentRejected() throws Exception {
+  void testBulkNewOnOpenIncidentReturnsItToNew() throws Exception {
     long ts = System.currentTimeMillis();
     Table table = createTable(schemaFqn, "incident_groups_bulk_new_" + ts);
     TestDefinition definition =
@@ -1503,9 +1537,9 @@ public class IncidentGroupsIT {
                         .withTestCaseReference(testCase.getFullyQualifiedName())
                         .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)));
 
-    assertEquals(ApiStatus.FAILURE, result.getStatus());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
     assertEquals(
-        TestCaseResolutionStatusTypes.Ack,
+        TestCaseResolutionStatusTypes.New,
         fetchStatuses(testCase).getFirst().getTestCaseResolutionStatusType());
   }
 
@@ -1737,9 +1771,7 @@ public class IncidentGroupsIT {
         1, group.getAssigneeCount(), "only the tie-broken latest record's assignee may count");
     assertEquals(1, group.getAssignees().size());
     assertEquals(
-        1,
-        group.getTrend().stream().mapToInt(Integer::intValue).sum(),
-        "the tied incident must enter the trend exactly once");
+        1, group.getTrend().getLast(), "the tied incident must enter each sample exactly once");
   }
 
   @Test
@@ -1859,7 +1891,33 @@ public class IncidentGroupsIT {
         statement.addBatch();
       }
       statement.executeBatch();
+      linkToTestCase(testCase, records);
       syncIncidentSummary(connection, postgres);
+      Entity.getJdbi()
+          .useHandle(
+              handle ->
+                  handle
+                      .attach(IncidentOpenIntervalDAO.class)
+                      .rebuildOpenIntervals(
+                          records.stream()
+                              .map(record -> record.getStateId().toString())
+                              .distinct()
+                              .toList()));
+    }
+  }
+
+  // The write path links every record to its test case with a parentOf row, and the 2.1.0
+  // backfill skips incidents without one as left behind by a hard-deleted test case.
+  private void linkToTestCase(TestCase testCase, List<TestCaseResolutionStatus> records) {
+    for (TestCaseResolutionStatus record : records) {
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              testCase.getId(),
+              record.getId(),
+              Entity.TEST_CASE,
+              Entity.TEST_CASE_RESOLUTION_STATUS,
+              Relationship.PARENT_OF.ordinal());
     }
   }
 

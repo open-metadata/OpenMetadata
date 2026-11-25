@@ -513,9 +513,15 @@ class Profiler(Generic[TMetric]):
 
             sampler = self.profiler_interface.sampler
             sample_config = sampler._sample_config
+            execution_source = (
+                getattr(sampler, "execution_source", None) if not getattr(sampler, "sample_query", None) else None
+            )
+            for profile in column_profile:
+                profile.executionSource = execution_source
 
             table_profile = TableProfile(
                 timestamp=self.profile_ts,
+                executionSource=execution_source,
                 columnCount=self._table_results.get(COLUMN_COUNT),
                 rowCount=self._table_results.get(RowCount.name()),
                 createDateTime=raw_create_date,

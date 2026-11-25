@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 /**
- * Operational catalog associations for a native concept, stored separately from semantic
- * definitions and releases.
+ * The binding revision of a native concept, stored separately from semantic definitions and
+ * releases. Documents written before 2.1 also carried the bindings themselves, which now
+ * live in ontology_concept_binding rows.
  */
 export interface OntologyConceptBindings {
-    assets:   AssetBinding[];
+    /**
+     * Bindings of documents written before 2.1. Read only by the migration that copies them
+     * into rows.
+     */
+    assets?:  AssetBinding[];
     revision: number;
 }
 

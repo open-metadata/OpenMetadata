@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.StreamSupport;
 import org.apache.jena.rdf.model.Model;
@@ -26,9 +27,11 @@ import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.ai.LLMModel;
 import org.openmetadata.schema.entity.ai.ModelType;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.service.rdf.RdfUtils;
 
@@ -59,6 +62,23 @@ class JsonLdTranslatorTest {
 
     assertTrue(containsIdentifier(document, RdfUtils.columnUri(BASE_URI, parentFqn)));
     assertTrue(containsIdentifier(document, RdfUtils.columnUri(BASE_URI, childFqn)));
+  }
+
+  @Test
+  void leavesStoredCredentialsOutOfTheDocument() {
+    DatabaseService service =
+        new DatabaseService()
+            .withId(UUID.randomUUID())
+            .withName("warehouse")
+            .withFullyQualifiedName("warehouse")
+            .withConnection(
+                new DatabaseConnection().withConfig(Map.of("password", "fernet:stored-secret")));
+
+    JsonNode document =
+        new JsonLdTranslator(new ObjectMapper(), BASE_URI, ignored -> "databaseService")
+            .toJsonLd(service);
+
+    assertFalse(document.toString().contains("stored-secret"), document.toString());
   }
 
   @Test
