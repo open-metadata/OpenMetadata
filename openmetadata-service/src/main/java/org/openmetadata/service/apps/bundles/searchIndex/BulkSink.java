@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 
 public interface BulkSink {
   void write(List<?> entities, Map<String, Object> contextData) throws Exception;
@@ -64,6 +65,13 @@ public interface BulkSink {
   default StepStats getVectorStats() {
     return null;
   }
+
+  /**
+   * Retries once the embeddings and chunk documents this sink missed for the partition tracked by
+   * {@code partition}, and counts each in the vector stats. Called once that partition's writes are
+   * flushed and before it completes.
+   */
+  default void retryMissedChunks(StageStatsTracker partition) {}
 
   /**
    * Returns the process stage statistics. This tracks document building/transformation

@@ -649,8 +649,9 @@ Anything below is enforced by CI, or authors rejected it repeatedly in this wind
 - **Java micro-style quoted from [`java.md`](.claude/rules/java.md) without a defect**: fully qualified names, `final` on
   locals, method or class length, utility classes not `final`, literals in test assertions. These
   had zero acceptances across 18 bot threads. Authors still follow `java.md` while writing; a
-  reviewer does not post a finding for it. `java.md` says to *prefer* one successful return:
-  flat validation guards and throws are fine, so "use one trailing return" is not a finding. Size
+  reviewer does not post a finding for it. The one exception is the return rule
+  (ADR:2026-11-20-a-method-returns-once): a new or changed production method with more than one
+  `return`, or a `return` that is not its last statement, is a 🟡 finding. Throws are fine. Size
   rules target production code, not tests or verbatim backports.
 - **`@Isolated` or `@Execution(SAME_THREAD)`** on an IT that touches process-global state. That is a
   supported group (74 IT files use it), not a breach of the concurrent-IT rule.
