@@ -28,6 +28,7 @@ import {
   AlertMessage,
   CuratedAssetsFormSelectedAssetsInfo,
 } from '../../../../../utils/CuratedAssetsUtils';
+import { sanitizeQueryBuilderTree } from '../../../../../utils/queryBuilder/tree';
 import { getJsonTreeFromQueryFilter } from '../../../../../utils/QueryBuilderPureUtils';
 import QueryBuilder from '../../../../common/QueryBuilder/QueryBuilder';
 import { useAdvanceSearch } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -153,7 +154,7 @@ export const AdvancedAssetsFilterField = ({
   useEffect(() => {
     try {
       if (isMounting.current && !isEmpty(fqn) && !isEmpty(queryFilter)) {
-        const tree = QbUtils.checkTree(
+        const tree = sanitizeQueryBuilderTree(
           QbUtils.loadTree(
             getJsonTreeFromQueryFilter(
               JSON.parse(queryFilter || '{}')

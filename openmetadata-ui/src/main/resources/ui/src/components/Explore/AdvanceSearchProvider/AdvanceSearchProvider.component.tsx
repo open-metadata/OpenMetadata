@@ -52,6 +52,7 @@ import {
 import {
   getEmptyJsonTree,
   loadExploreQueryFilter,
+  sanitizeQueryBuilderTree,
 } from '../../../utils/queryBuilder/tree';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -217,7 +218,7 @@ export const AdvanceSearchProvider = ({
 
   const handleReset = useCallback(() => {
     setTreeInternal(
-      QbUtils.checkTree(QbUtils.loadTree(getEmptyJsonTree()), config)
+      sanitizeQueryBuilderTree(QbUtils.loadTree(getEmptyJsonTree()), config)
     );
 
     setQueryFilter(undefined);
@@ -302,7 +303,10 @@ export const AdvanceSearchProvider = ({
   const loadTree = useCallback(
     async (treeObj: OldJsonTree) => {
       const updatedConfig = config;
-      const tree = QbUtils.checkTree(QbUtils.loadTree(treeObj), updatedConfig);
+      const tree = sanitizeQueryBuilderTree(
+        QbUtils.loadTree(treeObj),
+        updatedConfig
+      );
 
       setTreeInternal(tree);
       const qFilter = {

@@ -66,8 +66,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          filter: blob:none
+          # Path diffing happens in check-changes; Jest needs only the tree.
+          fetch-depth: 1
           persist-credentials: false
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -105,8 +105,12 @@ jobs:
       - name: Run Coverage
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         # jest.config.js keeps '50%' for laptops; on the 4-vCPU hosted runner
-        # that is only 2 workers, so CI asks for all 4.
-        run: yarn test:cov-summary --maxWorkers=4
+        # that is only 2 workers, so CI asks for all 4. test:cov-ci runs
+        # --silent with the summary + github-actions reporters: the verbose
+        # default reporter printed ~1.8M lines (console noise + 2.2k PASS
+        # lines), past GitHub's log limit, while failures still surface as
+        # inline annotations and a grouped stack trace.
+        run: yarn test:cov-ci --maxWorkers=4
         id: yarn_coverage
       - name: Jest coverage comment
         id: coverage_comment

@@ -22,6 +22,8 @@ import {
   getEmptyJsonTreeForQueryBuilder,
   getEmptyQueryBuilderTree,
   loadQueryBuilderTree,
+  PERSISTENT_EMPTY_TREE_SETTINGS,
+  sanitizeQueryBuilderTree,
 } from './tree';
 
 // setupTests.js globally stubs `getQbConfigs` to `{}`; these cases build a real
@@ -454,5 +456,60 @@ describe('loadQueryBuilderTree – fallbacks', () => {
     });
 
     expect(rootType(loaded)).toBe('group');
+  });
+});
+
+describe('sanitizeQueryBuilderTree', () => {
+  const baseConfig = jest.requireActual('./config').buildQueryBuilderConfig({
+    outputType: SearchOutputType.ElasticSearch,
+    searchIndex: 'table',
+    groupMode: 'nested',
+  });
+  const persistentConfig = {
+    ...baseConfig,
+    settings: { ...baseConfig.settings, ...PERSISTENT_EMPTY_TREE_SETTINGS },
+  };
+
+  let warnSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  // The seed holds a rule with no value yet, which validation reports.
+  it.each([
+    ['the default on-load settings', baseConfig],
+    ['settings that keep empty rules', persistentConfig],
+  ])('should fix the tree exactly as checkTree does with %s', (_, config) => {
+    const seed = getEmptyJsonTree();
+
+    const expected = QbUtils.getTree(
+      QbUtils.checkTree(QbUtils.loadTree(seed), config)
+    );
+    const actual = QbUtils.getTree(
+      sanitizeQueryBuilderTree(QbUtils.loadTree(seed), config)
+    );
+
+    expect(actual).toEqual(expected);
+  });
+
+  it('should not log the validation errors checkTree warns about', () => {
+    const tree = QbUtils.loadTree(getEmptyJsonTree());
+
+    QbUtils.checkTree(tree, persistentConfig);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Tree check errors: ',
+      expect.any(Array)
+    );
+
+    warnSpy.mockClear();
+    sanitizeQueryBuilderTree(tree, persistentConfig);
+
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });
