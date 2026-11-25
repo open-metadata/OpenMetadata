@@ -317,7 +317,7 @@ class AIContextMcpIT extends McpTestBase {
   }
 
   @Test
-  void getEntityDetails_contentIncludeStripsInlineBase64Images() throws Exception {
+  void getEntityDetails_stripsArticleImagesBeforeFullReadAndContextBudget() throws Exception {
     String base64Payload = "iVBORw0KGgoAAAANSUhEUg" + "A".repeat(4_000) + "ErkJggg==";
     String htmlBody =
         "<p>Architecture summary for revenue reporting.</p>"
@@ -336,7 +336,9 @@ class AIContextMcpIT extends McpTestBase {
             "pageType",
             "Article",
             "page",
-            Map.of());
+            Map.of(),
+            "relatedEntities",
+            List.of(Map.of("id", customersTable.getId().toString(), "type", "table")));
     JsonNode page = post("contextCenter/pages", createPage, JsonNode.class);
     String imageArticleFqn = page.get("fullyQualifiedName").asText();
 
@@ -365,6 +367,28 @@ class AIContextMcpIT extends McpTestBase {
           .doesNotContain(base64Payload);
       assertThat(content.length()).isLessThan(500);
     }
+
+    JsonNode bundle =
+        executeMcpRequest(
+            McpTestUtils.createToolCallRequest(
+                "get_entity_details",
+                Map.of(
+                    "entityType",
+                    "table",
+                    "fqn",
+                    customersTable.getFullyQualifiedName(),
+                    "include",
+                    List.of("context"),
+                    "format",
+                    "json")));
+    JsonNode asset =
+        OBJECT_MAPPER.readTree(bundle.path("result").path("content").get(0).path("text").asText());
+    JsonNode article = findArticle(asset.path("context").path("articles"), imageArticleFqn);
+    assertThat(article).isNotNull();
+    assertThat(article.path("contentTruncated").asBoolean()).isFalse();
+    assertThat(article.path("content").asText())
+        .contains("Architecture summary for revenue reporting.", "Keep x >= 1 and label 'a'.")
+        .doesNotContain("base64", "<img", base64Payload);
   }
 
   private static JsonNode findArticle(JsonNode articles, String fqn) {
