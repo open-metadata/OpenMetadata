@@ -51,11 +51,12 @@ import {
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { CUSTOM_PROPERTY_ENUM_CLEANUP_JOB_TYPE } from '../../constants/Navbar.constants';
 import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
-import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
+import { BackgroundJob } from '../../generated/jobs/backgroundJob';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -253,7 +254,7 @@ const NavBar = () => {
 
         const { jobArgs, status, jobType } = backgroundJobData;
 
-        if (jobType === JobType.CustomPropertyEnumCleanup) {
+        if (jobType === CUSTOM_PROPERTY_ENUM_CLEANUP_JOB_TYPE) {
           const enumCleanupArgs = jobArgs;
           if (!enumCleanupArgs.entityType) {
             showErrorToast(

@@ -85,10 +85,7 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
   const [editorActions, setEditorActions] = useState<CustomizeEditorActions>();
   const isEditorDirty =
     view.type === 'customize' && Boolean(editorActions?.canSave);
-  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
-    isEditorDirty,
-    editorActions?.onSave
-  );
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(isEditorDirty);
 
   const navigateGuarded = useCallback(
     (nextView: PersonaView) => runGuarded(() => onNavigate(nextView)),

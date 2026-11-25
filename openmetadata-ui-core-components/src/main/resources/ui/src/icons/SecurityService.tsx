@@ -41,7 +41,7 @@ export const SecurityService: FC<Props> = ({
     </g>
     <defs>
       <clipPath id="security-service_a">
-        <path d="M0 0h20v20H0z" fill="currentColor" />
+        <path d="M0 0h20v20H0z" fill="#fff" />
       </clipPath>
     </defs>
   </svg>

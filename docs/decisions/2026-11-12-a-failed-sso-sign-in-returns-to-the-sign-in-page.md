@@ -1,10 +1,11 @@
 # A failed SSO sign-in returns to the sign-in page with a fixed reason code
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-12 (initial)
+- **Revisions:** v1 2026-11-12 (initial) · v2 2026-11-20 (the MCP callback learns the reason and
+  answers a refused account with Access Denied)
 - **Deciders:** Mohit Yadav
 - **Guard:** `SsoOidcConfidentialLoginIT` (OC-07, OC-14, OC-17, ID-13),
-  `AuthenticationCodeFlowHandlerTest`, `SignInPage.test.tsx`
+  `AuthenticationCodeFlowHandlerTest`, `SignInPage.test.tsx`, `McpCallbackServletTest`
 - **Related:** 2.1.0 release testing, SSO row
 
 ## Context
@@ -29,3 +30,10 @@ and the page showed server or provider detail.
 A person who cannot sign in learns why in a sentence they can act on, and can try again from the
 same page. Adding a reason means a new `SignInFailure` constant and its message on the sign-in
 page; the code is the contract between the two.
+
+## Amendment
+v2 (2026-11-20): a sign-in started by an MCP client still keeps the error status its callback
+reads, and the login step now also hands the `SignInFailure` to the MCP callback as the request
+attribute `signInFailure`. The MCP callback answers `account_not_allowed` with a 403 Access Denied
+page; every other reason ends on its existing error page. Before this the person saw the 500
+"Authentication Failed" page, which read as a server fault they could do nothing about.
