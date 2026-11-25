@@ -447,6 +447,22 @@ describe('getAlertExtraInfo', () => {
     expect(failedEvents).toBeInTheDocument();
   });
 
+  it('says a disabled alert is not running instead of showing 0 pending', () => {
+    render(
+      getAlertExtraInfo(false, {
+        enabled: false,
+        failedEventsCount: 2,
+        pendingEventsCount: 0,
+        totalEventsCount: 100,
+      })
+    );
+
+    expect(screen.getByTestId('alert-not-running')).toBeInTheDocument();
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
+    expect(screen.getByText('100')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
+  });
+
   it('should return zero values when alertEventCounts is undefined', () => {
     const alertExtraInfo = getAlertExtraInfo(false);
 

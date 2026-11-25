@@ -44,10 +44,13 @@ public class GetPersonaContextTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
-    Persona persona = resolvePersona(securityContext, stringParam(params, "personaName"));
-    PersonaContextBuilder.MaterializedPersonaContext materialized =
-        PersonaContextAccess.materialize(authorizer, securityContext, persona, false).value();
-    return page(materialized, stringParam(params, "format"), intParam(params.get("part"), 1));
+    String personaName = stringParam(params, "personaName");
+    var cached =
+        personaName == null || personaName.isBlank()
+            ? PersonaContextAccess.materializeActive(authorizer, securityContext, false)
+            : PersonaContextAccess.materialize(
+                authorizer, securityContext, resolveNamedPersona(personaName), false);
+    return page(cached.value(), stringParam(params, "format"), intParam(params.get("part"), 1));
   }
 
   /**
@@ -100,12 +103,9 @@ public class GetPersonaContextTool implements McpTool {
         "GetPersonaContextTool does not require limit validation.");
   }
 
-  private static Persona resolvePersona(
-      CatalogSecurityContext securityContext, String personaName) {
-    return personaName == null || personaName.isBlank()
-        ? PersonaContextAccess.activePersona(securityContext)
-        : Entity.getEntityByName(
-            Entity.PERSONA, personaName, "contextDefinition,users", Include.NON_DELETED);
+  private static Persona resolveNamedPersona(String personaName) {
+    return Entity.getEntityByName(
+        Entity.PERSONA, personaName, "contextDefinition,users", Include.NON_DELETED);
   }
 
   static List<String> split(String content) {

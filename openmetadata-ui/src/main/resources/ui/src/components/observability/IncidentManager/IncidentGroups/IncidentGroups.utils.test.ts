@@ -28,7 +28,7 @@ import {
   SPARKLINE_WIDTH,
 } from './IncidentGroups.constants';
 import {
-  countRecurringIncidentGroups,
+  countRisingIncidentGroups,
   getIncidentGroupByOption,
   getIncidentGroupSortQuery,
   getIncidentGroupsQuery,
@@ -39,7 +39,7 @@ import {
   getIncidentTrendPoints,
   getPageAfterEmptyRead,
   hasActiveIncidentGroupFilters,
-  isRecurring,
+  isRising,
   isUnownedIncidentGroup,
   parseIncidentGroupBy,
   parseIncidentGroupFilters,
@@ -294,28 +294,28 @@ describe('getIncidentTrendColor', () => {
   );
 });
 
-describe('isRecurring', () => {
-  it('should treat a rising group as recurring', () => {
+describe('isRising', () => {
+  it('should treat a rising group as rising', () => {
     expect(
-      isRecurring(group({ trendDirection: IncidentTrendDirection.Rising }))
+      isRising(group({ trendDirection: IncidentTrendDirection.Rising }))
     ).toBe(true);
   });
 
-  it('should not treat a falling, steady or trendless group as recurring', () => {
+  it('should not treat a falling, steady or trendless group as rising', () => {
     expect(
-      isRecurring(group({ trendDirection: IncidentTrendDirection.Falling }))
+      isRising(group({ trendDirection: IncidentTrendDirection.Falling }))
     ).toBe(false);
     expect(
-      isRecurring(group({ trendDirection: IncidentTrendDirection.Steady }))
+      isRising(group({ trendDirection: IncidentTrendDirection.Steady }))
     ).toBe(false);
-    expect(isRecurring(group())).toBe(false);
+    expect(isRising(group())).toBe(false);
   });
 });
 
-describe('countRecurringIncidentGroups', () => {
+describe('countRisingIncidentGroups', () => {
   it('should count only the rising groups of the loaded page', () => {
     expect(
-      countRecurringIncidentGroups([
+      countRisingIncidentGroups([
         group({ trendDirection: IncidentTrendDirection.Rising }),
         group({ trendDirection: IncidentTrendDirection.Rising }),
         group({ trendDirection: IncidentTrendDirection.Falling }),
@@ -326,7 +326,7 @@ describe('countRecurringIncidentGroups', () => {
   });
 
   it('should count nothing for an empty page', () => {
-    expect(countRecurringIncidentGroups([])).toBe(0);
+    expect(countRisingIncidentGroups([])).toBe(0);
   });
 });
 

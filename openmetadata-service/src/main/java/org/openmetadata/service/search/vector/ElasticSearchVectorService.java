@@ -23,7 +23,9 @@ import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.MeteredElasticsearchTransport;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -158,7 +160,7 @@ public class ElasticSearchVectorService implements VectorIndexService {
       // can push from+size past index.max_result_window and 400 the request. Clamp unconditionally.
       overFetchSize = Math.min(overFetchSize, k);
 
-      String indexName = getIndexAlias();
+      String indexName = vectorSearchTarget(parameters);
       Set<String> readableAnchorIds = readableAnchors.apply(parameters);
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
@@ -282,6 +284,18 @@ public class ElasticSearchVectorService implements VectorIndexService {
     }
   }
 
+  private String vectorSearchTarget(VectorSearchParameters parameters) {
+    final var types = parameters.filters() == null ? null : parameters.filters().get("entityType");
+    if (types == null || types.stream().noneMatch(OntologyTermSearch::isTerm)) {
+      return getIndexAlias();
+    }
+    final var ontologyAlias =
+        Entity.getSearchRepository().getIndexOrAliasName(OntologyTermSearch.ALIAS);
+    return types.stream().allMatch(OntologyTermSearch::isTerm)
+        ? ontologyAlias
+        : getIndexAlias() + "," + ontologyAlias;
+  }
+
   /**
    * Read an HttpEntity body as UTF-8, tolerating a null or unreadable entity. Some ES
    * endpoints return no body on 4xx; dereferencing entity.getContent() unconditionally
@@ -300,23 +314,58 @@ public class ElasticSearchVectorService implements VectorIndexService {
 
   @Override
   public Map<String, Object> generateEmbeddingFields(EntityInterface<?> entity) {
-    return VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient);
+    return generateEmbeddingFields(entity, null);
+  }
+
+  public Map<String, Object> generateEmbeddingFields(
+      EntityInterface<?> entity, String ontologyBody) {
+    return VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient, ontologyBody);
   }
 
   @Override
   public void updateEntityEmbedding(EntityInterface<?> entity, String entityIndexName) {
+    updateEntityEmbeddings(entity, entityIndexName, null);
+  }
+
+  @Override
+  public void updateEntityEmbeddings(
+      EntityInterface<?> entity, String entityIndexName, String ontologyBody) {
     try {
       String entityId = entity.getId().toString();
+      final var type = entity.getEntityReference().getType();
+      if (OntologyTermSearch.isTerm(type) && ontologyBody == null) {
+        // The 2-arg overload cannot safely publish a term: the release-aware writer needs the
+        // release-snapshot body, and embedding from the mutable working (draft) row would
+        // publish unpublished / not-in-active-release / deprecated terms with no publication
+        // check. Manual term reindexing must go through the release-aware bulk writer (reindex),
+        // which passes the published body into this 3-arg overload — see
+        // VectorEmbeddingHandler.refreshOntologyEmbedding and OntologyTermBulkWrite.
+        LOG.warn(
+            "Skipping embedding for ontology term {} without a release body; rebuild term "
+                + "embeddings via the release-aware reindex path",
+            entity.getId());
+        return;
+      }
       String existingFingerprint = getExistingFingerprint(entityIndexName, entityId);
-      String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
+      String currentFingerprint =
+          ontologyBody == null
+              ? VectorDocBuilder.computeFingerprintForEntity(entity)
+              : VectorDocBuilder.computeFingerprintForEntity(entity, ontologyBody);
 
       if (currentFingerprint.equals(existingFingerprint)) {
         LOG.debug("Skipping entity {} - fingerprint unchanged", entityId);
         return;
       }
 
-      Map<String, Object> embeddingFields = generateEmbeddingFields(entity);
-      partialUpdateEntity(entityIndexName, entityId, embeddingFields);
+      Map<String, Object> embeddingFields = generateEmbeddingFields(entity, ontologyBody);
+      if (OntologyTermSearch.isTerm(type)) {
+        OntologyTermSearch.writeCurrentEmbedding(
+            entity.getEntityReference(),
+            currentFingerprint,
+            () -> partialUpdateEntity(entityIndexName, entityId, embeddingFields));
+      } else {
+        partialUpdateEntity(entityIndexName, entityId, embeddingFields);
+      }
     } catch (Exception e) {
       LOG.error("Failed to update embedding for entity {}: {}", entity.getId(), e.getMessage(), e);
     }
@@ -410,6 +459,7 @@ public class ElasticSearchVectorService implements VectorIndexService {
    * @param currentFingerprintById each entity's current fingerprint, computed only when a stored
    *     one exists
    */
+  @Override
   public Map<String, JsonNode> getExistingEmbeddingsBatch(
       String indexName, Map<String, Supplier<String>> currentFingerprintById) {
     if (currentFingerprintById == null || currentFingerprintById.isEmpty()) {

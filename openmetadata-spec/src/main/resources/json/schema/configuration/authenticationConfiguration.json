@@ -93,7 +93,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "pattern": "^(username|email):[a-zA-Z0-9_-]+$"
+        "pattern": "^(username|email):[^\\s]+$"
       }
     },
     "emailClaim": {

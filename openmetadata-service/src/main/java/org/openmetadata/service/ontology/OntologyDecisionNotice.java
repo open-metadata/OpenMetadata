@@ -4,6 +4,8 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Entities;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.ActivityEventType;
@@ -35,7 +37,7 @@ public final class OntologyDecisionNotice {
     final String version = describe(release);
     final String who =
         reviewer.getDisplayName() == null ? reviewer.getName() : reviewer.getDisplayName();
-    final String reason = nullOrEmpty(comment) ? "" : ": " + truncate(comment);
+    final String reason = reasonOf(comment);
     return new ActivityEvent()
         .withId(UUID.randomUUID())
         .withEventType(ActivityEventType.ENTITY_UPDATED)
@@ -81,7 +83,19 @@ public final class OntologyDecisionNotice {
     }
   }
 
-  private static String truncate(final String comment) {
-    return comment.length() <= MAX_REASON ? comment : comment.substring(0, MAX_REASON - 1) + "…";
+  private static String reasonOf(final String comment) {
+    final String text = nullOrEmpty(comment) ? "" : Jsoup.parseBodyFragment(comment).text();
+    return text.isEmpty() ? "" : ": " + truncate(Entities.escape(text));
+  }
+
+  /** Cuts the escaped reason, never through an entity such as {@code &lt;}. */
+  private static String truncate(final String escaped) {
+    if (escaped.length() <= MAX_REASON) {
+      return escaped;
+    }
+    final String cut = escaped.substring(0, MAX_REASON - 1);
+    final int amp = cut.lastIndexOf('&');
+    final boolean endsInPartialEntity = amp >= 0 && cut.indexOf(';', amp) < 0;
+    return (endsInPartialEntity ? cut.substring(0, amp) : cut) + "…";
   }
 }
