@@ -30,7 +30,9 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.isSystemGenerated;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
@@ -1816,15 +1818,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             null, term.getGlossary().getFullyQualifiedName(), glossaryRepository.getFields("tags"));
     // Check if the tags are mutually exclusive for the glossary
     checkMutuallyExclusive(glossary.getTags());
-    // The term's own tags are merged with the glossary's on the real add, so a term
-    // that directly carries a tag mutually exclusive with one of its glossary's tags
-    // must be rejected here -- before any asset is saved or any term tag is deleted.
-    // Run the same check on dry runs so a successful preview guarantees a successful
-    // real add.
-    if (!CommonUtil.nullOrEmpty(glossary.getTags())) {
-      List<TagLabel> mergedForCheck = new ArrayList<>(getUniqueTags(glossary.getTags()));
-      EntityUtil.mergeTags(mergedForCheck, getUniqueTags(term.getTags()));
-      checkMutuallyExclusive(mergedForCheck);
+    if (!nullOrEmpty(request.getAssets()) && !nullOrEmpty(glossary.getTags())) {
+      checkMutuallyExclusiveForUserAppliedTags(mergeOwnTags(term.getTags(), glossary.getTags()));
     }
 
     BulkOperationResult result =
@@ -1841,13 +1836,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       AddGlossaryToAssetsRequest request,
       BulkOperationResult result) {
     if (!Boolean.TRUE.equals(request.getDryRun())
-        && !CommonUtil.nullOrEmpty(request.getAssets())
-        && CommonUtil.nullOrEmpty(result.getFailedRequest())
-        && !CommonUtil.nullOrEmpty(glossary.getTags())) {
-      // Remove current entity tags in the database. It will be added back later from the merged tag
-      // list.
-      List<TagLabel> merged = new ArrayList<>(getUniqueTags(glossary.getTags()));
-      EntityUtil.mergeTags(merged, getUniqueTags(term.getTags()));
+        && !nullOrEmpty(request.getAssets())
+        && nullOrEmpty(result.getFailedRequest())
+        && !nullOrEmpty(glossary.getTags())) {
+      List<TagLabel> merged = mergeOwnTags(term.getTags(), glossary.getTags());
       deleteTagsPreservingCertification(term.getFullyQualifiedName());
       applyTags(merged, term.getFullyQualifiedName());
       invalidateCacheAfterTagMutation(term.getEntityReference());
@@ -1855,6 +1847,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       searchRepository.updateEntity(term.getEntityReference());
       RdfUpdater.updateEntity(term);
     }
+  }
+
+  // Term labels take precedence over glossary labels and DERIVED labels are excluded so a derived
+  // label on the glossary cannot shadow the term's own applied label before applyTags skips it.
+  static List<TagLabel> mergeOwnTags(List<TagLabel> termTags, List<TagLabel> glossaryTags) {
+    List<TagLabel> merged = new ArrayList<>(ownUniqueTags(termTags));
+    EntityUtil.mergeTags(merged, ownUniqueTags(glossaryTags));
+    return merged;
+  }
+
+  private static List<TagLabel> ownUniqueTags(List<TagLabel> tags) {
+    return getUniqueTags(
+        listOrEmpty(tags).stream().filter(tag -> !isSystemGenerated(tag)).toList());
   }
 
   private static AssetTagLabelService.Request assetsRequest(

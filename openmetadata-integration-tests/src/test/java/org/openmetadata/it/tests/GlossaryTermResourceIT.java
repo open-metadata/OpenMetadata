@@ -4804,9 +4804,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withDryRun(false)
             .withAssets(List.of(table.getEntityReference()));
     String path = "/v1/glossaryTerms/" + term.getId() + "/assets/add";
-    Exception conflict =
+    InvalidRequestException conflict =
         assertThrows(
-            Exception.class,
+            InvalidRequestException.class,
             () ->
                 client
                     .getHttpClient()
@@ -4885,9 +4885,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withDryRun(true)
             .withAssets(List.of(table.getEntityReference()));
     String path = "/v1/glossaryTerms/" + term.getId() + "/assets/add";
-    Exception conflict =
+    InvalidRequestException conflict =
         assertThrows(
-            Exception.class,
+            InvalidRequestException.class,
             () ->
                 client
                     .getHttpClient()
@@ -4903,6 +4903,96 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         "rejected dry-run must not tag the asset");
     assertTermHasTag(client, term.getId(), termDirectLabel.getTagFQN());
     assertTermLacksTag(client, term.getId(), glossaryLabel.getTagFQN());
+  }
+
+  @Test
+  void test_bulkAddGlossaryToAssets_preservesTermManualTag_whenGlossaryCarriesSameTagAsDerived(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.shortPrefix("td_der_cls"))
+                    .withDescription("Classification for derived-shadow regression test"));
+    Tag directTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("td_der_tag"))
+                    .withClassification(classification.getName())
+                    .withDescription(
+                        "Classification tag applied directly to term and helper term"));
+    TagLabel directLabel = classificationTagLabel(directTag);
+
+    Glossary helperGlossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("td_der_hg"))
+                    .withDescription("Helper glossary whose term implies directTag"));
+    GlossaryTerm helperTerm =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.shortPrefix("td_der_ht"))
+                    .withGlossary(helperGlossary.getFullyQualifiedName())
+                    .withDescription("Helper term carrying directTag")
+                    .withTags(List.of(directLabel)));
+    TagLabel helperTermLabel =
+        new TagLabel()
+            .withTagFQN(helperTerm.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    // Parent glossary carries helperTerm directly, so reading glossary.getTags() includes
+    // directLabel as DERIVED. The child term carries directLabel directly as MANUAL.
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("td_der_g"))
+                    .withDescription("Glossary carrying helperTerm")
+                    .withTags(List.of(helperTermLabel)));
+    GlossaryTerm term =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.shortPrefix("td_der_t"))
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("Term carrying directLabel directly"));
+    term.setTags(List.of(directLabel));
+    patchEntity(term.getId().toString(), term);
+
+    Table table = createBareTable(ns, "td_der_tbl");
+    AddGlossaryToAssetsRequest request =
+        new AddGlossaryToAssetsRequest()
+            .withDryRun(false)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/glossaryTerms/" + term.getId() + "/assets/add";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
+
+    assertEquals(1, result.getNumberOfRowsPassed());
+    GlossaryTerm fetched = client.glossaryTerms().get(term.getId().toString(), "tags");
+    TagLabel keptDirect =
+        listOrEmpty(fetched.getTags()).stream()
+            .filter(t -> directLabel.getTagFQN().equals(t.getTagFQN()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(keptDirect, "term must still carry its direct tag");
+    assertEquals(
+        TagLabel.LabelType.MANUAL,
+        keptDirect.getLabelType(),
+        "glossary's DERIVED copy must not shadow and drop the term's own MANUAL tag");
+    assertTermHasTag(client, term.getId(), helperTermLabel.getTagFQN());
   }
 
   private static final class MutualExclusiveGlossarySetup {
