@@ -1,11 +1,11 @@
 # A Sigma dashboard's project is the workspace of its workbook
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-07 (initial)
+- **Revisions:** v1 2026-11-07 (initial) · v2 2026-11-25 (standalone data models)
 - **Deciders:** Sigma connector maintainers (PR #37297)
 - **Guard:** `ingestion/tests/unit/topology/dashboard/test_sigma.py` (`test_dashboard_project_is_the_workbook_workspace`,
-  `test_project_filter_pattern_keeps_or_drops_by_workspace`)
-- **Related:** PR #37297
+  `test_project_filter_pattern_keeps_or_drops_by_workspace`, `test_workspace_filter_on_standalone_data_models`)
+- **Related:** PR #37297, issue #38477, PR #38616
 
 ## Context
 
@@ -32,3 +32,13 @@ takes more Sigma calls per workbook.
   saved pattern matches.
 - The rule rests on Sigma's doc examples, as the spec does not define the workbook `path` format. A workspace name
   that contains `/` is cut at the first `/`.
+
+## Amendment: standalone data models
+
+In both regular and organization-wide listings, a standalone data model's workspace is the first
+`/`-separated segment of its `path` in the `GET /v2/dataModels` response. The connector applies
+`projectFilterPattern` to that workspace before reading the model's elements, columns or lineage.
+
+A saved pattern that selects one workspace now limits standalone models as well as workbooks.
+If the pattern has any includes or excludes, a model with no path is skipped because its workspace
+is unknown. With no includes or excludes, models with missing paths remain eligible for ingestion.
