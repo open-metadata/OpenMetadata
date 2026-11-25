@@ -399,7 +399,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
     List<Column> allColumns = fullDataModel.getColumns();
     if (allColumns == null || allColumns.isEmpty()) {
-      return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
+      return new ResultList<>(new ArrayList<>(), null, null, 0);
     }
 
     // Apply pagination

@@ -6,6 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,10 +44,12 @@ import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 
 /**
@@ -1004,5 +1009,39 @@ public class DashboardDataModelResourceIT
     assertEquals(
         1, column.getTags().size(), "User-applied column tag must survive a dataType change");
     assertEquals(columnTag.getFullyQualifiedName(), column.getTags().get(0).getTagFQN());
+  }
+
+  @Test
+  void get_dataModelColumns_emptyModel_hasNoCursors(TestNamespace ns) {
+    // ADR:2026-11-25-empty-child-page-has-no-cursors
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createLooker(ns);
+    DashboardDataModel dataModel =
+        createEntity(
+            new CreateDashboardDataModel()
+                .withName(ns.prefix("dm_no_columns"))
+                .withService(service.getFullyQualifiedName())
+                .withDataModelType(DataModelType.LookMlView)
+                .withColumns(List.of()));
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dashboard/datamodels/name/"
+                    + URLEncoder.encode(dataModel.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                    + "/columns?limit=15&offset=0",
+                null);
+    JsonNode root = JsonUtils.readTree(response);
+
+    assertEquals(0, root.get("data").size());
+    assertEquals(0, root.get("paging").get("total").asInt());
+    assertFalse(
+        root.get("paging").hasNonNull("before"),
+        "an empty collection must not advertise a before cursor");
+    assertFalse(
+        root.get("paging").hasNonNull("after"),
+        "an empty collection must not advertise an after cursor");
   }
 }
