@@ -176,6 +176,16 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
+  public void testAssetTypeConfigurationMatchesTheAssetTypeOrFallsBackToTheDefault() {
+    assertSame(
+        tableConfig,
+        SearchSourceBuilderFactory.assetTypeConfiguration("table_search_index", searchSettings));
+    assertSame(
+        defaultConfig,
+        SearchSourceBuilderFactory.assetTypeConfiguration("dataAsset", searchSettings));
+  }
+
+  @Test
   public void testConsistentSearchBuilderSelection() {
     // Test that both OpenSearch and ElasticSearch factories use the same logic
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);

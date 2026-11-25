@@ -221,6 +221,12 @@ class ChunkSetBoundTest {
     }
 
     @Override
+    protected String buildKnnQueryClause(
+        float[] vector, VectorSearchParameters parameters, Set<String> readableAnchorIds) {
+      return "{}";
+    }
+
+    @Override
     protected boolean knnReturnsAtMostK(double threshold) {
       return true;
     }

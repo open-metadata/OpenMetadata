@@ -28,6 +28,15 @@ public interface VectorIndexService {
 
   EmbeddingClient getEmbeddingClient();
 
+  /**
+   * The engine's kNN clause over the embedding field, for use inside a {@code bool} or {@code
+   * function_score} query. Carries the structured filters, the query filter and the context memory
+   * visibility rule of {@code parameters}. {@code parameters.threshold()} is on the cosine score
+   * scale {@code (1 + cosine) / 2}; 0 or less means top-k. An index whose mapping has no embedding
+   * field contributes no match instead of failing its shard.
+   */
+  String knnQueryClause(float[] vector, VectorSearchParameters parameters);
+
   Map<String, Object> generateEmbeddingFields(EntityInterface<?> entity);
 
   void updateEntityEmbedding(EntityInterface<?> entity, String entityIndexName);
