@@ -86,7 +86,6 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
-import { useGenericDomainLabel } from '../../common/DomainLabel/useGenericDomainLabel';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -196,7 +195,6 @@ const ClassificationDetails = forwardRef(
     const { fqn: tagCategoryName } = useFqn();
     const navigate = useNavigate();
     const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
-    const domainProps = useGenericDomainLabel();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(true);
     const isLoading = isTagsLoading || isClassificationLoading;
@@ -807,9 +805,12 @@ const ClassificationDetails = forwardRef(
             </div>
             <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-5">
               <DomainLabel
-                {...domainProps}
                 multiple
                 showDomainHeading
+                domains={currentClassification.domains}
+                entityFqn={currentClassification.fullyQualifiedName ?? ''}
+                entityId={currentClassification.id}
+                entityType={EntityType.CLASSIFICATION}
                 hasPermission={editDomainPermission}
                 variant="widget"
               />
