@@ -744,6 +744,14 @@
       "lineageSqlQueries": {
         "type": "object",
         "enabled": false
+      },
+      "examples": {
+        "properties": {
+          "variables": {
+            "type": "object",
+            "enabled": false
+          }
+        }
       }
     }
   }
