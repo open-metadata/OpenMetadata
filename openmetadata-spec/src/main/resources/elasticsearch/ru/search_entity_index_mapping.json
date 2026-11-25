@@ -801,6 +801,10 @@
       "lineageSqlQueries": {
         "type": "object",
         "enabled": false
+      },
+      "searchIndexSettings": {
+        "type": "object",
+        "enabled": false
       }
     }
   }
