@@ -16,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +34,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 
 @Execution(ExecutionMode.SAME_THREAD)
 class IncidentGroupQueriesSqlIT {
@@ -47,18 +50,16 @@ class IncidentGroupQueriesSqlIT {
     ScratchDatabase.withJdbi(jdbi -> runChecks(jdbi, true));
   }
 
-  private void runChecks(final Jdbi jdbi, final boolean mysql) {
+  private void runChecks(Jdbi jdbi, boolean mysql) {
     createFixture(jdbi, mysql);
+    DatasourceConfig.initialize(ScratchDatabase.dialect().label);
     verifyGroups(jdbi);
   }
 
-  private void createFixture(final Jdbi jdbi, final boolean mysql) {
-    final var schema =
+  private void createFixture(Jdbi jdbi, boolean mysql) {
+    var schema =
         MigrationFile.parseSqlUnits(
-            new File(
-                "../bootstrap/sql/migrations/native/2.1.1/"
-                    + (mysql ? "mysql" : "postgres")
-                    + "/schemaChanges.sql"),
+            migrationFile(mysql ? "mysql" : "postgres"),
             mysql ? ConnectionType.MYSQL : ConnectionType.POSTGRES);
     jdbi.useHandle(
         handle -> {
@@ -75,7 +76,7 @@ class IncidentGroupQueriesSqlIT {
           handle.execute(
               "CREATE TABLE test_case_incident (stateId VARCHAR(36) PRIMARY KEY, entityFQNHash VARCHAR(36), testCaseResolutionStatusType VARCHAR(36), severity VARCHAR(36), assignee VARCHAR(36), createdAt BIGINT, updatedAt BIGINT)");
           schema.forEach(unit -> unit.statements().forEach(handle::execute));
-          final String[] links = {
+          String[] links = {
             "<#E::table::table1>",
             "<#E::table::table1::columns::c>",
             "<#E::table::table2>",
@@ -100,17 +101,30 @@ class IncidentGroupQueriesSqlIT {
         });
   }
 
-  private void verifyGroups(final Jdbi jdbi) {
-    final var statements = new ArrayList<String>();
+  private static File migrationFile(String dialect) {
+    Path current = Path.of(System.getProperty("basedir", ".")).toAbsolutePath();
+    while (current != null && !Files.isDirectory(current.resolve("bootstrap/sql/migrations"))) {
+      current = current.getParent();
+    }
+    if (current == null) {
+      throw new IllegalStateException("Could not locate bootstrap/sql/migrations directory");
+    }
+    return current
+        .resolve("bootstrap/sql/migrations/native/2.1.1/%s/schemaChanges.sql".formatted(dialect))
+        .toFile();
+  }
+
+  private void verifyGroups(Jdbi jdbi) {
+    var statements = new ArrayList<String>();
     jdbi.setSqlLogger(
         new SqlLogger() {
           @Override
-          public void logAfterExecution(final StatementContext context) {
+          public void logAfterExecution(StatementContext context) {
             statements.add(context.getRenderedSql());
           }
         });
-    final var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
-    final var tables =
+    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    var tables =
         dao.listIncidentGroups(
             IncidentGroupBy.Table, new ListFilter(null), "incidentCount DESC", 25, 0);
     assertEquals(
@@ -123,7 +137,7 @@ class IncidentGroupQueriesSqlIT {
     assertEquals(0, tables.counts().getLast().testDefinitionCount());
     assertEquals(2, statements.size(), "Table grouping must not query its own table preview");
     statements.clear();
-    final var definitions =
+    var definitions =
         dao.listIncidentGroups(
             IncidentGroupBy.TestDefinition, new ListFilter(null), "incidentCount DESC", 25, 0);
     assertEquals(
@@ -135,13 +149,13 @@ class IncidentGroupQueriesSqlIT {
     assertEquals(Map.of("d1", List.of("d1"), "d2", List.of("d2")), definitions.testDefinitions());
     assertEquals(
         2, statements.size(), "Definition grouping must not query its own definition preview");
-    final var owners =
+    var owners =
         dao.listIncidentGroups(
             IncidentGroupBy.Owner, new ListFilter(null), "incidentCount DESC", 25, 0);
     assertEquals(2, owners.total());
     assertEquals(Map.of("owner", List.of("table1"), "", List.of("table2")), owners.tables());
     assertEquals(Map.of("owner", List.of("d1", "d2")), owners.testDefinitions());
-    final var filtered =
+    var filtered =
         dao.listIncidentGroups(
             IncidentGroupBy.Table,
             new ListFilter(null).addQueryParam("testCaseResolutionStatusType", "Assigned,Ack"),
@@ -150,12 +164,12 @@ class IncidentGroupQueriesSqlIT {
             0);
     assertEquals(2, filtered.counts().getFirst().incidentCount());
     assertEquals(List.of("table1"), filtered.tables().get("table1"));
-    final var last =
+    var last =
         dao.listIncidentGroups(
             IncidentGroupBy.Table, new ListFilter(null), "incidentCount DESC", 1, 1);
     assertEquals(2, last.total());
     assertEquals(Map.of("table2", List.of("table2")), last.tables());
-    final var empty =
+    var empty =
         dao.listIncidentGroups(
             IncidentGroupBy.Table, new ListFilter(null), "incidentCount DESC", 1, 2);
     assertEquals(2, empty.total());

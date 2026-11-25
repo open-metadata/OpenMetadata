@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -44,26 +46,39 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Execution(ExecutionMode.SAME_THREAD)
 class IncidentGroupTrendSqlIT {
   private Jdbi fixture() {
-    final Jdbi jdbi = ScratchDatabasePerTest.jdbi();
+    Jdbi jdbi = ScratchDatabasePerTest.jdbi();
     createFixture(jdbi, dialect());
     return jdbi;
   }
 
-  private String dialect() {
+  private static String dialect() {
     return ScratchDatabase.dialect() == ConnectionType.MYSQL ? "mysql" : "postgres";
   }
 
-  private String intervalSchema(final String dialect) {
+  private static File migrationFile(String dialect) {
+    Path current = Path.of(System.getProperty("basedir", ".")).toAbsolutePath();
+    while (current != null && !Files.isDirectory(current.resolve("bootstrap/sql/migrations"))) {
+      current = current.getParent();
+    }
+    if (current == null) {
+      throw new IllegalStateException("Could not locate bootstrap/sql/migrations directory");
+    }
+    return current
+        .resolve("bootstrap/sql/migrations/native/2.1.1/%s/schemaChanges.sql".formatted(dialect))
+        .toFile();
+  }
+
+  private String intervalSchema(String dialect) {
     return MigrationFile.parseSqlUnits(
-            new File("../bootstrap/sql/migrations/native/2.1.1/" + dialect + "/schemaChanges.sql"),
+            migrationFile(dialect),
             "mysql".equals(dialect) ? ConnectionType.MYSQL : ConnectionType.POSTGRES)
         .getFirst()
         .statements()
         .getFirst();
   }
 
-  private void createFixture(final Jdbi jdbi, final String dialect) {
-    final String schema = intervalSchema(dialect);
+  private void createFixture(Jdbi jdbi, String dialect) {
+    String schema = intervalSchema(dialect);
     jdbi.useHandle(
         handle -> {
           handle.execute(
@@ -104,10 +119,10 @@ class IncidentGroupTrendSqlIT {
 
   @Test
   void openCountsIncludeResolutionsAndBaseline() {
-    final Jdbi jdbi = fixture();
-    final var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
-    final var window = new IncidentGroupTrend(100, 900);
-    final var rows =
+    Jdbi jdbi = fixture();
+    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    var window = new IncidentGroupTrend(100, 900);
+    var rows =
         dao.listIncidentGroupTrendCounts(
             "tc.incidentTableFqn",
             "",
@@ -128,10 +143,10 @@ class IncidentGroupTrendSqlIT {
 
   @Test
   void duplicateMembershipDoesNotDoubleCount() {
-    final Jdbi jdbi = fixture();
-    final var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
-    final var window = new IncidentGroupTrend(100, 900);
-    final var rows =
+    Jdbi jdbi = fixture();
+    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    var window = new IncidentGroupTrend(100, 900);
+    var rows =
         dao.listIncidentGroupTrendCounts(
             "tc.incidentTableFqn",
             "",
@@ -153,9 +168,9 @@ class IncidentGroupTrendSqlIT {
 
   @Test
   void repeatedOpenStatusesKeepOnePeriod() {
-    final Jdbi jdbi = fixture();
-    final var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
-    final var window = new IncidentGroupTrend(100, 900);
+    Jdbi jdbi = fixture();
+    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    var window = new IncidentGroupTrend(100, 900);
     // A return to New on an open incident and repeated assignments do not open another incident.
     jdbi.useHandle(
         handle ->
@@ -176,9 +191,9 @@ class IncidentGroupTrendSqlIT {
 
   @Test
   void auditRetentionPreservesProjectedHistory() {
-    final Jdbi jdbi = fixture();
-    final var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
-    final var window = new IncidentGroupTrend(100, 900);
+    Jdbi jdbi = fixture();
+    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    var window = new IncidentGroupTrend(100, 900);
     // Retention of audit records must not erase already projected open periods.
     jdbi.useHandle(handle -> handle.execute("DELETE FROM test_case_resolution_status_time_series"));
     assertEquals(
@@ -195,10 +210,10 @@ class IncidentGroupTrendSqlIT {
 
   @Test
   void missingGroupHasZeroCounts() {
-    final Jdbi jdbi = fixture();
-    final var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
-    final var window = new IncidentGroupTrend(100, 900);
-    final var empty =
+    Jdbi jdbi = fixture();
+    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    var window = new IncidentGroupTrend(100, 900);
+    var empty =
         dao.listIncidentGroupTrendCounts(
             "tc.incidentTableFqn",
             "",
@@ -226,7 +241,7 @@ class IncidentGroupTrendSqlIT {
 
   @Test
   void recordDeletionRebuildsHistory() {
-    final Jdbi jdbi = fixture();
+    Jdbi jdbi = fixture();
     verifyRecordDeletion(
         jdbi, jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class));
   }
@@ -248,7 +263,7 @@ class IncidentGroupTrendSqlIT {
 
   @Test
   void cleanupStatementCountIsIndependentOfHistoryLength() {
-    final Jdbi jdbi = fixture();
+    Jdbi jdbi = fixture();
     assertEquals(bulkDeletionStatementCount(jdbi, 2), bulkDeletionStatementCount(jdbi, 50));
   }
 
@@ -259,17 +274,17 @@ class IncidentGroupTrendSqlIT {
 
   @Test
   void cleanupCommitsCompletedBatchesBeforeALaterFailure() {
-    final Jdbi jdbi = fixture();
-    final List<String> incidentIds = IntStream.range(0, 501).mapToObj(i -> "cleanup-" + i).toList();
+    Jdbi jdbi = fixture();
+    List<String> incidentIds = IntStream.range(0, 501).mapToObj(i -> "cleanup-" + i).toList();
     jdbi.useHandle(
         handle -> {
-          final var incidents =
+          var incidents =
               handle.prepareBatch(
                   "INSERT INTO test_case_incident (stateId, entityFQNHash, createdAt) VALUES (:id, 'cleanup', 10)");
-          final var history =
+          var history =
               handle.prepareBatch(
                   "INSERT INTO test_case_resolution_status_time_series (stateId, id, timestamp) VALUES (:id, :record, 10)");
-          for (final String id : incidentIds) {
+          for (String id : incidentIds) {
             incidents.bind("id", id).add();
             history.bind("id", id).bind("record", UUID.randomUUID().toString()).add();
           }
@@ -279,7 +294,7 @@ class IncidentGroupTrendSqlIT {
               "CREATE TABLE cleanup_guard (stateId VARCHAR(36), FOREIGN KEY (stateId) REFERENCES test_case_incident(stateId))");
           handle.execute("INSERT INTO cleanup_guard VALUES ('cleanup-500')");
         });
-    final Set<UUID> removed = new HashSet<>();
+    Set<UUID> removed = new HashSet<>();
     try {
       assertThrows(
           RuntimeException.class,
@@ -309,17 +324,17 @@ class IncidentGroupTrendSqlIT {
     assertEquals(501, removed.size(), "retrying the captured scope is idempotent");
   }
 
-  private void verifyMigrationBatches(final Jdbi jdbi) {
+  private void verifyMigrationBatches(Jdbi jdbi) {
     jdbi.useHandle(
         handle -> {
-          final var incidents =
+          var incidents =
               handle.prepareBatch(
                   "INSERT INTO test_case_incident (stateId, entityFQNHash, createdAt) VALUES (:id, 'batch', 10)");
-          final var statuses =
+          var statuses =
               handle.prepareBatch(
                   "INSERT INTO test_case_resolution_status_time_series (stateId, id, timestamp, testCaseResolutionStatusType) VALUES (:id, :id, 10, 'New')");
           for (int index = 0; index < 1001; index++) {
-            final String id = "batch-" + index;
+            String id = "batch-" + index;
             incidents.bind("id", id).add();
             statuses.bind("id", id).add();
           }
@@ -335,8 +350,8 @@ class IncidentGroupTrendSqlIT {
     assertEquals(11, intervalCount(jdbi, null));
   }
 
-  private void verifyWritesBeforeIntervalMigration(final Jdbi jdbi, final String schema) {
-    final var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+  private void verifyWritesBeforeIntervalMigration(Jdbi jdbi, String schema) {
+    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
     jdbi.useHandle(
         handle -> {
           handle.execute("DROP TABLE test_case_incident_open_interval");
@@ -370,7 +385,7 @@ class IncidentGroupTrendSqlIT {
         });
   }
 
-  private void verifyReorderedWrites(final Jdbi jdbi) {
+  private void verifyReorderedWrites(Jdbi jdbi) {
     assertEquals(10L, persistStatus(jdbi, "ordered", "New", 10));
     assertEquals(20L, persistStatus(jdbi, "ordered", "Resolved", 20));
     // Both requests read the old incident before the resolving request obtained the write lock.
@@ -378,7 +393,7 @@ class IncidentGroupTrendSqlIT {
     assertEquals(22L, persistStatus(jdbi, "ordered", "Resolved", 21));
     jdbi.useHandle(
         handle -> {
-          final List<String> periods =
+          List<String> periods =
               handle
                   .createQuery(
                       "SELECT openedAt, closedAt FROM test_case_incident_open_interval WHERE stateId = 'ordered' ORDER BY openedAt")
@@ -398,13 +413,12 @@ class IncidentGroupTrendSqlIT {
         });
   }
 
-  private long persistStatus(
-      final Jdbi jdbi, final String stateId, final String status, final long timestamp) {
+  private long persistStatus(Jdbi jdbi, String stateId, String status, long timestamp) {
     return jdbi.inTransaction(
         handle -> {
-          final var dao = handle.attach(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
-          final String recordId = UUID.randomUUID().toString();
-          final long ordered =
+          var dao = handle.attach(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+          String recordId = UUID.randomUUID().toString();
+          long ordered =
               dao.nextIncidentTimestamp(stateId, "ordered-test", status, timestamp, recordId);
           handle.execute(
               "INSERT INTO test_case_resolution_status_time_series (stateId,id,timestamp,testCaseResolutionStatusType) VALUES (?,?,?,?)",
@@ -417,7 +431,7 @@ class IncidentGroupTrendSqlIT {
         });
   }
 
-  private int intervalCount(final Jdbi jdbi, final String stateId) {
+  private int intervalCount(Jdbi jdbi, String stateId) {
     return jdbi.withHandle(
         handle ->
             handle
@@ -430,15 +444,15 @@ class IncidentGroupTrendSqlIT {
                 .one());
   }
 
-  private void verifyWritesAndDeletion(final Jdbi jdbi) {
-    final var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+  private void verifyWritesAndDeletion(Jdbi jdbi) {
+    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
     dao.upsertIncident("live", "live-test", "New", null, null, 10, "1", false);
     dao.upsertIncident("live", "live-test", "Ack", null, null, 20, "2", false);
     dao.upsertIncident("live", "live-test", "Assigned", null, null, 30, "3", false);
     assertEquals(1, intervalCount(jdbi, "live"));
     dao.upsertIncident("live", "live-test", "Resolved", null, null, 40, "4", false);
     dao.upsertIncident("live", "live-test", "Resolved", null, null, 50, "5", false);
-    final long closedAt =
+    long closedAt =
         jdbi.withHandle(
             handle ->
                 handle
@@ -453,7 +467,7 @@ class IncidentGroupTrendSqlIT {
     assertEquals(0, intervalCount(jdbi, "live"));
   }
 
-  private void verifyRollback(final Jdbi jdbi) {
+  private void verifyRollback(Jdbi jdbi) {
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -465,7 +479,7 @@ class IncidentGroupTrendSqlIT {
                   throw new IllegalStateException("rollback");
                 }));
     assertEquals(0, intervalCount(jdbi, "rollback"));
-    final int remaining =
+    int remaining =
         jdbi.withHandle(
             handle ->
                 handle
@@ -477,9 +491,9 @@ class IncidentGroupTrendSqlIT {
   }
 
   private void verifyRecordDeletion(
-      final Jdbi jdbi, final CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO dao) {
-    final UUID opening = UUID.randomUUID();
-    final UUID closing = UUID.randomUUID();
+      Jdbi jdbi, CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO dao) {
+    UUID opening = UUID.randomUUID();
+    UUID closing = UUID.randomUUID();
     jdbi.useHandle(
         handle -> {
           handle.execute(
@@ -498,7 +512,7 @@ class IncidentGroupTrendSqlIT {
     assertEquals("New", summaryField(jdbi, "delete", "testCaseResolutionStatusType"));
     assertEquals(opening.toString(), summaryField(jdbi, "delete", "latestRecordId"));
     assertEquals("10", summaryField(jdbi, "delete", "updatedAt"));
-    final UUID assigned = UUID.randomUUID();
+    UUID assigned = UUID.randomUUID();
     jdbi.useHandle(
         handle ->
             handle.execute(
@@ -518,10 +532,10 @@ class IncidentGroupTrendSqlIT {
     assertEquals(0, intervalCount(jdbi, "delete"));
   }
 
-  private void verifyCapturedDeletion(final Jdbi jdbi) {
-    final var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+  private void verifyCapturedDeletion(Jdbi jdbi) {
+    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
     dao.upsertIncident("old", "recreated_test", "New", null, null, 10, "old_record", false);
-    final List<String> captured = dao.listIncidentIdsForTestCases(List.of("recreated_test"));
+    List<String> captured = dao.listIncidentIdsForTestCases(List.of("recreated_test"));
     assertEquals(List.of("old"), captured);
     dao.upsertIncident("replacement", "recreated_test", "New", null, null, 20, "new_record", false);
     dao.deleteIncidentsByStateIds(captured);
@@ -532,18 +546,18 @@ class IncidentGroupTrendSqlIT {
     dao.deleteIncidentsByStateIds(List.of("replacement"));
   }
 
-  private int bulkDeletionStatementCount(final Jdbi jdbi, final int historyLength) {
-    final List<UUID> history =
+  private int bulkDeletionStatementCount(Jdbi jdbi, int historyLength) {
+    List<UUID> history =
         IntStream.range(0, historyLength).mapToObj(i -> UUID.randomUUID()).toList();
-    final UUID legacy = UUID.randomUUID();
-    final var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    UUID legacy = UUID.randomUUID();
+    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
     dao.upsertIncident(
         "bulk", "bulk_test", "New", null, null, 10, history.getLast().toString(), false);
-    final Set<UUID> expected = new HashSet<>(history);
+    Set<UUID> expected = new HashSet<>(history);
     expected.add(legacy);
     jdbi.useHandle(
         handle -> {
-          for (final UUID id : expected) {
+          for (UUID id : expected) {
             handle.execute(
                 "INSERT INTO test_case_resolution_status_time_series (stateId,id,timestamp) VALUES (?,?,10)",
                 id.equals(legacy) ? null : "bulk",
@@ -553,12 +567,12 @@ class IncidentGroupTrendSqlIT {
                 id.toString());
           }
         });
-    final AtomicInteger statements = new AtomicInteger();
-    final Set<UUID> removed = new HashSet<>();
+    AtomicInteger statements = new AtomicInteger();
+    Set<UUID> removed = new HashSet<>();
     jdbi.setSqlLogger(
         new SqlLogger() {
           @Override
-          public void logBeforeExecution(final StatementContext context) {
+          public void logBeforeExecution(StatementContext context) {
             statements.incrementAndGet();
           }
         });
@@ -592,9 +606,9 @@ class IncidentGroupTrendSqlIT {
     return statements.get();
   }
 
-  private void verifyMovedOwner(final Jdbi jdbi) {
-    final var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
-    final UUID record = UUID.randomUUID();
+  private void verifyMovedOwner(Jdbi jdbi) {
+    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    UUID record = UUID.randomUUID();
     dao.upsertIncident("moved", "before_move", "New", null, null, 10, record.toString(), false);
     jdbi.useHandle(
         handle -> {
@@ -629,7 +643,7 @@ class IncidentGroupTrendSqlIT {
     jdbi.useHandle(handle -> handle.execute("DELETE FROM test_case WHERE id = 'moved_owner'"));
   }
 
-  private Long openedAt(final Jdbi jdbi, final String stateId) {
+  private Long openedAt(Jdbi jdbi, String stateId) {
     return jdbi.withHandle(
         handle ->
             handle
@@ -641,7 +655,7 @@ class IncidentGroupTrendSqlIT {
                 .orElse(null));
   }
 
-  private String summaryField(final Jdbi jdbi, final String stateId, final String field) {
+  private String summaryField(Jdbi jdbi, String stateId, String field) {
     return jdbi.withHandle(
         handle ->
             handle

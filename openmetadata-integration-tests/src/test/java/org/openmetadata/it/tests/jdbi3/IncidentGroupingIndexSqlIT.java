@@ -17,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -43,19 +45,18 @@ class IncidentGroupingIndexSqlIT {
     ScratchDatabase.withJdbi(jdbi -> runChecks(jdbi, true));
   }
 
-  private void runChecks(final Jdbi jdbi, final boolean mysql) {
-    final String prefix = "表".repeat(3071);
-    final String existingName = prefix + "甲";
-    final String newName = prefix + "乙";
+  private void runChecks(Jdbi jdbi, boolean mysql) {
+    String prefix = "表".repeat(3071);
+    String existingName = prefix + "甲";
+    String newName = prefix + "乙";
     jdbi.useHandle(
         handle -> {
-          final String json = mysql ? "JSON" : "JSONB";
-          final String id = mysql ? "JSON_UNQUOTE(JSON_EXTRACT(json,'$.id'))" : "json->>'id'";
-          final String deleted =
-              mysql ? "JSON_EXTRACT(json,'$.deleted')" : "(json->>'deleted')::boolean";
-          final String link = mysql ? "json ->> '$.entityLink'" : "json ->> 'entityLink'";
-          final String fqn = mysql ? "json ->> '$.entityFQN'" : "json ->> 'entityFQN'";
-          final String hashType =
+          String json = mysql ? "JSON" : "JSONB";
+          String id = mysql ? "JSON_UNQUOTE(JSON_EXTRACT(json,'$.id'))" : "json->>'id'";
+          String deleted = mysql ? "JSON_EXTRACT(json,'$.deleted')" : "(json->>'deleted')::boolean";
+          String link = mysql ? "json ->> '$.entityLink'" : "json ->> 'entityLink'";
+          String fqn = mysql ? "json ->> '$.entityFQN'" : "json ->> 'entityFQN'";
+          String hashType =
               mysql ? "VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin" : "VARCHAR(768)";
           handle.execute(
               "CREATE TABLE SERVER_MIGRATION_SQL_LOGS (version VARCHAR(256), sqlStatement VARCHAR(10000), checksum VARCHAR(256) PRIMARY KEY, executedAt TIMESTAMP)");
@@ -147,16 +148,12 @@ class IncidentGroupingIndexSqlIT {
     assertEquals(newName, table(jdbi, "a".repeat(768)));
   }
 
-  private void applySchema(final Jdbi jdbi, final boolean mysql) {
+  private void applySchema(Jdbi jdbi, boolean mysql) {
     applySchema(jdbi, mysql, Integer.MAX_VALUE);
   }
 
-  private void applySchema(final Jdbi jdbi, final boolean mysql, final int statementLimit) {
-    final File file =
-        new File(
-            "../bootstrap/sql/migrations/native/2.1.1/"
-                + (mysql ? "mysql" : "postgres")
-                + "/schemaChanges.sql");
+  private void applySchema(Jdbi jdbi, boolean mysql, int statementLimit) {
+    File file = migrationFile(mysql ? "mysql" : "postgres");
     jdbi.useHandle(
         handle ->
             MigrationProcessImpl.performSqlExecutionAndUpdate(
@@ -171,15 +168,23 @@ class IncidentGroupingIndexSqlIT {
                 false));
   }
 
-  private void insertCase(
-      final Handle handle,
-      final String hash,
-      final String id,
-      final String link,
-      final boolean mysql) {
-    final String entityFqn =
+  private static File migrationFile(String dialect) {
+    Path current = Path.of(System.getProperty("basedir", ".")).toAbsolutePath();
+    while (current != null && !Files.isDirectory(current.resolve("bootstrap/sql/migrations"))) {
+      current = current.getParent();
+    }
+    if (current == null) {
+      throw new IllegalStateException("Could not locate bootstrap/sql/migrations directory");
+    }
+    return current
+        .resolve("bootstrap/sql/migrations/native/2.1.1/%s/schemaChanges.sql".formatted(dialect))
+        .toFile();
+  }
+
+  private void insertCase(Handle handle, String hash, String id, String link, boolean mysql) {
+    String entityFqn =
         link.substring("<#E::table::".length(), link.length() - 1).replace("::columns::", ".");
-    final String json =
+    String json =
         "{\"id\":\""
             + id
             + "\",\"entityLink\":\""
@@ -197,7 +202,7 @@ class IncidentGroupingIndexSqlIT {
         .execute();
   }
 
-  private String table(final Jdbi jdbi, final String hash) {
+  private String table(Jdbi jdbi, String hash) {
     return jdbi.withHandle(
         handle ->
             handle
@@ -208,7 +213,7 @@ class IncidentGroupingIndexSqlIT {
                 .orElse(null));
   }
 
-  private boolean deleted(final Jdbi jdbi) {
+  private boolean deleted(Jdbi jdbi) {
     return jdbi.withHandle(
         handle ->
             handle
