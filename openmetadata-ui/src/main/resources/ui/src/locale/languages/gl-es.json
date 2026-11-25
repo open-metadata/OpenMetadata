@@ -6712,6 +6712,7 @@
     "retention-period-description": "O período de retención refírese á duración durante a cal os datos se conservan antes de consideralos elixibles para a eliminación ou o arquivado. Exemplo: 30 días, 6 meses, 1 ano ou calquera formato ISO 8601 en UTC como P23DT23H será válido.",
     "retention-sla-description": "<0>{{label}}</0>: Os datos deben conservarse por <0>{{data}}</0>.",
     "review-submitted-task-count": "Revisión enviada · {{count}} tarefa(s) actualizada(s)",
+    "reviewer-multiple-users-or-single-team": "Seleccione varios usuarios ou un só equipo como revisores.",
     "revise-and-resubmit-message": "Revisar e volver enviar",
     "role-granting-description": "Roles que che conceden os teus permisos",
     "role-granting-description-of-user": "Roles que outorgan os permisos de {{name}}.",

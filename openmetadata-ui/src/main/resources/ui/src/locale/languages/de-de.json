@@ -6712,6 +6712,7 @@
     "retention-period-description": "Die Aufbewahrungsfrist bezieht sich auf die Dauer, für die Daten gespeichert werden, bevor sie für die Löschung oder Archivierung in Betracht gezogen werden. Beispiel: 30 Tage, 6 Monate, 1 Jahr oder jedes gültige ISO-8601-Format in UTC wie P23DT23H.",
     "retention-sla-description": "<0>{{label}}</0>: Daten sollten für <0>{{data}}</0> aufbewahrt werden.",
     "review-submitted-task-count": "Prüfung eingereicht · {{count}} Aufgabe(n) aktualisiert",
+    "reviewer-multiple-users-or-single-team": "Wählen Sie entweder mehrere Benutzer oder ein einzelnes Team als Prüfer aus.",
     "revise-and-resubmit-message": "Überarbeiten und erneut einreichen",
     "role-granting-description": "Rollen, die Ihre Berechtigungen gewähren",
     "role-granting-description-of-user": "Rollen, die {{name}} Berechtigungen gewähren.",

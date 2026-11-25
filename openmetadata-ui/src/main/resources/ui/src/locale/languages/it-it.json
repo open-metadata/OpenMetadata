@@ -6712,6 +6712,7 @@
     "retention-period-description": "Il periodo di conservazione indica la durata per cui i dati vengono conservati prima di essere considerati idonei all'eliminazione o all'archiviazione. Esempio: sono validi 30 giorni, 6 mesi, 1 anno o qualsiasi formato ISO 8601 in UTC come P23DT23H.",
     "retention-sla-description": "<0>{{label}}</0>: i dati devono essere conservati per <0>{{data}}</0>",
     "review-submitted-task-count": "Revisione inviata · {{count}} task aggiornati",
+    "reviewer-multiple-users-or-single-team": "Seleziona più utenti o un singolo team come revisori.",
     "revise-and-resubmit-message": "Rivedi e invia di nuovo",
     "role-granting-description": "Ruoli che ti concedono i permessi",
     "role-granting-description-of-user": "Ruoli che concedono i permessi di {{name}}.",

@@ -6712,6 +6712,7 @@
     "retention-period-description": "साठवण कालावधी म्हणजे डेटा हटविण्यासाठी किंवा संग्रहित करण्यासाठी पात्र मानला जाण्यापूर्वी डेटा ज्या कालावधीसाठी ठेवला जातो. उदाहरण: 30 दिवस, 6 महिने, 1 वर्ष किंवा कोणताही ISO 8601 स्वरूप UTC मध्ये जसे P23DT23H वैध असेल.",
     "retention-sla-description": "<0>{{label}}</0>: डेटा <0>{{data}}</0> वेळेपर्यंत राखावा.",
     "review-submitted-task-count": "पुनरावलोकन प्रस्तुत केले · {{count}} कार्ये अद्यतनित",
+    "reviewer-multiple-users-or-single-team": "पुनरावलोकनकर्ते म्हणून अनेक वापरकर्ते किंवा एकल संघ निवडा.",
     "revise-and-resubmit-message": "सुधारणा करा आणि पुन्हा सबमिट करा",
     "role-granting-description": "Roles granting your permissions",
     "role-granting-description-of-user": "{{name}} ला परवानग्या देणाऱ्या भूमिका.",

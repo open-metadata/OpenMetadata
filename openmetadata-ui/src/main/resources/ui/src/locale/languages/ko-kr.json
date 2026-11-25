@@ -6712,6 +6712,7 @@
     "retention-period-description": "보존 기간은 데이터가 삭제 또는 보관 대상으로 간주되기 전에 유지되는 기간을 의미합니다. 예: 30일, 6개월, 1년 또는 P23DT23H와 같은 UTC의 ISO 8601 형식이 유효합니다.",
     "retention-sla-description": "<0>{{label}}</0>: 데이터는 <0>{{data}}</0> 동안 보관되어야 합니다.",
     "review-submitted-task-count": "검토 제출됨 · {{count}}개 작업 업데이트됨",
+    "reviewer-multiple-users-or-single-team": "검토자로 여러 사용자 또는 단일 팀을 선택하세요.",
     "revise-and-resubmit-message": "수정 후 다시 제출",
     "role-granting-description": "Roles granting your permissions",
     "role-granting-description-of-user": "{{name}}에게 권한을 부여하는 역할.",
