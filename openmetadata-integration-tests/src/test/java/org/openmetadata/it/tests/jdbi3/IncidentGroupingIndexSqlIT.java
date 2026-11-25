@@ -10,96 +10,52 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
 import java.util.List;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jdbi.v3.sqlobject.SqlObjects;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.it.util.ScratchDatabase;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers(disabledWithoutDocker = true)
 @Execution(ExecutionMode.SAME_THREAD)
-class IncidentGroupingIndexSqlTest {
-  private static final String PASSWORD = "incident-groups-test";
-
+class IncidentGroupingIndexSqlIT {
   @Test
   void indexTracksSourceTransactionsOnPostgres() {
-    try (var database =
-        new GenericContainer<>("postgres:15")
-            .withEnv("POSTGRES_PASSWORD", PASSWORD)
-            .withExposedPorts(5432)
-            .waitingFor(
-                Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2))) {
-      database.start();
-      runChecks(
-          connect(
-              "jdbc:postgresql://%s:%d/postgres"
-                  .formatted(database.getHost(), database.getMappedPort(5432)),
-              "postgres",
-              "org.postgresql.Driver"),
-          false);
-    }
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.POSTGRES, "PostgreSQL only");
+    ScratchDatabase.withJdbi(jdbi -> runChecks(jdbi, false));
   }
 
   @Test
   void indexTracksSourceTransactionsOnMysql() {
-    try (var database =
-        new GenericContainer<>("mysql:8.4.13")
-            .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-            .withEnv("MYSQL_DATABASE", "incident_projection")
-            .withEnv("MYSQL_ROOT_HOST", "%")
-            .withEnv("MYSQL_USER", "incident_app")
-            .withEnv("MYSQL_PASSWORD", PASSWORD)
-            .withExposedPorts(3306)
-            .waitingFor(
-                Wait.forSuccessfulCommand(
-                    "mysql --protocol=TCP --host=127.0.0.1 --user=root --password="
-                        + PASSWORD
-                        + " --execute='SELECT 1'"))) {
-      database.start();
-      runChecks(
-          connect(
-              "jdbc:mysql://%s:%d/incident_projection?allowPublicKeyRetrieval=true&useSSL=false"
-                  .formatted(database.getHost(), database.getMappedPort(3306)),
-              "incident_app",
-              "com.mysql.cj.jdbc.Driver"),
-          true);
-    }
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.MYSQL, "MySQL only");
+    ScratchDatabase.withJdbi(jdbi -> runChecks(jdbi, true));
   }
 
-  private Jdbi connect(String url, String username, String driver) {
-    var jdbi = Jdbi.create(url, username, PASSWORD).installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class).setSqlLocator(new ConnectionAwareAnnotationSqlLocator(driver));
-    return jdbi;
-  }
-
-  private void runChecks(Jdbi jdbi, boolean mysql) {
-    String prefix = "表".repeat(3071);
-    String existingName = prefix + "甲";
-    String newName = prefix + "乙";
+  private void runChecks(final Jdbi jdbi, final boolean mysql) {
+    final String prefix = "表".repeat(3071);
+    final String existingName = prefix + "甲";
+    final String newName = prefix + "乙";
     jdbi.useHandle(
         handle -> {
-          String json = mysql ? "JSON" : "JSONB";
-          String id = mysql ? "JSON_UNQUOTE(JSON_EXTRACT(json,'$.id'))" : "json->>'id'";
-          String deleted = mysql ? "JSON_EXTRACT(json,'$.deleted')" : "(json->>'deleted')::boolean";
-          String link = mysql ? "json ->> '$.entityLink'" : "json ->> 'entityLink'";
-          String fqn = mysql ? "json ->> '$.entityFQN'" : "json ->> 'entityFQN'";
-          String hashType =
+          final String json = mysql ? "JSON" : "JSONB";
+          final String id = mysql ? "JSON_UNQUOTE(JSON_EXTRACT(json,'$.id'))" : "json->>'id'";
+          final String deleted =
+              mysql ? "JSON_EXTRACT(json,'$.deleted')" : "(json->>'deleted')::boolean";
+          final String link = mysql ? "json ->> '$.entityLink'" : "json ->> 'entityLink'";
+          final String fqn = mysql ? "json ->> '$.entityFQN'" : "json ->> 'entityFQN'";
+          final String hashType =
               mysql ? "VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin" : "VARCHAR(768)";
           handle.execute(
               "CREATE TABLE SERVER_MIGRATION_SQL_LOGS (version VARCHAR(256), sqlStatement VARCHAR(10000), checksum VARCHAR(256) PRIMARY KEY, executedAt TIMESTAMP)");
@@ -191,12 +147,12 @@ class IncidentGroupingIndexSqlTest {
     assertEquals(newName, table(jdbi, "a".repeat(768)));
   }
 
-  private void applySchema(Jdbi jdbi, boolean mysql) {
+  private void applySchema(final Jdbi jdbi, final boolean mysql) {
     applySchema(jdbi, mysql, Integer.MAX_VALUE);
   }
 
-  private void applySchema(Jdbi jdbi, boolean mysql, int statementLimit) {
-    File file =
+  private void applySchema(final Jdbi jdbi, final boolean mysql, final int statementLimit) {
+    final File file =
         new File(
             "../bootstrap/sql/migrations/native/2.1.1/"
                 + (mysql ? "mysql" : "postgres")
@@ -215,10 +171,15 @@ class IncidentGroupingIndexSqlTest {
                 false));
   }
 
-  private void insertCase(Handle handle, String hash, String id, String link, boolean mysql) {
-    String entityFqn =
+  private void insertCase(
+      final Handle handle,
+      final String hash,
+      final String id,
+      final String link,
+      final boolean mysql) {
+    final String entityFqn =
         link.substring("<#E::table::".length(), link.length() - 1).replace("::columns::", ".");
-    String json =
+    final String json =
         "{\"id\":\""
             + id
             + "\",\"entityLink\":\""
@@ -236,7 +197,7 @@ class IncidentGroupingIndexSqlTest {
         .execute();
   }
 
-  private String table(Jdbi jdbi, String hash) {
+  private String table(final Jdbi jdbi, final String hash) {
     return jdbi.withHandle(
         handle ->
             handle
@@ -247,7 +208,7 @@ class IncidentGroupingIndexSqlTest {
                 .orElse(null));
   }
 
-  private boolean deleted(Jdbi jdbi) {
+  private boolean deleted(final Jdbi jdbi) {
     return jdbi.withHandle(
         handle ->
             handle

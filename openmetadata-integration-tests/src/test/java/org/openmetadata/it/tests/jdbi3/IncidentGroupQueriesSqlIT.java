@@ -10,12 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -23,90 +21,39 @@ import java.util.List;
 import java.util.Map;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
-import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.core.statement.StatementContext;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jdbi.v3.sqlobject.SqlObjects;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.mockito.MockedStatic;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.tests.type.IncidentGroupBy;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.resources.databases.DatasourceConfig;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers(disabledWithoutDocker = true)
 @Execution(ExecutionMode.SAME_THREAD)
-class IncidentGroupQueriesSqlTest {
-  private static final String PASSWORD = "incident-groups-test";
-
+class IncidentGroupQueriesSqlIT {
   @Test
-  void groupsPreservePreviewsWithoutRedundantQueriesOnPostgres() throws Exception {
-    try (var database =
-        new GenericContainer<>("postgres:15")
-            .withEnv("POSTGRES_PASSWORD", PASSWORD)
-            .withExposedPorts(5432)
-            .waitingFor(
-                Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2))) {
-      database.start();
-      runChecks(
-          connect(
-              "jdbc:postgresql://%s:%d/postgres"
-                  .formatted(database.getHost(), database.getMappedPort(5432)),
-              "postgres",
-              "org.postgresql.Driver"),
-          false);
-    }
+  void groupsPreservePreviewsWithoutRedundantQueriesOnPostgres() {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.POSTGRES, "PostgreSQL only");
+    ScratchDatabase.withJdbi(jdbi -> runChecks(jdbi, false));
   }
 
   @Test
-  void groupsPreservePreviewsWithoutRedundantQueriesOnMysql() throws Exception {
-    try (var database =
-        new GenericContainer<>("mysql:8.4.13")
-            .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-            .withEnv("MYSQL_DATABASE", "incident_groups")
-            .withEnv("MYSQL_ROOT_HOST", "%")
-            .withExposedPorts(3306)
-            .waitingFor(
-                Wait.forSuccessfulCommand(
-                    "mysql --protocol=TCP --host=127.0.0.1 --user=root --password="
-                        + PASSWORD
-                        + " --execute='SELECT 1'"))) {
-      database.start();
-      runChecks(
-          connect(
-              "jdbc:mysql://%s:%d/incident_groups?allowPublicKeyRetrieval=true&useSSL=false"
-                  .formatted(database.getHost(), database.getMappedPort(3306)),
-              "root",
-              "com.mysql.cj.jdbc.Driver"),
-          true);
-    }
+  void groupsPreservePreviewsWithoutRedundantQueriesOnMysql() {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.MYSQL, "MySQL only");
+    ScratchDatabase.withJdbi(jdbi -> runChecks(jdbi, true));
   }
 
-  private Jdbi connect(String url, String username, String driver) {
-    var jdbi = Jdbi.create(url, username, PASSWORD).installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class).setSqlLocator(new ConnectionAwareAnnotationSqlLocator(driver));
-    return jdbi;
-  }
-
-  private void runChecks(Jdbi jdbi, boolean mysql) throws Exception {
-    jdbi.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
+  private void runChecks(final Jdbi jdbi, final boolean mysql) {
     createFixture(jdbi, mysql);
-    var config = mock(DatasourceConfig.class);
-    when(config.isMySQL()).thenReturn(mysql);
-    try (MockedStatic<DatasourceConfig> datasource = mockStatic(DatasourceConfig.class)) {
-      datasource.when(DatasourceConfig::getInstance).thenReturn(config);
-      verifyGroups(jdbi);
-    }
+    verifyGroups(jdbi);
   }
 
-  private void createFixture(Jdbi jdbi, boolean mysql) throws Exception {
-    var schema =
+  private void createFixture(final Jdbi jdbi, final boolean mysql) {
+    final var schema =
         MigrationFile.parseSqlUnits(
             new File(
                 "../bootstrap/sql/migrations/native/2.1.1/"
@@ -128,7 +75,7 @@ class IncidentGroupQueriesSqlTest {
           handle.execute(
               "CREATE TABLE test_case_incident (stateId VARCHAR(36) PRIMARY KEY, entityFQNHash VARCHAR(36), testCaseResolutionStatusType VARCHAR(36), severity VARCHAR(36), assignee VARCHAR(36), createdAt BIGINT, updatedAt BIGINT)");
           schema.forEach(unit -> unit.statements().forEach(handle::execute));
-          String[] links = {
+          final String[] links = {
             "<#E::table::table1>",
             "<#E::table::table1::columns::c>",
             "<#E::table::table2>",
@@ -153,17 +100,17 @@ class IncidentGroupQueriesSqlTest {
         });
   }
 
-  private void verifyGroups(Jdbi jdbi) {
-    var statements = new ArrayList<String>();
+  private void verifyGroups(final Jdbi jdbi) {
+    final var statements = new ArrayList<String>();
     jdbi.setSqlLogger(
         new SqlLogger() {
           @Override
-          public void logAfterExecution(StatementContext context) {
+          public void logAfterExecution(final StatementContext context) {
             statements.add(context.getRenderedSql());
           }
         });
-    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
-    var tables =
+    final var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    final var tables =
         dao.listIncidentGroups(
             IncidentGroupBy.Table, new ListFilter(null), "incidentCount DESC", 25, 0);
     assertEquals(
@@ -176,7 +123,7 @@ class IncidentGroupQueriesSqlTest {
     assertEquals(0, tables.counts().getLast().testDefinitionCount());
     assertEquals(2, statements.size(), "Table grouping must not query its own table preview");
     statements.clear();
-    var definitions =
+    final var definitions =
         dao.listIncidentGroups(
             IncidentGroupBy.TestDefinition, new ListFilter(null), "incidentCount DESC", 25, 0);
     assertEquals(
@@ -188,13 +135,13 @@ class IncidentGroupQueriesSqlTest {
     assertEquals(Map.of("d1", List.of("d1"), "d2", List.of("d2")), definitions.testDefinitions());
     assertEquals(
         2, statements.size(), "Definition grouping must not query its own definition preview");
-    var owners =
+    final var owners =
         dao.listIncidentGroups(
             IncidentGroupBy.Owner, new ListFilter(null), "incidentCount DESC", 25, 0);
     assertEquals(2, owners.total());
     assertEquals(Map.of("owner", List.of("table1"), "", List.of("table2")), owners.tables());
     assertEquals(Map.of("owner", List.of("d1", "d2")), owners.testDefinitions());
-    var filtered =
+    final var filtered =
         dao.listIncidentGroups(
             IncidentGroupBy.Table,
             new ListFilter(null).addQueryParam("testCaseResolutionStatusType", "Assigned,Ack"),
@@ -203,12 +150,12 @@ class IncidentGroupQueriesSqlTest {
             0);
     assertEquals(2, filtered.counts().getFirst().incidentCount());
     assertEquals(List.of("table1"), filtered.tables().get("table1"));
-    var last =
+    final var last =
         dao.listIncidentGroups(
             IncidentGroupBy.Table, new ListFilter(null), "incidentCount DESC", 1, 1);
     assertEquals(2, last.total());
     assertEquals(Map.of("table2", List.of("table2")), last.tables());
-    var empty =
+    final var empty =
         dao.listIncidentGroups(
             IncidentGroupBy.Table, new ListFilter(null), "incidentCount DESC", 1, 2);
     assertEquals(2, empty.total());
