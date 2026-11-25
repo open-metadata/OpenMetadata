@@ -10,82 +10,39 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jdbi.v3.sqlobject.SqlObjects;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.it.util.ScratchDatabase;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers(disabledWithoutDocker = true)
 @Execution(ExecutionMode.SAME_THREAD)
-class IncidentGroupingIndexSqlTest {
-  private static final String PASSWORD = "incident-groups-test";
-
+class IncidentGroupingIndexSqlIT {
   @Test
   void indexTracksSourceTransactionsOnPostgres() {
-    try (var database =
-        new GenericContainer<>("postgres:15")
-            .withEnv("POSTGRES_PASSWORD", PASSWORD)
-            .withExposedPorts(5432)
-            .waitingFor(
-                Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2))) {
-      database.start();
-      runChecks(
-          connect(
-              "jdbc:postgresql://%s:%d/postgres"
-                  .formatted(database.getHost(), database.getMappedPort(5432)),
-              "postgres",
-              "org.postgresql.Driver"),
-          false);
-    }
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.POSTGRES, "PostgreSQL only");
+    ScratchDatabase.withJdbi(jdbi -> runChecks(jdbi, false));
   }
 
   @Test
   void indexTracksSourceTransactionsOnMysql() {
-    try (var database =
-        new GenericContainer<>("mysql:8.4.13")
-            .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-            .withEnv("MYSQL_DATABASE", "incident_projection")
-            .withEnv("MYSQL_ROOT_HOST", "%")
-            .withEnv("MYSQL_USER", "incident_app")
-            .withEnv("MYSQL_PASSWORD", PASSWORD)
-            .withExposedPorts(3306)
-            .waitingFor(
-                Wait.forSuccessfulCommand(
-                    "mysql --protocol=TCP --host=127.0.0.1 --user=root --password="
-                        + PASSWORD
-                        + " --execute='SELECT 1'"))) {
-      database.start();
-      runChecks(
-          connect(
-              "jdbc:mysql://%s:%d/incident_projection?allowPublicKeyRetrieval=true&useSSL=false"
-                  .formatted(database.getHost(), database.getMappedPort(3306)),
-              "incident_app",
-              "com.mysql.cj.jdbc.Driver"),
-          true);
-    }
-  }
-
-  private Jdbi connect(String url, String username, String driver) {
-    var jdbi = Jdbi.create(url, username, PASSWORD).installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class).setSqlLocator(new ConnectionAwareAnnotationSqlLocator(driver));
-    return jdbi;
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.MYSQL, "MySQL only");
+    ScratchDatabase.withJdbi(jdbi -> runChecks(jdbi, true));
   }
 
   private void runChecks(Jdbi jdbi, boolean mysql) {
@@ -196,11 +153,7 @@ class IncidentGroupingIndexSqlTest {
   }
 
   private void applySchema(Jdbi jdbi, boolean mysql, int statementLimit) {
-    File file =
-        new File(
-            "../bootstrap/sql/migrations/native/2.1.1/"
-                + (mysql ? "mysql" : "postgres")
-                + "/schemaChanges.sql");
+    File file = migrationFile(mysql ? "mysql" : "postgres");
     jdbi.useHandle(
         handle ->
             MigrationProcessImpl.performSqlExecutionAndUpdate(
@@ -213,6 +166,19 @@ class IncidentGroupingIndexSqlTest {
                     .toList(),
                 "2.1.1",
                 false));
+  }
+
+  private static File migrationFile(String dialect) {
+    Path current = Path.of(System.getProperty("basedir", ".")).toAbsolutePath();
+    while (current != null && !Files.isDirectory(current.resolve("bootstrap/sql/migrations"))) {
+      current = current.getParent();
+    }
+    if (current == null) {
+      throw new IllegalStateException("Could not locate bootstrap/sql/migrations directory");
+    }
+    return current
+        .resolve("bootstrap/sql/migrations/native/2.1.1/%s/schemaChanges.sql".formatted(dialect))
+        .toFile();
   }
 
   private void insertCase(Handle handle, String hash, String id, String link, boolean mysql) {
