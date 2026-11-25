@@ -248,7 +248,7 @@ describe('PipelineDetailsUtils', () => {
 });
 
 describe('getTaskExecStatus', () => {
-  // The server returns a run's task lines oldest first, so a retried task's last try comes last.
+  // The server keeps a run's task lines in the order the connector wrote them, not by time.
   const retriedRun: TaskStatus[] = [
     {
       name: 'flaky',
@@ -273,6 +273,12 @@ describe('getTaskExecStatus', () => {
 
   it('returns the status of the latest try of a task retried within the run', () => {
     expect(getTaskExecStatus('flaky', retriedRun)).toBe(StatusType.Successful);
+  });
+
+  it('returns the latest try when it is not the last line', () => {
+    expect(getTaskExecStatus('flaky', [...retriedRun].reverse())).toBe(
+      StatusType.Successful
+    );
   });
 
   it('returns the status of a task with one line', () => {

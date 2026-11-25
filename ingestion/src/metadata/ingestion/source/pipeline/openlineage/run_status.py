@@ -46,19 +46,24 @@ from metadata.ingestion.source.pipeline.openlineage.models import (
     EventType,
     OpenLineageEvent,
 )
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import datetime_to_timestamp
+
+logger = ingestion_logger()
 
 STATUS_MAP = {
     EventType.START.value: StatusType.Pending,
     EventType.RUNNING.value: StatusType.Pending,
     EventType.COMPLETE.value: StatusType.Successful,
     EventType.FAIL.value: StatusType.Failed,
-    EventType.ABORT.value: StatusType.Failed,
+    # Producers send ABORT for a job that did not run to its end without failing: a skipped or
+    # canceled dbt node, a killed dbt command, a canceled Flink job.
+    EventType.ABORT.value: StatusType.Skipped,
 }
 
 # A run or a try of a step never goes back to an earlier state: Spark sends COMPLETE after
 # a SQL job's FAIL, and events of one run can be read in any order across ingestions.
-_PROGRESS = {StatusType.Pending: 0, StatusType.Successful: 1, StatusType.Failed: 2}
+_PROGRESS = {StatusType.Pending: 0, StatusType.Skipped: 1, StatusType.Successful: 2, StatusType.Failed: 3}
 
 # The server keeps one status per pipeline and timestamp, so two runs whose ids carry the same
 # millisecond cannot share a key: the run read second takes the next free one within this window.
@@ -212,10 +217,16 @@ def build_run_update(event: OpenLineageEvent) -> RunUpdate | None:
     leaves_outcome_to_run = _job_type(event) in _STEPS_THAT_LEAVE_THE_RUN_OUTCOME_TO_IT
     run_key = _uuid7_millis(run_id)
     if run_key is None:
-        # Without a time in the runId, only the run's own final event gives it a stable key.
-        if not is_pipeline_run or ended_at is None:
-            return None
-        run_key = ended_at
+        # A runId without a time (senders before OpenLineage 1.15) gives the run's events no shared
+        # key, so its steps, failures included, cannot join its row: no status beats one that hides them.
+        if is_pipeline_run and ended_at is not None:
+            logger.warning(
+                "Skipping the run status of OpenLineage job %s: its runId %s is not a UUIDv7 (senders before"
+                " OpenLineage 1.15).",
+                job,
+                run_id,
+            )
+        return None
     return RunUpdate(
         run_id=run_id,
         run_key=run_key,

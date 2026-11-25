@@ -16,11 +16,14 @@ event therefore has to find the same row without any state kept between ingestio
 - A run's row has the millisecond embedded in its UUIDv7 `runId` (OpenLineage 1.15 and later) as
   its timestamp, and the `runId` as its `executionId`. Events find their row by `executionId`
   among the pipeline's rows of the next 1000 ms; a run whose millisecond another run holds takes
-  the first free one. A `runId` that is not UUIDv7 carries no time, so only the run's own final
-  event writes a row, keyed by its `eventTime`.
-- START and RUNNING are Pending, COMPLETE is Successful, FAIL and ABORT are Failed: `StatusType`
-  has no aborted value. A run or a step try never goes back in the order Pending, Successful,
-  Failed, so an event read late cannot undo a later one.
+  the first free one. A `runId` that is not UUIDv7 carries no time, so the run's steps, failures
+  included, cannot join its row: the run gets no status, and its own final event logs a warning.
+  A row from the final event alone would show a Spark application whose step failed as Successful.
+- START and RUNNING are Pending, COMPLETE is Successful, FAIL is Failed, and ABORT is Skipped:
+  producers send ABORT for a job stopped without failing (a skipped, canceled or killed dbt node
+  or command, a canceled Flink job), as the dbt Cloud connector maps a canceled run. A run or a
+  step try never goes back in the order Pending, Skipped, Successful, Failed, so an event read
+  late cannot undo a later one.
 - The run's own events set the row's status. A failed step fails the run too, except an Airflow
   task (`jobType` TASK): a retry or a trigger rule can still let the DAG run succeed, and the DAG
   run sends its own FAIL. A Spark application always ends with COMPLETE, so this is how its failed
@@ -48,8 +51,8 @@ event therefore has to find the same row without any state kept between ingestio
 
 ## Consequences
 Rows are stable whichever ingestion reads an event and in whatever order, at the cost of one status
-read per event. More than 1000 runs of one pipeline starting in the same second, or senders older
-than OpenLineage 1.15, lose rows or step lines. A task that fails on every try reports the first
+read per event. More than 1000 runs of one pipeline starting in the same second lose rows, and runs
+of senders older than OpenLineage 1.15 (Spark, Airflow before mid-2024) get no status. A task that fails on every try reports the first
 try's error, or a later try's when another task failed while it was retried or the first try is read
 after a later one started. A run whose first failed step is later retried successfully names the
 step that still fails but not its message, and a DAG run whose own failure was read before that

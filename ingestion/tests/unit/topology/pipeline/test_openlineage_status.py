@@ -222,7 +222,7 @@ def lines(status: PipelineStatus) -> list[tuple]:
         ("RUNNING", StatusType.Pending),
         ("COMPLETE", StatusType.Successful),
         ("FAIL", StatusType.Failed),
-        ("ABORT", StatusType.Failed),
+        ("ABORT", StatusType.Skipped),
         ("OTHER", None),
     ],
 )
@@ -235,6 +235,19 @@ def test_application_event_type_sets_the_run_status(source, server, event_type, 
         assert rows[0].executionId == OK_RUN_ID
         assert rows[0].timestamp.root == OK_RUN_KEY
         assert rows[0].taskStatus == []
+
+
+def test_aborted_step_is_skipped_and_does_not_fail_its_run(source, server):
+    """dbt sends ABORT for a model it skipped: the model did not run, it did not fail."""
+    events = whole_run("successful_run")
+    events[5] = event("successful_run", 5, eventType="ABORT")
+
+    ingest(source, server, events)
+
+    row = server.statuses[(OK_PIPELINE, OK_RUN_KEY)]
+    assert row.executionStatus == StatusType.Successful
+    assert row.error is None
+    assert {name: status for name, status, *_ in lines(row)}["deserialize_to_object"] == StatusType.Skipped
 
 
 def test_successful_run_is_one_row_with_a_line_per_job(source, server):
@@ -322,21 +335,25 @@ def test_tasks_read_before_the_dag_run_start_are_kept(source, server):
     ]
 
 
-def test_run_ids_without_a_timestamp_report_only_the_application_outcome(source, server):
+@pytest.mark.parametrize("run_id", [UUID4_RUN_ID, "spark-app-0001"])
+def test_run_whose_id_has_no_timestamp_writes_no_status_and_warns_once(source, server, caplog, run_id):
+    """Its failed SQL job cannot join the run's row, so the run must not show as Successful."""
     start = event("successful_run", 0)
-    start.run_facet["runId"] = UUID4_RUN_ID
+    start.run_facet["runId"] = run_id
     complete = event("successful_run", 7)
-    complete.run_facet["runId"] = UUID4_RUN_ID
+    complete.run_facet["runId"] = run_id
     child_failure = event("failed_run", 4)
-    child_failure.run_facet["facets"]["parent"]["run"]["runId"] = UUID4_RUN_ID
+    child_failure.run_facet["facets"]["parent"]["run"]["runId"] = run_id
 
-    ingest(source, server, [start, complete, child_failure])
+    with caplog.at_level("WARNING"):
+        results = ingest(source, server, [start, complete, child_failure])
 
-    assert list(server.statuses) == [(OK_PIPELINE, 1794900878780)]
-    row = server.statuses[(OK_PIPELINE, 1794900878780)]
-    assert row.executionStatus == StatusType.Successful
-    assert row.executionId == UUID4_RUN_ID
-    assert lines(row) == []
+    assert results == []
+    assert server.statuses == {}
+    assert [record.getMessage() for record in caplog.records if "is not a UUIDv7" in record.getMessage()] == [
+        f"Skipping the run status of OpenLineage job {complete.job['name']}: its runId {run_id} is not a UUIDv7"
+        " (senders before OpenLineage 1.15)."
+    ]
 
 
 def test_failed_status_read_is_reported_and_writes_nothing(source, server):
@@ -452,16 +469,6 @@ def test_job_event_with_an_incomplete_parent_facet_writes_nothing(source, server
 
     assert [result.right for result in results] == []
     assert server.statuses[(OK_PIPELINE, OK_RUN_KEY)].taskStatus == []
-
-
-def test_run_id_that_is_not_a_uuid_is_keyed_like_any_run_id_without_a_timestamp(source, server):
-    complete = event("successful_run", 7)
-    complete.run_facet["runId"] = "spark-app-0001"
-
-    results = ingest(source, server, [complete])
-
-    assert [result.left for result in results] == [None]
-    assert server.statuses[(OK_PIPELINE, 1794900878780)].executionStatus == StatusType.Successful
 
 
 def test_failed_sql_job_records_the_failure_when_its_application_start_was_never_read(source, server):
