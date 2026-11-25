@@ -28,7 +28,6 @@ import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.mcp.server.auth.validators.IdTokenValidator;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
-import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.SystemRepository;
@@ -95,19 +94,7 @@ public class McpCallbackServlet extends HttpServlet {
   }
 
   protected AuthenticationCodeFlowHandler resolveSsoHandler() {
-    try {
-      var authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
-      if (authConfig == null
-          || authConfig.getProvider() == null
-          || authConfig.getProvider() == AuthProvider.BASIC
-          || authConfig.getProvider() == AuthProvider.LDAP) {
-        return null;
-      }
-      return AuthenticationCodeFlowHandler.getInstance();
-    } catch (Exception e) {
-      LOG.warn("SSO handler not available: {}", e.getMessage());
-      return null;
-    }
+    return userSSOProvider.getSsoHandler(getServletConfig() == null ? null : getServletContext());
   }
 
   private String resolveBaseUrl() {

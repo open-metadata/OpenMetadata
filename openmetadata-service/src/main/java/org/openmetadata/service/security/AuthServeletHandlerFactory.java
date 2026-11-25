@@ -57,6 +57,9 @@ public class AuthServeletHandlerFactory {
       case AWS_COGNITO:
         // OIDC providers use AuthenticationCodeFlowHandler
         LOG.info("OIDC provider {} detected, clientType: {}", provider, authConfig.getClientType());
+        if (ClientType.PUBLIC.equals(authConfig.getClientType())) {
+          return new PublicOidcAuthServletHandler(authConfig, authzConfig, sessionService);
+        }
         if (ClientType.CONFIDENTIAL.equals(authConfig.getClientType())) {
           try {
             AuthenticationCodeFlowHandler handler =
@@ -76,8 +79,7 @@ public class AuthServeletHandlerFactory {
           }
         }
         LOG.warn(
-            "OIDC provider {} requires CONFIDENTIAL client type, but got: {}. "
-                + "Set AUTHENTICATION_CLIENT_TYPE=confidential to enable SSO.",
+            "OIDC provider {} has unsupported client type: {}.",
             provider,
             authConfig.getClientType());
         return NoopAuthServeletHandler.getInstance();

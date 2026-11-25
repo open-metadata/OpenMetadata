@@ -56,7 +56,8 @@ public final class SsoConfigs {
         .withProviderName(PROVIDER_NAME)
         .withClientType(ClientType.PUBLIC)
         .withAuthority(provider.issuer())
-        .withClientId(MockOidcProvider.CLIENT_ID)
+        .withClientId(provider.clientId())
+        .withOidcConfiguration(null)
         .withCallbackUrl(SsoServer.url(SsoServer.CALLBACK_PATH))
         .withPublicKeyUrls(List.of(provider.jwksUri()));
     return config;

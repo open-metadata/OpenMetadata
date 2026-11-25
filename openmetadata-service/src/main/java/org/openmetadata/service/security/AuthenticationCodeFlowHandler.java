@@ -168,6 +168,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   private static volatile AuthenticationCodeFlowHandler latestInstance;
 
+  private final boolean publicMcpClient;
   private OidcClient client;
   private List<String> claimsOrder;
   private Map<String, String> claimsMapping;
@@ -222,6 +223,14 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       AuthenticationConfiguration authenticationConfiguration,
       AuthorizerConfiguration authorizerConfiguration,
       SessionService sessionService) {
+    this(authenticationConfiguration, authorizerConfiguration, sessionService, false);
+  }
+
+  AuthenticationCodeFlowHandler(
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConfiguration,
+      SessionService sessionService,
+      boolean publicMcpClient) {
     // Assert oidcConfig and Callback Url
     CommonHelper.assertNotNull(
         "OidcConfiguration", authenticationConfiguration.getOidcConfiguration());
@@ -238,8 +247,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         new OidcProviderTokenRefresher(
             grant -> createTokenRequest(client.getConfiguration(), clientAuthentication, grant),
             request -> executeTokenHttpRequest(client.getConfiguration(), request));
+    this.publicMcpClient = publicMcpClient;
     initializeFields();
-    latestInstance = this;
+    if (!publicMcpClient) {
+      latestInstance = this;
+    }
   }
 
   public static AuthenticationCodeFlowHandler getInstance() {
@@ -273,7 +285,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   private void initializeFields() {
-    this.client = buildOidcClient(authenticationConfiguration.getOidcConfiguration());
+    this.client =
+        buildOidcClient(authenticationConfiguration.getOidcConfiguration(), publicMcpClient);
     client.setCallbackUrl(authenticationConfiguration.getOidcConfiguration().getCallbackUrl());
     // Create the OIDC metadata resolver during single-threaded startup so concurrent logins never
     // race to lazily initialize it. pac4j 6 normally does this in client.init(), but OM does not
@@ -345,16 +358,21 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   static OidcClient buildOidcClient(OidcClientConfig clientConfig) {
+    return buildOidcClient(clientConfig, false);
+  }
+
+  private static OidcClient buildOidcClient(
+      OidcClientConfig clientConfig, boolean publicMcpClient) {
     String id = clientConfig.getId();
     String secret = clientConfig.getSecret();
-    if (CommonHelper.isNotBlank(id) && CommonHelper.isNotBlank(secret)) {
+    if (CommonHelper.isNotBlank(id) && (publicMcpClient || CommonHelper.isNotBlank(secret))) {
       OidcConfiguration configuration = new OidcConfiguration();
       configuration.setClientId(id);
 
       configuration.setResponseMode("query");
 
       // Add Secret
-      if (CommonHelper.isNotBlank(secret)) {
+      if (!publicMcpClient && CommonHelper.isNotBlank(secret)) {
         configuration.setSecret(secret);
       }
 
@@ -447,6 +465,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         oidcClient = new OidcClient(configuration);
       }
 
+      if (publicMcpClient) {
+        final OidcConfiguration publicConfiguration = oidcClient.getConfiguration();
+        publicConfiguration.setWithState(true);
+        publicConfiguration.setUseNonce(true);
+        publicConfiguration.setDisablePkce(false);
+        publicConfiguration.setPkceMethod(CodeChallengeMethod.S256);
+      }
       oidcClient.setName(String.format("OMOidcClient%s", oidcClient.getName()));
       return oidcClient;
     }
@@ -550,8 +575,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         && Arrays.stream(prompt.split("\\s+")).anyMatch(FORCED_LOGIN_PROMPT::equalsIgnoreCase);
   }
 
+  public String getMcpCallbackUrl() {
+    return serverUrl + MCP_CALLBACK_PATH;
+  }
+
   private boolean isMcpRedirectUri(String redirectUri) {
-    return (serverUrl + MCP_CALLBACK_PATH).equals(redirectUri);
+    return getMcpCallbackUrl().equals(redirectUri);
   }
 
   /**

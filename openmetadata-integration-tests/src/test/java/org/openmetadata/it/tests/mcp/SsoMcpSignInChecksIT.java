@@ -22,6 +22,7 @@ import org.openmetadata.it.sso.browser.SsoBrowser;
 import org.openmetadata.it.sso.browser.SsoNavigation;
 import org.openmetadata.it.sso.config.SecurityConfigSwap;
 import org.openmetadata.it.sso.config.SsoConfigs;
+import org.openmetadata.it.sso.config.SsoServer;
 import org.openmetadata.it.sso.oidc.MockOidcIdentity;
 import org.openmetadata.it.sso.oidc.MockOidcProvider;
 import org.openmetadata.it.sso.oidc.OidcProviderProfile;
@@ -237,25 +238,41 @@ class SsoMcpSignInChecksIT extends McpSignInTestBase {
     }
   }
 
-  /** A public OIDC client has no server-side login for the MCP sign-in to hand over to. */
   @Test
-  void gapPublicOidcClientCannotSignIn() throws Throwable {
-    securityConfig.withVariant(
-        config -> SsoConfigs.publicOidc(securityConfig.originalCopy(), provider),
-        () -> {
-          provider.clearJournal();
-          JsonNode server = discoverAuthorizationServer();
-          Authorization authorization = authorizationFor(CLIENT, server, register(CLIENT, server));
+  void publicOidcClientSignsInAndCallsATool(TestNamespace ns) throws Throwable {
+    try (MockOidcProvider publicProvider = MockOidcProvider.startPublicClient()) {
+      securityConfig.withVariant(
+          config -> SsoConfigs.publicOidc(config, publicProvider),
+          () -> {
+            User user = createUser(new CreateUser(), ns.shortPrefix("public"));
+            try {
+              publicProvider.signIn(MockOidcIdentity.forEmail(user.getEmail()));
+              assertClientConnects(CLIENT, user, this::approveConsent);
 
-          SsoNavigation navigation = navigateUntilTheClient(server, authorization);
-
-          assertThat(navigation.finalUrl().toString())
-              .as(navigation.describe())
-              .startsWith(CLIENT.redirectUri())
-              .contains("error=authorization_failed");
-          // The sign-in stops at the server: the provider is never asked to authorize.
-          assertThat(provider.authorizeRequests()).isEmpty();
-        });
+              assertThat(publicProvider.authorizeRequests()).hasSize(1);
+              assertThat(publicProvider.tokenRequests()).hasSize(1);
+              var authorization = publicProvider.authorizeRequests().getFirst();
+              var exchange = publicProvider.tokenRequests().getFirst();
+              String callback = SsoServer.url(SsoServer.CALLBACK_PATH);
+              assertThat(authorization.parameter("state")).isNotBlank();
+              assertThat(authorization.parameter("nonce")).isNotBlank();
+              assertThat(exchange.parameter("code_verifier")).isNotBlank();
+              assertThat(authorization.parameters())
+                  .containsEntry("client_id", publicProvider.clientId())
+                  .containsEntry("redirect_uri", callback)
+                  .containsEntry("code_challenge_method", "S256")
+                  .containsEntry("code_challenge", s256(exchange.parameter("code_verifier")));
+              assertThat(exchange.parameters())
+                  .containsEntry("grant_type", "authorization_code")
+                  .containsEntry("client_id", publicProvider.clientId())
+                  .containsEntry("redirect_uri", callback)
+                  .doesNotContainKey("client_secret");
+              assertThat(exchange.authorization()).isNull();
+            } finally {
+              hardDelete(user);
+            }
+          });
+    }
   }
 
   private User signedInUser(TestNamespace ns) {

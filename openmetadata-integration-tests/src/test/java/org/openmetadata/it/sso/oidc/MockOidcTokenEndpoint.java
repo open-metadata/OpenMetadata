@@ -152,6 +152,12 @@ final class MockOidcTokenEndpoint implements HttpHandler {
 
   private boolean isRegisteredClient(HttpExchange exchange, Map<String, String> form) {
     String authorization = exchange.getRequestHeaders().getFirst(MockHttp.AUTHORIZATION);
+    if (clientSecret == null) {
+      return authorization == null
+          && !form.containsKey(CLIENT_SECRET)
+          && clientId.equals(form.get(CLIENT_ID))
+          && GRANT_AUTHORIZATION_CODE.equals(form.get(GRANT_TYPE));
+    }
     String[] credentials =
         authorization == null
             ? new String[] {form.get(CLIENT_ID), form.get(CLIENT_SECRET)}

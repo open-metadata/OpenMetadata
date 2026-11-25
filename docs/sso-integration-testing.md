@@ -83,7 +83,7 @@ reports success.
 | Session renewal | `SsoTokenRenewalIT` | RN-01 to RN-09, RN-12, RN-16 |
 | Provider shapes (Okta, Google, Auth0, Cognito, Keycloak, Entra) | `SsoOidcProviderProfilesIT` | OC-02, OC-03, OP-01 per provider |
 | MCP client sign-in, per recorded client profile | `SsoMcpClientProfilesIT` | confidential OIDC and the password form |
-| MCP sign-in per provider shape, refusals and known gaps | `SsoMcpSignInChecksIT` | provider shapes, code replay, consent denial, cross-client refresh, no account, `gap...` |
+| MCP sign-in per provider shape, refusals and known gaps | `SsoMcpSignInChecksIT` | public client sign-in with S256 PKCE, confidential provider shapes, code replay, consent denial, cross-client refresh, no account, `gap...` |
 
 SAML, LDAP, identity resolution, role sync, settings changes, Test Login, multi-node sessions and
 SCIM follow the same pattern and are added phase by phase.

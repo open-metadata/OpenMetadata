@@ -1,10 +1,10 @@
 # The MCP callback needs the state of a pending login
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-25 (public OIDC clients)
 - **Deciders:** Vishnu Jain
 - **Guard:** `McpCallbackServletTest` (`doGet_idTokenWithoutState_returns400AndIssuesNoCode`)
-- **Related:** #29228, #36655, ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
+- **Related:** #29228, #36655, #38480, ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
 
 ## Context
 
@@ -26,3 +26,12 @@ when its pending request has expired (10 minutes), and that login has to be rest
 - A provider set up to return the ID token in the URL fragment cannot complete an MCP login; it
   needs the authorization-code flow, as the web login does.
 - Adding a second callback path again means repeating every check `handleCallback` makes.
+
+## Amendment — public OIDC clients
+
+MCP uses the same pending login, registered callback and consent step when the OpenMetadata
+OIDC client is public. The server exchanges the provider's authorization code using the public
+client ID and an S256 PKCE verifier. The provider registration must allow that exchange from
+the server and register the OpenMetadata `/callback` URL. The browser's ordinary sign-in keeps
+its own flow. `SsoMcpSignInChecksIT.publicOidcClientSignsInAndCallsATool` exercises both the
+provider exchange and the agent's first tool call.
