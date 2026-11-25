@@ -172,7 +172,7 @@ class DagsterSource(PipelineServiceSource):
         # skip a step that has neither rather than failing the record.
         run_time = run.startTime or run.endTime
         if not run_time:
-            logger.debug(f"Skipping status for run {run.runId}: it has no start or end time")
+            logger.debug("Skipping status for run %s: it has no start or end time", run.runId)
             return
         try:
             # Convert Dagster timestamps from seconds to milliseconds
