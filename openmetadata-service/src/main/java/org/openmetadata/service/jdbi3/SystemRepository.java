@@ -1427,7 +1427,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
         .withDescription(description)
         .withMessage(
             "Vector search service could not be initialized. "
-                + "The embedding client is configured but the OpenSearch vector service failed to start."
+                + "The embedding client is configured but the vector service failed to start."
                 + errorSuffix
                 + " "
                 + configMessage)

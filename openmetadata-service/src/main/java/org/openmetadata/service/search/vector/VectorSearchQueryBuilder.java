@@ -165,8 +165,7 @@ public class VectorSearchQueryBuilder {
 
   /**
    * As {@link #buildNativeESQuery}, constraining context memories to those {@code subjectContext}
-   * may see. Elasticsearch has no chunk index, so this filters memory entity documents, which carry
-   * the same visibility fields.
+   * may see. Memory entity documents and their chunk documents carry the same visibility fields.
    */
   public static String buildNativeESQuery(
       float[] vector,

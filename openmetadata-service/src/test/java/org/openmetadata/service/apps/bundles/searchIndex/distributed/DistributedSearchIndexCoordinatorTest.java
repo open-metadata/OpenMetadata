@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,6 +67,7 @@ import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO.
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO.EntityStatsRecord;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO.SearchIndexPartitionRecord;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchReindexLockDAO;
+import org.openmetadata.service.search.vector.VectorIndexService;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -869,6 +871,124 @@ class DistributedSearchIndexCoordinatorTest {
 
     assertEquals(PartitionStatus.PENDING.name(), statusCaptor.getValue());
     assertEquals(1, retryCaptor.getValue()); // retryCount incremented
+  }
+
+  @Test
+  void aPartitionThatLostAStagedChunkDeleteFailsForGoodAndNoLaterCallRewritesIt() {
+    AtomicReference<SearchIndexPartitionRecord> row = partitionRowInTheDatabase();
+    UUID partitionId = UUID.fromString(row.get().id());
+    String lost = VectorIndexService.UNRECORDED_STAGED_DELETE + ": chunks_g1";
+
+    coordinator.failPartitionWithoutRetry(partitionId, lost);
+    // No node can claim it for a retry: claims take PENDING rows only. A stray worker that still
+    // holds it can neither fail it with another error nor complete it.
+    coordinator.failPartition(partitionId, "read timeout");
+    coordinator.completePartition(partitionId, 2, 0, 0);
+
+    assertEquals(PartitionStatus.FAILED.name(), row.get().status());
+    assertEquals(lost, row.get().lastError());
+    assertEquals(0, row.get().retryCount(), "it never went back to PENDING for a retry");
+  }
+
+  @Test
+  void aRetriedPartitionThatThenLosesAStagedChunkDeleteEndsFailedWithThatError() {
+    AtomicReference<SearchIndexPartitionRecord> row = partitionRowInTheDatabase();
+    UUID partitionId = UUID.fromString(row.get().id());
+    String lost = VectorIndexService.UNRECORDED_STAGED_DELETE + ": chunks_g1";
+
+    coordinator.failPartition(partitionId, "read timeout");
+    assertEquals(PartitionStatus.PENDING.name(), row.get().status(), "an ordinary failure retries");
+    row.set(withState(row.get(), PartitionStatus.PROCESSING.name(), row.get().lastError(), 1));
+    coordinator.failPartitionWithoutRetry(partitionId, lost);
+    coordinator.completePartition(partitionId, 2, 0, 0);
+
+    assertEquals(PartitionStatus.FAILED.name(), row.get().status());
+    assertEquals(lost, row.get().lastError());
+  }
+
+  /** One PROCESSING partition row whose guarded updates behave as the database's do. */
+  private AtomicReference<SearchIndexPartitionRecord> partitionRowInTheDatabase() {
+    AtomicReference<SearchIndexPartitionRecord> row =
+        new AtomicReference<>(
+            new SearchIndexPartitionRecord(
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
+                "table",
+                0,
+                0,
+                5000,
+                5000,
+                7500,
+                50,
+                PartitionStatus.PROCESSING.name(),
+                2500,
+                2500,
+                2400,
+                100,
+                TEST_SERVER_ID,
+                System.currentTimeMillis() - 10000,
+                System.currentTimeMillis() - 10000,
+                null,
+                System.currentTimeMillis() - 1000,
+                null,
+                0,
+                0L));
+    when(partitionDAO.findById(row.get().id())).thenAnswer(invocation -> row.get());
+    when(partitionDAO.updateIfProcessing(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            any(),
+            anyInt()))
+        .thenAnswer(
+            invocation -> {
+              boolean processing = PartitionStatus.PROCESSING.name().equals(row.get().status());
+              if (processing) {
+                row.set(
+                    withState(
+                        row.get(),
+                        invocation.getArgument(1),
+                        invocation.getArgument(11),
+                        invocation.getArgument(12)));
+              }
+              return processing ? 1 : 0;
+            });
+    return row;
+  }
+
+  private static SearchIndexPartitionRecord withState(
+      SearchIndexPartitionRecord row, String status, String lastError, int retryCount) {
+    return new SearchIndexPartitionRecord(
+        row.id(),
+        row.jobId(),
+        row.entityType(),
+        row.partitionIndex(),
+        row.rangeStart(),
+        row.rangeEnd(),
+        row.estimatedCount(),
+        row.workUnits(),
+        row.priority(),
+        status,
+        row.cursor(),
+        row.processedCount(),
+        row.successCount(),
+        row.failedCount(),
+        row.assignedServer(),
+        row.claimedAt(),
+        row.startedAt(),
+        row.completedAt(),
+        row.lastUpdateAt(),
+        lastError,
+        retryCount,
+        row.claimableAt());
   }
 
   @Test
