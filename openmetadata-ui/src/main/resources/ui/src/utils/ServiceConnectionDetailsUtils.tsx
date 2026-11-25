@@ -204,24 +204,24 @@ export const getSchemaProperties = (
       return 0;
     }
 
-    return Object.keys(branchValue)
-      .filter((key) => key in properties)
-      .reduce(
-        (score, key) =>
-          score +
-          1 +
-          getBranchMatchScore(
-            getSchemaProperties(
-              properties[key],
+    return Object.keys(branchValue).reduce(
+      (score, key) =>
+        key in properties
+          ? score +
+            1 +
+            getBranchMatchScore(
+              getSchemaProperties(
+                properties[key],
+                branchValue[key],
+                schema,
+                branchDepth + 1
+              ),
               branchValue[key],
-              schema,
               branchDepth + 1
-            ),
-            branchValue[key],
-            branchDepth + 1
-          ),
-        0
-      );
+            )
+          : score,
+      0
+    );
   };
 
   let merged: Record<string, unknown> = {};
