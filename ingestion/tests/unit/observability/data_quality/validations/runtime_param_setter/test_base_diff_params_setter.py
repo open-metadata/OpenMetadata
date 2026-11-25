@@ -16,6 +16,8 @@ from unittest.mock import patch
 
 import data_diff
 import dsnparse
+import pyodbc
+import pytest
 from data_diff.databases._connect import CustomParseResult
 from sqlalchemy.engine import make_url
 
@@ -386,6 +388,71 @@ def test_azuresql_data_diff_url_passes_connection_options_to_the_mssql_client():
 
     assert client._args["ApplicationIntent"] == "ReadOnly"
     assert client._args["MultiSubnetFailover"] == "Yes"
+
+
+def capture_azuresql_odbc_options(monkeypatch: pytest.MonkeyPatch, db_service: DatabaseService) -> dict[str, str | int]:
+    class DriverReachedError(Exception):
+        pass
+
+    options = {}
+
+    def capture(**kwargs: str | int) -> None:
+        options.update(kwargs)
+        raise DriverReachedError
+
+    monkeypatch.setattr(pyodbc, "connect", capture)
+    source_url = AzureSQLTableParameter().get_data_diff_url(db_service, "azuresql_service.my_db.my_schema.my_table")
+    with data_diff.connect(source_url, 1, shared=False) as client, pytest.raises(DriverReachedError):
+        client.create_connection()
+    return options
+
+
+@pytest.mark.parametrize(
+    ("option", "value"),
+    [
+        ("server", "my-server.database.windows.net"),
+        ("thread_count", "2"),
+        ("Address", "my-server.database.windows.net"),
+    ],
+)
+def test_azuresql_data_diff_uses_the_configured_server(monkeypatch: pytest.MonkeyPatch, option: str, value: str):
+    db_service = azuresql_service()
+    db_service.connection.config.connectionOptions = ConnectionOptions(
+        root={
+            option: value,
+            "ApplicationIntent": "ReadOnly",
+        }
+    )
+
+    options = capture_azuresql_odbc_options(monkeypatch, db_service)
+
+    assert options["server"] == "my-server.database.windows.net"
+    assert "Address" not in options
+    assert options["ApplicationIntent"] == "ReadOnly"
+
+
+@pytest.mark.parametrize(
+    ("authentication_mode", "expected_authentication"),
+    [
+        (None, "SqlPassword"),
+        (
+            AuthenticationMode(authentication=Authentication.ActiveDirectoryPassword),
+            "ActiveDirectoryPassword",
+        ),
+    ],
+)
+def test_azuresql_data_diff_preserves_authentication_precedence(
+    monkeypatch: pytest.MonkeyPatch, authentication_mode: AuthenticationMode | None, expected_authentication: str
+):
+    db_service = azuresql_service(authentication_mode)
+    db_service.connection.config.connectionOptions = ConnectionOptions(
+        root={"authentication": "SqlPassword", "ApplicationIntent": "ReadOnly"}
+    )
+
+    options = capture_azuresql_odbc_options(monkeypatch, db_service)
+
+    assert [value for key, value in options.items() if key.casefold() == "authentication"] == [expected_authentication]
+    assert options["ApplicationIntent"] == "ReadOnly"
 
 
 def test_snowflake_private_key_drops_the_password_from_the_service_url():

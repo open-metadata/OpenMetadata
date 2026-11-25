@@ -104,14 +104,7 @@ class AzureSQLConnection(BaseConnection[AzureSQLConnectionConfig, Engine]):
         host, _, port = connection.hostPort.partition(":")
         scheme = connection.scheme or AzureSQLScheme.mssql_pyodbc
 
-        # connectionOptions used to ride along as query params on the rendered
-        # URL and land in pyodbc's kwargs. This dict replaces that URL, so it
-        # has to carry them or extra ODBC keywords stop applying to diffs. Empty
-        # values are dropped, as the URL dropped them. The derived values below
-        # win: they are what makes domain auth work.
-        options = {key: value for key, value in (get_connection_options_dict(connection) or {}).items() if value}
         connection_dict = {
-            **options,
             "driver": scheme.value,
             "host": host,
             "port": int(port) if port else DEFAULT_SQL_SERVER_PORT,
@@ -125,7 +118,25 @@ class AzureSQLConnection(BaseConnection[AzureSQLConnectionConfig, Engine]):
             connection_dict["Authentication"] = authentication_mode.authentication.value
             connection_dict["Encrypt"] = "yes" if authentication_mode.encrypt else "no"
 
-        return connection_dict
+        # data-diff supplies its own server, schema, driver, and worker count.
+        reserved_options = {
+            "addr",
+            "address",
+            "network address",
+            "odbc_driver",
+            "pwd",
+            "schema",
+            "server",
+            "thread_count",
+            "uid",
+        }
+        reserved_options.update(key.casefold() for key in connection_dict)
+        options = {
+            key: value
+            for key, value in (get_connection_options_dict(connection) or {}).items()
+            if value and key.casefold() not in reserved_options
+        }
+        return {**connection_dict, **options}
 
     def test_connection(
         self,
