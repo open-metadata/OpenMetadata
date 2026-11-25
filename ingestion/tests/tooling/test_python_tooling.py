@@ -395,14 +395,18 @@ def test_cli_v2_runs_contracts_with_connector_worker_counts(nox_repo, connector,
     assert (2, 4) in data.arcs("src/metadata/sample.py")
 
 
-@pytest.mark.parametrize("entrypoint, workers", [("nox", "2"), ("nox", "0"), ("nox", "auto"), ("make", "2")])
-def test_unit_commands_respect_worker_overrides(nox_repo: Path, entrypoint: str, workers: str) -> None:
-    expected = {"2": "2", "0": None, "auto": "1"}[workers]
+@pytest.mark.parametrize(
+    "entrypoint, workers", [("make", None), ("nox", "2"), ("nox", "0"), ("nox", "auto"), ("make", "2")]
+)
+def test_unit_commands_default_to_four_and_respect_overrides(
+    nox_repo: Path, entrypoint: str, workers: str | None
+) -> None:
+    expected = {None: "4", "2": "2", "0": None, "auto": "1"}[workers]
     (nox_repo / "ingestion/tests/unit/test_selection.py").write_text(
         "import os\n\ndef test_worker_count():\n"
         f"    assert os.environ.get('PYTEST_XDIST_WORKER_COUNT') == {expected!r}\n"
     )
-    args = ["-n", workers]
+    args = [] if workers is None else ["-n", workers]
     if entrypoint == "make":
         result = run("make", "unit_ingestion", "ARGS=" + " ".join(args), cwd=nox_repo)
     else:
