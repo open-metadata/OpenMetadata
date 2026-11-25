@@ -40,11 +40,36 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   | raw `<button>`, `<input>`, `<select>`, `<textarea>` in `src/components/**` | `Button`, `Input`, `Select`, `Textarea` |
   | `onKeyDown` handling `ArrowDown`/`ArrowUp` | `Select` / `Dropdown` / `Tabs` (keyboard nav is built in) |
   | `createPortal` overlays | `Modal`, `Popover`, `SlideoutMenu` |
+  | `<h1>`–`<h6>`, `<p>`, a `<span>` with `tw:text-*`/`tw:font-*` | `Typography as="h2" size weight color` |
+  | `<div className="tw:flex …">` / `tw:grid` | `Box` (`direction`/`align`/`gap`/`wrap`) / `Grid` |
+  | `Box` with `tw:bg-*`/border (a surface) | `Card` — `Box` is layout only |
+  | `Typography className="tw:text-tertiary"` (and the other text colours) | the `color` prop (`secondary` renders `text-tertiary`) |
 
-  This table is guidance, not a gate — no linter knows the design system. What CI *does* enforce is
-  that a hand-rolled widget must at least be accessible: `jsx-a11y` blocks an invalid `role`, missing
-  required ARIA props, and unusable tab order. Using the library component is how you satisfy that
-  without writing the ARIA yourself.
+  No linter knows the design system; `jsx-a11y` only enforces that a hand-rolled widget is accessible.
+- **Layout is `Box` and `Grid`, never a styled `div`.** Flex rows/columns → `Box` (`direction`,
+  `align`, `justify`, `gap`, `wrap`, `inline`); grids → `Grid` (`gap`/`rowGap`/`colGap`, `Grid.Item`
+  `span`) — not `<div className="tw:flex|tw:grid …">` or arbitrary `grid-cols-[…]`. `Box`/`Grid`
+  are layout only: no background, border or radius; a bordered or coloured panel is `Card`.
+- **Colour tokens: semantic only, and the right surface** — the full list is `frontend-styling.md`.
+  Card/panel → `Card` or `tw:bg-surface` (never `tw:bg-primary`: it is the page colour in dark, so the
+  card disappears); modal/drawer → `tw:bg-overlay-surface`; popover/menu → `tw:bg-floating`; raw
+  palette (`tw:bg-blue-50`, `tw:text-gray-500`) and hex do not flip → `utility-*` or a semantic token;
+  icons → `tw:text-fg-*`; text colour on `Typography` → its `color` prop. Check every new surface in
+  both themes.
+- **Every new component, hook or util with a branch ships its own test in the same change**
+  (`X.test.tsx` beside it). Assert the rendered outcome or returned value for each branch (empty,
+  error, read-only/permission, each variant), against the real core components — not a mock of
+  them, and not only `toHaveBeenCalled`.
+- **Core first, every time — the UI looks the same only if every feature uses the same components.**
+  Before writing any new component file, read the core export list
+  (`openmetadata-ui-core-components/src/main/resources/ui/src/components/index.ts`) and
+  `src/components/common/`, and use what is there as-is, with its own `variant`/`size`/`color` props.
+  A new file that is mostly one core component plus classes or forwarded props is not a new component:
+  use the core one at the call site (no `FooHeader` around `PageLayout.PageHeader`, no `FooToggle`
+  around `Toggle`, no `FooSegmentedControl` around `ButtonGroup`).
+- **Core missing something is a core fix, not a local variant.** If the call site needs a prop core
+  lacks (a tooltip, a size, a slot), add it to `openmetadata-ui-core-components` (its own PR, with a
+  story and test) and use it directly. Never build a parallel feature-local component to get it.
 - **Icon-only actions are `ButtonUtility`**, never a children-less `Button`, a raw `<button>`, or an
   icon or `div` with `onClick`. Use `tertiary` by default, `secondary` when bordered, and `primary` for
   send/confirm. Size follows the role. Exceptions (feed comment/reply, split-button chevron,

@@ -16,8 +16,12 @@ Every one started as "quicker to write than to find". This rule makes finding ma
    variant.
 2. **Search this repo for the concept, not just a name**: a "status chip" may be called Badge, Pill,
    Tag, or Chip. Grep the visual concept's words and the props you need.
-3. Only then create — and say in the PR why nothing existing fits. A new component with no such
+3. **Never copy an existing component or util to change one call or prop.** Add the prop/callback to
+   the original and import it. A file whose body is mostly another file's is a review blocker.
+4. Only then create — and say in the PR why nothing existing fits. A new component with no such
    justification is a review finding.
+5. **Before handing work back, list every new component file** and, for each, the core/common
+   component you checked. If one forwards props to a core component, delete it and use core.
 
 ## One component per concept — the canon
 
@@ -52,7 +56,9 @@ an interface in `rest/` that mirrors a schema. One `defaultFields` mechanism, no
 
 ## Downstream consumers
 
-openmetadata-collate imports this repo's sources through a generated mirror. Before deleting or
+openmetadata-collate imports this repo's sources through a generated mirror. When a Collate feature
+needs an OSS component with a different data source (another preview API, another id), add a
+callback prop here and let Collate import it — never a Collate copy of the file. Before deleting or
 renaming an exported symbol knip calls unused, grep openmetadata-collate too — `knip.jsonc`'s ignore
 list documents the known Collate-consumed keeps (`rest/index.ts`, `styles/index.ts`,
 `DataInsightProvider`, `useLogStream`, …).

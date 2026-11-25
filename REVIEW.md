@@ -341,7 +341,12 @@ row than on many: an `EXISTS` over `JSON_TABLE` in a MySQL `UPDATE` matched zero
   one cannot serve. The same for a copied component with a tweaked body (`FooV2`, `FooNew`): the fix
   is a prop/variant on the original, or a core-component extension. Name the existing component in
   the finding. A sanctioned migration's successor is done only when the old variant's importer count
-  is zero and the file is deleted.
+  is zero and the file is deleted. Collate copying an OSS component to swap one API call or prop is
+  the same finding: the fix is a callback prop in OSS, imported by Collate.
+- **No pass-through wrapper around a core component.** A local `FooHeader`/`FooToggle` that only
+  forwards props to `PageLayout.PageHeader`/`Toggle`/`ButtonGroup` is a finding: use the core
+  component at the call site. When core lacks a prop the call site needs, add it to core in
+  its own PR instead of composing a workaround.
 - **No new page scaffold.** New pages use the ui-core `PageLayout`
   (`PageLayoutV1` only when editing an existing legacy page) with `PageLayout.Header`/`.PageHeader` +
   `HeaderBreadcrumb` + ui-core `Tabs` (`.claude/rules/page-structure.md`). A new shell/header/tab
@@ -466,7 +471,7 @@ These go red on the PR. Update them in the same change:
 | A search field, mapping or refresh change | An IT on a real engine, including documents written in the old shape |
 | A switch or mapping that gains a value | A case in the existing table-driven test |
 | A UI flow, or a fix to the classic page and its AI-mode twin | A Playwright spec for each surface, asserting the result rather than the request |
-| A component branch, hook or payload builder | Jest asserting the payload or the rendered outcome, not a mock call |
+| A component branch, hook or payload builder | Jest asserting the payload or the rendered outcome, not a mock call. A new component file with a branch gets its own `X.test.tsx` |
 | A connector or DQ boundary | pytest at the boundary, plus a value just past it |
 | A bug fix | A test that fails on `main`. Say so in the PR |
 
