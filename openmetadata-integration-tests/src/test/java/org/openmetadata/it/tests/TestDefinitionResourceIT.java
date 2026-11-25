@@ -412,6 +412,41 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
     return client.testDefinitions().list(params);
   }
 
+  // ===================================================================
+  // SUPPORTED SERVICE FILTER — issue #36431
+  // ===================================================================
+
+  @Test
+  void list_supportedServiceFilterIncludesTableDiffForVertica_200_OK() {
+    ListResponse<TestDefinition> verticaResponse =
+        listBySupportedService(SdkClients.adminClient(), "Vertica");
+    Set<String> verticaNames = fullyQualifiedNamesOf(verticaResponse.getData());
+
+    assertTrue(
+        verticaNames.contains("tableDiff"),
+        "tableDiff must be returned when filtering by supportedService=Vertica");
+    assertTrue(
+        verticaResponse.getPaging().getTotal() > 0,
+        "supportedService=Vertica must produce a non-zero paging total");
+
+    Set<String> sqliteNames =
+        fullyQualifiedNamesOf(listBySupportedService(SdkClients.adminClient(), "SQLite").getData());
+
+    assertFalse(
+        sqliteNames.contains("tableDiff"),
+        "tableDiff does not support SQLite, so returning it would mean the filter stopped discriminating");
+  }
+
+  private static ListResponse<TestDefinition> listBySupportedService(
+      OpenMetadataClient client, String supportedService) {
+    ListParams params =
+        new ListParams()
+            .setLimit(ENTITY_TYPE_FILTER_LIMIT)
+            .addFilter("supportedService", supportedService);
+
+    return client.testDefinitions().list(params);
+  }
+
   private OpenMetadataClient createNonAdminClient(TestNamespace ns) {
     String name = ns.shortPrefix("etfilter");
     String email = name + "@test.openmetadata.org";

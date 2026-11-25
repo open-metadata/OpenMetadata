@@ -81,8 +81,8 @@
     "SapHana",
     "Databricks",
     "UnityCatalog",
-    "AzureSQL"
+    "AzureSQL",
+    "Vertica"
   ],
   "validatorClass": "TableDiffValidator"
 }
-  
