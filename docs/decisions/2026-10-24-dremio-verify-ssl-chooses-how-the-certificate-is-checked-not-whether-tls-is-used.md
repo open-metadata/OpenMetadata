@@ -1,7 +1,7 @@
 # In the Dremio connector the URL scheme decides whether TLS is used, and `verifySSL` only chooses how the certificate is checked
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-24 (initial)
+- **Revisions:** v1 2026-10-24 (initial) · v2 2026-11-25 (`validate` without a CA is a configuration error; the connection resolves the setting through the shared SSL registry)
 - **Deciders:** Charly Clairmont, ulixius9
 - **Guard:** `TestCertificate` in `ingestion/tests/unit/source/database/dremio/test_client.py`
 - **Related:** [#34366](https://github.com/open-metadata/OpenMetadata/issues/34366), [PR #36163](https://github.com/open-metadata/OpenMetadata/pull/36163); `security/ssl/verifySSLConfig.json`
@@ -21,8 +21,14 @@ the certificate is checked:
 
 - `no-ssl` (the default): against the trusted authorities of the system;
 - `ignore`: not checked, for a self-signed certificate (a warning is logged);
-- `validate`: against the CA certificate of `sslConfig`; without one, as `no-ssl` (a warning is
-  logged).
+- `validate`: against the CA certificate of `sslConfig`, inline PEM written to a file that lives as
+  long as the connection. Without a CA, the connection fails with the configuration error of the
+  shared SSL registry (`InvalidSSLVerificationException`), as the other REST connectors do.
+
+`DremioConnection` resolves the setting through `get_verify_ssl_fn`, as the Omni connector does,
+and owns the CA file. The client passes the resolved value on the login request and on every API
+request, not only on its session: `requests` lets `REQUESTS_CA_BUNDLE` override a session-level
+value.
 
 With an `http` URL, `verifySSL` and `sslConfig` have no effect. Client certificates (the key and
 certificate fields of `sslConfig`) are not supported by the connector and are not read.

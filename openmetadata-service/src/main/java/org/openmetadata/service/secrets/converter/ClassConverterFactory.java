@@ -158,6 +158,10 @@ public final class ClassConverterFactory {
                   SupersetApiConnection.class,
                   Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
+              SoftwareAuth.class,
+              new NestedConfigClassConverter(
+                  SoftwareAuth.class, Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
+          Map.entry(
               AlationConnection.class,
               new NestedConfigClassConverter(
                   AlationConnection.class,
@@ -356,7 +360,6 @@ public final class ClassConverterFactory {
                 Map.entry(BigTableConnection.class, new BigTableConnectionClassConverter()),
                 Map.entry(DatalakeConnection.class, new DatalakeConnectionClassConverter()),
                 Map.entry(DremioConnection.class, new DremioConnectionClassConverter()),
-                Map.entry(SoftwareAuth.class, new DremioSoftwareAuthClassConverter()),
                 Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
                 Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
                 Map.entry(

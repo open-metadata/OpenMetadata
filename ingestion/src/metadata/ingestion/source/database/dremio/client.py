@@ -14,7 +14,7 @@ ADR:2026-11-23-dremio-connector-reads-the-rest-api-not-arrow-flight
 """
 
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 
 import requests
 
@@ -28,9 +28,7 @@ from metadata.generated.schema.entity.services.connections.database.dremio.softw
 from metadata.generated.schema.entity.services.connections.database.dremioConnection import (
     DremioConnection,
 )
-from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.ssl_manager import SSLManager
 
 logger = ingestion_logger()
 
@@ -57,9 +55,11 @@ class DremioClient:
     with a username and a password exchanged for a session token.
     """
 
-    def __init__(self, connection: DremioConnection, on_close: Callable[[Callable[[], None]], None] | None = None):
+    def __init__(self, connection: DremioConnection, verify: bool | str = True):
+        """`verify` is what DremioConnection resolved from verifySSL and sslConfig"""
         auth = connection.authType
         self.is_cloud = isinstance(auth, DremioCloudAuthentication)
+        self.verify = verify
         self.session = requests.Session()
         self.session.headers["Content-Type"] = "application/json"
 
@@ -68,37 +68,16 @@ class DremioClient:
             self.session.headers["Authorization"] = f"Bearer {auth.personalAccessToken.get_secret_value()}"
         elif isinstance(auth, DremioSoftwareAuthentication):
             self.base_url = auth.hostPort.rstrip("/")
-            self.session.verify = self._get_verify(auth, on_close)
             self.session.headers["Authorization"] = f"_dremio{self._login(auth)}"
         else:
             raise TypeError(f"Unsupported Dremio authentication type: {type(auth).__name__}")
-
-    @staticmethod
-    def _get_verify(
-        auth: DremioSoftwareAuthentication, on_close: Callable[[Callable[[], None]], None] | None
-    ) -> bool | str:
-        """
-        `no-ssl` checks the certificate against the system authorities, `ignore`
-        does not check it, `validate` checks it against the CA certificate.
-        ADR:2026-10-24-dremio-verify-ssl-chooses-how-the-certificate-is-checked-not-whether-tls-is-used
-        """
-        if auth.verifySSL == VerifySSL.ignore:
-            logger.warning("The certificate of the Dremio server is not verified (Verify SSL is 'ignore')")
-            return False
-        if auth.verifySSL == VerifySSL.validate:
-            if auth.sslConfig and auth.sslConfig.root.caCertificate:
-                ssl_manager = SSLManager(ca=auth.sslConfig.root.caCertificate)
-                if on_close:
-                    on_close(ssl_manager.cleanup_temp_files)
-                return ssl_manager.ca_file_path or True
-            logger.warning("Verify SSL is 'validate' without a CA certificate: the system authorities are used")
-        return True
 
     def _login(self, auth: DremioSoftwareAuthentication) -> str:
         response = self.session.post(
             f"{self.base_url}/apiv2/login",
             json={"userName": auth.username, "password": auth.password.get_secret_value()},
             timeout=REQUEST_TIMEOUT_SECONDS,
+            verify=self.verify,
         )
         response.raise_for_status()
         token = response.json().get("token")
@@ -117,11 +96,14 @@ class DremioClient:
         return f"{self.base_url}{SOFTWARE_API_PREFIX}{endpoint}"
 
     def get(self, endpoint: str, **kwargs) -> requests.Response:
+        # Per request: requests lets REQUESTS_CA_BUNDLE override a session-level verify
         kwargs.setdefault("timeout", REQUEST_TIMEOUT_SECONDS)
+        kwargs.setdefault("verify", self.verify)
         return self.session.get(self._build_url(endpoint), **kwargs)
 
     def post(self, endpoint: str, **kwargs) -> requests.Response:
         kwargs.setdefault("timeout", REQUEST_TIMEOUT_SECONDS)
+        kwargs.setdefault("verify", self.verify)
         return self.session.post(self._build_url(endpoint), **kwargs)
 
     def execute_sql(self, query: str, timeout: int = SQL_TIMEOUT_SECONDS) -> list[dict]:

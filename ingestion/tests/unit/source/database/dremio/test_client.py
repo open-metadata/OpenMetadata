@@ -25,6 +25,8 @@ from metadata.ingestion.source.database.dremio.client import (
     DremioClient,
     DremioJobError,
 )
+from metadata.ingestion.source.database.dremio.connection import DremioConnection as DremioRestConnection
+from metadata.utils.ssl_registry import InvalidSSLVerificationException
 
 from ._fixtures import FakeResponse  # noqa: TID252
 
@@ -32,11 +34,22 @@ SOFTWARE = {"authType": {"hostPort": "https://dremio:9047/", "username": "u", "p
 CLOUD = {"authType": {"region": "EU", "personalAccessToken": "pat", "projectId": "proj_1"}}
 
 
-def client_for(config: dict, session: MagicMock | None = None, on_close=None) -> tuple[DremioClient, MagicMock]:
+def client_for(config: dict, session: MagicMock | None = None) -> tuple[DremioClient, MagicMock]:
     session = session or MagicMock(headers={})
     session.post.return_value = FakeResponse(200, {"token": "tok"})
     with patch("metadata.ingestion.source.database.dremio.client.requests.Session", return_value=session):
-        return DremioClient(DremioConnection.model_validate(config), on_close=on_close), session
+        return DremioClient(DremioConnection.model_validate(config)), session
+
+
+def connection_for(auth: dict) -> tuple[DremioRestConnection, MagicMock]:
+    """The connection resolves verifySSL and sslConfig, the session records what each request was sent with"""
+    session = MagicMock(headers={})
+    session.post.return_value = FakeResponse(200, {"token": "tok"})
+    session.get.return_value = FakeResponse(200, {"data": []})
+    connection = DremioRestConnection(DremioConnection.model_validate({"authType": {**SOFTWARE["authType"], **auth}}))
+    with patch("metadata.ingestion.source.database.dremio.client.requests.Session", return_value=session):
+        connection.client.get("/catalog")
+    return connection, session
 
 
 class TestAuthentication:
@@ -67,23 +80,37 @@ class TestAuthentication:
 
 
 class TestCertificate:
-    # ADR:2026-10-24-dremio-verify-ssl-chooses-how-the-certificate-is-checked-not-whether-tls-is-used
-    @pytest.mark.parametrize(("verify_ssl", "expected"), [("no-ssl", True), ("ignore", False), ("validate", True)])
-    def test_verify_ssl_without_a_ca(self, verify_ssl, expected):
-        _, session = client_for({"authType": {**SOFTWARE["authType"], "verifySSL": verify_ssl}})
+    @pytest.mark.parametrize(("verify_ssl", "expected"), [("no-ssl", True), ("ignore", False)])
+    def test_login_and_api_requests_get_the_resolved_verify(self, verify_ssl, expected):
+        _, session = connection_for({"verifySSL": verify_ssl})
 
-        assert session.verify is expected
+        assert session.post.call_args.kwargs["verify"] is expected
+        assert session.get.call_args.kwargs["verify"] is expected
 
-    def test_validate_checks_against_the_ca_file_removed_on_close(self):
-        on_close = MagicMock()
-        _, session = client_for(
-            {"authType": {**SOFTWARE["authType"], "verifySSL": "validate", "sslConfig": {"caCertificate": "PEM"}}},
-            on_close=on_close,
+    def test_validate_checks_both_requests_against_the_inline_ca_removed_on_close(self):
+        connection, session = connection_for({"verifySSL": "validate", "sslConfig": {"caCertificate": "PEM"}})
+
+        ca_file = session.post.call_args.kwargs["verify"]
+        assert session.get.call_args.kwargs["verify"] == ca_file
+        assert Path(ca_file).read_text(encoding="utf-8") == "PEM"
+        connection.close()
+        assert not Path(ca_file).exists()
+
+    @pytest.mark.parametrize("ssl_config", [{}, {"sslConfig": {}}])
+    def test_validate_without_a_ca_is_a_configuration_error(self, ssl_config):
+        session = MagicMock(headers={})
+        connection = DremioRestConnection(
+            DremioConnection.model_validate(
+                {"authType": {**SOFTWARE["authType"], "verifySSL": "validate", **ssl_config}}
+            )
         )
 
-        assert Path(session.verify).read_text(encoding="utf-8") == "PEM"
-        on_close.call_args.args[0]()
-        assert not Path(session.verify).exists()
+        with (
+            patch("metadata.ingestion.source.database.dremio.client.requests.Session", return_value=session),
+            pytest.raises(InvalidSSLVerificationException, match="SSL Config is missing"),
+        ):
+            _ = connection.client
+        session.post.assert_not_called()
 
 
 class TestSql:

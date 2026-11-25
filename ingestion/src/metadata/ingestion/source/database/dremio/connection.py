@@ -17,12 +17,16 @@ from urllib.parse import quote
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
+from metadata.generated.schema.entity.services.connections.database.dremio.softwareAuth import (
+    DremioSoftwareAuthentication,
+)
 from metadata.generated.schema.entity.services.connections.database.dremioConnection import (
     DremioConnection as DremioConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -33,6 +37,11 @@ from metadata.ingestion.source.database.dremio.queries import (
     TEST_GET_JOBS,
 )
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import SSLManager
+from metadata.utils.ssl_registry import get_verify_ssl_fn
+
+logger = ingestion_logger()
 
 NAMESPACE_TYPES = ("SOURCE", "SPACE")
 # ADR:2026-11-23-dremio-connector-reads-the-rest-api-not-arrow-flight
@@ -43,9 +52,31 @@ class DremioConnection(BaseConnection[DremioConnectionConfig, DremioClient]):
     """Owns the client of the Dremio REST API"""
 
     def _get_client(self) -> DremioClient:
-        client = DremioClient(self.service_connection, on_close=self._on_close)
+        client = DremioClient(self.service_connection, verify=self._resolve_verify())
         self._on_close(client.close)
         return client
+
+    def _resolve_verify(self) -> bool | str:
+        """
+        `no-ssl` checks the certificate against the system authorities, `ignore`
+        does not check it, `validate` checks it against the inline CA, written to
+        a file that lives as long as the connection.
+        ADR:2026-10-24-dremio-verify-ssl-chooses-how-the-certificate-is-checked-not-whether-tls-is-used
+        """
+        auth = self.service_connection.authType
+        if not isinstance(auth, DremioSoftwareAuthentication):
+            return True
+        ssl_config = auth.sslConfig if auth.sslConfig and auth.sslConfig.root.caCertificate else None
+        # Raises InvalidSSLVerificationException for `validate` without a CA, as the other REST connectors do
+        verify = get_verify_ssl_fn(auth.verifySSL or VerifySSL.no_ssl)(ssl_config)
+        if verify is False:
+            logger.warning("The certificate of the Dremio server is not verified (Verify SSL is 'ignore')")
+            return False
+        if isinstance(verify, str) and ssl_config:
+            ssl_manager = SSLManager(ca=ssl_config.root.caCertificate)
+            self._on_close(ssl_manager.cleanup_temp_files)
+            return ssl_manager.ca_file_path or True
+        return True
 
     def test_connection(
         self,
