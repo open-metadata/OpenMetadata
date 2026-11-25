@@ -1,7 +1,7 @@
 # Browser tests run by impact on pull requests and in full in the merge queue
 
 - **Status:** Proposed
-- **Revisions:** v1 2026-11-23 (initial); v2 2026-11-25 (the merge queue selects too; the only full run is on main every 6 hours or by hand, a selected run refreshes the map for the tests it ran; a scheduled run with no UI change is skipped. The slug predates this)
+- **Revisions:** v1 2026-11-23 (initial); v2 2026-11-25 (the merge queue selects too; the only full run is on main every 6 hours or by hand, a selected merge-queue entry refreshes the map for the tests it ran; maps come only from code that reached main; a scheduled run with no UI change is skipped. The slug predates this)
 - **Deciders:** Chirag Madlani
 - **Guard:** `scripts/select-browser-tests.test.mjs` (selection rules); `ui-browser-tests.yml` (pull requests and
   merge-queue entries select; the run on main every 6 hours, or by hand, runs every test file)
@@ -15,11 +15,12 @@ into one cycle, so almost every file reaches almost every test.
 
 ## Decision
 - A pull request, and a merge-queue entry, runs only the test files that executed the code it changes. A
-  full run records, per test file, the source files it executed (coverage counters, `src/test/browser/impact.ts`). Every passing run
-  publishes the map as an artifact; it is never committed. A full run writes it afresh, and a selected run
-  replaces the entries of the tests it ran in the map it selected from, so the map stays current between
-  full runs. Pull requests and queue entries download the newest one, counting only runs from this
-  repository's own branches: a fork's map comes from unreviewed code and could hide tests.
+  full run records, per test file, the source files it executed (coverage counters, `src/test/browser/impact.ts`). Every passing run on
+  main or in the merge queue publishes the map as an artifact; it is never committed. A full run writes it
+  afresh, and a selected merge-queue entry replaces the entries of the tests it ran, so the map stays
+  current between full runs. Pull requests and queue entries download the newest one from code that reached main: a
+  scheduled or manual run on main, or a merge-queue entry. A pull request's map reflects code that may
+  never merge, or a fork's unreviewed code, and could hide tests from later pull requests.
 - Selection also follows the test helpers a test imports, the direct imports of executed files, changed
   screenshot baselines, and changed `en-us.json` keys. A deleted source file still selects the tests that
   loaded it.

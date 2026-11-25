@@ -50,8 +50,8 @@ ADR:2026-10-28-page-behaviour-is-tested-in-vitest-browser-mode-and-e2e-tests-lea
 A pull request, and a merge-queue entry, runs only the test files that execute
 the code it changes.
 `scripts/select-browser-tests.mjs` reads a map of the source files each test
-file executed (recorded by `impact.ts` on every CI run and published as a workflow
-artifact, never committed: a full run writes it, and a passing selected run
+file executed (recorded by `impact.ts` and published as a workflow artifact, never
+committed: the full run on main writes it, and a passing merge-queue entry
 refreshes the entries of the tests it ran). It also follows the test helpers a test imports, and the direct
 imports of every executed file (constants, styles, assets). Changed `en-us.json`
 keys select the tests whose code names them.

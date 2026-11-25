@@ -117,10 +117,10 @@ jobs:
           echo '{"private": true}' > package.json
           yarn add --silent "esbuild@$version"
           echo "ESBUILD_PATH=$RUNNER_TEMP/esbuild/node_modules/esbuild/lib/main.js" >> "$GITHUB_ENV"
-      # The map travels as an artifact of the latest passing full run (scheduled
-      # or manual on main, merge queue, or a pull request that ran everything). Only runs
-      # from this repository's own branches count: a fork's map comes from
-      # unreviewed code and could hide tests from every later pull request.
+      # The map travels as an artifact of the latest passing run on code that
+      # reached main: a scheduled or manual run on main, or a merge-queue entry.
+      # A pull request's map reflects code that may never merge (or a fork's
+      # unreviewed code) and could hide tests from every later pull request.
       - name: Download the impact map from the latest full run
         if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         continue-on-error: true
@@ -128,7 +128,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ui-browser-tests.yml/runs?status=success&per_page=100" \
-              --jq ".workflow_runs[] | select(.head_repository.full_name == \"$GITHUB_REPOSITORY\") | .id"); do
+              --jq ".workflow_runs[] | select(.head_repository.full_name == \"$GITHUB_REPOSITORY\")
+                | select(.event == \"merge_group\" or ((.event == \"schedule\" or .event == \"workflow_dispatch\") and .head_branch == \"main\")) | .id"); do
             if gh run download "$run" -R "$GITHUB_REPOSITORY" -n browser-impact-map -D "$UI_DIR" 2>/dev/null; then
               echo "Impact map from run $run" >> "$GITHUB_STEP_SUMMARY"
               break
@@ -142,15 +143,17 @@ jobs:
       - name: Select tests
         id: plan
         working-directory: ${{ env.UI_DIR }}
+        env:
+          BASE: ${{ github.event.merge_group.base_sha || 'HEAD^1' }}
         run: |
           if [ "${{ github.event_name }}" = "merge_group" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
             echo '{"mode": "none", "reason": "no UI change in this merge-queue entry", "tests": [], "uncovered": []}' > selection.json
           elif [ "${{ github.event_name }}" = "schedule" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
             echo '{"mode": "none", "reason": "no UI change since the last full run", "tests": [], "uncovered": []}' > selection.json
           elif [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "merge_group" ]; then
-            # HEAD^1 is the base of a pull request's merge commit, and the
-            # previous entry (or main) for a merge-queue entry.
-            node scripts/select-browser-tests.mjs --map impact-map.json --base HEAD^1 --out selection.json \
+            # A pull request's merge commit has its base at HEAD^1; a merge-queue
+            # group may batch several pull requests, so it diffs from the group's base.
+            node scripts/select-browser-tests.mjs --map impact-map.json --base "$BASE" --out selection.json \
               | tee -a "$GITHUB_STEP_SUMMARY"
           else
             echo '{"mode": "all", "reason": "full run on ${{ github.event_name }}", "tests": [], "uncovered": []}' > selection.json
@@ -375,13 +378,13 @@ jobs:
           # which can repeat across runners.
           pattern: browser-impact-*
           path: impact
-      # Only a passing run is trusted: a failed test may have stopped before
-      # reaching the code it covers. A full run writes the map afresh; a
-      # selected run replaces the entries of the tests it ran in the map it
-      # selected from, so the map stays current between full runs.
+      # Only a passing run on code that reaches main is trusted: a failed test
+      # may have stopped before reaching the code it covers. A full run writes
+      # the map afresh; a selected merge-queue entry replaces the entries of the
+      # tests it ran, so the map stays current between full runs.
       - name: Build the impact map
         id: map
-        if: needs.browser-tests.result == 'success'
+        if: needs.browser-tests.result == 'success' && github.event_name != 'pull_request'
         # A map that cannot be built leaves the previous one; it never fails the check.
         continue-on-error: true
         env:

@@ -303,14 +303,23 @@ const main = async () => {
   const head = option('--head') ?? 'HEAD';
   const git = (...cmd) =>
     execFileSync('git', cmd, { encoding: 'utf8', maxBuffer: 1 << 26 });
+  // CI's shallow clone may hold no merge base (a merge-queue group batching
+  // several pull requests); there the base is an ancestor of the head, so
+  // comparing the two trees is the same diff.
+  let range = [`${base}...${head}`];
+  try {
+    git('merge-base', base, head);
+  } catch {
+    range = [base, head];
+  }
   // Deleted test files need no run; a deleted source file still selects the
   // tests that loaded it, since its removal can break them.
   const deleted = new Set(
-    git('diff', '--name-only', '--diff-filter=D', `${base}...${head}`)
+    git('diff', '--name-only', '--diff-filter=D', ...range)
       .split('\n')
       .filter(Boolean)
   );
-  const changed = git('diff', '--name-only', `${base}...${head}`)
+  const changed = git('diff', '--name-only', ...range)
     .split('\n')
     .filter(Boolean)
     .filter(
