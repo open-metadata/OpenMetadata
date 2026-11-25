@@ -1100,28 +1100,46 @@ public class AIContextBuilder {
     return PromptText.forContentRead(content);
   }
 
-  record ResolvedMetrics(List<KnowledgeItem> items, boolean scanCapped) {}
+  record ResolvedMetrics(List<KnowledgeItem> items, boolean omittedVisibleRelation) {}
 
   private ResolvedMetrics resolveMetrics(final EntityInterface<?> entity) {
+    final List<EntityReference> related =
+        entity instanceof Metric metric ? listOrEmpty(metric.getRelatedMetrics()) : List.of();
     final List<EntityReference> references = new ArrayList<>(findAttachedMetrics(entity));
-    if (entity instanceof Metric metric) {
-      references.addAll(listOrEmpty(metric.getRelatedMetrics()));
-    }
-    return resolveBoundedMetrics(references, this::toMetricKnowledgeItem);
+    references.addAll(related);
+    return resolveBoundedMetrics(
+        references, includeMetricSemantics ? related : List.of(), this::toMetricKnowledgeItem);
   }
 
   static ResolvedMetrics resolveBoundedMetrics(
       final List<EntityReference> references,
+      final List<EntityReference> related,
       final Function<EntityReference, KnowledgeItem> mapper) {
-    final List<EntityReference> distinct = references.stream().distinct().toList();
+    final List<EntityReference> candidates =
+        references.stream().distinct().limit(MAX_KNOWLEDGE_ITEMS).toList();
     final List<KnowledgeItem> items =
-        distinct.stream()
-            .limit(MAX_KNOWLEDGE_ITEMS)
-            .map(mapper)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toCollection(ArrayList::new));
-    // Report the scan bound without performing extra lookups or exposing omitted references.
-    return new ResolvedMetrics(items, distinct.size() > MAX_KNOWLEDGE_ITEMS);
+        candidates.stream().map(mapper).filter(Objects::nonNull).toList();
+    final boolean omittedVisibleRelation =
+        !related.isEmpty()
+            && candidates.size() == MAX_KNOWLEDGE_ITEMS
+            && hasVisibleOmittedRelation(candidates, related, mapper);
+    return new ResolvedMetrics(items, omittedVisibleRelation);
+  }
+
+  private static boolean hasVisibleOmittedRelation(
+      final List<EntityReference> candidates,
+      final List<EntityReference> related,
+      final Function<EntityReference, KnowledgeItem> mapper) {
+    final Set<String> inspected =
+        candidates.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toSet());
+    // Bound lookahead to one more page. Only a resolved, visible omission warrants a marker.
+    return related.stream()
+        .filter(
+            ref ->
+                ref.getFullyQualifiedName() != null && inspected.add(ref.getFullyQualifiedName()))
+        .limit(MAX_KNOWLEDGE_ITEMS)
+        .map(mapper)
+        .anyMatch(Objects::nonNull);
   }
 
   private List<EntityReference> findAttachedMetrics(EntityInterface<?> entity) {
@@ -1245,7 +1263,8 @@ public class AIContextBuilder {
       context.withConceptContext(concept);
       if (entity instanceof Metric metric) {
         context.withGeneric(
-            buildMetricContext(metric, concept, includeMetricSemantics, metrics.scanCapped()));
+            buildMetricContext(
+                metric, concept, includeMetricSemantics, metrics.omittedVisibleRelation()));
       }
     }
     return context;
@@ -1318,7 +1337,7 @@ public class AIContextBuilder {
       final Metric metric,
       final ConceptContext concept,
       final boolean includeSemantics,
-      final boolean metricsScanCapped) {
+      final boolean omittedVisibleRelation) {
     final MetricExpression expression = metric.getMetricExpression();
     final GenericAssetContext context =
         new GenericAssetContext()
@@ -1330,7 +1349,7 @@ public class AIContextBuilder {
                     .distinct()
                     .toList());
     if (includeSemantics) {
-      addMetricProjection(metric, concept, context, metricsScanCapped);
+      addMetricProjection(metric, concept, context, omittedVisibleRelation);
     } else {
       context.withDimensions(null).withMeasures(null).withFilters(null).withRelatedMetrics(null);
     }
@@ -1341,14 +1360,14 @@ public class AIContextBuilder {
       final Metric metric,
       final ConceptContext concept,
       final GenericAssetContext context,
-      final boolean metricsScanCapped) {
+      final boolean omittedVisibleRelation) {
     final List<String> related = relatedMetricFqns(metric, concept);
     context
         .withDimensions(nullOrEmpty(metric.getDimensions()) ? null : metric.getDimensions())
         .withMeasures(nullOrEmpty(metric.getMeasures()) ? null : metric.getMeasures())
         .withFilters(nullOrEmpty(concept.getFilters()) ? null : concept.getFilters())
         .withRelatedMetrics(related)
-        .withSemanticFieldsTruncated(metricsScanCapped ? Boolean.TRUE : null);
+        .withSemanticFieldsTruncated(omittedVisibleRelation ? Boolean.TRUE : null);
   }
 
   private static List<String> relatedMetricFqns(final Metric metric, final ConceptContext concept) {

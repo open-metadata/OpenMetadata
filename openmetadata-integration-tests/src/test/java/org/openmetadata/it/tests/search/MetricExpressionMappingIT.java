@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.search.SearchClient;
+import org.openmetadata.it.search.SearchClient.SearchClientException;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -41,6 +43,7 @@ class MetricExpressionMappingIT {
   private static final String LEGACY_CODE = "SUM(" + LEGACY_AMOUNT + ")";
   private static final String CURRENT_CODE = "SUM(current_amount)";
   private static final String FRESH_CODE = "SUM(fresh_amount)";
+  private static final String DATE_SHAPED_CODE = "2026-01-01";
 
   @BeforeAll
   static void requireEmbeddedSearch() {
@@ -56,7 +59,7 @@ class MetricExpressionMappingIT {
     final SearchClient search = new SearchClient(OssTestServer.defaultHandle());
     final String index = namespace.prefix("metric_expression").toLowerCase(Locale.ROOT);
     try {
-      createLegacyIndex(search, index, mapping);
+      createLegacyIndex(search, index, mapping, LEGACY_CODE);
       assertDynamicMappingMatchesDeclaredExpression(search, index, mapping);
       addExplicitExpressionMappings(search, index, mapping);
       indexExpressionDocument(search, index, "after", METRIC_EXPRESSION, CURRENT_CODE);
@@ -80,6 +83,32 @@ class MetricExpressionMappingIT {
     }
   }
 
+  @Test
+  void legacyDateMappingRequiresARebuiltIndex(final TestNamespace namespace) throws Exception {
+    final ObjectNode mapping = readMetricMapping();
+    final SearchClient search = new SearchClient(OssTestServer.defaultHandle());
+    final String legacy = namespace.prefix("metric_legacy_date").toLowerCase(Locale.ROOT);
+    final String rebuilt = namespace.prefix("metric_rebuilt_date").toLowerCase(Locale.ROOT);
+    try {
+      createLegacyIndex(search, legacy, mapping, DATE_SHAPED_CODE);
+      assertThat(search.mapping(legacy).at("/" + legacy + CODE_TYPE_MAPPING).asText())
+          .isEqualTo("date");
+      assertThatThrownBy(() -> addExplicitExpressionMappings(search, legacy, mapping))
+          .isInstanceOf(SearchClientException.class)
+          .hasMessageContaining("400")
+          .hasMessageContaining(EXPRESSION_CODE);
+      search.put("/" + rebuilt, mapping.toString());
+      indexExpressionDocument(search, rebuilt, "before", METRIC_EXPRESSION, DATE_SHAPED_CODE);
+      indexExpressionDocument(search, rebuilt, "after", METRIC_EXPRESSION, CURRENT_CODE);
+      assertExpressionCodeIsText(search, rebuilt);
+      assertExactExpressionSearch(search, rebuilt, DATE_SHAPED_CODE);
+      assertExactExpressionSearch(search, rebuilt, CURRENT_CODE);
+    } finally {
+      search.delete("/" + rebuilt);
+      search.delete("/" + legacy);
+    }
+  }
+
   private ObjectNode readMetricMapping() throws Exception {
     try (final InputStream input =
         getClass().getResourceAsStream("/elasticsearch/en/metric_index_mapping.json")) {
@@ -89,11 +118,14 @@ class MetricExpressionMappingIT {
   }
 
   private static void createLegacyIndex(
-      final SearchClient search, final String index, final ObjectNode mapping) {
+      final SearchClient search,
+      final String index,
+      final ObjectNode mapping,
+      final String firstCode) {
     final ObjectNode previousMapping = mapping.deepCopy();
     ((ObjectNode) previousMapping.at(MAPPING_PROPERTIES)).remove(METRIC_EXPRESSION);
     search.put("/" + index, previousMapping.toString());
-    indexExpressionDocument(search, index, "before", METRIC_EXPRESSION, LEGACY_CODE);
+    indexExpressionDocument(search, index, "before", METRIC_EXPRESSION, firstCode);
     indexExpressionDocument(search, index, "legacy", LEGACY_EXPRESSION, LEGACY_CODE);
   }
 

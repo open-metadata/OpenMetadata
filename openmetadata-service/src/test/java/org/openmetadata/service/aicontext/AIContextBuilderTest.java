@@ -351,13 +351,14 @@ class AIContextBuilderTest {
     final AIContextBuilder.ResolvedMetrics resolved =
         AIContextBuilder.resolveBoundedMetrics(
             references,
+            references,
             ref -> new KnowledgeItem().withFullyQualifiedName(ref.getFullyQualifiedName()));
     final GenericAssetContext generic =
         AIContextBuilder.buildMetricContext(
             new Metric().withRelatedMetrics(references),
             new ConceptContext().withMetrics(resolved.items()),
             true,
-            resolved.scanCapped());
+            resolved.omittedVisibleRelation());
     final AIContext context =
         new AIContext().withAssetContext(new AssetContext().withGeneric(generic));
     new AIContextBuilder(Entity.METRIC, "revenue")
@@ -370,22 +371,50 @@ class AIContextBuilderTest {
   }
 
   @Test
-  void cutoffIsReportedWithoutExposingFilteredReferences() {
+  void filteredRelatedMetricsDoNotSignalTruncation() {
     final List<EntityReference> references =
         IntStream.range(0, 51)
             .mapToObj(index -> new EntityReference().withFullyQualifiedName("metric_" + index))
             .toList();
     final AIContextBuilder.ResolvedMetrics resolved =
-        AIContextBuilder.resolveBoundedMetrics(references, ref -> null);
+        AIContextBuilder.resolveBoundedMetrics(references, references, ref -> null);
     final GenericAssetContext generic =
         AIContextBuilder.buildMetricContext(
             new Metric().withRelatedMetrics(references),
             new ConceptContext().withMetrics(resolved.items()),
             true,
-            resolved.scanCapped());
+            resolved.omittedVisibleRelation());
 
     assertNull(generic.getRelatedMetrics());
-    assertTrue(generic.getSemanticFieldsTruncated());
+    assertNull(generic.getSemanticFieldsTruncated());
+  }
+
+  @Test
+  void omittedRelationsMustBeVisibleAndLookaheadIsBounded() {
+    final List<EntityReference> references =
+        IntStream.range(0, 150)
+            .mapToObj(index -> new EntityReference().withFullyQualifiedName("metric_" + index))
+            .toList();
+    final List<String> inspected = new ArrayList<>();
+    final AIContextBuilder.ResolvedMetrics hiddenTail =
+        AIContextBuilder.resolveBoundedMetrics(
+            references,
+            references,
+            ref -> {
+              inspected.add(ref.getFullyQualifiedName());
+              return inspected.size() <= 50 ? new KnowledgeItem() : null;
+            });
+    assertEquals(50, hiddenTail.items().size());
+    assertFalse(hiddenTail.omittedVisibleRelation());
+    assertEquals(100, inspected.size());
+
+    final AIContextBuilder.ResolvedMetrics mixedTail =
+        AIContextBuilder.resolveBoundedMetrics(
+            references,
+            references,
+            ref -> "metric_51".equals(ref.getFullyQualifiedName()) ? new KnowledgeItem() : null);
+    assertTrue(mixedTail.omittedVisibleRelation());
+    assertTrue(mixedTail.items().isEmpty());
   }
 
   @Test

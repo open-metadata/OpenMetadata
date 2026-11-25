@@ -17,7 +17,11 @@ measures and the variant hierarchy from its computation prompt.
 Add optional `dimensions`, `measures`, `filters` and related metric FQNs to
 `assetContext.generic` in structured JSON. Reuse the metric schemas and the concept builder's
 non-blank filter conditions. Related FQNs are distinct references already admitted to the existing
-visible, Approved-or-unset, bounded concept metric knowledge list. They add no catalog reads.
+visible, Approved-or-unset, bounded concept metric knowledge list. When the first 50 candidates
+fill the scan window, structured metric JSON checks up to 50 additional distinct related
+references. The first visible, approved-or-unset omission sets the truncation marker. A hidden
+reference alone cannot set it. If all lookahead candidates are filtered out, the response
+makes no assertion about visibility beyond that window.
 
 Keep `conceptContext` JSON and default concept Markdown unchanged, including its granularity,
 units and parenthesized AND conjunction of all filters. The earlier accepted decision remains
@@ -38,8 +42,17 @@ The original expression and source assets retain their existing shape and budget
 The localized index templates add the emitted `metricExpression` field while retaining
 `expression` with its old mapping. The new explicit text fields preserve the previous dynamic
 `keyword` subfields (including `ignore_above: 256`), so exact-match searches remain available
-on fresh indexes as well as existing indexes. No indexed key is renamed or removed. Normal index creation or
-mapping update applies these additive resources; no relational migration is needed.
+on fresh indexes and existing indexes where the dynamic field is already text.
+
+If the first expression looked like a date, the search engine may have mapped
+`metricExpression.code` as `date`. An in-place mapping update then returns HTTP 400 because
+the field type cannot change. After upgrading, run the Search Indexing application for the
+`metric` entity with **Recreate Index** enabled. The equivalent admin request is
+`POST /api/v1/apps/trigger/SearchIndexingApplication` with
+`{"entities":["metric"],"recreateIndex":true}`. This rebuilds the metric documents from the
+catalog into a fresh backing index with the explicit text mapping, then promotes that index.
+Verify that the job succeeds and that an exact search on `metricExpression.code.keyword`
+finds the original expression.
 
 ## Consequences
 
