@@ -17,6 +17,7 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTI
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Typed view of the workflow's contextData map. Built once per enrichment call so steps do not
@@ -28,13 +29,29 @@ import java.util.Map;
  * <p>{@code workflowWindowStartTimestamp} / {@code workflowWindowEndTimestamp} are the full
  * backfill window — used by {@code VersionResolver} to decide which versions of an entity matter.
  * They are distinct from the per-version-window timestamps carried on {@link VersionedWindow},
- * which are slices of this overall window.
+ * which are slices of this overall window. A non-null {@code snapshotTimestamp} captures only
+ * the currently hydrated entity on that collection day, without reconstructing version history.
+ * Parent table IDs are resolved once per source batch, never looked up per enrichment step.
  */
 public record EnrichmentContext(
     String entityType,
     List<String> entityTypeFields,
     long workflowWindowStartTimestamp,
-    long workflowWindowEndTimestamp) {
+    long workflowWindowEndTimestamp,
+    Long snapshotTimestamp,
+    Map<String, UUID> parentTableIds) {
+
+  public static final String SNAPSHOT_TIMESTAMP_KEY = "snapshotTimestamp";
+  public static final String PARENT_TABLE_IDS_KEY = "parentTableIds";
+
+  public EnrichmentContext {
+    parentTableIds = Map.copyOf(parentTableIds);
+  }
+
+  public EnrichmentContext(
+      String entityType, List<String> entityTypeFields, long startTimestamp, long endTimestamp) {
+    this(entityType, entityTypeFields, startTimestamp, endTimestamp, null, Map.of());
+  }
 
   @SuppressWarnings("unchecked")
   public static EnrichmentContext from(Map<String, Object> contextData) {
@@ -42,6 +59,8 @@ public record EnrichmentContext(
         (String) contextData.get(ENTITY_TYPE_KEY),
         (List<String>) contextData.get(ENTITY_TYPE_FIELDS_KEY),
         (Long) contextData.get(START_TIMESTAMP_KEY),
-        (Long) contextData.get(END_TIMESTAMP_KEY));
+        (Long) contextData.get(END_TIMESTAMP_KEY),
+        (Long) contextData.get(SNAPSHOT_TIMESTAMP_KEY),
+        (Map<String, UUID>) contextData.getOrDefault(PARENT_TABLE_IDS_KEY, Map.of()));
   }
 }

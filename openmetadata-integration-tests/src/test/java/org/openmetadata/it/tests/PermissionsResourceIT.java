@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -23,16 +24,21 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.GlossaryTermTestFactory;
+import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.PolicyTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -491,6 +497,111 @@ public class PermissionsResourceIT {
     }
   }
 
+  @Test
+  void testListGlossaryTermsWithPermissions_eachRowCarriesItsPermissions() throws Exception {
+    TestNamespace ns = new TestNamespace("PermissionsResourceIT");
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    Set<String> terms =
+        Set.of(
+            GlossaryTermTestFactory.createWithName(ns, glossary, "perm_list_term_1")
+                .getId()
+                .toString(),
+            GlossaryTermTestFactory.createWithName(ns, glossary, "perm_list_term_2")
+                .getId()
+                .toString());
+    String byGlossary = "limit=50&glossary=" + glossary.getId();
+
+    for (OpenMetadataClient client : List.of(SdkClients.adminClient(), SdkClients.user2Client())) {
+      assertSidecarMatchesEntityPermissions(
+          client, Entity.GLOSSARY_TERM, "/v1/glossaryTerms?" + byGlossary, terms);
+      assertSidecarMatchesEntityPermissions(
+          client, Entity.GLOSSARY_TERM, "/v1/glossaryTerms/search?" + byGlossary, terms);
+    }
+  }
+
+  @Test
+  void testListRolesWithPermissions_eachPageCarriesItsRowsPermissions() throws Exception {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    TestNamespace ns = new TestNamespace("PermissionsResourceIT");
+    Role role =
+        adminClient
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.prefix("perm_list_role"))
+                    .withPolicies(List.of("DataConsumerPolicy")));
+    try {
+      for (OpenMetadataClient client : List.of(adminClient, SdkClients.user2Client())) {
+        // Roles are global and other tests add them concurrently, so walk the listing to the
+        // created role instead of assuming which page it lands on.
+        Map<String, ResourcePermission> sidecars = walkSidecars(client, "/v1/roles?limit=100");
+        ResourcePermission listed = sidecars.get(role.getId().toString());
+        assertNotNull(listed, "the role listing must carry the created role's permissions");
+        assertEquals(
+            accessByOperation(getPermissionForEntity(client, Entity.ROLE, role.getId())),
+            accessByOperation(listed));
+      }
+    } finally {
+      adminClient.roles().delete(role.getId().toString(), Map.of("hardDelete", "true"));
+    }
+  }
+
+  /**
+   * The page at {@code path} carries exactly {@code expectedRows}, each with the permissions {@code
+   * GET /permissions/{resource}/{id}} answers for the same caller, and no map unless asked.
+   */
+  private void assertSidecarMatchesEntityPermissions(
+      OpenMetadataClient client, String resource, String path, Set<String> expectedRows)
+      throws Exception {
+    EntityListWrapper page = listPage(client, path + "&includePermissions=true");
+    assertEquals(expectedRows, rowIds(page), path);
+    assertNotNull(page.entityPermissions, path + " must carry entityPermissions when opted in");
+    assertEquals(expectedRows, page.entityPermissions.keySet(), path);
+    for (String id : expectedRows) {
+      assertEquals(
+          accessByOperation(getPermissionForEntity(client, resource, UUID.fromString(id))),
+          accessByOperation(page.entityPermissions.get(id)),
+          path + " row " + id);
+    }
+    assertNull(listPage(client, path).entityPermissions, path + " omits the map unless opted in");
+  }
+
+  /** Follows the cursor listing at {@code path}; each page's map must name exactly its rows. */
+  private Map<String, ResourcePermission> walkSidecars(OpenMetadataClient client, String path)
+      throws Exception {
+    Map<String, ResourcePermission> sidecars = new HashMap<>();
+    String after = null;
+    int pagesFetched = 0;
+    do {
+      String pagePath = path + "&includePermissions=true";
+      if (after != null) {
+        pagePath += "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8);
+      }
+      EntityListWrapper page = listPage(client, pagePath);
+      assertNotNull(page.entityPermissions, pagePath + " must carry entityPermissions");
+      assertEquals(rowIds(page), page.entityPermissions.keySet(), pagePath);
+      sidecars.putAll(page.entityPermissions);
+      after = page.paging == null ? null : page.paging.getAfter();
+      pagesFetched++;
+    } while (after != null && pagesFetched < 50);
+    return sidecars;
+  }
+
+  private EntityListWrapper listPage(OpenMetadataClient client, String path) throws Exception {
+    String response = client.getHttpClient().executeForString(HttpMethod.GET, path, null);
+    return OBJECT_MAPPER.readValue(response, EntityListWrapper.class);
+  }
+
+  private static Set<String> rowIds(EntityListWrapper page) {
+    return page.data.stream().map(row -> String.valueOf(row.get("id"))).collect(Collectors.toSet());
+  }
+
+  private static Map<MetadataOperation, Permission.Access> accessByOperation(
+      ResourcePermission permission) {
+    return permission.getPermissions().stream()
+        .collect(Collectors.toMap(Permission::getOperation, Permission::getAccess));
+  }
+
   private TableListWrapper listTablesPaged(
       OpenMetadataClient client, String schemaFqn, int limit, String after) throws Exception {
     StringBuilder path =
@@ -716,6 +827,13 @@ public class PermissionsResourceIT {
   @JsonIgnoreProperties(ignoreUnknown = true)
   private static class TableListWrapper {
     public List<Table> data;
+    public Map<String, ResourcePermission> entityPermissions;
+    public Paging paging;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  private static class EntityListWrapper {
+    public List<Map<String, Object>> data;
     public Map<String, ResourcePermission> entityPermissions;
     public Paging paging;
   }

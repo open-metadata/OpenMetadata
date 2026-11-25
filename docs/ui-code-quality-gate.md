@@ -199,7 +199,7 @@ on `make ui-checkstyle-changed`.
 
 ## SonarCloud configuration (admin — must be done once)
 
-Project `open-metadata-ui`, organization `open-metadata`, scanned by `.github/workflows/yarn-coverage.yml`.
+Project `open-metadata-ui`, organization `open-metadata`, scanned by `.github/workflows/ui-sonarcloud-nightly.yml`.
 
 ### Quality profile
 

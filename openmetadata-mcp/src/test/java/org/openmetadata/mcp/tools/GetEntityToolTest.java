@@ -197,6 +197,17 @@ class GetEntityToolTest {
     assertThat(result.get("relatedEntities").toString()).contains("erp.payroll", "payroll");
   }
 
+  @Test
+  void owningAMemoryDoesNotRevealAnUnreadableDocumentItCites() throws Exception {
+    EntityReference document = queryReference().withType(Entity.CONTEXT_FILE);
+
+    Map<String, Object> result =
+        readMemoryCiting(document, mock(Authorizer.class), securityContextFor("alice"));
+
+    assertThat(result.get("relatedEntities"))
+        .isEqualTo(List.of(Map.of("id", document.getId().toString(), "type", Entity.CONTEXT_FILE)));
+  }
+
   private static EntityReference queryReference() {
     return new EntityReference()
         .withId(UUID.randomUUID())

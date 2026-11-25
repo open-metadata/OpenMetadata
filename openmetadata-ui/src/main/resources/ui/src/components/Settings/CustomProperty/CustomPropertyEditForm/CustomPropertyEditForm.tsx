@@ -95,6 +95,7 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
   showHint = false,
   fieldDocVariant,
   onSubmit,
+  onDirtyChange,
 }) => {
   const { t } = useTranslation();
   const isEnum = isEnumProperty(property);
@@ -103,6 +104,11 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
   const form = useForm<EditCustomPropertyFormValues>({
     defaultValues: getEditFormValues(property),
   });
+
+  const { isDirty } = form.formState;
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   // The rich-text editor is uncontrolled, so a new property remounts it.
   const [editorKey, setEditorKey] = useState(0);

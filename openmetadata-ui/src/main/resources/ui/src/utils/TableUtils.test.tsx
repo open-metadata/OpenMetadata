@@ -23,6 +23,7 @@ import {
 } from '../generated/entity/data/table';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
+import { useApplicationStore } from '../hooks/useApplicationStore';
 import { MOCK_TABLE, MOCK_TABLE_DBT } from '../mocks/TableData.mock';
 import { getEntityIcon } from '../utils/EntityIconUtils';
 import { ExtraTableDropdownOptions } from '../utils/TableDropdownOptions';
@@ -1238,6 +1239,36 @@ describe('TableUtils', () => {
       expect(stringifyResult).toContain(
         '{"data-testid":"dbt-source-project-id","children":"--"}'
       );
+    });
+
+    it('knowledge graph tab is offered only to admins when RDF is enabled', () => {
+      const isKnowledgeGraphHidden = (
+        rdfEnabled: boolean,
+        isAdmin: boolean
+      ) => {
+        useApplicationStore.setState({
+          rdfEnabled,
+          currentUser: {
+            id: 'user-id',
+            name: 'user',
+            email: 'user@example.com',
+            isAdmin,
+          },
+        });
+
+        return getTableDetailPageBaseTabs(mockProps).find(
+          (tab) => tab.key === EntityTabs.KNOWLEDGE_GRAPH
+        )?.isHidden;
+      };
+
+      expect(isKnowledgeGraphHidden(true, true)).toBe(false);
+      expect(isKnowledgeGraphHidden(true, false)).toBe(true);
+      expect(isKnowledgeGraphHidden(false, true)).toBe(true);
+
+      useApplicationStore.setState({
+        rdfEnabled: false,
+        currentUser: undefined,
+      });
     });
   });
 

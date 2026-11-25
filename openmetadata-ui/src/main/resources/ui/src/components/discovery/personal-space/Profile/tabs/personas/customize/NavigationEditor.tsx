@@ -105,8 +105,12 @@ const NavigationEditor = ({
       showSuccessToast(
         t('server.update-entity-success', { entity: t('label.navigation') })
       );
+
+      return true;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      return false;
     } finally {
       setIsSaving(false);
     }
