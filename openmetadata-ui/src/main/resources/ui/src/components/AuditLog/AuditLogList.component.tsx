@@ -440,7 +440,7 @@ const AuditLogItemMeta: FC<{ entityType?: string; timestamp?: number }> = ({
     wrap="wrap">
     {entityType && (
       <Typography
-        className="tw:text-fg-brand-primary"
+        className="tw:text-secondary"
         data-testid="entity-type-badge"
         size="text-xs">
         {startCase(entityType)}
