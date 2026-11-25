@@ -941,18 +941,22 @@ CREATE INDEX IF NOT EXISTS idx_context_file_visibility ON context_file (visibili
 
 -- A container's domain change finds its lineage-bearing descendants with `fqnHash LIKE 'hash.%'`
 -- (ADR:2026-11-20-a-domain-lineage-edge-counts-the-edges-its-domains-assets-hold-in-effect). The
--- default-opclass unique index cannot serve that under a non-C collation, so these four tables,
--- left out of the 1.13.0 *_fqnhash_pattern set, would be seq-scanned on every such write.
--- text_pattern_ops for the reason given there. MySQL's ascii_bin fqnHash already serves the prefix.
+-- default-opclass fqnHash indexes cannot serve that under a non-C collation, so these seven
+-- tables, left out of the 1.13.0 *_fqnhash_pattern set, would be seq-scanned on every such write.
+-- test_suite is the large one: it holds a basic suite per table and every table, schema, database
+-- and database service domain write scans it. text_pattern_ops for the reason given there. MySQL's
+-- fqnHash btree already serves a constant prefix.
 --
 -- OPERATOR RUNBOOK: an interrupted CONCURRENTLY build leaves an INVALID index that IF NOT EXISTS
--- then skips. Detect and remediate the four built here, by name: the 1.13.0 indexes match the same
+-- then skips. Detect and remediate the seven built here, by name: the 1.13.0 indexes match the same
 -- pattern, and dropping one of them without its log entry would never be recreated.
 --   SELECT c.relname FROM pg_class c
 --    JOIN pg_index i ON i.indexrelid = c.oid
 --    WHERE NOT i.indisvalid AND c.relname IN (
 --      'idx_stored_procedure_entity_fqnhash_pattern', 'idx_pipeline_entity_fqnhash_pattern',
---      'idx_llm_model_entity_fqnhash_pattern', 'idx_mcp_server_entity_fqnhash_pattern');
+--      'idx_llm_model_entity_fqnhash_pattern', 'idx_mcp_server_entity_fqnhash_pattern',
+--      'idx_test_suite_fqnhash_pattern', 'idx_tag_fqnhash_pattern',
+--      'idx_ai_framework_control_entity_fqnhash_pattern');
 --   DROP INDEX CONCURRENTLY <relname>;
 --   DELETE FROM server_migration_sql_logs
 --    WHERE version = '2.1.0'
@@ -965,3 +969,9 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_llm_model_entity_fqnhash_pattern
     ON llm_model_entity (fqnHash text_pattern_ops);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_mcp_server_entity_fqnhash_pattern
     ON mcp_server_entity (fqnHash text_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_test_suite_fqnhash_pattern
+    ON test_suite (fqnHash text_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tag_fqnhash_pattern
+    ON tag (fqnHash text_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ai_framework_control_entity_fqnhash_pattern
+    ON ai_framework_control_entity (fqnHash text_pattern_ops);

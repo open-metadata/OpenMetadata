@@ -72,8 +72,10 @@ rollup divergence, needs the same change in `LineageRepository`.
   transitively), plus the container's own type when it nests (a directory), kept when the type has
   domains, the gate `LineageRepository` applies to both ends of an edge it counts. So schemas are
   lineage ends, and so are test suites and test cases, whose FQNs sit under their table's. A table's
-  own domain write therefore runs two prefix queries, and a container's runs one per such type under
-  it; the cost of those scans is not measured yet. The descendants found are those that are an end
+  own domain write therefore runs two prefix queries (`test_suite`, `test_case`), and a container's
+  runs one per such type under it. Every table discovery scans has a prefix index on Postgres
+  (below); the time the test suite and test case scans add is not measured yet. The descendants
+  found are those that are an end
   of a lineage edge; their domains in effect are read before the write and after it, in the write's
   transaction, with no
   cache answering or keeping the reads. Reading both sides gets each move right whether the
@@ -126,8 +128,11 @@ rollup divergence, needs the same change in `LineageRepository`.
   `reindex --force --entities=domain,dataProduct` follows. `--force` is needed: a reindex without it
   skips the mappings it finds unchanged, and the domain view would keep the old counts.
 - **Postgres prefix indexes.** Discovery's `fqnHash LIKE 'hash.%'` needs a `text_pattern_ops`
-  index under a non-C collation (as in 1.13.0); 2.1.0 adds the four that lineage-end types lacked:
-  `stored_procedure_entity`, `pipeline_entity`, `llm_model_entity`, `mcp_server_entity`.
+  index under a non-C collation (as in 1.13.0); 2.1.0 adds the seven that discovery's tables
+  lacked: `stored_procedure_entity`, `pipeline_entity`, `llm_model_entity`, `mcp_server_entity`,
+  `test_suite` (one basic suite per table, scanned on every table, schema, database and database
+  service domain write), `tag` (a classification's write) and `ai_framework_control_entity` (an AI
+  governance framework's write). MySQL's `fqnHash` btree serves a constant prefix as it is.
 - **Still not moved live:** a domain's hard delete, where an asset whose own domains were all
   deleted falls back to an inherited one nobody counts under; a directory moved to another parent
   (the update rewrites its CONTAINS row and keeps its FQN, so it and its files inherit from a parent
