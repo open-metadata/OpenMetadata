@@ -34,8 +34,6 @@ import org.openmetadata.service.fernet.KeyRing;
 import org.openmetadata.service.fernet.Opening;
 import org.openmetadata.service.fernet.rotation.FernetTokens.Finding;
 import org.openmetadata.service.fernet.rotation.FernetTokens.Rewrite;
-import org.openmetadata.service.secrets.BoundCiphertext;
-import org.openmetadata.service.secrets.SecretOwner;
 
 class FernetTokensTest {
   private static final String NEW_KEY = Key.generateKey().serialise();
@@ -62,8 +60,7 @@ class FernetTokensTest {
     assertEquals(new Opening.NoKey(), OLD.open(newToken));
     assertEquals(oldToken.length(), newToken.length());
     assertEquals(json.replace(oldToken, newToken), replaced, "everything else is byte-identical");
-    assertEquals(
-        List.of(new Finding(TokenKind.PLAIN, Outcome.OLDER_KEY, PASSWORD, "")), rewrite.findings());
+    assertEquals(List.of(new Finding(Outcome.OLDER_KEY, PASSWORD, "")), rewrite.findings());
   }
 
   @Test
@@ -73,8 +70,7 @@ class FernetTokensTest {
             StoredText.writable(ROW, serviceJson(NEW.seal(SECRET)), Encoding.JSON), RING);
 
     assertEquals(Optional.empty(), rewrite.replacement());
-    assertEquals(
-        List.of(new Finding(TokenKind.PLAIN, Outcome.PRIMARY, "", "")), rewrite.findings());
+    assertEquals(List.of(new Finding(Outcome.PRIMARY, "", "")), rewrite.findings());
   }
 
   @Test
@@ -87,8 +83,7 @@ class FernetTokensTest {
     JsonNode replaced = JsonUtils.readTree(rewrite.replacement().orElseThrow());
     assertEquals(replaced.get("a").textValue(), replaced.get("b").textValue());
     assertEquals(new Opening.Primary(SECRET), NEW.open(replaced.get("a").textValue()));
-    assertEquals(
-        List.of(new Finding(TokenKind.PLAIN, Outcome.OLDER_KEY, "/a", "")), rewrite.findings());
+    assertEquals(List.of(new Finding(Outcome.OLDER_KEY, "/a", "")), rewrite.findings());
   }
 
   @Test
@@ -98,8 +93,7 @@ class FernetTokensTest {
             StoredText.writable(ROW, serviceJson(THIRD.seal(SECRET)), Encoding.JSON), RING);
 
     assertEquals(Optional.empty(), rewrite.replacement());
-    assertEquals(
-        List.of(new Finding(TokenKind.PLAIN, Outcome.NO_KEY, PASSWORD, "")), rewrite.findings());
+    assertEquals(List.of(new Finding(Outcome.NO_KEY, PASSWORD, "")), rewrite.findings());
   }
 
   @Test
@@ -112,39 +106,10 @@ class FernetTokensTest {
   }
 
   @Test
-  void aBoundTokenOpensAfterTheRewriteForItsDestinationAndFieldOnly() {
-    UUID destinationId = UUID.randomUUID();
-    SecretOwner owner = SecretOwner.builder("alertdestination").id(destinationId).build();
-    String field = "/headers/X-Key";
-    String oldToken = BoundCiphertext.seal(OLD, owner, field, SECRET);
-    String json = alertJson(destinationId, oldToken);
-
-    Rewrite rewrite = FernetTokens.rewrite(StoredText.writable(ROW, json, Encoding.JSON), RING);
-
-    String newToken =
-        JsonUtils.readTree(rewrite.replacement().orElseThrow())
-            .at("/destinations/0/config/headers/X-Key")
-            .textValue();
-    assertEquals(new Opening.Primary(SECRET), BoundCiphertext.open(NEW, owner, field, newToken));
-    assertEquals(new Opening.NoKey(), BoundCiphertext.open(NEW, owner, "/endpoint", newToken));
-    SecretOwner another = SecretOwner.builder("alertdestination").id(UUID.randomUUID()).build();
-    assertEquals(new Opening.NoKey(), BoundCiphertext.open(NEW, another, field, newToken));
-    assertEquals(oldToken.length(), newToken.length());
-    assertEquals(
-        List.of(
-            new Finding(
-                TokenKind.BOUND, Outcome.OLDER_KEY, "/destinations/0/config/headers/X-Key", "")),
-        rewrite.findings());
-  }
-
-  @Test
-  void aBoundTokenInsideAChangeDescriptionStringRekeys() {
-    UUID destinationId = UUID.randomUUID();
-    SecretOwner owner = SecretOwner.builder("alertdestination").id(destinationId).build();
-    String field = "/headers/X-Key";
-    String oldToken = BoundCiphertext.seal(OLD, owner, field, SECRET);
+  void aWebhookSecretInsideAChangeDescriptionStringRekeys() {
+    String oldToken = OLD.seal(SECRET);
     String destinations =
-        JsonUtils.readTree(alertJson(destinationId, oldToken)).get("destinations").toString();
+        JsonUtils.readTree(alertJson(UUID.randomUUID(), oldToken)).get("destinations").toString();
     String json =
         "{\"id\":\""
             + UUID.randomUUID()
@@ -159,48 +124,21 @@ class FernetTokensTest {
             .at("/changeDescription/fieldsUpdated/0/newValue")
             .textValue();
     String newToken = JsonUtils.readTree(recorded).at("/0/config/headers/X-Key").textValue();
-    assertEquals(new Opening.Primary(SECRET), BoundCiphertext.open(NEW, owner, field, newToken));
+    assertEquals(new Opening.Primary(SECRET), NEW.open(newToken));
     assertEquals(
-        List.of(
-            new Finding(
-                TokenKind.BOUND,
-                Outcome.OLDER_KEY,
-                "/changeDescription/fieldsUpdated/0/newValue",
-                "")),
+        List.of(new Finding(Outcome.OLDER_KEY, "/changeDescription/fieldsUpdated/0/newValue", "")),
         rewrite.findings());
   }
 
   @Test
-  void aBoundTokenWithNoAnchorIsUnbound() {
-    SecretOwner owner = SecretOwner.builder("somethingelse").id(UUID.randomUUID()).build();
-    String json = "{\"secret\":\"" + BoundCiphertext.seal(OLD, owner, "/secret", SECRET) + "\"}";
+  void aPreReleaseBoundTokenIsReportedAsNoKeyAndStays() {
+    String boundToken = "fernet:bound:" + OLD.seal(SECRET).substring("fernet:".length());
+    String json = "{\"secret\":\"" + boundToken + "\"}";
 
     Rewrite rewrite = FernetTokens.rewrite(StoredText.writable(ROW, json, Encoding.JSON), RING);
 
     assertEquals(Optional.empty(), rewrite.replacement());
-    assertEquals(
-        List.of(new Finding(TokenKind.BOUND, Outcome.UNBOUND, "/secret", "its owner is unknown")),
-        rewrite.findings());
-  }
-
-  @Test
-  void anAnchoredBoundTokenThatNoKeyOpensIsUnbound() {
-    UUID destinationId = UUID.randomUUID();
-    SecretOwner owner = SecretOwner.builder("alertdestination").id(destinationId).build();
-    String json =
-        alertJson(destinationId, BoundCiphertext.seal(THIRD, owner, "/headers/X-Key", SECRET));
-
-    Rewrite rewrite = FernetTokens.rewrite(StoredText.writable(ROW, json, Encoding.JSON), RING);
-
-    assertEquals(Optional.empty(), rewrite.replacement());
-    assertEquals(
-        List.of(
-            new Finding(
-                TokenKind.BOUND,
-                Outcome.UNBOUND,
-                "/destinations/0/config/headers/X-Key",
-                "no candidate owner opens it")),
-        rewrite.findings());
+    assertEquals(List.of(new Finding(Outcome.NO_KEY, "/secret", "")), rewrite.findings());
   }
 
   @Test
@@ -214,8 +152,7 @@ class FernetTokensTest {
     assertEquals(bytes.length(), stored.length());
     String newToken = deserialize(stored.getBytes(StandardCharsets.ISO_8859_1));
     assertEquals(new Opening.Primary(SECRET), NEW.open(newToken));
-    assertEquals(
-        List.of(new Finding(TokenKind.PLAIN, Outcome.OLDER_KEY, "", "")), rewrite.findings());
+    assertEquals(List.of(new Finding(Outcome.OLDER_KEY, "", "")), rewrite.findings());
   }
 
   @Test
@@ -284,7 +221,6 @@ class FernetTokensTest {
     assertEquals(
         List.of(
             new Finding(
-                TokenKind.PLAIN,
                 Outcome.UNREWRITABLE,
                 "/t",
                 "its secret holds a token that is not under the primary key")),
@@ -316,8 +252,8 @@ class FernetTokensTest {
     assertEquals(Optional.empty(), rewrite.replacement());
     assertEquals(
         List.of(
-            new Finding(TokenKind.PLAIN, Outcome.UNREWRITABLE, "", "its table has no primary key"),
-            new Finding(TokenKind.PLAIN, Outcome.PRIMARY, "", "")),
+            new Finding(Outcome.UNREWRITABLE, "", "its table has no primary key"),
+            new Finding(Outcome.PRIMARY, "", "")),
         rewrite.findings());
   }
 

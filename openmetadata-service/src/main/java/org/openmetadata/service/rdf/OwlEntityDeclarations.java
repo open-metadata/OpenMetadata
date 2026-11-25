@@ -23,6 +23,7 @@ import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
 import org.apache.jena.vocabulary.XSD;
+import org.openmetadata.service.ontology.OwlDatatypeSupport;
 
 /**
  * Declares the entities of the ontology projection so the OWL 2 RDF mapping reads every IRI with
@@ -77,7 +78,10 @@ public final class OwlEntityDeclarations {
   public static void declare(final Model model, final String iri, final EntityKind requested) {
     if (!isBuiltIn(iri)) {
       final EntityKind kind = isSkos(iri) ? SKOS_KINDS.getOrDefault(iri, requested) : requested;
-      model.createResource(iri).addProperty(RDF.type, kind.declarationType);
+      final Resource entity = model.createResource(iri).addProperty(RDF.type, kind.declarationType);
+      if (kind == EntityKind.DATATYPE && OwlDatatypeSupport.isDate(iri)) {
+        entity.addProperty(OWL2.equivalentClass, XSD.dateTime);
+      }
     }
   }
 
@@ -101,9 +105,15 @@ public final class OwlEntityDeclarations {
     return isBuiltIn(iri) || isSkos(iri);
   }
 
-  /** Datatypes a restriction filler can name: XSD, {@code rdfs:Literal} and the OWL 2 extras. */
+  /**
+   * Datatypes a restriction filler can name: XSD, {@code rdfs:Literal}, the OWL 2 extras and
+   * {@link OwlDatatypeSupport#DATE}.
+   */
   public static boolean isDatatype(final String iri) {
-    return iri != null && (iri.startsWith(XSD.NS) || NON_XSD_DATATYPES.contains(iri));
+    return iri != null
+        && (iri.startsWith(XSD.NS)
+            || NON_XSD_DATATYPES.contains(iri)
+            || OwlDatatypeSupport.isDate(iri));
   }
 
   /** Fixed vocabulary kinds can be resolved without redefining or fetching remote terms. */

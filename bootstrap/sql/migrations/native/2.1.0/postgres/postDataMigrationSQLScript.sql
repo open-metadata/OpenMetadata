@@ -972,6 +972,28 @@ UPDATE entity_extension SET json = json - 'authenticationMechanism'
 WHERE extension LIKE 'user.version.%'
   AND json -> 'authenticationMechanism' IS NOT NULL;
 
+-- Data 360 Pipeline extracts lineage and run status in its metadata agent. Stored services
+-- still carry the old `true` flags, which make the UI and AutoPilot offer separate Lineage
+-- and Usage agents that cannot run on a pipeline service.
+UPDATE pipeline_service_entity
+SET json = jsonb_set(
+    jsonb_set(json::jsonb, '{connection,config,supportsLineageExtraction}', 'false'::jsonb),
+    '{connection,config,supportsUsageExtraction}', 'false'::jsonb
+)
+WHERE serviceType = 'Data360Pipeline'
+  AND json -> 'connection' -> 'config' IS NOT NULL;
+
+-- Data 360 Pipeline no longer tags a pipeline with its status, and an ingestion PUT never removes
+-- a tag, so drop the `Data360.ACTIVE` label the connector applied. Only automated labels (2) from
+-- a classification (0) on Data 360 Pipeline pipelines go; one a user applied stays.
+DELETE FROM tag_usage tu
+USING pipeline_entity pe
+WHERE tu.targetFQNHash = pe.fqnHash
+  AND tu.tagFQN = 'Data360.ACTIVE'
+  AND tu.source = 0
+  AND tu.labelType = 2
+  AND pe.json ->> 'serviceType' = 'Data360Pipeline';
+
 -- Data Insights: keep test case definitions out of the data-asset charts.
 --
 -- testCase is now aliased into di-data-assets-* by dataInsightAliases so a chart can count test

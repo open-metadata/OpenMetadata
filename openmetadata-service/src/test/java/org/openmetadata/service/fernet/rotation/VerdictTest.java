@@ -42,7 +42,6 @@ class VerdictTest {
         Arguments.of(Map.of(Outcome.PRIMARY, 5L), 0),
         Arguments.of(Map.of(Outcome.PRIMARY, 5L, Outcome.REKEYED, 2L), 0),
         Arguments.of(Map.of(Outcome.OLDER_KEY, 1L), 3),
-        Arguments.of(Map.of(Outcome.UNBOUND, 1L), 3),
         Arguments.of(Map.of(Outcome.UNREWRITABLE, 1L), 3),
         Arguments.of(Map.of(Outcome.CONTENDED, 1L), 3),
         Arguments.of(Map.of(Outcome.NO_KEY, 1L, Outcome.OLDER_KEY, 1L), 3),
@@ -95,13 +94,11 @@ class VerdictTest {
             "Primary",
             "Older key",
             "No key",
-            "Unbound",
             "Not rewritable",
             "Re-encrypted",
             "Contended"),
         table.columns);
-    assertEquals(
-        List.of(List.of("user_entity", "4", "4", "0", "0", "0", "0", "4", "0")), table.rows);
+    assertEquals(List.of(List.of("user_entity", "4", "4", "0", "0", "0", "4", "0")), table.rows);
   }
 
   @Test
@@ -133,7 +130,7 @@ class VerdictTest {
     List<String> lines = print(report, table);
 
     assertEquals(
-        List.of("Store", "Values", "Primary", "Older key", "No key", "Unbound", "Not rewritable"),
+        List.of("Store", "Values", "Primary", "Older key", "No key", "Not rewritable"),
         table.columns);
     assertEquals(
         "Not safe to remove an older key: 55 tokens still need one and 0 places cannot be vouched for. Run with --apply.",
@@ -163,9 +160,8 @@ class VerdictTest {
             new Problem(
                 new Location("event_subscription_entity", "json", List.of("id"), List.of("4f1c")),
                 "/destinations/0/config/headers/X-Key",
-                TokenKind.BOUND,
-                Outcome.UNBOUND,
-                "its owner is unknown"),
+                Outcome.UNREWRITABLE,
+                "its table has no primary key"),
             new Problem(
                 new Location(
                     "entity_extension",
@@ -173,9 +169,8 @@ class VerdictTest {
                     List.of("id", "extension"),
                     List.of("4f1c", "eventsubscription.version.0.2")),
                 "/destinations/0/config/endpoint",
-                TokenKind.BOUND,
-                Outcome.UNBOUND,
-                "no candidate owner opens it"),
+                Outcome.OLDER_KEY,
+                ""),
             new Problem(
                 new Location(
                     "user_session",
@@ -183,15 +178,12 @@ class VerdictTest {
                     List.of("id"),
                     List.of("fernet:gAAAAsession-credential")),
                 "/omRefreshToken",
-                TokenKind.PLAIN,
                 Outcome.NO_KEY,
                 ""),
-            new Problem(
-                Location.ofRedis("om:session:abc", ""), "", TokenKind.PLAIN, Outcome.CONTENDED, ""),
+            new Problem(Location.ofRedis("om:session:abc", ""), "", Outcome.CONTENDED, ""),
             new Problem(
                 Location.ofRedis("om:e:eventSubscription:4f1c", "base"),
                 "/destinations/0/config/headers/X-Key",
-                TokenKind.BOUND,
                 Outcome.OLDER_KEY,
                 ""));
     Report report =
@@ -200,27 +192,27 @@ class VerdictTest {
     List<String> lines = print(report, new CapturedTable());
 
     assertEquals(
-        "event_subscription_entity id=4f1c json /destinations/0/config/headers/X-Key: bound token that cannot be opened: its owner is unknown",
+        "event_subscription_entity id=4f1c json /destinations/0/config/headers/X-Key: token that will not be replaced: its table has no primary key",
         lines.get(2));
-    assertEquals(
-        "entity_extension id=4f1c,extension=eventsubscription.version.0.2 json /destinations/0/config/endpoint: bound token that cannot be opened: no candidate owner opens it",
-        lines.get(3));
     assertEquals(
         "user_session key="
             + Location.digest("fernet:gAAAAsession-credential")
             + " json /omRefreshToken: token that no configured key opens",
-        lines.get(4));
+        lines.get(3));
     assertEquals(
         "redis key="
             + Location.digest("om:session:abc")
             + ": value that kept changing while it was re-encrypted",
+        lines.get(4));
+    assertEquals(
+        "entity_extension id=4f1c,extension=eventsubscription.version.0.2 json /destinations/0/config/endpoint: token that only an older configured key opens",
         lines.get(5));
     assertEquals(
         "redis key="
             + Location.digest("om:e:eventSubscription:4f1c")
-            + " base /destinations/0/config/headers/X-Key: bound token that only an older configured key opens",
+            + " base /destinations/0/config/headers/X-Key: token that only an older configured key opens",
         lines.get(6));
-    assertTrue(lines.get(4).matches("user_session key=[0-9a-f]{12} json .*"));
+    assertTrue(lines.get(3).matches("user_session key=[0-9a-f]{12} json .*"));
     assertFalse(String.join("\n", lines).contains("fernet:"));
   }
 
@@ -280,7 +272,6 @@ class VerdictTest {
     return new Problem(
         new Location("user_entity", "json", List.of("id"), List.of(id)),
         "/authenticationMechanism/config/JWTToken",
-        TokenKind.PLAIN,
         outcome,
         "");
   }

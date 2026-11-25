@@ -108,10 +108,10 @@ public final class DeploymentConfigReconciler {
       DeploymentConfig deployment, DeploymentSetting setting, StoredSettingRow row) {
     Optional<DeploymentSnapshot> previous = DeploymentSnapshot.parse(row.snapshot());
     if (previous.filter(this::isFromNewerServer).isEmpty()) {
-      MergeResult result =
-          merge.merge(inputOf(deployment, setting, ConfigSourceMode.ENV, row, previous));
+      final MergeInput input = inputOf(deployment, setting, ConfigSourceMode.ENV, row, previous);
+      final MergeResult result = merge.merge(input);
       if (result.storedChanged()) {
-        preparer.prepareReconciled(setting.settingsType(), result.stored());
+        preparer.prepareReconciled(setting.settingsType(), result.stored(), input.stored());
       }
     }
   }
@@ -181,8 +181,8 @@ public final class DeploymentConfigReconciler {
               + "deployment configuration to it",
           setting.settingsType().value());
     } else {
-      MergeResult result = merge.merge(inputOf(deployment, setting, mode, row, previous));
-      done = store(setting, mode, row, previous, result);
+      final MergeInput input = inputOf(deployment, setting, mode, row, previous);
+      done = store(setting, input, row, previous, merge.merge(input));
     }
     return done;
   }
@@ -225,11 +225,12 @@ public final class DeploymentConfigReconciler {
 
   private boolean store(
       DeploymentSetting setting,
-      ConfigSourceMode mode,
+      MergeInput input,
       StoredSettingRow row,
       Optional<DeploymentSnapshot> previous,
       MergeResult result) {
     SettingsType type = setting.settingsType();
+    final ConfigSourceMode mode = input.mode();
     ReconcileLog log =
         ReconcileLog.of(setting, result, previous.map(this::warnedOf).orElse(List.of()));
     DeploymentSnapshot snapshot =
@@ -238,7 +239,7 @@ public final class DeploymentConfigReconciler {
             metaOf(mode, row, previous, log.warned()));
     boolean stored =
         result.storedChanged()
-            ? storeMerged(type, row, result, snapshot)
+            ? storeMerged(type, row, input.stored(), result, snapshot)
             : storeSnapshot(type, row, snapshot);
     if (stored) {
       ConfigSources.recordPersistedMode(type, mode);
@@ -267,9 +268,14 @@ public final class DeploymentConfigReconciler {
     return new DeploymentSnapshot.Meta(mode, appVersion, appliedJsonHash, warned, previousStored);
   }
 
+  /** {@code stored} is the decrypted stored value the merge started from. */
   private boolean storeMerged(
-      SettingsType type, StoredSettingRow row, MergeResult result, DeploymentSnapshot snapshot) {
-    String updatedJson = preparer.prepareReconciled(type, result.stored());
+      SettingsType type,
+      StoredSettingRow row,
+      JsonNode stored,
+      MergeResult result,
+      DeploymentSnapshot snapshot) {
+    final String updatedJson = preparer.prepareReconciled(type, result.stored(), stored);
     boolean written =
         dao.updateSettingsWithSnapshotIfCurrent(
                 type.value(), row.json(), updatedJson, snapshot.toJson())

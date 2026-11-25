@@ -104,7 +104,6 @@ The report lists each table, and Redis, with its counts:
 | Primary | Tokens the primary key opens |
 | Older key | Tokens only an older configured key opens |
 | No key | Tokens that no configured key opens |
-| Unbound | Webhook secrets that the command cannot open for the alert, user or team that holds them, because it cannot tell which one holds them or no configured key opens them for it |
 | Not rewritable | Tokens the command will not replace, for example in a table without a primary key or where the database refused the write |
 | Re-encrypted, Contended | With `--apply`: tokens replaced, and values that kept changing |
 
@@ -120,14 +119,12 @@ a short digest of their key, because some keys, such as session ids, are credent
 | 0 | Every token the command read opens with the primary key. After a run with `--every-table`, older keys can be removed from the servers |
 | 1 | The command failed, for example because the database was unreachable. Values it already re-encrypted stay readable under the configured keys |
 | 2 | The command refused to start and changed nothing. Possible causes: no key is configured; `--apply` with a single key; `--apply` with the default key from `openmetadata.yaml` as primary; the prompt was not confirmed; `--apply` without a terminal and without `--yes`; Redis is configured but unreachable; the database has no OpenMetadata tables, for example because the ops host points at another database or schema |
-| 3 | Not safe to remove an older key. A token still needs one, or a value cannot be vouched for (unbound, not rewritable, contended, or a table that could not be read). Run `--apply` again, with `--every-table` if the run had it, or fix the places listed |
+| 3 | Not safe to remove an older key. A token still needs one, or a value cannot be vouched for (not rewritable, contended, or a table that could not be read). Run `--apply` again, with `--every-table` if the run had it, or fix the places listed |
 | 4 | No token needs an older configured key, but some tokens open with no configured key. Those values were already unreadable before the rotation. Removing a key does not change that |
 
 On exit 4, check the listed places. Expired sessions and OAuth tokens written under a key that was
 removed earlier are the usual cause. If a server lists a key that the ops host does not, add that
-key to the ops host and run again. The same check applies on exit 3 when the listed places are
-webhook secrets that no candidate owner opens, because a missing key and a wrong owner look the
-same to the command.
+key to the ops host and run again.
 
 ## 4. Confirm
 

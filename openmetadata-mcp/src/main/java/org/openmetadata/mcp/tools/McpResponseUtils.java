@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Consumer;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
@@ -49,6 +50,8 @@ public final class McpResponseUtils {
   private static final String UPDATED = "updated";
   private static final String OPERATION_KEY = "_operation";
   private static final String DELETED_KEY = "deleted";
+  private static final String PENDING_APPROVAL = "pendingApproval";
+  private static final String CHANGE_REQUEST_ID_KEY = "changeRequestId";
 
   private McpResponseUtils() {}
 
@@ -146,6 +149,21 @@ public final class McpResponseUtils {
     List<String> changed = changedFields(entity.getChangeDescription());
     if (!changed.isEmpty()) {
       doc.put(CHANGED_KEY, changed);
+    }
+    return doc;
+  }
+
+  /**
+   * Relabels {@code doc} when an approval workflow held the write as {@code changeRequestId}, the
+   * id REST sends in {@code X-OpenMetadata-Pending-Change}. The entity in it is the published one,
+   * so "updated" and its last change's field list would report a write that has not happened.
+   * ADR:2026-11-13-an-mcp-write-an-approval-workflow-holds-answers-pending-approval
+   */
+  public static Map<String, Object> markHeld(Map<String, Object> doc, UUID changeRequestId) {
+    if (changeRequestId != null) {
+      doc.put(OPERATION_KEY, PENDING_APPROVAL);
+      doc.put(CHANGE_REQUEST_ID_KEY, changeRequestId.toString());
+      doc.remove(CHANGED_KEY);
     }
     return doc;
   }

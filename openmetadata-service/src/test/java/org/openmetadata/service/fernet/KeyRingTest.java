@@ -16,6 +16,7 @@ package org.openmetadata.service.fernet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -93,7 +94,7 @@ class KeyRingTest {
     assertSame(primary, both.rekeyIfOlder(primary));
     assertSame(third, both.rekeyIfOlder(third));
     assertSame(text, both.rekeyIfOlder(text));
-    assertEquals(null, both.rekeyIfOlder(null));
+    assertNull(both.rekeyIfOlder(null));
   }
 
   @Test

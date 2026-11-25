@@ -174,9 +174,4 @@ public class TestSuiteLineageResolver implements EntityLineageResolver {
 
     return parentRef;
   }
-
-  @Override
-  public String getEntityType() {
-    return Entity.TEST_SUITE;
-  }
 }

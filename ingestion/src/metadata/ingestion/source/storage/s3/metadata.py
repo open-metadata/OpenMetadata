@@ -17,6 +17,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 from datetime import datetime, timedelta
 from enum import Enum
+from urllib.parse import quote, urlparse
 
 from pydantic import ValidationError
 
@@ -48,6 +49,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.custom_pydantic import format_validation_error
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.storage.s3.models import (
@@ -90,6 +92,11 @@ class S3Metric(Enum):
     BUCKET_SIZE_BYTES = "BucketSizeBytes"
 
 
+def _is_aws_endpoint(endpoint_url: str) -> bool:
+    hostname = urlparse(endpoint_url).hostname or ""
+    return hostname.endswith(".amazonaws.com")
+
+
 class S3Source(StorageServiceSource):
     """
     Source implementation to ingest S3 buckets data.
@@ -104,6 +111,11 @@ class S3Source(StorageServiceSource):
         self._bucket_cache: dict[str, Container] = {}
         self._unstructured_container_cache: dict[str, tuple[str, str]] = {}
         self.s3_reader = get_reader(config_source=S3Config(), client=self.s3_client)
+        # Set to True when an S3 listing failed mid-run. While set, the
+        # container source state is incomplete (containers we could not list
+        # are absent from it), so ``mark_containers_as_deleted`` must be
+        # skipped — otherwise live containers would be marked deleted.
+        self._listing_incomplete: bool = False
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
@@ -175,6 +187,22 @@ class S3Source(StorageServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def mark_containers_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """Skip deletion when an S3 listing failed mid-run.
+
+        ``container_source_state`` only carries containers we actually
+        yielded; an interrupted listing leaves the live-but-unlisted
+        containers out of it, so the base deletion step would mark them
+        deleted. Abort deletion in that case and let the recorded
+        ``status.failed`` entry surface the problem.
+        """
+        if self._listing_incomplete:
+            logger.warning(
+                "Skipping container deletion because an S3 listing failed; the container source state is incomplete."
+            )
+            return
+        yield from super().mark_containers_as_deleted()
 
     def _get_bucket_name_and_key(self, full_path: str | None) -> tuple[str, str]:
         """
@@ -439,10 +467,20 @@ class S3Source(StorageServiceSource):
                     if structured_container:
                         yield structured_container
         except Exception as err:
-            logger.warning(
-                f"Error while generating structured containers by depth for {metadata_entry.dataPath} - {err}"
+            # Surface the error on the workflow status (e.g. AccessDenied from
+            # list_s3_objects) instead of silently logging it, so a partial or
+            # empty listing is reported as a failure rather than success.
+            # Mark the listing incomplete so container deletion is skipped:
+            # the source state is missing every container we could not list,
+            # and deleting against it would drop live containers.
+            self._listing_incomplete = True
+            self.status.failed(
+                StackTraceError(
+                    name=metadata_entry.dataPath,
+                    error=f"Error while generating structured containers by depth for {metadata_entry.dataPath} - {err}",
+                    stackTrace=traceback.format_exc(),
+                )
             )
-            logger.debug(traceback.format_exc())
 
     def _generate_structured_containers(
         self,
@@ -803,62 +841,46 @@ class S3Source(StorageServiceSource):
         """
         Method to fetch the bucket region
         """
-        region = None
         try:
             region_resp = self.s3_client.get_bucket_location(Bucket=bucket_name)
-            region = region_resp.get("LocationConstraint")
+            # AWS reports buckets in us-east-1 with a null LocationConstraint
+            return region_resp.get("LocationConstraint") or "us-east-1"
         except Exception:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get the region for bucket: {bucket_name}")
-        return region or self.service_connection.awsConfig.awsRegion
+        return self.service_connection.awsConfig.awsRegion
 
     def _get_bucket_source_url(self, bucket_name: str) -> str | None:
+        return self._get_object_source_url(bucket_name=bucket_name)
+
+    def _get_object_source_url(self, bucket_name: str, prefix: str | None = None) -> str | None:
         """
-        Method to get the source url of s3 bucket
-        """
-        try:
-            # Check if custom console endpoint URL is configured (for external S3-compatible storage)
-            console_endpoint_url = getattr(self.service_connection, "consoleEndpointURL", None)
+        Link to the bucket (or prefix) in the storage provider's web console.
 
-            # If no custom console endpoint, use AWS S3 console with region
-            if not console_endpoint_url:
-                region = self.get_aws_bucket_region(bucket_name=bucket_name)
-                return f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}?region={region}&tab=objects"
-
-            # For external S3-compatible storage, user provides the full base path
-            # (e.g., http://localhost:9001/browser/ for MinIO)
-            # We just append the bucket name
-            base_url = str(console_endpoint_url).rstrip("/")
-            return f"{base_url}/{bucket_name}/"  # noqa: TRY300
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")
-        return None
-
-    def _get_object_source_url(self, bucket_name: str, prefix: str) -> str | None:
-        """
-        Method to get the source url of s3 bucket
+        S3-compatible services get `{consoleEndpointURL}/{bucket}/{prefix}/`. When such a
+        service is configured through a non-AWS `endPointURL` without a console URL there
+        is no console to link to, so no URL is generated rather than a dead AWS console
+        link. Alternate AWS endpoints (PrivateLink, FIPS) still get the AWS console.
         """
         try:
-            # Check if custom console endpoint URL is configured (for external S3-compatible storage)
-            console_endpoint_url = getattr(self.service_connection, "consoleEndpointURL", None)
+            console_endpoint_url = self.service_connection.consoleEndpointURL
+            encoded_prefix = quote(prefix) if prefix else None
 
-            # If no custom console endpoint, use AWS S3 console with region
-            if not console_endpoint_url:
-                region = self.get_aws_bucket_region(bucket_name=bucket_name)
-                return (
-                    f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}"
-                    f"?region={region}&prefix={prefix}/"
-                    f"&showversions=false"
-                )
+            if console_endpoint_url:
+                base_url = str(console_endpoint_url).rstrip("/")
+                if encoded_prefix:
+                    return f"{base_url}/{bucket_name}/{encoded_prefix}/"
+                return f"{base_url}/{bucket_name}/"
 
-            # For external S3-compatible storage, user provides the full base path
-            # (e.g., http://localhost:9001/browser/ for MinIO)
-            # We just append the bucket name and prefix
-            base_url = str(console_endpoint_url).rstrip("/")
-            return f"{base_url}/{bucket_name}/{prefix}/"  # noqa: TRY300
+            endpoint_url = self.service_connection.awsConfig.endPointURL
+            if endpoint_url and not _is_aws_endpoint(str(endpoint_url)):
+                return None
 
+            region = self.get_aws_bucket_region(bucket_name=bucket_name)
+            base_url = f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}?region={region}"
+            if encoded_prefix:
+                return f"{base_url}&prefix={encoded_prefix}/&showversions=false"
+            return f"{base_url}&tab=objects"  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get source url: {exc}")

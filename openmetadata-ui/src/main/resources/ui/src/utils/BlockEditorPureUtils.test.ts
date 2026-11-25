@@ -13,6 +13,7 @@
 import {
   formatClientContent,
   getHtmlStringFromMarkdownString,
+  getTrimmedHtmlContent,
   isHTMLString,
 } from './BlockEditorPureUtils';
 
@@ -563,5 +564,183 @@ describe('formatClientContent: mentions and hashtags', () => {
     expect(result).toContain('href="https://example.com/docs"');
     expect(result).toContain('Legacy documentation');
     expect(result).not.toContain('@null');
+  });
+});
+
+describe('getTrimmedHtmlContent', () => {
+  it('should return the content unchanged when it fits the limit', () => {
+    const html = '<p>Short <strong>bold</strong> text</p>';
+
+    expect(getTrimmedHtmlContent(html, 50)).toBe(html);
+  });
+
+  it('should keep more than three short blocks when the text fits the limit', () => {
+    const html = '<p>a</p><p>b</p><p>c</p><p>d</p>';
+
+    expect(getTrimmedHtmlContent(html, 350)).toBe(html);
+  });
+
+  it('should not cut a mention that ends the content', () => {
+    const html = formatClientContent(
+      'Intro [@Infrastructure](http://localhost:3000/settings/members/teams/Infrastructure)'
+    );
+
+    expect(getTrimmedHtmlContent(html, 10)).toBe(html);
+  });
+
+  it('should keep bold formatting that crosses the cut', () => {
+    const html = formatClientContent(
+      'Intro **bold words continue here** tail and some more text after it'
+    );
+
+    expect(getTrimmedHtmlContent(html, 20)).toBe(
+      '<p>Intro <strong>bold words...</strong></p>'
+    );
+  });
+
+  it('should keep a link whose label crosses the cut', () => {
+    const html = formatClientContent(
+      'See the [my long docs label](https://example.com/x) for details please'
+    );
+
+    expect(getTrimmedHtmlContent(html, 20)).toBe(
+      '<p>See the <a href="https://example.com/x" rel="noopener noreferrer">my long...</a></p>'
+    );
+  });
+
+  it('should count visible text, not markup, against the limit', () => {
+    const html =
+      '<p><a href="https://example.com/a/very/long/path">docs</a> and more words here</p>';
+
+    expect(getTrimmedHtmlContent(html, 15)).toBe(
+      '<p><a href="https://example.com/a/very/long/path">docs</a> and more...</p>'
+    );
+  });
+
+  it('should keep a mention crossing the cut whole and put the ellipsis after it', () => {
+    const html = formatClientContent(
+      'Intro [@Infrastructure](http://localhost:3000/settings/members/teams/Infrastructure) tail text here'
+    );
+    const doc = new DOMParser().parseFromString(
+      formatClientContent(getTrimmedHtmlContent(html, 10)),
+      'text/html'
+    );
+
+    expect(doc.body.textContent).toBe('Intro @Infrastructure...');
+    expect(doc.querySelector('a[data-type="mention"]')?.textContent).toBe(
+      '@Infrastructure'
+    );
+  });
+
+  it('should keep a hashtag crossing the cut whole and put the ellipsis after it', () => {
+    const html = formatClientContent(
+      'See [#table](http://localhost:3000/table/sample_data.ecommerce) here and more'
+    );
+    const doc = new DOMParser().parseFromString(
+      formatClientContent(getTrimmedHtmlContent(html, 8)),
+      'text/html'
+    );
+
+    expect(doc.body.textContent).toBe('See #sample_data.ecommerce...');
+  });
+
+  it('should put the ellipsis on a text node that exactly fills the limit', () => {
+    const html =
+      '<p>Hello<a href="https://example.com">Docs</a> tail</p><p>Next</p>';
+
+    expect(getTrimmedHtmlContent(html, 5)).toBe('<p>Hello...</p>');
+  });
+
+  it('should keep at most three blocks in the preview', () => {
+    const html = formatClientContent(
+      '- item one\n- item two\n- item three\n- item four\n- item five'
+    );
+
+    expect(getTrimmedHtmlContent(html, 40)).toBe(
+      '<ul>\n<li>item one</li>\n<li>item two</li>\n<li>item three...</li></ul>'
+    );
+  });
+
+  it('should not count whitespace between blocks against the limit', () => {
+    const html = formatClientContent('First paragraph\n\nSecond paragraph');
+
+    expect(getTrimmedHtmlContent(html, 15)).toBe('<p>First paragraph...</p>');
+  });
+
+  it('should count spaces between inline formatted words', () => {
+    const html = `<p>${Array(80).fill('<strong>word</strong>').join(' ')}</p>`;
+    const trimmed = new DOMParser().parseFromString(
+      getTrimmedHtmlContent(html, 350),
+      'text/html'
+    ).body.textContent;
+
+    expect(trimmed).toMatch(/word\.\.\.$/);
+    expect(trimmed?.length).toBeLessThanOrEqual(353);
+  });
+
+  it('should count a quoted section with two paragraphs as two blocks', () => {
+    const html =
+      '<blockquote>\n<p>First</p>\n<p>Second</p>\n</blockquote>\n<p>Third</p>\n<p>Fourth</p>';
+
+    expect(getTrimmedHtmlContent(html, 20)).toBe(
+      '<blockquote>\n<p>First</p>\n<p>Second</p>\n</blockquote>\n<p>Third...</p>'
+    );
+  });
+
+  it('should count line breaks inside a paragraph as separate lines', () => {
+    const html = formatClientContent('one\ntwo\nthree\nfour\nfive');
+
+    expect(getTrimmedHtmlContent(html, 20)).toBe(
+      '<p>one<br>\ntwo<br>\nthree...</p>'
+    );
+  });
+
+  it('should count each table row as one block', () => {
+    const html = formatClientContent(
+      '| a | b |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |'
+    );
+    const rows = new DOMParser()
+      .parseFromString(getTrimmedHtmlContent(html, 7), 'text/html')
+      .querySelectorAll('tr');
+
+    expect(rows).toHaveLength(3);
+    expect(rows[2].textContent?.trim()).toMatch(/^3\s+4\.\.\.$/);
+  });
+
+  it('should count an editor table row with paragraphs in its cells as one block', () => {
+    const row = (left: string, right: string) =>
+      `<tr><td><p>${left}</p></td><td><p>${right}</p></td></tr>`;
+    const html = `<table><tbody>${row('a', 'b')}${row('c', 'd')}${row(
+      'e',
+      'f'
+    )}${row('g', 'h')}</tbody></table>`;
+
+    expect(getTrimmedHtmlContent(html, 7)).toBe(
+      `<table><tbody>${row('a', 'b')}${row('c', 'd')}${row(
+        'e',
+        'f...'
+      )}</tbody></table>`
+    );
+  });
+
+  it('should return the content unchanged when only a trailing line break follows the limit', () => {
+    const html = '<p>Hello<br></p>';
+
+    expect(getTrimmedHtmlContent(html, 5)).toBe(html);
+  });
+
+  it('should count each line of a code block as one line', () => {
+    const html =
+      '<pre><code>line one\nline two\nline three\nline four\n</code></pre>';
+
+    expect(getTrimmedHtmlContent(html, 35)).toBe(
+      '<pre><code>line one\nline two\nline three...</code></pre>'
+    );
+  });
+
+  it('should drop every block after the cut', () => {
+    const html = '<p>First paragraph text</p><ul><li>item one</li></ul>';
+
+    expect(getTrimmedHtmlContent(html, 10)).toBe('<p>First...</p>');
   });
 });

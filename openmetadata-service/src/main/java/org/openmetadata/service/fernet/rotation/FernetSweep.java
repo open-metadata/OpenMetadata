@@ -115,7 +115,7 @@ final class FernetSweep {
       Problems problems) {
     tally.count(Outcome.UNREWRITABLE, 1);
     report(
-        new Problem(at, "", TokenKind.PLAIN, Outcome.UNREWRITABLE, what + " (" + failure(e) + ")"),
+        new Problem(at, "", Outcome.UNREWRITABLE, what + " (" + failure(e) + ")"),
         checkFindsItAgain,
         problems);
   }
@@ -169,7 +169,7 @@ final class FernetSweep {
       }
     }
     tally.count(Outcome.CONTENDED, 1);
-    report(new Problem(current.at(), "", TokenKind.PLAIN, Outcome.CONTENDED, ""), false, problems);
+    report(new Problem(current.at(), "", Outcome.CONTENDED, ""), false, problems);
   }
 
   private static List<Finding> rekeyed(List<Finding> findings) {
@@ -177,8 +177,7 @@ final class FernetSweep {
         .map(
             finding ->
                 finding.outcome() == Outcome.OLDER_KEY
-                    ? new Finding(
-                        finding.kind(), Outcome.REKEYED, finding.pointer(), finding.detail())
+                    ? new Finding(Outcome.REKEYED, finding.pointer(), finding.detail())
                     : finding)
         .toList();
   }
@@ -193,8 +192,7 @@ final class FernetSweep {
       tally.count(finding.outcome(), 1);
       if (finding.outcome() != Outcome.PRIMARY && finding.outcome() != Outcome.REKEYED) {
         report(
-            new Problem(
-                value.at(), finding.pointer(), finding.kind(), finding.outcome(), finding.detail()),
+            new Problem(value.at(), finding.pointer(), finding.outcome(), finding.detail()),
             checkFindsItAgain,
             problems);
       }

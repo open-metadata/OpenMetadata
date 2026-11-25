@@ -13,6 +13,7 @@
 package org.openmetadata.it.bootstrap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -129,7 +130,7 @@ class ForkedServerConfigTest {
 
     assertEquals("first,second", settings.fernetKey());
     assertEquals(Map.of("sweepInterval", "1s"), settings.credentialVerification());
-    assertEquals(null, ForkedServerNode.Settings.DEFAULT.fernetKey());
+    assertNull(ForkedServerNode.Settings.DEFAULT.fernetKey());
   }
 
   private static OpenMetadataApplicationConfig render(Path dir, Map<String, String> overrides)

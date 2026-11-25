@@ -25,6 +25,7 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
 import jakarta.validation.Validator;
+import jakarta.ws.rs.BadRequestException;
 import java.io.Console;
 import java.io.File;
 import java.io.FileWriter;
@@ -107,6 +108,7 @@ import org.openmetadata.service.config.source.RawConfigCapture;
 import org.openmetadata.service.config.source.SettingsSourceService;
 import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.fernet.KeyRing;
@@ -829,39 +831,68 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       LOG.info("Updating security configuration in database...");
 
-      if (securityConfig.getAuthenticationConfiguration() != null) {
-        Settings authenticationSettings =
-            new Settings()
-                .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
-                .withConfigValue(securityConfig.getAuthenticationConfiguration());
-        Entity.getSystemRepository().createOrUpdate(authenticationSettings);
-        LOG.info("Authentication configuration updated.");
+      final int exitCode =
+          updateSecurityConfiguration(Entity.getSystemRepository(), securityConfig);
+      if (exitCode == 0) {
+        LOG.info("Security configuration successfully updated in the database.");
+        LOG.warn("");
+        LOG.warn("========================================================================");
+        LOG.warn("IMPORTANT: You MUST restart the OpenMetadata service now!");
+        LOG.warn("========================================================================");
+        LOG.warn(
+            "The new security configuration will NOT take effect until the service is restarted.");
+        LOG.warn("Run: 'systemctl restart openmetadata' (or equivalent for your deployment)");
+        LOG.warn("========================================================================");
       }
-
-      if (securityConfig.getAuthorizerConfiguration() != null) {
-        Settings authorizerSettings =
-            new Settings()
-                .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
-                .withConfigValue(securityConfig.getAuthorizerConfiguration());
-        Entity.getSystemRepository().createOrUpdate(authorizerSettings);
-        LOG.info("Authorization configuration updated.");
-      }
-
-      LOG.info("Security configuration successfully updated in the database.");
-      LOG.warn("");
-      LOG.warn("========================================================================");
-      LOG.warn("IMPORTANT: You MUST restart the OpenMetadata service now!");
-      LOG.warn("========================================================================");
-      LOG.warn(
-          "The new security configuration will NOT take effect until the service is restarted.");
-      LOG.warn("Run: 'systemctl restart openmetadata' (or equivalent for your deployment)");
-      LOG.warn("========================================================================");
-
-      return 0;
+      return exitCode;
     } catch (Exception e) {
       LOG.error("Failed to update security configuration due to: ", e);
       LOG.error("Please verify that the YAML file is valid and contains all required fields.");
       return 1;
+    }
+  }
+
+  /**
+   * Stores the security settings of a configuration file and answers the command's exit code: 0
+   * when every setting was stored, 1 when a write was refused or failed. The writes stop at the one
+   * that failed, so a setting logged as updated before it stays stored and none after it is written.
+   */
+  static int updateSecurityConfiguration(
+      final SystemRepository repository, final SecurityConfiguration securityConfig) {
+    int exitCode = 0;
+    try {
+      storeSecurityConfiguration(repository, securityConfig);
+    } catch (BadRequestException | CustomExceptionMessage notStored) {
+      LOG.error(
+          "The security configuration was not updated: {}. Only a setting logged as updated above"
+              + " was stored.",
+          notStored.getMessage());
+      exitCode = 1;
+    }
+    return exitCode;
+  }
+
+  /**
+   * Stores the authentication and authorizer configuration of a security configuration file, the
+   * authentication first: a value the settings repository refuses or fails to write, such as a SAML
+   * IdP certificate a save would refuse, stops it before the authorizer is written.
+   */
+  private static void storeSecurityConfiguration(
+      final SystemRepository repository, final SecurityConfiguration securityConfig) {
+    final AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+    if (authConfig != null) {
+      repository.createOrUpdate(
+          new Settings()
+              .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
+              .withConfigValue(authConfig));
+      LOG.info("Authentication configuration updated.");
+    }
+    if (securityConfig.getAuthorizerConfiguration() != null) {
+      repository.createOrUpdate(
+          new Settings()
+              .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
+              .withConfigValue(securityConfig.getAuthorizerConfiguration()));
+      LOG.info("Authorization configuration updated.");
     }
   }
 
@@ -1832,6 +1863,13 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       for (String entityType :
           org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
+        if (!isReembedableEntityType(entityType)) {
+          // Ontology term embeddings are rebuilt only via the release-aware reindex path, which
+          // publishes terms through the gated writer that keeps drafts out of search. See
+          // calculateReembedTotalBatches, which also excludes term types, and the ADR
+          // 2026-11-23.
+          continue;
+        }
         int totalRecords = entityTotals.getOrDefault(entityType, 0);
         int batches = calculateReembedNumberOfBatches(totalRecords, batchSize);
         if (batches == 0) {
@@ -2039,6 +2077,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
     int totalBatches = 0;
     for (String entityType :
         org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
+      if (!isReembedableEntityType(entityType)) {
+        // Ontology term embeddings are rebuilt only via the release-aware reindex path, which
+        // publishes terms through the gated writer that keeps drafts out of search (see ADR
+        // 2026-11-23). The reembed CLI embeds raw working rows, so it must skip term types.
+        LOG.info(
+            "Skipping ontology term type {} in re-embed; rebuild its embeddings via reindex",
+            entityType);
+        continue;
+      }
       try {
         int totalRecords = Entity.getEntityRepository(entityType).getDao().listTotalCount();
         entityTotals.put(entityType, totalRecords);
@@ -2049,6 +2096,17 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
     }
     return totalBatches;
+  }
+
+  /**
+   * Whether the {@code reembed} CLI may embed an entity type from its raw working row. Ontology
+   * terms are excluded: their embeddings are rebuilt only via the release-aware reindex path,
+   * which publishes terms through the gated writer that keeps drafts out of search (ADR
+   * 2026-11-23). The 2-arg {@code updateEntityEmbeddings} overload refuses terms defensively as
+   * well, so a term that reached {@code reembed} would be skipped at write time regardless.
+   */
+  static boolean isReembedableEntityType(String entityType) {
+    return !org.openmetadata.service.search.OntologyTermSearch.isTerm(entityType);
   }
 
   private int calculateReembedNumberOfBatches(int totalRecords, int batchSize) {

@@ -18,7 +18,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
@@ -39,7 +39,6 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useIsAiMode } from '../../../hooks/useAppMode';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import {
   DetailsTabItem,
@@ -107,7 +106,7 @@ const IncidentManagerDetailPage = ({
     handleRestore,
     handleOwnerChange,
     getEntityFeedCount,
-    setTestCase,
+    mergeTestCase,
   } = useTestCaseDetailPage({ isVersionPage });
   const incidentHeaderData = useTestCaseIncidentHeader({
     fetchTaskCount: getEntityFeedCount,
@@ -270,12 +269,6 @@ const IncidentManagerDetailPage = ({
     [breadcrumb]
   );
 
-  const { onCopyToClipBoard, hasCopied } = useClipboard('', 2000);
-
-  const handleCopyEntityUrl = useCallback(async () => {
-    await onCopyToClipBoard(globalThis.location.href);
-  }, [onCopyToClipBoard]);
-
   if (isLoading) {
     return <EntityDetailsPageSkeleton />;
   }
@@ -353,9 +346,7 @@ const IncidentManagerDetailPage = ({
               <TestCaseHeaderTitle
                 deleted={testCase.deleted}
                 displayName={displayName}
-                hasCopied={hasCopied}
                 testCaseName={testCase.name}
-                onCopy={handleCopyEntityUrl}
               />
             </Box>
             <Box align="center" className="tw:shrink-0" gap={2}>
@@ -440,7 +431,7 @@ const IncidentManagerDetailPage = ({
           open={isDimensionEdit}
           testCase={testCase}
           onClose={handleCancelDimension}
-          onUpdate={setTestCase}
+          onUpdate={mergeTestCase}
         />
       )}
     </PageLayoutV1>

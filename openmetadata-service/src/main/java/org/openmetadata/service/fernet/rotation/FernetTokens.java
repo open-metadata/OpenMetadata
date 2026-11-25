@@ -26,11 +26,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.exception.JsonParsingException;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.fernet.KeyRing;
 import org.openmetadata.service.fernet.Opening;
-import org.openmetadata.service.fernet.rotation.Anchors.Binding;
-import org.openmetadata.service.secrets.BoundCiphertext;
 
 /**
  * The pure core of the rotation: what one stored value holds, and the same value with every token
@@ -43,9 +43,13 @@ final class FernetTokens {
   /**
    * A token's alphabet needs no escaping in JSON, XML or Java's modified UTF-8, so a token reads
    * the same at any depth. The match may run past the token: in bytes the next byte can be a letter.
+   * Pre-release {@code fernet:bound:} tokens are also matched so they are reported as {@link
+   * Outcome#NO_KEY}.
    */
   static final Pattern TOKEN =
       Pattern.compile("fernet:(?:bound:)?(?:(?!fernet:)[A-Za-z0-9_-])+={0,2}");
+
+  private static final String BOUND_PREFIX = Fernet.FERNET_PREFIX + "bound:";
 
   // A Fernet token is a version byte, an 8-byte timestamp, a 16-byte IV, 16n bytes of ciphertext
   // and a 32-byte HMAC, so its padded base64url length is one of a known series.
@@ -60,10 +64,10 @@ final class FernetTokens {
   record Rewrite(Optional<String> replacement, List<Finding> findings) {}
 
   /** One distinct token of a value. It never carries the token or its secret. */
-  record Finding(TokenKind kind, Outcome outcome, String pointer, String detail) {}
+  record Finding(Outcome outcome, String pointer, String detail) {}
 
   /** A regex match, which may run past the token it starts with. */
-  private record Match(int start, TokenKind kind, String prefix, String body) {
+  private record Match(int start, String prefix, String body) {
     String text() {
       return prefix + body;
     }
@@ -72,20 +76,17 @@ final class FernetTokens {
   /** What a match turned out to be. */
   private sealed interface Located {
     /** A token a configured key opened, so its span is known. */
-    record Token(
-        String text, TokenKind kind, boolean underPrimary, String plaintext, Binding binding)
-        implements Located {}
+    record Token(String text, boolean underPrimary, String plaintext) implements Located {}
 
     /** A well-formed token that no configured key opens. */
-    record Unopened(String text, TokenKind kind, boolean anchored) implements Located {}
+    record Unopened(String text) implements Located {}
 
     record NotAToken() implements Located {}
   }
 
-  private record Classified(
-      TokenKind kind, Outcome outcome, Optional<String> replacement, String detail) {
-    static Classified of(TokenKind kind, Outcome outcome, String detail) {
-      return new Classified(kind, outcome, Optional.empty(), detail);
+  private record Classified(Outcome outcome, Optional<String> replacement, String detail) {
+    static Classified of(Outcome outcome, String detail) {
+      return new Classified(outcome, Optional.empty(), detail);
     }
   }
 
@@ -97,19 +98,15 @@ final class FernetTokens {
       return new Rewrite(Optional.empty(), List.of());
     }
     LazyTree tree = new LazyTree(value.text());
-    Map<String, List<Binding>> bindings =
-        matches.stream().anyMatch(match -> match.kind() == TokenKind.BOUND)
-            ? tree.get().map(Anchors::bindingsIn).orElse(Map.of())
-            : Map.of();
     Map<String, Located> located = new HashMap<>();
     Map<String, Classified> tokens = new LinkedHashMap<>();
     for (Match match : matches) {
-      Located found = located.computeIfAbsent(match.text(), text -> locate(match, keys, bindings));
+      Located found = located.computeIfAbsent(match.text(), text -> locate(match, keys));
       switch (found) {
         case Located.Token token -> tokens.computeIfAbsent(
             token.text(), text -> classify(token, value, keys));
         case Located.Unopened unopened -> tokens.computeIfAbsent(
-            unopened.text(), text -> classifyUnopened(unopened));
+            unopened.text(), text -> Classified.of(Outcome.NO_KEY, ""));
         case Located.NotAToken ignored -> LOG.trace("Text that starts like a token is not one");
       }
     }
@@ -122,10 +119,8 @@ final class FernetTokens {
     Matcher matcher = TOKEN.matcher(text);
     while (matcher.find()) {
       String match = matcher.group();
-      String prefix =
-          match.startsWith(BoundCiphertext.PREFIX) ? BoundCiphertext.PREFIX : Fernet.FERNET_PREFIX;
-      TokenKind kind = prefix.equals(BoundCiphertext.PREFIX) ? TokenKind.BOUND : TokenKind.PLAIN;
-      matches.add(new Match(matcher.start(), kind, prefix, match.substring(prefix.length())));
+      String prefix = match.startsWith(BOUND_PREFIX) ? BOUND_PREFIX : Fernet.FERNET_PREFIX;
+      matches.add(new Match(matcher.start(), prefix, match.substring(prefix.length())));
     }
     return matches;
   }
@@ -134,17 +129,16 @@ final class FernetTokens {
    * The match as found, then each shorter valid token length, longest first: the first a key opens
    * is the token. When none opens, the longest well-formed cut says whether this is a token at all.
    */
-  private static Located locate(Match match, KeyRing keys, Map<String, List<Binding>> bindings) {
+  private static Located locate(Match match, KeyRing keys) {
     Located located = new Located.NotAToken();
     for (String body : candidates(match.body())) {
       String text = match.prefix() + body;
-      Optional<Located.Token> opened =
-          open(text, match.kind(), keys, bindings.getOrDefault(text, List.of()));
+      Optional<Located.Token> opened = asToken(text, keys.open(text));
       if (opened.isPresent()) {
         return opened.get();
       }
       if (located instanceof Located.NotAToken && isWellFormed(body)) {
-        located = new Located.Unopened(text, match.kind(), bindings.containsKey(text));
+        located = new Located.Unopened(text);
       }
     }
     return located;
@@ -173,30 +167,11 @@ final class FernetTokens {
     return blocks;
   }
 
-  private static Optional<Located.Token> open(
-      String text, TokenKind kind, KeyRing keys, List<Binding> bindings) {
-    if (kind == TokenKind.PLAIN) {
-      return asToken(text, kind, keys.open(text), null);
-    }
-    return bindings.stream()
-        .map(
-            binding ->
-                asToken(
-                    text,
-                    kind,
-                    BoundCiphertext.open(keys, binding.owner(), binding.field(), text),
-                    binding))
-        .flatMap(Optional::stream)
-        .findFirst();
-  }
-
-  private static Optional<Located.Token> asToken(
-      String text, TokenKind kind, Opening opening, Binding binding) {
+  private static Optional<Located.Token> asToken(String text, Opening opening) {
     return switch (opening) {
       case Opening.Primary primary -> Optional.of(
-          new Located.Token(text, kind, true, primary.plaintext(), binding));
-      case Opening.Older older -> Optional.of(
-          new Located.Token(text, kind, false, older.plaintext(), binding));
+          new Located.Token(text, true, primary.plaintext()));
+      case Opening.Older older -> Optional.of(new Located.Token(text, false, older.plaintext()));
       case Opening.NoKey ignored -> Optional.empty();
     };
   }
@@ -213,30 +188,21 @@ final class FernetTokens {
   private static Classified classify(Located.Token token, StoredText value, KeyRing keys) {
     Classified classified;
     if (holdsAnotherToken(token.plaintext(), keys)) {
-      classified = Classified.of(token.kind(), Outcome.UNREWRITABLE, NESTED_TOKEN);
+      classified = Classified.of(Outcome.UNREWRITABLE, NESTED_TOKEN);
     } else if (token.underPrimary()) {
-      classified = Classified.of(token.kind(), Outcome.PRIMARY, "");
+      classified = Classified.of(Outcome.PRIMARY, "");
     } else if (!value.isWritable()) {
-      classified = Classified.of(token.kind(), Outcome.UNREWRITABLE, value.writability().reason);
+      classified = Classified.of(Outcome.UNREWRITABLE, value.writability().reason);
     } else {
       classified = rekey(token, keys);
     }
     return classified;
   }
 
-  private static Classified classifyUnopened(Located.Unopened unopened) {
-    return unopened.kind() == TokenKind.PLAIN
-        ? Classified.of(TokenKind.PLAIN, Outcome.NO_KEY, "")
-        : Classified.of(
-            TokenKind.BOUND,
-            Outcome.UNBOUND,
-            unopened.anchored() ? "no candidate owner opens it" : "its owner is unknown");
-  }
-
   /** The core never changes a plaintext, so a token nested in one is left to the operator. */
   private static boolean holdsAnotherToken(String plaintext, KeyRing keys) {
     return matchesIn(plaintext).stream()
-        .map(match -> locate(match, keys, Map.of()))
+        .map(match -> locate(match, keys))
         .anyMatch(FernetTokens::needsAnotherKey);
   }
 
@@ -249,32 +215,18 @@ final class FernetTokens {
   }
 
   /**
-   * Seals the plaintext again under the primary key with the same binding. The replacement is
-   * accepted only when it has the token's length and opens under the primary key to the same
-   * plaintext.
+   * Seals the plaintext again under the primary key. The replacement is accepted only when it has
+   * the token's length and opens under the primary key to the same plaintext.
    */
   private static Classified rekey(Located.Token token, KeyRing keys) {
-    String replacement = seal(token, keys);
+    String replacement = keys.seal(token.plaintext());
     boolean sound =
         replacement.length() == token.text().length()
-            && open(replacement, token.kind(), keys, bindingsOf(token))
-                .filter(Located.Token::underPrimary)
-                .filter(reopened -> reopened.plaintext().equals(token.plaintext()))
-                .isPresent();
+            && keys.open(replacement) instanceof Opening.Primary reopened
+            && reopened.plaintext().equals(token.plaintext());
     return sound
-        ? new Classified(token.kind(), Outcome.OLDER_KEY, Optional.of(replacement), "")
-        : Classified.of(token.kind(), Outcome.UNREWRITABLE, GUARD_FAILED);
-  }
-
-  private static String seal(Located.Token token, KeyRing keys) {
-    return token.kind() == TokenKind.PLAIN
-        ? keys.seal(token.plaintext())
-        : BoundCiphertext.seal(
-            keys, token.binding().owner(), token.binding().field(), token.plaintext());
-  }
-
-  private static List<Binding> bindingsOf(Located.Token token) {
-    return token.binding() == null ? List.of() : List.of(token.binding());
+        ? new Classified(Outcome.OLDER_KEY, Optional.of(replacement), "")
+        : Classified.of(Outcome.UNREWRITABLE, GUARD_FAILED);
   }
 
   /** The text with every replaceable token replaced, when nothing in it stops the write. */
@@ -313,14 +265,13 @@ final class FernetTokens {
         (token, classified) ->
             findings.add(
                 new Finding(
-                    classified.kind(),
                     classified.outcome(),
                     classified.outcome() == Outcome.PRIMARY ? "" : tree.pointerOf(token),
                     classified.detail())));
     return List.copyOf(findings);
   }
 
-  /** The value parsed as JSON, once, and only when a binding or a pointer needs it. */
+  /** The value parsed as JSON, once, and only when a pointer needs it. */
   private static final class LazyTree {
     private final String text;
     private boolean parsed;
@@ -333,7 +284,7 @@ final class FernetTokens {
     Optional<JsonNode> get() {
       if (!parsed) {
         parsed = true;
-        root = JsonDocument.parseContainer(text);
+        root = parse(text);
       }
       return root;
     }
@@ -341,6 +292,14 @@ final class FernetTokens {
     /** The JSON pointer of the first string that holds {@code token}, or empty text otherwise. */
     String pointerOf(String token) {
       return get().flatMap(node -> pointerOf(node, JsonPointer.empty(), token)).orElse("");
+    }
+
+    private static Optional<JsonNode> parse(String text) {
+      try {
+        return Optional.of(JsonUtils.readTree(text)).filter(JsonNode::isContainerNode);
+      } catch (JsonParsingException e) {
+        return Optional.empty();
+      }
     }
 
     private static Optional<String> pointerOf(JsonNode node, JsonPointer at, String token) {

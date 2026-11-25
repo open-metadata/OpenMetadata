@@ -33,14 +33,17 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.EntityReference;
@@ -52,6 +55,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -337,6 +341,86 @@ public class TopicRepository extends EntityRepository<Topic> {
     daoCollection.entityExtensionDAO().delete(topicId, TOPIC_SAMPLE_DATA_EXTENSION);
     setFieldsInternal(topic, Fields.EMPTY_FIELDS);
     return topic;
+  }
+
+  /** One search request against a topic's schema fields; a null sortBy keeps schema order. */
+  public record SchemaFieldSearch(
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder) {}
+
+  /**
+   * Matches name, displayName or description at every nesting level, so a hit on a nested field
+   * comes back as its own row. See ADR:2026-11-16-topic-schema-field-search-returns-flat-rows.
+   */
+  public ResultList<Field> searchSchemaFieldsByFQN(String fqn, SchemaFieldSearch search) {
+    final String requestedFields =
+        search.fieldsParam() != null && search.fieldsParam().contains(FIELD_TAGS) ? FIELD_TAGS : "";
+    final Topic topic = getByName(null, fqn, getFields(requestedFields), search.include(), false);
+    final List<Field> matches =
+        filterSchemaFields(flattenSchemaFields(schemaFieldsOf(topic)), search.query());
+    final List<Field> ordered = sortSchemaFields(matches, search.sortBy(), search.sortOrder());
+    return pageOfSchemaFields(ordered, search.limit(), search.offset());
+  }
+
+  static List<Field> sortSchemaFields(List<Field> fields, String sortBy, String sortOrder) {
+    return ChildFieldPageReader.sortChildFields(
+            new ArrayList<FieldInterface>(fields), sortBy, sortOrder)
+        .stream()
+        .map(Field.class::cast)
+        .toList();
+  }
+
+  private static List<Field> schemaFieldsOf(Topic topic) {
+    return topic.getMessageSchema() == null
+        ? List.of()
+        : listOrEmpty(topic.getMessageSchema().getSchemaFields());
+  }
+
+  static List<Field> flattenSchemaFields(List<Field> fields) {
+    final List<Field> flattened = new ArrayList<>();
+    for (Field field : fields) {
+      flattened.add(field);
+      flattened.addAll(flattenSchemaFields(listOrEmpty(field.getChildren())));
+    }
+    return flattened;
+  }
+
+  static List<Field> filterSchemaFields(List<Field> fields, String query) {
+    if (nullOrEmpty(query) || query.isBlank()) {
+      return fields;
+    }
+    final String searchTerm = query.trim().toLowerCase(Locale.ROOT);
+    return fields.stream().filter(field -> schemaFieldMatches(field, searchTerm)).toList();
+  }
+
+  private static boolean schemaFieldMatches(Field field, String searchTerm) {
+    return Stream.of(field.getName(), field.getDisplayName(), field.getDescription())
+        .anyMatch(value -> value != null && value.toLowerCase(Locale.ROOT).contains(searchTerm));
+  }
+
+  static ResultList<Field> pageOfSchemaFields(List<Field> fields, int limit, int offset) {
+    final int total = fields.size();
+    final int fromIndex = Math.min(offset, total);
+    final int toIndex = Math.min(offset + limit, total);
+    final String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
+    final String after = toIndex < total ? String.valueOf(toIndex) : null;
+    final List<Field> page =
+        fields.subList(fromIndex, toIndex).stream().map(TopicRepository::withoutChildren).toList();
+    return new ResultList<>(new ArrayList<>(page), before, after, total);
+  }
+
+  /**
+   * Search lists every match as its own row, so a matched parent must not also carry its children:
+   * a child that matches too would appear twice with the same FQN. Copied because the parent topic
+   * may be a cached instance.
+   */
+  private static Field withoutChildren(Field field) {
+    return JsonUtils.deepCopy(field, Field.class).withChildren(null);
   }
 
   private void setFieldFQN(String parentFQN, List<Field> fields) {
@@ -658,7 +742,11 @@ public class TopicRepository extends EntityRepository<Topic> {
       // Delete tags related to deleted fields
       deletedFields.forEach(
           deleted ->
-              daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+              daoCollection
+                  .tagUsageDAO()
+                  .deleteFieldTags(
+                      deleted.getFullyQualifiedName(),
+                      addedFieldMap.containsKey(deleted.getName())));
 
       // Add tags related to newly added fields
       for (Field added : addedFields) {

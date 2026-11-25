@@ -74,6 +74,7 @@ jobs:
               - '.github/workflows/py-tests-shared.yml'
               - '.github/workflows/py-cli-e2e-tests-v2.yml'
               - '.github/workflows/py-cli-e2e-tests.yml'
+              - '.github/scripts/prepare_python_coverage.py'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
               - 'openmetadata-spec/**'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/**'
@@ -225,8 +226,8 @@ jobs:
         shell: bash
 
   notify:
-    needs: [changes, prepare-spacy-model, build-distribution, python, cli-e2e, py-tests-status]
-    if: ${{ always() && !cancelled() && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'nightly')) && needs.py-tests-status.result == 'failure' }}
+    needs: [changes, prepare-spacy-model, build-distribution, python, cli-e2e, py-tests-status, sonar-cloud-coverage-upload]
+    if: ${{ always() && !cancelled() && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'nightly')) && (needs.py-tests-status.result == 'failure' || needs.sonar-cloud-coverage-upload.result == 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -240,18 +241,21 @@ jobs:
           payload: |
             {
               "channel": "C03EYBDDX17",
-              "text": "<!subteam^S0AH093PEQL> 🔥 *Python Tests Nightly* failed on `${{ github.ref_name }}` 🔥\nselection: ${{ needs.changes.result }} · models: ${{ needs.prepare-spacy-model.result }} · build: ${{ needs.build-distribution.result }} · tests: ${{ needs.python.result }} · CLI E2E: ${{ needs.cli-e2e.result }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "<!subteam^S0AH093PEQL> 🔥 *Python Tests Nightly* failed on `${{ github.ref_name }}` 🔥\nselection: ${{ needs.changes.result }} · models: ${{ needs.prepare-spacy-model.result }} · build: ${{ needs.build-distribution.result }} · tests: ${{ needs.python.result }} · CLI E2E: ${{ needs.cli-e2e.result }} · Sonar: ${{ needs.sonar-cloud-coverage-upload.result }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
 
   sonar-cloud-coverage-upload:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [changes, python, cli-e2e]
-    if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.python.result == 'success' && needs.cli-e2e.result == 'success' }}
-    continue-on-error: true
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'nightly')) && contains(fromJSON('["success", "failure"]'), needs.python.result) }}
     steps:
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
@@ -282,27 +286,26 @@ jobs:
           path: test-artifacts
 
       - name: Generate report
-        run: |
-          shopt -s nullglob
-          for folder in artifacts/*coverage-*; do
-            artifact=$(basename "$folder")
-            for file in "$folder"/.coverage*; do
-              [ -f "$file" ] && cp "$file" "ingestion/.coverage.${artifact}.$(basename "$file")"
-            done
-          done
-          mkdir -p ingestion/junit
-          find test-artifacts -name 'test-results-*.xml' | while IFS= read -r file; do
-            name="${file#test-artifacts/}"
-            name="${name//\//-}"
-            cp "$file" "ingestion/junit/test-results-${name}"
-          done
-          source env/bin/activate
-          cd ingestion
-          coverage combine --rcfile=pyproject.toml --keep .coverage*
-          coverage xml --rcfile=pyproject.toml --data-file=.coverage
+        run: env/bin/python .github/scripts/prepare_python_coverage.py
         shell: bash
 
       - name: Push Results to Sonar
+        id: push-to-sonar
+        continue-on-error: true
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        with:
+          projectBaseDir: ingestion/
+
+      - name: Wait to retry Sonar upload
+        if: ${{ !cancelled() && steps.push-to-sonar.outcome == 'failure' }}
+        run: sleep 20s
+        shell: bash
+
+      - name: Retry Sonar upload
+        if: ${{ !cancelled() && steps.push-to-sonar.outcome == 'failure' }}
         uses: SonarSource/sonarqube-scan-action@v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

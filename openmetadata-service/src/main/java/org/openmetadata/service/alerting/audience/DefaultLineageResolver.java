@@ -39,9 +39,4 @@ public class DefaultLineageResolver implements EntityLineageResolver {
     // No transformation needed; return empty set to signal entity is lineage-capable
     return Collections.emptySet();
   }
-
-  @Override
-  public String getEntityType() {
-    return "*";
-  }
 }

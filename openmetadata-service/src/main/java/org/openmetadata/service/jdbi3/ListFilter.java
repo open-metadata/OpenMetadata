@@ -15,10 +15,12 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
+import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.AnnouncementStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.RegexMode;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -39,6 +41,8 @@ public class ListFilter extends Filter<ListFilter> {
   private static final Pattern ENTITY_TYPE_NAME = Pattern.compile("[A-Za-z][A-Za-z0-9]*");
 
   public static final String NULL_PARAM = "null";
+  public static final String QUERY_RUNNER_REQUESTER_ID = "queryRunnerRequesterId";
+  public static final String KEEPS_SYSTEM_PROVIDED = "domainKeepsSystemProvided";
 
   // Sort metadata is kept off the queryParams map on purpose: ListCountCache hashes queryParams, so
   // holding these as fields keeps the sorted and unsorted listings on a single count-cache entry.
@@ -152,6 +156,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getNotificationTemplateCondition());
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
+    conditions.add(getQueryRunnerRequesterCondition());
     conditions.add(getEntityLinkCondition());
     conditions.add(getEntityLinkHashCondition());
     conditions.add(getActiveCondition());
@@ -171,6 +176,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskAboutServiceCondition());
     conditions.add(getTaskAccessTypeCondition());
     conditions.add(getTaskCreatedAtRangeCondition(tableName));
+    conditions.add(getTaskUpdatedSinceCondition(tableName));
     conditions.add(getTaskSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition());
@@ -603,6 +609,25 @@ public class ListFilter extends Filter<ListFilter> {
     return workflowDefinitionId == null ? "" : "workflowDefinitionId = :workflowDefinitionId";
   }
 
+  /**
+   * Keeps only the query runner workflows the given user ran. A query runner workflow carries its
+   * requester's SQL, so it is read by that requester alone; a run without a recorded requester is
+   * left out. Workflows of other types are untouched.
+   */
+  private String getQueryRunnerRequesterCondition() {
+    final String requesterId = queryParams.get(QUERY_RUNNER_REQUESTER_ID);
+    if (requesterId == null) {
+      return "";
+    }
+    final String storedRequester =
+        Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+            ? "JSON_UNQUOTE(JSON_EXTRACT(json, '$.request.userId'))"
+            : "json->'request'->>'userId'";
+    return String.format(
+        "(workflowType <> '%s' OR %s = :%s)",
+        WorkflowType.QUERY_RUNNER.value(), storedRequester, QUERY_RUNNER_REQUESTER_ID);
+  }
+
   private String getEntityLinkCondition() {
     String entityLinkStr = queryParams.get("entityLink");
     return entityLinkStr == null ? "" : "entityLink = :entityLink";
@@ -988,9 +1013,15 @@ public class ListFilter extends Filter<ListFilter> {
   // A test case is in the domain it has itself or, as is usual, the one its table has — which the
   // table may in turn inherit from its schema, database or service. Inherited domains are resolved
   // at read time and leave no relationship on the entity that inherits them, and a level inherits
-  // only when it has no domain of its own: the nearest level with one decides.
-  private static String testCaseInDomainCondition(String testCaseAlias, String domainParam) {
-    String inDomain = " AND " + DOMAIN_RELATION_ALIAS + ".fromId = :" + domainParam;
+  // only when it has no domain of its own: the nearest level with one decides. The param holds the
+  // domain and its sub-domains.
+  private String testCaseInDomainCondition(String testCaseAlias, String domainParam) {
+    String inDomain =
+        " AND "
+            + DOMAIN_RELATION_ALIAS
+            + ".fromId IN ("
+            + buildIndexedBindParams(domainParam, queryParams.get(domainParam))
+            + ")";
     List<UnaryOperator<String>> levels = testCaseDomainLevels(testCaseAlias);
     return IntStream.range(0, levels.size())
         .mapToObj(i -> nearestDomainLevel(levels.subList(0, i), levels.get(i), inDomain))
@@ -1204,13 +1235,26 @@ public class ListFilter extends Filter<ListFilter> {
     String domainInClause = domainIdList(domainId.replace("'", ""));
 
     if (Boolean.TRUE.toString().equals(domainAccessControl)) {
-      return domainAccessCondition(entityIdColumn, domainInClause);
+      return orSystemProvided(domainAccessCondition(entityIdColumn, domainInClause), tableName);
     }
 
     return String.format(
         "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain'%s AND entity_relationship.fromId IN (%s) AND "
             + "relation=10))",
         entityIdColumn, domainEntityTypeCondition("entity_relationship"), domainInClause);
+  }
+
+  // Keeps system-provided rows too when the list asks (e.g. Tier and PII under any pick).
+  private String orSystemProvided(String condition, String tableName) {
+    if (!Boolean.parseBoolean(getQueryParam(KEEPS_SYSTEM_PROVIDED))) {
+      return condition;
+    }
+    String column = nullOrEmpty(tableName) ? "json" : tableName + ".json";
+    String provider =
+        Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+            ? String.format("JSON_UNQUOTE(JSON_EXTRACT(%s, '$.provider'))", column)
+            : String.format("%s->>'provider'", column);
+    return String.format("(%s OR %s = '%s')", condition, provider, ProviderType.SYSTEM.value());
   }
 
   // Keeps entities with no domain or with a listed one. Postgres hashes every domain link in the
@@ -1440,8 +1484,8 @@ public class ListFilter extends Filter<ListFilter> {
     String inCondition = buildIndexedBindParams(bindPrefix, hashCsv);
     String fqnHashColumn = nullOrEmpty(tableName) ? "fqnHash" : (tableName + ".fqnHash");
     return String.format(
-        "(EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = %s AND tu.source = %d AND tu.tagFQNHash IN (%s)))",
-        fqnHashColumn, source.ordinal(), inCondition);
+        "(EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = %s AND tu.source = %d AND tu.tagFQNHash IN (%s) AND tu.%s))",
+        fqnHashColumn, source.ordinal(), inCondition, CollectionDAO.TagUsageDAO.NOT_PENDING);
   }
 
   public String getApiCollectionCondition(String apiEndpoint) {
@@ -1952,6 +1996,15 @@ public class ListFilter extends Filter<ListFilter> {
       clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
     }
     return String.join(" AND ", clauses);
+  }
+
+  private String getTaskUpdatedSinceCondition(String tableName) {
+    String since = queryParams.get("taskUpdatedSince");
+    if (nullOrEmpty(since)) {
+      return "";
+    }
+    String column = tableName == null ? "updatedAt" : tableName + ".updatedAt";
+    return "%s >= %d".formatted(column, Long.parseLong(since));
   }
 
   private String getTaskApproverCondition() {

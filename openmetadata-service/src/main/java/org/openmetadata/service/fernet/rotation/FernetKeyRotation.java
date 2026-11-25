@@ -266,12 +266,7 @@ public final class FernetKeyRotation {
     private List<Outcome> columnOutcomes() {
       List<Outcome> outcomes =
           new ArrayList<>(
-              List.of(
-                  Outcome.PRIMARY,
-                  Outcome.OLDER_KEY,
-                  Outcome.NO_KEY,
-                  Outcome.UNBOUND,
-                  Outcome.UNREWRITABLE));
+              List.of(Outcome.PRIMARY, Outcome.OLDER_KEY, Outcome.NO_KEY, Outcome.UNREWRITABLE));
       if (mode == Mode.APPLY) {
         outcomes.addAll(List.of(Outcome.REKEYED, Outcome.CONTENDED));
       }
@@ -304,8 +299,7 @@ public final class FernetKeyRotation {
       long olderKey = total(Outcome.OLDER_KEY);
       long noKey = total(Outcome.NO_KEY);
       long notVouched =
-          total(Outcome.UNBOUND)
-              + total(Outcome.UNREWRITABLE)
+          total(Outcome.UNREWRITABLE)
               + total(Outcome.CONTENDED)
               + stores.stream().filter(store -> !store.readable()).count();
       return switch (Verdict.of(stores)) {

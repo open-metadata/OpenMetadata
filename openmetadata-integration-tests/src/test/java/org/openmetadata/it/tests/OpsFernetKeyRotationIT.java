@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.tests.CredentialFixtures.LOGGED_IN_USER;
 
@@ -67,15 +68,12 @@ import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.alerting.channel.FernetOwnersTestSupport;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.fernet.KeyRing;
 import org.openmetadata.service.fernet.Opening;
 import org.openmetadata.service.jdbi3.OAuthDAOs;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.secrets.BoundCiphertext;
-import org.openmetadata.service.secrets.SecretOwner;
 
 /**
  * {@code OpenMetadataOperations rotate-fernet-key} re-encrypts every stored Fernet token under the
@@ -111,9 +109,6 @@ class OpsFernetKeyRotationIT {
   private static final int OLDER_KEY_CELL = 4;
   private static final int NO_KEY_CELL = 5;
   private static final String SESSION_PASSWORD = "Str0ng!FernetIt";
-  private static final List<String> DESTINATION_FIELDS =
-      List.of("/endpoint", "/headers/X-Key", "/authType/secretKey");
-  private static final List<String> PROFILE_FIELDS = List.of("/endpoint", "/authType/secretKey");
   // A run without --every-table names the large tables it left out on a line that starts so.
   private static final Pattern LEFT_OUT_LINE = Pattern.compile("^Large tables left out");
   private static final Pattern IDENTIFIER =
@@ -124,14 +119,10 @@ class OpsFernetKeyRotationIT {
 
   private static volatile String oldKey;
   private static volatile String newKey;
-  private static volatile List<Candidate> seededCandidates = List.of();
-
-  private record Candidate(SecretOwner owner, String field) {}
 
   /** What the old world holds, by name. */
   private static final class Seed {
     final Map<String, String> secrets = new LinkedHashMap<>();
-    final List<Candidate> candidates = new ArrayList<>();
     UUID serviceId;
     UUID pipelineId;
     UUID alertId;
@@ -160,7 +151,6 @@ class OpsFernetKeyRotationIT {
       try (ForkedServerNode oldWorld =
           ForkedServerNode.start(ForkedServerNode.Settings.DEFAULT.withFernetKey(oldWorldKeys))) {
         seed = seedOldWorld(ns, oldWorld.apiBase(), receiver);
-        seededCandidates = List.copyOf(seed.candidates);
       }
       seedWhatNeedsNoApi(ns, seed);
       Scan seeded = FernetStoreScan.take(true);
@@ -171,7 +161,7 @@ class OpsFernetKeyRotationIT {
 
   private void runRotation(Seed seed, Scan seeded, String rotatedKeys, HeaderReceiver receiver)
       throws Exception {
-    Set<String> tablesWithOldTokens = tablesHoldingOldTokens(seeded, seed);
+    Set<String> tablesWithOldTokens = tablesHoldingOldTokens(seeded);
     assertTrue(
         tablesWithOldTokens.contains(UNLISTED_TABLE),
         "the table nobody listed holds an old-key token, so the rotation has something to find");
@@ -269,16 +259,16 @@ class OpsFernetKeyRotationIT {
       workers.shutdown();
       assertTrue(workers.awaitTermination(30, TimeUnit.SECONDS), "workers stopped");
     }
-    assertEquals(null, failure.get(), "the node answered every call during the rotation");
+    assertNull(failure.get(), "the node answered every call during the rotation");
   }
 
   /** Step 5: the independent scan finds only tokens that the new key alone opens. */
   private void requireEverythingOpensWithTheNewKeyAlone(Seed seed) {
     Scan scan = FernetStoreScan.take(true);
 
-    List<String> problems = problemsOpeningWithTheNewKeyAlone(scan, seed);
+    List<String> problems = problemsOpeningWithTheNewKeyAlone(scan);
     assertTrue(problems.isEmpty(), "tokens the new key alone does not open: " + problems);
-    Set<String> plaintexts = plaintextsOpenedByTheNewKey(scan, seed);
+    Set<String> plaintexts = plaintextsOpenedByTheNewKey(scan);
     Set<String> missing = new TreeSet<>();
     seed.secrets.forEach(
         (label, plaintext) -> {
@@ -348,15 +338,9 @@ class OpsFernetKeyRotationIT {
       String base =
           FernetStoreScan.redis("redis-cli --raw hget '" + alertKey + "' base").getStdout();
       for (String token : tokensIn(base)) {
-        boolean opensWithNew =
-            token.startsWith("fernet:bound:")
-                ? seed.candidates.stream()
-                    .anyMatch(
-                        c ->
-                            BoundCiphertext.open(newOnly, c.owner(), c.field(), token)
-                                instanceof Opening.Primary)
-                : newOnly.open(token) instanceof Opening.Primary;
-        assertTrue(opensWithNew, "the cached alert holds only new-key tokens");
+        assertTrue(
+            newOnly.open(token) instanceof Opening.Primary,
+            "the cached alert holds only new-key tokens");
       }
       assertTrue(pttl(alertKey) > 0, "the cached alert still expires");
     }
@@ -561,17 +545,8 @@ class OpsFernetKeyRotationIT {
     return FernetStoreScan.take(true).tokens().stream()
         .anyMatch(
             token ->
-                token.bound()
-                    ? seededCandidates.stream()
-                        .anyMatch(
-                            c ->
-                                BoundCiphertext.open(current, c.owner(), c.field(), token.text())
-                                        instanceof Opening.NoKey
-                                    && !(BoundCiphertext.open(
-                                            old, c.owner(), c.field(), token.text())
-                                        instanceof Opening.NoKey))
-                    : current.open(token.text()) instanceof Opening.NoKey
-                        && !(old.open(token.text()) instanceof Opening.NoKey));
+                current.open(token.text()) instanceof Opening.NoKey
+                    && !(old.open(token.text()) instanceof Opening.NoKey));
   }
 
   // ---- seeding ----
@@ -734,9 +709,6 @@ class OpsFernetKeyRotationIT {
                     null));
     patchDescription(node, "/api/v1/events/subscriptions/" + seed.alertId, "add", "one");
     patchDescription(node, "/api/v1/events/subscriptions/" + seed.alertId, "replace", "two");
-    UUID destinationId = UUID.fromString(alert.path("destinations").path(0).path("id").asText());
-    SecretOwner owner = FernetOwnersTestSupport.destinationOwner(destinationId);
-    DESTINATION_FIELDS.forEach(field -> seed.candidates.add(new Candidate(owner, field)));
   }
 
   private void seedProfileWebhooks(TestNamespace ns, URI node, Seed seed) {
@@ -777,13 +749,6 @@ class OpsFernetKeyRotationIT {
                 Map.of("subscription", Map.of("generic", webhook("team", teamSecret)))));
     UUID teamId = UUID.fromString(team.path("id").asText());
     ns.trackRoot(Entity.TEAM, teamId);
-    SecretOwner userOwner = FernetOwnersTestSupport.profileOwner(Entity.USER, userId, "generic");
-    SecretOwner teamOwner = FernetOwnersTestSupport.profileOwner(Entity.TEAM, teamId, "generic");
-    PROFILE_FIELDS.forEach(
-        field -> {
-          seed.candidates.add(new Candidate(userOwner, field));
-          seed.candidates.add(new Candidate(teamOwner, field));
-        });
   }
 
   private static Map<String, Object> webhook(String name, String signingKey) {
@@ -1056,18 +1021,16 @@ class OpsFernetKeyRotationIT {
     KeyRing current = KeyRing.parse(newKey);
     List<String> unreadable =
         FernetStoreScan.take(true).tokens().stream()
-            .filter(
-                token -> !token.bound() && !(current.open(token.text()) instanceof Opening.Primary))
+            .filter(token -> !(current.open(token.text()) instanceof Opening.Primary))
             .map(Token::store)
             .distinct()
             .toList();
     assertTrue(
-        unreadable.isEmpty(),
-        "plain tokens the suite key cannot open already sit in " + unreadable);
+        unreadable.isEmpty(), "tokens the suite key cannot open already sit in " + unreadable);
   }
 
   private static void requireSeedHoldsOnlyOldKeyTokens(Seed seed, Scan seeded) {
-    Set<String> found = oldKeyPlaintexts(seeded, seed);
+    Set<String> found = oldKeyPlaintexts(seeded);
     Set<String> missing = new TreeSet<>();
     seed.secrets.forEach(
         (label, plaintext) -> {
@@ -1080,100 +1043,50 @@ class OpsFernetKeyRotationIT {
         "the old world did not store these secrets under the old key: " + missing);
   }
 
-  private static Set<String> oldKeyPlaintexts(Scan scan, Seed seed) {
+  private static Set<String> oldKeyPlaintexts(Scan scan) {
     KeyRing oldOnly = KeyRing.parse(oldKey);
     KeyRing newOnly = KeyRing.parse(newKey);
     Set<String> plaintexts = new TreeSet<>();
     for (Token token : scan.tokens()) {
-      if (!token.bound()) {
-        if (newOnly.open(token.text()) instanceof Opening.NoKey
-            && oldOnly.open(token.text()) instanceof Opening.Primary primary) {
-          plaintexts.add(primary.plaintext());
-        }
-      } else {
-        for (Candidate candidate : seed.candidates) {
-          if (BoundCiphertext.open(oldOnly, candidate.owner(), candidate.field(), token.text())
-              instanceof Opening.Primary primary) {
-            plaintexts.add(primary.plaintext());
-          }
-        }
+      if (newOnly.open(token.text()) instanceof Opening.NoKey
+          && oldOnly.open(token.text()) instanceof Opening.Primary primary) {
+        plaintexts.add(primary.plaintext());
       }
     }
     return plaintexts;
   }
 
-  private static Set<String> tablesHoldingOldTokens(Scan scan, Seed seed) {
+  private static Set<String> tablesHoldingOldTokens(Scan scan) {
     KeyRing oldOnly = KeyRing.parse(oldKey);
     KeyRing newOnly = KeyRing.parse(newKey);
     Set<String> tables = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     for (Token token : scan.tokens()) {
-      boolean old =
-          token.bound()
-              ? seed.candidates.stream()
-                  .anyMatch(
-                      candidate ->
-                          BoundCiphertext.open(
-                                  oldOnly, candidate.owner(), candidate.field(), token.text())
-                              instanceof Opening.Primary)
-              : newOnly.open(token.text()) instanceof Opening.NoKey
-                  && !(oldOnly.open(token.text()) instanceof Opening.NoKey);
-      if (old) {
+      if (newOnly.open(token.text()) instanceof Opening.NoKey
+          && !(oldOnly.open(token.text()) instanceof Opening.NoKey)) {
         tables.add(token.table());
       }
     }
     return tables;
   }
 
-  /**
-   * A token passes when the new key alone opens it. A bound token is tried against the owners this
-   * test created. One that none of them opens belongs to a value the test did not write, which it
-   * can only fault if the old key opens it.
-   */
-  private static List<String> problemsOpeningWithTheNewKeyAlone(Scan scan, Seed seed) {
-    KeyRing oldOnly = KeyRing.parse(oldKey);
+  /** A token passes when the new key alone opens it. */
+  private static List<String> problemsOpeningWithTheNewKeyAlone(Scan scan) {
     KeyRing newOnly = KeyRing.parse(newKey);
     List<String> problems = new ArrayList<>();
     for (Token token : scan.tokens()) {
-      if (!token.bound()) {
-        if (!(newOnly.open(token.text()) instanceof Opening.Primary)) {
-          problems.add(token.store() + " holds a plain token the new key does not open");
-        }
-        continue;
-      }
-      boolean opens =
-          seed.candidates.stream()
-              .anyMatch(
-                  c ->
-                      BoundCiphertext.open(newOnly, c.owner(), c.field(), token.text())
-                          instanceof Opening.Primary);
-      boolean stillOld =
-          seed.candidates.stream()
-              .anyMatch(
-                  c ->
-                      !(BoundCiphertext.open(oldOnly, c.owner(), c.field(), token.text())
-                          instanceof Opening.NoKey));
-      if (stillOld && !opens) {
-        problems.add(token.store() + " holds a bound token that only the old key opens");
+      if (!(newOnly.open(token.text()) instanceof Opening.Primary)) {
+        problems.add(token.store() + " holds a token the new key does not open");
       }
     }
     return problems;
   }
 
-  private static Set<String> plaintextsOpenedByTheNewKey(Scan scan, Seed seed) {
+  private static Set<String> plaintextsOpenedByTheNewKey(Scan scan) {
     KeyRing newOnly = KeyRing.parse(newKey);
     Set<String> plaintexts = new TreeSet<>();
     for (Token token : scan.tokens()) {
-      if (!token.bound()) {
-        if (newOnly.open(token.text()) instanceof Opening.Primary primary) {
-          plaintexts.add(primary.plaintext());
-        }
-        continue;
-      }
-      for (Candidate candidate : seed.candidates) {
-        if (BoundCiphertext.open(newOnly, candidate.owner(), candidate.field(), token.text())
-            instanceof Opening.Primary primary) {
-          plaintexts.add(primary.plaintext());
-        }
+      if (newOnly.open(token.text()) instanceof Opening.Primary primary) {
+        plaintexts.add(primary.plaintext());
       }
     }
     return plaintexts;

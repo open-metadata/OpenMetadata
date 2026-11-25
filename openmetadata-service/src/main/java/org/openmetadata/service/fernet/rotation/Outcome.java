@@ -23,8 +23,6 @@ enum Outcome {
   OLDER_KEY("Older key"),
   /** No configured key opens it. */
   NO_KEY("No key"),
-  /** A bound token that no anchor ties to an owner. */
-  UNBOUND("Unbound"),
   /** A token the rotation will not replace. */
   UNREWRITABLE("Not rewritable"),
   /** A value that changed between every read and write. */

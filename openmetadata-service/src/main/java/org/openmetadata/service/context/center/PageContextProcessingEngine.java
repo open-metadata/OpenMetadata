@@ -18,12 +18,12 @@ import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageProcessingStatus;
 import org.openmetadata.schema.entity.data.PageType;
-import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.jobs.BackgroundJobTypes;
 import org.openmetadata.service.jobs.JobDAO;
 
 /**
@@ -181,7 +181,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
   /** Cancels work whose source has been deleted. A claimed job will skip the missing page. */
   public void cancel(UUID pageId) {
     jobDao.cancelPendingPageMemoryJobs(
-        BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+        BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION,
         ContextMemoryExtractionJobHandler.class.getSimpleName(),
         ContextMemoryExtractionJobHandler.Args.page(pageId).jobKey(),
         System.currentTimeMillis());

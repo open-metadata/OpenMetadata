@@ -26,7 +26,7 @@ enum Verdict {
   ONLY_UNREADABLE_VALUES(4);
 
   private static final Set<Outcome> BLOCKING =
-      Set.of(Outcome.OLDER_KEY, Outcome.UNBOUND, Outcome.UNREWRITABLE, Outcome.CONTENDED);
+      Set.of(Outcome.OLDER_KEY, Outcome.UNREWRITABLE, Outcome.CONTENDED);
 
   final int exitCode;
 

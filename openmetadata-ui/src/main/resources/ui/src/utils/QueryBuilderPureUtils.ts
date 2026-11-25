@@ -16,9 +16,20 @@ import type {
   OldJsonItem,
   OldJsonTree,
 } from '@react-awesome-query-builder/ui';
-import { isBoolean, isEmpty, isObject, isUndefined } from 'lodash';
+import {
+  identity,
+  isBoolean,
+  isEmpty,
+  isObject,
+  isString,
+  isUndefined,
+} from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
+import type {
+  EsMatchPhrase,
+  EsRegexp,
+} from '../interface/queryFilter.interface';
 import type {
   EsBoolQuery,
   EsExistsQuery,
@@ -59,9 +70,11 @@ export const resolveFieldType = (
     return undefined;
   }
 
+  // Subfield keys may themselves contain dots (`strCP.keyword`), at any depth: Explore nests custom properties one
+  // level deeper than a pinned builder (`extension.table.strCP.keyword`).
   for (let i = 1; i < fieldParts.length; i++) {
-    if (i === 1 && (currentField as FieldWithSubFields)?.subfields) {
-      const remainingPath = fieldParts.slice(1).join('.');
+    if ((currentField as FieldWithSubFields)?.subfields) {
+      const remainingPath = fieldParts.slice(i).join('.');
       const remainingField = (currentField as FieldWithSubFields).subfields[
         remainingPath
       ];
@@ -193,7 +206,7 @@ export const getCommonFieldProperties = (
       properties: {
         field,
         operator,
-        value: isUndefined(value) ? [] : [value.replaceAll(/(^\*)|(\*$)/g, '')],
+        value: isUndefined(value) ? [] : [value],
         valueSrc: isUndefined(value) ? [] : ['value'],
         operatorOptions: null,
         valueType: isUndefined(value) ? [] : ['text'],
@@ -354,34 +367,97 @@ const matchExists: QueryFilterBranchHandler = (curr, parentPath) => {
   );
 };
 
-const matchWildcard: QueryFilterBranchHandler = (curr, parentPath) => {
-  if (isUndefined((curr as EsWildCard).wildcard)) {
-    return undefined;
-  }
+type UnknownRecord = Record<string, unknown>;
 
-  return getCommonFieldProperties(
+const firstEntry = (value: unknown): [string, unknown] | undefined =>
+  Object.entries((value ?? {}) as UnknownRecord)[0];
+
+const stripWildcards = (value: unknown): string =>
+  String(value ?? '').replace(/^\*|\*$/g, '');
+
+// Claims the clause only when readValue finds a string in the shape the UI writes; any
+// other ES form stays unread, so isQueryFilterFullyRepresentable keeps flagging the filter.
+const getStringValueRule = (
+  parentPath: Array<string>,
+  clause: UnknownRecord | undefined,
+  operator: string,
+  readValue: (body: unknown) => unknown
+) => {
+  const [field, body] = firstEntry(clause) ?? [];
+  const value = readValue(body);
+
+  return field && isString(value)
+    ? getCommonFieldProperties(parentPath, field, operator, value)
+    : undefined;
+};
+
+// The builder writes `like` rules as `{ value: '*value*' }`; API clients may write the shorthand
+// `'*value*'`. Nothing else is read: a prefix or case-insensitive wildcard would be rewritten
+// as a contains match on the next save.
+const readWildcardValue = (body: unknown) => {
+  const { value, ...rest } = isObject(body)
+    ? (body as UnknownRecord)
+    : { value: body };
+
+  return isString(value) && isEmpty(rest) && /^\*.*\*$/.test(value)
+    ? stripWildcards(value)
+    : undefined;
+};
+
+// Regular expression rules are saved as `{ value, case_insensitive: true }` and nothing else;
+// reading a case-sensitive or flagged regexp would widen it on the next save.
+const readRegexpValue = (body: unknown) => {
+  const {
+    value,
+    case_insensitive: caseInsensitive,
+    ...rest
+  } = isObject(body) ? (body as UnknownRecord) : {};
+
+  return caseInsensitive === true && isEmpty(rest) ? value : undefined;
+};
+
+const matchWildcard: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
     parentPath,
-    Object.keys((curr as EsWildCard).wildcard)[0],
+    (curr as EsWildCard).wildcard,
     'like',
-    Object.values((curr as EsWildCard).wildcard)[0]?.value
+    readWildcardValue
   );
-};
 
-const matchMustNotWildcard: QueryFilterBranchHandler = (curr, parentPath) => {
-  if (isUndefined((curr.bool?.must_not as EsWildCard)?.wildcard)) {
-    return undefined;
-  }
-
-  return getCommonFieldProperties(
+const matchMustNotWildcard: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
     parentPath,
-    Object.keys((curr.bool?.must_not as EsWildCard)?.wildcard)[0],
+    (curr.bool?.must_not as EsWildCard)?.wildcard,
     'not_like',
-    Object.values((curr.bool?.must_not as EsWildCard)?.wildcard)[0]?.value
+    readWildcardValue
   );
-};
 
-// AND-ed `must_not` terms on one field are a `Not in` rule: read them back as the
-// row the user filled, not one `!=` row per value.
+const matchRegexp: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
+    parentPath,
+    (curr as EsRegexp).regexp,
+    'regexp',
+    readRegexpValue
+  );
+
+const matchPhrase: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
+    parentPath,
+    (curr as EsMatchPhrase).match_phrase,
+    'match_phrase',
+    identity
+  );
+
+const matchMustNotPhrase: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
+    parentPath,
+    (curr.bool?.must_not as EsMatchPhrase)?.match_phrase,
+    'not_match_phrase',
+    identity
+  );
+
+// AND-ed `must_not` terms on one field are a `Not in` rule, even with one value: read them back as the row the user
+// filled, not one `!=` row per value. A lone `!=` is written bare, never inside a `must`.
 const isMustNotTermClause = (clause: QueryFieldInterface) =>
   !isUndefined((clause?.bool?.must_not as EsTerm)?.term);
 
@@ -390,7 +466,7 @@ const matchMustMustNotTerm: QueryFilterBranchHandler = (curr, parentPath) => {
     | QueryFieldInterface[]
     | undefined;
 
-  if (!Array.isArray(clauses) || clauses.length < 2) {
+  if (!Array.isArray(clauses) || clauses.length === 0) {
     return undefined;
   }
 
@@ -451,8 +527,6 @@ interface CustomPropertyClause {
   negated: boolean;
 }
 
-type UnknownRecord = Record<string, unknown>;
-
 const asClauseArray = (value: unknown): UnknownRecord[] => {
   if (Array.isArray(value)) {
     return value as UnknownRecord[];
@@ -460,9 +534,6 @@ const asClauseArray = (value: unknown): UnknownRecord[] => {
 
   return isUndefined(value) ? [] : [value as UnknownRecord];
 };
-
-const firstEntry = (value: unknown): [string, unknown] | undefined =>
-  Object.entries((value ?? {}) as UnknownRecord)[0];
 
 const toValueField = (key: string): string =>
   key.startsWith(CUSTOM_PROPERTY_VALUE_PREFIX)
@@ -626,7 +697,9 @@ const readCustomPropertyClause = (
 const findExtensionField = (
   fields: Fields | undefined,
   name: string,
-  valueField?: string
+  valueField?: string,
+  // The entity type the filter names for the property: several can declare the same property name.
+  entityType?: string
 ): { key: string; scope: string } | undefined => {
   const subfields = (fields?.extension as FieldWithSubFields | undefined)
     ?.subfields;
@@ -645,11 +718,16 @@ const findExtensionField = (
     }
   });
 
-  const candidates = scopes.flatMap(([scope, scopeFields]) =>
+  const matching = scopes.flatMap(([scope, scopeFields]) =>
     Object.keys(scopeFields)
       .filter((key) => key === name || key.startsWith(`${name}.`))
       .map((key) => ({ key, scope }))
   );
+  // A named entity type reads only its own group, or a pinned builder's ungrouped properties: falling back to another
+  // entity type's property of the same name would change what the filter searches.
+  const candidates = entityType
+    ? matching.filter(({ scope }) => scope === entityType || scope === '')
+    : matching;
 
   if (candidates.length === 0) {
     return undefined;
@@ -714,9 +792,6 @@ const readRange = (
     value: keys.map((key) => range[key]),
   };
 };
-
-const stripWildcards = (value: unknown): string =>
-  String(value ?? '').replace(/^\*|\*$/g, '');
 
 // A multiselect holds its choices in a single value slot, so it nests.
 const toRuleValue = (
@@ -802,22 +877,248 @@ const wrapInDrillGroups = (
   } as Record<string, OldJsonItem>;
 };
 
+// A rule holding several values (`Any in`, `Not in`, an enum's multiselect) is written as one clause per value under a
+// single `should` (any of) or `must` (all of / none of); the operator follows from that, the clause shape and the
+// field type.
+type MultiValueOccurrence = 'must' | 'should';
+type MultiValueShape = Extract<CustomPropertyShape, 'term' | 'wildcard'>;
+
+// Field type → occurrence → clause shape → [operator, negated operator].
+const MULTI_VALUE_OPERATORS: Record<
+  string,
+  Partial<
+    Record<
+      MultiValueOccurrence,
+      Partial<Record<MultiValueShape, [string | undefined, string | undefined]>>
+    >
+  >
+> = {
+  select: {
+    should: { term: ['select_any_in', undefined] },
+    must: { term: [undefined, 'select_not_any_in'] },
+  },
+  multiselect: {
+    must: {
+      term: ['multiselect_equals', 'multiselect_not_equals'],
+      wildcard: [undefined, 'multiselect_not_contains'],
+    },
+    should: { wildcard: ['multiselect_contains', undefined] },
+  },
+};
+
+const getMultiValueOperator = (
+  fieldType: string | undefined,
+  occurrence: MultiValueOccurrence,
+  shape: CustomPropertyShape,
+  negated: boolean
+): string | undefined =>
+  MULTI_VALUE_OPERATORS[fieldType ?? '']?.[occurrence]?.[
+    shape as MultiValueShape
+  ]?.[negated ? 1 : 0];
+
+const readMultiValueCustomProperty = (
+  clause: UnknownRecord
+):
+  | {
+      parsed: CustomPropertyClause;
+      occurrence: MultiValueOccurrence;
+      values: unknown[];
+    }
+  | undefined => {
+  const bool = clause.bool as Record<string, unknown> | undefined;
+  const keys = Object.keys(bool ?? {});
+  const occurrence = keys[0];
+
+  if (keys.length !== 1 || !['must', 'should'].includes(occurrence)) {
+    return undefined;
+  }
+
+  const branches = asClauseArray(bool?.[occurrence]);
+  // Each value is its own rule clause: wrapped in an `entityType` envelope, or the bare (possibly negated) `nested`.
+  const parsedBranches = branches.map((branch) =>
+    branch.nested || branch.bool ? readCustomPropertyClause(branch) : undefined
+  );
+  const [first] = parsedBranches;
+
+  if (
+    !first ||
+    !['term', 'wildcard'].includes(first.shape) ||
+    parsedBranches.some(
+      (branch) =>
+        branch?.name !== first.name ||
+        branch.shape !== first.shape ||
+        branch.negated !== first.negated
+    )
+  ) {
+    return undefined;
+  }
+
+  return {
+    parsed: first,
+    occurrence: occurrence as MultiValueOccurrence,
+    values: parsedBranches.map((branch) =>
+      first.shape === 'wildcard' ? stripWildcards(branch?.value) : branch?.value
+    ),
+  };
+};
+
+// `extension`, then Explore's per-entity-type level.
+const MAX_DRILL_LEVELS = 2;
+
+// Each drill level (`rule_group`) the builder nests a property rule in is written as a one-clause `bool.must`.
+const stripDrillWrappers = (
+  clause: UnknownRecord,
+  levels: number
+): UnknownRecord => {
+  let current = clause;
+
+  for (let level = 0; level < levels; level++) {
+    const bool = current.bool as Record<string, unknown> | undefined;
+    const must = asClauseArray(bool?.must);
+
+    if (
+      Object.keys(bool ?? {}).length !== 1 ||
+      must.length !== 1 ||
+      !must[0].bool
+    ) {
+      break;
+    }
+    current = must[0];
+  }
+
+  return current;
+};
+
+// The first custom-property `nested` query anywhere in the clause: which property a rule is about, however deeply its
+// drill levels and per-value branches wrap it.
+const findNestedCustomProperty = (
+  clause: unknown
+): Omit<CustomPropertyClause, 'negated'> | undefined => {
+  if (!isObject(clause)) {
+    return undefined;
+  }
+
+  const direct = readNestedCustomProperty(clause as UnknownRecord);
+
+  if (direct) {
+    return direct;
+  }
+
+  for (const child of Object.values(clause as UnknownRecord)) {
+    const found = Array.isArray(child)
+      ? child.map(findNestedCustomProperty).find(Boolean)
+      : findNestedCustomProperty(child);
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
+};
+
+// The entity type the writer scopes a custom-property rule to (`{ term: { entityType } }` beside its `nested` query).
+const findEntityTypeTerm = (clause: unknown): string | undefined => {
+  if (!isObject(clause)) {
+    return undefined;
+  }
+
+  const entityType = ((clause as UnknownRecord).term as UnknownRecord)
+    ?.entityType;
+
+  if (isString(entityType)) {
+    return entityType;
+  }
+
+  for (const child of Object.values(clause as UnknownRecord)) {
+    const found = Array.isArray(child)
+      ? child.map(findEntityTypeTerm).find(Boolean)
+      : findEntityTypeTerm(child);
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
+};
+
+// The value type the rule's widget holds: text operators on a select property edit a text value, and `Any in` / `Not
+// in` hold a list of choices.
+const TEXT_VALUE_OPERATORS = new Set(['like', 'not_like', 'regexp']);
+const LIST_VALUE_OPERATORS = new Set(['select_any_in', 'select_not_any_in']);
+
+const getRuleValueType = (
+  rule: { operator: string },
+  fieldType: string | undefined
+): string => {
+  if (TEXT_VALUE_OPERATORS.has(rule.operator)) {
+    return 'text';
+  }
+  if (LIST_VALUE_OPERATORS.has(rule.operator)) {
+    return 'multiselect';
+  }
+
+  return fieldType ?? 'text';
+};
+
+// The operator and value a property rule's clause states: one clause per value under a `must`/`should` (Any in, Not
+// in, an enum's multiselect), or a single clause.
+const readCustomPropertyRule = (
+  clause: UnknownRecord,
+  drillLevels: number,
+  fieldType: string | undefined
+): { operator: string; value: unknown[] } | undefined => {
+  const multiValue = readMultiValueCustomProperty(
+    stripDrillWrappers(clause, drillLevels)
+  );
+  const multiValueOperator =
+    multiValue &&
+    getMultiValueOperator(
+      fieldType,
+      multiValue.occurrence,
+      multiValue.parsed.shape,
+      multiValue.parsed.negated
+    );
+
+  if (multiValueOperator) {
+    return { operator: multiValueOperator, value: [multiValue.values] };
+  }
+
+  const single = readCustomPropertyClause(clause);
+
+  return single ? toCustomPropertyRule(single, fieldType) : undefined;
+};
+
 const matchCustomProperty: QueryFilterBranchHandler = (
   curr,
   parentPath,
   fields
 ) => {
   const clause = curr as unknown as UnknownRecord;
-  const parsed = readCustomPropertyClause(clause);
+  const located = findNestedCustomProperty(clause);
 
-  if (!parsed) {
+  if (!located) {
     return undefined;
   }
 
-  const found = findExtensionField(fields, parsed.name, parsed.valueField);
+  const found = findExtensionField(
+    fields,
+    located.name,
+    located.valueField,
+    findEntityTypeTerm(clause)
+  );
 
   if (!found) {
-    return undefined;
+    // A property rule the config has no field for is dropped whole: left unclaimed, the `bool.must` reader would
+    // descend into it and read its bare `nested` query without the entity type beside it, under another entity type.
+    const isPropertyRule =
+      readCustomPropertyClause(clause) ||
+      readMultiValueCustomProperty(
+        stripDrillWrappers(clause, MAX_DRILL_LEVELS)
+      );
+
+    return isPropertyRule ? {} : undefined;
   }
 
   const extension = EntityReferenceFields.EXTENSION as string;
@@ -827,7 +1128,7 @@ const matchCustomProperty: QueryFilterBranchHandler = (
     : [extension];
   const field = [...levels.slice(-1), found.key].join('.');
   const fieldType = resolveFieldType(fields, field);
-  const rule = toCustomPropertyRule(parsed, fieldType);
+  const rule = readCustomPropertyRule(clause, levels.length, fieldType);
 
   if (!rule) {
     return undefined;
@@ -844,7 +1145,7 @@ const matchCustomProperty: QueryFilterBranchHandler = (
       value: rule.value,
       valueSrc: rule.value.map(() => 'value'),
       operatorOptions: null,
-      valueType: rule.value.map(() => fieldType ?? 'text'),
+      valueType: rule.value.map(() => getRuleValueType(rule, fieldType)),
     },
   } as OldJsonItem);
 };
@@ -863,6 +1164,9 @@ const QUERY_FILTER_BRANCH_HANDLERS: QueryFilterBranchHandler[] = [
   matchExists,
   matchWildcard,
   matchMustNotWildcard,
+  matchRegexp,
+  matchPhrase,
+  matchMustNotPhrase,
   matchBoolMust,
 ];
 
@@ -1071,11 +1375,28 @@ const getRootClauses = (queryBody: QueryFieldInterface) => {
   return { ...grouping, clauses: innerMust ?? clauses, partial };
 };
 
-const isRenderedClause = (clause: QueryFieldInterface, fields?: Fields) =>
-  QUERY_FILTER_BRANCH_HANDLERS.some(
-    (handler) =>
-      !isEmpty(handler(clause, [], fields, getJsonTreePropertyFromQueryFilter))
+// A nested `must` group keeps whichever children it can read, so it renders only when every
+// child does; otherwise a clause the readers leave unread would drop without a warning.
+const isRenderedClause = (
+  clause: QueryFieldInterface,
+  fields?: Fields
+): boolean => {
+  const handler = QUERY_FILTER_BRANCH_HANDLERS.find(
+    (candidate) =>
+      !isEmpty(
+        candidate(clause, [], fields, getJsonTreePropertyFromQueryFilter)
+      )
   );
+  const children =
+    handler === matchBoolMust
+      ? ((clause.bool as EsBoolQuery).must as QueryFieldInterface[])
+      : [];
+
+  return (
+    Boolean(handler) &&
+    children.every((child) => isRenderedClause(child, fields))
+  );
+};
 
 // False when getJsonTreeFromQueryFilter would leave part of `queryFilter` out of
 // its tree, so an editor seeded from that tree drops those conditions on its
@@ -1143,6 +1464,121 @@ export const getJsonTreeFromQueryFilter = (
   } catch {
     return {} as OldJsonTree;
   }
+};
+
+type BoolGroup = { conjunction: string; clauses: QueryFieldInterface[] };
+
+// A `bool` holding exactly one of `must` (AND) or `should` (OR), as the builder writes every group.
+const readBoolGroup = (clause: unknown): BoolGroup | undefined => {
+  const bool = (clause as QueryFieldInterface | undefined)?.bool as
+    | Record<string, unknown>
+    | undefined;
+  const keys = Object.keys(bool ?? {});
+  const clauses = bool?.[keys[0]];
+
+  if (
+    keys.length !== 1 ||
+    !['must', 'should'].includes(keys[0]) ||
+    !Array.isArray(clauses) ||
+    clauses.length === 0
+  ) {
+    return undefined;
+  }
+
+  return {
+    conjunction:
+      keys[0] === 'must'
+        ? QUERY_BUILDER_CONJUNCTION.AND
+        : QUERY_BUILDER_CONJUNCTION.OR,
+    clauses: clauses as QueryFieldInterface[],
+  };
+};
+
+/**
+ * The tree Explore's Advanced Search wrote `queryFilter` from. The modal builds a root conjunction over groups, each a
+ * conjunction over rules, and writes each level as a `bool` of one `must`/`should` — so the filter is read back as
+ * those groups. Anything else (a link built by another screen, an older single-group link) goes through
+ * `getJsonTreeFromQueryFilter`.
+ */
+export const getExploreJsonTreeFromQueryFilter = (
+  queryFilter: QueryFilterInterface,
+  fields?: Fields
+): OldJsonTree => {
+  const root = readBoolGroup(getQueryBody(queryFilter));
+  const groups = root?.clauses.map(readBoolGroup);
+
+  if (!root || !groups?.every(Boolean)) {
+    return getJsonTreeFromQueryFilter(queryFilter, fields);
+  }
+
+  const rootId = generateUUID();
+
+  return {
+    id: rootId,
+    type: 'group',
+    properties: { conjunction: root.conjunction, not: false },
+    children1: Object.fromEntries(
+      (groups as BoolGroup[]).map((group) => {
+        const groupId = generateUUID();
+
+        return [
+          groupId,
+          {
+            id: groupId,
+            type: 'group',
+            path: [rootId, groupId],
+            properties: { conjunction: group.conjunction, not: false },
+            children1: getJsonTreePropertyFromQueryFilter(
+              [rootId, groupId],
+              group.clauses,
+              fields
+            ),
+          } as OldJsonItem,
+        ];
+      })
+    ),
+  };
+};
+
+// The clause of `{ bool: { must: [clause] } }`, when that is all the value is.
+const getOnlyMustClause = (value: object): unknown => {
+  const { bool, ...rest } = value as { bool?: Record<string, unknown> };
+  const must = bool?.must;
+  const isOnlyMust =
+    isEmpty(rest) &&
+    Object.keys(bool ?? {}).length === 1 &&
+    Array.isArray(must);
+
+  return isOnlyMust && (must as unknown[]).length === 1
+    ? (must as unknown[])[0]
+    : undefined;
+};
+
+/**
+ * A filter with every one-clause `bool.must` replaced by its clause: such a wrapper matches exactly what its clause
+ * matches. Builders nest one per group and per custom-property drill level, so two filters that search the same way
+ * can differ only in these.
+ */
+export const withoutSingleClauseMust = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map(withoutSingleClauseMust);
+  }
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  const onlyClause = getOnlyMustClause(value);
+
+  if (onlyClause) {
+    return withoutSingleClauseMust(onlyClause);
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, child]) => [
+      key,
+      withoutSingleClauseMust(child),
+    ])
+  );
 };
 
 export interface ElasticsearchQuery {

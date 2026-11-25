@@ -39,10 +39,6 @@ final class FernetStoreScan {
   static final String REDIS = "redis";
 
   record Token(String store, String text) {
-    boolean bound() {
-      return text.startsWith("fernet:bound:");
-    }
-
     /** The table of an SQL store, or {@code redis}. */
     String table() {
       int dot = store.indexOf('.');

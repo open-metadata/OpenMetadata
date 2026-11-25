@@ -22,4 +22,8 @@ public class EntityMaskException extends WebServiceException {
   public EntityMaskException(String message) {
     super(Response.Status.INTERNAL_SERVER_ERROR, ERROR_TYPE, message);
   }
+
+  public EntityMaskException(Response.Status status, String message) {
+    super(status, ERROR_TYPE, message);
+  }
 }
