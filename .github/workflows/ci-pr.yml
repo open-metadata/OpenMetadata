@@ -69,6 +69,11 @@ jobs:
     permissions:
       contents: read
       checks: write
+    outputs:
+      gate: ${{ steps.gate.outcome }}
+    env:
+      # Fork PRs get a read-only token and cannot create check runs; py-tests-status covers them.
+      CAN_REPORT_CHECKS: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         if: ${{ needs.plan.outputs.static == 'true' }}
@@ -96,7 +101,7 @@ jobs:
         uses: ./.github/actions/python-airflow-apis
         with:
           python-version: ${{ needs.plan.outputs.python-lowest }}
-      # The step result feeds the py-tests-status check; failing suites already fail the job.
+      # The step result feeds py-tests-status; failing suites already fail the job.
       - name: Verify selected Python workloads
         id: gate
         if: ${{ always() }}
@@ -126,7 +131,7 @@ jobs:
           '
         shell: bash
       - name: Report py-checkstyle
-        if: ${{ always() }}
+        if: ${{ always() && env.CAN_REPORT_CHECKS == 'true' }}
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         with:
           token: ${{ github.token }}
@@ -135,7 +140,7 @@ jobs:
           conclusion: ${{ job.status == 'cancelled' && 'cancelled' || steps.static.outcome || 'skipped' }}
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       - name: Report airflow-apis
-        if: ${{ always() && steps.airflow.outcome != 'skipped' && steps.airflow.outcome != '' }}
+        if: ${{ always() && env.CAN_REPORT_CHECKS == 'true' && steps.airflow.outcome != 'skipped' && steps.airflow.outcome != '' }}
         uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         with:
           token: ${{ github.token }}
@@ -143,12 +148,38 @@ jobs:
           name: airflow-apis
           conclusion: ${{ job.status == 'cancelled' && 'cancelled' || steps.airflow.outcome }}
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      - name: Report py-tests-status
-        if: ${{ always() }}
-        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        with:
-          token: ${{ github.token }}
-          sha: ${{ github.event.pull_request.head.sha || github.sha }}
-          name: py-tests-status
-          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || steps.gate.outcome }}
-          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  # Required check, published as a job so fork PRs report it too. It must verify on every PR:
+  # a job skipped by `if` reports success and would override a failing check of the same name.
+  py-tests-status:
+    name: py-tests-status
+    needs:
+      - plan
+      - python
+    if: ${{ always() && !github.event.pull_request.draft }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - name: Verify selected Python workloads
+        env:
+          NEEDS_JSON: |
+            {
+              "plan": {"result": "${{ needs.plan.result }}"},
+              "python": {"result": "${{ needs.python.result }}"},
+              "python-gate": {"result": "${{ needs.python.outputs.gate }}"}
+            }
+          EXPECTED_RESULTS: |
+            {
+              "plan": "success",
+              "python": "success",
+              "python-gate": "success"
+            }
+        run: |
+          jq -e -n --argjson needs "$NEEDS_JSON" --argjson expected "$EXPECTED_RESULTS" '
+            $expected | length > 0 and
+            (keys == ($needs | keys)) and
+            all(to_entries[]; . as $job |
+              ($job.value == "success" or $job.value == "skipped") and
+              $needs[$job.key].result == $job.value)
+          '
+        shell: bash

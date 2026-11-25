@@ -53,9 +53,12 @@ Unit and Airflow API suites are composite actions (`python-unit`, `python-airflo
 run on the caller's checkout; each entrypoint owns the job, checkout and source revision. In
 `ci-pr.yml`, static checks, unit tests and Airflow API tests run as conditional steps of one
 `python` job, and later suites still run after an earlier step fails. That job runs for every
-non-draft PR, verifies the selected step results in its final steps and publishes them through the
-Checks API as `py-checkstyle`, `py-tests-status` (the required aggregate) and, only when the
-Airflow API step ran, `airflow-apis`; it has no separate aggregate job. Merge-queue and nightly
+non-draft PR, verifies the selected step results in a final step and publishes `py-checkstyle`
+and, only when the Airflow API step ran, `airflow-apis` through the Checks API. Fork PRs receive
+a read-only token, so they skip that publishing. The required `py-tests-status` stays a small job
+that checks the `python` job and its verification result on every non-draft PR, including forks.
+It is never skipped by `if`, because a skipped job reports success and would override a failing
+check of the same name. Merge-queue and nightly
 keep separate jobs. The nightly entrypoint enables tooling checks on its highest Python version
 through the unit action's `run-tooling-tests` input. Shared
 backend construction uses a complete reusable job. Merge-queue and nightly aggregate jobs run on `ubuntu-slim`, verify

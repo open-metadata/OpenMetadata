@@ -111,7 +111,13 @@ def test_connectors_reject_invalid_configuration(defaults, selected):
     assert not result.stdout
 
 
-@pytest.fixture(params=[("ci-pr.yml", "python", "gate"), ("ci-merge-queue.yml", "py-tests-status", None)])
+@pytest.fixture(
+    params=[
+        ("ci-pr.yml", "python", "gate"),
+        ("ci-pr.yml", "py-tests-status", None),
+        ("ci-merge-queue.yml", "py-tests-status", None),
+    ]
+)
 def gate(request):
     name, job, step_id = request.param
     steps = workflow(name)["jobs"][job]["steps"]
