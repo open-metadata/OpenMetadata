@@ -58,7 +58,7 @@ jobs:
 
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path
-        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+        run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
 
       - name: Caching Yarn dependencies
         uses: actions/cache@v6
@@ -76,9 +76,9 @@ jobs:
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
           # Retry transient registry failures (5xx on tarball fetches) —
-          # yarn v1 does not retry HTTP errors on its own.
+          # Yarn retries each request, but not a sustained outage.
           for attempt in 1 2 3; do
-            yarn install --network-timeout 100000 && break
+            YARN_HTTP_TIMEOUT=100000 yarn install && break
             if [[ "$attempt" -eq 3 ]]; then
               echo "yarn install failed after 3 attempts" >&2
               exit 1

@@ -9,10 +9,10 @@ runs:
     - name: Restore Yarn dependencies
       uses: actions/cache/restore@v6
       with:
-        path: ~/.cache/yarn
-        key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+        path: ~/.yarn/berry/cache
+        key: yarn4-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
         restore-keys: |
-          yarn-pkg-cache-${{ runner.os }}-
+          yarn4-pkg-cache-${{ runner.os }}-
     # The UI's postinstall needs the antlr4 CLI. `make install_antlr_cli` tries
     # apt first, which took ~10 min on slow runners; use the Makefile's pinned
     # jar (same version and checksum) from a cache instead.
@@ -57,7 +57,7 @@ runs:
       # The registry occasionally answers 502; retry rather than fail the job.
       run: |
         for attempt in 1 2 3; do
-          yarn install --frozen-lockfile --network-timeout 120000 && exit 0
+          YARN_HTTP_TIMEOUT=120000 yarn install --immutable && exit 0
           echo "yarn install failed (attempt $attempt), retrying"
           sleep 15
         done
