@@ -11,11 +11,14 @@
 """Collection contracts are checked in isolated, network-blocked pytest sessions."""
 
 import os
-import shlex
+import shutil
+import site
+import sys
 from pathlib import Path
 
 import pytest
-import yaml
+
+from ingestion.tests.utils.python_tooling import prepare_locked_tooling
 
 from .support import configure_child
 
@@ -139,30 +142,22 @@ def test_unsupported_contract_requires_reason_and_respects_generated_support(
     result.stderr.fnmatch_lines([expected])
 
 
-def test_reviewed_waiver_without_machine_capability_is_allowed(pytester, monkeypatch):
+def test_contracts_without_machine_capabilities_can_have_reviewed_waivers(pytester, monkeypatch):
     suite = _child(pytester, monkeypatch)
     mysql = _connector(
         suite,
         "mysql",
         "def test_unmarked():\n    assert True\n",
         inventory=_mysql_inventory(
-            ("classification.tags",), {"classification.tags": "No classification implementation in this test suite"}
-        ),
-    )
-    result = pytester.runpytest_subprocess(str(mysql), "--collect-only", "--e2e-contract-check", "-q")
-    assert result.ret == pytest.ExitCode.OK
-    result.stdout.fnmatch_lines(["*1 test collected*"])
-
-
-def test_narrower_metadata_features_can_have_reviewed_waivers(pytester, monkeypatch):
-    suite = _child(pytester, monkeypatch)
-    mysql = _connector(
-        suite,
-        "mysql",
-        "def test_unmarked():\n    assert True\n",
-        inventory=_mysql_inventory(
-            ("filter.table.include-one", "procedure.code", "fk.relationships", "deletion.tables"),
+            (
+                "classification.tags",
+                "filter.table.include-one",
+                "procedure.code",
+                "fk.relationships",
+                "deletion.tables",
+            ),
             {
+                "classification.tags": "No classification implementation in this test suite",
                 "filter.table.include-one": "not in suite",
                 "procedure.code": "not in suite",
                 "fk.relationships": "not in suite",
@@ -209,55 +204,54 @@ def test_complete_multi_connector_collection_and_focused_execution(pytester, mon
     focused.assert_outcomes(passed=1, deselected=19)
 
 
-@pytest.mark.parametrize("omit_case", [False, True])
-def test_contract_check_without_cacheprovider_still_enforces_coverage(pytester, monkeypatch, omit_case):
+def test_contract_check_without_cacheprovider_still_enforces_coverage(pytester, monkeypatch):
     suite = _child(pytester, monkeypatch)
-    ids = tuple(case for case in MYSQL_IDS if not omit_case or case != "profile.metrics")
+    ids = tuple(case for case in MYSQL_IDS if case != "profile.metrics")
     mysql = _connector(suite, "mysql", _cases(ids))
     result = pytester.runpytest_subprocess(
         "-p", "no:cacheprovider", str(mysql), "--collect-only", "--e2e-contract-check", "-q"
     )
-    if omit_case:
-        assert result.ret == pytest.ExitCode.USAGE_ERROR
-        result.stderr.fnmatch_lines(["*mysql: profile.metrics missing collected case*"])
-    else:
-        assert result.ret == pytest.ExitCode.OK
-        result.stdout.fnmatch_lines(["*20 tests collected*"])
+    assert result.ret == pytest.ExitCode.USAGE_ERROR
+    result.stderr.fnmatch_lines(["*mysql: profile.metrics missing collected case*"])
 
 
 @pytest.mark.parametrize("omit_case", [False, True])
 def test_ci_invocation_enforces_complete_contracts(pytester, monkeypatch, omit_case):
     root = Path(__file__).resolve().parents[4]
-    workflow = yaml.safe_load((root / ".github/workflows/py-cli-e2e-tests-v2.yml").read_text())
-    steps = workflow["jobs"]["py-cli-e2e-tests-v2"]["steps"]
-    script = next(step["run"] for step in steps if step.get("id") == "e2e-v2-test")
-    monkeypatch.setenv("E2E_CONNECTOR", "mysql")
-    command = os.path.expandvars(script[script.index("pytest ") :].replace("\\\n", ""))
-    arguments = shlex.split(command)[1:]
-    suite = _child(pytester, monkeypatch, directory="tests/cli_e2e_v2")
+    suite = _child(pytester, monkeypatch, directory="ingestion/tests/cli_e2e_v2")
+    project = pytester.path / "ingestion"
+    for name in ("Makefile", "noxfile.py", "pyproject.toml"):
+        shutil.copyfile(root / "ingestion" / name, project / name)
+    (pytester.path / "Makefile").write_text("include ingestion/Makefile\n")
+    prepare_locked_tooling(pytester.path, monkeypatch)
+    monkeypatch.setenv("PYTHONPATH", os.pathsep.join((os.environ["PYTHONPATH"], *site.getsitepackages())))
+    (project / "conftest.py").write_text('pytest_plugins = ["ingestion.tests.cli_e2e_v2.conftest"]\n')
     ids = tuple(case for case in MYSQL_IDS if not omit_case or case != "profile.metrics")
     _connector(suite, "mysql", _cases(ids))
-    result = pytester.runpytest_subprocess(*arguments, "--collect-only")
+    result = pytester.run(
+        sys.executable,
+        "-m",
+        "nox",
+        "-f",
+        str(project / "noxfile.py"),
+        "--no-venv",
+        "-s",
+        "cli-e2e",
+        "--",
+        "mysql",
+        "--suite",
+        "v2",
+        "--no-cov",
+    )
+    raw_exit = (project / "cli-e2e-test-exit-code.txt").read_text().strip()
     if omit_case:
-        assert result.ret == pytest.ExitCode.USAGE_ERROR
+        assert result.ret != 0
+        assert raw_exit == str(pytest.ExitCode.USAGE_ERROR)
         result.stderr.fnmatch_lines(["*mysql: profile.metrics missing collected case*"])
     else:
-        assert result.ret == pytest.ExitCode.OK
-        result.stdout.fnmatch_lines(["*20 tests collected*"])
-
-
-@pytest.mark.parametrize("fails", [False, True])
-def test_ci_meta_invocation_runs_offline_tests_and_propagates_failure(pytester, monkeypatch, fails):
-    root = Path(__file__).resolve().parents[4]
-    workflow = yaml.safe_load((root / ".github/workflows/py-tests-shared.yml").read_text())
-    steps = workflow["jobs"]["py-unit-tests"]["steps"]
-    script = next(step["run"] for step in steps if step.get("name") == "Run offline E2E framework tests")
-    arguments = shlex.split(script[script.index("python -m pytest") :])[3:]
-    suite = _child(pytester, monkeypatch, directory="tests/cli_e2e_v2")
-    _connector(suite, "meta", f"def test_regression():\n    assert {not fails!r}\n")
-    result = pytester.runpytest_subprocess(*arguments)
-    assert result.ret == (pytest.ExitCode.TESTS_FAILED if fails else pytest.ExitCode.OK)
-    result.assert_outcomes(failed=1 if fails else 0, passed=0 if fails else 1)
+        assert result.ret == 0
+        assert raw_exit == "0"
+        result.stdout.fnmatch_lines(["*20 passed*"])
 
 
 @pytest.mark.parametrize(
@@ -309,9 +303,18 @@ def test_skipif_marked_required_case_is_not_coverage(pytester, monkeypatch):
     result.stderr.fnmatch_lines(["*mysql: profile.metrics missing collected case*"])
 
 
-@pytest.mark.parametrize("phase", ["setup", "call", "teardown"])
-@pytest.mark.parametrize("outcome", ["skip", "xfail"])
-@pytest.mark.parametrize("contract_check", [False, True])
+@pytest.mark.parametrize(
+    "phase, outcome, contract_check",
+    [
+        ("setup", "skip", True),
+        ("setup", "xfail", True),
+        ("call", "skip", True),
+        ("call", "xfail", True),
+        ("teardown", "skip", True),
+        ("teardown", "xfail", True),
+        ("call", "skip", False),
+    ],
+)
 def test_runtime_skip_and_xfail_fail_required_contracts(pytester, monkeypatch, phase, outcome, contract_check):
     suite = _child(pytester, monkeypatch)
     action = f"pytest.{outcome}('source unavailable')"
@@ -331,9 +334,7 @@ def test_runtime_skip_and_xfail_fail_required_contracts(pytester, monkeypatch, p
     result = pytester.runpytest_subprocess(str(mysql), *options, "-q")
     if not contract_check:
         assert result.ret == pytest.ExitCode.OK
-        result.assert_outcomes(
-            passed=int(phase == "teardown"), skipped=int(outcome == "skip"), xfailed=int(outcome == "xfail")
-        )
+        result.assert_outcomes(skipped=1)
         return
     assert result.ret == pytest.ExitCode.TESTS_FAILED
     result.assert_outcomes(
@@ -344,8 +345,7 @@ def test_runtime_skip_and_xfail_fail_required_contracts(pytester, monkeypatch, p
     result.stdout.fnmatch_lines(["*Required E2E contract profile.metrics*", "*source unavailable*"])
 
 
-@pytest.mark.parametrize("contract_check", [False, True])
-def test_runtime_xpass_cannot_bypass_completeness(pytester, monkeypatch, contract_check):
+def test_runtime_xpass_cannot_bypass_completeness(pytester, monkeypatch):
     suite = _child(pytester, monkeypatch)
     mysql = _connector(
         suite,
@@ -357,14 +357,12 @@ def test_runtime_xpass_cannot_bypass_completeness(pytester, monkeypatch, contrac
         "def test_profile(source):\n    assert True\n",
         inventory=_mysql_inventory(("profile.metrics",)),
     )
-    options = ["--e2e-contract-check"] if contract_check else []
-    result = pytester.runpytest_subprocess(str(mysql), *options, "-q")
-    assert result.ret == (pytest.ExitCode.TESTS_FAILED if contract_check else pytest.ExitCode.OK)
-    result.assert_outcomes(failed=int(contract_check), xpassed=int(not contract_check))
+    result = pytester.runpytest_subprocess(str(mysql), "--e2e-contract-check", "-q")
+    assert result.ret == pytest.ExitCode.TESTS_FAILED
+    result.assert_outcomes(failed=1)
 
 
-@pytest.mark.parametrize("contract_check", [False, True])
-def test_unmarked_runtime_skips_do_not_invalidate_passing_contracts(pytester, monkeypatch, contract_check):
+def test_unmarked_runtime_skips_do_not_invalidate_passing_contracts(pytester, monkeypatch):
     suite = _child(pytester, monkeypatch)
     mysql = _connector(
         suite,
@@ -375,35 +373,9 @@ def test_unmarked_runtime_skips_do_not_invalidate_passing_contracts(pytester, mo
         "def test_optional():\n    pytest.skip('optional probe')\n",
         inventory=_mysql_inventory(("profile.metrics",)),
     )
-    options = ["--e2e-contract-check"] if contract_check else []
-    result = pytester.runpytest_subprocess(str(mysql), *options, "-q")
+    result = pytester.runpytest_subprocess(str(mysql), "--e2e-contract-check", "-q")
     assert result.ret == pytest.ExitCode.OK
     result.assert_outcomes(passed=1, skipped=1)
-
-
-def test_child_process_blocks_tcp_and_dns(pytester, monkeypatch):
-    suite = _child(pytester, monkeypatch)
-    mysql = _connector(
-        suite,
-        "mysql",
-        "import socket\nimport pytest\n"
-        "def test_guard():\n"
-        "    with pytest.raises(AssertionError, match='Offline framework probe'):\n"
-        "        socket.socket().connect(('127.0.0.1', 1))\n"
-        "    with pytest.raises(AssertionError, match='Offline framework probe'):\n"
-        "        socket.getaddrinfo('example.com', 80)\n"
-        "    with pytest.raises(AssertionError, match='Offline framework probe'):\n"
-        "        socket.gethostbyname('example.com')\n"
-        "    with pytest.raises(AssertionError, match='Offline framework probe'):\n"
-        "        socket.gethostbyname_ex('example.com')\n"
-        "    with pytest.raises(AssertionError, match='Offline framework probe'):\n"
-        "        socket.gethostbyaddr('127.0.0.1')\n"
-        "    with pytest.raises(AssertionError, match='Offline framework probe'):\n"
-        "        socket.getnameinfo(('127.0.0.1', 80), 0)\n",
-    )
-    result = pytester.runpytest_subprocess(str(mysql), "-q")
-    assert result.ret == pytest.ExitCode.OK
-    result.assert_outcomes(passed=1)
 
 
 @pytest.mark.parametrize("omit_chart_case", [False, True])

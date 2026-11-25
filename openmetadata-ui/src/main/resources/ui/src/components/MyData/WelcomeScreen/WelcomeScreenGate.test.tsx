@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { Link, MemoryRouter } from 'react-router-dom';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../../constants/constants';
 import { RouteVisibilityProvider } from '../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { updateUserDetail } from '../../../rest/userAPI';
 import WelcomeScreenGate from './WelcomeScreenGate';
 
-const mockTour = { isActive: false };
 const mockWelcome = { isWelcomeVisible: true };
 const mockStore: {
   currentUser: { id: string; name: string; isFirstTimeUser?: boolean };
@@ -38,11 +38,6 @@ jest.mock('../../../hooks/useWelcomeStore', () => ({
   useWelcomeStore: () => mockWelcome,
 }));
 
-jest.mock('../../../hooks/product-tour/useProductTourStore', () => ({
-  useProductTourStore: (selector: (state: typeof mockTour) => boolean) =>
-    selector(mockTour),
-}));
-
 jest.mock('./WelcomeScreen.component', () =>
   jest.fn(({ onClose }) => (
     <button data-testid="welcome" onClick={onClose}>
@@ -55,7 +50,8 @@ const renderGate = () =>
   render(
     <WelcomeScreenGate>
       <div data-testid="home">home</div>
-    </WelcomeScreenGate>
+    </WelcomeScreenGate>,
+    { wrapper: MemoryRouter }
   );
 
 describe('WelcomeScreenGate', () => {
@@ -67,7 +63,6 @@ describe('WelcomeScreenGate', () => {
       name: 'alex',
       isFirstTimeUser: true,
     };
-    mockTour.isActive = false;
     mockWelcome.isWelcomeVisible = true;
   });
 
@@ -100,7 +95,7 @@ describe('WelcomeScreenGate', () => {
         </WelcomeScreenGate>
       </RouteVisibilityProvider>
     );
-    const { rerender } = render(gate(true));
+    const { rerender } = render(gate(true), { wrapper: MemoryRouter });
 
     expect(await screen.findByTestId('welcome')).toBeInTheDocument();
 
@@ -108,6 +103,24 @@ describe('WelcomeScreenGate', () => {
     rerender(gate(false));
     // Coming back must show the home, not the welcome screen again.
     rerender(gate(true));
+
+    expect(screen.getByTestId('home')).toBeInTheDocument();
+    expect(screen.queryByTestId('welcome')).not.toBeInTheDocument();
+  });
+
+  it('dismisses the welcome screen on navigation to the route already shown', async () => {
+    render(
+      <MemoryRouter initialEntries={['/my-data']}>
+        <Link to="/my-data">Home</Link>
+        <WelcomeScreenGate>
+          <div data-testid="home">home</div>
+        </WelcomeScreenGate>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId('welcome')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Home' }));
 
     expect(screen.getByTestId('home')).toBeInTheDocument();
     expect(screen.queryByTestId('welcome')).not.toBeInTheDocument();
@@ -143,13 +156,6 @@ describe('WelcomeScreenGate', () => {
     expect(mockStore.updateCurrentUser).toHaveBeenCalledWith(
       expect.objectContaining({ isFirstTimeUser: false })
     );
-  });
-
-  it('skips the welcome screen on the tour', () => {
-    mockTour.isActive = true;
-    renderGate();
-
-    expect(screen.getByTestId('home')).toBeInTheDocument();
   });
 
   it('skips the welcome screen when it is switched off', () => {

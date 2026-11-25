@@ -20,6 +20,7 @@ from sqlalchemy import Column, Integer, String, create_engine, text
 from sqlalchemy.orm import DeclarativeBase
 from testcontainers.mysql import MySqlContainer
 
+from _openmetadata_testutils.helpers.database_images import mysql_source_image
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.profiler.orm.functions.table_metric_computer import (
@@ -47,7 +48,7 @@ class NonExistentModel(Base):
 
 @pytest.fixture(scope="module")
 def mysql_engine():
-    container = MySqlContainer(image="mysql:8.4.5", dbname="test_metrics")
+    container = MySqlContainer(image=mysql_source_image(), dbname="test_metrics")
     with container as container:
         engine = create_engine(container.get_connection_url())
         with engine.connect() as conn:

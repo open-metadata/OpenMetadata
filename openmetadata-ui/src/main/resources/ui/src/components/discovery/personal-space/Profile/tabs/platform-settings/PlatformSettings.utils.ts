@@ -14,6 +14,7 @@
 import type { TFunction } from 'i18next';
 import type { AuthProvider } from '../../../../../../generated/settings/settings';
 import { safeDecodeURIComponent } from '../../../../../../utils/SettingsHashUtils';
+import type { SettingsHistoryView } from '../../../../../../utils/SettingsHistory.utils';
 import { PLATFORM_SETTINGS_PAGES } from './PlatformSettings.constants';
 import type {
   PlatformSettingsPage,
@@ -79,6 +80,13 @@ export const viewToSubPath = (
     ? `${view.page}/${EDIT_SEGMENT}/${itemId}`
     : `${view.page}/${EDIT_SEGMENT}`;
 };
+
+/** The shape the shared settings history rule reads: an open editor is a form view. */
+export const toSettingsHistoryView = (
+  view: PlatformSettingsView
+): SettingsHistoryView => ({
+  type: view.type === 'page' && view.isEditing ? 'edit' : view.type,
+});
 
 /** Number inputs hold strings; an empty input means "unset", not zero. */
 export const toOptionalNumber = (value: string): number | undefined =>

@@ -44,6 +44,7 @@ import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
@@ -53,6 +54,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.DataInsightsWork
 import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
 import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.CostAnalysisWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.TestCaseSnapshotStore;
 import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.WebAnalyticsWorkflow;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.exception.SearchIndexException;
@@ -164,6 +166,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
       IndexMapping dataAssetIndex = searchRepository.getIndexMapping(dataAssetType);
       String dataStreamName = getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
       try {
+        if (Entity.TEST_CASE.equals(dataAssetType)) {
+          new TestCaseSnapshotStore(
+                  searchRepository.getSearchClient(), searchRepository.getClusterAlias())
+              .detachLiveAlias();
+        }
         if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
           searchInterface.createDataAssetsDataStream(
               dataStreamName,
@@ -196,7 +203,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
       for (String dataAssetType : getDataAssetTypes()) {
         String dataStreamName =
             getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
-        if (searchInterface.dataAssetDataStreamExists(dataStreamName)) {
+        if (Entity.TEST_CASE.equals(dataAssetType)) {
+          new TestCaseSnapshotStore(
+                  searchRepository.getSearchClient(), searchRepository.getClusterAlias())
+              .deleteSnapshots();
+        } else if (searchInterface.dataAssetDataStreamExists(dataStreamName)) {
           searchInterface.deleteDataAssetDataStream(dataStreamName);
         }
       }

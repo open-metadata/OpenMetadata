@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { PASSWORD_SPECIAL_CHAR_REGEX } from '../../../../../constants/regex.constants';
+
 export enum PasswordRuleId {
   Length = 'length',
   MixedCase = 'mixed-case',
@@ -32,12 +34,11 @@ export interface PasswordRule {
 }
 
 /**
- * The four rules together are equivalent to the server-side password pattern
- * (`passwordRegex`): 8-56 non-whitespace characters with at least one
- * lowercase, one uppercase, one digit and one special character. Keeping them
- * as separate predicates lets the UI show which requirement is still missing,
- * and avoids `passwordRegex`'s `g` flag, whose `lastIndex` makes repeated
- * `test()` calls on the same instance return alternating results.
+ * The four rules together are equivalent to the server-side password policy
+ * (`PasswordUtil`, mirrored by `passwordRegex`): 8-56 non-whitespace characters
+ * with at least one lowercase, one uppercase, one digit and one special
+ * character. Keeping them as separate predicates lets the UI show which
+ * requirement is still missing.
  */
 export const PASSWORD_RULES: readonly PasswordRule[] = [
   {
@@ -58,7 +59,7 @@ export const PASSWORD_RULES: readonly PasswordRule[] = [
   {
     id: PasswordRuleId.Symbol,
     labelKey: 'message.password-rule-symbol',
-    isSatisfied: (password) => /[^\w\d\s:]/.test(password),
+    isSatisfied: (password) => PASSWORD_SPECIAL_CHAR_REGEX.test(password),
   },
 ];
 

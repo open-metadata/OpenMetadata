@@ -259,3 +259,45 @@ it('keeps legacy warnings, blocks increased usage, and prunes migrated reference
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+ruleTester.run(
+  'no-undefined-controlled-prop',
+  uiPatternsPlugin.rules['no-undefined-controlled-prop'],
+  {
+    valid: [
+      {
+        code: '<Select.ComboBox selectedKey={value ? String(value) : null} />',
+      },
+      { code: '<Select selectedKey={value ?? null} />' },
+      { code: '<Tabs selectedKey={tab} />' },
+      // A literal undefined on every render is consistently uncontrolled, never a flip.
+      { code: '<Select selectedKey={undefined} />' },
+      // Not a controlled prop.
+      { code: '<Select placeholder={value ? value : undefined} />' },
+      // DOM elements are React's concern, not React Aria's.
+      { code: '<input isOpen={open ? true : undefined} />' },
+    ],
+    invalid: [
+      {
+        code: '<Select.ComboBox selectedKey={value != null ? String(value) : undefined} />',
+        errors: [{ messageId: 'undefinedControlledProp' }],
+      },
+      {
+        code: '<Select selectedKey={value ?? undefined} />',
+        errors: [{ messageId: 'undefinedControlledProp' }],
+      },
+      {
+        code: '<MultiSelect selectedKeys={keys || undefined} />',
+        errors: [{ messageId: 'undefinedControlledProp' }],
+      },
+      {
+        code: '<Popover isOpen={hasItems ? isOpen : void 0} />',
+        errors: [{ messageId: 'undefinedControlledProp' }],
+      },
+      {
+        code: '<ComboBox inputValue={a ? x : b ? y : undefined} />',
+        errors: [{ messageId: 'undefinedControlledProp' }],
+      },
+    ],
+  }
+);

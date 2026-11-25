@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import {
   INCIDENT_TREND_COLORS,
   INCIDENT_TREND_DIRECTION_LABELS,
@@ -27,20 +28,15 @@ import {
   getIncidentTrendTone,
 } from './IncidentGroups.utils';
 
-/**
- * Read-only trend line for one incident group: the bucket counts the server
- * computed, plus the direction it derived from them. Pure — every value it
- * draws comes from its props, so the row can render it without a fetch.
- */
 const IncidentTrendSparkline = ({
   trend,
   trendDirection,
+  trendStart,
+  trendEnd,
   severity,
 }: IncidentTrendSparklineProps) => {
   const { t } = useTranslation();
 
-  // A group whose incidents all landed in the same instant has no trend to
-  // draw; the server omits the field rather than sending a flat line.
   if (!trend || isEmpty(trend)) {
     return null;
   }
@@ -50,25 +46,38 @@ const IncidentTrendSparkline = ({
     ? t(INCIDENT_TREND_DIRECTION_LABELS[trendDirection])
     : '';
 
+  const counts = { startCount: trend[0], endCount: trend[trend.length - 1] };
+  const description =
+    trendStart !== undefined && trendEnd !== undefined
+      ? t('message.open-incident-trend', {
+          ...counts,
+          startDate: formatDateTime(trendStart),
+          endDate: formatDateTime(trendEnd),
+        })
+      : t('message.open-incident-count-change', counts);
+
   return (
     <Box className="tw:gap-0.5" data-testid="incident-trend" direction="col">
-      <svg
-        aria-hidden
-        data-testid="incident-trend-sparkline"
-        fill="none"
-        height={SPARKLINE_HEIGHT}
-        viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}
-        width={SPARKLINE_WIDTH}>
-        <polyline
-          data-testid="incident-trend-line"
-          points={getIncidentTrendPoints(trend)}
-          // An SVG stroke takes no class, so the tone arrives as its token.
-          stroke={INCIDENT_TREND_COLORS[tone]}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-        />
-      </svg>
+      <Tooltip excludeTriggerFromTabOrder title={description}>
+        <svg
+          aria-label={description}
+          data-testid="incident-trend-sparkline"
+          fill="none"
+          height={SPARKLINE_HEIGHT}
+          role="img"
+          viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}
+          width={SPARKLINE_WIDTH}>
+          <polyline
+            data-testid="incident-trend-line"
+            points={getIncidentTrendPoints(trend)}
+            // An SVG stroke takes no class, so the tone arrives as its token.
+            stroke={INCIDENT_TREND_COLORS[tone]}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+          />
+        </svg>
+      </Tooltip>
       {directionLabel && (
         <Typography
           as="span"

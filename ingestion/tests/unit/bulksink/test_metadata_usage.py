@@ -16,6 +16,7 @@ import json
 import os
 import sys
 import tempfile
+from datetime import date, datetime
 from io import StringIO
 from types import SimpleNamespace
 from unittest import TestCase
@@ -46,6 +47,7 @@ from metadata.ingestion.bulksink.metadata_usage import (
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.mixins.es_mixin import FqnSearchResult
 from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
+from metadata.utils.time_utils import datetime_to_timestamp
 from metadata.workflow.usage import UsageWorkflow
 
 
@@ -647,4 +649,94 @@ def test_usage_binding_resolves_physical_shards_and_join_targets(source_type):
     assert joins[0][1].columnJoins[0].joinedWith[0].fullyQualifiedName.root == (
         "test_service.test_db.test_schema.events_yyyymmdd.id"
     )
+    assert not sink.status.failures
+
+
+# 2025-06-05 00:00:00 UTC expressed as epoch milliseconds. This is exactly the
+# value the query parser (query_parser.py) stages for an analysis date of
+# 2025-06-05 via ``datetime_to_timestamp(..., milliseconds=True)``, which
+# attaches UTC to the naive date.
+_USAGE_DATE_UTC_MS = 1749081600000
+
+
+def test_published_usage_date_is_utc_not_host_local(local_tz):
+    """UsageRequest.date must be the UTC calendar day of the staged epoch.
+
+    The staged epoch is produced by the query parser via the UTC-attaching
+    ``datetime_to_timestamp`` helper. Under ``America/New_York`` a naive
+    ``datetime.fromtimestamp`` would shift 2025-06-05 back to 2025-06-04; the
+    sink must instead decode it as UTC and publish 2025-06-05.
+    """
+    local_tz("America/New_York")
+    assert datetime_to_timestamp(datetime.strptime("2025-06-05", "%Y-%m-%d"), milliseconds=True) == _USAGE_DATE_UTC_MS
+
+    table = Table(
+        id=uuid4(),
+        name="test_table",
+        fullyQualifiedName="test_service.test_db.test_schema.test_table",
+        columns=[],
+    )
+    metadata = MagicMock()
+    entities = {table.fullyQualifiedName.root: table}
+    metadata.get_by_name.side_effect = lambda *, fqn, **_kwargs: entities.get(fqn)
+    published_usage = []
+    metadata.publish_table_usage.side_effect = lambda entity, request: published_usage.append(request)
+
+    record = create_table_usage().model_copy(update={"date": str(_USAGE_DATE_UTC_MS)})
+
+    sink = MetadataUsageBulkSink(
+        MetadataUsageSinkConfig(filename="/tmp/test_usage"),
+        metadata,
+    )
+    sink.iterate_files = lambda: iter([StringIO(json.dumps(record.model_dump_json()) + "\n")])
+    sink.handle_table_usage()
+
+    # A naive decode under America/New_York would yield "2025-06-04".
+    assert len(published_usage) == 1
+    assert published_usage[0].date == "2025-06-05"
+    assert published_usage[0].count == 1
+    assert not sink.status.failures
+
+
+def test_published_join_start_date_is_utc_not_host_local(local_tz):
+    """TableJoins.startDate must be the UTC calendar day of the staged epoch.
+
+    Under ``America/New_York`` a naive ``datetime.fromtimestamp`` would shift
+    the startDate for 2025-06-05 back to 2025-06-04; the sink must instead
+    decode it as UTC.
+    """
+    local_tz("America/New_York")
+    table = Table(
+        id=uuid4(),
+        name="test_table",
+        fullyQualifiedName="test_service.test_db.test_schema.test_table",
+        columns=[
+            {"name": "id", "dataType": "INT", "fullyQualifiedName": "test_service.test_db.test_schema.test_table.id"}
+        ],
+    )
+    metadata = MagicMock()
+    entities = {table.fullyQualifiedName.root: table}
+    metadata.get_by_name.side_effect = lambda *, fqn, **_kwargs: entities.get(fqn)
+    published_joins = []
+    metadata.publish_frequently_joined_with.side_effect = lambda entity, request: published_joins.append(request)
+
+    record = create_table_usage().model_dump()
+    record["date"] = str(_USAGE_DATE_UTC_MS)
+    record["joins"] = [
+        {
+            "tableColumn": {"table": "test_table", "column": "id"},
+            "joinedWith": [{"table": "test_table", "column": "id"}],
+        }
+    ]
+
+    sink = MetadataUsageBulkSink(
+        MetadataUsageSinkConfig(filename="/tmp/test_usage"),
+        metadata,
+    )
+    sink.iterate_files = lambda: iter([StringIO(json.dumps(json.dumps(record)) + "\n")])
+    sink.handle_table_usage()
+
+    # A naive decode under America/New_York would yield date(2025, 6, 4).
+    assert len(published_joins) == 1
+    assert published_joins[0].startDate.root == date(2025, 6, 5)
     assert not sink.status.failures

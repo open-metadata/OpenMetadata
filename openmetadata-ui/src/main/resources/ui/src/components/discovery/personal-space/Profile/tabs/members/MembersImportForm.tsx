@@ -52,6 +52,7 @@ import {
   CSVImportResult,
   Status,
 } from '../../../../../../generated/type/csvImportResult';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import {
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
@@ -59,6 +60,7 @@ import {
 import { resolveCsvImportResult } from '../../../../../../rest/csvAPI';
 import { importTeam, importUserInTeam } from '../../../../../../rest/teamsAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { STAGE_ICON_CLASS } from './Members.constants';
 import type {
   ActiveJob,
@@ -465,6 +467,10 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
   const [activeStep, setActiveStep] = useState<VALIDATION_STEP>(
     VALIDATION_STEP.UPLOAD
   );
+  // A validated file not yet imported is work the user would lose.
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    Boolean(selectedFile) && activeStep === VALIDATION_STEP.EDIT_VALIDATE
+  );
   const [processingType, setProcessingType] = useState<ProcessingType>();
   const [activeJob, setActiveJob] = useState<ActiveJob>();
   const activeJobRef = useRef<CSVImportJobType>();
@@ -805,6 +811,7 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
         direction="col"
         gap={6}>
         <ImportStepper activeStep={activeStep} />
+        <UnsavedChangesPrompt {...promptProps} />
         {renderBody()}
       </Box>
 
@@ -814,7 +821,7 @@ const MembersImportForm: FC<MembersImportFormProps> = ({
           canConfirm={canConfirmImport}
           hasFile={Boolean(selectedFile)}
           onBack={handleBack}
-          onClose={onClose}
+          onClose={() => runGuarded(onClose)}
           onImport={handleImport}
           onNext={handleStartPreview}
         />

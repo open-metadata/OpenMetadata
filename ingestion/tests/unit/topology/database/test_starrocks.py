@@ -115,8 +115,7 @@ mock_starrocks_config_with_ssl = {
 
 class StarRocksUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_starrocks_config)
         self.starrocks_source = StarRocksSource.create(
@@ -133,8 +132,7 @@ class StarRocksUnitTest(TestCase):
 
 class StarRocksSSLUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_starrocks_config_with_ssl)
         self.starrocks_source = StarRocksSource.create(

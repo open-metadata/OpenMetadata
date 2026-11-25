@@ -30,11 +30,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
+import org.openmetadata.service.rdf.translator.ReferenceScope;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Tests for RDF Property Mapper - verifies that structured properties are properly converted to RDF
@@ -596,7 +602,6 @@ class RdfPropertyMapperTest {
     @Test
     @DisplayName("FOREIGN_KEY table constraint emits om:references and TableConstraint resource")
     void testForeignKeyTableConstraint() throws Exception {
-      ArrayNode constraints = objectMapper.createArrayNode();
       ObjectNode fk = objectMapper.createObjectNode();
       fk.put("constraintType", "FOREIGN_KEY");
       fk.put("relationshipType", "MANY_TO_ONE");
@@ -606,15 +611,8 @@ class RdfPropertyMapperTest {
       ArrayNode referred = objectMapper.createArrayNode();
       referred.add("service.db.s.customers.id");
       fk.set("referredColumns", referred);
-      constraints.add(fk);
 
-      invokePrivate(
-          "emitTableConstraints",
-          new Class[] {JsonNode.class, String.class, Resource.class, Model.class},
-          constraints,
-          "service.db.s.orders",
-          entityResource,
-          model);
+      projectTableConstraint(fk, "service.db.s.orders");
 
       Resource customerIdCol =
           model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.orders.customer_id"));
@@ -648,34 +646,77 @@ class RdfPropertyMapperTest {
               constraintResource, model.createProperty(OM_NS, "hasReferredColumn"), referredCol));
     }
 
-    @Test
-    @DisplayName("Multi-column PRIMARY_KEY constraint marks every member column")
-    void testMultiColumnPrimaryKey() throws Exception {
-      ArrayNode constraints = objectMapper.createArrayNode();
+    @ParameterizedTest
+    @CsvSource({
+      "PRIMARY_KEY, 1, tenant_id",
+      "PRIMARY_KEY, 2, tenant_id",
+      "UNIQUE, 1, tenant_id",
+      "UNIQUE, 2, tenant_id",
+      "PRIMARY_KEY, 1, a.b",
+      "PRIMARY_KEY, 2, a.b",
+      "UNIQUE, 1, a.b",
+      "UNIQUE, 2, a.b"
+    })
+    void testKeyUniquenessAppliesToTheWholeConstraint(
+        String type, int columnCount, String firstColumn) throws Exception {
       ObjectNode pk = objectMapper.createObjectNode();
-      pk.put("constraintType", "PRIMARY_KEY");
+      pk.put("constraintType", type);
       ArrayNode cols = objectMapper.createArrayNode();
-      cols.add("tenant_id");
-      cols.add("user_id");
+      cols.add(firstColumn);
+      if (columnCount == 2) {
+        cols.add("user_id");
+      }
       pk.set("columns", cols);
-      constraints.add(pk);
 
-      invokePrivate(
-          "emitTableConstraints",
-          new Class[] {JsonNode.class, String.class, Resource.class, Model.class},
-          constraints,
-          "service.db.s.users",
-          entityResource,
-          model);
+      projectTableConstraint(pk, "service.db.s.users");
 
-      Resource tenantId =
-          model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.users.tenant_id"));
-      Resource userId =
-          model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.users.user_id"));
+      Resource constraint =
+          model
+              .listObjectsOfProperty(entityResource, model.createProperty(OM_NS, "hasConstraint"))
+              .next()
+              .asResource();
+      Property membership = model.createProperty(OM_NS, "hasConstrainedColumn");
+      assertEquals(
+          columnCount, model.listObjectsOfProperty(constraint, membership).toList().size());
+      for (JsonNode name : cols) {
+        Resource column =
+            model.createResource(
+                RdfUtils.columnUri(
+                    BASE_URI, FullyQualifiedName.add("service.db.s.users", name.asText())));
+        assertTrue(model.contains(constraint, membership, column));
+        assertEquals(
+            columnCount == 1,
+            model.contains(
+                column, model.createProperty(OM_NS, "isUnique"), model.createTypedLiteral(true)));
+        assertEquals(
+            "PRIMARY_KEY".equals(type),
+            model.contains(
+                column,
+                model.createProperty(OM_NS, "isPrimaryKey"),
+                model.createTypedLiteral(true)));
+        assertEquals(
+            "PRIMARY_KEY".equals(type),
+            model.contains(
+                column,
+                model.createProperty(OM_NS, "isNullable"),
+                model.createTypedLiteral(false)));
+      }
+    }
 
-      Property isPrimaryKey = model.createProperty(OM_NS, "isPrimaryKey");
-      assertTrue(model.getProperty(tenantId, isPrimaryKey).getBoolean());
-      assertTrue(model.getProperty(userId, isPrimaryKey).getBoolean());
+    private void projectTableConstraint(final ObjectNode constraint, final String tableFqn) {
+      EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", "table");
+      final Table table =
+          new Table()
+              .withId(UUID.randomUUID())
+              .withName("table")
+              .withFullyQualifiedName(tableFqn)
+              .withTableConstraints(
+                  List.of(objectMapper.convertValue(constraint, TableConstraint.class)));
+      final JsonLdTranslator translator =
+          new JsonLdTranslator(
+              objectMapper, BASE_URI, (type, fqns) -> Map.of(), ReferenceScope.ALL);
+      model.add(translator.toRdf(table));
+      entityResource = model.createResource(BASE_URI + "entity/table/" + table.getId());
     }
 
     private ObjectNode columnNode(String name, String dataType, String fqn, String constraint) {
@@ -690,8 +731,8 @@ class RdfPropertyMapperTest {
     }
 
     @Test
-    @DisplayName("Column.profile is emitted as DQV measurements rather than a JSON literal")
-    void testColumnProfileEmittedAsDqv() throws Exception {
+    @DisplayName("Column.profile is emitted as facts on the column rather than a JSON literal")
+    void testColumnProfileEmittedAsColumnFacts() throws Exception {
       ArrayNode columns = objectMapper.createArrayNode();
       ObjectNode col = objectMapper.createObjectNode();
       col.put("name", "email");
@@ -715,36 +756,32 @@ class RdfPropertyMapperTest {
 
       Resource emailColumn =
           model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.users.email"));
-      Property hasMeasurement =
-          model.createProperty("http://www.w3.org/ns/dqv#", "hasQualityMeasurement");
-      java.util.List<Resource> measurements =
-          model.listObjectsOfProperty(emailColumn, hasMeasurement).toList().stream()
-              .map(node -> node.asResource())
-              .toList();
       assertEquals(
-          4,
-          measurements.size(),
-          "Expected 4 numeric profile metrics (valuesCount, nullCount, nullProportion, uniqueCount)");
-
-      Property isMeasurementOf =
-          model.createProperty("http://www.w3.org/ns/dqv#", "isMeasurementOf");
-      Property dqvValue = model.createProperty("http://www.w3.org/ns/dqv#", "value");
-      java.util.Map<String, Double> byMetric = new java.util.HashMap<>();
-      for (Resource m : measurements) {
-        Resource metric = model.getProperty(m, isMeasurementOf).getObject().asResource();
-        double v = model.getProperty(m, dqvValue).getDouble();
-        byMetric.put(metric.getURI(), v);
-      }
-      assertEquals(1000.0, byMetric.get(OM_NS + "ValuesCountMetric"), 0.0);
-      assertEquals(12.0, byMetric.get(OM_NS + "NullCountMetric"), 0.0);
-      assertEquals(0.012, byMetric.get(OM_NS + "NullProportionMetric"), 1e-9);
-      assertEquals(985.0, byMetric.get(OM_NS + "UniqueCountMetric"), 0.0);
-
-      // Each measurement should also be tied back to the column via dqv:computedOn.
-      Property computedOn = model.createProperty("http://www.w3.org/ns/dqv#", "computedOn");
-      for (Resource m : measurements) {
-        assertTrue(model.contains(m, computedOn, emailColumn));
-      }
+          1000L,
+          model
+              .getProperty(emailColumn, model.createProperty(OM_NS, "profileValuesCount"))
+              .getLong());
+      assertEquals(
+          12L,
+          model
+              .getProperty(emailColumn, model.createProperty(OM_NS, "profileNullCount"))
+              .getLong());
+      assertEquals(
+          0.012,
+          model
+              .getProperty(emailColumn, model.createProperty(OM_NS, "profileNullProportion"))
+              .getDouble(),
+          1e-9);
+      assertEquals(
+          985L,
+          model
+              .getProperty(emailColumn, model.createProperty(OM_NS, "profileUniqueCount"))
+              .getLong());
+      assertTrue(model.contains(emailColumn, model.createProperty(OM_NS, "profiledAt")));
+      assertFalse(
+          model.contains(
+              emailColumn,
+              model.createProperty("http://www.w3.org/ns/dqv#", "hasQualityMeasurement")));
     }
 
     @Test

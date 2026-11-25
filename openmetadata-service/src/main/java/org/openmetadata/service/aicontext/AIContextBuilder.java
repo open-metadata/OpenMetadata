@@ -79,7 +79,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -195,6 +195,10 @@ public class AIContextBuilder {
     return buildForEntity(entity);
   }
 
+  List<EntityReference> lineageNodes() {
+    return lineage == null ? List.of() : listOrEmpty(lineage.getNodes());
+  }
+
   AIContext buildForEntity(EntityInterface<?> entity) {
     EntityLineage lineage = fetchLineage(entity);
     List<LineageEdgeContext> upstreamEdges = edgeContexts(lineage, true);
@@ -237,7 +241,8 @@ public class AIContextBuilder {
    * pills (potentially long). Each item is kept in full when it fits under the per-item ceiling and
    * the remaining budget, degraded to a lead excerpt when it doesn't, and finally reduced to a
    * reference (content omitted) once the budget is exhausted. Truncated items carry
-   * {@code contentTruncated=true} so the agent knows to fetch the full body via get_knowledge_content.
+   * {@code contentTruncated=true} so the agent knows to fetch the full body via
+   * {@code get_entity_details(include=["content"])}.
    */
   void applyKnowledgeBudget(AIContext context) {
     int remaining = knowledgeBudgetChars;
@@ -320,7 +325,7 @@ public class AIContextBuilder {
   private String queryRelevantExcerpt(KnowledgeItem item, int limit) {
     String result = null;
     try {
-      OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+      VectorIndexService vectorService = Entity.getSearchRepository().getVectorIndexService();
       if (item.getType() != null
           && vectorService != null
           && Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
@@ -1013,7 +1018,7 @@ public class AIContextBuilder {
     } else if (!nullOrEmpty(pill.getAnswer())) {
       content = pill.getAnswer();
     }
-    return unescapeRichText(content);
+    return PromptText.forContentRead(content);
   }
 
   private List<KnowledgeItem> resolveMetrics(EntityInterface<?> entity) {
@@ -1055,9 +1060,8 @@ public class AIContextBuilder {
   }
 
   /**
-   * The full (un-budgeted) body of a knowledge entity, for the get_knowledge_content tool's
-   * progressive-disclosure path. Keeps the per-type extraction (metric expression, pill answer)
-   * in one place so it matches what the bundle excerpts.
+   * The full (un-budgeted) body of a knowledge entity, keeping the per-type extraction (metric
+   * expression, pill answer) in one place so it matches what the bundle excerpts.
    */
   public static String fullContentOf(EntityInterface<?> entity) {
     String content;
@@ -1066,7 +1070,7 @@ public class AIContextBuilder {
     } else if (entity instanceof ContextMemory pill) {
       content = pillContent(pill);
     } else {
-      content = unescapeRichText(entity.getDescription());
+      content = PromptText.forContentRead(entity.getDescription());
     }
     return content;
   }
@@ -1082,8 +1086,9 @@ public class AIContextBuilder {
 
   static String metricContent(Metric metric) {
     StringBuilder content = new StringBuilder();
-    if (!nullOrEmpty(metric.getDescription())) {
-      content.append(unescapeRichText(metric.getDescription()));
+    String description = PromptText.forContentRead(metric.getDescription());
+    if (!nullOrEmpty(description) && !description.isBlank()) {
+      content.append(description);
     }
     MetricExpression expression = metric.getMetricExpression();
     if (expression != null && !nullOrEmpty(expression.getCode())) {
@@ -1219,7 +1224,8 @@ public class AIContextBuilder {
   /**
    * A metric's structural context is its expression — the query that defines it. Without this, asking
    * get_asset_context about a metric returned only its description, while the same expression was
-   * already reachable through get_knowledge_content and as attached knowledge of a table.
+   * already reachable through {@code get_entity_details(include=["content"])} and as attached
+   * knowledge of a table.
    */
   private static GenericAssetContext buildMetricContext(Metric metric, ConceptContext concept) {
     MetricExpression expression = metric.getMetricExpression();

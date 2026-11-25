@@ -205,7 +205,7 @@ public class DefaultToolContext {
     boolean isError = logicalError(result);
     BudgetedResult budgeted = applyBudget(result, toolName);
     return McpSchema.CallToolResult.builder()
-        .content(List.of(new McpSchema.TextContent(budgeted.json())))
+        .content(List.of(McpSchema.TextContent.builder(budgeted.json()).build()))
         .structuredContent(budgeted.payload())
         .isError(isError)
         .build();
@@ -221,7 +221,7 @@ public class DefaultToolContext {
 
   private static McpSchema.CallToolResult errorResult(Map<String, Object> error) {
     return McpSchema.CallToolResult.builder()
-        .content(List.of(new McpSchema.TextContent(JsonUtils.pojoToJson(error))))
+        .content(List.of(McpSchema.TextContent.builder(JsonUtils.pojoToJson(error)).build()))
         .structuredContent(error)
         .isError(true)
         .build();

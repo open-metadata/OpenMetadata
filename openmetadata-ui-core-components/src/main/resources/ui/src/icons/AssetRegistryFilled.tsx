@@ -24,15 +24,15 @@ export const AssetRegistryFilled: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g clipPath="url(#a)">
+    <g clipPath="url(#asset-registry-filled_a)">
       <path
         d="M13.968 7.26V3.768C13.968 2.24 11.288 1 7.984 1 4.679 1 2 2.24 2 3.768v8.997c0 1.385 2.198 2.532 5.068 2.736"
         stroke="currentColor"
@@ -60,7 +60,7 @@ export const AssetRegistryFilled: FC<Props> = ({
       />
     </g>
     <defs>
-      <clipPath id="a">
+      <clipPath id="asset-registry-filled_a">
         <path d="M0 0h20v20H0z" fill="#fff" />
       </clipPath>
     </defs>
