@@ -146,7 +146,7 @@ describe('WorkflowsPage on OSS', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('workflow-count')).toHaveTextContent('2');
 
-    fireEvent.click(screen.getByRole('radio', { name: 'label.lifecycle' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'label.lifecycle' }));
 
     expect(
       screen.queryByTestId('pw-oss-test-workflow')
@@ -154,8 +154,8 @@ describe('WorkflowsPage on OSS', () => {
     expect(screen.getByTestId('pw-oss-lifecycle')).toBeInTheDocument();
     expect(screen.getByTestId('workflow-count')).toHaveTextContent('1');
     expect(
-      screen.getByRole('radio', { name: 'label.lifecycle' })
-    ).toBeChecked();
+      screen.getByRole('tab', { name: 'label.lifecycle' })
+    ).toHaveAttribute('aria-selected', 'true');
   });
 
   it('lists every workflow without a filter header when no downstream build adds tabs', async () => {

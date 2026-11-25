@@ -460,7 +460,11 @@ test.describe('Lifecycle request', () => {
         response.url().includes(`/api/v1/tasks/${request.id}`) && response.ok()
     );
     await page.getByTestId('withdraw-lifecycle-request').click();
+    const confirmation = page.getByTestId('confirmation-modal');
+    await expect(confirmation).toContainText('Withdraw request?');
+    await confirmation.getByTestId('save-button').click();
     await withdrawn;
+    await expect(confirmation).toHaveCount(0);
 
     await expect(page.getByTestId('lifecycle-request-badge')).toHaveCount(0);
     await expect(
