@@ -455,6 +455,36 @@ def test_azuresql_data_diff_preserves_authentication_precedence(
     assert options["ApplicationIntent"] == "ReadOnly"
 
 
+@pytest.mark.parametrize(
+    ("authentication_mode", "trusted_connection"),
+    [
+        (None, "yes"),
+        (AuthenticationMode(authentication=Authentication.ActiveDirectoryPassword), None),
+    ],
+)
+def test_azuresql_data_diff_forwards_trusted_connection_without_an_explicit_mode(
+    monkeypatch: pytest.MonkeyPatch, authentication_mode: AuthenticationMode | None, trusted_connection: str | None
+):
+    db_service = azuresql_service(authentication_mode)
+    db_service.connection.config.connectionOptions = ConnectionOptions(root={"Trusted_Connection": "yes"})
+
+    options = capture_azuresql_odbc_options(monkeypatch, db_service)
+
+    assert options.get("Trusted_Connection") == trusted_connection
+
+
+def test_azuresql_data_diff_keeps_only_the_odbc_timeout_option(monkeypatch: pytest.MonkeyPatch):
+    db_service = azuresql_service()
+    db_service.connection.config.connectionOptions = ConnectionOptions(
+        root={"timeout": "5", "Connection Timeout": "30"}
+    )
+
+    options = capture_azuresql_odbc_options(monkeypatch, db_service)
+
+    assert "timeout" not in options
+    assert options["Connection Timeout"] == "30"
+
+
 def test_snowflake_private_key_drops_the_password_from_the_service_url():
     """data_diff rejects a password and a private key at once, so the key must win."""
     db_service = DatabaseService(

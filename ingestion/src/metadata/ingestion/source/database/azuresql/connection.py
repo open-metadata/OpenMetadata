@@ -113,11 +113,6 @@ class AzureSQLConnection(BaseConnection[AzureSQLConnectionConfig, Engine]):
             "database": connection.database,
         }
 
-        authentication_mode = connection.authenticationMode
-        if isinstance(authentication_mode, AuthenticationMode) and authentication_mode.authentication is not None:
-            connection_dict["Authentication"] = authentication_mode.authentication.value
-            connection_dict["Encrypt"] = "yes" if authentication_mode.encrypt else "no"
-
         # data-diff supplies its own server, schema, driver, and worker count.
         reserved_options = {
             "addr",
@@ -128,8 +123,15 @@ class AzureSQLConnection(BaseConnection[AzureSQLConnectionConfig, Engine]):
             "schema",
             "server",
             "thread_count",
+            "timeout",  # pyodbc expects an integer argument here.
             "uid",
         }
+        authentication_mode = connection.authenticationMode
+        if isinstance(authentication_mode, AuthenticationMode) and authentication_mode.authentication is not None:
+            connection_dict["Authentication"] = authentication_mode.authentication.value
+            connection_dict["Encrypt"] = "yes" if authentication_mode.encrypt else "no"
+            reserved_options.add("trusted_connection")
+
         reserved_options.update(key.casefold() for key in connection_dict)
         options = {
             key: value
