@@ -169,69 +169,29 @@ export const ES_EXCEPTION_SHARDS_FAILED = 'reason=all shards failed';
 
 export const SEARCH_INDEXING_APPLICATION = 'SearchIndexingApplication';
 
+// Explore's advanced search, as the Elasticsearch filter its URL carries: one group of one rule.
 export const INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER = {
-  id: 'descriptionID1',
-  type: 'group',
-  properties: { conjunction: 'AND', not: false },
-  children1: {
-    descriptionID2: {
-      type: 'group',
-      properties: { conjunction: 'AND', not: false },
-      children1: {
-        descriptionID3: {
-          type: 'rule',
-          properties: {
-            field: 'descriptionStatus',
-            operator: 'select_equals',
-            value: ['INCOMPLETE'],
-            valueSrc: ['value'],
-            operatorOptions: null,
-            valueType: ['select'],
-            asyncListValues: [
-              {
-                key: 'INCOMPLETE',
-                value: 'INCOMPLETE',
-                children: 'Incomplete',
-              },
-            ],
-          },
-          id: 'descriptionID3',
-          path: ['descriptionID1', 'descriptionID2', 'descriptionID3'],
-        },
-      },
-      id: 'descriptionID2',
-      path: ['descriptionID1', 'descriptionID2'],
+  query: {
+    bool: {
+      must: [
+        { bool: { must: [{ term: { descriptionStatus: 'INCOMPLETE' } }] } },
+      ],
     },
   },
-  path: ['descriptionID1'],
 };
 
 export const NO_OWNER_ADVANCE_SEARCH_FILTER = {
-  id: 'ownerID1',
-  type: 'group',
-  properties: { conjunction: 'AND', not: false },
-  children1: {
-    ownerID3: {
-      type: 'group',
-      properties: { conjunction: 'AND', not: false },
-      children1: {
-        ownerID2: {
-          type: 'rule',
-          properties: {
-            field: 'ownerDisplayName',
-            operator: 'is_null',
-            value: [],
-            valueSrc: [],
-            operatorOptions: null,
-            valueType: [],
+  query: {
+    bool: {
+      must: [
+        {
+          bool: {
+            must: [
+              { bool: { must_not: { exists: { field: 'ownerDisplayName' } } } },
+            ],
           },
-          id: 'ownerID2',
-          path: ['ownerID1', 'ownerID3', 'ownerID2'],
         },
-      },
-      id: 'ownerID3',
-      path: ['ownerID1', 'ownerID3'],
+      ],
     },
   },
-  path: ['ownerID1'],
 };

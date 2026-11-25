@@ -332,6 +332,20 @@ public class ElasticSearchVectorService implements VectorIndexService {
       EntityInterface<?> entity, String entityIndexName, String ontologyBody) {
     try {
       String entityId = entity.getId().toString();
+      final var type = entity.getEntityReference().getType();
+      if (OntologyTermSearch.isTerm(type) && ontologyBody == null) {
+        // The 2-arg overload cannot safely publish a term: the release-aware writer needs the
+        // release-snapshot body, and embedding from the mutable working (draft) row would
+        // publish unpublished / not-in-active-release / deprecated terms with no publication
+        // check. Manual term reindexing must go through the release-aware bulk writer (reindex),
+        // which passes the published body into this 3-arg overload — see
+        // VectorEmbeddingHandler.refreshOntologyEmbedding and OntologyTermBulkWrite.
+        LOG.warn(
+            "Skipping embedding for ontology term {} without a release body; rebuild term "
+                + "embeddings via the release-aware reindex path",
+            entity.getId());
+        return;
+      }
       String existingFingerprint = getExistingFingerprint(entityIndexName, entityId);
       String currentFingerprint =
           ontologyBody == null
@@ -344,13 +358,13 @@ public class ElasticSearchVectorService implements VectorIndexService {
       }
 
       Map<String, Object> embeddingFields = generateEmbeddingFields(entity, ontologyBody);
-      if (ontologyBody == null) {
-        partialUpdateEntity(entityIndexName, entityId, embeddingFields);
-      } else {
+      if (OntologyTermSearch.isTerm(type)) {
         OntologyTermSearch.writeCurrentEmbedding(
             entity.getEntityReference(),
             currentFingerprint,
             () -> partialUpdateEntity(entityIndexName, entityId, embeddingFields));
+      } else {
+        partialUpdateEntity(entityIndexName, entityId, embeddingFields);
       }
     } catch (Exception e) {
       LOG.error("Failed to update embedding for entity {}: {}", entity.getId(), e.getMessage(), e);

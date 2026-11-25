@@ -96,7 +96,7 @@ let columnDetails1: ReturnType<typeof createColumnRowDetails> & {
 
 test.describe('Bulk Edit Entity', { tag: '@quarantine' }, () => {
   test.beforeAll('setup pre-test', async ({ browser }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
     user1 = new UserClass();
     user2 = new UserClass();
     glossary = new Glossary();

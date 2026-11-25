@@ -125,6 +125,40 @@ describe('Table page › Schema tab (UI integration)', () => {
     expect(calls[0].params.get('offset')).toBe('50');
   });
 
+  test('column link with no page opens on the page holding that column and highlights it', async () => {
+    const calls = mockColumnsApi();
+    // The deep link also opens the column detail panel, which loads the column on its own.
+    worker.use(
+      http.get('/api/v1/columns/name/:fqn', () =>
+        HttpResponse.json(ALL_COLUMNS[59])
+      )
+    );
+    renderWithApp(
+      <GenericProvider<Table>
+        data={makeTable({ columns: ALL_COLUMNS })}
+        permissions={{ ...DEFAULT_ENTITY_PERMISSION, ViewAll: true }}
+        type={EntityType.TABLE}
+        onUpdate={async () => undefined}>
+        <SchemaTable />
+      </GenericProvider>,
+      {
+        url: `/table/${TABLE_FQN}.order_col_060?pageSize=25`,
+        path: '/table/:fqn/*',
+      }
+    );
+
+    await expect
+      .element(page.getByTestId('entity-table').getByText('order_col_060'))
+      .toBeVisible();
+    await expect
+      .poll(() =>
+        document.querySelector('.highlighted-row')?.getAttribute('data-row-key')
+      )
+      .toBe(`${TABLE_FQN}.order_col_060`);
+    expect(calls.map((c) => c.params.get('offset'))).toEqual(['50']);
+    await expect.poll(currentUrl).toContain('currentPage=3');
+  });
+
   test('searching switches to the search endpoint and resets to page 1', async () => {
     const calls = mockColumnsApi();
     renderSchemaTab('?pageSize=25&currentPage=2');
