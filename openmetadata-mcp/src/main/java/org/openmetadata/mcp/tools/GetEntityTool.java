@@ -12,12 +12,14 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -27,6 +29,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.AIContextBuilder;
 import org.openmetadata.service.aicontext.AIContextMarkdown;
+import org.openmetadata.service.aicontext.PromptText;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.lineage.LineagePermissionFilter;
@@ -414,9 +417,30 @@ public class GetEntityTool implements McpTool {
     List<String> found =
         OpenSearchVectorService.getInstance()
             .searchChunksByParent(ctx.entity().getId().toString(), query, ctx.options().passages());
+    Object rendered;
+    if (ctx.entity() instanceof Page && !found.isEmpty()) {
+      List<String> readable = readablePassages(found);
+      rendered =
+          readable.isEmpty()
+              ? renderText(ctx, Objects.toString(AIContextBuilder.fullContentOf(ctx.entity()), ""))
+              : renderPassages(ctx, readable);
+    } else {
+      rendered = renderPassages(ctx, found);
+    }
+    return rendered;
+  }
+
+  private static Object renderPassages(IncludeContext ctx, List<String> passages) {
     return ctx.options().asJson()
-        ? Map.of("passages", found)
-        : renderText(ctx, String.join("\n\n---\n\n", found));
+        ? Map.of("passages", passages)
+        : renderText(ctx, String.join("\n\n---\n\n", passages));
+  }
+
+  private static List<String> readablePassages(List<String> passages) {
+    return passages.stream()
+        .map(PromptText::forContentRead)
+        .filter(passage -> !nullOrEmpty(passage) && !passage.isBlank())
+        .toList();
   }
 
   private static Object renderText(IncludeContext ctx, String text) {
