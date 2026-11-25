@@ -414,22 +414,26 @@ describe('Image transformation in setEditorContent', () => {
       expect(transformedHtml).toContain('<strong>Bold text</strong>');
     });
 
-    it('should sanitize the markup the last markdown conversion builds from escaped text', () => {
+    it('should sanitize mixed markdown and HTML before transforming images', () => {
+      // Raw HTML passes through Marked, so this exercises sanitization even when
+      // the renderer safely escapes quotes in Markdown image and link URLs.
       const description =
-        '<details>\\\\\\!\\\\\\[a\\\\\\](x"onerror="alert(1)) \\\\\\[b\\\\\\](y"onmouseover="alert(2)) <code>**c**</code></details>';
-      const previewContent = formatClientContent(
-        formatClientContent(description)
-      );
+        '![a](x) <img src="z" onerror="alert(1)"> <a href="y" onmouseover="alert(2)">b</a> **c**';
+      const convertedContent = getHtmlStringFromMarkdownString(description);
 
-      expect(previewContent).toContain('![a](x"onerror="alert(1))');
+      expect(convertedContent).toContain('<strong>c</strong>');
+      expect(convertedContent).toContain('onerror="alert(1)"');
+      expect(convertedContent).toContain('onmouseover="alert(2)"');
 
       const innerHTMLSetter = jest.spyOn(Element.prototype, 'innerHTML', 'set');
 
-      setEditorContent(mockEditor as unknown as Editor, previewContent);
+      setEditorContent(mockEditor as unknown as Editor, description);
 
       const transformedHtml = mockEditor.commands.setContent.mock.calls[0][0];
 
       expect(transformedHtml).toContain('data-url="x"');
+      expect(transformedHtml).toContain('data-url="z"');
+      expect(transformedHtml).toContain('<strong>c</strong>');
       expect(transformedHtml).toContain('href="y"');
       expect(transformedHtml).not.toContain('onerror');
       expect(transformedHtml).not.toContain('onmouseover');
