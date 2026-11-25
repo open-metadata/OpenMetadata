@@ -30,6 +30,8 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.StringEscapeUtils;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -80,6 +82,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.PageBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -336,7 +339,13 @@ public class AIContextBuilder {
             vectorService.searchChunksByParent(
                 reference.getId().toString(), query, 1, subjectContextOrNull());
         if (!nullOrEmpty(passages)) {
-          result = excerpt(passages.getFirst(), limit);
+          String passage = passages.getFirst();
+          if (item.getType() == KnowledgeItem.Type.PAGE) {
+            Page page =
+                Entity.getEntity(reference, "owners,tags,domains,extension", Include.NON_DELETED);
+            passage = readableArticlePassage(page, passage);
+          }
+          result = excerpt(passage, limit);
         }
       }
     } catch (Exception e) {
@@ -346,6 +355,22 @@ public class AIContextBuilder {
           e.getMessage());
     }
     return result;
+  }
+
+  private static String readableArticlePassage(Page page, String indexed) {
+    String source = PageBodyTextContributor.descriptionPassage(page, indexed);
+    String text = PromptText.forContentRead(source);
+    if (nullOrEmpty(text) || text.isBlank()) {
+      return null;
+    }
+    if (text.stripLeading().startsWith("<")) {
+      Element body = Jsoup.parseBodyFragment(text).body();
+      if (!body.hasText()
+          && body.getAllElements().stream().allMatch(element -> element.tag().isKnownTag())) {
+        return null;
+      }
+    }
+    return text;
   }
 
   /**
@@ -1124,7 +1149,7 @@ public class AIContextBuilder {
                 .withName(page.getName())
                 .withDisplayName(page.getDisplayName())
                 .withFullyQualifiedName(page.getFullyQualifiedName())
-                .withContent(unescapeRichText(page.getDescription()));
+                .withContent(fullContentOf(page));
       }
     } catch (Exception e) {
       LOG.warn(
