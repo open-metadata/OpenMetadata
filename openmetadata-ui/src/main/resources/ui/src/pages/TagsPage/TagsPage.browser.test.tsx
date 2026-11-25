@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 import { http, HttpResponse } from 'msw';
+import { describe, expect, test } from 'vitest';
+import { page, userEvent } from 'vitest/browser';
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
+import { DOMAINS, serveDomains } from '../../test/browser/fixtures/domains';
 import { many, named } from '../../test/browser/fixtures/entities';
-import { worker } from '../../test/browser/msw';
+import { serveEntity } from '../../test/browser/fixtures/entityPage';
+import { EMPTY_LIST, worker } from '../../test/browser/msw';
 import { describePaginatedList } from '../../test/browser/paginationContract';
+import { renderApp } from '../../test/browser/renderWithApp';
 
 const classification: Classification = {
   id: '00000000-0000-4000-8000-0000000000c1',
@@ -59,4 +64,61 @@ describePaginatedList({
     duplicateFetchOnPageChange:
       'ClassificationDetails.handlePageChange fetches, then the URL effect fetches again',
   },
+});
+
+describe('Classification › Domains', () => {
+  const [assigned, other] = DOMAINS;
+  const governed: Classification = {
+    id: '00000000-0000-4000-8000-0000000000c2',
+    name: 'PwDomains',
+    fullyQualifiedName: 'PwDomains',
+    description: 'Classification for domain tests',
+    mutuallyExclusive: false,
+    termCount: 0,
+    domains: [
+      {
+        id: assigned.id,
+        type: 'domain',
+        name: assigned.name,
+        fullyQualifiedName: assigned.fullyQualifiedName,
+        displayName: assigned.displayName,
+      },
+    ],
+  };
+
+  const domainChip = (fqn?: string) => page.getByTestId(`domain-tag-${fqn}`);
+
+  test('shows the assigned domain and saves a replacement to the classification', async () => {
+    const server = serveEntity('classifications', governed);
+    serveDomains();
+    worker.use(
+      http.get('/api/v1/classifications', () =>
+        HttpResponse.json({ data: [server.current()], paging: { total: 1 } })
+      ),
+      http.get('/api/v1/tags', () => HttpResponse.json(EMPTY_LIST))
+    );
+
+    await renderApp(`/tags/${governed.name}`);
+
+    await expect
+      .element(domainChip(assigned.fullyQualifiedName))
+      .toHaveTextContent(assigned.displayName ?? '');
+
+    await userEvent.click(page.getByTestId('edit-domain'));
+    await userEvent.click(
+      page.getByTestId(`tree-node-${assigned.fullyQualifiedName}`)
+    );
+    await userEvent.click(
+      page.getByTestId(`tree-node-${other.fullyQualifiedName}`)
+    );
+    await userEvent.click(page.getByTestId('update-btn'));
+
+    await expect
+      .poll(() => server.current().domains?.map((d) => d.id))
+      .toEqual([other.id]);
+    await expect.element(domainChip(other.fullyQualifiedName)).toBeVisible();
+    await expect
+      .element(domainChip(assigned.fullyQualifiedName))
+      .not.toBeInTheDocument();
+  });
 });
