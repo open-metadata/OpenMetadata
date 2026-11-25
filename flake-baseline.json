@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-24T03:11:11Z",
+  "generatedAt": "2026-11-25T10:47:47Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "43793180722",
-      "sourceSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "recordedAt": "2026-11-16T03:16:50Z"
-    },
     {
       "runId": "44004103039",
       "sourceSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
@@ -53,17 +48,23 @@
       "runId": "45313589314",
       "sourceSha": "3cdf00c82c293eed3ad2aa5dc5dd4a16eb65399c",
       "recordedAt": "2026-11-24T03:11:11Z"
+    },
+    {
+      "runId": "45592637810",
+      "sourceSha": "41ce2357df7cffc82dddd8ecab27530374a8f075",
+      "recordedAt": "2026-11-25T10:47:47Z"
     }
   ],
   "entries": {
     "Basic :: Features/Markdown.spec.ts :: Markdown \u203a should render markdown": {
       "observations": [
-        "44445461359"
+        "44445461359",
+        "45592637810"
       ],
       "project": "Basic",
       "file": "Features/Markdown.spec.ts",
       "title": "Markdown \u203a should render markdown",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
+      "lastSeenSha": "41ce2357df7cffc82dddd8ecab27530374a8f075",
       "hardFailure": true
     },
     "Basic :: Features/TeamsHierarchy.spec.ts :: Add Nested Teams and Test TeamsSelectable \u203a Add teams in hierarchy": {
@@ -108,16 +109,6 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": false
     },
-    "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a only the reviewers see every held edit; a requester sees their own": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "GlobalSettings",
-      "file": "Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
-      "title": "Change request review lifecycle \u203a only the reviewers see every held edit; a requester sees their own",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": false
-    },
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a the glossary reviewer approves, rejects and the requester withdraws held edits": {
       "observations": [
         "44445461359"
@@ -160,7 +151,6 @@
     },
     "Ingestion :: Features/DataQuality/AddTestCaseNewFlow.spec.ts :: Add TestCase New Flow \u203a Add Column Test Case": {
       "observations": [
-        "43793180722",
         "44004103039",
         "44224347886",
         "44445461359",
@@ -174,6 +164,16 @@
       "file": "Features/DataQuality/AddTestCaseNewFlow.spec.ts",
       "title": "Add TestCase New Flow \u203a Add Column Test Case",
       "lastSeenSha": "3cdf00c82c293eed3ad2aa5dc5dd4a16eb65399c",
+      "hardFailure": false
+    },
+    "Ingestion :: Features/DataQuality/AddTestCaseNewFlow.spec.ts :: Add TestCase New Flow \u203a Add multiple test case from table details page and validate pipeline": {
+      "observations": [
+        "45592637810"
+      ],
+      "project": "Ingestion",
+      "file": "Features/DataQuality/AddTestCaseNewFlow.spec.ts",
+      "title": "Add TestCase New Flow \u203a Add multiple test case from table details page and validate pipeline",
+      "lastSeenSha": "41ce2357df7cffc82dddd8ecab27530374a8f075",
       "hardFailure": false
     },
     "Ingestion :: Features/DataQuality/DataQuality.spec.ts :: Data Quality \u203a shows every section for a scheduled failed test case run": {
@@ -198,6 +198,16 @@
       "lastSeenSha": "5af6f6ab7a271eba9f48322be42db574b9bbf8bd",
       "hardFailure": true
     },
+    "Ingestion :: Features/TestSuiteMultiPipeline.spec.ts :: TestSuite multi pipeline support": {
+      "observations": [
+        "45592637810"
+      ],
+      "project": "Ingestion",
+      "file": "Features/TestSuiteMultiPipeline.spec.ts",
+      "title": "TestSuite multi pipeline support",
+      "lastSeenSha": "41ce2357df7cffc82dddd8ecab27530374a8f075",
+      "hardFailure": false
+    },
     "Ingestion :: Flow/ServiceForm.spec.ts :: Service form functionality \u203a Superset \u203a Verify SSL cert upload with long filename and UI overflow handling": {
       "observations": [
         "44224347886"
@@ -220,7 +230,6 @@
     },
     "Knowledge Graph :: Features/KnowledgeGraph.spec.ts :: Knowledge Graph \u203a hover reveals the exact predicate and clicking a canvas edge pins it": {
       "observations": [
-        "43793180722",
         "44502789545",
         "44976793294"
       ],
@@ -239,6 +248,16 @@
       "title": "Knowledge Graph \u203a the level dropdown is keyboard accessible, maps levels to depths 1, 1 and 2 and shows the entity profile at level 1",
       "lastSeenSha": "eac56d0fd889168ae450ffd5faee3c0c026972cf",
       "hardFailure": false
+    },
+    "Reindex :: Pages/SearchIndexApplication.spec.ts :: Search Index Application \u203a Search Index Application": {
+      "observations": [
+        "45592637810"
+      ],
+      "project": "Reindex",
+      "file": "Pages/SearchIndexApplication.spec.ts",
+      "title": "Search Index Application \u203a Search Index Application",
+      "lastSeenSha": "41ce2357df7cffc82dddd8ecab27530374a8f075",
+      "hardFailure": true
     },
     "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a a test case incident resolves through the reason dialog": {
       "observations": [
@@ -415,16 +434,6 @@
       "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
       "hardFailure": true
     },
-    "chromium :: Features/Permissions/TableQueriesTabPermissions.spec.ts :: Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "chromium",
-      "file": "Features/Permissions/TableQueriesTabPermissions.spec.ts",
-      "title": "Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": false
-    },
     "chromium :: Features/ProfileSsoSettings.spec.ts :: Profile SSO Settings \u203a Test Login opens as a sub page and Back keeps the edited values": {
       "observations": [
         "44224347886"
@@ -443,6 +452,26 @@
       "file": "Features/ProfileSsoSettings.spec.ts",
       "title": "Profile SSO Settings \u203a an existing configuration patches self signup and discards unsaved edits",
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
+      "hardFailure": true
+    },
+    "chromium :: Features/ServiceAgentsRefresh.spec.ts :: Service Agents refresh \u203a should refetch the agents list and nothing else": {
+      "observations": [
+        "45592637810"
+      ],
+      "project": "chromium",
+      "file": "Features/ServiceAgentsRefresh.spec.ts",
+      "title": "Service Agents refresh \u203a should refetch the agents list and nothing else",
+      "lastSeenSha": "41ce2357df7cffc82dddd8ecab27530374a8f075",
+      "hardFailure": false
+    },
+    "chromium :: Flow/AlertSeveralSources.spec.ts :: Alerts with several sources \u203a Observability alert warns about a source its trigger never reaches": {
+      "observations": [
+        "45592637810"
+      ],
+      "project": "chromium",
+      "file": "Flow/AlertSeveralSources.spec.ts",
+      "title": "Alerts with several sources \u203a Observability alert warns about a source its trigger never reaches",
+      "lastSeenSha": "41ce2357df7cffc82dddd8ecab27530374a8f075",
       "hardFailure": true
     },
     "chromium :: Flow/AppBasic.spec.ts :: should call installed app api and it should respond with 200": {
@@ -475,16 +504,6 @@
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
       "hardFailure": true
     },
-    "chromium :: Pages/CustomProperties.spec.ts :: Add update and delete custom properties for dashboard \u203a Create custom property and configure search for Dashboard": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "chromium",
-      "file": "Pages/CustomProperties.spec.ts",
-      "title": "Add update and delete custom properties for dashboard \u203a Create custom property and configure search for Dashboard",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": false
-    },
     "chromium :: Pages/InputOutputPorts.spec.ts :: Input Output Ports \u203a Section 2: Adding Ports \u203a Add different entity types as ports": {
       "observations": [
         "44004103039"
@@ -493,6 +512,16 @@
       "file": "Pages/InputOutputPorts.spec.ts",
       "title": "Input Output Ports \u203a Section 2: Adding Ports \u203a Add different entity types as ports",
       "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
+      "hardFailure": false
+    },
+    "chromium :: Pages/Lineage/DataAssetLineage.spec.ts :: Column Level Lineage \u203a Column lineage for searchIndex -> searchIndex": {
+      "observations": [
+        "45592637810"
+      ],
+      "project": "chromium",
+      "file": "Pages/Lineage/DataAssetLineage.spec.ts",
+      "title": "Column Level Lineage \u203a Column lineage for searchIndex -> searchIndex",
+      "lastSeenSha": "41ce2357df7cffc82dddd8ecab27530374a8f075",
       "hardFailure": false
     },
     "chromium :: Pages/Teams.spec.ts :: Teams Page with EditUser Permission \u203a Add and Remove User for Team": {
@@ -555,26 +584,6 @@
       "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-custom-properties": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a glossaryTerm-tab-custom-properties",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-data-observability": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a glossaryTerm-tab-data-observability",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-assets": {
       "observations": [
         "44445461359"
@@ -615,36 +624,6 @@
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-custom-properties": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a glossaryTerm-tab-custom-properties",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-data-observability": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a glossaryTerm-tab-data-observability",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-glossary-terms": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a glossaryTerm-tab-glossary-terms",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-assets": {
       "observations": [
         "44445461359"
@@ -677,7 +656,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-schema-definition": {
       "observations": [
-        "43793180722",
         "44004103039",
         "44224347886",
         "44445461359"
@@ -687,206 +665,6 @@
       "title": "Entity tabs light \u203a tab-table-schema-definition",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": false
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-export-dialog": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states dark \u203a ontology-export-dialog",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-library": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states dark \u203a ontology-library",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-native-graph": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states dark \u203a ontology-native-graph",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-new-form": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states dark \u203a ontology-new-form",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-new-validation": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states dark \u203a ontology-new-validation",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-publish-changes": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states dark \u203a ontology-publish-changes",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-publish-releases": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states dark \u203a ontology-publish-releases",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-query": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states dark \u203a ontology-query",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-scope-menu": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states dark \u203a ontology-scope-menu",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-tree": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states dark \u203a ontology-tree",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-export-dialog": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states light \u203a ontology-export-dialog",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-library": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states light \u203a ontology-library",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-native-graph": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states light \u203a ontology-native-graph",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-new-form": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states light \u203a ontology-new-form",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-new-validation": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states light \u203a ontology-new-validation",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-publish-changes": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states light \u203a ontology-publish-changes",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-publish-releases": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states light \u203a ontology-publish-releases",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-query": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states light \u203a ontology-query",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-scope-menu": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states light \u203a ontology-scope-menu",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-tree": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Governance states light \u203a ontology-tree",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Incident states dark \u203a incident-bulk-severity-options": {
       "observations": [
@@ -1028,16 +806,6 @@
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Pages dark \u203a page-ontology": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Pages dark \u203a page-ontology",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Pages light \u203a page-explore": {
       "observations": [
         "44445461359"
@@ -1047,16 +815,6 @@
       "title": "Pages light \u203a page-explore",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": false
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Pages light \u203a page-ontology": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Pages light \u203a page-ontology",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectionBranches.spec.ts :: Connection branches dark \u203a connection-branch-dashboardServices-Tableau-root-authType-3512437263": {
       "observations": [
@@ -1478,19 +1236,8 @@
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
       "hardFailure": true
     },
-    "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions dark \u203a glossary-late-activity-count": {
-      "observations": [
-        "43793180722"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/glossaryInteractions.spec.ts",
-      "title": "Glossary interactions dark \u203a glossary-late-activity-count",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count": {
       "observations": [
-        "43793180722",
         "44445461359"
       ],
       "project": "visual-regression",
@@ -1724,6 +1471,7 @@
     }
   },
   "stableIds": [
+    "Basic :: Features/Markdown.spec.ts :: Markdown \u203a should render markdown",
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a accepting one of two competing edits supersedes the other",
     "Ingestion :: Features/DataQuality/AddTestCaseNewFlow.spec.ts :: Add TestCase New Flow \u203a Add Column Test Case",
     "Ingestion :: Features/DataQuality/DataQuality.spec.ts :: Data Quality \u203a shows every section for a scheduled failed test case run",
@@ -1734,19 +1482,18 @@
     "chromium :: Features/AIMode/InboxTasks.spec.ts :: Inbox \u2014 Triage \u203a rejecting a task asks for a comment and lowers the sidebar count",
     "chromium :: Features/McpAdministration.spec.ts :: admin controls MCP access and revokes registered clients",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-schema-definition",
-    "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets dark",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets light",
     "visual-regression :: VisualRegression/staticPages.spec.ts :: teams matches baseline"
   ],
   "hardFailureStableIds": [
+    "Basic :: Features/Markdown.spec.ts :: Markdown \u203a should render markdown",
     "Ingestion :: Features/DataQuality/DataQuality.spec.ts :: Data Quality \u203a shows every section for a scheduled failed test case run",
     "Ingestion :: Features/IncidentManager.spec.ts :: Incident Manager \u203a Complete Incident lifecycle with table owner",
     "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a a test case incident resolves through the reason dialog",
     "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a an incident is acknowledged, then resolved with a reason",
     "chromium :: Features/AIMode/InboxTasks.spec.ts :: Inbox \u2014 Triage \u203a rejecting a task asks for a comment and lowers the sidebar count",
     "chromium :: Features/McpAdministration.spec.ts :: admin controls MCP access and revokes registered clients",
-    "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets dark",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets light",
     "visual-regression :: VisualRegression/staticPages.spec.ts :: teams matches baseline"
