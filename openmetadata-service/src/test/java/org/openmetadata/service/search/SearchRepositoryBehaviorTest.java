@@ -4223,6 +4223,25 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void getHybridWeightsFallsBackToTheDefaultsWithoutNaturalLanguageSearchConfiguration() {
+    SearchRepository unconfiguredRepository =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING),
+            "cluster",
+            ElasticSearchConfiguration.SearchType.ELASTICSEARCH,
+            null);
+
+    try (MockedStatic<SettingsCache> settingsCacheMock = mockStatic(SettingsCache.class)) {
+      settingsCacheMock
+          .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
+          .thenReturn(null);
+
+      assertEquals(
+          new SearchRepository.HybridWeights(0.6, 0.4), unconfiguredRepository.getHybridWeights());
+    }
+  }
+
+  @Test
   void requestAndAggregationWrappersDelegateToSearchClient() throws IOException {
     SearchRequest request = new SearchRequest().withQuery("orders");
     SubjectContext subjectContext = mock(SubjectContext.class);

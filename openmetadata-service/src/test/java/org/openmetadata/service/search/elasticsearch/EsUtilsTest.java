@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -753,7 +754,7 @@ class EsUtilsTest {
   private void withEmbeddingClient(Runnable test) {
     EmbeddingClient embeddings = mock(EmbeddingClient.class);
     when(embeddings.getDimension()).thenReturn(8);
-    when(embeddings.getModelId()).thenReturn("test-model");
+    lenient().when(embeddings.getModelId()).thenReturn("test-model");
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
     when(searchRepository.getEmbeddingClient()).thenReturn(embeddings);
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
@@ -792,13 +793,57 @@ class EsUtilsTest {
   }
 
   @Test
-  void aMappingUpdate_sendsNoIndexOptions() {
+  void aMappingUpdate_leavesOutAnEmbeddingTheLiveIndexAlreadyMaps() {
+    withEmbeddingClient(
+        () -> {
+          JsonNode mappings =
+              JsonUtils.readTree(
+                      EsUtils.enrichIndexMappingForElasticsearchUpdate(
+                          VECTOR_MAPPING, () -> new LiveEmbeddingField(true, Set.of(8))))
+                  .path("mappings");
+          assertFalse(mappings.path("properties").has("embedding"));
+          assertTrue(mappings.path("properties").has("fingerprint"));
+          assertEquals(8, mappings.path("_meta").path("embedding_dimension").asInt());
+        });
+  }
+
+  @Test
+  void aMappingUpdate_addsThePinnedEmbeddingWhenTheLiveIndexHasNone() {
     withEmbeddingClient(
         () -> {
           JsonNode embedding =
-              embeddingOf(EsUtils.enrichIndexMappingForElasticsearchUpdate(VECTOR_MAPPING));
-          assertEquals("dense_vector", embedding.path("type").asText());
-          assertFalse(embedding.has("index_options"));
+              embeddingOf(
+                  EsUtils.enrichIndexMappingForElasticsearchUpdate(
+                      VECTOR_MAPPING, () -> LiveEmbeddingField.NOT_MAPPED));
+          assertEquals(8, embedding.path("dims").asInt());
+          assertEquals("hnsw", embedding.path("index_options").path("type").asText());
+          assertEquals(48, embedding.path("index_options").path("m").asInt());
         });
+  }
+
+  @Test
+  void aMappingUpdate_failsWhenTheLiveEmbeddingHasAnotherDimension() {
+    withEmbeddingClient(
+        () ->
+            assertThrows(
+                IllegalStateException.class,
+                () ->
+                    EsUtils.enrichIndexMappingForElasticsearchUpdate(
+                        VECTOR_MAPPING, () -> new LiveEmbeddingField(true, Set.of(384)))));
+  }
+
+  @Test
+  void aMappingUpdate_withoutEmbeddings_neverReadsTheLiveIndex() {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(false);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      String updated =
+          EsUtils.enrichIndexMappingForElasticsearchUpdate(
+              VECTOR_MAPPING,
+              () -> {
+                throw new AssertionError("the live mapping must not be read");
+              });
+      assertFalse(embeddingOf(updated).isObject());
+    }
   }
 }

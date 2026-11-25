@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
@@ -584,26 +585,35 @@ public class EsUtils {
    * </ul>
    */
   public static String enrichIndexMappingForElasticsearch(String indexMappingContent) {
-    return enrichIndexMapping(indexMappingContent, true);
+    return enrichIndexMapping(indexMappingContent, () -> LiveEmbeddingField.NOT_MAPPED);
   }
 
   /**
-   * As {@link #enrichIndexMappingForElasticsearch}, for a {@code PUT _mapping} on an existing index:
-   * the vector index options are left out, so the field keeps the options it was created with.
-   * Elasticsearch refuses some {@code index_options} changes on an existing field.
+   * As {@link #enrichIndexMappingForElasticsearch}, for a {@code PUT _mapping} on an existing index.
+   * When the live index already maps {@code embedding}, the field is left out of the body: a
+   * {@code dense_vector} sent without {@code index_options} means the engine default to
+   * Elasticsearch, which refuses to change the options of an existing field, and {@code PUT
+   * _mapping} is atomic, so one refused field drops every other field in the body. When the live
+   * index has no {@code embedding} yet, the field is added with the pinned options. The live
+   * mapping is read only when the index is a vector index and embeddings are on.
    */
-  public static String enrichIndexMappingForElasticsearchUpdate(String indexMappingContent) {
-    return enrichIndexMapping(indexMappingContent, false);
+  public static String enrichIndexMappingForElasticsearchUpdate(
+      String indexMappingContent, Supplier<LiveEmbeddingField> liveEmbedding) {
+    return enrichIndexMapping(indexMappingContent, liveEmbedding);
   }
 
-  private static String enrichIndexMapping(String indexMappingContent, boolean creatingIndex) {
+  private static String enrichIndexMapping(
+      String indexMappingContent, Supplier<LiveEmbeddingField> liveEmbedding) {
     if (nullOrEmpty(indexMappingContent)) {
       throw new IllegalArgumentException("Empty Index Mapping Content.");
     }
     JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
-    addDenseVectorSettings(rootNode, creatingIndex);
+    addDenseVectorSettings(rootNode, liveEmbedding);
     return rootNode.toString();
   }
+
+  /** The vector field of entity indexes, declared only when embeddings are on. */
+  static final String EMBEDDING_FIELD = "embedding";
 
   /** HNSW graph options pinned to the OpenSearch values, so both engines build the same index. */
   static final int HNSW_M = 48;
@@ -617,31 +627,29 @@ public class EsUtils {
    * (ADR:2026-11-23-elasticsearch-vector-fields-pin-their-index-options).
    */
   public static ObjectNode denseVectorMapping(int dimension) {
-    ObjectNode embedding = denseVectorFieldWithoutOptions(dimension);
-    embedding.set(
-        "index_options",
+    ObjectNode indexOptions =
         mapper
             .createObjectNode()
             .put("type", "hnsw")
             .put("m", HNSW_M)
-            .put("ef_construction", HNSW_EF_CONSTRUCTION));
+            .put("ef_construction", HNSW_EF_CONSTRUCTION);
+    ObjectNode embedding =
+        mapper
+            .createObjectNode()
+            .put("type", "dense_vector")
+            .put("dims", dimension)
+            .put("index", true)
+            .put("similarity", "cosine");
+    embedding.set("index_options", indexOptions);
     return embedding;
   }
 
-  private static ObjectNode denseVectorFieldWithoutOptions(int dimension) {
-    return mapper
-        .createObjectNode()
-        .put("type", "dense_vector")
-        .put("dims", dimension)
-        .put("index", true)
-        .put("similarity", "cosine");
-  }
-
   static void addDenseVectorSettings(JsonNode rootNode) {
-    addDenseVectorSettings(rootNode, true);
+    addDenseVectorSettings(rootNode, () -> LiveEmbeddingField.NOT_MAPPED);
   }
 
-  static void addDenseVectorSettings(JsonNode rootNode, boolean creatingIndex) {
+  private static void addDenseVectorSettings(
+      JsonNode rootNode, Supplier<LiveEmbeddingField> liveEmbedding) {
     JsonNode properties = rootNode.path("mappings").path("properties");
     SearchRepository searchRepository = Entity.getSearchRepository();
     boolean vectorIndex = !properties.isMissingNode() && properties.has("fingerprint");
@@ -650,29 +658,44 @@ public class EsUtils {
             && searchRepository.isVectorEmbeddingEnabled()
             && searchRepository.getEmbeddingClient() != null;
     if (vectorIndex && embeddingsOn) {
-      addEmbeddingField(rootNode, searchRepository, creatingIndex);
+      int dimension = searchRepository.getEmbeddingClient().getDimension();
+      addEmbeddingField(rootNode, dimension, liveEmbedding.get());
+      upsertEmbeddingMeta(rootNode.path("mappings"), searchRepository, dimension);
     }
   }
 
+  /**
+   * Declares {@code embedding} when the target index does not map it yet, and leaves it out when
+   * it does, so an existing field keeps the options it was created with.
+   */
   private static void addEmbeddingField(
-      JsonNode rootNode, SearchRepository searchRepository, boolean creatingIndex) {
-    JsonNode properties = rootNode.path("mappings").path("properties");
-    int dimension = searchRepository.getEmbeddingClient().getDimension();
-    // dense_vector.dims is immutable on an existing ES index. If the client now reports a
-    // different dimension than the index was built with, hard-fail so the operator runs an
-    // explicit reindex. Either _meta.embedding_dimension or properties.embedding.dims may be
-    // present on an existing index or template.
-    JsonNode existingMeta = rootNode.path("mappings").path("_meta");
-    if (existingMeta.has("embedding_dimension")) {
-      assertDimensionMatches(existingMeta.get("embedding_dimension").asInt(), dimension);
+      JsonNode rootNode, int dimension, LiveEmbeddingField liveEmbedding) {
+    ObjectNode properties = (ObjectNode) rootNode.path("mappings").path("properties");
+    JsonNode declaredEmbedding = properties.path(EMBEDDING_FIELD);
+    assertDeclaredDimensionsMatch(rootNode, declaredEmbedding, dimension);
+    liveEmbedding.dimensions().forEach(live -> assertDimensionMatches(live, dimension));
+    if (liveEmbedding.mapped()) {
+      properties.remove(EMBEDDING_FIELD);
+    } else {
+      properties.set(EMBEDDING_FIELD, embeddingField(declaredEmbedding, dimension));
     }
-    JsonNode existingEmbedding = properties.path("embedding");
-    if (existingEmbedding.has("dims")) {
-      assertDimensionMatches(existingEmbedding.get("dims").asInt(), dimension);
+  }
+
+  /**
+   * dense_vector.dims is immutable on an existing Elasticsearch index. If the embedding client now
+   * reports a different dimension, hard-fail so the operator runs an explicit reindex. The mapping
+   * content may declare one through {@code _meta.embedding_dimension} or {@code
+   * properties.embedding.dims}.
+   */
+  private static void assertDeclaredDimensionsMatch(
+      JsonNode rootNode, JsonNode declaredEmbedding, int dimension) {
+    JsonNode declaredMeta = rootNode.path("mappings").path("_meta");
+    if (declaredMeta.has("embedding_dimension")) {
+      assertDimensionMatches(declaredMeta.get("embedding_dimension").asInt(), dimension);
     }
-    ((ObjectNode) properties)
-        .set("embedding", embeddingField(existingEmbedding, dimension, creatingIndex));
-    upsertEmbeddingMeta(rootNode.path("mappings"), searchRepository, dimension);
+    if (declaredEmbedding.has("dims")) {
+      assertDimensionMatches(declaredEmbedding.get("dims").asInt(), dimension);
+    }
   }
 
   /** Preserves any existing {@code _meta} fields; only upserts the embedding model and dimension. */
@@ -690,16 +713,13 @@ public class EsUtils {
   }
 
   /**
-   * The {@code embedding} field to declare: an existing field keeps its own index options, a field
-   * created now gets the pinned ones, and an update of an existing index sends none.
+   * The {@code embedding} field to declare on an index that does not map it yet: the pinned
+   * options, unless the mapping content declares the field with options of its own.
    */
-  private static ObjectNode embeddingField(
-      JsonNode existingEmbedding, int dimension, boolean creatingIndex) {
-    ObjectNode field = denseVectorFieldWithoutOptions(dimension);
-    if (existingEmbedding.has("index_options")) {
-      field.set("index_options", existingEmbedding.get("index_options").deepCopy());
-    } else if (creatingIndex) {
-      field = denseVectorMapping(dimension);
+  private static ObjectNode embeddingField(JsonNode declaredEmbedding, int dimension) {
+    ObjectNode field = denseVectorMapping(dimension);
+    if (declaredEmbedding.has("index_options")) {
+      field.set("index_options", declaredEmbedding.get("index_options").deepCopy());
     }
     return field;
   }

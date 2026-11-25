@@ -4,7 +4,10 @@
 - **Revisions:** v1 2026-11-23 (initial)
 - **Deciders:** Platform team
 - **Guard:** EsUtilsTest (`aNewEmbeddingField_getsThePinnedHnswOptions`,
-  `anExistingEmbeddingField_keepsItsOwnOptions`, `aMappingUpdate_sendsNoIndexOptions`),
+  `anExistingEmbeddingField_keepsItsOwnOptions`,
+  `aMappingUpdate_leavesOutAnEmbeddingTheLiveIndexAlreadyMaps`,
+  `aMappingUpdate_addsThePinnedEmbeddingWhenTheLiveIndexHasNone`),
+  ElasticsearchVectorMappingUpdateIT (create then update on a real Elasticsearch),
   ElasticSearchVectorServiceTest (`theChunkIndexMapsTheEmbeddingAsADenseVector`)
 - **Related:** ADR:2026-11-20-elasticsearch-and-opensearch-share-one-vector-index-service
 
@@ -25,14 +28,26 @@ alone. The mapping was also written in two places: `EsUtils` for entity indexes 
 mapping. It adds `"index_options": {"type": "hnsw", "m": 48, "ef_construction": 256}`, the
 OpenSearch values, and both the entity indexes and the chunk index use it.
 
-The options are added only when a field is created:
+The options are sent only when the field is created, and an existing field is never re-declared:
 
-- creating an index (`enrichIndexMappingForElasticsearch`) adds them, unless the mapping already
-  declares an `embedding` with its own `index_options`, which are kept;
+- creating an index (`enrichIndexMappingForElasticsearch`) declares `embedding` with the pinned
+  options. If the mapping content itself declares `embedding` with `index_options`, those are
+  used instead;
 - updating an existing index (`enrichIndexMappingForElasticsearchUpdate`, used by `PUT
-  _mapping`) sends none, so the field keeps what it was created with. Elasticsearch refuses some
-  `index_options` changes on an existing field, for example `int8_hnsw` to `hnsw`;
+  _mapping`) first reads the live mapping. When any index behind the name already maps
+  `embedding`, the field is left out of the body, and the field keeps whatever it was created
+  with. When none does (for example embeddings were just turned on), the field is added with the
+  pinned options;
 - the chunk index mapping upgrade already leaves the `embedding` field out.
+
+Re-declaring the field on an update is not safe either way. Elasticsearch reads a `dense_vector`
+sent without `index_options` as the engine default and refuses to change the options of an
+existing field (`m` cannot go down, `hnsw` cannot become `bbq_hnsw`); sending the pinned options
+is refused on an index created before this change, which has the engine default. `PUT _mapping`
+is atomic, so one refused field drops every other field in the body, and `migrate` would leave
+each upgrade's new fields unmapped. The dimension check stays: an update fails with
+`IllegalStateException` when the live `embedding` has a different `dims` than the embedding
+client, since `dims` cannot change on an existing index.
 
 ## Consequences
 

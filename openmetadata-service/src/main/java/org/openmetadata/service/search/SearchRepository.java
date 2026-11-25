@@ -1067,7 +1067,9 @@ public class SearchRepository {
    */
   public HybridWeights getHybridWeights() {
     NaturalLanguageSearchConfiguration nlConfig =
-        getSearchConfiguration().getNaturalLanguageSearch();
+        Objects.requireNonNullElseGet(
+            getSearchConfiguration().getNaturalLanguageSearch(),
+            NaturalLanguageSearchConfiguration::new);
     double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
     double semanticWeight =
         nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.4;
@@ -1372,7 +1374,7 @@ public class SearchRepository {
       }
       searchClient.createAliases(indexMapping);
     } catch (Exception e) {
-      LOG.warn("Failed to Update Index for entity {}", indexMapping.getIndexName(clusterAlias));
+      LOG.warn("Failed to Update Index for entity {}", indexMapping.getIndexName(clusterAlias), e);
     }
   }
 
