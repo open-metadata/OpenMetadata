@@ -27,8 +27,4 @@ describePaginatedList({
   itemLabel: (b) => b.displayName ?? b.name,
   // BotListV1 also loads up to BOT_SEARCH_PAGE_SIZE bots once for its search map.
   isPageRequest: (url) => url.searchParams.get('limit') !== '100',
-  knownIssues: {
-    duplicateFetchOnPageChange:
-      'BotListV1 handlePageChange fetches the page and then the URL effect fetches it again',
-  },
 });

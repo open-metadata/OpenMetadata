@@ -28,7 +28,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.function.FailableRunnable;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.service.Entity;
@@ -343,14 +342,23 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   /**
    * {@code ontologyBody} is the embedding text of an ontology term's active release. A term's
    * embeddings are then written only while that release is still the published one, see {@link
-   * OntologyTermSearch#writeCurrentEmbedding}.
+   * OntologyTermSearch#writeCurrentEmbedding}. A term without it is refused: embedding from the
+   * mutable working (draft) row would publish unpublished, not-in-active-release or deprecated
+   * terms with no publication check. Term rebuilds go through the release-aware bulk writer
+   * (reindex), see VectorEmbeddingHandler.refreshOntologyEmbedding and OntologyTermBulkWrite.
    */
   @Override
   public void updateEntityEmbeddings(
       EntityInterface<?> entity, String entityIndexName, String ontologyBody) {
-    if (!embeddingClient.isAvailable()) {
+    boolean term = OntologyTermSearch.isTerm(entity.getEntityReference().getType());
+    if (term && ontologyBody == null) {
+      LOG.warn(
+          "Skipping embedding for ontology term {} without a release body; rebuild term "
+              + "embeddings via the release-aware reindex path",
+          entity.getId());
+    } else if (!embeddingClient.isAvailable()) {
       LOG.debug("Embedding provider unavailable; skipping entity {}", entity.getId());
-    } else if (OntologyTermSearch.isTerm(entity.getEntityReference().getType())) {
+    } else if (term) {
       refreshOntologyEmbeddings(entity, entityIndexName, ontologyBody);
     } else {
       refreshEntityEmbeddings(entity, entityIndexName);
@@ -360,7 +368,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private void refreshOntologyEmbeddings(
       EntityInterface<?> entity, String entityIndexName, String ontologyBody) {
     try {
-      String fingerprint = ontologyFingerprint(entity, ontologyBody);
+      String fingerprint = VectorDocBuilder.computeFingerprintForEntity(entity, ontologyBody);
       if (chunksOntologyTerms()) {
         refreshOntologyChunksAndEntityDoc(entity, entityIndexName, ontologyBody, fingerprint);
       } else {
@@ -371,12 +379,6 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     } catch (Exception e) {
       LOG.error("Failed to update embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
     }
-  }
-
-  private static String ontologyFingerprint(EntityInterface<?> entity, String ontologyBody) {
-    return ontologyBody == null
-        ? VectorDocBuilder.computeFingerprintForEntity(entity)
-        : VectorDocBuilder.computeFingerprintForEntity(entity, ontologyBody);
   }
 
   private void refreshOntologyChunksAndEntityDoc(
@@ -393,9 +395,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
               ? rebuildChunksReusingEmbeddings(
                   entity, chunkIndexName, parentId, header, ontologyBody)
               : VectorDocBuilder.fromEntity(entity, embeddingClient, ontologyBody);
-      writeOntologyEmbeddings(
-          entity,
-          ontologyBody,
+      OntologyTermSearch.writeCurrentEmbedding(
+          entity.getEntityReference(),
           fingerprint,
           () -> writeOntologyChunksAndEntityDoc(entity, fingerprint, entityIndexName, chunkDocs));
     }
@@ -429,25 +430,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     } else {
       Map<String, Object> embeddingFields =
           VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient, ontologyBody);
-      writeOntologyEmbeddings(
-          entity,
-          ontologyBody,
+      OntologyTermSearch.writeCurrentEmbedding(
+          entity.getEntityReference(),
           fingerprint,
           () -> partialUpdateEntity(entityIndexName, entityId, embeddingFields));
-    }
-  }
-
-  /** A write without the release's text is not tied to a release, so it takes no term lock. */
-  private static void writeOntologyEmbeddings(
-      EntityInterface<?> entity,
-      String ontologyBody,
-      String fingerprint,
-      FailableRunnable<IOException> write)
-      throws IOException {
-    if (ontologyBody == null) {
-      write.run();
-    } else {
-      OntologyTermSearch.writeCurrentEmbedding(entity.getEntityReference(), fingerprint, write);
     }
   }
 

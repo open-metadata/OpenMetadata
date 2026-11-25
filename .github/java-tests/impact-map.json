@@ -68,7 +68,8 @@
       },
       {
         "tests": [
-          "org/openmetadata/it/tests/search/scale/**"
+          "org/openmetadata/it/tests/search/scale/**",
+          "org/openmetadata/it/tests/dataquality/scale/**"
         ],
         "where": "nightly: openmetadata-nightly k8s-java-it (scale-it)"
       }
@@ -336,6 +337,8 @@
         "Entity*IT",
         "ChildField*IT",
         "*Pagination*IT",
+        "*FqnKeyed*IT",
+        "*Keyset*IT",
         "*SoftDelete*IT",
         "*Restore*IT",
         "*Transaction*IT",
@@ -488,6 +491,7 @@
         "*Index*IT",
         "*Reindex*IT",
         "*Alias*IT",
+        "*UpdateChildren*IT",
         "*Highlight*IT",
         "*Embedding*IT",
         "*Vector*IT",
@@ -753,14 +757,10 @@
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyReleaseReuseTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyConceptSqlGeneratorTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyConceptQueryServiceTest.java",
-        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyConceptBindingDaoTest.java",
-        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseReviewListTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseRepositoryTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyPackSlicePlanTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyReleaseManifestTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyReleaseReaderTest.java",
-        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseDAOTest.java",
-        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseCaptureTest.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/NativeOntologyCapacityPerfIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/NativeOntologyEveryPackInstallIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/RdfLibraryPackActivationIT.java",
@@ -868,6 +868,8 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/dqtests/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/entityProfiles/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestCase*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/IncidentGroup*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/IncidentOpenInterval*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestSuite*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestDefinition*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/EntityProfile*",
@@ -879,7 +881,8 @@
         "openmetadata-service/src/main/resources/json/data/dataQualityDimension/**",
         "openmetadata-spec/src/main/resources/json/schema/tests/**",
         "openmetadata-spec/src/main/resources/json/schema/api/tests/**",
-        "openmetadata-spec/src/main/resources/json/schema/api/data/createTableProfile.json"
+        "openmetadata-spec/src/main/resources/json/schema/api/data/createTableProfile.json",
+        "bootstrap/sql/migrations/native/2.1.1/**"
       ],
       "tests": [
         "*TestCase*IT",
@@ -1107,6 +1110,7 @@
       ],
       "tests": [
         "*Migration*IT",
+        "org/openmetadata/it/tests/migration/**",
         "*SeedData*IT",
         "*Operations*IT",
         "*DbTune*IT"
@@ -1201,6 +1205,7 @@
         "AI*IT",
         "*Agent*IT",
         "*ContextMemory*IT",
+        "*ContextProcessing*IT",
         "*LLM*IT",
         "*PromptTemplate*IT",
         "*Ai*IT",
@@ -1322,6 +1327,7 @@
         "org/openmetadata/it/search/**/*Test.java",
         "org/openmetadata/it/server/*Test.java",
         "org/openmetadata/it/util/*Test.java",
+        "org/openmetadata/it/util/*IT.java",
         "*SmokeIT"
       ]
     }
