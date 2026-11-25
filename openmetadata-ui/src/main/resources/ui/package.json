@@ -228,7 +228,7 @@
     "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/vite": "^4.3.5",
     "@testing-library/jest-dom": "^5.11.10",
-    "@testing-library/react": "^14.2.1",
+    "@testing-library/react": "^15.0.7",
     "@testing-library/react-hooks": "^8.0.1",
     "@testing-library/user-event": "^14.6.13",
     "@types/antlr4": "4.7.2",
