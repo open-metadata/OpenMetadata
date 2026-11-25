@@ -37,15 +37,15 @@ if [ ! -d "$LOG_DIR" ]; then
 fi
 
 # classpath addition for release
-
-echo $CLASSPATH
+# Java reads an empty classpath entry as the working directory, so a separator only goes
+# between entries, never in front of the first one.
 for file in $base_dir/libs/*.jar;
 do
-    CLASSPATH=$CLASSPATH:$file
+    CLASSPATH="${CLASSPATH:+${CLASSPATH}:}${file}"
 done
 
 if [ ! "x$EXT_CLASSPATH" = "x" ]; then
- CLASSPATH=$CLASSPATH:$EXT_CLASSPATH;
+ CLASSPATH="${CLASSPATH:+${CLASSPATH}:}${EXT_CLASSPATH}"
 fi
 
 
