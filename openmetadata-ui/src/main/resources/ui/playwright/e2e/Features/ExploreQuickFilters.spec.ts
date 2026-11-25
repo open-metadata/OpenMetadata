@@ -81,7 +81,7 @@ const waitForDataProductOnAsset = async (
 };
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
-  test.slow();
+  test.setTimeout(test.info().timeout * 3);
 
   const { apiContext, afterAction } = await createNewPage(browser);
   await table.create(apiContext);

@@ -104,7 +104,7 @@ const glossaryTerm = new GlossaryTerm(glossary);
 const glossaryTerm2 = new GlossaryTerm(glossary);
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
-  test.slow(true);
+  test.setTimeout(test.info().timeout * 3);
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await user.create(apiContext);

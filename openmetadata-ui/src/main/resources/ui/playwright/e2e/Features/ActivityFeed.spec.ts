@@ -113,7 +113,7 @@ test.describe('FeedWidget on landing page', () => {
   test.beforeAll(
     'setup: seed entities, users, create persona, and customize widget',
     async ({ browser }) => {
-      test.slow(true);
+      test.setTimeout(test.info().timeout * 3);
 
       adminUser = new UserClass();
       user1 = new UserClass();
@@ -945,7 +945,7 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   test.beforeAll(
     'Setup entity and seeded conversation',
     async ({ browser }) => {
-      test.slow(true);
+      test.setTimeout(test.info().timeout * 3);
 
       adminUser = new UserClass();
       entity = new TableClass();

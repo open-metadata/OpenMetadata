@@ -35,7 +35,7 @@ test.describe('SubDomain Pagination', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.slow(true);
 
   test.beforeAll('Setup domain and subdomains', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -57,7 +57,7 @@ test.describe('SubDomain Pagination', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await createNewPage(browser);
     await domain.delete(apiContext);

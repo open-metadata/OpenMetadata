@@ -159,7 +159,7 @@ test.describe(
     let logicalTestSuiteFqn: string;
 
     test.beforeAll(async ({ browser }) => {
-      test.slow();
+      test.setTimeout(test.info().timeout * 3);
       createUser = new UserClass();
       deleteUser = new UserClass();
       suiteUser = new UserClass();
