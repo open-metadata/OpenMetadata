@@ -85,7 +85,7 @@ describe('Classification › Domains', () => {
 
   const domainChip = (fqn?: string) => page.getByTestId(`domain-tag-${fqn}`);
 
-  test('shows the assigned domain and saves a replacement to the classification', async () => {
+  const serveGoverned = () => {
     const server = serveEntity('classifications', governed);
     serveDomains();
     worker.use(
@@ -95,6 +95,10 @@ describe('Classification › Domains', () => {
       http.get('/api/v1/tags', () => HttpResponse.json(EMPTY_LIST))
     );
 
+    return server;
+  };
+
+  const replaceAssignedDomain = async () => {
     await renderApp(`/tags/${governed.name}`);
 
     await expect
@@ -109,6 +113,12 @@ describe('Classification › Domains', () => {
       page.getByTestId(`tree-node-${other.fullyQualifiedName}`)
     );
     await userEvent.click(page.getByTestId('update-btn'));
+  };
+
+  test('shows the assigned domain and saves a replacement to the classification', async () => {
+    const server = serveGoverned();
+
+    await replaceAssignedDomain();
 
     await expect
       .poll(() => server.current().domains?.map((d) => d.id))
@@ -117,6 +127,30 @@ describe('Classification › Domains', () => {
     await expect
       .element(domainChip(assigned.fullyQualifiedName))
       .not.toBeInTheDocument();
+  });
+
+  test('keeps the saved domain on screen when the save is rejected', async () => {
+    const server = serveGoverned();
+    let rejectedPatches = 0;
+    worker.use(
+      http.patch('/api/v1/classifications/:id', () => {
+        rejectedPatches++;
+
+        return HttpResponse.json(
+          { code: 403, message: 'Principal is not authorized' },
+          { status: 403 }
+        );
+      })
+    );
+
+    await replaceAssignedDomain();
+
+    await expect.poll(() => rejectedPatches).toBe(1);
+    await expect.element(domainChip(assigned.fullyQualifiedName)).toBeVisible();
+    await expect
+      .element(domainChip(other.fullyQualifiedName))
+      .not.toBeInTheDocument();
+    expect(server.current().domains?.map((d) => d.id)).toEqual([assigned.id]);
   });
 });
 

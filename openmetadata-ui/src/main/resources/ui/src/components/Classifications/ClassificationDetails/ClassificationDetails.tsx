@@ -814,12 +814,6 @@ const ClassificationDetails = forwardRef(
                 entityType={EntityType.CLASSIFICATION}
                 hasPermission={editDomainPermission}
                 variant="widget"
-                onUpdate={async (updatedDomains) =>
-                  handleUpdateClassification?.({
-                    ...currentClassification,
-                    domains: updatedDomains as EntityReference[],
-                  })
-                }
               />
               <WidgetCard
                 dataTestId="classification-owner-name"

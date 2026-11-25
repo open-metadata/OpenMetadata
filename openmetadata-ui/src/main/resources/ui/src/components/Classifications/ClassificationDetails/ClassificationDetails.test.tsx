@@ -19,7 +19,11 @@ import { Classification } from '../../../generated/entity/classification/classif
 import { Tag } from '../../../generated/entity/classification/tag';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
-import { getTags } from '../../../rest/tagAPI';
+import {
+  getClassificationByName,
+  getTags,
+  patchClassification,
+} from '../../../rest/tagAPI';
 import { renderWithQueryClient as render } from '../../../test/unit/test-utils';
 import ClassificationDetails from './ClassificationDetails';
 
@@ -165,6 +169,8 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('../../../rest/tagAPI', () => ({
+  getClassificationByName: jest.fn(),
+  patchClassification: jest.fn(),
   getTags: jest.fn().mockResolvedValue({
     data: [],
     paging: { total: 0 },
@@ -839,6 +845,11 @@ describe('ClassificationDetails', () => {
       ...mockClassification,
       domains: [{ id: 'domain-id', type: 'domain', name: 'Finance' }],
     };
+    jest.mocked(getClassificationByName).mockResolvedValue(classification);
+    jest
+      .mocked(patchClassification)
+      .mockResolvedValue({ ...classification, domains: [] });
+
     await act(async () => {
       render(
         <MemoryRouter>
@@ -855,10 +866,13 @@ describe('ClassificationDetails', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
     await waitFor(() => {
-      expect(defaultProps.handleUpdateClassification).toHaveBeenCalledWith({
-        ...classification,
-        domains: [],
-      });
+      expect(getClassificationByName).toHaveBeenCalledWith(
+        classification.fullyQualifiedName,
+        { fields: 'domains' }
+      );
+      expect(patchClassification).toHaveBeenCalledWith(classification.id, [
+        { op: 'remove', path: '/domains/0' },
+      ]);
       expect(screen.queryByText('Finance')).not.toBeInTheDocument();
     });
   });
