@@ -23,7 +23,7 @@ import { t, Transi18next } from './i18next/LocalUtil';
 const Loader = lazy(() => import('../components/common/Loader/Loader'));
 
 export const getCountBadge = (
-  count = 0,
+  count: number | string = 0,
   className = '',
   isActive?: boolean,
   excludeTriggerFromTabOrder?: boolean
