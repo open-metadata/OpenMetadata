@@ -31,7 +31,7 @@ public final class CacheValueCodec {
   private CacheValueCodec() {}
 
   public static String encode(final String raw, final int thresholdBytes) {
-    if (raw == null || thresholdBytes <= 0 || raw.length() < thresholdBytes) {
+    if (raw == null || thresholdBytes <= 0 || raw.length() * 3L < thresholdBytes) {
       return raw;
     }
     final byte[] rawBytes = raw.getBytes(StandardCharsets.UTF_8);
@@ -39,7 +39,7 @@ public final class CacheValueCodec {
       return raw;
     }
     final String encoded = GZIP_PREFIX + Base64.getEncoder().encodeToString(gzip(rawBytes));
-    return encoded.length() < raw.length() ? encoded : raw;
+    return encoded.length() < rawBytes.length ? encoded : raw;
   }
 
   public static String decode(final String stored) {
