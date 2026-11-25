@@ -270,7 +270,34 @@ public class AIGovernanceVisibilityIT {
     final String fieldQuery =
         "/v1/search/fieldQuery?index=auditReport&fieldName=name.keyword&fieldValue="
             + encodeURIComponent(report.getName());
+    assertEquals(
+        1,
+        get(SdkClients.adminClient(), fieldQuery).path("hits").path("total").path("value").asInt());
     assertEquals(0, get(reader, fieldQuery).path("hits").path("total").path("value").asInt());
+    assertReportCounts(SdkClients.adminClient(), report, 1);
+    assertReportCounts(reader, report, 0);
+  }
+
+  private static void assertReportCounts(
+      final OpenMetadataClient client, final AuditReport report, final int expected) {
+    final String query = "index=auditReport&q=" + encodeURIComponent("id:" + report.getId());
+    final JsonNode aggregation = get(client, "/v1/search/aggregate?field=entityType&" + query);
+    int count = 0;
+    for (final JsonNode field : aggregation.path("aggregations")) {
+      for (final JsonNode bucket : field.path("buckets")) {
+        if (Entity.AUDIT_REPORT.equals(bucket.path("key").asText())) {
+          count += bucket.path("doc_count").asInt();
+        }
+      }
+    }
+    assertEquals(expected, count, aggregation.toString());
+    assertEquals(
+        expected,
+        get(client, "/v1/search/entityTypeCounts?" + query)
+            .path("hits")
+            .path("total")
+            .path("value")
+            .asInt());
   }
 
   private static void assertRequesterIsImmutable(
@@ -311,6 +338,11 @@ public class AIGovernanceVisibilityIT {
             () ->
                 assertEquals(
                     1, get(reader, ownQuery).path("hits").path("total").path("value").asInt()));
+    final String ownFieldQuery =
+        "/v1/search/fieldQuery?index=auditReport&fieldName=name.keyword&fieldValue="
+            + encodeURIComponent(report.getName());
+    assertEquals(1, get(reader, ownFieldQuery).path("hits").path("total").path("value").asInt());
+    assertReportCounts(reader, report, 1);
     final AuditReport updated =
         execute(
             SdkClients.adminClient(),
@@ -348,7 +380,7 @@ public class AIGovernanceVisibilityIT {
                     .withBaseModel("gpt-4")
                     .withModelProvider("OpenAI")
                     .withDomains(List.of(domain.getFullyQualifiedName()))
-                    .withGovernanceStatus(LLMModel.GovernanceStatus.PENDING_REVIEW));
+                    .withGovernanceStatus(CreateLLMModel.GovernanceStatus.PENDING_REVIEW));
     final McpService mcpService =
         execute(
             SdkClients.adminClient(),

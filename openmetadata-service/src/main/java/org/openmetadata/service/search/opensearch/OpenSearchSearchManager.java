@@ -218,7 +218,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                     .query(
                         restrictToOrgWideMemories(
                             OpenSearchRbacQueries.withAccessPolicies(
-                                sourceUrlQuery, subjectContext, rbacConditionEvaluator))));
+                                sourceUrlQuery, subjectContext, rbacConditionEvaluator),
+                            subjectContext)));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
@@ -263,7 +264,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             .query(
                 restrictToOrgWideMemories(
                     OpenSearchRbacQueries.withAccessPolicies(
-                        query, subjectContext, rbacConditionEvaluator)));
+                        query, subjectContext, rbacConditionEvaluator),
+                    subjectContext));
     List<String> sourceExcludes = PrivateSearchFields.sourceExcludes(subjectContext, index, null);
     if (!sourceExcludes.isEmpty()) {
       request.source(source -> source.filter(filter -> filter.excludes(sourceExcludes)));
@@ -1144,6 +1146,10 @@ public class OpenSearchSearchManager implements SearchManagementClient {
    * must fail closed. Non-memory documents are unaffected.
    */
   private Query restrictToOrgWideMemories(Query query) {
+    return restrictToOrgWideMemories(query, null);
+  }
+
+  private Query restrictToOrgWideMemories(Query query, SubjectContext subjectContext) {
     Query memoryFilter =
         ((OpenSearchQueryBuilder)
                 new OpenSearchQueryBuilderFactory()
@@ -1151,7 +1157,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                     .must(
                         List.of(
                             contextMemoryVisibility.buildOrgWideOnlyFilter(),
-                            auditReportVisibility.buildVisibilityFilter(null))))
+                            auditReportVisibility.buildVisibilityFilter(subjectContext))))
             .buildV2();
     return query == null
         ? memoryFilter
