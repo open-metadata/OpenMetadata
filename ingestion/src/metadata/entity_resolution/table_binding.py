@@ -99,6 +99,9 @@ class TableLookup(Enum):
 class TableBindingResolution:
     """Resolve references using the standard catalog namespace."""
 
+    # Whether a table name ending in `*` names every table it matches, as BigQuery's does
+    supports_wildcard_tables = False
+
     def __init__(self, metadata: OpenMetadata, engine: EntityResolver | None = None):
         self.metadata = metadata
         self.engine = engine

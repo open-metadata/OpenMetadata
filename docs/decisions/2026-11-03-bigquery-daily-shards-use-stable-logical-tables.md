@@ -1,7 +1,7 @@
 # BigQuery daily shard families use stable logical tables with recorded execution sources
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-04 (a missed scoped name takes its one case variant)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-04 (a missed scoped name takes its one case variant) · v3 2026-11-25 (a dbt wildcard source feeds lineage from every table it reads)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `test_bigquery_sharding.py`, `test_resolver.py`, `TableShardingIT`, `TableSharding.spec.ts`
 - **Related:** #36867, #37077; ADR:2026-11-03-source-lifecycle-merges-earliest-creation-and-latest-activity
@@ -90,3 +90,23 @@ table that matches it case-insensitively, and none when several do (`Account` an
 exist). The family is tried first, as a shard name misses its exact name by design. Guard:
 `test_resolver.py::test_bigquery_lowercased_reference_resolves_to_its_one_case_variant`,
 `test_resolver.py::test_bigquery_reference_matching_two_case_variants_resolves_to_none`.
+
+## Amendment: a dbt wildcard source feeds lineage from every table it reads (v3, 2026-11-25)
+
+A dbt source whose identifier ends in `*` (GA4's `events_*`) is a BigQuery wildcard table, and
+BigQuery reads every table its prefix matches: the `events_` family, `events_intraday_`, and any
+ordinary `events_…` table. When the configured service's resolver declares
+`supports_wildcard_tables` (only BigQuery does), a model's data model keeps the wildcard FQN as an
+upstream instead of looking it up as one table, and dbt lineage expands it into one edge per match.
+The expansion searches where every other dbt node is looked up: the `catalogMapping` database in the
+configured service and then in any service (ADR:2026-10-14-dbt-catalog-mapping-resolves-engine-database-names),
+then the manifest database, in any service too when `searchAcrossDatabases` is set. An unmatched
+wildcard gets no edge, is reported, and still lets the model override; it is never looked up as a
+single table. An incomplete match (over the
+100-candidate limit, date-constrained, or tables in more than one service) is reported, and both of
+that model's lineage stages (dbt dependencies and SQL) add their edges without overriding, so the
+wildcard's earlier edges survive and new parents still link. Each wildcard is expanded once per run. A test or
+an exposure attaches to one table, so it never expands a wildcard; other engines keep the
+identifier literal. Guard: the `test_dbt_wildcard_source_*` and
+`test_dbt_incomplete_wildcard_source_*` tests in `test_resolver.py`, and
+`test_dbt.py::TestDbtSourceIdentifiers` (literal identifiers elsewhere, and the data-model wiring).
