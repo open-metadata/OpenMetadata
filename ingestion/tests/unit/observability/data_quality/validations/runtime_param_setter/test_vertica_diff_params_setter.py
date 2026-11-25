@@ -11,17 +11,25 @@
 """Vertica table-diff connection parameters and data-diff wire integration."""
 
 import json
+import logging
 import uuid
 from unittest.mock import MagicMock, patch
 
 import data_diff
 import pytest
+from vertica_python.vertica.connection import _AddressList
+from vertica_python.vertica.log import VerticaLogging
 
+from metadata.data_quality.validations.models import (
+    TableDiffRuntimeParameters,
+    TableParameter,
+)
 from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
     BaseTableParameter,
     ServiceSpecPatch,
     SupportsConnectionDict,
 )
+from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
     ConnectionOptions,
@@ -108,9 +116,13 @@ class TestVerticaConnectionDict:
             "vertica.corp.local:²",
             "[::1",
             "[]:5433",
+            "[   ]:5433",
+            "[::1 ]:5433",
             "[::1]:",
             "[::1]:99999",
             "[::1]extra",
+            "vertica.local :5433",
+            "vertica .local",
             "::1",
             "user:topsecret@vertica.corp.local:5433",
         ],
@@ -149,13 +161,20 @@ class TestVerticaConnectionDict:
         config = _config(
             password=None,
             database=None,
-            connectionOptions=ConnectionOptions(root={"password": "spoofed_password", "database": "spoofed_db"}),
+            connectionOptions=ConnectionOptions(
+                root={
+                    "password": "spoofed_password",
+                    "database": "spoofed_db",
+                    "dsn": "vertica://evil:spoofed@evil.example:5433/evil_db?ssl=false",
+                }
+            ),
             connectionArguments=ConnectionArguments(
                 root={
                     "oauth_access_token": "eyJhbGciOiJSUzI1NiJ9.token",
                     "kerberos_service_name": "vertica",
                     "password": "spoofed_arg_password",
                     "database": "spoofed_arg_db",
+                    "dsn": "vertica://evil2:spoofed2@evil2.example:5433/evil_db2",
                 }
             ),
         )
@@ -164,6 +183,7 @@ class TestVerticaConnectionDict:
 
         assert "password" not in connection_dict
         assert "database" not in connection_dict
+        assert "dsn" not in connection_dict
         assert connection_dict["oauth_access_token"] == "eyJhbGciOiJSUzI1NiJ9.token"
         assert connection_dict["kerberos_service_name"] == "vertica"
 
@@ -212,7 +232,7 @@ class TestVerticaConnectionDict:
             ),
             connectionArguments=ConnectionArguments(
                 root={
-                    "backup_server_node": ["node2.corp.local:5433", ["node3.corp.local", 5433]],
+                    "backup_server_node": ["node2.corp.local", "node3.corp.local", "::1"],
                     "tlsmode": "verify-full",
                     "tls_cafile": "/etc/ssl/vertica-ca.pem",
                     "tls_certfile": "/etc/ssl/client.crt",
@@ -229,12 +249,46 @@ class TestVerticaConnectionDict:
         assert isinstance(connection_dict["connection_timeout"], float)
         assert connection_dict["log_level"] == 20
         assert isinstance(connection_dict["log_level"], int)
-        assert connection_dict["backup_server_node"] == ["node2.corp.local:5433", ["node3.corp.local", 5433]]
+        assert connection_dict["backup_server_node"] == ["node2.corp.local", "node3.corp.local", "::1"]
         assert connection_dict["tlsmode"] == "verify-full"
         assert connection_dict["tls_cafile"] == "/etc/ssl/vertica-ca.pem"
         assert connection_dict["tls_certfile"] == "/etc/ssl/client.crt"
         assert connection_dict["tls_keyfile"] == "/etc/ssl/client.key"
         assert json.dumps(connection_dict)
+
+    @pytest.mark.parametrize(
+        "raw_level, expected_level",
+        [
+            ("DEBUG", "DEBUG"),
+            ("INFO", "INFO"),
+            ("warning", "WARNING"),
+            ("20", 20),
+            (20, 20),
+        ],
+    )
+    def test_accepts_valid_log_levels_for_vertica_logging(self, raw_level: int | str, expected_level: int | str):
+        if isinstance(raw_level, str):
+            config = _config(connectionOptions=ConnectionOptions(root={"log_level": raw_level}))
+        else:
+            config = _config(connectionArguments=ConnectionArguments(root={"log_level": raw_level}))
+
+        connection_dict = VerticaConnection(config).get_connection_dict()
+
+        assert connection_dict["log_level"] == expected_level
+        VerticaLogging.setup_logging(f"test_vertica_level_{uuid.uuid4()}", "", connection_dict["log_level"])
+
+    def test_preserves_explicit_log_path_none(self):
+        config = _config(
+            connectionOptions=ConnectionOptions(root={"log_path": "/tmp/vertica.log"}),
+            connectionArguments=ConnectionArguments(root={"log_level": 20, "log_path": None}),
+        )
+
+        connection_dict = VerticaConnection(config).get_connection_dict()
+
+        assert "log_path" in connection_dict
+        assert connection_dict["log_path"] is None
+        assert connection_dict["log_level"] == 20
+        assert json.loads(json.dumps(connection_dict))["log_path"] is None
 
     @pytest.mark.parametrize(
         "bad_options",
@@ -246,7 +300,7 @@ class TestVerticaConnectionDict:
             {"connection_timeout": "-5"},
             {"connection_timeout": "nan"},
             {"connection_timeout": "inf"},
-            {"log_level": "DEBUG"},
+            {"log_level": "VERBOSE"},
             {"log_level": "-1"},
         ],
     )
@@ -263,7 +317,16 @@ class TestVerticaConnectionDict:
             {"connection_timeout": True},
             {"connection_timeout": float("inf")},
             {"log_level": True},
-            {"log_level": "not-an-int"},
+            {"log_level": -1},
+            {"log_level": "VERBOSE"},
+            {"backup_server_node": "node2.corp.local"},
+            {"backup_server_node": ["node2.corp.local:5433"]},
+            {"backup_server_node": [("node3.corp.local", 5433)]},
+            {"backup_server_node": [["node3.corp.local", 5433]]},
+            {"backup_server_node": [""]},
+            {"backup_server_node": ["node2 .corp.local"]},
+            {"backup_server_node": ["[::1]"]},
+            {"backup_server_node": [123]},
             {"custom_obj": object()},
         ],
     )
@@ -280,6 +343,28 @@ class TestVerticaConnectionDict:
 
         assert "super_secret_password" not in str(exc_info.value)
 
+    def test_invalid_secret_float_option_does_not_leak_cause_or_secret(self):
+        config = _config(
+            connectionOptions=ConnectionOptions(root={"connection_timeout": "secret:/vertica/timeout"}),
+        )
+        mock_manager = MagicMock()
+        mock_manager.get_string_value.return_value = "resolved_secret_not_a_float"
+        mock_factory = MagicMock()
+        mock_factory.get_secrets_manager.return_value = mock_manager
+
+        with (
+            patch(
+                "metadata.utils.secrets.secrets_manager_factory.SecretsManagerFactory",
+                return_value=mock_factory,
+            ),
+            pytest.raises(SourceConnectionException) as exc_info,
+        ):
+            VerticaConnection(config).get_connection_dict()
+
+        assert exc_info.value.__cause__ is None
+        assert "resolved_secret_not_a_float" not in str(exc_info.value)
+        assert "resolved_secret_not_a_float" not in repr(exc_info.value)
+
     def test_core_keys_cannot_be_spoofed_by_options_or_arguments(self):
         config = _config(
             connectionOptions=ConnectionOptions(
@@ -290,6 +375,7 @@ class TestVerticaConnectionDict:
                     "user": "attacker",
                     "password": "wrong",
                     "database": "evil_db",
+                    "dsn": "vertica://attacker:wrong@evil.example:9999/evil_db?ssl=false",
                 }
             ),
             connectionArguments=ConnectionArguments(
@@ -300,12 +386,14 @@ class TestVerticaConnectionDict:
                     "user": "attacker2",
                     "password": "wrong2",
                     "database": "evil_db2",
+                    "dsn": "vertica://attacker2:wrong2@evil2.example:1111/evil_db2",
                 }
             ),
         )
 
         connection_dict = VerticaConnection(config).get_connection_dict()
 
+        assert "dsn" not in connection_dict
         assert connection_dict["driver"] == "vertica"
         assert connection_dict["host"] == "vertica.corp.local"
         assert connection_dict["port"] == 5433
@@ -391,7 +479,7 @@ class TestVerticaTableParameter:
 
 
 class TestVerticaDataDiffWireIntegration:
-    def test_data_diff_connect_passes_typed_dict_and_sets_utc_timezone(self):
+    def test_data_diff_connect_passes_typed_dict_after_runtime_params_json_round_trip(self):
         config = _config(
             username="svc:user@corp#1",
             password="p@ss/w?rd#1",
@@ -401,14 +489,15 @@ class TestVerticaDataDiffWireIntegration:
                     "ssl": "true",
                     "connection_load_balance": "false",
                     "connection_timeout": "30",
-                    "log_level": "20",
+                    "log_level": "warning",
                 }
             ),
             connectionArguments=ConnectionArguments(
                 root={
                     "tlsmode": "verify-full",
                     "tls_cafile": "/etc/ssl/vertica-ca.pem",
-                    "backup_server_node": ["node2.corp.local:5433"],
+                    "backup_server_node": ["node2.corp.local", "::1"],
+                    "log_path": None,
                 }
             ),
         )
@@ -422,13 +511,36 @@ class TestVerticaDataDiffWireIntegration:
         conn_dict = VerticaTableParameter().get_data_diff_url(db_service, "vertica_service.analytics_db.public.orders")
         assert isinstance(conn_dict, dict)
 
+        table_param = TableParameter(
+            serviceUrl=conn_dict,
+            path="public.orders",
+            fullyQualifiedName="vertica_service.analytics_db.public.orders",
+            columns=[Column(name="id", dataType=DataType.INT)],
+            database_service_type=DatabaseServiceType.Vertica,
+            privateKey=None,
+            passPhrase=None,
+            key_columns=["id"],
+            extra_columns=[],
+        )
+        runtime_params = TableDiffRuntimeParameters(
+            table1=table_param,
+            table2=table_param,
+            keyColumns=["id"],
+            extraColumns=[],
+            whereClause=None,
+            table_profile_config=None,
+        )
+        round_tripped = TableDiffRuntimeParameters.model_validate_json(runtime_params.model_dump_json())
+        wire_conf = round_tripped.table1.data_diff_service_url
+        assert isinstance(wire_conf, dict)
+
         mock_cursor = MagicMock()
         mock_cursor.fetchall.return_value = [(1,)]
         mock_connection = MagicMock()
         mock_connection.cursor.return_value = mock_cursor
 
         with patch("vertica_python.connect", return_value=mock_connection) as mock_connect:
-            db = data_diff.connect(conn_dict, thread_count=2, shared=False)
+            db = data_diff.connect(wire_conf, thread_count=2, shared=False)
             try:
                 assert db.query("SELECT 1", int) == 1
             finally:
@@ -437,6 +549,7 @@ class TestVerticaDataDiffWireIntegration:
         assert mock_connect.called
         connect_kwargs = mock_connect.call_args.kwargs
         assert "driver" not in connect_kwargs
+        assert "dsn" not in connect_kwargs
         assert connect_kwargs["host"] == "vertica.corp.local"
         assert connect_kwargs["port"] == 5433
         assert connect_kwargs["user"] == "svc:user@corp#1"
@@ -445,11 +558,22 @@ class TestVerticaDataDiffWireIntegration:
         assert connect_kwargs["ssl"] is True
         assert connect_kwargs["connection_load_balance"] is False
         assert connect_kwargs["connection_timeout"] == 30.0
-        assert connect_kwargs["log_level"] == 20
+        assert connect_kwargs["log_level"] == "WARNING"
+        assert connect_kwargs["log_path"] is None
         assert connect_kwargs["tlsmode"] == "verify-full"
         assert connect_kwargs["tls_cafile"] == "/etc/ssl/vertica-ca.pem"
-        assert connect_kwargs["backup_server_node"] == ["node2.corp.local:5433"]
+        assert connect_kwargs["backup_server_node"] == ["node2.corp.local", "::1"]
         assert connect_kwargs["AUTOCOMMIT"] is False
+
+        # Prove vertica-python accepts the post-JSON-round-trip address list and logging config.
+        address_list = _AddressList(
+            connect_kwargs["host"],
+            connect_kwargs["port"],
+            connect_kwargs["backup_server_node"],
+            logging.getLogger("test_vertica_wire"),
+        )
+        assert len(address_list.address_deque) == 3
+        VerticaLogging.setup_logging(f"test_vertica_wire_{uuid.uuid4()}", "", connect_kwargs["log_level"])
 
         executed_sql = [call.args[0] for call in mock_cursor.execute.call_args_list]
         assert "SET TIME ZONE TO 'UTC'" in executed_sql
