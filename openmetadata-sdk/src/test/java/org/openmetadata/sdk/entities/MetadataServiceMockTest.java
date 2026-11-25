@@ -1,8 +1,14 @@
 package org.openmetadata.sdk.entities;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -26,6 +32,10 @@ import org.openmetadata.sdk.services.services.MetadataServiceService;
  * these tests mirror real API behavior and guard against the downcasting bug.
  */
 public class MetadataServiceMockTest {
+
+  private static final String SERVICE_NAME = "metadata-store";
+  private static final String SERVICE_NAME_RENAMED = "metadata-store-renamed";
+  private static final String DESCRIPTION = "Renamed service";
 
   @Mock private OpenMetadataClient mockClient;
   @Mock private MetadataServiceService mockMetadataServiceService;
@@ -53,24 +63,25 @@ public class MetadataServiceMockTest {
   @Test
   void testCreateMetadataService_returnsSchemaBaseWithoutCast() throws OpenMetadataException {
     // Arrange — schema base instance, as the HTTP layer would deserialize.
-    org.openmetadata.schema.entity.services.MetadataService entity =
+    final org.openmetadata.schema.entity.services.MetadataService entity =
         new org.openmetadata.schema.entity.services.MetadataService();
-    entity.setName("metadata-store");
-    org.openmetadata.schema.entity.services.MetadataService created =
+    entity.setName(SERVICE_NAME);
+    final org.openmetadata.schema.entity.services.MetadataService created =
         new org.openmetadata.schema.entity.services.MetadataService();
     created.setId(UUID.randomUUID());
-    created.setName("metadata-store");
-    created.setFullyQualifiedName("metadata-store");
+    created.setName(SERVICE_NAME);
+    created.setFullyQualifiedName(SERVICE_NAME);
 
     when(mockMetadataServiceService.create(entity)).thenReturn(created);
 
     // Act
-    org.openmetadata.schema.entity.services.MetadataService result = MetadataService.create(entity);
+    final org.openmetadata.schema.entity.services.MetadataService result =
+        MetadataService.create(entity);
 
     // Assert
     assertNotNull(result);
-    assertEquals("metadata-store", result.getName());
-    assertEquals("metadata-store", result.getFullyQualifiedName());
+    assertEquals(SERVICE_NAME, result.getName());
+    assertEquals(SERVICE_NAME, result.getFullyQualifiedName());
     assertInstanceOf(org.openmetadata.schema.entity.services.MetadataService.class, result);
     verify(mockMetadataServiceService).create(entity);
   }
@@ -78,22 +89,23 @@ public class MetadataServiceMockTest {
   @Test
   void testRetrieveMetadataServiceById_returnsSchemaBaseWithoutCast() throws OpenMetadataException {
     // Arrange
-    String id = UUID.randomUUID().toString();
-    org.openmetadata.schema.entity.services.MetadataService expected =
+    final String id = UUID.randomUUID().toString();
+    final org.openmetadata.schema.entity.services.MetadataService expected =
         new org.openmetadata.schema.entity.services.MetadataService();
     expected.setId(UUID.fromString(id));
-    expected.setName("metadata-store");
-    expected.setFullyQualifiedName("metadata-store");
+    expected.setName(SERVICE_NAME);
+    expected.setFullyQualifiedName(SERVICE_NAME);
 
     when(mockMetadataServiceService.get(id)).thenReturn(expected);
 
     // Act
-    org.openmetadata.schema.entity.services.MetadataService result = MetadataService.retrieve(id);
+    final org.openmetadata.schema.entity.services.MetadataService result =
+        MetadataService.retrieve(id);
 
     // Assert
     assertNotNull(result);
     assertEquals(id, result.getId().toString());
-    assertEquals("metadata-store", result.getName());
+    assertEquals(SERVICE_NAME, result.getName());
     assertInstanceOf(org.openmetadata.schema.entity.services.MetadataService.class, result);
     verify(mockMetadataServiceService).get(id);
   }
@@ -102,16 +114,17 @@ public class MetadataServiceMockTest {
   void testRetrieveMetadataServiceByUuid_returnsSchemaBaseWithoutCast()
       throws OpenMetadataException {
     // Arrange
-    UUID id = UUID.randomUUID();
-    org.openmetadata.schema.entity.services.MetadataService expected =
+    final UUID id = UUID.randomUUID();
+    final org.openmetadata.schema.entity.services.MetadataService expected =
         new org.openmetadata.schema.entity.services.MetadataService();
     expected.setId(id);
-    expected.setName("metadata-store");
+    expected.setName(SERVICE_NAME);
 
     when(mockMetadataServiceService.get(id.toString())).thenReturn(expected);
 
     // Act
-    org.openmetadata.schema.entity.services.MetadataService result = MetadataService.retrieve(id);
+    final org.openmetadata.schema.entity.services.MetadataService result =
+        MetadataService.retrieve(id);
 
     // Assert
     assertNotNull(result);
@@ -123,8 +136,8 @@ public class MetadataServiceMockTest {
   void testRetrieveMetadataServiceByName_returnsSchemaBaseWithoutCast()
       throws OpenMetadataException {
     // Arrange
-    String name = "metadata-store";
-    org.openmetadata.schema.entity.services.MetadataService expected =
+    final String name = SERVICE_NAME;
+    final org.openmetadata.schema.entity.services.MetadataService expected =
         new org.openmetadata.schema.entity.services.MetadataService();
     expected.setName(name);
     expected.setFullyQualifiedName(name);
@@ -132,7 +145,7 @@ public class MetadataServiceMockTest {
     when(mockMetadataServiceService.getByName(name)).thenReturn(expected);
 
     // Act
-    org.openmetadata.schema.entity.services.MetadataService result =
+    final org.openmetadata.schema.entity.services.MetadataService result =
         MetadataService.retrieveByName(name);
 
     // Assert
@@ -146,28 +159,28 @@ public class MetadataServiceMockTest {
   @Test
   void testUpdateMetadataService_returnsSchemaBaseWithoutCast() throws OpenMetadataException {
     // Arrange
-    String id = UUID.randomUUID().toString();
-    org.openmetadata.schema.entity.services.MetadataService patch =
+    final String id = UUID.randomUUID().toString();
+    final org.openmetadata.schema.entity.services.MetadataService patch =
         new org.openmetadata.schema.entity.services.MetadataService();
-    patch.setName("metadata-store-renamed");
-    patch.setDescription("Renamed service");
+    patch.setName(SERVICE_NAME_RENAMED);
+    patch.setDescription(DESCRIPTION);
 
-    org.openmetadata.schema.entity.services.MetadataService updated =
+    final org.openmetadata.schema.entity.services.MetadataService updated =
         new org.openmetadata.schema.entity.services.MetadataService();
     updated.setId(UUID.fromString(id));
-    updated.setName("metadata-store-renamed");
-    updated.setDescription("Renamed service");
+    updated.setName(SERVICE_NAME_RENAMED);
+    updated.setDescription(DESCRIPTION);
 
     when(mockMetadataServiceService.update(id, patch)).thenReturn(updated);
 
     // Act
-    org.openmetadata.schema.entity.services.MetadataService result =
+    final org.openmetadata.schema.entity.services.MetadataService result =
         MetadataService.update(id, patch);
 
     // Assert
     assertNotNull(result);
-    assertEquals("metadata-store-renamed", result.getName());
-    assertEquals("Renamed service", result.getDescription());
+    assertEquals(SERVICE_NAME_RENAMED, result.getName());
+    assertEquals(DESCRIPTION, result.getDescription());
     assertInstanceOf(org.openmetadata.schema.entity.services.MetadataService.class, result);
     verify(mockMetadataServiceService).update(id, patch);
   }
@@ -175,7 +188,7 @@ public class MetadataServiceMockTest {
   @Test
   void testDeleteMetadataService_invokesServiceDelete() throws OpenMetadataException {
     // Arrange
-    String id = UUID.randomUUID().toString();
+    final String id = UUID.randomUUID().toString();
     doNothing().when(mockMetadataServiceService).delete(eq(id), any());
 
     // Act
@@ -187,7 +200,7 @@ public class MetadataServiceMockTest {
             eq(id),
             argThat(
                 params ->
-                    "false".equals(params.get("recursive"))
-                        && "true".equals(params.get("hardDelete"))));
+                    Boolean.FALSE.toString().equals(params.get("recursive"))
+                        && Boolean.TRUE.toString().equals(params.get("hardDelete"))));
   }
 }

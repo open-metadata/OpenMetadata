@@ -36,6 +36,11 @@ import org.openmetadata.sdk.services.services.SearchServiceService;
  */
 public class SearchServiceMockTest {
 
+  private static final String SERVICE_NAME = "elasticsearch";
+  private static final String SERVICE_NAME_ALT = "opensearch";
+  private static final String SERVICE_NAME_RENAMED = "opensearch-renamed";
+  private static final String DESCRIPTION = "Renamed service";
+
   @Mock private OpenMetadataClient mockClient;
   @Mock private SearchServiceService mockSearchServiceService;
   private AutoCloseable closeable;
@@ -62,24 +67,25 @@ public class SearchServiceMockTest {
   @Test
   void testCreateSearchService_returnsSchemaBaseWithoutCast() throws OpenMetadataException {
     // Arrange — schema base instance, as the HTTP layer would deserialize.
-    org.openmetadata.schema.entity.services.SearchService entity =
+    final org.openmetadata.schema.entity.services.SearchService entity =
         new org.openmetadata.schema.entity.services.SearchService();
-    entity.setName("elasticsearch");
-    org.openmetadata.schema.entity.services.SearchService created =
+    entity.setName(SERVICE_NAME);
+    final org.openmetadata.schema.entity.services.SearchService created =
         new org.openmetadata.schema.entity.services.SearchService();
     created.setId(UUID.randomUUID());
-    created.setName("elasticsearch");
-    created.setFullyQualifiedName("elasticsearch");
+    created.setName(SERVICE_NAME);
+    created.setFullyQualifiedName(SERVICE_NAME);
 
     when(mockSearchServiceService.create(entity)).thenReturn(created);
 
     // Act
-    org.openmetadata.schema.entity.services.SearchService result = SearchService.create(entity);
+    final org.openmetadata.schema.entity.services.SearchService result =
+        SearchService.create(entity);
 
     // Assert
     assertNotNull(result);
-    assertEquals("elasticsearch", result.getName());
-    assertEquals("elasticsearch", result.getFullyQualifiedName());
+    assertEquals(SERVICE_NAME, result.getName());
+    assertEquals(SERVICE_NAME, result.getFullyQualifiedName());
     assertInstanceOf(org.openmetadata.schema.entity.services.SearchService.class, result);
     verify(mockSearchServiceService).create(entity);
   }
@@ -87,22 +93,22 @@ public class SearchServiceMockTest {
   @Test
   void testRetrieveSearchServiceById_returnsSchemaBaseWithoutCast() throws OpenMetadataException {
     // Arrange
-    String id = UUID.randomUUID().toString();
-    org.openmetadata.schema.entity.services.SearchService expected =
+    final String id = UUID.randomUUID().toString();
+    final org.openmetadata.schema.entity.services.SearchService expected =
         new org.openmetadata.schema.entity.services.SearchService();
     expected.setId(UUID.fromString(id));
-    expected.setName("opensearch");
-    expected.setFullyQualifiedName("opensearch");
+    expected.setName(SERVICE_NAME_ALT);
+    expected.setFullyQualifiedName(SERVICE_NAME_ALT);
 
     when(mockSearchServiceService.get(id)).thenReturn(expected);
 
     // Act
-    org.openmetadata.schema.entity.services.SearchService result = SearchService.retrieve(id);
+    final org.openmetadata.schema.entity.services.SearchService result = SearchService.retrieve(id);
 
     // Assert
     assertNotNull(result);
     assertEquals(id, result.getId().toString());
-    assertEquals("opensearch", result.getName());
+    assertEquals(SERVICE_NAME_ALT, result.getName());
     assertInstanceOf(org.openmetadata.schema.entity.services.SearchService.class, result);
     verify(mockSearchServiceService).get(id);
   }
@@ -110,16 +116,16 @@ public class SearchServiceMockTest {
   @Test
   void testRetrieveSearchServiceByUuid_returnsSchemaBaseWithoutCast() throws OpenMetadataException {
     // Arrange
-    UUID id = UUID.randomUUID();
-    org.openmetadata.schema.entity.services.SearchService expected =
+    final UUID id = UUID.randomUUID();
+    final org.openmetadata.schema.entity.services.SearchService expected =
         new org.openmetadata.schema.entity.services.SearchService();
     expected.setId(id);
-    expected.setName("elasticsearch");
+    expected.setName(SERVICE_NAME);
 
     when(mockSearchServiceService.get(id.toString())).thenReturn(expected);
 
     // Act
-    org.openmetadata.schema.entity.services.SearchService result = SearchService.retrieve(id);
+    final org.openmetadata.schema.entity.services.SearchService result = SearchService.retrieve(id);
 
     // Assert
     assertNotNull(result);
@@ -130,8 +136,8 @@ public class SearchServiceMockTest {
   @Test
   void testRetrieveSearchServiceByName_returnsSchemaBaseWithoutCast() throws OpenMetadataException {
     // Arrange
-    String name = "elasticsearch";
-    org.openmetadata.schema.entity.services.SearchService expected =
+    final String name = SERVICE_NAME;
+    final org.openmetadata.schema.entity.services.SearchService expected =
         new org.openmetadata.schema.entity.services.SearchService();
     expected.setName(name);
     expected.setFullyQualifiedName(name);
@@ -139,7 +145,7 @@ public class SearchServiceMockTest {
     when(mockSearchServiceService.getByName(name)).thenReturn(expected);
 
     // Act
-    org.openmetadata.schema.entity.services.SearchService result =
+    final org.openmetadata.schema.entity.services.SearchService result =
         SearchService.retrieveByName(name);
 
     // Assert
@@ -153,27 +159,28 @@ public class SearchServiceMockTest {
   @Test
   void testUpdateSearchService_returnsSchemaBaseWithoutCast() throws OpenMetadataException {
     // Arrange
-    String id = UUID.randomUUID().toString();
-    org.openmetadata.schema.entity.services.SearchService patch =
+    final String id = UUID.randomUUID().toString();
+    final org.openmetadata.schema.entity.services.SearchService patch =
         new org.openmetadata.schema.entity.services.SearchService();
-    patch.setName("opensearch-renamed");
-    patch.setDescription("Renamed service");
+    patch.setName(SERVICE_NAME_RENAMED);
+    patch.setDescription(DESCRIPTION);
 
-    org.openmetadata.schema.entity.services.SearchService updated =
+    final org.openmetadata.schema.entity.services.SearchService updated =
         new org.openmetadata.schema.entity.services.SearchService();
     updated.setId(UUID.fromString(id));
-    updated.setName("opensearch-renamed");
-    updated.setDescription("Renamed service");
+    updated.setName(SERVICE_NAME_RENAMED);
+    updated.setDescription(DESCRIPTION);
 
     when(mockSearchServiceService.update(id, patch)).thenReturn(updated);
 
     // Act
-    org.openmetadata.schema.entity.services.SearchService result = SearchService.update(id, patch);
+    final org.openmetadata.schema.entity.services.SearchService result =
+        SearchService.update(id, patch);
 
     // Assert
     assertNotNull(result);
-    assertEquals("opensearch-renamed", result.getName());
-    assertEquals("Renamed service", result.getDescription());
+    assertEquals(SERVICE_NAME_RENAMED, result.getName());
+    assertEquals(DESCRIPTION, result.getDescription());
     assertInstanceOf(org.openmetadata.schema.entity.services.SearchService.class, result);
     verify(mockSearchServiceService).update(id, patch);
   }
@@ -181,7 +188,7 @@ public class SearchServiceMockTest {
   @Test
   void testDeleteSearchService_invokesServiceDelete() throws OpenMetadataException {
     // Arrange
-    String id = UUID.randomUUID().toString();
+    final String id = UUID.randomUUID().toString();
     doNothing().when(mockSearchServiceService).delete(eq(id), any());
 
     // Act
@@ -193,7 +200,7 @@ public class SearchServiceMockTest {
             eq(id),
             argThat(
                 params ->
-                    "true".equals(params.get("recursive"))
-                        && "true".equals(params.get("hardDelete"))));
+                    Boolean.TRUE.toString().equals(params.get("recursive"))
+                        && Boolean.TRUE.toString().equals(params.get("hardDelete"))));
   }
 }

@@ -1,8 +1,14 @@
 package org.openmetadata.sdk.entities;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -26,6 +32,10 @@ import org.openmetadata.sdk.services.services.APIServiceService;
  * tests mirror real API behavior and guard against the downcasting bug.
  */
 public class APIServiceMockTest {
+
+  private static final String SERVICE_NAME = "rest-api";
+  private static final String SERVICE_NAME_RENAMED = "rest-api-renamed";
+  private static final String DESCRIPTION = "Renamed service";
 
   @Mock private OpenMetadataClient mockClient;
   @Mock private APIServiceService mockApiServiceService;
@@ -53,24 +63,24 @@ public class APIServiceMockTest {
   @Test
   void testCreateAPIService_returnsSchemaBaseWithoutCast() throws OpenMetadataException {
     // Arrange — schema base instance, as the HTTP layer would deserialize.
-    org.openmetadata.schema.entity.services.ApiService entity =
+    final org.openmetadata.schema.entity.services.ApiService entity =
         new org.openmetadata.schema.entity.services.ApiService();
-    entity.setName("rest-api");
-    org.openmetadata.schema.entity.services.ApiService created =
+    entity.setName(SERVICE_NAME);
+    final org.openmetadata.schema.entity.services.ApiService created =
         new org.openmetadata.schema.entity.services.ApiService();
     created.setId(UUID.randomUUID());
-    created.setName("rest-api");
-    created.setFullyQualifiedName("rest-api");
+    created.setName(SERVICE_NAME);
+    created.setFullyQualifiedName(SERVICE_NAME);
 
     when(mockApiServiceService.create(entity)).thenReturn(created);
 
     // Act
-    org.openmetadata.schema.entity.services.ApiService result = APIService.create(entity);
+    final org.openmetadata.schema.entity.services.ApiService result = APIService.create(entity);
 
     // Assert
     assertNotNull(result);
-    assertEquals("rest-api", result.getName());
-    assertEquals("rest-api", result.getFullyQualifiedName());
+    assertEquals(SERVICE_NAME, result.getName());
+    assertEquals(SERVICE_NAME, result.getFullyQualifiedName());
     assertInstanceOf(org.openmetadata.schema.entity.services.ApiService.class, result);
     verify(mockApiServiceService).create(entity);
   }
@@ -78,22 +88,22 @@ public class APIServiceMockTest {
   @Test
   void testRetrieveAPIServiceById_returnsSchemaBaseWithoutCast() throws OpenMetadataException {
     // Arrange
-    String id = UUID.randomUUID().toString();
-    org.openmetadata.schema.entity.services.ApiService expected =
+    final String id = UUID.randomUUID().toString();
+    final org.openmetadata.schema.entity.services.ApiService expected =
         new org.openmetadata.schema.entity.services.ApiService();
     expected.setId(UUID.fromString(id));
-    expected.setName("rest-api");
-    expected.setFullyQualifiedName("rest-api");
+    expected.setName(SERVICE_NAME);
+    expected.setFullyQualifiedName(SERVICE_NAME);
 
     when(mockApiServiceService.get(id)).thenReturn(expected);
 
     // Act
-    org.openmetadata.schema.entity.services.ApiService result = APIService.retrieve(id);
+    final org.openmetadata.schema.entity.services.ApiService result = APIService.retrieve(id);
 
     // Assert
     assertNotNull(result);
     assertEquals(id, result.getId().toString());
-    assertEquals("rest-api", result.getName());
+    assertEquals(SERVICE_NAME, result.getName());
     assertInstanceOf(org.openmetadata.schema.entity.services.ApiService.class, result);
     verify(mockApiServiceService).get(id);
   }
@@ -101,16 +111,16 @@ public class APIServiceMockTest {
   @Test
   void testRetrieveAPIServiceByUuid_returnsSchemaBaseWithoutCast() throws OpenMetadataException {
     // Arrange
-    UUID id = UUID.randomUUID();
-    org.openmetadata.schema.entity.services.ApiService expected =
+    final UUID id = UUID.randomUUID();
+    final org.openmetadata.schema.entity.services.ApiService expected =
         new org.openmetadata.schema.entity.services.ApiService();
     expected.setId(id);
-    expected.setName("rest-api");
+    expected.setName(SERVICE_NAME);
 
     when(mockApiServiceService.get(id.toString())).thenReturn(expected);
 
     // Act
-    org.openmetadata.schema.entity.services.ApiService result = APIService.retrieve(id);
+    final org.openmetadata.schema.entity.services.ApiService result = APIService.retrieve(id);
 
     // Assert
     assertNotNull(result);
@@ -121,8 +131,8 @@ public class APIServiceMockTest {
   @Test
   void testRetrieveAPIServiceByName_returnsSchemaBaseWithoutCast() throws OpenMetadataException {
     // Arrange
-    String name = "rest-api";
-    org.openmetadata.schema.entity.services.ApiService expected =
+    final String name = SERVICE_NAME;
+    final org.openmetadata.schema.entity.services.ApiService expected =
         new org.openmetadata.schema.entity.services.ApiService();
     expected.setName(name);
     expected.setFullyQualifiedName(name);
@@ -130,7 +140,8 @@ public class APIServiceMockTest {
     when(mockApiServiceService.getByName(name)).thenReturn(expected);
 
     // Act
-    org.openmetadata.schema.entity.services.ApiService result = APIService.retrieveByName(name);
+    final org.openmetadata.schema.entity.services.ApiService result =
+        APIService.retrieveByName(name);
 
     // Assert
     assertNotNull(result);
@@ -143,27 +154,27 @@ public class APIServiceMockTest {
   @Test
   void testUpdateAPIService_returnsSchemaBaseWithoutCast() throws OpenMetadataException {
     // Arrange
-    String id = UUID.randomUUID().toString();
-    org.openmetadata.schema.entity.services.ApiService patch =
+    final String id = UUID.randomUUID().toString();
+    final org.openmetadata.schema.entity.services.ApiService patch =
         new org.openmetadata.schema.entity.services.ApiService();
-    patch.setName("rest-api-renamed");
-    patch.setDescription("Renamed service");
+    patch.setName(SERVICE_NAME_RENAMED);
+    patch.setDescription(DESCRIPTION);
 
-    org.openmetadata.schema.entity.services.ApiService updated =
+    final org.openmetadata.schema.entity.services.ApiService updated =
         new org.openmetadata.schema.entity.services.ApiService();
     updated.setId(UUID.fromString(id));
-    updated.setName("rest-api-renamed");
-    updated.setDescription("Renamed service");
+    updated.setName(SERVICE_NAME_RENAMED);
+    updated.setDescription(DESCRIPTION);
 
     when(mockApiServiceService.update(id, patch)).thenReturn(updated);
 
     // Act
-    org.openmetadata.schema.entity.services.ApiService result = APIService.update(id, patch);
+    final org.openmetadata.schema.entity.services.ApiService result = APIService.update(id, patch);
 
     // Assert
     assertNotNull(result);
-    assertEquals("rest-api-renamed", result.getName());
-    assertEquals("Renamed service", result.getDescription());
+    assertEquals(SERVICE_NAME_RENAMED, result.getName());
+    assertEquals(DESCRIPTION, result.getDescription());
     assertInstanceOf(org.openmetadata.schema.entity.services.ApiService.class, result);
     verify(mockApiServiceService).update(id, patch);
   }
@@ -171,7 +182,7 @@ public class APIServiceMockTest {
   @Test
   void testDeleteAPIService_invokesServiceDelete() throws OpenMetadataException {
     // Arrange
-    String id = UUID.randomUUID().toString();
+    final String id = UUID.randomUUID().toString();
     doNothing().when(mockApiServiceService).delete(eq(id), any());
 
     // Act
@@ -183,7 +194,7 @@ public class APIServiceMockTest {
             eq(id),
             argThat(
                 params ->
-                    "true".equals(params.get("recursive"))
-                        && "false".equals(params.get("hardDelete"))));
+                    Boolean.TRUE.toString().equals(params.get("recursive"))
+                        && Boolean.FALSE.toString().equals(params.get("hardDelete"))));
   }
 }
