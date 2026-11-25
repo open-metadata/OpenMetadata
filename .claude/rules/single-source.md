@@ -39,7 +39,7 @@ Every one started as "quicker to write than to find". This rule makes finding ma
 | Owner/user display | ui-core `Owner` / `OwnerChip` (`application/owner`) | per-feature owner renderers |
 | Rich text preview | one previewer (`RichTextEditorPreviewerV1`) | another `*New`/`*V2` previewer |
 | Page header (title, breadcrumb, actions) | ui-core `PageLayout.PageHeader` + common `HeaderBreadcrumb` | feature `*Header` wrappers |
-| Panel / section surface | ui-core `Card` (`Card.Header/Content/Footer`) | `div`/`Box` with background + border |
+| Panel / section surface | ui-core `Card` (`Card.Header/Content/Footer`); nested in a `bg-surface` panel, modal or drawer → `variant="muted"`/`"tile"` | `div`/`Box` with background + border |
 | Choose one of a few options (Off/Warn/Block) | ui-core `ButtonGroup` | `*SegmentedControl`, button rows with own selected state |
 | On/off setting | ui-core `Toggle` (`label`, `hint`, `isReadOnly`) | `*Toggle` wrappers |
 | Action / ⋯ menu | ui-core `Dropdown` (`Dropdown.DotsButton`) | hand-rolled menus or popovers of buttons |

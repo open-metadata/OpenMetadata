@@ -52,12 +52,12 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   `align`, `justify`, `gap`, `wrap`, `inline`); grids → `Grid` (`gap`/`rowGap`/`colGap`, `Grid.Item`
   `span`) — not `<div className="tw:flex|tw:grid …">` or arbitrary `grid-cols-[…]`. `Box`/`Grid`
   are layout only: no background, border or radius; a bordered or coloured panel is `Card`.
-- **Colour tokens: semantic only, and the right surface** — the full list is `frontend-styling.md`.
-  Card/panel → `Card` or `tw:bg-surface` (never `tw:bg-primary`: it is the page colour in dark, so the
-  card disappears); modal/drawer → `tw:bg-overlay-surface`; popover/menu → `tw:bg-floating`; raw
-  palette (`tw:bg-blue-50`, `tw:text-gray-500`) and hex do not flip → `utility-*` or a semantic token;
-  icons → `tw:text-fg-*`; text colour on `Typography` → its `color` prop. Check every new surface in
-  both themes.
+- **Colour tokens: semantic only, and the right surface** (full list: `frontend-styling.md`). Card on
+  the page → `Card` or `tw:bg-surface`; a card inside a `bg-surface` panel, modal or drawer →
+  `Card variant="muted"`/`"tile"` (ADR:2026-11-05-nested-cards-sit-one-step-off-their-panel). Never `tw:bg-primary` (the page colour
+  in dark: the card disappears). Modal/drawer → `tw:bg-overlay-surface`; popover/menu → `tw:bg-floating`;
+  raw palette and hex do not flip → `utility-*` or a semantic token; icons → `tw:text-fg-*`;
+  `Typography` colour → its `color` prop. Check every new surface in both themes.
 - **Every new component, hook or util with a branch ships its own test in the same change**
   (`X.test.tsx` beside it). Assert the rendered outcome or returned value for each branch (empty,
   error, read-only/permission, each variant), against the real core components — not a mock of

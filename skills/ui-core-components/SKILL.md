@@ -51,7 +51,8 @@ prop in core (own PR) — never a feature-local copy or a wrapper that only forw
 **Layout and text**
 - `Box` — flex row/column (`direction`, `align`, `justify`, `gap`, `wrap`); layout only.
 - `Grid` + `Grid.Item` — grid (`gap`/`rowGap`/`colGap`, `span`, `start`); layout only.
-- `Card` (`.Header` `title`/`extra`, `.Content`, `.Footer`) — any bordered or coloured panel.
+- `Card` (`.Header` `title`/`extra`, `.Content`, `.Footer`) — any bordered or coloured panel; inside a
+  `bg-surface` panel, modal or drawer use `variant="muted"`/`"tile"` (ADR:2026-11-05-nested-cards-sit-one-step-off-their-panel).
 - `Typography` — all text; `as="h1"…"h6"|"p"` for semantics, `size`, `weight`, `color`, `ellipsis`.
 - `Divider` — separator line. `ScrollShadow` — horizontal scroller with edge shadows.
 - `PageLayout` (`.Header`, `.PageHeader`, `.Content`, side panels) — every page's shell;
@@ -233,7 +234,8 @@ borders, foreground/icon, utility/badge colors) plus a `dark-gray-red-green`
 
 | Raw pattern | Use instead |
 |---|---|
-| `tw:bg-white` on a card/panel | `<Card>` or `tw:bg-surface` — never `tw:bg-primary`, the page colour in dark mode (the card disappears) |
+| `tw:bg-white` on a card/panel on the page | `<Card>` or `tw:bg-surface` — never `tw:bg-primary`, the page colour in dark mode (the card disappears) |
+| `tw:bg-white` on a card inside a `bg-surface` panel, modal or drawer | `<Card variant="muted">`/`"tile"` — a default card is the same colour as its container in dark (ADR:2026-11-05-nested-cards-sit-one-step-off-their-panel) |
 | `tw:bg-white` on the page / a modal or drawer / a popover or menu | `tw:bg-page` / `tw:bg-overlay-surface` / `tw:bg-floating` |
 | `tw:bg-gray-50` (subtle fill) | `tw:bg-secondary` |
 | `tw:text-gray-900` / `tw:text-gray-500` | `tw:text-primary` / `tw:text-tertiary` (`quaternary` only for de-emphasised text) |

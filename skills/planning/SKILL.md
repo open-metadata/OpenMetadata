@@ -79,7 +79,7 @@ Use the concept table in `.claude/rules/single-source.md` and the reuse table in
 | Page title, breadcrumb, actions | `PageLayout.PageHeader` + `HeaderBreadcrumb` | no |
 | Off / Warn / Block choice | `ButtonGroup` | no |
 | Read-only switch with explanation | `Toggle` + core `tooltip` prop | core change (own PR) |
-| Settings panel | `Card` + `Typography` + `Box` | no |
+| Section inside a drawer or settings modal | `Card variant="muted"` + `Typography` + `Box` (ADR:2026-11-05-nested-cards-sit-one-step-off-their-panel) | no |
 | Editor with a different preview source | existing editor + `onPreview` callback prop | prop on the original |
 ```
 
