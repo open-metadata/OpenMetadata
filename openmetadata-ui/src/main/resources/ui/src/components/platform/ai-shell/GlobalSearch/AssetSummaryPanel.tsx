@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import {
-  Badge,
   BadgeWithIcon,
   Box,
   Button,
   ButtonUtility,
   Card,
   Divider,
+  Owner,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -32,9 +32,13 @@ import { get, startCase } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
-import { TagSource } from '../../../../generated/type/tagLabel';
+import { EntityReference } from '../../../../generated/type/entityReference';
+import { TagLabel } from '../../../../generated/type/tagLabel';
 import { EntityIconSize } from '../../../../utils/EntityIconUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
+import DomainsSection from '../../../common/DomainsSection/DomainsSection';
+import GlossaryTermsSection from '../../../common/GlossaryTermsSection/GlossaryTermsSection';
+import TagsSection from '../../../common/TagsSection/TagsSection';
 import { BREADCRUMB_SEPARATOR } from './GlobalSearch.constants';
 import { GlobalSearchRow } from './GlobalSearch.types';
 import { useAssetSummaryStats } from './useAssetSummaryStats';
@@ -42,31 +46,13 @@ import { useAssetSummaryStats } from './useAssetSummaryStats';
 const EMPTY_VALUE = '—';
 const ELLIPSIS = { excludeTriggerFromTabOrder: true };
 
-interface NamedRef {
-  displayName?: string;
-  name?: string;
-}
-
-interface TagRef {
-  tagFQN: string;
-  source?: TagSource;
-}
-
 export interface AssetSummaryPanelProps {
   row?: GlobalSearchRow;
   onClose: () => void;
   onOpen: (row: GlobalSearchRow) => void;
 }
 
-const names = (refs: NamedRef[] = []) =>
-  refs.map((ref) => ref.displayName || ref.name || '').filter(Boolean);
-
 const lastSegment = (fqn: string) => fqn.split('.').pop() ?? fqn;
-
-const isClassification = (tag: TagRef) =>
-  tag.source !== TagSource.Glossary &&
-  !tag.tagFQN.startsWith('Tier.') &&
-  !tag.tagFQN.startsWith('Certification.');
 
 const AssetSummaryPanel = ({
   row,
@@ -81,8 +67,8 @@ const AssetSummaryPanel = ({
   }
 
   const source = row.source;
-  const entityType = source?.entityType ?? '';
-  const tags: TagRef[] = get(source, 'tags', []);
+  const entityType = (source?.entityType ?? '') as EntityType;
+  const tags: TagLabel[] = get(source, 'tags', []);
   const tier: string | undefined = get(source, 'tier.tagFQN');
   const certification: string | undefined = get(
     source,
@@ -123,21 +109,6 @@ const AssetSummaryPanel = ({
         ]
       : lineage;
   };
-
-  const details = [
-    { key: t('label.owner-plural'), values: names(get(source, 'owners')) },
-    { key: t('label.domain-plural'), values: names(get(source, 'domains')) },
-    {
-      key: t('label.tag-plural'),
-      values: tags.filter(isClassification).map((tag) => tag.tagFQN),
-    },
-    {
-      key: t('label.glossary-term-plural'),
-      values: tags
-        .filter((tag) => tag.source === TagSource.Glossary)
-        .map((tag) => lastSegment(tag.tagFQN)),
-    },
-  ];
 
   return (
     <Box className="tw:w-90 tw:flex-none" data-testid="global-search-summary">
@@ -234,7 +205,7 @@ const AssetSummaryPanel = ({
                       <Typography ellipsis color="quaternary" size="text-xs">
                         {stat.key}
                       </Typography>
-                      <Typography ellipsis size="text-sm" weight="semibold">
+                      <Typography ellipsis size="text-xs" weight="medium">
                         {stat.value}
                       </Typography>
                     </Box>
@@ -244,29 +215,26 @@ const AssetSummaryPanel = ({
             </Card.Content>
           </Card>
 
-          <Box direction="col" gap={3}>
-            {details.map((detail) => (
-              <Box direction="col" gap={1} key={detail.key}>
-                <Box align="center" gap={1}>
-                  <Typography color="quaternary" size="text-xs" weight="medium">
-                    {detail.key}
-                  </Typography>
-                  {detail.values.length > 0 ? (
-                    <Badge color="gray" size="sm" type="pill-color">
-                      {detail.values.length}
-                    </Badge>
-                  ) : null}
-                </Box>
-                <Typography
-                  ellipsis
-                  color={detail.values.length ? undefined : 'quaternary'}
-                  size="text-xs">
-                  {detail.values.join(', ') ||
-                    t('label.no-entity', { entity: detail.key })}
-                </Typography>
-              </Box>
-            ))}
+          <Box direction="col" gap={1}>
+            <Typography size="text-xs" weight="semibold">
+              {t('label.owner-plural')}
+            </Typography>
+            <Owner
+              isCompactView={false}
+              owners={get(source, 'owners', []) as EntityReference[]}
+              showLabel={false}
+            />
           </Box>
+          <DomainsSection
+            domains={get(source, 'domains', []) as EntityReference[]}
+            entityType={entityType}
+          />
+          <GlossaryTermsSection
+            entityType={entityType}
+            maxVisibleGlossaryTerms={3}
+            tags={tags}
+          />
+          <TagsSection entityType={entityType} tags={tags} />
         </Box>
 
         <Divider />

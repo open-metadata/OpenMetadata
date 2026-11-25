@@ -57,6 +57,7 @@ import {
   getActiveOption,
   getAdjacentFilter,
   getContributedLabelKeys,
+  getTabCounts,
   getExploreParams,
   getKeyAction,
   getPanelView,
@@ -391,6 +392,14 @@ const GlobalSearchPanel = () => {
 
   const QueryAction = queryAction?.component;
 
+  const tabCounts = getTabCounts({
+    query: trimmed,
+    scopedCategory,
+    recents: sourceRecents,
+    results,
+    isCounting,
+  });
+
   return (
     <Box
       className="tw:h-[min(804px,85vh)]"
@@ -408,11 +417,11 @@ const GlobalSearchPanel = () => {
       />
       <GlobalSearchTabBar
         filter={filter}
-        hideCounts={!trimmed || isCounting}
+        hideCounts={tabCounts.hideCounts}
         isVisible={view.showTabBar}
         labelFor={labelFor}
         more={more}
-        results={results}
+        results={tabCounts.results}
         scopedCategory={scopedCategory}
         shown={shown}
         totalCount={getTotalCount(results)}

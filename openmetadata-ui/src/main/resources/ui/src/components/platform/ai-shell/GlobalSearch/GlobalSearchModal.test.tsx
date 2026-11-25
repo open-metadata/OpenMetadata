@@ -306,7 +306,10 @@ describe('GlobalSearchModal', () => {
       'placeholder',
       'message.search-chats'
     );
-    expect(screen.getByTestId('global-search-tab-chats')).toBeInTheDocument();
+    // Before typing, the tab counts the source's recent rows.
+    expect(screen.getByTestId('global-search-tab-chats')).toHaveTextContent(
+      'label.chats1'
+    );
     expect(
       screen.queryByTestId('global-search-tab-all')
     ).not.toBeInTheDocument();

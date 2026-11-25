@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { Tab, TabList, Tabs } from 'react-aria-components';
@@ -159,8 +160,9 @@ const GlobalSearchTabBar = ({
       <Box className="tw:flex-1" />
       {scopedCategory ? (
         <Button
-          color="link-color"
+          color="link-gray"
           data-testid="global-search-everything"
+          iconTrailing={ArrowRight}
           size="sm"
           onClick={onSearchEverything}>
           {t('label.search-everything')}

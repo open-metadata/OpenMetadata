@@ -173,6 +173,24 @@ describe('useGlobalSearchItems', () => {
       ]);
       expect(findSection(items, 'recent-chats').seeAll).toBeUndefined();
     });
+
+    it('uses the row’s own Enter label when the source gives one', () => {
+      const items = renderItems({
+        scopedCategory: 'chats',
+        sourceRecents: [
+          {
+            key: 'chats',
+            label: 'Recent chats',
+            rows: [{ ...row('c1'), enterLabel: 'Open chat' }, row('c2')],
+          },
+        ],
+      });
+      const enterLabels = items.flatMap((item) =>
+        item.kind === 'row' ? [item.enterLabel] : []
+      );
+
+      expect(enterLabels).toEqual(['Open chat', 'label.open']);
+    });
   });
 
   describe('with a query on the all filter', () => {

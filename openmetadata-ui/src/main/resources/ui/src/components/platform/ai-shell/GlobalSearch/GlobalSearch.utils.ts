@@ -23,6 +23,7 @@ import {
   GlobalSearchFilter,
   GlobalSearchQueryActionContribution,
   GlobalSearchResults,
+  GlobalSearchRow,
   GlobalSearchSourceContribution,
 } from './GlobalSearch.types';
 
@@ -311,6 +312,39 @@ export const getContributedLabelKeys = ({
   actionHint: queryAction?.hintLabelKey ?? '',
   emptyHint: queryAction?.emptyHintKey,
 });
+
+/**
+ * What the tab bar counts. Before typing, a scoped search lists its source's
+ * recent rows, so its tab counts those ("Chats 10"); otherwise counts show once
+ * a query has loaded.
+ */
+export const getTabCounts = ({
+  query,
+  scopedCategory,
+  recents,
+  results,
+  isCounting,
+}: {
+  query: string;
+  scopedCategory?: GlobalSearchCategory;
+  recents: { key: string; rows: GlobalSearchRow[] }[];
+  results: GlobalSearchResults;
+  isCounting: boolean;
+}): { results: GlobalSearchResults; hideCounts: boolean } => {
+  const recent = query
+    ? undefined
+    : recents.find((item) => item.key === scopedCategory);
+  if (recent) {
+    return {
+      results: {
+        [recent.key]: { count: recent.rows.length, rows: recent.rows },
+      },
+      hideCounts: false,
+    };
+  }
+
+  return { results, hideCounts: !query || isCounting };
+};
 
 /** Opened from a scoped trigger (e.g. a source's own search button) or not. */
 export const getSearchScope = (entry: GlobalSearchFilter) => {

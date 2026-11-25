@@ -59,7 +59,9 @@ const GlobalSearchMoreTabs = ({
           aria-label={t('label.more')}
           className={classNames(
             'tw:flex tw:h-7.5 tw:w-6.5 tw:flex-none tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-r-lg',
-            slot === filter ? 'tw:bg-secondary_hover' : 'tw:hover:bg-primary_hover'
+            slot === filter
+              ? 'tw:bg-secondary_hover'
+              : 'tw:hover:bg-primary_hover'
           )}
           data-testid="global-search-more-tabs">
           <ChevronDown className="tw:size-3.5 tw:text-fg-quaternary" />

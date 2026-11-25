@@ -60,6 +60,14 @@ describe('GlobalSearchResultRow', () => {
     expect(screen.getByText('2h ago')).toBeInTheDocument();
   });
 
+  it('renders the row addon before the trailing text', () => {
+    renderRow({
+      row: { ...row, addon: <span data-testid="participants" /> },
+    });
+
+    expect(screen.getByTestId('participants')).toBeInTheDocument();
+  });
+
   it('shows the enter hint only when active', () => {
     const { rerender } = renderRow();
 

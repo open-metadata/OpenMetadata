@@ -102,6 +102,7 @@ const GlobalSearchResultRow = ({
           </Typography>
         ) : null}
       </Box>
+      {row.addon}
       {row.trailing ? (
         <Typography color="quaternary" size="text-xs">
           {row.trailing}

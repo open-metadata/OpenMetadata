@@ -11,12 +11,22 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
 import { TagSource } from '../../../../generated/type/tagLabel';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
 import AssetSummaryPanel from './AssetSummaryPanel';
 import { GlobalSearchRow } from './GlobalSearch.types';
 import { useAssetSummaryStats } from './useAssetSummaryStats';
+
+// The rules come from RuleEnforcementProvider, which the app shell mounts.
+jest.mock('../../../../hooks/useEntityRules', () => ({
+  useEntityRules: () => ({
+    entityRules: { canAddMultipleDomains: true, maxDomains: Infinity },
+    rules: [],
+    isLoading: false,
+  }),
+}));
 
 jest.mock('./useAssetSummaryStats', () => ({
   useAssetSummaryStats: jest.fn(),
@@ -42,7 +52,11 @@ const tableRow = makeRow({
   tags: [
     { tagFQN: 'PII.Sensitive', source: TagSource.Classification },
     { tagFQN: 'Tier.Tier1', source: TagSource.Classification },
-    { tagFQN: 'Business.Revenue', source: TagSource.Glossary },
+    {
+      tagFQN: 'Business.Revenue',
+      name: 'Revenue',
+      source: TagSource.Glossary,
+    },
   ],
 });
 
@@ -58,7 +72,11 @@ const statValue = (label: string) => {
 };
 
 const renderPanel = (row?: GlobalSearchRow) =>
-  render(<AssetSummaryPanel row={row} onClose={onClose} onOpen={onOpen} />);
+  render(
+    <MemoryRouter>
+      <AssetSummaryPanel row={row} onClose={onClose} onOpen={onOpen} />
+    </MemoryRouter>
+  );
 
 describe('AssetSummaryPanel', () => {
   beforeEach(() => {
@@ -96,21 +114,15 @@ describe('AssetSummaryPanel', () => {
     expect(screen.queryByText('label.upstream')).not.toBeInTheDocument();
   });
 
-  it('lists owners, tags and glossary terms with counts, and empty copy otherwise', () => {
+  it('shows owners, glossary terms and tags the way Explore does, without counts', () => {
+    (useAssetSummaryStats as jest.Mock).mockReturnValue({});
     renderPanel(tableRow);
 
-    expect(screen.getByText('Alice, bob')).toBeInTheDocument();
-    expect(screen.getByText('PII.Sensitive')).toBeInTheDocument();
+    expect(screen.getByTestId('Alice')).toBeInTheDocument();
+    expect(screen.getByTestId('tag-PII.Sensitive')).toBeInTheDocument();
+    expect(screen.queryByTestId('tag-Tier.Tier1')).not.toBeInTheDocument();
     expect(screen.getByText('Revenue')).toBeInTheDocument();
-    expect(screen.getByText('label.no-entity')).toBeInTheDocument();
-    expect(statValue('label.owner-plural')).toBe('label.owner-plural2');
-    expect(statValue('label.tag-plural')).toBe('label.tag-plural1');
-    expect(statValue('label.glossary-term-plural')).toBe(
-      'label.glossary-term-plural1'
-    );
-    expect(statValue('label.domain-plural')).toBe(
-      'label.domain-plurallabel.no-entity'
-    );
+    expect(screen.queryByText('2')).not.toBeInTheDocument();
   });
 
   it('opens and closes through its buttons', () => {

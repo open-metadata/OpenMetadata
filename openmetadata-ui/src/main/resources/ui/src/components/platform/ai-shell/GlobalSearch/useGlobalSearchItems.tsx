@@ -101,7 +101,7 @@ export const useGlobalSearchItems = ({
           kind: 'row',
           key: `${prefix}-${row.id}`,
           row,
-          enterLabel: t('label.open'),
+          enterLabel: row.enterLabel ?? t('label.open'),
           onSelect: () => onOpen(row),
         })
       );

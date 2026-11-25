@@ -15,6 +15,7 @@ import {
   getAdjacentFilter,
   getExploreParams,
   getFacetQueryFilter,
+  getTabCounts,
   getVisibleTabs,
   splitHighlight,
 } from './GlobalSearch.utils';
@@ -73,6 +74,54 @@ describe('getVisibleTabs', () => {
 
   it('keeps the active type while it has no hits', () => {
     expect(getVisibleTabs({}, 'tasks', ORDER).shown).toEqual(['tasks']);
+  });
+});
+
+describe('getTabCounts', () => {
+  const chatRow = { id: 'c1', title: 'Chat', icon: null };
+  const recents = [{ key: 'chats', rows: [chatRow, { ...chatRow, id: 'c2' }] }];
+  const loaded = { assets: { count: 4, rows: [] } };
+
+  it('counts the scoped source’s recent rows before typing', () => {
+    expect(
+      getTabCounts({
+        query: '',
+        scopedCategory: 'chats',
+        recents,
+        results: {},
+        isCounting: false,
+      })
+    ).toEqual({
+      results: { chats: { count: 2, rows: recents[0].rows } },
+      hideCounts: false,
+    });
+  });
+
+  it('hides counts before typing when not scoped, and while counting', () => {
+    expect(
+      getTabCounts({ query: '', recents, results: {}, isCounting: false })
+        .hideCounts
+    ).toBe(true);
+    expect(
+      getTabCounts({
+        query: 'orders',
+        scopedCategory: 'chats',
+        recents,
+        results: loaded,
+        isCounting: true,
+      })
+    ).toEqual({ results: loaded, hideCounts: true });
+  });
+
+  it('shows the loaded counts once a query settles', () => {
+    expect(
+      getTabCounts({
+        query: 'orders',
+        recents,
+        results: loaded,
+        isCounting: false,
+      })
+    ).toEqual({ results: loaded, hideCounts: false });
   });
 });
 

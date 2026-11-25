@@ -33,6 +33,10 @@ export interface GlobalSearchRow {
   badges?: string[];
   /** Right-aligned trailing text, e.g. a relative time. */
   trailing?: ReactNode;
+  /** Shown before `trailing`, e.g. a participant avatar stack. */
+  addon?: ReactNode;
+  /** What Enter does on this row, e.g. "Open chat"; defaults to "Open". */
+  enterLabel?: string;
   href?: string;
   /** Present on data-asset rows; drives the summary panel. */
   source?: SearchSourceAlias;
