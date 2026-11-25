@@ -43,6 +43,7 @@ public class AuditReportMapper implements EntityMapper<AuditReport, CreateAuditR
         .withStatus(AuditReportStatus.Queued)
         .withAsOfDate(create.getAsOfDate())
         .withIncludeRedacted(create.getIncludeRedacted())
+        .withRequestedBy(getEntityReference(Entity.USER, user))
         .withRequestedAt(System.currentTimeMillis());
   }
 

@@ -30,17 +30,10 @@ import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.type.AICompliance;
 import org.openmetadata.schema.type.AIComplianceRecord;
 import org.openmetadata.schema.type.ComplianceFramework;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RemediationAction;
 import org.openmetadata.schema.type.RemediationStatus;
 import org.openmetadata.schema.type.ScopeAndDeployment;
-import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.AIApplicationRepository;
-import org.openmetadata.service.jdbi3.LLMModelRepository;
-import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.McpServerRepository;
-import org.openmetadata.service.util.EntityUtil;
 
 /**
  * Computes real per-control coverage for an {@link AIGovernanceFramework}.
@@ -64,13 +57,13 @@ import org.openmetadata.service.util.EntityUtil;
 @Slf4j
 public final class FrameworkCoverageComputer {
 
-  private static final int PAGE_SIZE = 1000;
-
   private FrameworkCoverageComputer() {}
 
   public static FrameworkCoverageResponse compute(
-      AIGovernanceFramework framework, List<AIFrameworkControl> controls) {
-    return compute(framework, controls, collectInScopeAssets(framework));
+      AIGovernanceFramework framework,
+      List<AIFrameworkControl> controls,
+      final AIGovernanceAssetReader reader) {
+    return compute(framework, controls, collectInScopeAssets(framework, reader));
   }
 
   static FrameworkCoverageResponse compute(
@@ -228,13 +221,14 @@ public final class FrameworkCoverageComputer {
     return recordFramework != null && recordFramework.value().equalsIgnoreCase(frameworkName);
   }
 
-  private static List<EntityInterface<?>> collectInScopeAssets(AIGovernanceFramework framework) {
+  private static List<EntityInterface<?>> collectInScopeAssets(
+      AIGovernanceFramework framework, final AIGovernanceAssetReader reader) {
     FrameworkAutoApplyRules rules = framework.getAutoApply();
     String frameworkName = framework.getName();
     List<EntityInterface<?>> result = new ArrayList<>();
     List<String> assetTypes = autoApplyAssetTypes(rules);
     for (String entityType : assetTypes) {
-      for (EntityInterface<?> entity : listEntities(entityType)) {
+      for (EntityInterface<?> entity : reader.list(entityType, "")) {
         // In-scope when the asset matches the auto-apply rules OR already carries
         // a compliance record for this framework (an explicit assessment always
         // counts, even if the asset hasn't declared the matching region/stage).
@@ -264,41 +258,6 @@ public final class FrameworkCoverageComputer {
     }
 
     return result;
-  }
-
-  private static List<? extends EntityInterface<?>> listEntities(String entityType) {
-    List<EntityInterface<?>> result = new ArrayList<>();
-    try {
-      ListFilter filter = new ListFilter(Include.NON_DELETED);
-      String after = null;
-      do {
-        ResultList<? extends EntityInterface<?>> page = listEntityPage(entityType, filter, after);
-        result.addAll(page.getData());
-        after = page.getPaging() == null ? null : page.getPaging().getAfter();
-      } while (after != null);
-    } catch (Exception e) {
-      LOG.debug("Framework coverage walk for {} returned empty: {}", entityType, e.getMessage());
-    }
-
-    return result;
-  }
-
-  private static ResultList<? extends EntityInterface<?>> listEntityPage(
-      String entityType, ListFilter filter, String after) {
-    if (Entity.AI_APPLICATION.equals(entityType)) {
-      AIApplicationRepository repo =
-          (AIApplicationRepository) Entity.getEntityRepository(entityType);
-      return repo.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, PAGE_SIZE, after);
-    }
-    if (Entity.LLM_MODEL.equals(entityType)) {
-      LLMModelRepository repo = (LLMModelRepository) Entity.getEntityRepository(entityType);
-      return repo.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, PAGE_SIZE, after);
-    }
-    if (Entity.MCP_SERVER.equals(entityType)) {
-      McpServerRepository repo = (McpServerRepository) Entity.getEntityRepository(entityType);
-      return repo.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, PAGE_SIZE, after);
-    }
-    return new ResultList<>(List.of(), null, null, 0);
   }
 
   private static boolean matchesScope(EntityInterface<?> entity, FrameworkAutoApplyRules rules) {

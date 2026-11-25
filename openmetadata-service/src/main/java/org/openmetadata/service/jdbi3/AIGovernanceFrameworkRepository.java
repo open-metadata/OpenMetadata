@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.ai.AIGovernanceAssetReader;
 import org.openmetadata.service.resources.ai.AIGovernanceFrameworkResource;
 import org.openmetadata.service.resources.ai.FrameworkCoverageComputer;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -76,7 +77,8 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
     // Relationships stored as part of the JSON
   }
 
-  public FrameworkCoverageResponse getCoverage(UriInfo uriInfo, AIGovernanceFramework framework) {
+  public FrameworkCoverageResponse getCoverage(
+      UriInfo uriInfo, AIGovernanceFramework framework, final AIGovernanceAssetReader reader) {
     AIFrameworkControlRepository controlRepo = controlRepository();
     ListFilter filter = new ListFilter(Include.NON_DELETED);
     List<AIFrameworkControl> allControls = listControls(uriInfo, controlRepo, "", filter);
@@ -89,7 +91,7 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
       }
     }
 
-    return FrameworkCoverageComputer.compute(framework, controls);
+    return FrameworkCoverageComputer.compute(framework, controls, reader);
   }
 
   public ForkAIGovernanceFrameworkResponse fork(
