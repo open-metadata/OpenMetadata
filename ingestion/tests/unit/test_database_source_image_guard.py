@@ -33,8 +33,11 @@ SOURCE_ROOTS = ("ingestion/tests", "ingestion/src/_openmetadata_testutils")
 # oldest-version run.
 HELPER = "ingestion/src/_openmetadata_testutils/helpers/database_images.py"
 
-MYSQL_SOURCE_IMAGES = (MYSQL_OLDEST_SOURCE_IMAGE, MYSQL_NEWEST_SOURCE_IMAGE)
-POSTGRES_SOURCE_IMAGES = (POSTGRES_OLDEST_SOURCE_IMAGE, POSTGRES_NEWEST_SOURCE_IMAGE)
+# IMAGE_TAG stops before a digest, so a file is compared on the tag the constants pin.
+MYSQL_SOURCE_IMAGES = tuple(image.split("@")[0] for image in (MYSQL_OLDEST_SOURCE_IMAGE, MYSQL_NEWEST_SOURCE_IMAGE))
+POSTGRES_SOURCE_IMAGES = tuple(
+    image.split("@")[0] for image in (POSTGRES_OLDEST_SOURCE_IMAGE, POSTGRES_NEWEST_SOURCE_IMAGE)
+)
 
 # mysql: or postgres: with a one- or two-digit major (which keeps out ports such as 3306), a
 # floating tag or a digest, and Oracle's legacy MySQL Server image. Connection strings such as
@@ -78,7 +81,7 @@ def _mismatches_in(path: Path, repository_root: Path) -> list[str]:
 
 def _fix(python_code: bool, tag: str) -> str:
     if python_code:
-        return "call mysql_source_image() or postgres_source_image()"
+        return f"call {'postgres' if tag.startswith('postgres') else 'mysql'}_source_image()"
     return f"expected one of {', '.join(_allowed(tag))}"
 
 
@@ -95,3 +98,18 @@ def test_every_connector_source_image_equals_the_constant():
         "to bump a version, change those constants and every line listed here. These lines name a "
         "different image:\n" + "\n".join(mismatches)
     )
+
+
+def test_the_guard_reports_typed_and_unknown_tags(tmp_path):
+    tests = tmp_path / "ingestion" / "tests"
+    tests.mkdir(parents=True)
+    newest_tag = MYSQL_SOURCE_IMAGES[1]
+    # Split so this file does not match its own pattern.
+    stale_tag = "postgres" + ":16-alpine"
+    (tests / "conftest.py").write_text(f'MySqlContainer("{newest_tag}")\nengine = "mysql+pymysql://h:3306/db"\n')
+    (tests / "compose.yml").write_text(f"image: {POSTGRES_SOURCE_IMAGES[0]}\nimage: {stale_tag}\n")
+
+    assert find_mismatches(tmp_path) == [
+        f"ingestion/tests/compose.yml:2: {stale_tag} (expected one of {', '.join(POSTGRES_SOURCE_IMAGES)})",
+        f"ingestion/tests/conftest.py:1: {newest_tag} (call mysql_source_image())",
+    ]

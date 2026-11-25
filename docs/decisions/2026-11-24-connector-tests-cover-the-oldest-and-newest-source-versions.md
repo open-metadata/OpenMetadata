@@ -24,12 +24,16 @@ its own metadata store.
   oldest, and an unknown value fails rather than running the newest. `MYSQL_SOURCE_IMAGE` and
   `POSTGRES_SOURCE_IMAGE` name any image for a one-off run.
 - **Which run uses which version**: the merge queue runs the newest; the nightly Python
-  integration run sets `SOURCE_DATABASE_VERSION=oldest`. Nothing runs twice per merge.
+  integration run sets `SOURCE_DATABASE_VERSION=oldest`. Nothing runs twice per merge. The CLI
+  E2E v2 workflow is started by hand and does not set the variable, so its suites run the newest
+  only until that workflow gains a version input.
 - **How versions are chosen**: always the newest patch of a release line. The oldest line is the
   oldest the connectors state as supported, but never one its vendor has stopped patching (so
-  Postgres starts at the oldest line the PostgreSQL project still patches). The newest line is
-  the newest that has had a patch release; for MySQL that is the LTS line, not an innovation
-  release.
+  Postgres starts at the oldest line the PostgreSQL project still patches). Exception: MySQL keeps
+  8.0 while the MySQL connector supports it, even though Oracle stopped patching 8.0 in April
+  2026, because customers' source databases still run it. The newest line is the newest that has
+  had a patch release; for MySQL that is the LTS line, not an innovation release. Each constant
+  pins its tag by digest, so a rebuilt tag cannot change a run.
 - **Guard**: scans `ingestion/tests/` and `ingestion/src/_openmetadata_testutils/`. It fails on a
   MySQL or Postgres image tag that is not one of the constants, and on any tag typed in Python code
   other than the helper: a test that typed even an allowed tag would miss the oldest-version run.

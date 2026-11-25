@@ -14,18 +14,18 @@ Each engine has the oldest and the newest version the connectors support, indepe
 database OpenMetadata ships as its own metadata store.
 Tests run on the newest; SOURCE_DATABASE_VERSION=oldest runs them on the oldest, as the nightly
 run does. MYSQL_SOURCE_IMAGE and POSTGRES_SOURCE_IMAGE replace the image for a one-off run.
-Bump these by hand; tests/unit/test_database_source_image_guard.py lists every other line that
-must change.
+Each image is pinned by digest so a rebuilt tag cannot change a run. Bump these by hand;
+tests/unit/test_database_source_image_guard.py lists every other line that must change.
 
 ADR:2026-11-24-connector-tests-cover-the-oldest-and-newest-source-versions
 """
 
 import os
 
-MYSQL_OLDEST_SOURCE_IMAGE = "mysql:8.0.46"
-MYSQL_NEWEST_SOURCE_IMAGE = "mysql:9.7.4"
-POSTGRES_OLDEST_SOURCE_IMAGE = "postgres:15.20"
-POSTGRES_NEWEST_SOURCE_IMAGE = "postgres:18.7"
+MYSQL_OLDEST_SOURCE_IMAGE = "mysql:8.0.46@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b"
+MYSQL_NEWEST_SOURCE_IMAGE = "mysql:9.7.4@sha256:1f2ca53a9e94ff9f1f313099fa7dc7fb2f72e180ca5b2ef83574031e451bbbf1"
+POSTGRES_OLDEST_SOURCE_IMAGE = "postgres:15.20@sha256:91b9edc40277faf94bc1e3d7ae621b185fa70f3099b94309c4731a8296114870"
+POSTGRES_NEWEST_SOURCE_IMAGE = "postgres:18.7@sha256:c699303802144847d238196173655dbbecf7a96aeca1565f2b02eb671a1f0b6b"
 
 SOURCE_VERSION_VARIABLE = "SOURCE_DATABASE_VERSION"
 OLDEST = "oldest"
