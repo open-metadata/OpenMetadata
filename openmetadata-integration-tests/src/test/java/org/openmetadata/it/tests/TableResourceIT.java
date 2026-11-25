@@ -1206,6 +1206,38 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   @Test
+  void get_tableColumns_emptyTable_hasNoCursors(TestNamespace ns) {
+    // ADR:2026-11-25-empty-child-page-has-no-cursors
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    CreateTable request = new CreateTable();
+    request.setName(ns.prefix("no_columns"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setColumns(List.of());
+    Table table = createEntity(request);
+
+    String encodedFqn = URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/tables/name/" + encodedFqn + "/columns?limit=15&offset=0",
+                null);
+    JsonNode root = JsonUtils.readTree(response);
+
+    assertEquals(0, root.get("data").size());
+    assertEquals(0, root.get("paging").get("total").asInt());
+    assertFalse(
+        root.get("paging").hasNonNull("before"),
+        "an empty collection must not advertise a before cursor");
+    assertFalse(
+        root.get("paging").hasNonNull("after"),
+        "an empty collection must not advertise an after cursor");
+  }
+
+  @Test
   void patch_tableColumns_200_ok(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
