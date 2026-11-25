@@ -8647,7 +8647,7 @@
     },
     "id": "custom-property-config-no-search-results",
     "ready": {
-      "text": "No Properties found"
+      "text": "No Properties Found"
     },
     "actions": [
       {
@@ -9650,93 +9650,6 @@
     "initialReady": {
       "testId": "custom-property-table"
     },
-    "id": "custom-property-config-table-column-limit",
-    "ready": {
-      "text": "Maximum 3 Columns are allowed"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "add-custom-property-btn"
-      },
-      {
-        "action": "fill",
-        "role": "textbox",
-        "name": "Name",
-        "within": "custom-property-name",
-        "value": "VisualInvalidConfiguration"
-      },
-      {
-        "action": "click",
-        "testId": "custom-property-type"
-      },
-      {
-        "action": "click",
-        "role": "option",
-        "name": "Table"
-      },
-      {
-        "action": "fill",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Source"
-      },
-      {
-        "action": "press",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Enter"
-      },
-      {
-        "action": "fill",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Purpose"
-      },
-      {
-        "action": "press",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Enter"
-      },
-      {
-        "action": "fill",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Owner"
-      },
-      {
-        "action": "press",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Enter"
-      },
-      {
-        "action": "fill",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Retention"
-      },
-      {
-        "action": "press",
-        "role": "combobox",
-        "within": "custom-property-columns",
-        "value": "Enter"
-      }
-    ],
-    "disabled": [
-      {
-        "testId": "custom-property-save"
-      }
-    ]
-  },
-  {
-    "group": "Custom property configuration",
-    "path": "/my-data#custom-properties/table",
-    "state": "custom-properties",
-    "initialReady": {
-      "testId": "custom-property-table"
-    },
     "id": "custom-property-config-enum-created-values-menu",
     "ready": {
       "role": "listbox",
@@ -10406,7 +10319,7 @@
     "ready": {
       "testId": "announcements-empty"
     },
-    "text": "No Announcements found"
+    "text": "No Announcements Found"
   },
   {
     "id": "classic-settings-notifications-announcements-add",

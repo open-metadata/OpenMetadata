@@ -70,7 +70,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -1120,7 +1120,8 @@ class DistributedJobParticipantTest {
    * mapping under {@link ReindexContext#STAGED_CHUNK_KEY}) into the vector service before it
    * streams, and clears it in the finally when the run ends — so live edits handled on this
    * (non-coordinator) JVM mirror into this run's generation instead of relying on lossy
-   * cluster-state discovery. This wires the OpenSearchVectorService fix end-to-end.
+   * cluster-state discovery. The vector service is the one the search repository holds, whichever
+   * engine it runs on.
    */
   @Test
   void testProcessJobPartitionsLatchesAndClearsTheParticipantStagedChunkTarget() throws Exception {
@@ -1151,23 +1152,20 @@ class DistributedJobParticipantTest {
         .thenReturn(bulkSink);
     when(bulkSink.flushAndAwait(60)).thenReturn(true);
 
-    OpenSearchVectorService vectorServiceMock = mock(OpenSearchVectorService.class);
+    VectorIndexService vectorServiceMock = mock(VectorIndexService.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorServiceMock);
 
     try (MockedConstruction<DistributedSearchIndexCoordinator> coordinatorMocked =
-            mockConstruction(
-                DistributedSearchIndexCoordinator.class,
-                (mock, context) -> {
-                  when(mock.getJob(eq(jobId))).thenReturn(Optional.of(runningJob));
-                  when(mock.claimNextPartition(eq(jobId))).thenReturn(Optional.empty());
-                  when(mock.getPartitions(eq(jobId), eq(PartitionStatus.PENDING)))
-                      .thenReturn(List.of());
-                  when(mock.getPartitions(eq(jobId), eq(PartitionStatus.PROCESSING)))
-                      .thenReturn(List.of());
-                });
-        MockedStatic<OpenSearchVectorService> vectorStatic =
-            mockStatic(OpenSearchVectorService.class)) {
-      vectorStatic.when(OpenSearchVectorService::getInstance).thenReturn(vectorServiceMock);
-
+        mockConstruction(
+            DistributedSearchIndexCoordinator.class,
+            (mock, context) -> {
+              when(mock.getJob(eq(jobId))).thenReturn(Optional.of(runningJob));
+              when(mock.claimNextPartition(eq(jobId))).thenReturn(Optional.empty());
+              when(mock.getPartitions(eq(jobId), eq(PartitionStatus.PENDING)))
+                  .thenReturn(List.of());
+              when(mock.getPartitions(eq(jobId), eq(PartitionStatus.PROCESSING)))
+                  .thenReturn(List.of());
+            })) {
       participant =
           new DistributedJobParticipant(
               collectionDAO, searchRepository, "test-server-1", testNotifier);

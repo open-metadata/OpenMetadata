@@ -11,10 +11,11 @@
 """Daily family policy regressions."""
 
 import re
+import threading
 from collections import namedtuple
 from contextlib import contextmanager
 from copy import deepcopy
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from threading import Lock
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -34,7 +35,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
-from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_LIFE_CYCLE_QUERY
+from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_GET_TABLE_DDLS, BIGQUERY_LIFE_CYCLE_QUERY
 from metadata.ingestion.source.database.bigquery.sharding import (
     eligible_shard,
     inventory_families,
@@ -249,35 +250,34 @@ def test_separate_sampler_pins_physical_sql_and_keeps_logical_entity():
     )
 
 
-def test_family_lifecycle_reduces_source_activity_without_changing_representative():
-    from datetime import datetime
+def test_family_lifecycle_takes_earliest_creation_and_representative_last_write():
+    class TableInventory(Inventory):
+        def get_table(self, name):
+            assert name == "demo_project.demo_dataset.events_20260102"
+            table = BigQueryTable(name)
+            table._properties["lastModifiedTime"] = str(
+                int(datetime(2026, 2, 1, tzinfo=timezone.utc).timestamp() * 1000)
+            )
+            return table
 
     source = source_for(["events_20260101", "events_20260102"])
+    source.client = TableInventory(["events_20260101", "events_20260102"])
+    source._table_obj_cache = LRUCache(10)
     iterator = source.get_tables_name_and_type()
     assert next(iterator) == ("events_20260102", TableType.Sharded)
     context = source.context.get()
     context.table = "events_yyyymmdd"
     rows = [
-        {
-            "table_name": "events_20260101",
-            "table_type": "BASE TABLE",
-            "created_at": datetime(2026, 1, 3),
-            "updated_at": datetime(2026, 2, 1),
-        },
-        {
-            "table_name": "events_20260102",
-            "table_type": "BASE TABLE",
-            "created_at": datetime(2026, 1, 2),
-            "updated_at": None,
-        },
+        {"table_name": "events_20260101", "table_type": "BASE TABLE", "created_at": datetime(2026, 1, 3)},
+        {"table_name": "events_20260102", "table_type": "BASE TABLE", "created_at": datetime(2026, 1, 2)},
     ]
     source.engine = MagicMock()
     source.engine.connect.return_value.__enter__.return_value.execute.return_value = [
         SimpleNamespace(_asdict=lambda row=row: row) for row in rows
     ]
-    lifecycle = source.life_cycle_query_dict("select metadata")["events_yyyymmdd"]
+    lifecycle = source.life_cycle_query_dict(lifecycle_query())["events_yyyymmdd"]
     assert lifecycle.created_at == datetime(2026, 1, 2)
-    assert lifecycle.updated_at == datetime(2026, 2, 1)
+    assert lifecycle.updated_at == datetime(2026, 2, 1, tzinfo=timezone.utc)
     assert context.shard_family.representative.tableName == "events_20260102"
 
 
@@ -344,19 +344,20 @@ def lifecycle_query(schema="demo_dataset"):
     return BIGQUERY_LIFE_CYCLE_QUERY.format(database_name="demo_project", schema_name=schema)
 
 
+def ddl_query(schema="demo_dataset"):
+    return BIGQUERY_GET_TABLE_DDLS.format(database_name="demo_project", schema_name=schema)
+
+
 def test_grouped_ordinary_metadata_uses_bounded_batches_without_truncation(metadata_batches):
     source, queries = metadata_batches
     context = source.context.get()
     for i in range(2501):
         name = f"ordinary_{i:04d}"
-        context.table = name
-        observed = source.life_cycle_query_dict(lifecycle_query())[name]
-        assert observed.created_at == datetime(2026, 1, 1)
         assert source.get_schema_definition(TableType.Regular, name, "demo_dataset", None) == (
             f"CREATE TABLE demo_dataset.{name} (id INT64)"
         )
         assert len(context.shard_metadata) <= 2000
-    assert len(queries) == 6
+    assert len(queries) == 3
 
 
 def test_metadata_batches_isolate_datasets_and_support_out_of_order_reads(metadata_batches):
@@ -369,9 +370,6 @@ def test_metadata_batches_isolate_datasets_and_support_out_of_order_reads(metada
         ("other_dataset", "ordinary_0001"),
     ]:
         context.database_schema = schema
-        context.table = name
-        observed = source.life_cycle_query_dict(lifecycle_query(schema))[name]
-        assert observed.created_at == datetime(2026, 1 if schema == "demo_dataset" else 2, 1)
         assert source.get_schema_definition(TableType.Regular, name, schema, None) == (
             f"CREATE TABLE {schema}.{name} (id INT64)"
         )
@@ -381,9 +379,12 @@ def test_metadata_batches_isolate_datasets_and_support_out_of_order_reads(metada
 
 def test_family_lifecycle_and_representative_ddl_coexist_with_ordinary_batches(metadata_batches):
     source, queries = metadata_batches
+    source.client.get_table = BigQueryTable
+    source._table_obj_cache = LRUCache(10)
     context = source.context.get()
-    context.table = "ordinary_0000"
-    assert source.life_cycle_query_dict(lifecycle_query())[context.table].created_at == datetime(2026, 1, 1)
+    assert source.get_schema_definition(TableType.Regular, "ordinary_0000", "demo_dataset", None) == (
+        "CREATE TABLE demo_dataset.ordinary_0000 (id INT64)"
+    )
     context.shard_prefixes = {"events_"}
     context.shard_family = inventory_families(
         SimpleNamespace(table_id=name, table_type="TABLE") for name in ["events_20260101", "events_20260102"]
@@ -394,26 +395,23 @@ def test_family_lifecycle_and_representative_ddl_coexist_with_ordinary_batches(m
         "CREATE TABLE events_20260102 (id INT64)"
     )
     context.shard_family = None
-    context.table = "ordinary_0001"
-    assert source.life_cycle_query_dict(lifecycle_query())[context.table].created_at == datetime(2026, 1, 1)
+    assert source.get_schema_definition(TableType.Regular, "ordinary_0001", "demo_dataset", None) == (
+        "CREATE TABLE demo_dataset.ordinary_0001 (id INT64)"
+    )
     assert len(queries) == 3
 
 
 def test_metadata_batch_caches_absence_and_binds_table_names(metadata_batches):
     source, queries = metadata_batches
-    context = source.context.get()
-    context.table = "ordinary_0000'"
+    table = "ordinary_0000'"
     for _ in range(2):
-        assert source.life_cycle_query_dict(lifecycle_query()) == {}
-        assert source.get_schema_definition(TableType.Regular, context.table, "demo_dataset", None) is None
-    assert len(queries) == 2
-    assert all(context.table not in sql and params["table_name"] == context.table for sql, params in queries)
+        assert source.get_schema_definition(TableType.Regular, table, "demo_dataset", None) is None
+    assert len(queries) == 1
+    assert all(table not in sql and params["table_name"] == table for sql, params in queries)
 
 
 def test_failed_metadata_batch_does_not_cache_partial_results(metadata_batches):
     source, queries = metadata_batches
-    context = source.context.get()
-    context.table = "ordinary_0000"
     engine = source.engine
 
     @contextmanager
@@ -428,9 +426,11 @@ def test_failed_metadata_batch_does_not_cache_partial_results(metadata_batches):
 
     source.engine = SimpleNamespace(connect=failed_connect)
     with pytest.raises(ConnectionError, match="metadata read interrupted"):
-        source.life_cycle_query_dict(lifecycle_query())
+        source._sharded_table_metadata(ddl_query(), "ordinary_0000")
     source.engine = engine
-    assert source.life_cycle_query_dict(lifecycle_query())[context.table].created_at == datetime(2026, 1, 1)
+    assert source._sharded_table_metadata(ddl_query(), "ordinary_0000")["ddl"] == (
+        "CREATE TABLE demo_dataset.ordinary_0000 (id INT64)"
+    )
     assert len(queries) == 2
 
 
@@ -621,12 +621,16 @@ def topology_source_for_mode(extraction_fails, grouping, incremental):
     source.database_source_state = set()
     source._table_obj_cache = LRUCache(10)
     source._dataset_obj_cache = LRUCache(10)
-    source._table_ddl_cache = {}
+    source._ddl_local = threading.local()
 
     class WarehouseInventory(Inventory):
         def get_table(self, name):
-            assert name.rsplit(".", 1)[-1] in names
-            return BigQueryTable(name)
+            table_name = name.rsplit(".", 1)[-1]
+            assert table_name in names
+            table = BigQueryTable(name)
+            created = datetime(2026, 1, names.index(table_name) + 1, tzinfo=timezone.utc)
+            table._properties["creationTime"] = str(int(created.timestamp() * 1000))
+            return table
 
         def get_dataset(self, name):
             return SimpleNamespace(location="US")

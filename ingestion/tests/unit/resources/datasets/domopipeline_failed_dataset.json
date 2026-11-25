@@ -1,0 +1,62 @@
+[
+  {
+    "id": 4,
+    "onboardFlowId": 1,
+    "previewRows": 0,
+    "dapDataFlowExecutionId": "0c1d2e3f-4a5b-6c7d-8e9f-0a1b2c3d4e5f",
+    "beginTime": 1665563183000,
+    "endTime": 1665563192000,
+    "lastUpdated": 1665563192000,
+    "failed": true,
+    "state": "FAILED_DATA_FLOW",
+    "activationType": "MANUAL",
+    "dataProcessor": "MAGIC",
+    "inputDataSources": [
+      {
+        "dataSourceId": "2e41e76b-fc02-480d-a932-91bdbea40fe5",
+        "dataVersionId": 5,
+        "rowsRead": 100,
+        "bytesRead": 3200,
+        "downloadTime": 1053,
+        "onlyLoadNewVersions": false
+      }
+    ],
+    "outputDataSources": [],
+    "totalBytesWritten": 0,
+    "dataFlowVersion": 3,
+    "totalRowsRead": 100,
+    "totalBytesRead": 3200,
+    "meanDownloadRateKbps": 2.9677113010446345,
+    "totalRowsWritten": 0
+  },
+  {
+    "id": 5,
+    "onboardFlowId": 1,
+    "previewRows": 0,
+    "dapDataFlowExecutionId": "1d2e3f4a-5b6c-7d8e-9f0a-1b2c3d4e5f60",
+    "beginTime": 1665649583000,
+    "endTime": 1665649592000,
+    "lastUpdated": 1665649592000,
+    "failed": false,
+    "state": "RUNNING",
+    "activationType": "MANUAL",
+    "dataProcessor": "MAGIC",
+    "inputDataSources": [
+      {
+        "dataSourceId": "2e41e76b-fc02-480d-a932-91bdbea40fe5",
+        "dataVersionId": 6,
+        "rowsRead": 0,
+        "bytesRead": 0,
+        "downloadTime": 0,
+        "onlyLoadNewVersions": false
+      }
+    ],
+    "outputDataSources": [],
+    "totalBytesWritten": 0,
+    "dataFlowVersion": 3,
+    "totalRowsRead": 0,
+    "totalBytesRead": 0,
+    "meanDownloadRateKbps": 0,
+    "totalRowsWritten": 0
+  }
+]

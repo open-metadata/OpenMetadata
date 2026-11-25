@@ -2,7 +2,10 @@ package org.openmetadata.service.search.vector;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +31,7 @@ public class VectorSearchQueryBuilder {
   private static final String ANY = "__ANY__";
   private static final String NONE = "__NONE__";
   public static final int DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER = 2;
+  private static final ObjectMapper CLAUSE_MAPPER = new ObjectMapper();
   public static final int ES_MAX_KNN_NUM_CANDIDATES = 10_000;
 
   /**
@@ -147,6 +151,67 @@ public class VectorSearchQueryBuilder {
     sb.append("}}}"); // close embedding, knn, query
   }
 
+  /**
+   * The OpenSearch kNN clause of {@link #buildQuery}, plus {@code ignore_unmapped}: a shard whose
+   * mapping has no {@code embedding} field then skips this clause instead of failing, which would
+   * take every other clause of the request down with it. Usable inside {@code bool} and {@code
+   * function_score}.
+   */
+  public static String buildQueryClause(
+      float[] vector, VectorSearchParameters parameters, Set<String> readableAnchorIds) {
+    ObjectNode root = readObject(buildQuery(vector, parameters, readableAnchorIds));
+    ((ObjectNode) root.path("knn").path("embedding")).put("ignore_unmapped", true);
+    return root.toString();
+  }
+
+  /**
+   * The Elasticsearch {@code knn} query clause, usable inside {@code bool} and {@code
+   * function_score}. {@code k} is per shard. The threshold is on the score scale {@code (1 +
+   * cosine) / 2}, while Elasticsearch's {@code similarity} takes the raw cosine, so it is sent as
+   * {@code 2 * threshold - 1}. A field with no mapping matches nothing from Elasticsearch 8.16.
+   */
+  public static String buildNativeESQueryClause(
+      float[] vector,
+      VectorSearchParameters parameters,
+      int numCandidatesMultiplier,
+      Set<String> readableAnchorIds) {
+    StringBuilder sb = new StringBuilder(512);
+    appendNativeKnnHead(sb, vector, parameters, numCandidatesMultiplier);
+    sb.append(",\"filter\":{\"bool\":{\"must\":[");
+    appendFilterMustClauses(sb, parameters.filters(), parameters.queryFilter());
+    sb.append("]");
+    appendMemoryVisibilityFilter(sb, parameters, readableAnchorIds);
+    sb.append("}}}}");
+    return readObject(sb.toString()).toString();
+  }
+
+  /** The field, vector, {@code k}, candidates and, above a 0 threshold, the raw-cosine similarity. */
+  private static void appendNativeKnnHead(
+      StringBuilder sb, float[] vector, VectorSearchParameters parameters, int multiplier) {
+    int k = Math.min(parameters.k(), ES_MAX_KNN_NUM_CANDIDATES);
+    long candidates = (long) k * multiplier;
+    int numCandidates = (int) Math.max(100, Math.min(candidates, (long) ES_MAX_KNN_NUM_CANDIDATES));
+    sb.append("{\"knn\":{\"field\":\"embedding\",\"query_vector\":")
+        .append(Arrays.toString(vector))
+        .append(",\"k\":")
+        .append(k)
+        .append(",\"num_candidates\":")
+        .append(numCandidates);
+    if (parameters.threshold() > 0.0) {
+      sb.append(",\"similarity\":").append(2 * parameters.threshold() - 1);
+    }
+  }
+
+  private static ObjectNode readObject(String json) {
+    ObjectNode node;
+    try {
+      node = (ObjectNode) CLAUSE_MAPPER.readTree(json);
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException("Built an invalid kNN clause: " + e.getOriginalMessage(), e);
+    }
+    return node;
+  }
+
   public static String buildNativeESQuery(
       float[] vector, int size, int from, int k, Map<String, List<String>> filters) {
     return buildNativeESQuery(
@@ -165,8 +230,7 @@ public class VectorSearchQueryBuilder {
 
   /**
    * As {@link #buildNativeESQuery}, constraining context memories to those {@code subjectContext}
-   * may see. Elasticsearch has no chunk index, so this filters memory entity documents, which carry
-   * the same visibility fields.
+   * may see. Memory entity documents and their chunk documents carry the same visibility fields.
    */
   public static String buildNativeESQuery(
       float[] vector,

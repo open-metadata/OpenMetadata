@@ -60,7 +60,7 @@ const PageHeader = ({
         </Typography>
         {badge}
         {learningPageId && (
-          <LearningIcon pageId={learningPageId} size="xs" title={title} />
+          <LearningIcon pageId={learningPageId} title={title} />
         )}
       </Box>
       <Typography

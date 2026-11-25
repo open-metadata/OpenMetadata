@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import { ConstraintType, DataType } from '../../../generated/entity/data/table';
 import { mockVersionTableProps } from '../../../mocks/VersionTable.mock';
 import VersionTable from './VersionTable.component';
 
@@ -67,4 +68,101 @@ describe('VersionTable component', () => {
 
     expect(screen.getByText('address_id')).toBeInTheDocument();
   });
+
+  it.each([
+    {
+      scenario: 'two overlapping groups are added',
+      current: [
+        ['a', 'b'],
+        ['b', 'c'],
+      ],
+      added: [
+        ['a', 'b'],
+        ['b', 'c'],
+      ],
+      deleted: [],
+      expected: { a: ['A'], b: ['A', 'B'], c: ['B'] },
+    },
+    {
+      scenario: 'an earlier group is unchanged',
+      current: [
+        ['a', 'b'],
+        ['b', 'c'],
+      ],
+      added: [['b', 'c']],
+      deleted: [],
+      expected: { a: ['A'], b: ['B'], c: ['B'] },
+    },
+    {
+      scenario: 'different groups are added and deleted',
+      current: [['b', 'c']],
+      added: [['b', 'c']],
+      deleted: [['a', 'b']],
+      expected: { a: ['B'], b: ['B', 'A'], c: ['A'] },
+    },
+    {
+      scenario: 'all composite groups are deleted',
+      current: [],
+      added: [],
+      deleted: [
+        ['a', 'b'],
+        ['b', 'c'],
+      ],
+      expected: { a: ['A'], b: ['A', 'B'], c: ['B'] },
+    },
+  ])(
+    'keeps shared group letters when $scenario',
+    ({ current, added, deleted, expected }) => {
+      const constraints = (groups: string[][]) =>
+        groups.map((columns) => ({
+          constraintType: ConstraintType.Unique,
+          columns,
+        }));
+
+      render(
+        <VersionTable
+          {...mockVersionTableProps}
+          addedTableConstraintDiffs={
+            added.length
+              ? [
+                  {
+                    name: 'tableConstraints',
+                    newValue: JSON.stringify(constraints(added)),
+                  },
+                ]
+              : []
+          }
+          columns={['a', 'b', 'c'].map((name) => ({
+            name,
+            dataType: DataType.Int,
+          }))}
+          deletedTableConstraintDiffs={
+            deleted.length
+              ? [
+                  {
+                    name: 'tableConstraints',
+                    oldValue: JSON.stringify(constraints(deleted)),
+                  },
+                ]
+              : []
+          }
+          tableConstraints={constraints(current)}
+        />
+      );
+
+      for (const [name, letters] of Object.entries(expected)) {
+        const row = screen.getByText(name).closest('tr');
+
+        if (!row) {
+          throw new Error(`Missing row for column ${name}`);
+        }
+
+        expect(
+          within(row)
+            .getAllByTestId('constraint-icon-unique')
+            .map((icon) => icon.nextElementSibling?.textContent)
+        ).toEqual(letters);
+      }
+    }
+  );
 });

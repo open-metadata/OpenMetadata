@@ -732,24 +732,6 @@ WHERE name = 'DomainOnlyAccessPolicy'
   AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.rules'),
     JSON_OBJECT('name', 'DomainAccessDenyTeamAndUserRule'));
 
--- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
--- the result polls, the credentials) that can reach different servers, so its state lives here
--- rather than in one server's memory. pending_state holds the candidate configuration with its
--- secrets, Fernet-encrypted, and is cleared when the test completes; rows expire minutes later.
-CREATE TABLE IF NOT EXISTS sso_test_login_session (
-    test_session_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-    admin_principal VARCHAR(256) NOT NULL,
-    protocol VARCHAR(16) NOT NULL,
-    status VARCHAR(16) NOT NULL,
-    pending_state MEDIUMTEXT,
-    result MEDIUMTEXT,
-    credentials_submitted_at BIGINT,
-    expires_at BIGINT NOT NULL,
-    PRIMARY KEY (test_session_id),
-    INDEX idx_sso_test_login_session_admin (admin_principal, credentials_submitted_at),
-    INDEX idx_sso_test_login_session_expires (expires_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 -- Settings that exist both in openmetadata.yaml/environment and in this table (security, email,
 -- base URL, SCIM, MCP, app configuration) remember the deployment values they were last
 -- reconciled with. Comparing against that snapshot is how a server start tells a value changed in
@@ -1215,6 +1197,27 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
   PRIMARY KEY (conceptId, assetId),
   KEY ontology_concept_binding_asset_index (assetId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- A Context Center file's sharing as a column, so a listing counts the files everyone may see
+-- without reading each file
+-- (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+-- STORED rewrites context_file once.
+SET @context_file_visibility_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'context_file'
+        AND column_name = 'visibility'
+    ),
+    'SELECT 1',
+    'ALTER TABLE context_file ADD COLUMN visibility VARCHAR(16) GENERATED ALWAYS AS (NULLIF(json_unquote(json_extract(json, ''$.shareConfig.visibility'')), ''null'')) STORED, ADD INDEX idx_context_file_visibility (visibility)'
+  )
+);
+PREPARE context_file_visibility_stmt FROM @context_file_visibility_ddl;
+EXECUTE context_file_visibility_stmt;
+DEALLOCATE PREPARE context_file_visibility_stmt;
 
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.

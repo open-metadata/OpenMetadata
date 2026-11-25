@@ -94,9 +94,11 @@ import {
 } from '../../../utils/EntitySearchUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtilsPure';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { getEntityDetailsUrl } from '../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   findColumnByEntityLink,
+  getColumnPageForFqn,
   getCustomPropertyColumnKey,
   getExpandAllKeysToDepth,
   getHighlightedRowClassName,
@@ -110,7 +112,7 @@ import {
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -442,9 +444,57 @@ const SchemaTable = () => {
     sortOrder,
   ]);
 
+  // A shared column link carries no page, so jump once to the page holding the
+  // column; otherwise its highlighted row never renders and nothing scrolls.
+  const deepLinkPage = useMemo(
+    () =>
+      columnPart && fqn
+        ? getColumnPageForFqn(
+            table?.columns ?? [],
+            fqn,
+            sortBy,
+            sortOrder,
+            pageSize
+          )
+        : undefined,
+    [columnPart, fqn, table?.columns, sortBy, sortOrder, pageSize]
+  );
+  const handledDeepLinkRef = useRef<string>();
+  const pendingDeepLinkPageRef = useRef<number>();
+
+  useEffect(() => {
+    if (
+      !deepLinkPage ||
+      fqn === handledDeepLinkRef.current ||
+      searchText ||
+      hasTagFilter
+    ) {
+      return;
+    }
+    handledDeepLinkRef.current = fqn;
+    if (deepLinkPage !== currentPage) {
+      pendingDeepLinkPageRef.current = deepLinkPage;
+      handlePageChange(deepLinkPage);
+    }
+  }, [
+    deepLinkPage,
+    fqn,
+    searchText,
+    hasTagFilter,
+    currentPage,
+    handlePageChange,
+  ]);
+
   useEffect(() => {
     if (searchText || hasTagFilter) {
       return;
+    }
+    // The page-1 fetch would race the deep-link page and, landing last, overwrite it.
+    if (pendingDeepLinkPageRef.current !== undefined) {
+      if (pendingDeepLinkPageRef.current !== currentPage) {
+        return;
+      }
+      pendingDeepLinkPageRef.current = undefined;
     }
     void fetchTableColumns(currentPage, sortBy, sortOrder);
   }, [
@@ -764,11 +814,9 @@ const SchemaTable = () => {
       const { displayName } = record;
 
       return (
-        <div
-          className="d-inline-flex flex-column hover-icon-group"
-          style={{ maxWidth: '80%' }}>
+        <div className="d-inline-flex flex-column hover-icon-group tw:max-w-full">
           <div className="d-inline-flex items-start gap-1 flex-column">
-            <div className="d-inline-flex items-baseline">
+            <div className="d-inline-flex items-center">
               {prepareConstraintIcon({
                 columnName: name,
                 columnConstraint: record.constraint,
@@ -794,10 +842,15 @@ const SchemaTable = () => {
                 />
               )}
               {record.fullyQualifiedName && (
-                <CopyLinkButton
-                  entityType={EntityType.TABLE}
-                  fieldFqn={record.fullyQualifiedName}
+                <CopyButton
+                  className="hover-cell-icon"
+                  isDisabled={!record.fullyQualifiedName}
+                  size="xs"
                   testId="copy-column-link-button"
+                  value={getEntityDetailsUrl(
+                    EntityType.TABLE,
+                    record.fullyQualifiedName ?? ''
+                  )}
                 />
               )}
             </div>
