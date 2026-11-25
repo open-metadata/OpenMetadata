@@ -65,13 +65,25 @@ def test_same_repository_guard_does_not_authorize_secrets(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "permissions", [{"contents": "write"}, {"id-token": "write"}, "write-all"]
+    "permissions",
+    [
+        {"contents": "write"},
+        {"id-token": "write"},
+        {"checks": "write", "pull-requests": "write"},
+        {"checks": "admin"},
+        "write-all",
+    ],
 )
 def test_pr_cannot_receive_write_permissions(tmp_path, permissions):
     assert any(
         "read-only" in error
         for error in workflow(tmp_path, {"permissions": permissions})
     )
+
+
+def test_pr_may_write_check_runs(tmp_path):
+    permissions = {"contents": "read", "checks": "write"}
+    assert workflow(tmp_path, {"permissions": permissions}) == []
 
 
 def test_read_token_and_explicit_non_pr_jobs_are_allowed(tmp_path):
