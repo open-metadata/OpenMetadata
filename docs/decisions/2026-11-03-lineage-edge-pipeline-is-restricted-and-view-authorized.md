@@ -3,7 +3,9 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-03 (initial); v2 2026-11-03 (type predicate extracted to
   `LineageEdgePipeline` so the cleanup migration shares it without initializing the search client;
-  PATCH authorizes the pipeline it resolves from the row it is about to write)
+  PATCH authorizes the pipeline it resolves from the row it is about to write); v3 2026-11-26 (PUT
+  and OpenLineage authorize the newly linked pipeline inside the repository, from the row they
+  replace, as PATCH does; a missing newly linked pipeline is 404 before 403)
 - **Deciders:** harshsoni2024
 - **Guard:** `LineageEdgePipelineAuthorizationIT`, `LineageRepositoryTest`
 - **Related:** scanner finding ANT-2026-RL0ZDKB8 (open-metadata/openmetadata-collate#7797),
@@ -55,3 +57,24 @@ and deny/domain rules. All four lineage write routes and the OpenLineage ingest 
   copy of a genuine pipeline is still the full stored object (adding
   `upstreamLineage.pipeline.connection` to the search excluded-fields list would harden a future
   schema change). These are tracked separately.
+
+## Amendment: 2026-11-26, every write checks the pipeline against the row it replaces
+
+PUT (by id and by name) and the OpenLineage ingest endpoint now authorize the pipeline the way PATCH
+already did. `LineageRepository.addLineage(AddLineage, String, Consumer<EntityReference>)` resolves
+the requested pipeline against the stored row the write replaces, then passes the one it newly links
+to the caller's `VIEW_BASIC` check, before anything is written. The resources no longer read the
+stored edge themselves, so a write reads it once, and the pipeline written is always the one checked
+or one the replaced row already carried. `LineageRepository.newlyLinkedEdgePipeline` stays the single
+decision; `linkEdgePipeline` is the one place that applies it, for PUT, PATCH and OpenLineage alike.
+
+Consequences:
+
+- **A missing pipeline is 404 before 403.** The pipeline is resolved before it is authorized, so a
+  newly linked pipeline id that does not exist now answers 404 where a caller denied view on
+  pipelines used to get 403. That tells a caller who already holds the id whether it exists, the same
+  answer the by-name lineage routes already give about an edge's ends. An existing pipeline the caller
+  cannot view is still 403, and nothing is written in either case.
+- **The two-argument `addLineage` runs no pipeline check.** Its callers link no pipeline (the MCP
+  lineage tool) or do not act for a REST principal. A new caller that links a pipeline on behalf of a
+  principal must use the three-argument form.
