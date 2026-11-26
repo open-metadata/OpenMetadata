@@ -38,7 +38,7 @@ jobs:
       - name: Download the report
         id: download
         continue-on-error: true
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: browser-tests-comment
           path: ${{ runner.temp }}/browser-tests-comment
