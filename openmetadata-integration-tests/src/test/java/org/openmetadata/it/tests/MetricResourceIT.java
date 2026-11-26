@@ -129,6 +129,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   private static final ObjectMapper JSON = new ObjectMapper();
 
   {
+    supportsLineage = true;
     supportsListHistoryByTimestamp = true;
     supportsAsyncDelete = true;
     supportsCustomExtension = true;

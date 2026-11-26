@@ -60,6 +60,7 @@ public class DashboardDataModelResourceIT
     extends BaseEntityIT<DashboardDataModel, CreateDashboardDataModel> {
 
   {
+    supportsLineage = true;
     supportsLifeCycle = true;
     supportsAsyncDelete = true;
     supportsCustomExtension = true;

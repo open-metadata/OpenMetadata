@@ -77,6 +77,7 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
   private String defaultListService;
 
   {
+    supportsLineage = true;
     supportsSearchIndex = false;
     supportsAsyncDelete = true;
     supportsCustomExtension = true;

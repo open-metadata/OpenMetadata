@@ -39,6 +39,7 @@ public class StoredProcedureResourceIT
     extends BaseEntityIT<StoredProcedure, CreateStoredProcedure> {
 
   {
+    supportsLineage = true;
     supportsSearchIndex = false;
     supportsAsyncDelete = true;
     supportsCustomExtension = true;

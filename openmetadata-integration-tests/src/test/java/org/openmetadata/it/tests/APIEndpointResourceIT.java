@@ -50,6 +50,7 @@ import org.openmetadata.sdk.models.ListResponse;
 public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEndpoint> {
 
   {
+    supportsLineage = true;
     supportsLifeCycle = true;
     supportsAsyncDelete = true;
     supportsCustomExtension = true;

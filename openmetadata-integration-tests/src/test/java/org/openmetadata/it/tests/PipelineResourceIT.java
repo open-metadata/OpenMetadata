@@ -83,6 +83,7 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   private static final String CERTIFICATION_GOLD = "Certification.Gold";
 
   {
+    supportsLineage = true;
     supportsLifeCycle = true;
     supportsAsyncDelete = true;
     supportsCustomExtension = true;
