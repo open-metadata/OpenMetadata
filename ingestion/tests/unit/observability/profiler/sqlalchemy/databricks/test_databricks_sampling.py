@@ -18,9 +18,7 @@ from databricks.sqlalchemy.base import DatabricksDialect
 from sqlalchemy import quoted_name
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-from metadata.sampler.sqlalchemy.databricks.sampler import (
-    DatabricksSamplerInterface,
-)
+from metadata.sampler.sqlalchemy.databricks.sampler import DatabricksSamplerInterface
 
 
 @pytest.mark.parametrize(

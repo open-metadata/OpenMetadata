@@ -105,9 +105,13 @@ class greenplumUnitTest(TestCase):
         """
         mock_inspector = MagicMock()
         mock_inspector.get_view_names.return_value = ["regular_view"]
-        mock_inspector.get_materialized_view_names.side_effect = Exception("unsupported")
+        mock_inspector.get_materialized_view_names.side_effect = Exception(
+            "unsupported"
+        )
 
         with patch.object(GreenplumSource, "inspector", mock_inspector):
             results = list(self.greenplum_source.query_view_names_and_types("public"))
 
-        self.assertEqual([(r.name, r.type_) for r in results], [("regular_view", TableType.View)])
+        self.assertEqual(
+            [(r.name, r.type_) for r in results], [("regular_view", TableType.View)]
+        )

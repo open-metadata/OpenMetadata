@@ -24,9 +24,7 @@ from unittest.mock import Mock
 import pytest
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
 
-from metadata.ingestion.source.database.snowflake.utils import (
-    get_schema_foreign_keys,
-)
+from metadata.ingestion.source.database.snowflake.utils import get_schema_foreign_keys
 
 
 def _fk_row(
@@ -113,8 +111,12 @@ def test_collision_split_is_independent_of_row_order(reflect_foreign_keys):
 def test_multi_column_foreign_key_on_single_table_still_groups(reflect_foreign_keys):
     """A genuine composite FK on one table keeps grouping its columns together."""
     rows = [
-        _fk_row("LINEITEM_FK_PARTSUPP", "LINEITEM", "L_PARTKEY", "PARTSUPP", "PS_PARTKEY"),
-        _fk_row("LINEITEM_FK_PARTSUPP", "LINEITEM", "L_SUPPKEY", "PARTSUPP", "PS_SUPPKEY"),
+        _fk_row(
+            "LINEITEM_FK_PARTSUPP", "LINEITEM", "L_PARTKEY", "PARTSUPP", "PS_PARTKEY"
+        ),
+        _fk_row(
+            "LINEITEM_FK_PARTSUPP", "LINEITEM", "L_SUPPKEY", "PARTSUPP", "PS_SUPPKEY"
+        ),
     ]
 
     result = reflect_foreign_keys(rows)

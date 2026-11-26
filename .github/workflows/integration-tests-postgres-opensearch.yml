@@ -25,12 +25,13 @@ on:
       - "common/**"
       - "pom.xml"
       - "bootstrap/**"
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
-  checks: write
+  pull-requests: read
+  checks: read
 
 concurrency:
   group: integration-tests-pg-os-${{ github.event.pull_request.number || github.run_id }}
@@ -76,27 +77,10 @@ jobs:
           docker-images: false
           swap-storage: true
 
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Cache Maven dependencies
@@ -140,16 +124,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn verify -pl :openmetadata-integration-tests -Ppostgres-opensearch
 
+      - name: Upload integration test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-tests-postgres-opensearch-reports
+          path: openmetadata-integration-tests/target/failsafe-reports/
+          if-no-files-found: ignore
+          retention-days: 5
+
       - name: Clean Up
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
-
-      - name: Publish Test Report
-        if: ${{ always() }}
-        uses: scacap/action-surefire-report@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_test_failures: true
-          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'

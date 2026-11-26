@@ -68,7 +68,10 @@ def get_bool_test_case_param(
 
 def _encode_username_for_data_diff(username: str) -> str:
     """Percent-encode only what data-diff's URI parser needs to locate the userinfo boundaries."""
-    return "".join(f"%{ord(char):02X}" if char in USERNAME_RESERVED_CHARACTERS else char for char in username)
+    return "".join(
+        f"%{ord(char):02X}" if char in USERNAME_RESERVED_CHARACTERS else char
+        for char in username
+    )
 
 
 def render_url_for_data_diff(url: URL) -> str:

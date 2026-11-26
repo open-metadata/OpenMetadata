@@ -951,12 +951,16 @@ class PostgresUnitTest(TestCase):
         """A failing get_materialized_view_names() must not drop regular views."""
         mock_inspector = MagicMock()
         mock_inspector.get_view_names.return_value = ["regular_view"]
-        mock_inspector.get_materialized_view_names.side_effect = Exception("unsupported")
+        mock_inspector.get_materialized_view_names.side_effect = Exception(
+            "unsupported"
+        )
 
         with patch.object(PostgresSource, "inspector", mock_inspector):
             results = list(self.postgres_source.query_view_names_and_types("public"))
 
-        self.assertEqual([(r.name, r.type_) for r in results], [("regular_view", TableType.View)])
+        self.assertEqual(
+            [(r.name, r.type_) for r in results], [("regular_view", TableType.View)]
+        )
 
     def test_view_path_is_skipped_when_include_views_false(self):
         """includeViews=False must not consult the view path at all."""
@@ -964,14 +968,20 @@ class PostgresUnitTest(TestCase):
         self.postgres_source.source_config.includeViews = False
 
         with (
-            patch.object(PostgresSource, "query_view_names_and_types") as mock_view_query,
+            patch.object(
+                PostgresSource, "query_view_names_and_types"
+            ) as mock_view_query,
             patch.object(
                 PostgresSource,
                 "query_table_names_and_types",
-                return_value=[TableNameAndType(name="base_table", type_=TableType.Regular)],
+                return_value=[
+                    TableNameAndType(name="base_table", type_=TableType.Regular)
+                ],
             ),
         ):
-            emitted = [name for name, _ in self.postgres_source.get_tables_name_and_type()]
+            emitted = [
+                name for name, _ in self.postgres_source.get_tables_name_and_type()
+            ]
 
         self.assertEqual(emitted, ["base_table"])
         mock_view_query.assert_not_called()
@@ -984,9 +994,15 @@ class PostgresUnitTest(TestCase):
         Parses the relkind filter rather than substring-matching the SQL, so a stray
         'm' in a comment cannot mask a real regression.
         """
-        relkinds = re.search(r"relkind\s+in\s*\(([^)]*)\)", POSTGRES_GET_TABLE_NAMES, re.IGNORECASE)
-        self.assertIsNotNone(relkinds, "POSTGRES_GET_TABLE_NAMES must filter on relkind")
-        self.assertNotIn("m", {kind.strip().strip("'") for kind in relkinds.group(1).split(",")})
+        relkinds = re.search(
+            r"relkind\s+in\s*\(([^)]*)\)", POSTGRES_GET_TABLE_NAMES, re.IGNORECASE
+        )
+        self.assertIsNotNone(
+            relkinds, "POSTGRES_GET_TABLE_NAMES must filter on relkind"
+        )
+        self.assertNotIn(
+            "m", {kind.strip().strip("'") for kind in relkinds.group(1).split(",")}
+        )
 
 
 class TestPostgresCommonMappings(TestCase):

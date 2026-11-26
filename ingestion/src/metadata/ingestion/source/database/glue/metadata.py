@@ -222,7 +222,9 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                         self.status.filter(schema_fqn, "Schema Filtered Out")
                         continue
                     if schema.Description:
-                        self.schema_description_map[schema.Name] = Markdown(schema.Description)
+                        self.schema_description_map[schema.Name] = Markdown(
+                            schema.Description
+                        )
                     if schema.CatalogId:
                         self.schema_catalog_id_map[schema.Name] = schema.CatalogId
                         catalog_ids_seen.add(schema.CatalogId)
@@ -405,7 +407,9 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         parsed_string["description"] = column.Comment
         return Column(**parsed_string)
 
-    def get_columns(self, column_data: StorageDetails) -> Optional[Iterable[Column]]:  # noqa: UP045
+    def get_columns(
+        self, column_data: StorageDetails
+    ) -> Optional[Iterable[Column]]:  # noqa: UP045
         """
         Get columns from Glue, yielding each column name at most once.
 
@@ -414,7 +418,9 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         on write, so a column DT declared alongside a partition key dt arrives as dt twice.
         Either way the server rejects the whole table with "Column name <name> is repeated".
         """
-        table_name = self.context.get().table_data.Name  # pyright: ignore[reportAttributeAccessIssue]
+        table_name = (
+            self.context.get().table_data.Name
+        )  # pyright: ignore[reportAttributeAccessIssue]
         seen_column_names = set()
         for column in self._iter_columns(column_data):
             column_name = model_str(column.name)

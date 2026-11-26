@@ -32,10 +32,14 @@ MODEL_NAME = "catalog.schema.wine_model"
 
 
 def make_version(version: str | None, run_id: str | None = "run-id") -> ModelVersion:
-    return ModelVersion(name=MODEL_NAME, version=version, creation_timestamp=1, run_id=run_id)
+    return ModelVersion(
+        name=MODEL_NAME, version=version, creation_timestamp=1, run_id=run_id
+    )
 
 
-def make_source(search_result=None, latest_versions=None, model_name: str = MODEL_NAME) -> MlflowSource:
+def make_source(
+    search_result=None, latest_versions=None, model_name: str = MODEL_NAME
+) -> MlflowSource:
     """
     Build an MlflowSource with the MLflow client stubbed out.
 
@@ -59,7 +63,11 @@ def make_source(search_result=None, latest_versions=None, model_name: str = MODE
 
 def test_falls_back_to_search_when_latest_versions_is_none():
     """Unity Catalog leaves latest_versions unset -- this used to raise TypeError."""
-    source = make_source(search_result=PagedList([make_version("1"), make_version("3"), make_version("2")], None))
+    source = make_source(
+        search_result=PagedList(
+            [make_version("1"), make_version("3"), make_version("2")], None
+        )
+    )
 
     results = list(source.get_mlmodels())
 
@@ -83,7 +91,9 @@ def test_empty_latest_versions_still_searches():
     return [] when every version sits outside the requested stages. Searching
     recovers those, where the old code recorded a spurious "Version not found".
     """
-    source = make_source(latest_versions=[], search_result=PagedList([make_version("5")], None))
+    source = make_source(
+        latest_versions=[], search_result=PagedList([make_version("5")], None)
+    )
 
     results = list(source.get_mlmodels())
 
@@ -125,7 +135,9 @@ def test_exhausting_the_page_budget_does_not_ingest_stale_version():
     """Running out of page budget is also a partial read, so skip rather than guess."""
     source = make_source()
     # Never stops handing back a token, so the loop burns its full budget.
-    source.client.search_model_versions.side_effect = lambda **_: PagedList([make_version("1")], "more")
+    source.client.search_model_versions.side_effect = lambda **_: PagedList(
+        [make_version("1")], "more"
+    )
 
     results = list(source.get_mlmodels())
 
@@ -155,12 +167,17 @@ def test_search_filter_uses_single_quotes(model_name):
     INVALID_PARAMETER_VALUE. MLflow's client-side parser is more permissive and
     would happily accept the double-quoted form, so it cannot vouch for this.
     """
-    source = make_source(search_result=PagedList([make_version("2")], None), model_name=model_name)
+    source = make_source(
+        search_result=PagedList([make_version("2")], None), model_name=model_name
+    )
 
     results = list(source.get_mlmodels())
 
     assert results[0][1].version == "2"
-    assert source.client.search_model_versions.call_args[1]["filter_string"] == f"name='{model_name}'"
+    assert (
+        source.client.search_model_versions.call_args[1]["filter_string"]
+        == f"name='{model_name}'"
+    )
 
 
 def test_search_failure_is_recorded_and_does_not_raise():
@@ -183,7 +200,9 @@ def test_no_versions_found_is_recorded():
 
 
 def test_version_without_run_id_is_recorded():
-    source = make_source(search_result=PagedList([make_version("1", run_id=None)], None))
+    source = make_source(
+        search_result=PagedList([make_version("1", run_id=None)], None)
+    )
 
     results = list(source.get_mlmodels())
 
@@ -193,7 +212,9 @@ def test_version_without_run_id_is_recorded():
 
 @pytest.mark.parametrize("bad_version", ["not-a-number", None])
 def test_non_numeric_versions_are_skipped(bad_version):
-    source = make_source(search_result=PagedList([make_version(bad_version), make_version("4")], None))
+    source = make_source(
+        search_result=PagedList([make_version(bad_version), make_version("4")], None)
+    )
 
     results = list(source.get_mlmodels())
 
@@ -216,7 +237,9 @@ SIGNATURE_COLUMNS = [
 
 
 def make_run_data(tags: dict | None = None) -> RunData:
-    return RunData(metrics=None, params=None, tags=[RunTag(k, v) for k, v in (tags or {}).items()])
+    return RunData(
+        metrics=None, params=None, tags=[RunTag(k, v) for k, v in (tags or {}).items()]
+    )
 
 
 def history_tag(run_id: str = RUN_ID, columns=SIGNATURE_COLUMNS) -> dict:
@@ -232,7 +255,9 @@ def make_feature_source(artifact_location: str | None = None) -> MlflowSource:
     source.client = MagicMock()
     source.status = MagicMock()
     source.service_connection = MagicMock(trackingUri="databricks")
-    source.client.get_logged_model.return_value = MagicMock(artifact_location=artifact_location)
+    source.client.get_logged_model.return_value = MagicMock(
+        artifact_location=artifact_location
+    )
 
     return source
 
@@ -252,10 +277,18 @@ def test_features_come_from_the_run_tag_when_present(tmp_path):
     """MLflow 2.x path: the tag is authoritative and no artifact call is made."""
     source = make_feature_source()
 
-    with patch("metadata.ingestion.source.mlmodel.mlflow.metadata.download_artifacts") as download:
-        features = source._get_ml_features(make_run_data(history_tag()), RUN_ID, MODEL_NAME, make_version("1"))
+    with patch(
+        "metadata.ingestion.source.mlmodel.mlflow.metadata.download_artifacts"
+    ) as download:
+        features = source._get_ml_features(
+            make_run_data(history_tag()), RUN_ID, MODEL_NAME, make_version("1")
+        )
 
-    assert [f.name.root for f in features] == ["store_id", "week_of_year", "prior_sales"]
+    assert [f.name.root for f in features] == [
+        "store_id",
+        "week_of_year",
+        "prior_sales",
+    ]
     download.assert_not_called()
 
 
@@ -269,9 +302,15 @@ def test_features_read_from_mlmodel_when_the_tag_is_absent(tmp_path):
         "metadata.ingestion.source.mlmodel.mlflow.metadata.download_artifacts",
         return_value=write_mlmodel(tmp_path),
     ):
-        features = source._get_ml_features(make_run_data({"mlflow.user": "me"}), RUN_ID, MODEL_NAME, version)
+        features = source._get_ml_features(
+            make_run_data({"mlflow.user": "me"}), RUN_ID, MODEL_NAME, version
+        )
 
-    assert [f.name.root for f in features] == ["store_id", "week_of_year", "prior_sales"]
+    assert [f.name.root for f in features] == [
+        "store_id",
+        "week_of_year",
+        "prior_sales",
+    ]
     assert [f.dataType for f in features] == [
         FeatureType.categorical,
         FeatureType.numerical,
@@ -296,7 +335,9 @@ def test_a_missing_tag_alone_is_not_reported_as_a_problem(tmp_path):
 
 def test_logged_model_uri_is_resolved_through_the_registry(tmp_path):
     """`models:/<id>` is not an artifact path; the LoggedModel supplies the real one."""
-    source = make_feature_source(artifact_location="dbfs:/logged_models/m-abc/artifacts")
+    source = make_feature_source(
+        artifact_location="dbfs:/logged_models/m-abc/artifacts"
+    )
     version = make_version("1")
     version._source = "models:/m-abc"
 
@@ -307,7 +348,10 @@ def test_logged_model_uri_is_resolved_through_the_registry(tmp_path):
         source._get_ml_features(make_run_data(), RUN_ID, MODEL_NAME, version)
 
     source.client.get_logged_model.assert_called_once_with("m-abc")
-    assert download.call_args.kwargs["artifact_uri"] == "dbfs:/logged_models/m-abc/artifacts/MLmodel"
+    assert (
+        download.call_args.kwargs["artifact_uri"]
+        == "dbfs:/logged_models/m-abc/artifacts/MLmodel"
+    )
     assert download.call_args.kwargs["tracking_uri"] == "databricks"
 
 
@@ -338,10 +382,17 @@ def test_tag_without_an_entry_for_this_run_falls_back_to_the_artifacts(tmp_path)
         return_value=write_mlmodel(tmp_path),
     ):
         features = source._get_ml_features(
-            make_run_data(history_tag(run_id="a-different-run")), RUN_ID, MODEL_NAME, version
+            make_run_data(history_tag(run_id="a-different-run")),
+            RUN_ID,
+            MODEL_NAME,
+            version,
         )
 
-    assert [f.name.root for f in features] == ["store_id", "week_of_year", "prior_sales"]
+    assert [f.name.root for f in features] == [
+        "store_id",
+        "week_of_year",
+        "prior_sales",
+    ]
 
 
 def test_unnamed_columns_are_skipped(tmp_path):
@@ -369,7 +420,10 @@ def test_a_model_without_a_signature_yields_no_features(tmp_path):
         "metadata.ingestion.source.mlmodel.mlflow.metadata.download_artifacts",
         return_value=write_mlmodel(tmp_path, signature=False),
     ):
-        assert source._get_ml_features(make_run_data(), RUN_ID, MODEL_NAME, version) is None
+        assert (
+            source._get_ml_features(make_run_data(), RUN_ID, MODEL_NAME, version)
+            is None
+        )
 
 
 def test_artifact_read_failure_is_recorded_and_does_not_raise():
@@ -382,7 +436,10 @@ def test_artifact_read_failure_is_recorded_and_does_not_raise():
         "metadata.ingestion.source.mlmodel.mlflow.metadata.download_artifacts",
         side_effect=MlflowException("no access"),
     ):
-        assert source._get_ml_features(make_run_data(), RUN_ID, MODEL_NAME, version) is None
+        assert (
+            source._get_ml_features(make_run_data(), RUN_ID, MODEL_NAME, version)
+            is None
+        )
 
     source.status.warning.assert_called_once()
 
@@ -391,7 +448,9 @@ def test_no_version_means_no_artifact_lookup():
     """yield_mlmodel always passes a version, but the parameter stays optional."""
     source = make_feature_source()
 
-    with patch("metadata.ingestion.source.mlmodel.mlflow.metadata.download_artifacts") as download:
+    with patch(
+        "metadata.ingestion.source.mlmodel.mlflow.metadata.download_artifacts"
+    ) as download:
         assert source._get_ml_features(make_run_data(), RUN_ID, MODEL_NAME) is None
 
     download.assert_not_called()
@@ -415,7 +474,10 @@ def test_the_number_of_models_listed_is_logged(caplog):
     with caplog.at_level(logging.INFO):
         list(source.get_mlmodels())
 
-    assert "Listed 1 registered model(s) from the MLflow registry over 1 page(s)" in caplog.text
+    assert (
+        "Listed 1 registered model(s) from the MLflow registry over 1 page(s)"
+        in caplog.text
+    )
 
 
 def test_an_empty_registry_is_logged_as_a_warning(caplog):
@@ -442,7 +504,10 @@ def test_every_page_of_the_registry_is_ingested(caplog):
         results = list(source.get_mlmodels())
 
     assert [model.name for model, _ in results] == ["a", "b", "c"]
-    assert "Listed 3 registered model(s) from the MLflow registry over 2 page(s)" in caplog.text
+    assert (
+        "Listed 3 registered model(s) from the MLflow registry over 2 page(s)"
+        in caplog.text
+    )
 
 
 def test_the_page_token_is_passed_back_to_the_registry():
@@ -454,7 +519,10 @@ def test_the_page_token_is_passed_back_to_the_registry():
 
     list(source.get_mlmodels())
 
-    tokens = [call.kwargs.get("page_token") for call in source.client.search_registered_models.call_args_list]
+    tokens = [
+        call.kwargs.get("page_token")
+        for call in source.client.search_registered_models.call_args_list
+    ]
     assert tokens == [None, "token-1"]
 
 
@@ -475,14 +543,19 @@ def test_an_empty_page_carrying_a_token_is_followed(caplog):
         results = list(source.get_mlmodels())
 
     assert [model.name for model, _ in results] == ["a", "b"]
-    assert "Listed 2 registered model(s) from the MLflow registry over 3 page(s)" in caplog.text
+    assert (
+        "Listed 2 registered model(s) from the MLflow registry over 3 page(s)"
+        in caplog.text
+    )
     assert "returned no registered models" not in caplog.text
 
 
 def test_pagination_stops_at_the_page_budget(caplog):
     """A backend that always returns a token must not spin forever."""
     source = make_source(latest_versions=[make_version("1")])
-    source.client.search_registered_models.return_value = PagedList([named_model("a")], "always-more")
+    source.client.search_registered_models.return_value = PagedList(
+        [named_model("a")], "always-more"
+    )
 
     with caplog.at_level(logging.WARNING):
         results = list(source.get_mlmodels())
@@ -494,7 +567,9 @@ def test_pagination_stops_at_the_page_budget(caplog):
 
 def test_a_complete_listing_is_not_flagged(caplog):
     source = make_source(latest_versions=[make_version("1")])
-    source.client.search_registered_models.return_value = PagedList([named_model("a")], None)
+    source.client.search_registered_models.return_value = PagedList(
+        [named_model("a")], None
+    )
 
     with caplog.at_level(logging.WARNING):
         list(source.get_mlmodels())
@@ -514,10 +589,17 @@ def test_a_malformed_history_tag_falls_back_to_the_artifacts(tmp_path):
         return_value=write_mlmodel(tmp_path),
     ):
         features = source._get_ml_features(
-            make_run_data({LOG_MODEL_HISTORY_TAG: "not-json-at-all"}), RUN_ID, MODEL_NAME, version
+            make_run_data({LOG_MODEL_HISTORY_TAG: "not-json-at-all"}),
+            RUN_ID,
+            MODEL_NAME,
+            version,
         )
 
-    assert [f.name.root for f in features] == ["store_id", "week_of_year", "prior_sales"]
+    assert [f.name.root for f in features] == [
+        "store_id",
+        "week_of_year",
+        "prior_sales",
+    ]
 
 
 def test_a_python_repr_signature_is_still_parsed():
@@ -525,9 +607,15 @@ def test_a_python_repr_signature_is_still_parsed():
     source = make_feature_source()
     entry = {"run_id": RUN_ID, "signature": {"inputs": str(SIGNATURE_COLUMNS)}}
 
-    features = source._get_ml_features(make_run_data({LOG_MODEL_HISTORY_TAG: json.dumps([entry])}), RUN_ID, MODEL_NAME)
+    features = source._get_ml_features(
+        make_run_data({LOG_MODEL_HISTORY_TAG: json.dumps([entry])}), RUN_ID, MODEL_NAME
+    )
 
-    assert [f.name.root for f in features] == ["store_id", "week_of_year", "prior_sales"]
+    assert [f.name.root for f in features] == [
+        "store_id",
+        "week_of_year",
+        "prior_sales",
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -537,10 +625,14 @@ def test_a_python_repr_signature_is_still_parsed():
 
 def test_models_outside_the_filter_pattern_are_reported_as_filtered():
     source = make_source(latest_versions=[make_version("1")])
-    source.source_config = MagicMock(mlModelFilterPattern=MagicMock(includes=["^nothing-matches$"], excludes=None))
+    source.source_config = MagicMock(
+        mlModelFilterPattern=MagicMock(includes=["^nothing-matches$"], excludes=None)
+    )
 
     assert list(source.get_mlmodels()) == []
-    source.status.filter.assert_called_once_with(MODEL_NAME, "MlModel name pattern not allowed")
+    source.status.filter.assert_called_once_with(
+        MODEL_NAME, "MlModel name pattern not allowed"
+    )
 
 
 def test_yield_mlmodel_carries_the_signature_onto_the_request(tmp_path):
@@ -566,7 +658,11 @@ def test_yield_mlmodel_carries_the_signature_onto_the_request(tmp_path):
         results = list(source.yield_mlmodel((model, version)))
 
     request = results[0].right
-    assert [f.name.root for f in request.mlFeatures] == ["store_id", "week_of_year", "prior_sales"]
+    assert [f.name.root for f in request.mlFeatures] == [
+        "store_id",
+        "week_of_year",
+        "prior_sales",
+    ]
     assert request.name.root == MODEL_NAME
 
 
@@ -592,7 +688,9 @@ def test_a_malformed_signature_costs_the_features_not_the_model(payload):
     source = make_feature_source()
     entry = {"run_id": RUN_ID, "signature": {"inputs": json.dumps(payload)}}
 
-    features = source._get_ml_features(make_run_data({LOG_MODEL_HISTORY_TAG: json.dumps([entry])}), RUN_ID, MODEL_NAME)
+    features = source._get_ml_features(
+        make_run_data({LOG_MODEL_HISTORY_TAG: json.dumps([entry])}), RUN_ID, MODEL_NAME
+    )
 
     assert features is None
 
@@ -602,7 +700,9 @@ def test_one_bad_column_does_not_discard_the_good_ones():
     columns = ["not-a-column", {"type": "string", "name": "store_id"}]
     entry = {"run_id": RUN_ID, "signature": {"inputs": json.dumps(columns)}}
 
-    features = source._get_ml_features(make_run_data({LOG_MODEL_HISTORY_TAG: json.dumps([entry])}), RUN_ID, MODEL_NAME)
+    features = source._get_ml_features(
+        make_run_data({LOG_MODEL_HISTORY_TAG: json.dumps([entry])}), RUN_ID, MODEL_NAME
+    )
 
     assert [f.name.root for f in features] == ["store_id"]
 
@@ -613,7 +713,9 @@ def test_an_invalid_feature_name_is_reported_as_a_warning():
     columns = [{"type": "string", "name": "x" * 1024}]
     entry = {"run_id": RUN_ID, "signature": {"inputs": json.dumps(columns)}}
 
-    features = source._get_ml_features(make_run_data({LOG_MODEL_HISTORY_TAG: json.dumps([entry])}), RUN_ID, MODEL_NAME)
+    features = source._get_ml_features(
+        make_run_data({LOG_MODEL_HISTORY_TAG: json.dumps([entry])}), RUN_ID, MODEL_NAME
+    )
 
     assert features is None
     source.status.warning.assert_called_once()
@@ -630,7 +732,9 @@ def wire_deletion(source: MlflowSource) -> MlflowSource:
     return source
 
 
-def make_deletion_source(listing_complete: bool = True, listed_model_count: int = 1) -> MlflowSource:
+def make_deletion_source(
+    listing_complete: bool = True, listed_model_count: int = 1
+) -> MlflowSource:
     source = wire_deletion(make_source())
     source.listing_complete = listing_complete
     source.listed_model_count = listed_model_count
@@ -645,7 +749,9 @@ def test_a_truncated_listing_never_drives_deletions():
     """
     source = make_deletion_source(listing_complete=False)
 
-    with patch("metadata.ingestion.source.mlmodel.mlmodel_service.delete_entity_from_source") as delete:
+    with patch(
+        "metadata.ingestion.source.mlmodel.mlmodel_service.delete_entity_from_source"
+    ) as delete:
         assert list(source.mark_mlmodels_as_deleted()) == []
 
     delete.assert_not_called()
@@ -658,7 +764,9 @@ def test_a_listing_that_saw_no_models_never_drives_deletions():
     """
     source = make_deletion_source(listed_model_count=0)
 
-    with patch("metadata.ingestion.source.mlmodel.mlmodel_service.delete_entity_from_source") as delete:
+    with patch(
+        "metadata.ingestion.source.mlmodel.mlmodel_service.delete_entity_from_source"
+    ) as delete:
         assert list(source.mark_mlmodels_as_deleted()) == []
 
     delete.assert_not_called()
@@ -678,7 +786,9 @@ def test_a_complete_listing_still_reconciles_deletions():
 
 def test_exhausting_the_page_budget_leaves_the_listing_incomplete():
     source = make_source(latest_versions=[make_version("1")])
-    source.client.search_registered_models.return_value = PagedList([named_model("a")], "always-more")
+    source.client.search_registered_models.return_value = PagedList(
+        [named_model("a")], "always-more"
+    )
 
     list(source.get_mlmodels())
 
@@ -688,7 +798,9 @@ def test_exhausting_the_page_budget_leaves_the_listing_incomplete():
 
 def test_a_listing_that_reaches_the_end_is_marked_complete():
     source = make_source(latest_versions=[make_version("1")])
-    source.client.search_registered_models.return_value = PagedList([named_model("a")], None)
+    source.client.search_registered_models.return_value = PagedList(
+        [named_model("a")], None
+    )
 
     list(source.get_mlmodels())
 
@@ -711,7 +823,9 @@ def test_abandoning_the_listing_part_way_never_drives_deletions():
     next(source.get_mlmodels())
     assert source.listing_complete is False
 
-    with patch("metadata.ingestion.source.mlmodel.mlmodel_service.delete_entity_from_source") as delete:
+    with patch(
+        "metadata.ingestion.source.mlmodel.mlmodel_service.delete_entity_from_source"
+    ) as delete:
         assert list(source.mark_mlmodels_as_deleted()) == []
 
     delete.assert_not_called()
@@ -722,7 +836,9 @@ def test_a_fresh_listing_clears_a_stale_completion_flag():
     source = make_source(latest_versions=[make_version("1")])
     source.listing_complete = True
     source.listed_model_count = 7
-    source.client.search_registered_models.return_value = PagedList([named_model("a")], "always-more")
+    source.client.search_registered_models.return_value = PagedList(
+        [named_model("a")], "always-more"
+    )
 
     list(source.get_mlmodels())
 

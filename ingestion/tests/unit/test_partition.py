@@ -220,9 +220,9 @@ def test_bigquery_time_unit_partition_default_intervals():
     assert partition.partitionColumnName == "event_timestamp"
     assert partition.partitionIntervalType == PartitionIntervalTypes.TIME_UNIT
     assert partition.partitionIntervalUnit == PartitionIntervalUnit.HOUR
-    assert partition.partitionInterval == 24, (
-        "HOUR-granularity TIME_UNIT partitions should default to a 24-hour window."
-    )
+    assert (
+        partition.partitionInterval == 24
+    ), "HOUR-granularity TIME_UNIT partitions should default to a 24-hour window."
 
     # MONTH granularity → 35-day window
     month_entity = MockTable(

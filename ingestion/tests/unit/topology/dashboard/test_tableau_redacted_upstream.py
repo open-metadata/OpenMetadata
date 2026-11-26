@@ -45,7 +45,10 @@ VISIBLE_TABLE = {
     "name": "rpt_repro_transfer_out_mv",
     "fullName": "[reporting_prod].[finance].[rpt_repro_transfer_out_mv]",
     "schema": "finance",
-    "database": {"id": "0f9b1efd-b968-d24c-f5e1-b3788b993cbe", "name": "reporting_prod"},
+    "database": {
+        "id": "0f9b1efd-b968-d24c-f5e1-b3788b993cbe",
+        "name": "reporting_prod",
+    },
 }
 
 # Captured live: the same table, same workbook, seen by a restricted account.
@@ -63,7 +66,11 @@ REDACTED_TABLE = {
 QUERY_BACKED_TABLE = {
     **REDACTED_TABLE,
     "referencedByQueries": [
-        {"id": "0f5a1c22-9d3e-4b71-8c6a-2e4f7b90d135", "name": "Custom SQL Query", "query": "SELECT 1"}
+        {
+            "id": "0f5a1c22-9d3e-4b71-8c6a-2e4f7b90d135",
+            "name": "Custom SQL Query",
+            "query": "SELECT 1",
+        }
     ],
 }
 
@@ -75,7 +82,10 @@ SPREADSHEET_TABLE = {
     "name": "Orders",
     "fullName": "[Sample - Superstore.xlsx].[Orders]",
     "schema": None,
-    "database": {"id": "c41a7f65-3b2e-4d19-8f7a-1e5b9c0d2a48", "name": "Sample - Superstore.xlsx"},
+    "database": {
+        "id": "c41a7f65-3b2e-4d19-8f7a-1e5b9c0d2a48",
+        "name": "Sample - Superstore.xlsx",
+    },
 }
 
 
@@ -85,7 +95,9 @@ def fake_site(workbooks):
     with patch.object(TableauClient, "__init__", return_value=None):
         client = TableauClient()
     client.tableau_server = MagicMock()
-    client._query_datasources = MagicMock(side_effect=[datasources for _, datasources in workbooks])
+    client._query_datasources = MagicMock(
+        side_effect=[datasources for _, datasources in workbooks]
+    )
 
     items = []
     for index, (workbook_name, _) in enumerate(workbooks):
@@ -112,7 +124,9 @@ class TestGetSourceTablesCheck:
         identify it by.
         """
         with (
-            fake_site([("Repro Databricks Lineage", datasources_with([REDACTED_TABLE]))]) as client,
+            fake_site(
+                [("Repro Databricks Lineage", datasources_with([REDACTED_TABLE]))]
+            ) as client,
             pytest.raises(TableauUpstreamTablesRedacted) as excinfo,
         ):
             client.test_get_source_tables()
@@ -120,9 +134,9 @@ class TestGetSourceTablesCheck:
         message = str(excinfo.value)
         assert "no name" in message
         assert "Repro Databricks Lineage" in message
-        assert "rpt_repro_transfer_out_mv (reporting_prod.finance)" in message, (
-            "an operator needs to know which data source is affected"
-        )
+        assert (
+            "rpt_repro_transfer_out_mv (reporting_prod.finance)" in message
+        ), "an operator needs to know which data source is affected"
 
     def test_named_tables_pass(self):
         with fake_site([("Repro", datasources_with([VISIBLE_TABLE]))]) as client:
@@ -133,7 +147,9 @@ class TestGetSourceTablesCheck:
         _get_database_tables resolves a nameless table through its referencedByQueries and
         the SQL lineage parser, so that table is not lost and there is nothing to report.
         """
-        with fake_site([("Custom SQL", datasources_with([QUERY_BACKED_TABLE]))]) as client:
+        with fake_site(
+            [("Custom SQL", datasources_with([QUERY_BACKED_TABLE]))]
+        ) as client:
             assert client.test_get_source_tables() is True
 
     def test_no_upstream_tables_passes(self):
@@ -150,7 +166,9 @@ class TestGetSourceTablesCheck:
         one next to it. The withheld table is lost lineage either way.
         """
         with (
-            fake_site([("Mixed", datasources_with([VISIBLE_TABLE, REDACTED_TABLE]))]) as client,
+            fake_site(
+                [("Mixed", datasources_with([VISIBLE_TABLE, REDACTED_TABLE]))]
+            ) as client,
             pytest.raises(TableauUpstreamTablesRedacted),
         ):
             client.test_get_source_tables()
@@ -165,7 +183,12 @@ class TestGetSourceTablesCheck:
         with (
             fake_site(
                 [
-                    ("Superstore", datasources_with([SPREADSHEET_TABLE], name="Sample - Superstore")),
+                    (
+                        "Superstore",
+                        datasources_with(
+                            [SPREADSHEET_TABLE], name="Sample - Superstore"
+                        ),
+                    ),
                     ("Repro Databricks Lineage", datasources_with([REDACTED_TABLE])),
                 ]
             ) as client,

@@ -36,11 +36,11 @@ from testcontainers.core.container import DockerContainer
 from testcontainers.core.docker_client import DockerClient
 
 from ....containers import (
-    S3ContainerConfigs,
     MySqlContainerConfigs,
+    S3ContainerConfigs,
     get_docker_network,
-    get_s3_container,
     get_mysql_container,
+    get_s3_container,
 )
 
 

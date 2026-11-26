@@ -256,7 +256,9 @@ class TestTrinoColumnComments:
     @staticmethod
     def _mock_connection(records):
         connection = Mock()
-        connection.dialect.identifier_preparer.quote.side_effect = lambda value: f'"{value}"'
+        connection.dialect.identifier_preparer.quote.side_effect = (
+            lambda value: f'"{value}"'
+        )
         connection.execute.return_value = records
         return connection
 
@@ -271,7 +273,9 @@ class TestTrinoColumnComments:
     def _columns_for(self, records):
         mock_self = Mock()
         mock_self._get_default_schema_name.return_value = "test_schema"
-        return _get_columns(mock_self, self._mock_connection(records), "test_table", "test_schema")
+        return _get_columns(
+            mock_self, self._mock_connection(records), "test_table", "test_schema"
+        )
 
     def test_unset_comment_is_none(self):
         columns = self._columns_for([self._record("id", "")])

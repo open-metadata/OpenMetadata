@@ -12,7 +12,16 @@
 
 import pytest
 from pydoris.sqlalchemy.dialect import DorisDialect
-from sqlalchemy import DATETIME, TIMESTAMP, Column, Integer, MetaData, Table, select, text
+from sqlalchemy import (
+    DATETIME,
+    TIMESTAMP,
+    Column,
+    Integer,
+    MetaData,
+    Table,
+    select,
+    text,
+)
 
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
     DorisConnection,

@@ -13,6 +13,7 @@
 import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { ReactNode, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as TeamsIcons } from '../../../assets/svg/ic-teams.svg';
 import { OwnerType } from '../../../enums/user.enum';
@@ -22,6 +23,7 @@ import { getOwnerPath } from '../../../utils/ownerUtils';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { OwnerAvatarStackProps } from './OwnerAvatarStack.interface';
+import { OwnerInheritedBadge } from './OwnerInheritedBadge.component';
 import { OwnerStackOverflow } from './OwnerStackOverflow.component';
 
 const DEFAULT_MAX_VISIBLE_AVATARS = 2;
@@ -34,6 +36,7 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
   placement = 'horizontal',
   maxVisibleOwners = DEFAULT_MAX_VISIBLE_AVATARS,
 }) => {
+  const { t } = useTranslation();
   const isVertical = placement === 'vertical';
 
   const { visibleOwners, hiddenCount } = useMemo(() => {
@@ -50,6 +53,18 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
     const fallback = getEntityName(owner);
 
     return ownerDisplayName?.get(owner.name ?? '') ?? fallback;
+  };
+
+  // The link's aria-label overrides the badge's own label, so the inherited
+  // state has to be part of it.
+  const getOwnerLinkLabel = (owner: EntityReference) => {
+    const entityName = getEntityName(owner);
+
+    return owner.inherited
+      ? `${entityName}, ${t('label.inherited-entity', {
+          entity: t('label.owner'),
+        })}`
+      : entityName;
   };
 
   const renderTeamBadge = (owner: EntityReference) => {
@@ -89,17 +104,18 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
   };
 
   const renderStackAvatar = (owner: EntityReference) => {
-    const entityName = getEntityName(owner);
     const ownerPath = getOwnerPath(owner);
     const isTeam = owner.type === OwnerType.TEAM;
 
     const linkContent = (
       <Link
-        aria-label={entityName}
+        aria-label={getOwnerLinkLabel(owner)}
         className="owner-avatar-stack-link"
         data-testid="owner-link"
         to={ownerPath}>
-        {isTeam ? renderTeamBadge(owner) : renderUserBadge(owner)}
+        <OwnerInheritedBadge owner={owner}>
+          {isTeam ? renderTeamBadge(owner) : renderUserBadge(owner)}
+        </OwnerInheritedBadge>
       </Link>
     );
 
@@ -113,17 +129,18 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
   };
 
   const renderRowOwner = (owner: EntityReference) => {
-    const entityName = getEntityName(owner);
     const ownerPath = getOwnerPath(owner);
     const isTeam = owner.type === OwnerType.TEAM;
 
     const linkContent = (
       <Link
-        aria-label={entityName}
+        aria-label={getOwnerLinkLabel(owner)}
         className="owner-avatar-stack-row"
         data-testid="owner-link"
         to={ownerPath}>
-        {isTeam ? renderTeamBadge(owner) : renderUserBadge(owner)}
+        <OwnerInheritedBadge owner={owner}>
+          {isTeam ? renderTeamBadge(owner) : renderUserBadge(owner)}
+        </OwnerInheritedBadge>
         <Typography
           ellipsis
           as="span"

@@ -51,7 +51,12 @@ OVERFLOW = ProgrammingError("SELECT ...", {}, MagicMock(errno=100046))
 )
 def test_overflow_retry_drops_sum_mean_stddev(aggregates):
     column = Column("big_number", Integer)
-    metrics = [*aggregates, Metrics.min.value, Metrics.max.value, Metrics.nullCount.value]
+    metrics = [
+        *aggregates,
+        Metrics.min.value,
+        Metrics.max.value,
+        Metrics.nullCount.value,
+    ]
 
     def select_first(*entities):
         if any(entity.name == Sum.name() for entity in entities):

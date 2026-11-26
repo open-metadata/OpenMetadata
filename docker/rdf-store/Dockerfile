@@ -1,11 +1,29 @@
 # Apache Jena Fuseki Docker Image for OpenMetadata RDF Store
-# eclipse-temurin replaces the deprecated `openjdk` Docker Hub images
-# (`openjdk:17-jdk-slim` was removed from the registry — CI builds against it
-# fail with "manifest unknown"). JRE is enough since this image only runs the
-# Fuseki shell launcher; no compilation happens inside the container. The JRE is
-# 21 because Fuseki 6.x is compiled with --release 21; on a 17 JRE the server
-# dies at startup with UnsupportedClassVersionError.
-FROM eclipse-temurin:21-jre-jammy
+# The runtime is Java 21 because Fuseki 6.x is compiled with --release 21; on a 17 JRE the
+# server dies at startup with UnsupportedClassVersionError.
+
+# Amazon Corretto 21's generic Linux build, from its official image: Temurin has not published
+# OpenJDK's November 2026 security release yet. Only the jlinked runtime leaves this stage, not
+# the image's Amazon Linux 2 base.
+FROM amazoncorretto:21-al2-generic AS jre-builder
+
+# --strip-java-debug-attributes, not --strip-debug: Corretto ships its native libraries
+# stripped, and --strip-debug would need objcopy for nothing.
+RUN jlink \
+      --add-modules ALL-MODULE-PATH \
+      --strip-java-debug-attributes \
+      --no-man-pages \
+      --no-header-files \
+      --compress=zip-6 \
+      --output /javaruntime
+
+FROM ubuntu:22.04
+
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+# C.UTF-8 ships with glibc, so the JVM gets UTF-8 without the locales package.
+ENV LANG=C.UTF-8
+COPY --from=jre-builder /javaruntime ${JAVA_HOME}
 
 # 6.2.0 fixes CVE-2026-61372: the SPARQL Update engine accepted LOAD source
 # URLs pointing at local resources, so an authenticated update could read data
@@ -24,7 +42,9 @@ ENV FUSEKI_BASE=/fuseki
 # FUSEKI_ADMIN_PASSWORD / FUSEKI_OPENMETADATA_PASSWORD into shiro.ini at
 # container start. Without this, operators could not override the default
 # Fuseki credentials via environment variables.
+# The compose health checks call curl or wget.
 RUN apt-get update && apt-get install -y \
+    curl \
     wget \
     gettext-base \
     && rm -rf /var/lib/apt/lists/*

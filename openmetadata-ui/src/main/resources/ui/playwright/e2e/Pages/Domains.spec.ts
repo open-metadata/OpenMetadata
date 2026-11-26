@@ -735,6 +735,11 @@ test.describe('Domains', () => {
       await expect(
         page.getByTestId(user1.responseData.displayName)
       ).toBeVisible();
+      await expect(
+        page
+          .getByTestId('glossary-right-panel-owner-link')
+          .getByTestId('inherited-owner-icon')
+      ).toBeVisible();
 
       await expect(
         page.getByTestId(user2.responseData.displayName)

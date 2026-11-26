@@ -68,7 +68,9 @@ class QueryParserTests(TestCase):
         An empty identifier in the query (`db.schema.""`) makes the parser return a
         reference with no table part, which cannot be resolved into an entity later on
         """
-        parser = LineageParser('insert into tgt.t1 select * from "my_db"."my_schema".""')
+        parser = LineageParser(
+            'insert into tgt.t1 select * from "my_db"."my_schema".""'
+        )
         self.assertEqual(set(parser.clean_table_list), {"tgt.t1"})
 
     def test_bracketed_parser_table_list(self):

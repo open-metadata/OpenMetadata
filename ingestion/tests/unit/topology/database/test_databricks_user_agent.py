@@ -63,12 +63,16 @@ def test_databricks_engine_sets_user_agent_entry():
         catalog="main",
     )
 
-    from metadata.ingestion.source.database.databricks import connection as db_connection
+    from metadata.ingestion.source.database.databricks import (
+        connection as db_connection,
+    )
 
     captured = {}
 
     def _capture(connection, **_kwargs):
-        captured["user_agent_entry"] = connection.connectionArguments.root.get("user_agent_entry")
+        captured["user_agent_entry"] = connection.connectionArguments.root.get(
+            "user_agent_entry"
+        )
         return MagicMock()
 
     with patch.object(db_connection, "create_generic_db_connection", _capture):
@@ -84,12 +88,16 @@ def test_unitycatalog_engine_sets_user_agent_entry():
         httpPath="/sql/1.0/warehouses/abc",
     )
 
-    from metadata.ingestion.source.database.unitycatalog import connection as uc_connection
+    from metadata.ingestion.source.database.unitycatalog import (
+        connection as uc_connection,
+    )
 
     captured = {}
 
     def _capture(connection, **_kwargs):
-        captured["user_agent_entry"] = connection.connectionArguments.root.get("user_agent_entry")
+        captured["user_agent_entry"] = connection.connectionArguments.root.get(
+            "user_agent_entry"
+        )
         return MagicMock()
 
     with patch.object(uc_connection, "create_generic_db_connection", _capture):
@@ -104,7 +112,9 @@ def test_unitycatalog_workspace_client_receives_product():
         authType=PersonalAccessToken(token="test-token"),
     )
 
-    from metadata.ingestion.source.database.unitycatalog import connection as uc_connection
+    from metadata.ingestion.source.database.unitycatalog import (
+        connection as uc_connection,
+    )
 
     with patch.object(uc_connection, "WorkspaceClient") as workspace_client:
         uc_connection.get_connection(connection)

@@ -286,7 +286,9 @@ class DatabricksClient:
         job_id = job.get("job_id")
         try:
             tasks: list[dict] = []
-            for payload in self._paginate_responses(f"{self.base_job_url}/get", {"job_id": job_id}):
+            for payload in self._paginate_responses(
+                f"{self.base_job_url}/get", {"job_id": job_id}
+            ):
                 tasks.extend((payload.get("settings") or {}).get("tasks") or [])
         except Exception as exc:
             logger.debug(traceback.format_exc())
