@@ -750,33 +750,19 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
     EntityMaskerFactory.createEntityMasker().maskIngestionPipeline(toMask);
     assertEquals(getMaskedPassword(), dbtHttpHeader(toMask));
+    dbtHttpHeaders(toMask).withAdditionalProperty("NEW-TOKEN", "new-real-token");
 
     EntityMaskerFactory.createEntityMasker().unmaskIngestionPipeline(toMask, original);
     assertEquals(GITLAB_TOKEN, dbtHttpHeader(toMask));
+    assertEquals(
+        "new-real-token", dbtHttpHeaders(toMask).getAdditionalProperties().get("NEW-TOKEN"));
   }
 
-  /**
-   * A masked value means "keep the stored secret". Sending a mask for a dbt HTTP header that
-   * nothing was stored under (e.g. a newly added header) must be refused instead of persisting the
-   * mask itself as the token - the pipeline path mirrors the service-connection rule in {@link
-   * #testMaskedSecretWithNoStoredValueIsRejected()}.
-   */
   @Test
   void testIngestionPipelineMaskedSecretWithNoStoredValueIsRejected() {
     IngestionPipeline original = dbtHttpPipeline();
-    IngestionPipeline incoming =
-        new IngestionPipeline()
-            .withPipelineType(PipelineType.DBT)
-            .withSourceConfig(
-                new SourceConfig()
-                    .withConfig(
-                        new DbtPipeline()
-                            .withDbtConfigSource(
-                                new DbtHttpConfig()
-                                    .withDbtHttpHeaders(
-                                        new DbtHttpHeaders()
-                                            .withAdditionalProperty(
-                                                "NEW-TOKEN", getMaskedPassword())))));
+    IngestionPipeline incoming = dbtHttpPipeline();
+    dbtHttpHeaders(incoming).withAdditionalProperty("NEW-TOKEN", getMaskedPassword());
 
     EntityMaskException thrown =
         Assertions.assertThrows(
@@ -787,37 +773,6 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
     assertEquals(400, thrown.getResponse().getStatus());
     Assertions.assertTrue(thrown.getMessage().contains("NEW-TOKEN"));
-  }
-
-  /**
-   * Adding a new credential alongside an existing one must still work: the stored secret is
-   * restored from its mask, and the new real (non-masked) value is kept as sent. The rejection
-   * guard only fires on a mask that has nothing stored under its key.
-   */
-  @Test
-  void testIngestionPipelineRestoresStoredSecretAndAcceptsNewRealValue() {
-    IngestionPipeline original = dbtHttpPipeline();
-    IngestionPipeline incoming =
-        new IngestionPipeline()
-            .withPipelineType(PipelineType.DBT)
-            .withSourceConfig(
-                new SourceConfig()
-                    .withConfig(
-                        new DbtPipeline()
-                            .withDbtConfigSource(
-                                new DbtHttpConfig()
-                                    .withDbtHttpHeaders(
-                                        new DbtHttpHeaders()
-                                            .withAdditionalProperty(
-                                                "PRIVATE-TOKEN", getMaskedPassword())
-                                            .withAdditionalProperty(
-                                                "NEW-TOKEN", "new-real-token")))));
-
-    EntityMaskerFactory.createEntityMasker().unmaskIngestionPipeline(incoming, original);
-
-    DbtHttpHeaders headers = dbtHttpHeaders(incoming);
-    assertEquals(GITLAB_TOKEN, headers.getAdditionalProperties().get("PRIVATE-TOKEN"));
-    assertEquals("new-real-token", headers.getAdditionalProperties().get("NEW-TOKEN"));
   }
 
   @Test
@@ -860,11 +815,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   }
 
   private Object dbtHttpHeader(IngestionPipeline pipeline) {
-    DbtPipeline config = (DbtPipeline) pipeline.getSourceConfig().getConfig();
-    return ((DbtHttpConfig) config.getDbtConfigSource())
-        .getDbtHttpHeaders()
-        .getAdditionalProperties()
-        .get("PRIVATE-TOKEN");
+    return dbtHttpHeaders(pipeline).getAdditionalProperties().get("PRIVATE-TOKEN");
   }
 
   private DbtHttpHeaders dbtHttpHeaders(IngestionPipeline pipeline) {
