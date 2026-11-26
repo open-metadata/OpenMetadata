@@ -1580,7 +1580,7 @@ test.describe(
           ).toContainText('Glossary');
 
           await expect(
-            glossaryEntry.first().locator('.description-content')
+            glossaryEntry.first().getByTestId('description-content')
           ).toContainText(glossaryName);
 
           await expect(

@@ -192,10 +192,16 @@ test.describe('Context Center Permissions', () => {
       browser
     );
 
-    articleEntity = new KnowledgeCenterClass({
-      displayName: `CC Permission Article ${uuid()}`,
-      name: `cc_permission_article_${uuid()}`,
-    });
+    // An article with no owner lets anyone set one (OrganizationPolicy-NoOwner-Rule),
+    // so own it to check that a user without EditOwners cannot change its owners.
+    const admin = await getLoggedInUser(apiContext);
+    articleEntity = new KnowledgeCenterClass(
+      {
+        displayName: `CC Permission Article ${uuid()}`,
+        name: `cc_permission_article_${uuid()}`,
+      },
+      [{ id: admin.id, type: 'user' }]
+    );
     await articleEntity.create(apiContext);
 
     await apiContext.post('/api/v1/contextCenter/drive/folders', {
@@ -2237,19 +2243,9 @@ test.describe('Context Center Permissions', () => {
         viewOnlyPage.getByTestId('create-knowledge-page-btn')
       ).not.toBeVisible();
 
-      const articleResponse = viewOnlyPage.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/contextCenter/pages/') &&
-          response.request().method() === 'GET'
+      await viewOnlyPage.goto(
+        `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
       );
-
-      await viewOnlyPage
-        .getByTestId('knowledge-pages-hierarchy')
-        .getByRole('link')
-        .first()
-        .click();
-
-      await articleResponse;
       await waitForAllLoadersToDisappear(viewOnlyPage);
 
       await expect(
@@ -2292,19 +2288,9 @@ test.describe('Context Center Permissions', () => {
           dataConsumerPage.getByTestId('create-knowledge-page-btn')
         ).not.toBeVisible();
 
-        const articleResponse = dataConsumerPage.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/contextCenter/pages/') &&
-            response.request().method() === 'GET'
+        await dataConsumerPage.goto(
+          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
         );
-
-        await dataConsumerPage
-          .getByTestId('knowledge-pages-hierarchy')
-          .getByRole('link')
-          .first()
-          .click();
-
-        await articleResponse;
         await waitForAllLoadersToDisappear(dataConsumerPage);
 
         await expect(
