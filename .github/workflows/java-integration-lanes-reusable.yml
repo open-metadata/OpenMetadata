@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 # Reusable Java integration-test lane runner called by Backend CI
-# (.github/workflows/openmetadata-service-unit-tests.yml). All DB/search profiles
+# (ci-merge-queue and ci-nightly). All DB/search profiles
 # share the single pre-built `java-it-build-<run_id>` reactor artifact instead of
 # compiling OpenMetadata separately per profile.
 name: Java Integration Test Lanes (Reusable)

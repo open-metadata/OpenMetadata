@@ -1,0 +1,39 @@
+name: Build Maven static analysis
+description: Build Maven static analysis.
+runs:
+  using: composite
+  steps:
+    - name: Hydrate Maven dependencies
+      id: maven-cache
+      uses: ./.github/actions/hydrate-maven-cache
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v6
+      with:
+        java-version: "21"
+        distribution: "temurin"
+
+    - name: Install Ubuntu dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+        libevent-dev jq
+        sudo make install_antlr_cli
+
+    - name: Restore openmetadata-ui dist cache
+      uses: ./.github/actions/cache-ui-dist
+
+    - name: Build with Maven
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      shell: bash
+      run: mvn -B -T 1C -Pstatic-code-analysis clean verify -DskipTests -am
+
+    - name: Save Maven dependencies
+      if: github.event_name == 'push' && steps.maven-cache.outputs.cache-hit != 'true'
+      continue-on-error: true
+      uses: actions/cache/save@v6
+      with:
+        path: ~/.m2
+        key: ${{ steps.maven-cache.outputs.cache-primary-key }}

@@ -33,7 +33,8 @@ def test_backport_automerge_keeps_its_provenance_gate():
 
 
 def test_data_access_request_e2e_does_not_run_on_pull_requests():
-    workflow = load("data-access-request-e2e.yml")
-    # The e2e job never runs for pull_request, so the trigger only started a no-op gate job.
+    workflow = load("ci-merge-queue.yml")
+    assert "data-access-request-e2e" in workflow["jobs"]
     assert "pull_request" not in workflow["on"]
     assert {"push", "merge_group", "workflow_dispatch"} <= set(workflow["on"])
+    assert "data-access-request-e2e" not in load("ci-pr.yml")["jobs"]

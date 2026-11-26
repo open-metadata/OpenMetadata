@@ -19,7 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 STORAGE_SCRIPT = ".github/scripts/configure_docker_storage.sh"
 LANE_WORKFLOWS = ("java-integration-lanes-reusable.yml",)
-BACKEND_WORKFLOW = "openmetadata-service-unit-tests.yml"
+PLANNER_WORKFLOW = "reusable-ci-plan.yml"
 LANE_JOB = "integration-test-lanes"
 LANE_MODULE = "openmetadata-integration-tests"
 
@@ -152,15 +152,16 @@ def test_lane_maven_build_cannot_need_the_antlr_cli(workflow):
 
 
 def test_storage_script_changes_trigger_the_lanes():
-    loaded = load_workflow(BACKEND_WORKFLOW)
+    loaded = load_workflow(PLANNER_WORKFLOW)
     filter_steps = [
         step
-        for step in loaded["jobs"]["changes"]["steps"]
+        for step in loaded["jobs"]["select"]["steps"]
         if uses(step, "dorny/paths-filter")
     ]
 
     assert len(filter_steps) == 1
-    backend_filter = yaml.safe_load(filter_steps[0]["with"]["filters"])["backend_it"]
+    filters_file = REPO_ROOT / filter_steps[0]["with"]["filters"]
+    backend_filter = yaml.safe_load(filters_file.read_text())["java-integration"]
     assert STORAGE_SCRIPT in backend_filter
 
 

@@ -66,11 +66,11 @@ if [ -n "$stale_includes" ]; then
   exit 1
 fi
 
-# Same rot, different file: the workflow's `docker:` path filter decides whether
+# Same rot, different file: the shared `docker-smoke:` path filter decides whether
 # this smoke test runs at all, so an entry left pointing at a deleted file makes
 # the gate quietly narrower than it reads. That is how docker/Health.java
 # survived in the filter after the file was removed.
-WORKFLOW=".github/workflows/openmetadata-service-unit-tests.yml"
+PATH_FILTERS=".github/ci/paths.yml"
 stale_filters=""
 while IFS= read -r entry; do
   probe="${entry%/\*\*}"
@@ -78,10 +78,10 @@ while IFS= read -r entry; do
     *[*?]*) compgen -G "$probe" >/dev/null 2>&1 || stale_filters="$stale_filters $entry" ;;
     *)      [ -e "$probe" ] || stale_filters="$stale_filters $entry" ;;
   esac
-done < <(awk '/^ *docker:$/{f=1;next} f && /^ *[a-z_]+:$/{f=0} f' "$WORKFLOW" \
+done < <(awk '/^docker-smoke:$/{f=1;next} f && /^[a-z_-]+:$/{f=0} f' "$PATH_FILTERS" \
            | sed -n "s/^ *- '\(.*\)'$/\1/p")
 if [ -n "$stale_filters" ]; then
-  echo "stale docker path-filter entr(ies) in $WORKFLOW, the path no longer exists:$stale_filters"
+  echo "stale docker path-filter entr(ies) in $PATH_FILTERS, the path no longer exists:$stale_filters"
   exit 1
 fi
 

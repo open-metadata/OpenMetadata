@@ -1,0 +1,189 @@
+java-checkstyle:
+  - '**/*.java'
+  - 'pom.xml'
+  - '**/pom.xml'
+  - '.github/workflows/ci-pr.yml'
+  - '.github/workflows/ci-merge-queue.yml'
+  - '.github/workflows/reusable-ci-plan.yml'
+  - '.github/ci/paths.yml'
+  - 'scripts/ci_plan.py'
+  - '.github/actions/java-backend-checks/**'
+  - '.github/scripts/summarize_surefire.py'
+java-unit:
+  - '.github/workflows/ci-pr.yml'
+  - '.github/workflows/ci-merge-queue.yml'
+  - '.github/workflows/reusable-ci-plan.yml'
+  - '.github/ci/paths.yml'
+  - 'scripts/ci_plan.py'
+  - '.github/actions/java-backend-checks/**'
+  - '.github/actions/hydrate-maven-cache/**'
+  - '.github/scripts/summarize_surefire.py'
+  - 'openmetadata-service/**'
+  - 'openmetadata-spec/**'
+  - 'openmetadata-clients/**'
+  - 'openmetadata-sdk/**'
+  - 'common/**'
+  - 'pom.xml'
+  - 'Makefile'
+  - 'bootstrap/**'
+java-operator:
+  - '.github/actions/java-operator-tests/**'
+  - 'openmetadata-k8s-operator/**'
+# Everything that ends up inside the server image or decides how it
+# is launched. Not 'openmetadata-service/**': the smoke test asserts
+# image properties, not application behaviour, so a Java-only change
+# has nothing new for it to find.
+docker-smoke:
+  - '.github/workflows/ci-pr.yml'
+  - '.github/workflows/ci-merge-queue.yml'
+  - '.github/actions/java-docker-smoke/**'
+  - '.github/actions/cache-ui-dist/**'
+  - 'docker/openmetadata-start.sh'
+  - 'docker/development/Dockerfile'
+  - 'docker/docker-compose-quickstart/Dockerfile'
+  - 'scripts/docker_smoke_test.sh'
+  - 'openmetadata-dist/**'
+  - 'conf/**'
+  - 'bin/**'
+java-integration:
+  - 'openmetadata-service/**'
+  - 'openmetadata-integration-tests/**'
+  - 'openmetadata-spec/pom.xml'
+  - 'openmetadata-spec/src/**'
+  - 'openmetadata-sdk/**'
+  - 'openmetadata-shaded-deps/**'
+  - 'openmetadata-k8s-operator/**'
+  - 'openmetadata-mcp/**'
+  - 'common/**'
+  - 'pom.xml'
+  - 'Makefile'
+  - 'bootstrap/**'
+  - '.github/scripts/classify_test_outcome.py'
+  - '.github/scripts/configure_docker_storage.sh'
+  - '.github/actions/hydrate-maven-cache/**'
+  - '.github/workflows/ci-pr.yml'
+  - '.github/workflows/ci-merge-queue.yml'
+  - '.github/workflows/reusable-ci-plan.yml'
+  - '.github/ci/paths.yml'
+  - 'scripts/ci_plan.py'
+  - '.github/actions/java-backend-checks/**'
+  - '.github/workflows/java-integration-lanes-reusable.yml'
+  - '.github/actions/java-integration-build/**'
+rdf:
+  - 'docker/rdf-store/**'
+java-sonar:
+  - '.github/actions/java-sonar/**'
+  - 'openmetadata-service/**'
+  - 'openmetadata-spec/src/main/resources/json/schema/**'
+  - 'openmetadata-dist/**'
+  - 'openmetadata-clients/**'
+  - 'openmetadata-sdk/**'
+  - 'common/**'
+  - 'pom.xml'
+  - 'Makefile'
+  - 'bootstrap/**'
+
+python:
+  - ingestion/src/**/!(*.md)
+  - ingestion/tests/**/!(*.md)
+  - ingestion/stubs/**
+  - ingestion/scripts/**
+  - ingestion/examples/**
+  - ingestion/operators/**/*.py
+  - ingestion/pipelines/**
+  - ingestion/*.py
+  - ingestion/Makefile
+  - ingestion/pyproject.toml
+  - ingestion/uv.lock
+  - ingestion/.basedpyright/**
+  - ingestion/.ruff-g004-baseline.json
+  - ingestion/.importlinter
+  - scripts/check_generated_models.py
+  - scripts/datamodel_generation.py
+  - scripts/generate_ingestion_models.py
+  - scripts/prepare_classification_models.py
+  - .github/actions/prepare-classification-models/**
+  - .github/actions/prepare-classification-model/**
+  - .github/actions/prepare-python-environment/**
+  - .github/actions/prepare-python-build/**
+  - openmetadata-spec/**
+  - .github/workflows/ci-pr.yml
+  - .github/actions/python-unit/**
+  - .github/ci/**
+  - .github/actions/python-static-checks/**
+  - .github/actions/python-suite/**
+  - .github/actions/report-test-results/**
+  - .github/actions/setup-uv/**
+  - .github/actions/setup-python/**
+  - scripts/ci_plan.py
+  - scripts/python_ci.py
+  - scripts/python_tools.py
+  - .github/scripts/classify_test_outcome.py
+  - Makefile
+python-backend:
+  - '**/pom.xml'
+  - bin/openmetadata.sh
+  - bin/openmetadata-server-start.sh
+  - bootstrap/openmetadata-ops.sh
+  - bootstrap/sql/**
+  - conf/openmetadata.yaml
+  - conf/openmetadata-env.sh
+  - conf/operations.yaml
+  - conf/public_key.der
+  - conf/private_key.der
+  - docker/run_local_docker.sh
+  - docker/run_local_docker_common.sh
+  - docker/development/docker-compose.yml
+  - docker/development/docker-compose-postgres.yml
+  - openmetadata-service/src/main/java/org/openmetadata/service/resources/**
+  - openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java
+  - openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java
+  - openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java
+  - .github/actions/python-diagnostics/**
+  - .github/actions/setup-openmetadata-test-environment/action.yml
+  - .github/workflows/ci-merge-queue.yml
+  - .github/workflows/reusable-py-integration.yml
+  - .github/workflows/reusable-build-backend.yml
+  - .github/scripts/ci_backend_image.sh
+  - .github/scripts/configure_docker_storage.sh
+  - .github/scripts/python_ci_diagnostics.sh
+airflow-apis:
+  - openmetadata-airflow-apis/**/!(*.md)
+  - .github/actions/python-airflow-apis/**
+python-static:
+  - scripts/update_version.py
+  - .github/scripts/tests/test_python_ci.py
+
+dar:
+  - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/tasks/TaskResource.java'
+  - 'openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TaskRepository.java'
+  - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/feeds/FeedResource.java'
+  - 'openmetadata-service/src/main/java/org/openmetadata/service/governance/workflows/**'
+  - 'openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/**'
+  - 'openmetadata-ui/src/main/resources/ui/src/pages/WorkflowDefinitions/**'
+  - 'openmetadata-ui/src/main/resources/ui/src/constants/WorkflowBuilder.constants.ts'
+  - 'openmetadata-ui/src/main/resources/ui/src/interface/WorkflowBuilder.interface.ts'
+  - 'openmetadata-ui/src/main/resources/ui/src/utils/WorkflowBuilderUtils.ts'
+  - 'openmetadata-ui/src/main/resources/ui/src/generated/governance/workflows/**'
+
+json-yaml:
+  - "**/*.json"
+  - "**/*.yaml"
+  - "**/*.yml"
+  - ".github/scripts/check_pr_workflow_security.py"
+  - ".github/scripts/prune_ghcr_package.py"
+  - ".github/scripts/summarize_surefire.py"
+  - ".github/scripts/tests/test_pr_workflow_security.py"
+  - ".github/scripts/tests/test_prune_ghcr_package.py"
+  - ".github/scripts/tests/test_summarize_surefire.py"
+  - ".github/scripts/tests/test_ci_speed_*.py"
+  - "scripts/ci_plan.py"
+  - ".github/scripts/configure_docker_storage.sh"
+  - ".github/actions/hydrate-maven-cache/**"
+  - "openmetadata-ui/src/main/resources/ui/jest.config.js"
+  - "openmetadata-integration-tests/pom.xml"
+
+quickstart-compose:
+  - 'docker/docker-compose-quickstart/**'
+  - '.github/workflows/ci-pr.yml'
+  - '.github/actions/validate-omd-docker-compose/**'

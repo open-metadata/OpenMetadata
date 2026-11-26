@@ -1,0 +1,43 @@
+name: Smoke test the server image
+description: Smoke test the server image.
+runs:
+  using: composite
+  steps:
+    - name: Hydrate Maven dependencies
+      id: maven-cache
+      uses: ./.github/actions/hydrate-maven-cache
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v6
+      with:
+        java-version: "21"
+        distribution: "temurin"
+
+    - name: Install antlr cli
+      shell: bash
+      run: sudo make install_antlr_cli
+
+    # Sets SKIP_UI_BUILD=true on a hit, which the skip-ui-build profile in
+    # openmetadata-ui/pom.xml reads. The smoke test never loads a page, so a
+    # stale UI bundle costs it nothing and a cold yarn build costs it minutes.
+    - name: Restore openmetadata-ui dist cache
+      uses: ./.github/actions/cache-ui-dist
+
+    - name: Build the distribution tarball
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      shell: bash
+      run: |
+        mvn -B -T 1C -DskipTests package -pl openmetadata-dist -am
+
+    - name: Save Maven dependencies
+      if: github.event_name == 'push' && steps.maven-cache.outputs.cache-hit != 'true'
+      continue-on-error: true
+      uses: actions/cache/save@v6
+      with:
+        path: ~/.m2
+        key: ${{ steps.maven-cache.outputs.cache-primary-key }}
+
+    - name: Smoke test the server image
+      shell: bash
+      run: ./scripts/docker_smoke_test.sh

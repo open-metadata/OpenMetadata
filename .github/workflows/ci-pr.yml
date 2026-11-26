@@ -17,45 +17,25 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-  workflow_dispatch: null
+  workflow_dispatch:
+    inputs:
+      workload:
+        description: PR checks to run manually
+        type: choice
+        options: [python, quickstart-compose]
+        default: python
 permissions:
   contents: read
+  packages: read
   pull-requests: read
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   plan:
-    name: Select Python workloads
-    if: ${{ !github.event.pull_request.draft }}
-    runs-on: ubuntu-latest
-    outputs:
-      python-lowest: ${{ steps.versions.outputs.lowest }}
-      python-highest: ${{ steps.versions.outputs.highest }}
-      ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      python: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' }}
-      airflow-apis: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.airflow-apis == 'true' }}
-      static: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' || steps.filter.outputs.airflow-apis == 'true' || steps.filter.outputs.static == 'true' }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          persist-credentials: false
-          fetch-depth: 1
-          sparse-checkout: |
-            .github/python-ci/paths.yml
-            ingestion/pyproject.toml
-            scripts/python_ci.py
-            scripts/prepare_classification_models.py
-          sparse-checkout-cone-mode: false
-      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
-        id: filter
-        if: ${{ github.event_name == 'pull_request' }}
-        with:
-          filters: .github/python-ci/paths.yml
-      - name: Read Python versions
-        id: versions
-        run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
+    uses: ./.github/workflows/reusable-ci-plan.yml
+    with:
+      entrypoint: pr
 
   # Static checks, unit tests and Airflow API tests share one runner. Later suites still run
   # after an earlier one fails so a single push reports every selected failure. The job runs
@@ -63,7 +43,7 @@ jobs:
   python:
     name: python
     needs: plan
-    if: ${{ always() && !github.event.pull_request.draft }}
+    if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'workflow_dispatch' || inputs.workload == 'python') }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
@@ -156,7 +136,7 @@ jobs:
     needs:
       - plan
       - python
-    if: ${{ always() && !github.event.pull_request.draft }}
+    if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'workflow_dispatch' || inputs.workload == 'python') }}
     runs-on: ubuntu-slim
     timeout-minutes: 2
     steps:
@@ -183,3 +163,149 @@ jobs:
               $needs[$job.key].result == $job.value)
           '
         shell: bash
+
+  backend-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    needs: plan
+    if: ${{ !cancelled() && (needs.plan.result != 'success' || needs.plan.outputs.checkstyle == 'true') }}
+    steps:
+      - name: Require successful CI planning
+        if: ${{ needs.plan.result != 'success' }}
+        run: exit 1
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+      - name: Run Java formatting and service unit tests
+        uses: ./.github/actions/java-backend-checks
+        with:
+          service-unit: ${{ needs.plan.outputs.java-unit }}
+
+  k8s_operator-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: plan
+    if: ${{ needs.plan.outputs.java-operator == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+      - name: Run Kubernetes operator unit tests
+        uses: ./.github/actions/java-operator-tests
+
+  docker-image-smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: plan
+    if: ${{ needs.plan.outputs.docker-smoke == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+      - name: Smoke test the server image
+        uses: ./.github/actions/java-docker-smoke
+
+  backend-checks-status:
+    name: backend-checks-status
+    needs: [plan, backend-checks, k8s_operator-unit-tests, docker-image-smoke-test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ always() && github.event_name != 'workflow_dispatch' }}
+    steps:
+      - name: Verify backend checks, operator tests, and Docker smoke test
+        env:
+          CHANGES_RESULT: ${{ needs.plan.result }}
+          CHECKSTYLE_CHANGED: ${{ needs.plan.outputs.checkstyle }}
+          JAVA_CHANGED: ${{ needs.plan.outputs.java-unit }}
+          K8S_CHANGED: ${{ needs.plan.outputs.java-operator }}
+          DOCKER_CHANGED: ${{ needs.plan.outputs.docker-smoke }}
+          SERVICE_RESULT: ${{ needs.backend-checks.result }}
+          K8S_RESULT: ${{ needs.k8s_operator-unit-tests.result }}
+          DOCKER_RESULT: ${{ needs.docker-image-smoke-test.result }}
+        run: |
+          if [[ "$CHANGES_RESULT" != "success" ]]; then
+            echo "::error::CI planning did not succeed: ${CHANGES_RESULT}"
+            exit 1
+          fi
+
+          fail=0
+          check() {
+            local name="$1" changed="$2" result="$3"
+            if [[ "$changed" != "true" ]]; then
+              echo "${name}: no relevant paths changed, skipped."
+              return
+            fi
+            if [[ "$result" != "success" ]]; then
+              echo "::error::${name} did not succeed (result=${result})"
+              fail=1
+            else
+              echo "${name}: success"
+            fi
+          }
+          backend_changed="false"
+          if [[ "$JAVA_CHANGED" == "true" || "$CHECKSTYLE_CHANGED" == "true" ]]; then
+            backend_changed="true"
+          fi
+          check "backend-checks" "$backend_changed" "$SERVICE_RESULT"
+          check "k8s_operator-unit-tests"         "$K8S_CHANGED"     "$K8S_RESULT"
+          check "docker-image-smoke-test"         "$DOCKER_CHANGED"  "$DOCKER_RESULT"
+          exit $fail
+
+  validate-json-yaml:
+    needs: plan
+    if: ${{ needs.plan.outputs.json-yaml == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+      - uses: ./.github/actions/validate-ci-config
+
+  validate-docker-compose:
+    needs: plan
+    if: ${{ needs.plan.outputs.quickstart-compose == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENMETADATA_DB_IMAGE: docker.getcollate.io/openmetadata/db:latest
+      OPENMETADATA_SERVER_IMAGE: docker.getcollate.io/openmetadata/server:latest
+      OPENMETADATA_INGESTION_IMAGE: docker.getcollate.io/openmetadata/ingestion:latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+        with:
+          persist-credentials: false
+      - name: Validate OpenMetadata Docker Compose
+        uses: ./.github/actions/validate-omd-docker-compose
+        with:
+          compose_file: ./docker/docker-compose-quickstart/docker-compose.yml
+          health_check_timeout: 300
+
+  # Required contexts still report skipped on PRs. The jobs run in ci-merge-queue.
+  integration-tests-mysql-elasticsearch:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'merge_group' }}
+    steps:
+      - run: exit 1
+
+  integration-tests-postgres-opensearch:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'merge_group' }}
+    steps:
+      - run: exit 1
+
+  integration-tests-postgres-elasticsearch-redis:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'merge_group' }}
+    steps:
+      - run: exit 1
