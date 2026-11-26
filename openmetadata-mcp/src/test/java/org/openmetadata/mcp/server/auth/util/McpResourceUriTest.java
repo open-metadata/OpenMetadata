@@ -1,14 +1,22 @@
 package org.openmetadata.mcp.server.auth.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.service.security.AuthenticationException;
+import org.openmetadata.service.security.TokenAudience;
 
 class McpResourceUriTest {
 
@@ -193,5 +201,37 @@ class McpResourceUriTest {
                 Arrays.asList("https://om.example/mcp", null), CANONICAL_HTTPS))
         .isFalse();
     assertThat(McpResourceUri.validateRequested(List.of(""), CANONICAL_HTTPS)).isFalse();
+  }
+
+  /** The MCP endpoint's audience rule compares {@code aud} with the resource it serves now. */
+  @Test
+  void tokenAudienceAcceptsEquivalentFormsOfTheCurrentResourceOnly() {
+    AtomicReference<URI> served = new AtomicReference<>(CANONICAL_HTTPS);
+    TokenAudience audience = McpResourceUri.tokenAudienceOf(served::get);
+
+    assertThatCode(() -> audience.requireAddressedHere(tokenFor("HTTPS://OM.EXAMPLE:443/mcp/")))
+        .doesNotThrowAnyException();
+    assertThatThrownBy(() -> audience.requireAddressedHere(tokenFor("https://evil.example/mcp")))
+        .isInstanceOf(AuthenticationException.class);
+
+    served.set(CANONICAL_SUBPATH);
+
+    assertThatThrownBy(() -> audience.requireAddressedHere(tokenFor("https://om.example/mcp")))
+        .isInstanceOf(AuthenticationException.class);
+    assertThatCode(
+            () -> audience.requireAddressedHere(tokenFor("https://om.example/data-catalog/mcp")))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void tokenAudienceOfAnUnresolvedResourceFailsClosed() {
+    TokenAudience audience = McpResourceUri.tokenAudienceOf(() -> null);
+
+    assertThatThrownBy(() -> audience.requireAddressedHere(tokenFor("https://om.example/mcp")))
+        .isInstanceOf(AuthenticationException.class);
+  }
+
+  private static DecodedJWT tokenFor(String audience) {
+    return JWT.decode(JWT.create().withAudience(audience).sign(Algorithm.none()));
   }
 }

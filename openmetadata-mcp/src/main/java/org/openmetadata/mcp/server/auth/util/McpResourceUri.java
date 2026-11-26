@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
+import org.openmetadata.service.security.TokenAudience;
 
 /**
  * Validates and canonicalizes RFC 8707 resource indicators for MCP OAuth.
@@ -69,6 +71,15 @@ public final class McpResourceUri {
   public static boolean matches(final String candidate, final URI expectedCanonical) {
     final Optional<URI> expected = canonicalize(expectedCanonical);
     return expected.isPresent() && matchesCanonical(candidate, expected.get());
+  }
+
+  /**
+   * The audience rule of an entry point serving {@code resource}, read on every check because a
+   * base URL reload moves it: an {@code aud} value names it when it {@link #matches} the current
+   * value, and nothing names it while the resource is unresolved.
+   */
+  public static TokenAudience tokenAudienceOf(final Supplier<URI> resource) {
+    return TokenAudience.servedResourceNamedBy(audience -> matches(audience, resource.get()));
   }
 
   /**

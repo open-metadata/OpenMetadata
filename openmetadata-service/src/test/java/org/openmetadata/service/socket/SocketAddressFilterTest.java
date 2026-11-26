@@ -17,6 +17,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -32,6 +33,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,16 +42,21 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.quality.Strictness;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.OAuthDAOs;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAccessTokenRecord;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.credentials.CredentialUnavailableException;
@@ -433,6 +440,69 @@ class SocketAddressFilterTest {
         .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
     verify(chain, never()).doFilter(any(), any());
     verify(jwtFilter, never()).verifySignatureOnly(any());
+  }
+
+  /**
+   * The MCP OAuth server binds its access tokens to the MCP resource through {@code aud}. The
+   * handshake's own validator serves the OpenMetadata API, so it answers such a token with the
+   * generic 401 even while the token is stored and its user exists: a token minted for {@code /mcp}
+   * never opens a push-feed socket. ADR:2026-11-25-mcp-oauth-binds-tokens-to-the-canonical-resource
+   */
+  @Test
+  void realValidatorRejectsATokenIssuedForTheMcpResource() throws Exception {
+    SocketAddressFilter productionFilter =
+        new SocketAddressFilter(authConfig, authorizerConfig, sessionService);
+    String mcpToken =
+        JWTTokenGenerator.getInstance()
+            .generateJWTToken(
+                "sam",
+                Set.of(),
+                false,
+                "sam@open-metadata.org",
+                600,
+                false,
+                ServiceTokenType.OM_USER,
+                List.of("openid"),
+                "mcp-client",
+                "https://om.example/mcp")
+            .getJWTToken();
+    mockRequest(null, "Bearer " + mcpToken);
+    CollectionDAO storedTokens = storing(mcpToken);
+
+    try (MockedStatic<Entity> entityMock =
+        mockStatic(Entity.class, withSettings().strictness(Strictness.LENIENT))) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(storedTokens);
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(UUID.randomUUID()));
+
+      productionFilter.doFilter(request, response, chain);
+    }
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
+  /** {@code oauth_access_tokens} holding {@code token}, as issuing an MCP token stores it. */
+  private static CollectionDAO storing(String token) {
+    CollectionDAO dao = mock(CollectionDAO.class, withSettings().strictness(Strictness.LENIENT));
+    CollectionDAO.OAuthAccessTokenDAO accessTokens =
+        mock(
+            CollectionDAO.OAuthAccessTokenDAO.class, withSettings().strictness(Strictness.LENIENT));
+    when(dao.oauthAccessTokenDAO()).thenReturn(accessTokens);
+    String hash = OAuthDAOs.hashToken(token);
+    when(accessTokens.findByTokenHash(hash))
+        .thenReturn(
+            new OAuthAccessTokenRecord(
+                UUID.randomUUID(),
+                hash,
+                "encrypted",
+                "mcp-client",
+                "sam",
+                List.of(),
+                Long.MAX_VALUE));
+    return dao;
   }
 
   /**

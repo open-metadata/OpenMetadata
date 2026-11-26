@@ -14,13 +14,12 @@ import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -36,7 +35,9 @@ import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.mcp.usage.McpUsageRecorder;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
@@ -295,56 +296,79 @@ class McpServerRequestContextTest {
     assertThat(result.messages()).hasSize(1);
   }
 
+  /**
+   * A tool call authenticates the token again, through the filter the server builds for the MCP
+   * resource the transport publishes. A token issued for that resource runs the tool; one issued
+   * for another resource is refused, and the worker thread is still cleaned.
+   * ADR:2026-11-25-mcp-oauth-binds-tokens-to-the-canonical-resource
+   */
   @Test
-  void defenseInDepthAudienceCheckRejectsForeignAudTokenAndCleansThread() throws Exception {
-    JWTTokenConfiguration tokenConfig = new JWTTokenConfiguration();
-    tokenConfig.setJwtissuer("open-metadata.org");
-    tokenConfig.setKeyId("mcp-server-test-key");
-    tokenConfig.setRsaprivateKeyFilePath(
-        Path.of(
-                Thread.currentThread()
-                    .getContextClassLoader()
-                    .getResource("private_key.der")
-                    .toURI())
-            .toString());
-    tokenConfig.setRsapublicKeyFilePath(
-        Path.of(
-                Thread.currentThread()
-                    .getContextClassLoader()
-                    .getResource("public_key.der")
-                    .toURI())
-            .toString());
-    JWTTokenGenerator.getInstance()
-        .init(
-            new AuthenticationConfiguration()
-                .withTokenValidationAlgorithm(
-                    AuthenticationConfiguration.TokenValidationAlgorithm.RS_256),
-            tokenConfig);
-
-    Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
-    String header =
-        encoder.encodeToString(
-            "{\"alg\":\"RS256\",\"typ\":\"JWT\",\"kid\":\"mcp-server-test-key\"}"
-                .getBytes(StandardCharsets.UTF_8));
-    String foreignPayload =
-        encoder.encodeToString(
-            "{\"sub\":\"alice\",\"aud\":\"https://other.example/mcp\"}"
-                .getBytes(StandardCharsets.UTF_8));
-    String foreignToken = header + "." + foreignPayload + ".sig";
-
-    McpServer server = serverFor(toolContextObservingAndCaching(), jwtFilterFor("alice"));
+  void toolCallRunsOnlyForATokenIssuedForThisResourceAndCleansTheThread() throws Exception {
+    installSigningKey();
+    McpServer server = serverFor(toolContextObservingAndCaching(), null);
     server.expectedResourceSupplier = () -> URI.create("https://om.example/mcp");
+    server.jwtFilter = server.newJwtFilter(authConfig(), mock(AuthorizerConfiguration.class));
     onWorker(
         () -> {
           cachePolicy();
           return null;
         });
 
+    String foreign = accessTokenFor("https://other.example/mcp");
     assertThatThrownBy(
-            () ->
-                onWorker(() -> callToolWith(server, TOOL, new HashMap<>(), Map.of(), foreignToken)))
+            () -> onWorker(() -> callToolWith(server, TOOL, new HashMap<>(), Map.of(), foreign)))
         .hasRootCauseInstanceOf(AuthenticationException.class);
     assertThat(onWorker(this::isPolicyCached)).isFalse();
+
+    String own = accessTokenFor("https://om.example/mcp");
+    McpSchema.CallToolResult result =
+        onWorker(() -> callToolWith(server, TOOL, new HashMap<>(), Map.of(), own));
+    assertThat(result.isError()).isFalse();
+    assertThat(cachedAtEntry).containsExactly(false);
+  }
+
+  private static void installSigningKey() throws Exception {
+    JWTTokenConfiguration tokenConfig = new JWTTokenConfiguration();
+    tokenConfig.setJwtissuer("open-metadata.org");
+    tokenConfig.setKeyId("mcp-server-test-key");
+    tokenConfig.setRsaprivateKeyFilePath(resourcePath("private_key.der"));
+    tokenConfig.setRsapublicKeyFilePath(resourcePath("public_key.der"));
+    JWTTokenGenerator.getInstance()
+        .init(
+            new AuthenticationConfiguration()
+                .withTokenValidationAlgorithm(
+                    AuthenticationConfiguration.TokenValidationAlgorithm.RS_256),
+            tokenConfig);
+  }
+
+  private static String resourcePath(String name) throws Exception {
+    return Path.of(Thread.currentThread().getContextClassLoader().getResource(name).toURI())
+        .toString();
+  }
+
+  private static AuthenticationConfiguration authConfig() {
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getPublicKeyUrls()).thenReturn(List.of());
+    when(authConfig.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
+    when(authConfig.getJwtPrincipalClaimsMapping()).thenReturn(List.of());
+    return authConfig;
+  }
+
+  /** An access token as {@code UserSSOOAuthProvider.issueAccessToken} mints it. */
+  private static String accessTokenFor(String resource) {
+    return JWTTokenGenerator.getInstance()
+        .generateJWTToken(
+            "alice",
+            Set.of(),
+            false,
+            "alice@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of("openid"),
+            "mcp-client",
+            resource)
+        .getJWTToken();
   }
 
   private DefaultToolContext toolContextObservingAndCaching() {

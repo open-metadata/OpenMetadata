@@ -3,9 +3,6 @@ package org.openmetadata.mcp.server.transport;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.socket.SocketAddressFilter.validatePrefixedTokenRequest;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.exceptions.JWTDecodeException;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.net.InetAddresses;
@@ -49,9 +46,9 @@ import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor.InvalidC
 import org.openmetadata.mcp.server.auth.util.McpResourceUri;
 import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
-import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.McpClientPolicy;
+import org.openmetadata.service.security.TokenAudience;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.credentials.CredentialUnavailableException;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -97,9 +94,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   static final String BEARER_PREFIX = "Bearer ";
   private static final String RESOURCE_PARAM = "resource";
-  private static final String AUDIENCE_CLAIM = "aud";
-  private static final String INVALID_AUDIENCE_MESSAGE =
-      "Token audience does not match this MCP resource.";
 
   // Headers a browser-based MCP client sends on its POST. Any header missing from this list makes
   // the CORS preflight fail, and the user just sees a network error.
@@ -214,7 +208,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     this.jwtFilter =
         new JwtFilter(
             SecurityConfigurationManager.getCurrentAuthConfig(),
-            SecurityConfigurationManager.getCurrentAuthzConfig());
+            SecurityConfigurationManager.getCurrentAuthzConfig(),
+            mcpTokenAudience());
 
     this.allowedOrigins = allowedOrigins;
 
@@ -268,7 +263,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       org.openmetadata.schema.api.security.AuthorizerConfiguration authzConfig,
       org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig) {
     // Tokens must be checked against the reloaded security settings, not the ones at startup.
-    this.jwtFilter = new JwtFilter(authConfig, authzConfig);
+    this.jwtFilter = new JwtFilter(authConfig, authzConfig, mcpTokenAudience());
     if (mcpConfig != null) {
       if (mcpConfig.getAllowedOrigins() != null) {
         updateAllowedOrigins(mcpConfig.getAllowedOrigins());
@@ -323,6 +318,14 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     authProvider.setResource(newResourceMetadata.getResource());
 
     LOG.info("OAuth metadata rebuilt with base URL: {}", baseUrl);
+  }
+
+  /**
+   * A token this endpoint accepts names its protected resource in {@code aud}, or carries no
+   * {@code aud} at all. ADR:2026-11-25-mcp-oauth-binds-tokens-to-the-canonical-resource
+   */
+  private TokenAudience mcpTokenAudience() {
+    return McpResourceUri.tokenAudienceOf(this::getProtectedResourceUri);
   }
 
   /**
@@ -472,7 +475,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     } else {
       try {
         validatePrefixedTokenRequest(jwtFilter, tokenWithType);
-        validateTokenAudience(tokenWithType, getProtectedResourceUri());
         authenticated = true;
       } catch (CredentialUnavailableException e) {
         LOG.debug("Bearer token could not be confirmed", e);
@@ -498,66 +500,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       presented = !authorizationHeader.substring(BEARER_PREFIX.length()).isBlank();
     }
     return presented;
-  }
-
-  /**
-   * Enforces RFC 8707 audience binding on OpenMetadata-signed JWTs carrying an {@code aud} claim.
-   *
-   * <p>External IdP tokens (non-OpenMetadata {@code kid}) are validated by {@code
-   * ProviderTokenValidator} instead. OpenMetadata-signed tokens without an {@code aud} claim
-   * (PATs, bot tokens, web session tokens, and pre-upgrade MCP tokens) remain accepted. Once an
-   * OpenMetadata-signed token carries {@code aud}, it must match {@code expectedResource} via
-   * {@link McpResourceUri#matches}, failing closed on malformed claim shapes or an unset expected
-   * resource.
-   */
-  public static void validateTokenAudience(final String tokenOrHeader, final URI expectedResource) {
-    final DecodedJWT jwt = decodeBearerToken(tokenOrHeader);
-    if (!JwtFilter.isOpenMetadataKeyId(jwt.getKeyId())) {
-      return;
-    }
-    if (jwt.getClaim(AUDIENCE_CLAIM).isMissing()) {
-      return;
-    }
-    if (!hasMatchingAudience(jwt.getAudience(), expectedResource)) {
-      throw AuthenticationException.getInvalidTokenException(INVALID_AUDIENCE_MESSAGE);
-    }
-  }
-
-  private static DecodedJWT decodeBearerToken(final String tokenOrHeader) {
-    final String rawToken = stripBearerPrefix(tokenOrHeader);
-    if (nullOrEmpty(rawToken) || rawToken.isBlank()) {
-      throw AuthenticationException.getTokenNotPresentException();
-    }
-    try {
-      return JWT.decode(rawToken);
-    } catch (JWTDecodeException e) {
-      throw AuthenticationException.getInvalidTokenException("Invalid token.", e);
-    }
-  }
-
-  private static String stripBearerPrefix(final String tokenOrHeader) {
-    if (tokenOrHeader != null
-        && tokenOrHeader.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
-      return tokenOrHeader.substring(BEARER_PREFIX.length());
-    }
-    return tokenOrHeader;
-  }
-
-  private static boolean hasMatchingAudience(
-      final List<String> audiences, final URI expectedResource) {
-    if (expectedResource == null || nullOrEmpty(audiences)) {
-      return false;
-    }
-    boolean matched = false;
-    for (final String audience : audiences) {
-      if (audience == null) {
-        return false;
-      }
-      if (McpResourceUri.matches(audience, expectedResource)) {
-        matched = true;
-      }
-    }
-    return matched;
   }
 
   /**
