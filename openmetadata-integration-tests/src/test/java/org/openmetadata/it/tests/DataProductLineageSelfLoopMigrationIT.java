@@ -22,10 +22,10 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.migration.utils.v210.DataProductLineageSelfLoopRepair;
+import org.openmetadata.service.migration.utils.v211.DataProductLineageSelfLoopRepair;
 
 /**
- * Released versions wrote data product lineage edges from a product to itself. The 2.1.0 step
+ * Released versions wrote data product lineage edges from a product to itself. The 2.1.1 step
  * deletes those rollup rows and keeps every other data product edge.
  */
 @ExtendWith(TestNamespaceExtension.class)
@@ -50,16 +50,13 @@ public class DataProductLineageSelfLoopMigrationIT {
     List<String> ids =
         Stream.of(looped, loopedAgain, drawn).map(product -> product.getId().toString()).toList();
 
-    assertEquals(2, DataProductLineageSelfLoopRepair.delete(dao().relationshipDAO(), ids));
+    assertEquals(2, deleteSelfLoops(ids));
 
     assertNull(stored(looped, looped));
     assertNull(stored(loopedAgain, loopedAgain));
     assertEquals(drawnBefore, storedJson(drawn, drawn), "an edge an admin drew is kept");
     assertEquals(crossBefore, storedJson(looped, drawn), "an edge between two products is kept");
-    assertEquals(
-        0,
-        DataProductLineageSelfLoopRepair.delete(dao().relationshipDAO(), ids),
-        "a repaired product needs nothing on a second run");
+    assertEquals(0, deleteSelfLoops(ids), "a repaired product needs nothing on a second run");
   }
 
   @Test
@@ -68,11 +65,15 @@ public class DataProductLineageSelfLoopMigrationIT {
     seed(looped, looped, String.format(ROLLUP, 1));
 
     int deleted =
-        TestSuiteBootstrap.getJdbi()
-            .withHandle(handle -> DataProductLineageSelfLoopRepair.deleteAll(handle, dao()));
+        TestSuiteBootstrap.getJdbi().withHandle(DataProductLineageSelfLoopRepair::deleteAll);
 
     assertTrue(deleted >= 1, "the seeded edge is one of those deleted");
     assertNull(stored(looped, looped));
+  }
+
+  private static int deleteSelfLoops(List<String> dataProductIds) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(handle -> DataProductLineageSelfLoopRepair.delete(handle, dataProductIds));
   }
 
   private static Domain domain(TestNamespace ns) {

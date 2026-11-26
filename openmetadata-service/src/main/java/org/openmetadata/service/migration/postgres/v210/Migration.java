@@ -53,7 +53,6 @@ import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
-import org.openmetadata.service.migration.utils.v210.DataProductLineageSelfLoopRepair;
 import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
@@ -257,11 +256,5 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ServiceVersionSecretsMasking.STEP_NAME,
         () -> ServiceVersionSecretsMasking.maskPlainTextSecrets(handle, POSTGRES));
-    // Released versions wrote data product lineage edges from a product to itself.
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        DataProductLineageSelfLoopRepair.STEP_NAME,
-        () -> DataProductLineageSelfLoopRepair.deleteAll(handle, collectionDAO));
   }
 }
