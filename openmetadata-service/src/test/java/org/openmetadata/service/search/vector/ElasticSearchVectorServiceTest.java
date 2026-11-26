@@ -61,8 +61,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
-import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.openmetadata.service.search.vector.utils.DTOs;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.LoggerFactory;
 
