@@ -498,7 +498,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     updated.setFolder(resolvedFolder);
     validateNoDuplicateFileName(original.getName(), resolvedFolder, updated.getId());
     setFullyQualifiedName(updated);
-    updated.setUpdatedBy(user);
+    EntityUtil.recordWriter(updated, user);
     updated.setUpdatedAt(System.currentTimeMillis());
 
     ContextFileUpdater updater = new ContextFileUpdater(original, updated, Operation.PUT);
