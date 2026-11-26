@@ -264,7 +264,7 @@ class GetEntityToolTest {
   @ValueSource(
       strings = {
         "<p><img src=\"data:image/png;base64,AAAA\"></p><p>&nbsp;</p>",
-        "![Chart](https://example.com/chart.png)"
+        "![Chart](data:image/png;base64,AAAA)"
       })
   void contentQueryReturnsEmptyContentForImageOnlyArticle(String description) throws Exception {
     Page page =

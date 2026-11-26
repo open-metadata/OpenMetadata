@@ -34,7 +34,7 @@ class PromptTextTest {
       strings = {
         "<img src=\"data:image/png;base64,AAAA\" width=\"240\">",
         "&lt;img src=&quot;data:image/png;base64,AAAA&quot; alt=&quot;2 &gt; 1&quot;&gt;",
-        "![Chart](https://example.com/chart.png)",
+        "![Chart](data:image/png;base64,AAAA)",
         "<div data-type=\"file-attachment\" data-is-image=\"true\" data-file-name=\"chart.png\">"
       })
   void inlineImagePositionsTracksSourceOffsetsAfterTheTitle(String image) {
@@ -55,7 +55,9 @@ class PromptTextTest {
     assertEquals(
         "",
         PromptText.forArticleRead("<p><img src=\"data:image/png;base64,AAAA\"></p><p>&nbsp;</p>"));
-    assertEquals("", PromptText.forArticleRead("![Chart](https://example.com/chart.png)"));
+    assertEquals("", PromptText.forArticleRead("![Chart](data:image/png;base64,AAAA)"));
+    String markdownExample = "<p><code>![Chart](https://example.com/chart.png)</code></p>";
+    assertEquals(markdownExample, PromptText.forArticleRead(markdownExample));
     assertEquals(
         "[Chart](https://example.com/chart.png)",
         PromptText.forArticleRead("[Chart](https://example.com/chart.png)"));
