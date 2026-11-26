@@ -529,9 +529,11 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       }
     }
     if (!nullOrEmpty(dataContract.getReviewers())) {
-      for (EntityReference reviewer : dataContract.getReviewers()) {
-        Entity.getEntityReferenceById(reviewer.getType(), reviewer.getId(), Include.NON_DELETED);
-      }
+      List<EntityReference> reviewersToValidate =
+          dataContract.getReviewers().stream()
+              .map(ref -> JsonUtils.deepCopy(ref, EntityReference.class))
+              .collect(Collectors.toList());
+      EntityRepository.validateReviewers(reviewersToValidate);
     }
   }
 
@@ -1229,6 +1231,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     IngestionPipeline pipeline =
         Entity.getEntity(testSuite.getPipelines().get(0), "*", Include.NON_DELETED);
 
+    IngestionPipelineRepository.validateTestSuiteConfig(pipeline, testSuite);
     refreshDeployedPipelineBeforeRun(pipeline, testSuite);
     prepareAndRunIngestionPipeline(pipeline, testSuite);
   }

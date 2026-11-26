@@ -40,12 +40,14 @@ export const openAdvancedSearch = async () => {
   await expect.element(modal()).toBeVisible();
 };
 
-/** The listbox a combobox controls, once its popup is open. */
-const listboxOf = (input: Locator) => {
-  const id = input.query()?.getAttribute('aria-controls');
-
-  return id ? page.getByCSS(`[role="listbox"][id="${id}"]`) : undefined;
-};
+/**
+ * Whether the combobox's popup is open. Options are always looked up afresh
+ * rather than inside the listbox the popup had a moment ago: it can re-open
+ * under a click with a new id, and a locator pinned to the old id never
+ * matches again.
+ */
+const isOpen = (input: Locator) =>
+  input.element().getAttribute('aria-expanded') === 'true';
 
 /** One attempt of `pickOption`: choose `label`, then leave the box. */
 const chooseOption = async (
@@ -57,21 +59,17 @@ const chooseOption = async (
 
   if (filter) {
     await userEvent.fill(input, label);
+  } else {
+    await userEvent.click(input);
   }
-  if (!listboxOf(input)?.query()) {
-    await userEvent.click(
-      control.getByRole('button', { name: 'Show options' })
-    );
-  }
+  // ArrowDown opens the popup, or moves focus inside it when it is already
+  // open; unlike the "Show options" toggle it can never close it.
+  await userEvent.keyboard('{ArrowDown}');
 
-  await expect.poll(() => Boolean(listboxOf(input)?.query())).toBe(true);
+  await expect.poll(() => isOpen(input)).toBe(true);
 
-  await userEvent.click(
-    (listboxOf(input) as Locator).getByRole('option', {
-      name: label,
-      exact: true,
-    })
-  );
+  // Resolved at click time, so a popup that re-opens mid-click is followed.
+  await userEvent.click(page.getByRole('option', { name: label, exact: true }));
 
   // Leave the box (click the dialog title): it then commits, showing the
   // option the rule holds rather than the text typed to filter the list, and
@@ -80,7 +78,7 @@ const chooseOption = async (
     modal().getByRole('heading', { includeHidden: true }).first()
   );
 
-  await expect.poll(() => Boolean(listboxOf(input)?.query())).toBe(false);
+  await expect.poll(() => isOpen(input)).toBe(false);
 };
 
 /**
@@ -250,12 +248,11 @@ const pickSuggestion = async (scope: Locator, value: string) => {
   const input = scope.getByRole('combobox');
   await userEvent.fill(input, value);
 
-  await expect.poll(() => Boolean(listboxOf(input)?.query())).toBe(true);
+  await expect.poll(() => isOpen(input)).toBe(true);
 
-  const option = (listboxOf(input) as Locator).getByCSS(
-    `[role="option"][data-key="${value}"]`
-  );
-  await userEvent.click(option, { timeout: 10_000 });
+  await userEvent.click(page.getByCSS(`[role="option"][data-key="${value}"]`), {
+    timeout: 10_000,
+  });
 };
 
 /**

@@ -43,6 +43,8 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.TopicTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -1190,6 +1192,90 @@ public class OpenLineageLineageResolutionIT {
                 List.of(inputFqn + ".\"e.__reserved__arrow__f\""),
             outputFqn + ".x", List.of(inputFqn + ".s.x")),
         fromColumnsByToColumn(fetchOpenLineageEdgeDetails(inputName, outputName)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  @Order(31)
+  void columnLineage_acceptsIncompleteTransformationsAndPreservesValidFunctions(boolean batch)
+      throws Exception {
+    String input = "ecommerce_db.shopify.raw_order";
+    String outputName = "ol_functions_" + uniqueSuffix();
+    Table output =
+        Tables.create().name(outputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+    Map<String, Object> aggregateInput =
+        Map.of(
+            "namespace",
+            serviceName,
+            "name",
+            input,
+            "field",
+            "id",
+            "transformations",
+            List.of(
+                Map.of("subtype", "IGNORED"), Map.of("type", "DIRECT", "subtype", "AGGREGATION")));
+    Map<String, Object> filterInput =
+        Map.of(
+            "namespace",
+            serviceName,
+            "name",
+            input,
+            "field",
+            "name",
+            "transformations",
+            List.of(Map.of("type", "INDIRECT", "subtype", "FILTER")));
+    Map<String, Object> fallbackInput =
+        Map.of(
+            "namespace",
+            serviceName,
+            "name",
+            input,
+            "field",
+            "name",
+            "transformations",
+            List.of(Map.of("subtype", "IGNORED")));
+    Map<String, Object> fields =
+        Map.of(
+            "id", Map.of("inputFields", List.of(aggregateInput, filterInput)),
+            "name",
+                Map.of(
+                    "inputFields",
+                    List.of(fallbackInput),
+                    "transformationDescription",
+                    "Legacy fallback"));
+    OpenLineage.RunEventBuilder event =
+        completeEvent("ns", "ol_functions_" + uniqueSuffix())
+            .addInput(input, serviceName)
+            .addOutput(
+                Map.of(
+                    "namespace",
+                    serviceName,
+                    "name",
+                    "ecommerce_db.shopify." + outputName,
+                    "facets",
+                    Map.of("columnLineage", Map.of("fields", fields))));
+    JsonNode response =
+        batch ? MAPPER.readTree(OpenLineage.batch().addEvent(event).send()) : send(event);
+    assertEquals("success", response.path("status").asText(), response.toString());
+
+    List<?> mappings =
+        (List<?>) fetchOpenLineageEdgeDetails("raw_order", outputName).get("columnsLineage");
+    assertEquals(3, mappings.size());
+    Map<List<Object>, Object> functionByColumns = new HashMap<>();
+    for (Object mapping : mappings) {
+      Map<?, ?> columns = (Map<?, ?>) mapping;
+      functionByColumns.put(
+          List.of(columns.get("toColumn"), columns.get("fromColumns")), columns.get("function"));
+    }
+    assertEquals(
+        Map.of(
+            List.of(output.getFullyQualifiedName() + ".id", List.of(srcFqn + ".id")),
+            "DIRECT/AGGREGATION",
+            List.of(output.getFullyQualifiedName() + ".id", List.of(srcFqn + ".name")),
+            "INDIRECT/FILTER",
+            List.of(output.getFullyQualifiedName() + ".name", List.of(srcFqn + ".name")),
+            "Legacy fallback"),
+        functionByColumns);
   }
 
   // ====================================================================================

@@ -67,6 +67,7 @@ import org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigra
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
 import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
+import org.openmetadata.service.migration.utils.v210.ServiceLineagePipelineHopRepairMigration;
 import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
 
 class IngestionPipelineMigrationEntryPointTest {
@@ -129,6 +130,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(IncidentWorkflowTransitionMigration.class);
         MockedStatic<LineageEdgePipelineCleanupMigration> lineageEdgeCleanup =
             mockStatic(LineageEdgePipelineCleanupMigration.class);
+        MockedStatic<ServiceLineagePipelineHopRepairMigration> serviceLineageHopRepair =
+            mockStatic(ServiceLineagePipelineHopRepairMigration.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
         MockedStatic<McpGrantUserNameIndexes> grantUserNameIndexes =
             mockStatic(McpGrantUserNameIndexes.class);
@@ -208,6 +211,10 @@ class IngestionPipelineMigrationEntryPointTest {
           () ->
               LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines(
                   handle, connectionType));
+      serviceLineageHopRepair.verify(
+          () ->
+              ServiceLineagePipelineHopRepairMigration.repairPipelineServiceHopRefcounts(
+                  collectionDAO));
       // Released versions stored misnamed Context Center files, so both engines repair them.
       contextFileFqnRepair.verify(() -> ContextFileFqnRepair.repairAll(handle, connectionType));
       // The live domain lineage delta is only correct over rollups this repair has recounted.

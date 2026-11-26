@@ -65,7 +65,7 @@ jobs:
   checkstyle:
     needs: check-changes
     if: needs.check-changes.outputs.ui-changed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
@@ -218,8 +218,11 @@ jobs:
             exit 1
           fi
 
+      # sync-i18n takes ~2 min of CPU and only reads the locale files, so an
+      # unchanged locale set cannot have drifted unless the tool itself moved.
       - name: I18n Sync
         id: i18n
+        if: contains(steps.changed-ui-files.outputs.all_changed_files, 'src/locale/languages/') || contains(steps.changed-ui-files.outputs.all_changed_files, 'yarn.lock')
         continue-on-error: true
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |

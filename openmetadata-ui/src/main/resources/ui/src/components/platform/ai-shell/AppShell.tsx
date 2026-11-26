@@ -25,6 +25,7 @@ import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { isFullscreenPersonaHash } from '../../discovery/personal-space/Profile/tabs/personas/Personas.utils';
 import { useAppModeBanners, useAppModeOverlays } from './appModeExtensions';
 import './AssistantLayout/assistant-layout.less';
+import GlobalSearchModal from './GlobalSearch/GlobalSearchModal';
 import Sidebar from './Sidebar/Sidebar';
 
 // Core personal-space chrome is OSS-owned, while proprietary overlays continue
@@ -128,6 +129,7 @@ export const AppShell = ({ children }: PropsWithChildren) => {
       {overlays.map(({ key, component: Overlay }) => (
         <Overlay key={key} />
       ))}
+      <GlobalSearchModal />
       <PersonalSpaceModal />
       <PersonaFullscreenPortal />
     </>

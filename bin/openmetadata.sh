@@ -136,12 +136,14 @@ PID_FILE="${PID_DIR}/${APP_NAME}.pid"
 OUT_FILE="${LOG_DIR}/${APP_NAME}.log"
 ERR_FILE="${LOG_DIR}/${APP_NAME}.err"
 
-CLASSPATH=${CLASSPATH}:/etc/catalog/conf
-
 # classpath addition for release
+# Java reads an empty classpath entry as the working directory, so a separator only goes
+# between entries, never in front of the first one. It starts empty because an inherited
+# CLASSPATH may carry '.' or empty entries.
+CLASSPATH=""
 for file in ${CATALOG_HOME}/libs/*.jar;
 do
-    CLASSPATH=${CLASSPATH}:${file}
+    CLASSPATH="${CLASSPATH:+${CLASSPATH}:}${file}"
 done
 
 # Which java to use

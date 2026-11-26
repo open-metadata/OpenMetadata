@@ -817,12 +817,20 @@ def _resolve_upstream_fqn(upstream_list, upstream_by_name, reference) -> str | N
     return resolved
 
 
-def _resolve_by_excluding_referenced_table(upstream_list, upstream_by_name, kwargs) -> str | None:
-    """Last resort for ``relationships`` tests: the ``to:`` upstream is the referenced
-    parent, so if removing it leaves exactly one candidate that must be the tested table."""
-    referenced_fqn = _resolve_upstream_fqn(upstream_list, upstream_by_name, kwargs.get("to"))
-    candidates = [fqn for fqn in upstream_list if fqn != referenced_fqn] if referenced_fqn else []
-    return candidates[0] if len(candidates) == 1 else None
+def _resolve_without_model(upstream_list, upstream_by_name, kwargs) -> str | None:
+    """Last resort when the tested model did not resolve.
+
+    The ``to:`` upstream of a ``relationships`` test is the referenced parent, never the tested
+    table, so it is excluded and only a single remaining candidate is trusted. None left means
+    the tested model's table is not in OpenMetadata; several left would be an arbitrary pick.
+    A ``to:`` that cannot be identified cannot be excluded, and dbt lists it first, so the
+    first-upstream fallback is kept only for tests without ``to:``.
+    """
+    if kwargs.get("to"):
+        referenced_fqn = _resolve_upstream_fqn(upstream_list, upstream_by_name, kwargs.get("to"))
+        candidates = [fqn for fqn in upstream_list if fqn != referenced_fqn]
+        return candidates[0] if referenced_fqn and len(candidates) == 1 else None
+    return upstream_list[0] if upstream_list else None
 
 
 def get_dbt_test_primary_table_fqn(dbt_test) -> str | None:
@@ -843,9 +851,7 @@ def get_dbt_test_primary_table_fqn(dbt_test) -> str | None:
 
     primary_table_fqn = _resolve_upstream_fqn(upstream_list, upstream_by_name, kwargs.get("model"))
     if not primary_table_fqn:
-        primary_table_fqn = _resolve_by_excluding_referenced_table(upstream_list, upstream_by_name, kwargs)
-    if not primary_table_fqn and upstream_list:
-        primary_table_fqn = upstream_list[0]
+        primary_table_fqn = _resolve_without_model(upstream_list, upstream_by_name, kwargs)
 
     return primary_table_fqn
 
@@ -870,6 +876,17 @@ def generate_entity_link(dbt_test):
     """
     primary_table_fqn = get_dbt_test_primary_table_fqn(dbt_test)
     if not primary_table_fqn:
+        if dbt_test.get(DbtCommonEnum.UPSTREAM.value):
+            manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
+            model_reference = _extract_dbt_reference(_get_test_kwargs(manifest_node).get("model"))
+            logger.warning(
+                "Skipping dbt test [%s]: the table of its model [%s] could not be identified among"
+                " its upstreams %s in OpenMetadata (missing, filtered out, or ambiguous); it is"
+                " never attached to the table it references",
+                getattr(manifest_node, "name", None),
+                model_reference[1] if model_reference else None,
+                dbt_test.get(DbtCommonEnum.UPSTREAM.value),
+            )
         return []
 
     entity_link_str = entity_link.get_entity_link(
