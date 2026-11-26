@@ -418,8 +418,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     startupTimer.time("advanced search features", this::initializeAdvancedSearchFeatures);
 
     // Phase 3: Vector search (embeddings + vector index)
-    Entity.getSearchRepository().initializeVectorSearchService();
-    Entity.getSearchRepository().updateEmbeddingFields();
+    Entity.getSearchRepository().startVectorSearch();
 
     SecurityConfigurationManager.getInstance().initialize(this, catalogConfig, environment);
 

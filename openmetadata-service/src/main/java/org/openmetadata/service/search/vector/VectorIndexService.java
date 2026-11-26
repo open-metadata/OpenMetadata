@@ -29,6 +29,14 @@ public interface VectorIndexService {
   EmbeddingClient getEmbeddingClient();
 
   /**
+   * The chunk indexes whose {@code embedding} field has to hold the embedding model's vectors, as
+   * the entity indexes' does. Each may be an alias over a staged generation, or not exist yet.
+   */
+  default List<String> chunkIndexNames() {
+    return List.of();
+  }
+
+  /**
    * The engine's kNN clause over the embedding field, for use inside a {@code bool} or {@code
    * function_score} query. Carries the structured filters, the query filter and the context memory
    * visibility rule of {@code parameters}. {@code parameters.threshold()} is on the cosine score

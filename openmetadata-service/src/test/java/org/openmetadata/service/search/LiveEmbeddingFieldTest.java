@@ -5,11 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 
 class LiveEmbeddingFieldTest {
+
+  private static final EmbeddingModel MODEL_384 = new EmbeddingModel("model-a", 384);
 
   private static LiveEmbeddingField elasticsearch(String reply) {
     return LiveEmbeddingField.fromFieldMapping(
@@ -19,6 +23,22 @@ class LiveEmbeddingFieldTest {
   private static LiveEmbeddingField openSearch(String reply) {
     return LiveEmbeddingField.fromFieldMapping(
         "table_search_index", JsonUtils.readTree(reply), "knn_vector", "dimension");
+  }
+
+  private static LiveEmbeddingField vector384(String index) {
+    return elasticsearch(
+        "{\""
+            + index
+            + "\": {\"mappings\": {\"embedding\": {\"full_name\": \"embedding\","
+            + "\"mapping\": {\"embedding\": {\"type\": \"dense_vector\", \"dims\": 384}}}}}}");
+  }
+
+  private static String recorded(String index, String model) {
+    return "{\""
+        + index
+        + "\": {\"mappings\": {\"_meta\": {\"embedding_model\": \""
+        + model
+        + "\"}}}}";
   }
 
   @Test
@@ -36,8 +56,8 @@ class LiveEmbeddingFieldTest {
         Set.of("table_search_index_rebuild_1", "table_search_index_rebuild_2"), live.indexes());
     assertTrue(live.readable());
     assertTrue(live.mapped());
-    assertTrue(live.holds(384));
-    assertFalse(live.holds(768));
+    assertTrue(live.holds(MODEL_384));
+    assertFalse(live.holds(new EmbeddingModel("model-a", 768)));
     assertEquals(
         new LiveEmbeddingField.Declared("dense_vector", 384),
         live.byIndex().get("table_search_index_rebuild_1"));
@@ -52,8 +72,8 @@ class LiveEmbeddingFieldTest {
               "mapping": {"embedding": {"type": "knn_vector", "dimension": 512}}}}}}
             """);
 
-    assertTrue(live.holds(512));
-    assertEquals("table_search_index has knn_vector of 512 dimensions", live.describe());
+    assertTrue(live.holds(new EmbeddingModel("model-a", 512)));
+    assertEquals("table_search_index has knn_vector of 512 dimensions", live.describe(MODEL_384));
   }
 
   @Test
@@ -67,8 +87,50 @@ class LiveEmbeddingFieldTest {
 
     assertTrue(live.mapped());
     assertNull(live.byIndex().get("table_search_index").dimensions());
-    assertFalse(live.holds(384));
-    assertEquals("table_search_index has float", live.describe());
+    assertFalse(live.holds(MODEL_384));
+    assertEquals("table_search_index has float", live.describe(MODEL_384));
+  }
+
+  @Test
+  void aFieldOfTheSameDimensionBuiltForAnotherModelCannotHoldItsVectors() {
+    LiveEmbeddingField live =
+        vector384("table_search_index_rebuild_1")
+            .withRecordedModels(
+                JsonUtils.readTree(recorded("table_search_index_rebuild_1", "model-b")));
+
+    assertEquals(Map.of("table_search_index_rebuild_1", "model-b"), live.recordedModels());
+    assertFalse(live.holds(MODEL_384));
+    assertEquals(Set.of("table_search_index_rebuild_1"), live.indexesThatCannotHold(MODEL_384));
+    assertEquals(
+        "table_search_index_rebuild_1 holds vectors of model model-b", live.describe(MODEL_384));
+    assertTrue(live.holds(new EmbeddingModel("model-b", 384)));
+  }
+
+  @Test
+  void anIndexThatRecordsNoModelIsJudgedByItsDimension() {
+    LiveEmbeddingField live =
+        vector384("table_search_index").withRecordedModels(JsonUtils.readTree("{}"));
+
+    assertTrue(live.recordedModels().isEmpty());
+    assertTrue(live.holds(MODEL_384));
+    assertTrue(live.indexesThatCannotHold(MODEL_384).isEmpty());
+  }
+
+  @Test
+  void onlyTheIndexesThatCannotHoldTheModelAreNamed() {
+    LiveEmbeddingField live =
+        elasticsearch(
+            """
+            {"table_search_index_rebuild_2": {"mappings": {"embedding": {"full_name": "embedding",
+               "mapping": {"embedding": {"type": "dense_vector", "dims": 384}}}}},
+             "table_search_index_rebuild_1": {"mappings": {"embedding": {"full_name": "embedding",
+               "mapping": {"embedding": {"type": "dense_vector", "dims": 768}}}}}}
+            """);
+
+    assertEquals(Set.of("table_search_index_rebuild_1"), live.indexesThatCannotHold(MODEL_384));
+    assertEquals(
+        "table_search_index_rebuild_1 has dense_vector of 768 dimensions",
+        live.describe(MODEL_384));
   }
 
   @Test
@@ -87,7 +149,9 @@ class LiveEmbeddingFieldTest {
 
     assertFalse(live.acceptsNewVectorField());
     assertEquals(Set.of("table_search_index_a"), live.withoutVectorSupport());
-    assertEquals("table_search_index_a was created without vector support", live.describe());
+    assertEquals(Set.of("table_search_index_a"), live.indexesThatCannotHold(MODEL_384));
+    assertEquals(
+        "table_search_index_a was created without vector support", live.describe(MODEL_384));
   }
 
   @Test

@@ -26,6 +26,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.apache.hc.core5.http.HttpHost;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -40,18 +42,23 @@ import org.openmetadata.it.util.MappingReadFailingProxy;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.EmbeddingFieldUpdate;
+import org.openmetadata.service.search.LiveEmbeddingField;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.VectorFieldHealth;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexManager;
-import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 
 /**
- * Creates and then updates entity index mappings on a real Elasticsearch. The engine treats a
- * {@code dense_vector} sent without {@code index_options} as its own default and refuses to change
- * the options or the dimensions of an existing field, and a refused field fails the whole {@code
- * PUT _mapping}, so only a real cluster shows whether every new field of an upgrade reaches the
- * live index.
+ * Creates, updates and reads entity index mappings on a real Elasticsearch, with only the embedding
+ * model known, as {@code migrate} and server start know it before any embedding client exists. The
+ * engine treats a {@code dense_vector} sent without {@code index_options} as its own default and
+ * refuses to change the options or the dimensions of an existing field, and a refused field fails
+ * the whole {@code PUT _mapping}, so only a real cluster shows whether every new field of an upgrade
+ * reaches the live index
+ * (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model).
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Execution(ExecutionMode.SAME_THREAD)
@@ -59,6 +66,8 @@ class ElasticsearchVectorMappingUpdateIT {
 
   /** 384 dimensions or more get {@code bbq_hnsw} as the engine default from Elasticsearch 9.1. */
   private static final int DIMENSION = 384;
+
+  private static final EmbeddingModel MODEL = model(DIMENSION);
 
   private static final String FIRST_RELEASE_MAPPING =
       "{\"mappings\":{\"properties\":{\"fingerprint\":{\"type\":\"keyword\"},"
@@ -85,29 +94,6 @@ class ElasticsearchVectorMappingUpdateIT {
           + "\"name\":{\"type\":\"keyword\"},\"previewVector\":{\"type\":\"dense_vector\","
           + "\"dims\":4,\"element_type\":\"bfloat16\"}}}}";
 
-  private static final class FixedDimensionClient extends EmbeddingClient {
-    private final int dimension;
-
-    FixedDimensionClient(int dimension) {
-      this.dimension = dimension;
-    }
-
-    @Override
-    protected float[] doEmbed(String text) {
-      return new float[dimension];
-    }
-
-    @Override
-    public int getDimension() {
-      return dimension;
-    }
-
-    @Override
-    public String getModelId() {
-      return "vector-mapping-update-" + dimension;
-    }
-  }
-
   /** Another supported version can be checked with {@code -DelasticsearchVectorMappingImage}. */
   private static final String IMAGE =
       System.getProperty(
@@ -121,6 +107,7 @@ class ElasticsearchVectorMappingUpdateIT {
           .withStartupTimeout(Duration.ofMinutes(5));
   private final HttpClient http = HttpClient.newHttpClient();
   private final ListAppender<ILoggingEvent> searchLogs = new ListAppender<>();
+  private VectorFieldHealth health;
   private Rest5Client restClient;
   private ElasticsearchClient client;
   private ElasticSearchIndexManager indexManager;
@@ -142,6 +129,7 @@ class ElasticsearchVectorMappingUpdateIT {
 
   @BeforeEach
   void captureSearchLogs() {
+    health = new VectorFieldHealth(name -> {});
     searchLogs.list.clear();
     searchLogs.start();
     searchLogger().addAppender(searchLogs);
@@ -156,12 +144,11 @@ class ElasticsearchVectorMappingUpdateIT {
   void anUpgradeAddsItsNewFieldsToAnIndexWithPinnedVectorOptions() throws Exception {
     String rebuiltIndex = "pinned_table_search_index_rebuild_1";
     String canonicalName = "pinned_table_search_index";
-    withEmbeddings(DIMENSION, () -> indexManager.createIndex(rebuiltIndex, FIRST_RELEASE_MAPPING));
+    withModel(MODEL, () -> indexManager.createIndex(rebuiltIndex, FIRST_RELEASE_MAPPING));
     client.indices().putAlias(alias -> alias.index(rebuiltIndex).name(canonicalName));
 
-    withEmbeddings(
-        DIMENSION,
-        () -> indexManager.updateIndex(entityIndex(canonicalName), NEXT_RELEASE_MAPPING));
+    withModel(
+        MODEL, () -> indexManager.updateIndex(entityIndex(canonicalName), NEXT_RELEASE_MAPPING));
 
     JsonNode live = liveMappings(rebuiltIndex);
     assertTrue(live.path("properties").has("addedInNextRelease"));
@@ -169,7 +156,24 @@ class ElasticsearchVectorMappingUpdateIT {
     assertEquals("hnsw", options.path("type").asText());
     assertEquals(48, options.path("m").asInt());
     assertEquals(256, options.path("ef_construction").asInt());
+    assertEquals(MODEL.id(), live.path("_meta").path("embedding_model").asText());
+    assertTrue(health.mismatches().isEmpty());
     assertTrue(errors().isEmpty(), "the normal path reports nothing: " + errors());
+  }
+
+  @Test
+  void migrateCreatesAnIndexWithThePinnedVectorFieldBeforeAnyEmbeddingClientExists()
+      throws Exception {
+    String indexName = "created_by_migrate_table_search_index";
+
+    withModel(MODEL, () -> indexManager.createIndex(indexName, FIRST_RELEASE_MAPPING));
+
+    JsonNode live = liveMappings(indexName);
+    JsonNode embedding = live.path("properties").path("embedding");
+    assertEquals("dense_vector", embedding.path("type").asText());
+    assertEquals(DIMENSION, embedding.path("dims").asInt());
+    assertEquals(48, embedding.path("index_options").path("m").asInt());
+    assertEquals(MODEL.id(), live.path("_meta").path("embedding_model").asText());
   }
 
   @Test
@@ -178,8 +182,7 @@ class ElasticsearchVectorMappingUpdateIT {
     createRaw(indexName, EMBEDDING_WITH_ENGINE_DEFAULTS);
     String engineDefault = embeddingOptionsType(indexName);
 
-    withEmbeddings(
-        DIMENSION, () -> indexManager.updateIndex(entityIndex(indexName), NEXT_RELEASE_MAPPING));
+    withModel(MODEL, () -> indexManager.updateIndex(entityIndex(indexName), NEXT_RELEASE_MAPPING));
 
     assertTrue(liveMappings(indexName).path("properties").has("addedInNextRelease"));
     assertNotEquals("hnsw", engineDefault, "the engine default must differ from the pinned one");
@@ -194,48 +197,61 @@ class ElasticsearchVectorMappingUpdateIT {
         () -> indexManager.createIndex(indexName, FIRST_RELEASE_MAPPING));
     assertFalse(liveMappings(indexName).path("properties").has("embedding"));
 
-    withEmbeddings(
-        DIMENSION, () -> indexManager.updateIndex(entityIndex(indexName), NEXT_RELEASE_MAPPING));
+    withModel(MODEL, () -> indexManager.updateIndex(entityIndex(indexName), NEXT_RELEASE_MAPPING));
 
     JsonNode embedding = liveMappings(indexName).path("properties").path("embedding");
     assertTrue(liveMappings(indexName).path("properties").has("addedInNextRelease"));
     assertEquals(DIMENSION, embedding.path("dims").asInt());
     assertEquals("hnsw", embedding.path("index_options").path("type").asText());
     assertEquals(48, embedding.path("index_options").path("m").asInt());
+    assertEquals(
+        MODEL.id(), liveMappings(indexName).path("_meta").path("embedding_model").asText());
   }
 
   @Test
-  void anUpgradeWithAnotherEmbeddingDimensionStillAddsItsOtherFieldsAndSaysHowToRebuild()
-      throws Exception {
+  void anUpgradeWithAnotherEmbeddingDimensionStillAddsItsOtherFields() throws Exception {
     String indexName = "other_dimension_table_search_index";
-    withEmbeddings(DIMENSION, () -> indexManager.createIndex(indexName, FIRST_RELEASE_MAPPING));
+    withModel(MODEL, () -> indexManager.createIndex(indexName, FIRST_RELEASE_MAPPING));
 
     assertDoesNotThrow(
         () ->
-            withEmbeddings(
-                DIMENSION * 2,
+            withModel(
+                model(DIMENSION * 2),
                 () -> indexManager.updateIndex(entityIndex(indexName), NEXT_RELEASE_MAPPING)));
 
     JsonNode live = liveMappings(indexName);
     assertTrue(live.path("properties").has("addedInNextRelease"));
     assertEquals(DIMENSION, live.path("properties").path("embedding").path("dims").asInt());
     assertEquals(DIMENSION, live.path("_meta").path("embedding_dimension").asInt());
-    assertReportedOnce(
-        indexName, String.valueOf(DIMENSION), String.valueOf(DIMENSION * 2), "reindex --force");
+    assertEquals(MODEL.id(), live.path("_meta").path("embedding_model").asText());
+    assertNeedsARebuild(indexName, "dense_vector of " + DIMENSION + " dimensions");
   }
 
   @Test
-  void anEmbeddingMappedAsAnotherTypeIsReportedAndLeftAlone() throws Exception {
+  void anUpgradeForAnotherModelOfTheSameDimensionLeavesTheFieldAndItsModelAlone() throws Exception {
+    String indexName = "same_dimension_other_model_table_search_index";
+    withModel(MODEL, () -> indexManager.createIndex(indexName, FIRST_RELEASE_MAPPING));
+    EmbeddingModel other = new EmbeddingModel("another-model", DIMENSION);
+
+    withModel(other, () -> indexManager.updateIndex(entityIndex(indexName), NEXT_RELEASE_MAPPING));
+
+    JsonNode live = liveMappings(indexName);
+    assertTrue(live.path("properties").has("addedInNextRelease"));
+    assertEquals(MODEL.id(), live.path("_meta").path("embedding_model").asText());
+    assertNeedsARebuild(indexName, "holds vectors of model " + MODEL.id());
+  }
+
+  @Test
+  void anEmbeddingMappedAsAnotherTypeNeedsARebuildAndIsLeftAlone() throws Exception {
     String indexName = "float_embedding_table_search_index";
     createRaw(indexName, EMBEDDING_AS_FLOATS);
 
-    withEmbeddings(
-        DIMENSION, () -> indexManager.updateIndex(entityIndex(indexName), NEXT_RELEASE_MAPPING));
+    withModel(MODEL, () -> indexManager.updateIndex(entityIndex(indexName), NEXT_RELEASE_MAPPING));
 
     JsonNode live = liveMappings(indexName);
     assertTrue(live.path("properties").has("addedInNextRelease"));
     assertEquals("float", live.path("properties").path("embedding").path("type").asText());
-    assertReportedOnce(indexName, "float", String.valueOf(DIMENSION), "reindex --force");
+    assertNeedsARebuild(indexName, "has float");
   }
 
   @Test
@@ -243,8 +259,7 @@ class ElasticsearchVectorMappingUpdateIT {
     String indexName = "unparsed_field_table_search_index";
     createRaw(indexName, UNRELATED_FIELD_THE_CLIENT_CANNOT_PARSE);
 
-    withEmbeddings(
-        DIMENSION, () -> indexManager.updateIndex(entityIndex(indexName), NEXT_RELEASE_MAPPING));
+    withModel(MODEL, () -> indexManager.updateIndex(entityIndex(indexName), NEXT_RELEASE_MAPPING));
 
     JsonNode live = liveMappings(indexName);
     assertTrue(live.path("properties").has("addedInNextRelease"));
@@ -256,18 +271,20 @@ class ElasticsearchVectorMappingUpdateIT {
   void theLiveFieldIsReadThroughTheAliasOfARebuiltIndex() throws Exception {
     String rebuiltIndex = "aliased_table_search_index_rebuild_2";
     String canonicalName = "aliased_table_search_index";
-    withEmbeddings(DIMENSION, () -> indexManager.createIndex(rebuiltIndex, FIRST_RELEASE_MAPPING));
+    withModel(MODEL, () -> indexManager.createIndex(rebuiltIndex, FIRST_RELEASE_MAPPING));
     client.indices().putAlias(alias -> alias.index(rebuiltIndex).name(canonicalName));
 
-    withEmbeddings(
-        DIMENSION * 2,
-        () -> indexManager.updateIndex(entityIndex(canonicalName), NEXT_RELEASE_MAPPING));
+    LiveEmbeddingField live = indexManager.readEmbeddingField(canonicalName);
 
-    JsonNode live = liveMappings(rebuiltIndex);
-    assertTrue(live.path("properties").has("addedInNextRelease"));
-    assertEquals(DIMENSION, live.path("properties").path("embedding").path("dims").asInt());
-    assertReportedOnce(
-        rebuiltIndex, String.valueOf(DIMENSION), String.valueOf(DIMENSION * 2), "reindex --force");
+    assertEquals(
+        Map.of(rebuiltIndex, new LiveEmbeddingField.Declared("dense_vector", DIMENSION)),
+        live.byIndex());
+    assertEquals(Map.of(rebuiltIndex, MODEL.id()), live.recordedModels());
+    assertEquals(
+        EmbeddingFieldUpdate.LEAVE_OUT, EmbeddingFieldUpdate.updateFor(live, model(DIMENSION * 2)));
+    assertEquals(
+        rebuiltIndex + " has dense_vector of " + DIMENSION + " dimensions",
+        live.describe(model(DIMENSION * 2)));
   }
 
   @Test
@@ -278,64 +295,88 @@ class ElasticsearchVectorMappingUpdateIT {
 
     try (MappingReadFailingProxy proxy =
             new MappingReadFailingProxy(container.getHost(), container.getMappedPort(9200));
-        Rest5Client proxiedRest = restClient("localhost", proxy.port())) {
+        Rest5Client proxiedRest = restClient("127.0.0.1", proxy.port())) {
       ElasticSearchIndexManager proxied =
           new ElasticSearchIndexManager(
               new ElasticsearchClient(
                   new Rest5ClientTransport(proxiedRest, new JacksonJsonpMapper())),
               "");
-      withEmbeddings(
-          DIMENSION, () -> proxied.updateIndex(entityIndex(indexName), NEXT_RELEASE_MAPPING));
+      withModel(MODEL, () -> proxied.updateIndex(entityIndex(indexName), NEXT_RELEASE_MAPPING));
     }
 
     JsonNode live = liveMappings(indexName);
     assertTrue(live.path("properties").has("addedInNextRelease"));
     assertEquals(engineDefault, embeddingOptionsType(indexName));
     assertTrue(live.path("_meta").isMissingNode(), "an unverified field gets no _meta stamp");
-    assertReportedOnce(indexName, "Could not read", "Restart the server");
+    assertTrue(health.report(MODEL).orElseThrow().contains("could not be read"));
   }
 
   @Test
-  void theServerDeclaresThePinnedVectorFieldOnAnIndexCreatedWithoutIt() throws Exception {
+  void aMappingReplyThatIsNotJsonIsAnUnreadableFieldAndNeverAFailure() throws Exception {
+    String indexName = "gateway_page_table_search_index";
+    withModel(MODEL, () -> indexManager.createIndex(indexName, FIRST_RELEASE_MAPPING));
+
+    try (MappingReadFailingProxy proxy =
+            MappingReadFailingProxy.answeringWithAPageThatIsNotJson(
+                container.getHost(), container.getMappedPort(9200));
+        Rest5Client proxiedRest = restClient("127.0.0.1", proxy.port())) {
+      ElasticSearchIndexManager proxied =
+          new ElasticSearchIndexManager(
+              new ElasticsearchClient(
+                  new Rest5ClientTransport(proxiedRest, new JacksonJsonpMapper())),
+              "");
+      LiveEmbeddingField live = assertDoesNotThrow(() -> proxied.readEmbeddingField(indexName));
+      assertFalse(live.readable());
+    }
+  }
+
+  @Test
+  void theServerDeclaresThePinnedVectorFieldAndTheModelOnAnIndexCreatedWithoutIt()
+      throws Exception {
     String indexName = "created_at_startup_table_search_index";
     withSearchRepository(
         mock(SearchRepository.class),
         () -> indexManager.createIndex(indexName, FIRST_RELEASE_MAPPING));
 
-    withEmbeddings(DIMENSION, () -> indexManager.updateEmbeddingField(entityIndex(indexName)));
+    LiveEmbeddingField field = indexManager.readEmbeddingField(indexName);
+    assertEquals(EmbeddingFieldUpdate.DECLARE, EmbeddingFieldUpdate.updateFor(field, MODEL));
+    indexManager.declareEmbeddingField(indexName, MODEL);
 
     JsonNode live = liveMappings(indexName);
     JsonNode embedding = live.path("properties").path("embedding");
     assertEquals("dense_vector", embedding.path("type").asText());
     assertEquals(DIMENSION, embedding.path("dims").asInt());
     assertEquals(48, embedding.path("index_options").path("m").asInt());
+    assertEquals(MODEL.id(), live.path("_meta").path("embedding_model").asText());
     assertEquals(DIMENSION, live.path("_meta").path("embedding_dimension").asInt());
-    assertTrue(errors().isEmpty(), "nothing to report: " + errors());
   }
 
   @Test
-  void theServerLeavesAnIndexOfTheConfiguredDimensionAlone() throws Exception {
+  void theServerKeepsAnIndexThatHoldsTheModel() throws Exception {
     String indexName = "current_model_table_search_index";
-    withEmbeddings(DIMENSION, () -> indexManager.createIndex(indexName, FIRST_RELEASE_MAPPING));
-    JsonNode before = liveMappings(indexName);
+    withModel(MODEL, () -> indexManager.createIndex(indexName, FIRST_RELEASE_MAPPING));
 
-    withEmbeddings(DIMENSION, () -> indexManager.updateEmbeddingField(entityIndex(indexName)));
+    LiveEmbeddingField field = indexManager.readEmbeddingField(indexName);
 
-    assertEquals(before, liveMappings(indexName));
-    assertTrue(errors().isEmpty(), "nothing to report: " + errors());
+    assertEquals(EmbeddingFieldUpdate.KEEP, EmbeddingFieldUpdate.updateFor(field, MODEL));
+    assertEquals(Map.of(indexName, MODEL.id()), field.recordedModels());
   }
 
   @Test
-  void theServerReportsAnIndexHoldingAnotherDimensionAndLeavesItAlone() throws Exception {
+  void theServerFindsAnIndexHoldingAnotherDimensionOrAnotherModel() throws Exception {
     String indexName = "previous_model_table_search_index";
-    withEmbeddings(DIMENSION, () -> indexManager.createIndex(indexName, FIRST_RELEASE_MAPPING));
-    JsonNode before = liveMappings(indexName);
+    withModel(MODEL, () -> indexManager.createIndex(indexName, FIRST_RELEASE_MAPPING));
 
-    withEmbeddings(DIMENSION * 2, () -> indexManager.updateEmbeddingField(entityIndex(indexName)));
+    LiveEmbeddingField field = indexManager.readEmbeddingField(indexName);
 
-    assertEquals(before, liveMappings(indexName));
-    assertReportedOnce(
-        indexName, String.valueOf(DIMENSION), String.valueOf(DIMENSION * 2), "reindex --force");
+    assertEquals(
+        EmbeddingFieldUpdate.LEAVE_OUT,
+        EmbeddingFieldUpdate.updateFor(field, model(DIMENSION * 2)));
+    EmbeddingModel sameDimension = new EmbeddingModel("another-model", DIMENSION);
+    assertEquals(
+        EmbeddingFieldUpdate.LEAVE_OUT, EmbeddingFieldUpdate.updateFor(field, sameDimension));
+    assertEquals(
+        indexName + " holds vectors of model " + MODEL.id(), field.describe(sameDimension));
   }
 
   private static Rest5Client restClient(String host, int port) {
@@ -368,12 +409,18 @@ class ElasticsearchVectorMappingUpdateIT {
         .build();
   }
 
-  /** Runs the action with semantic search on, as {@code Entity.getSearchRepository()} reports it. */
-  private static void withEmbeddings(int dimension, Runnable action) {
+  private static EmbeddingModel model(int dimension) {
+    return new EmbeddingModel("vector-mapping-update-" + dimension, dimension);
+  }
+
+  /**
+   * Runs the action with semantic search on and only the embedding model known, as {@code
+   * Entity.getSearchRepository()} reports it to {@code migrate}: there is no embedding client.
+   */
+  private void withModel(EmbeddingModel model, Runnable action) {
     SearchRepository searchRepository = mock(SearchRepository.class);
-    EmbeddingClient embeddingClient = new FixedDimensionClient(dimension);
-    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
-    when(searchRepository.getEmbeddingClient()).thenReturn(embeddingClient);
+    when(searchRepository.getEmbeddingModel()).thenReturn(Optional.of(model));
+    when(searchRepository.getVectorFieldHealth()).thenReturn(health);
     withSearchRepository(searchRepository, action);
   }
 
@@ -409,14 +456,17 @@ class ElasticsearchVectorMappingUpdateIT {
         .toList();
   }
 
-  /** One error names the index and every given detail, and tells the operator what to run. */
-  private void assertReportedOnce(String indexName, String... details) {
-    List<String> reports =
-        errors().stream().filter(message -> message.contains(indexName)).toList();
-    assertEquals(1, reports.size(), "one error for " + indexName + ", got " + errors());
-    String report = reports.getFirst();
-    for (String detail : details) {
-      assertTrue(report.contains(detail), "'" + detail + "' missing from: " + report);
-    }
+  /**
+   * The index is recorded as one that cannot hold the vectors, for the reason given, and the one
+   * report names it with the way out. Nothing is logged per index.
+   */
+  private void assertNeedsARebuild(String indexName, String reason) {
+    List<VectorFieldHealth.Mismatch> mismatches = health.mismatches();
+    assertEquals(1, mismatches.size(), mismatches.toString());
+    assertTrue(mismatches.getFirst().reason().contains(reason), mismatches.toString());
+    String report = health.report(MODEL).orElseThrow();
+    assertTrue(report.contains(indexName), report);
+    assertTrue(report.contains("reindex --force"), report);
+    assertTrue(errors().isEmpty(), "nothing is logged per index: " + errors());
   }
 }

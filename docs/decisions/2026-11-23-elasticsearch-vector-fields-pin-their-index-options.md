@@ -47,7 +47,7 @@ existing field (`m` cannot go down, `hnsw` cannot become `bbq_hnsw`); sending th
 is refused on an index created before this change, which has the engine default. `PUT _mapping`
 is atomic, so one refused field drops every other field in the body, and `migrate` would leave
 each upgrade's new fields unmapped. A live `embedding` whose `dims` differ from the embedding
-client, which cannot change on an existing index, is left as it is and reported
+model, which cannot change on an existing index, is left as it is and reported
 (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model).
 
 ## Consequences

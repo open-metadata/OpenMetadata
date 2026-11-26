@@ -1,114 +1,130 @@
 package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
-import java.util.List;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Map;
 import java.util.Set;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 
 class EmbeddingFieldUpdateTest {
   private static final String INDEX = "table_search_index";
+  private static final EmbeddingModel MODEL = new EmbeddingModel("model-a", 384);
 
-  private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
-
-  @BeforeEach
-  void captureLogs() {
-    logs.start();
-    logger().addAppender(logs);
-  }
-
-  @AfterEach
-  void releaseLogs() {
-    logger().detachAppender(logs);
-  }
-
-  private static Logger logger() {
-    return (Logger) LoggerFactory.getLogger(EmbeddingFieldUpdate.class);
-  }
-
-  private static LiveEmbeddingField declared(String type, Integer dimensions) {
+  private static LiveEmbeddingField declared(String type, Integer dimensions, String recorded) {
     return new LiveEmbeddingField(
         INDEX,
         Set.of(INDEX),
         Map.of(INDEX, new LiveEmbeddingField.Declared(type, dimensions)),
+        recorded == null ? Map.of() : Map.of(INDEX, recorded),
         Set.of(),
         null);
-  }
-
-  private List<String> errors() {
-    return logs.list.stream()
-        .filter(event -> event.getLevel() == Level.ERROR)
-        .map(ILoggingEvent::getFormattedMessage)
-        .toList();
   }
 
   @Test
   void anIndexWithoutTheFieldGetsItDeclared() {
     assertEquals(
         EmbeddingFieldUpdate.DECLARE,
-        EmbeddingFieldUpdate.decide(LiveEmbeddingField.notMapped(INDEX), 384, "model"));
-    assertTrue(errors().isEmpty());
+        EmbeddingFieldUpdate.updateFor(LiveEmbeddingField.notMapped(INDEX), MODEL));
   }
 
   @Test
-  void aVectorOfTheConfiguredDimensionsIsKept() {
+  void aVectorOfTheModelIsKept() {
     assertEquals(
         EmbeddingFieldUpdate.KEEP,
-        EmbeddingFieldUpdate.decide(declared("dense_vector", 384), 384, "model"));
-    assertTrue(errors().isEmpty());
+        EmbeddingFieldUpdate.updateFor(declared("dense_vector", 384, "model-a"), MODEL));
+    assertEquals(
+        EmbeddingFieldUpdate.KEEP,
+        EmbeddingFieldUpdate.updateFor(declared("dense_vector", 384, null), MODEL));
   }
 
   @Test
-  void aVectorOfOtherDimensionsIsLeftOutAndTheRebuildIsSpelledOut() {
+  void aVectorOfOtherDimensionsIsLeftOut() {
     assertEquals(
         EmbeddingFieldUpdate.LEAVE_OUT,
-        EmbeddingFieldUpdate.decide(declared("dense_vector", 384), 768, "text-embedding-3-large"));
+        EmbeddingFieldUpdate.updateFor(
+            declared("dense_vector", 384, "model-a"), new EmbeddingModel("model-a", 768)));
+  }
 
-    String error = errors().getFirst();
-    assertTrue(error.contains(INDEX + " has dense_vector of 384 dimensions"), error);
-    assertTrue(error.contains("768-dimension vectors"), error);
-    assertTrue(error.contains("text-embedding-3-large"), error);
-    assertTrue(error.contains("Search Indexing"), error);
-    assertTrue(error.contains("reindex --force"), error);
+  @Test
+  void aVectorOfTheSameDimensionsBuiltForAnotherModelIsLeftOut() {
+    assertEquals(
+        EmbeddingFieldUpdate.LEAVE_OUT,
+        EmbeddingFieldUpdate.updateFor(declared("dense_vector", 384, "model-b"), MODEL));
   }
 
   @Test
   void aFieldOfAnotherTypeIsLeftOut() {
     assertEquals(
         EmbeddingFieldUpdate.LEAVE_OUT,
-        EmbeddingFieldUpdate.decide(declared("float", null), 384, "model"));
-    assertTrue(errors().getFirst().contains(INDEX + " has float"));
+        EmbeddingFieldUpdate.updateFor(declared("float", null, null), MODEL));
   }
 
   @Test
   void anIndexThatCannotTakeAVectorFieldIsLeftOut() {
     LiveEmbeddingField withoutKnn =
-        new LiveEmbeddingField(INDEX, Set.of(INDEX), Map.of(), Set.of(INDEX), null);
+        new LiveEmbeddingField(INDEX, Set.of(INDEX), Map.of(), Map.of(), Set.of(INDEX), null);
 
-    assertEquals(
-        EmbeddingFieldUpdate.LEAVE_OUT, EmbeddingFieldUpdate.decide(withoutKnn, 384, "model"));
-    assertTrue(errors().getFirst().contains(INDEX + " was created without vector support"));
+    assertEquals(EmbeddingFieldUpdate.LEAVE_OUT, EmbeddingFieldUpdate.updateFor(withoutKnn, MODEL));
   }
 
   @Test
-  void anUnreadableFieldIsLeftOutAndTheServerIsToBeRestarted() {
+  void anUnreadableFieldIsLeftOut() {
     assertEquals(
         EmbeddingFieldUpdate.LEAVE_OUT,
-        EmbeddingFieldUpdate.decide(
-            LiveEmbeddingField.unreadable(INDEX, "503 Service Unavailable"), 384, "model"));
+        EmbeddingFieldUpdate.updateFor(LiveEmbeddingField.unreadable(INDEX, "503"), MODEL));
+  }
 
-    String error = errors().getFirst();
-    assertTrue(error.contains("Could not read the live embedding field of search index " + INDEX));
-    assertTrue(error.contains("503 Service Unavailable"));
-    assertTrue(error.contains("Restart the server"));
+  @Test
+  void aMappingUpdateRecordsItsDecisionInTheServersVectorFieldHealth() {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    VectorFieldHealth health = mock(VectorFieldHealth.class);
+    when(searchRepository.getVectorFieldHealth()).thenReturn(health);
+    LiveEmbeddingField live = declared("dense_vector", 768, "model-a");
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      assertEquals(EmbeddingFieldUpdate.LEAVE_OUT, EmbeddingFieldUpdate.decide(live, MODEL));
+    }
+
+    verify(health).record(live, MODEL, EmbeddingFieldUpdate.LEAVE_OUT);
+  }
+
+  @Test
+  void onlyADeclaredFieldRecordsTheModelInMeta() {
+    ObjectNode declare = mappingsWithMeta();
+    EmbeddingFieldUpdate.DECLARE.applyModelMeta(declare, MODEL);
+    assertEquals("model-a", declare.path("_meta").path("embedding_model").asText());
+    assertEquals(384, declare.path("_meta").path("embedding_dimension").asInt());
+    assertEquals("kept", declare.path("_meta").path("other").asText());
+
+    ObjectNode keep = mappingsWithMeta();
+    EmbeddingFieldUpdate.KEEP.applyModelMeta(keep, MODEL);
+    assertFalse(keep.path("_meta").has("embedding_model"));
+    assertFalse(keep.path("_meta").has("embedding_dimension"));
+    assertEquals("kept", keep.path("_meta").path("other").asText());
+
+    ObjectNode leaveOut =
+        (ObjectNode)
+            JsonUtils.readTree(
+                "{\"_meta\":{\"embedding_model\":\"old\",\"embedding_dimension\":768}}");
+    EmbeddingFieldUpdate.LEAVE_OUT.applyModelMeta(leaveOut, MODEL);
+    assertFalse(leaveOut.has("_meta"), "an emptied _meta is left out, keeping the live one");
+  }
+
+  private static ObjectNode mappingsWithMeta() {
+    return (ObjectNode)
+        JsonUtils.readTree(
+            "{\"_meta\":{\"embedding_model\":\"old\",\"embedding_dimension\":768,"
+                + "\"other\":\"kept\"}}");
   }
 }

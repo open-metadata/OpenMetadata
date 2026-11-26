@@ -67,6 +67,7 @@ import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescri
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.collect.Lists;
@@ -189,6 +190,7 @@ import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
 import org.openmetadata.service.search.vector.client.BedrockEmbeddingClient;
 import org.openmetadata.service.search.vector.client.DjlEmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 import org.openmetadata.service.search.vector.client.GoogleEmbeddingClient;
 import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -570,13 +572,23 @@ public class SearchRepository {
 
   protected NLQService nlqService;
 
-  @Getter private EmbeddingClient embeddingClient;
+  @Getter private volatile EmbeddingClient embeddingClient;
   @Getter private VectorIndexService vectorIndexService;
   @Getter private VectorEmbeddingHandler vectorEmbeddingHandler;
   @Getter private volatile String vectorServiceInitError;
   private volatile boolean vectorServiceInitialized = false;
 
+  /**
+   * The vector indexes that cannot hold the embedding model's vectors. Each such index is read
+   * again through {@link #checkEmbeddingField}.
+   */
+  @Getter private final VectorFieldHealth vectorFieldHealth;
+
+  // The model the configuration names, resolved once; null until then.
+  private Optional<EmbeddingModel> configuredEmbeddingModel;
+
   public SearchRepository(ElasticSearchConfiguration config, int maxDBConnections) {
+    this.vectorFieldHealth = new VectorFieldHealth(this::checkEmbeddingField);
     this.maxDBConnections = maxDBConnections;
     searchConfiguration = config;
     searchClient = buildSearchClient(searchConfiguration);
@@ -701,10 +713,15 @@ public class SearchRepository {
     }
   }
 
+  /**
+   * Updates the mapping of every index, and reports in one error the vector indexes that cannot
+   * hold the embedding model's vectors.
+   */
   public void updateIndexes() {
     for (Map.Entry<String, IndexMapping> entry : managedIndexMappings().entrySet()) {
       updateIndex(entry.getValue());
     }
+    getEmbeddingModel().flatMap(vectorFieldHealth::report).ifPresent(LOG::error);
   }
 
   /**
@@ -983,7 +1000,7 @@ public class SearchRepository {
 
     LLMConfiguration llmConfig = LlmConfigHolder.get();
     try {
-      this.embeddingClient = createEmbeddingClient(llmConfig);
+      loadEmbeddingClient(llmConfig);
 
       if (cfg.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
         os.org.opensearch.client.opensearch.OpenSearchClient osClient =
@@ -1013,17 +1030,140 @@ public class SearchRepository {
   }
 
   /**
-   * Brings the {@code embedding} field of every existing vector index in line with the embedding
-   * model, once the vector search service has started. The server calls it on start: startup
-   * creates missing indexes before the embedding client exists, and {@code migrate} never has one,
-   * so this is where the live indexes first meet the model. {@code reindex} does not, since it
-   * rebuilds them (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model).
+   * Starts vector search on the server: the vector search service, then the {@code embedding}
+   * field of every existing vector index, the chunk indexes included, reconciled with its model.
+   * Indexes are created with the model's field before the service starts, so this is the safety
+   * net for an index created without one, or built for another model. {@code reindex} only starts
+   * the service, since it rebuilds the indexes
+   * (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model).
    */
-  public void updateEmbeddingFields() {
+  public void startVectorSearch() {
+    initializeVectorSearchService();
     if (vectorServiceInitialized) {
-      managedIndexMappings().values().stream()
-          .filter(indexMapping -> declaresEmbeddings(indexMapping) && indexExists(indexMapping))
-          .forEach(searchClient::updateEmbeddingField);
+      getEmbeddingModel().ifPresent(this::reconcileEmbeddingFields);
+    }
+  }
+
+  /**
+   * The embedding model search indexes are built for, while semantic search is on: the embedding
+   * client's once it exists, and before that the model the configuration names, so that {@code
+   * migrate} and server start create indexes with the right vector field. Empty when the
+   * configuration names no valid model.
+   */
+  public Optional<EmbeddingModel> getEmbeddingModel() {
+    Optional<EmbeddingModel> model = Optional.empty();
+    if (isVectorEmbeddingEnabled()) {
+      EmbeddingClient client = embeddingClient;
+      model = client != null ? Optional.of(EmbeddingModel.of(client)) : configuredEmbeddingModel();
+    }
+    return model;
+  }
+
+  private synchronized Optional<EmbeddingModel> configuredEmbeddingModel() {
+    if (configuredEmbeddingModel == null) {
+      configuredEmbeddingModel = resolveEmbeddingModel(LlmConfigHolder.get());
+    }
+    return configuredEmbeddingModel;
+  }
+
+  // Only a DJL model has to be loaded to know its dimension; its client is then kept for the
+  // vector search service.
+  private Optional<EmbeddingModel> resolveEmbeddingModel(LLMConfiguration llmConfig) {
+    Optional<EmbeddingModel> model;
+    try {
+      model =
+          Optional.of(
+              EmbeddingModel.fromConfiguration(llmConfig)
+                  .orElseGet(() -> EmbeddingModel.of(loadEmbeddingClient(llmConfig))));
+    } catch (RuntimeException e) {
+      LOG.error(
+          "Search indexes get no vector field, because the configuration names no valid "
+              + "embedding model: {}",
+          e.getMessage());
+      model = Optional.empty();
+    }
+    return model;
+  }
+
+  private synchronized EmbeddingClient loadEmbeddingClient(LLMConfiguration llmConfig) {
+    if (embeddingClient == null) {
+      embeddingClient = createEmbeddingClient(llmConfig);
+    }
+    return embeddingClient;
+  }
+
+  private void reconcileEmbeddingFields(EmbeddingModel model) {
+    vectorIndexNames().forEach(this::checkEmbeddingField);
+    vectorFieldHealth.report(model).ifPresent(LOG::error);
+  }
+
+  /** The entity indexes whose mapping has {@code fingerprint}, and the chunk indexes. */
+  private List<String> vectorIndexNames() {
+    List<String> names = new ArrayList<>();
+    managedIndexMappings().values().stream()
+        .filter(this::declaresEmbeddingsSafely)
+        .map(indexMapping -> indexMapping.getIndexName(clusterAlias))
+        .forEach(names::add);
+    names.addAll(vectorIndexService.chunkIndexNames());
+    return names;
+  }
+
+  private boolean declaresEmbeddingsSafely(IndexMapping indexMapping) {
+    boolean declares;
+    try {
+      declares = declaresEmbeddings(indexMapping);
+    } catch (RuntimeException e) {
+      LOG.warn(
+          "Could not read the index mapping of {}", indexMapping.getIndexName(clusterAlias), e);
+      declares = false;
+    }
+    return declares;
+  }
+
+  /**
+   * Reads the {@code embedding} field of {@code name}, an existing index or alias, declares it when
+   * none of its indexes maps one and each can take it, and records in {@link #vectorFieldHealth}
+   * whether it can hold the model's vectors. Never throws, so one index cannot stop server start.
+   */
+  private void checkEmbeddingField(String name) {
+    Optional<EmbeddingModel> model = getEmbeddingModel();
+    try {
+      if (model.isPresent() && nameExists(name)) {
+        reconcileEmbeddingField(name, model.get());
+      } else {
+        vectorFieldHealth.forget(name);
+      }
+    } catch (RuntimeException e) {
+      model.ifPresent(
+          embeddingModel ->
+              vectorFieldHealth.record(
+                  LiveEmbeddingField.unreadable(name, e.toString()),
+                  embeddingModel,
+                  EmbeddingFieldUpdate.LEAVE_OUT));
+    }
+  }
+
+  private boolean nameExists(String name) {
+    return searchClient.indexExists(name) || !searchClient.getIndicesByAlias(name).isEmpty();
+  }
+
+  private void reconcileEmbeddingField(String name, EmbeddingModel model) {
+    LiveEmbeddingField live = searchClient.readEmbeddingField(name);
+    EmbeddingFieldUpdate update = EmbeddingFieldUpdate.updateFor(live, model);
+    if (update == EmbeddingFieldUpdate.DECLARE) {
+      declareEmbeddingField(live, model);
+    } else {
+      vectorFieldHealth.record(live, model, update);
+    }
+  }
+
+  private void declareEmbeddingField(LiveEmbeddingField live, EmbeddingModel model) {
+    try {
+      searchClient.declareEmbeddingField(live.name(), model);
+      vectorFieldHealth.record(live, model, EmbeddingFieldUpdate.DECLARE);
+    } catch (IOException | RuntimeException e) {
+      vectorFieldHealth.recordCannotHold(
+          live.name(), live.indexes(), "its vector field could not be added: " + e.getMessage());
     }
   }
 
@@ -1364,10 +1504,8 @@ public class SearchRepository {
    */
   public String readIndexMapping(IndexMapping indexMapping) {
     String mapping = getHardenedResourceMapping(indexMapping);
-    if (isVectorEmbeddingEnabled() && embeddingClient != null && mapping != null) {
-      mapping = reformatVectorIndexWithDimension(mapping, embeddingClient.getDimension());
-    }
-    return mapping;
+    Optional<EmbeddingModel> model = mapping == null ? Optional.empty() : getEmbeddingModel();
+    return model.map(embeddingModel -> withEmbeddingModel(mapping, embeddingModel)).orElse(mapping);
   }
 
   private String enrichForElasticsearch(String mappingContent) {
@@ -5655,25 +5793,22 @@ public class SearchRepository {
     return inheritedReferences;
   }
 
-  private String reformatVectorIndexWithDimension(String mapping, int dimension) {
+  /** The mapping with the embedding model in {@code _meta}, which the vector enrichment checks. */
+  private static String withEmbeddingModel(String mapping, EmbeddingModel model) {
+    String result = mapping;
     try {
-      com.fasterxml.jackson.databind.ObjectMapper mapper =
-          new com.fasterxml.jackson.databind.ObjectMapper();
-      JsonNode root = mapper.readTree(mapping);
-      if (root.has("mappings")) {
-        JsonNode mappings = root.get("mappings");
-        com.fasterxml.jackson.databind.node.ObjectNode meta =
-            ((com.fasterxml.jackson.databind.node.ObjectNode) mappings).putObject("_meta");
-        meta.put(
-                "embedding_model",
-                embeddingClient != null ? embeddingClient.getModelId() : "unknown")
-            .put("embedding_dimension", dimension);
+      JsonNode root = JsonUtils.readTree(mapping);
+      if (root.get("mappings") instanceof ObjectNode mappings) {
+        mappings
+            .putObject(LiveEmbeddingField.META)
+            .put(LiveEmbeddingField.META_EMBEDDING_MODEL, model.id())
+            .put(LiveEmbeddingField.META_EMBEDDING_DIMENSION, model.dimension());
+        result = root.toString();
       }
-      return mapper.writeValueAsString(root);
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       LOG.warn("Failed to set embedding _meta in mapping JSON", e);
-      return mapping;
     }
+    return result;
   }
 
   protected EmbeddingClient createEmbeddingClient(LLMConfiguration llmConfig) {

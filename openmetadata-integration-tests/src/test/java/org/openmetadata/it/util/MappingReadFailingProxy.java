@@ -17,9 +17,10 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 
 /**
- * Forwards HTTP to a search engine but answers 503 to every request that reads an index mapping,
- * so a test can see what an update does when the live mapping cannot be read while the cluster
- * still accepts writes.
+ * Forwards HTTP to a search engine but answers every request that reads an index mapping itself,
+ * with a 503 by default or with a 200 that is not JSON, as a gateway's error page would be, so a
+ * test can see what happens when the live mapping cannot be read while the cluster still accepts
+ * writes.
  */
 public final class MappingReadFailingProxy implements AutoCloseable {
   private static final List<String> FORWARDED_HEADERS =
@@ -33,11 +34,31 @@ public final class MappingReadFailingProxy implements AutoCloseable {
       "{\"error\":{\"type\":\"injected\",\"reason\":\"mapping read refused by the test proxy\"},\"status\":503}"
           .getBytes(StandardCharsets.UTF_8);
 
+  private static final byte[] NOT_JSON =
+      "<html><body>Gateway maintenance</body></html>".getBytes(StandardCharsets.UTF_8);
+
   private final HttpServer server;
   private final HttpClient client = HttpClient.newHttpClient();
   private final String target;
+  private final int status;
+  private final String contentType;
+  private final byte[] reply;
 
   public MappingReadFailingProxy(String host, int port) throws IOException {
+    this(host, port, 503, "application/json", FAILURE);
+  }
+
+  /** A proxy that answers a mapping read with 200 and an HTML page. */
+  public static MappingReadFailingProxy answeringWithAPageThatIsNotJson(String host, int port)
+      throws IOException {
+    return new MappingReadFailingProxy(host, port, 200, "text/html", NOT_JSON);
+  }
+
+  private MappingReadFailingProxy(
+      String host, int port, int status, String contentType, byte[] reply) throws IOException {
+    this.status = status;
+    this.contentType = contentType;
+    this.reply = reply;
     target = "http://" + host + ":" + port;
     server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     server.createContext("/", this::handle);
@@ -52,7 +73,7 @@ public final class MappingReadFailingProxy implements AutoCloseable {
   private void handle(HttpExchange exchange) throws IOException {
     try (exchange) {
       if (readsAMapping(exchange)) {
-        respond(exchange, 503, "application/json", FAILURE);
+        respond(exchange, status, contentType, reply);
       } else {
         forward(exchange);
       }

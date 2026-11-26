@@ -39,17 +39,11 @@ public final class OpenAIEmbeddingClient extends EmbeddingClient {
     if (openaiCfg.getApiKey() == null || openaiCfg.getApiKey().isBlank()) {
       throw new IllegalArgumentException("OpenAI API key is required");
     }
-    if (embeddingCfg.getEmbeddingModelId() == null
-        || embeddingCfg.getEmbeddingModelId().isBlank()) {
-      throw new IllegalArgumentException("OpenAI embedding model ID is required");
-    }
-    if (embeddingCfg.getEmbeddingDimension() == null || embeddingCfg.getEmbeddingDimension() <= 0) {
-      throw new IllegalArgumentException("OpenAI embedding dimension must be positive");
-    }
+    EmbeddingModel model = EmbeddingModel.openAi(embeddingCfg);
 
     this.apiKey = openaiCfg.getApiKey();
-    this.modelId = embeddingCfg.getEmbeddingModelId();
-    this.dimension = embeddingCfg.getEmbeddingDimension();
+    this.modelId = model.id();
+    this.dimension = model.dimension();
 
     String endpoint = openaiCfg.getEndpoint();
     String deploymentName = openaiCfg.getDeploymentName();

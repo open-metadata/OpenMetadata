@@ -20,8 +20,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +38,7 @@ import org.openmetadata.service.search.lineage.MissingLineageEntityException;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
-import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 import org.openmetadata.service.util.LineageUtil;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
@@ -711,25 +711,26 @@ public class OsUtils {
    * @return Transformed index mapping content for OpenSearch
    */
   public static String enrichIndexMappingForOpenSearch(String indexMappingContent) {
-    return enrichIndexMapping(indexMappingContent, () -> LiveEmbeddingField.notMapped(""));
+    return enrichIndexMapping(indexMappingContent, model -> EmbeddingFieldUpdate.DECLARE);
   }
 
   /**
    * As {@link #enrichIndexMappingForOpenSearch}, for a {@code PUT _mapping} on an existing index.
-   * The live {@code embedding} field decides whether the body declares it ({@link
-   * EmbeddingFieldUpdate}): only when no index behind the name maps it yet and every one of them
-   * can take it. OpenSearch refuses to change the dimension or the method of an existing {@code
+   * The live {@code embedding} field decides whether the body declares it, with the model in {@code
+   * _meta} ({@link EmbeddingFieldUpdate}): only when no index behind the name maps it yet and every
+   * one of them can take it. OpenSearch refuses to change the dimension or the method of an existing {@code
    * knn_vector}, or to add one to an index created without {@code index.knn}, and {@code PUT
    * _mapping} is atomic, so sending it there would drop every other field in the body. The live
    * field is read only when the index is a vector index and embeddings are on.
    */
   public static String enrichIndexMappingForOpenSearchUpdate(
       String indexMappingContent, Supplier<LiveEmbeddingField> liveEmbedding) {
-    return enrichIndexMapping(indexMappingContent, liveEmbedding);
+    return enrichIndexMapping(
+        indexMappingContent, model -> EmbeddingFieldUpdate.decide(liveEmbedding.get(), model));
   }
 
   private static String enrichIndexMapping(
-      String indexMappingContent, Supplier<LiveEmbeddingField> liveEmbedding) {
+      String indexMappingContent, Function<EmbeddingModel, EmbeddingFieldUpdate> update) {
     if (nullOrEmpty(indexMappingContent)) {
       throw new IllegalArgumentException("Empty Index Mapping Content.");
     }
@@ -750,7 +751,7 @@ public class OsUtils {
     }
 
     // Add knn_vector settings for embedding-enabled indexes
-    addKnnVectorSettings(rootNode, liveEmbedding);
+    addKnnVectorSettings(rootNode, update);
 
     return rootNode.toString();
   }
@@ -772,52 +773,44 @@ public class OsUtils {
    * This keeps the static mapping files search-engine-agnostic while enabling vector search on
    * OpenSearch.
    *
-   * <p>The embedding dimension is resolved from the active embedding client (source of truth),
-   * not from index metadata. This ensures correct dimensions even on first enable (when existing
-   * indexes have no {@code _meta}) and on model changes. If {@code _meta.embedding_dimension} is
-   * present, it is validated against the client dimension to detect stale indexes that need a
-   * reindex.
+   * <p>The model and its dimension come from the configured {@link EmbeddingModel}, known before
+   * any embedding client exists, not from index metadata, so an index created by {@code migrate}
+   * gets {@code index.knn} and the field too. If {@code _meta.embedding_dimension} is present, it
+   * is validated against the model to detect stale content.
    */
   static void addKnnVectorSettings(JsonNode rootNode) {
-    addKnnVectorSettings(rootNode, () -> LiveEmbeddingField.notMapped(""));
+    addKnnVectorSettings(rootNode, model -> EmbeddingFieldUpdate.DECLARE);
   }
 
   private static void addKnnVectorSettings(
-      JsonNode rootNode, Supplier<LiveEmbeddingField> liveEmbedding) {
+      JsonNode rootNode, Function<EmbeddingModel, EmbeddingFieldUpdate> decide) {
     JsonNode properties = rootNode.path("mappings").path("properties");
     boolean vectorIndex = !properties.isMissingNode() && properties.has("fingerprint");
-    // The embedding client is the single source of truth for the vector dimension. If it is not
-    // available (embeddings disabled), knn setup is skipped entirely.
-    EmbeddingClient embeddingClient = EmbeddingFieldUpdate.activeEmbeddingClient().orElse(null);
-    if (vectorIndex && embeddingClient != null) {
-      int dimension = embeddingClient.getDimension();
-      logDeclaredDimensionMismatch(rootNode, dimension);
+    EmbeddingModel model = EmbeddingFieldUpdate.activeEmbeddingModel().orElse(null);
+    if (vectorIndex && model != null) {
+      logDeclaredDimensionMismatch(rootNode, model.dimension());
       addKnnIndexSettings(rootNode);
-      EmbeddingFieldUpdate update =
-          EmbeddingFieldUpdate.decide(liveEmbedding.get(), dimension, embeddingClient.getModelId());
+      EmbeddingFieldUpdate update = decide.apply(model);
       ((ObjectNode) properties).remove(LiveEmbeddingField.FIELD);
       if (update == EmbeddingFieldUpdate.DECLARE) {
-        ((ObjectNode) properties).set(LiveEmbeddingField.FIELD, knnVectorField(dimension));
+        ((ObjectNode) properties).set(LiveEmbeddingField.FIELD, knnVectorField(model.dimension()));
       }
+      update.applyModelMeta((ObjectNode) rootNode.path("mappings"), model);
     }
   }
 
   /**
-   * The {@code PUT _mapping} body that declares the {@code knn_vector} field on an existing vector
-   * index that does not map it yet and was created with {@code index.knn} ({@link
-   * EmbeddingFieldUpdate#declarationFor}).
+   * The {@code PUT _mapping} body that declares the {@code knn_vector} field for {@code model},
+   * with the model in {@code _meta}, on an existing vector index that maps none and was created
+   * with {@code index.knn} ({@link EmbeddingFieldUpdate#DECLARE}).
    */
-  public static Optional<String> embeddingFieldDeclaration(
-      Supplier<LiveEmbeddingField> liveEmbedding) {
-    return EmbeddingFieldUpdate.declarationFor(
-        liveEmbedding,
-        embeddingClient -> {
-          ObjectNode mappings = mapper.createObjectNode();
-          mappings
-              .putObject("properties")
-              .set(LiveEmbeddingField.FIELD, knnVectorField(embeddingClient.getDimension()));
-          return mappings;
-        });
+  public static String embeddingFieldDeclaration(EmbeddingModel model) {
+    ObjectNode mappings = mapper.createObjectNode();
+    mappings
+        .putObject("properties")
+        .set(LiveEmbeddingField.FIELD, knnVectorField(model.dimension()));
+    EmbeddingFieldUpdate.DECLARE.applyModelMeta(mappings, model);
+    return mappings.toString();
   }
 
   /**

@@ -131,6 +131,7 @@ import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftState;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.VectorFieldHealth;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
@@ -1375,7 +1376,8 @@ public class SystemRepository implements DeploymentSettingPreparer {
         return embeddingResult;
       }
 
-      return embeddingsWorking(embeddingResult, description, configMessage);
+      return embeddingsWorkingUnlessReindexRequired(
+          searchRepository, embeddingResult, description, configMessage);
     } catch (Exception e) {
       LOG.error("Error during embedding generation validation", e);
       return embeddingsValidation
@@ -1390,7 +1392,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
       StepValidation embeddingsValidation,
       String description,
       String configMessage) {
-    searchRepository.initializeVectorSearchService();
+    searchRepository.startVectorSearch();
 
     if (searchRepository.getVectorIndexService() != null) {
       try {
@@ -1403,7 +1405,8 @@ public class SystemRepository implements DeploymentSettingPreparer {
         if (Boolean.FALSE.equals(embeddingResult.getPassed())) {
           return embeddingResult;
         }
-        return embeddingsWorking(embeddingResult, description, configMessage);
+        return embeddingsWorkingUnlessReindexRequired(
+            searchRepository, embeddingResult, description, configMessage);
       } catch (Exception e) {
         LOG.error("Error during embedding generation validation after retry", e);
         return embeddingsValidation
@@ -1435,6 +1438,28 @@ public class SystemRepository implements DeploymentSettingPreparer {
                 + " "
                 + configMessage)
         .withPassed(false);
+  }
+
+  /**
+   * Embeddings work, but vector indexes that cannot hold the model's vectors, read again now so a
+   * finished rebuild clears them, still fail the step with what each holds and the way out.
+   */
+  private static StepValidation embeddingsWorkingUnlessReindexRequired(
+      SearchRepository searchRepository,
+      StepValidation embeddingsValidation,
+      String description,
+      String configMessage) {
+    VectorFieldHealth health = searchRepository.getVectorFieldHealth();
+    health.recheckAll();
+    Optional<String> reindexRequired = searchRepository.getEmbeddingModel().flatMap(health::report);
+    return reindexRequired
+        .map(
+            message ->
+                embeddingsValidation
+                    .withDescription(description)
+                    .withMessage(message + " " + configMessage)
+                    .withPassed(false))
+        .orElseGet(() -> embeddingsWorking(embeddingsValidation, description, configMessage));
   }
 
   private static StepValidation embeddingsWorking(

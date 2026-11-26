@@ -129,6 +129,16 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
   @Override
   protected void onStagedIndexPromoted(EntityReindexContext context) {
     promotedEntityTypes.add(context.getEntityType());
+    refreshVectorField(context.getCanonicalIndex());
+  }
+
+  // The rebuilt index was created for the configured model, so this node lets vectors back in now
+  // rather than at its next periodic read.
+  private static void refreshVectorField(String canonicalIndex) {
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    if (searchRepository != null && canonicalIndex != null) {
+      searchRepository.getVectorFieldHealth().refresh(canonicalIndex);
+    }
   }
 
   @Override

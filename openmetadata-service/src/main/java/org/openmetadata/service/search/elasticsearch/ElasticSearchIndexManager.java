@@ -38,6 +38,7 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.IndexManagementClient;
 import org.openmetadata.service.search.LiveEmbeddingField;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 
 /**
  * ElasticSearch implementation of index management operations.
@@ -46,6 +47,8 @@ import org.openmetadata.service.search.LiveEmbeddingField;
 @Slf4j
 public class ElasticSearchIndexManager implements IndexManagementClient {
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String RECORDED_MODEL_FILTER =
+      "*.mappings." + LiveEmbeddingField.META + "." + LiveEmbeddingField.META_EMBEDDING_MODEL;
   private final ElasticsearchClient client;
   private final String clusterAlias;
   private final boolean isClientAvailable;
@@ -106,15 +109,15 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       String transformedContent =
           (indexMappingContent != null && !indexMappingContent.isEmpty())
               ? EsUtils.enrichIndexMappingForElasticsearchUpdate(
-                  indexMappingContent, () -> readLiveEmbeddingField(indexName))
+                  indexMappingContent, () -> readEmbeddingField(indexName))
               : indexMappingContent;
       putMapping(indexName, extractMappingsJson(transformedContent));
       LOG.info("Successfully updated mapping for index: {}", indexName);
 
     } catch (IllegalStateException e) {
-      // A mapping content that disagrees with the embedding client is a broken mapping, so it
-      // surfaces, the same contract as createIndex. A live index that cannot hold the configured
-      // vectors does not throw: EmbeddingFieldUpdate reports it and the rest of the update applies.
+      // A mapping content that disagrees with the embedding model is a broken mapping, so it
+      // surfaces, the same contract as createIndex. A live index that cannot hold the model's
+      // vectors does not throw: VectorFieldHealth reports it and the rest of the update applies.
       throw e;
     } catch (Exception e) {
       LOG.error(
@@ -125,21 +128,28 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
   }
 
   @Override
-  public void updateEmbeddingField(IndexMapping indexMapping) {
-    String indexName = indexMapping.getIndexName(clusterAlias);
-    if (isClientAvailable) {
-      EsUtils.embeddingFieldDeclaration(() -> readLiveEmbeddingField(indexName))
-          .ifPresent(declaration -> declareEmbeddingField(indexName, declaration));
+  public LiveEmbeddingField readEmbeddingField(String name) {
+    LiveEmbeddingField live;
+    try {
+      live =
+          LiveEmbeddingField.fromFieldMapping(
+                  name,
+                  getJson(
+                      new Request(
+                          "GET", "/" + name + "/_mapping/field/" + LiveEmbeddingField.FIELD)),
+                  EsUtils.DENSE_VECTOR,
+                  EsUtils.DENSE_VECTOR_DIMENSIONS)
+              .withRecordedModels(getJson(recordedModelRequest(name)));
+    } catch (IOException | ParseException | RuntimeException e) {
+      live = LiveEmbeddingField.unreadable(name, e.getMessage());
     }
+    return live;
   }
 
-  private void declareEmbeddingField(String indexName, String declaration) {
-    try {
-      putMapping(indexName, declaration);
-      LOG.info("Declared the embedding field of index {}", indexName);
-    } catch (IOException | ElasticsearchException e) {
-      LOG.error("Failed to declare the embedding field of index {}", indexName, e);
-    }
+  @Override
+  public void declareEmbeddingField(String name, EmbeddingModel model) throws IOException {
+    putMapping(name, EsUtils.embeddingFieldDeclaration(model));
+    LOG.info("Declared the embedding field of index {}", name);
   }
 
   private void putMapping(String indexName, String mappingsJson) throws IOException {
@@ -156,29 +166,19 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
   }
 
   /**
-   * The {@code embedding} field every index behind the name maps now, read from the field mapping
-   * API as raw JSON so that no mapping detail the client model does not know can fail the read. A
-   * failed read is returned as such, never thrown, so the update can still apply the rest.
+   * One read as raw JSON, so that no mapping detail the client model does not know, such as an
+   * Elasticsearch 9.3 {@code bfloat16} vector, can fail it.
    */
-  private LiveEmbeddingField readLiveEmbeddingField(String indexName) {
-    LiveEmbeddingField live;
-    try {
-      Response response =
-          lowLevelClient()
-              .performRequest(
-                  new Request(
-                      "GET", "/" + indexName + "/_mapping/field/" + EsUtils.EMBEDDING_FIELD));
-      live =
-          LiveEmbeddingField.fromFieldMapping(
-              indexName,
-              MAPPER.readTree(
-                  response.getEntity() == null ? "{}" : EntityUtils.toString(response.getEntity())),
-              EsUtils.DENSE_VECTOR,
-              EsUtils.DENSE_VECTOR_DIMENSIONS);
-    } catch (IOException | ParseException | IllegalStateException e) {
-      live = LiveEmbeddingField.unreadable(indexName, e.getMessage());
-    }
-    return live;
+  private JsonNode getJson(Request request) throws IOException, ParseException {
+    Response response = lowLevelClient().performRequest(request);
+    return MAPPER.readTree(
+        response.getEntity() == null ? "{}" : EntityUtils.toString(response.getEntity()));
+  }
+
+  private static Request recordedModelRequest(String name) {
+    Request request = new Request("GET", "/" + name + "/_mapping");
+    request.addParameter("filter_path", RECORDED_MODEL_FILTER);
+    return request;
   }
 
   private Rest5Client lowLevelClient() {

@@ -50,6 +50,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,7 +64,8 @@ import org.mockito.stubbing.Answer;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.VectorFieldHealth;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 
 @ExtendWith(MockitoExtension.class)
 class ElasticSearchIndexManagerTest {
@@ -918,23 +920,36 @@ class ElasticSearchIndexManagerTest {
     when(restClient.performRequest(any(Request.class))).thenAnswer(reply);
     when(indexMapping.getIndexName(CLUSTER_ALIAS)).thenReturn(TEST_INDEX);
     when(indicesClient.putMapping(any(PutMappingRequest.class))).thenReturn(putMappingResponse);
-    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
-    when(embeddingClient.getDimension()).thenReturn(8);
-    lenient().when(embeddingClient.getModelId()).thenReturn("test-model");
     SearchRepository searchRepository = mock(SearchRepository.class);
-    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
-    when(searchRepository.getEmbeddingClient()).thenReturn(embeddingClient);
+    when(searchRepository.getEmbeddingModel())
+        .thenReturn(Optional.of(new EmbeddingModel("test-model", 8)));
+    when(searchRepository.getVectorFieldHealth()).thenReturn(health);
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
       indexManager.updateIndex(indexMapping, VECTOR_MAPPING_UPDATE);
     }
   }
 
+  private final VectorFieldHealth health = new VectorFieldHealth(name -> {});
+
   private static Answer<Response> fieldMapping(String body) {
+    return fieldMapping(body, "{}");
+  }
+
+  /** Answers the field read with {@code field} and the read of the recorded models with {@code models}. */
+  private static Answer<Response> fieldMapping(String field, String models) {
     return invocation -> {
       Request request = invocation.getArgument(0);
       assertEquals("GET", request.getMethod());
-      assertEquals("/" + TEST_INDEX + "/_mapping/field/embedding", request.getEndpoint());
+      String body;
+      if (request.getEndpoint().equals("/" + TEST_INDEX + "/_mapping/field/embedding")) {
+        body = field;
+      } else {
+        assertEquals("/" + TEST_INDEX + "/_mapping", request.getEndpoint());
+        assertEquals(
+            "*.mappings._meta.embedding_model", request.getParameters().get("filter_path"));
+        body = models;
+      }
       Response response = mock(Response.class);
       when(response.getEntity()).thenReturn(new StringEntity(body));
       return response;
@@ -967,16 +982,32 @@ class ElasticSearchIndexManagerTest {
     PutMappingRequest sent = sentMapping();
     assertFalse(sent.properties().containsKey("embedding"));
     assertTrue(sent.properties().containsKey("addedInNextRelease"));
-    assertEquals(8, sent.meta().get("embedding_dimension").to(Integer.class));
+    assertTrue(sent.meta().isEmpty(), "a kept field keeps the model the live index records");
+  }
+
+  @Test
+  void updateIndex_appliesTheRestWithoutTheEmbeddingWhenItHoldsAnotherModel() throws IOException {
+    updateWithEmbeddingsOn(
+        fieldMapping(
+            "{" + liveVector(TEST_INDEX, 8) + "}",
+            "{\"" + TEST_INDEX + "\":{\"mappings\":{\"_meta\":{\"embedding_model\":\"old\"}}}}"));
+
+    PutMappingRequest sent = sentMapping();
+    assertFalse(sent.properties().containsKey("embedding"));
+    assertTrue(sent.properties().containsKey("addedInNextRelease"));
+    assertTrue(sent.meta().isEmpty(), "no _meta may claim a model the index does not hold");
+    assertTrue(health.mismatches().getFirst().reason().contains("holds vectors of model old"));
   }
 
   @Test
   void updateIndex_addsThePinnedEmbeddingWhenTheLiveIndexHasNone() throws IOException {
     updateWithEmbeddingsOn(fieldMapping("{\"" + TEST_INDEX + "\":{\"mappings\":{}}}"));
 
-    Property embedding = sentMapping().properties().get("embedding");
+    PutMappingRequest sent = sentMapping();
+    Property embedding = sent.properties().get("embedding");
     assertEquals(8, embedding.denseVector().dims());
     assertEquals(48, embedding.denseVector().indexOptions().m());
+    assertEquals("test-model", sent.meta().get("embedding_model").to(String.class));
   }
 
   @Test

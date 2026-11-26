@@ -51,17 +51,11 @@ public final class GoogleEmbeddingClient extends EmbeddingClient {
     if (googleCfg.getApiKey() == null || googleCfg.getApiKey().isBlank()) {
       throw new IllegalArgumentException("Google API key is required");
     }
-    if (embeddingCfg.getEmbeddingModelId() == null
-        || embeddingCfg.getEmbeddingModelId().isBlank()) {
-      throw new IllegalArgumentException("Google embedding model ID is required");
-    }
-    if (embeddingCfg.getEmbeddingDimension() == null || embeddingCfg.getEmbeddingDimension() <= 0) {
-      throw new IllegalArgumentException("Google embedding dimension must be positive");
-    }
+    EmbeddingModel model = EmbeddingModel.google(embeddingCfg);
 
     this.apiKey = googleCfg.getApiKey();
-    this.modelId = embeddingCfg.getEmbeddingModelId();
-    this.dimension = embeddingCfg.getEmbeddingDimension();
+    this.modelId = model.id();
+    this.dimension = model.dimension();
     this.endpoint = resolveEndpoint(googleCfg.getEndpoint(), this.modelId);
     this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
 

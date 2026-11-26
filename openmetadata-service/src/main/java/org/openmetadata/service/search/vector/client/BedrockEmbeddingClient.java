@@ -180,17 +180,7 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
     super(resolveMaxConcurrent(config));
     LLMBedrockEmbeddingConfig bedrockEmbedding =
         config.getEmbeddings() != null ? config.getEmbeddings().getBedrock() : null;
-    if (bedrockEmbedding == null) {
-      throw new IllegalArgumentException("Bedrock configuration is required");
-    }
-    if (bedrockEmbedding.getEmbeddingModelId() == null
-        || bedrockEmbedding.getEmbeddingModelId().isBlank()) {
-      throw new IllegalArgumentException("Bedrock embedding model ID is required");
-    }
-    if (bedrockEmbedding.getEmbeddingDimension() == null
-        || bedrockEmbedding.getEmbeddingDimension() <= 0) {
-      throw new IllegalArgumentException("Bedrock embedding dimension must be positive");
-    }
+    EmbeddingModel model = EmbeddingModel.bedrock(bedrockEmbedding);
 
     AWSBaseConfig awsConfig =
         config.getBedrock() != null ? config.getBedrock().getAwsConfig() : null;
@@ -198,10 +188,9 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
       throw new IllegalArgumentException("AWS region is required for Bedrock");
     }
 
-    this.modelId = bedrockEmbedding.getEmbeddingModelId();
-    this.dimension = bedrockEmbedding.getEmbeddingDimension();
+    this.modelId = model.id();
+    this.dimension = model.dimension();
     this.family = familyFor(modelId);
-    validateDimension(family, dimension);
 
     this.bedrockClient =
         BedrockRuntimeClient.builder()

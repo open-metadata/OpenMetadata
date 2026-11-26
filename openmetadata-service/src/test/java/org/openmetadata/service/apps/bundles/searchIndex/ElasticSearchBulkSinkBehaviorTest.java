@@ -49,6 +49,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.VectorFieldHealth;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.DocBuildContext;
@@ -70,6 +71,9 @@ class ElasticSearchBulkSinkBehaviorTest {
     indexMapping = mock(IndexMapping.class);
 
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    lenient()
+        .when(searchRepository.getVectorFieldHealth())
+        .thenReturn(new VectorFieldHealth(name -> {}));
     lenient()
         .when(searchClient.getBulkConnectionBudget())
         .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));

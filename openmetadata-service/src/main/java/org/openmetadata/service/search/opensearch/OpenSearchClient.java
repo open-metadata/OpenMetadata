@@ -62,6 +62,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkConnectionBudget;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
 import org.openmetadata.service.search.EntityManagementClient.ChildUpdateStatus;
+import org.openmetadata.service.search.LiveEmbeddingField;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -74,6 +75,7 @@ import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryDsl;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.search.queries.SearchQueryDsl;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.SearchUtils;
@@ -346,8 +348,13 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public void updateEmbeddingField(IndexMapping indexMapping) {
-    indexManager.updateEmbeddingField(indexMapping);
+  public LiveEmbeddingField readEmbeddingField(String name) {
+    return indexManager.readEmbeddingField(name);
+  }
+
+  @Override
+  public void declareEmbeddingField(String name, EmbeddingModel model) throws IOException {
+    indexManager.declareEmbeddingField(name, model);
   }
 
   @Override

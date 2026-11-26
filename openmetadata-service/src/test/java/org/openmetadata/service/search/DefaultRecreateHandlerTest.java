@@ -15,6 +15,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -204,6 +205,13 @@ class DefaultRecreateHandlerTest {
                   .parentAliases(List.of("all"))
                   .childAliases(List.of())
                   .build());
+      List<String> readAgain = new ArrayList<>();
+      VectorFieldHealth health = new VectorFieldHealth(readAgain::add);
+      health.recordCannotHold(
+          "table_search_index",
+          Set.of("table_search_index_rebuild_old"),
+          "table_search_index_rebuild_old holds vectors of model model-a");
+      when(repo.getVectorFieldHealth()).thenReturn(health);
       EntityReindexContext context = stagedTable();
       context.setStagedChunkDeleteUnrecorded(true);
 
@@ -215,6 +223,10 @@ class DefaultRecreateHandlerTest {
 
       assertTrue(promoted, "the entity index still promotes its partial data");
       verify(vectorService).markEntityTypeReindexed("table", false, STAGED_CHUNKS);
+      assertEquals(
+          List.of("table_search_index"),
+          readAgain,
+          "the rebuilt index is read again at once, so vectors are let back in");
     }
 
     @Test
