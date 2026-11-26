@@ -64,9 +64,9 @@ class PromptTextTest {
   }
 
   @Test
-  void budgetedArticleReadsSkipImageOnlyLeadParagraphsAndKeepLiteralMarkup() {
+  void budgetedArticleReadsSkipImageOnlyLeadBlocksAndKeepLiteralMarkup() {
     String article =
-        "<p><img src=\"data:image/png;base64,AAAA\"></p>\n\n"
+        "<blockquote><p><img src=\"data:image/png;base64,AAAA\"></p></blockquote>\n\n"
             + "<p>&lt;img src=&quot;data:image/png;base64,AAAA&quot;&gt;</p>\n\n"
             + "<p><code>&lt;p&gt;&lt;/p&gt;</code></p>\n\n<p>Use this element.</p>";
 

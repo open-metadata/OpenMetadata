@@ -19,7 +19,9 @@ import java.util.regex.Pattern;
 import org.apache.commons.text.StringEscapeUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
 import org.jsoup.nodes.Range;
+import org.jsoup.nodes.TextNode;
 import org.jsoup.parser.Parser;
 import org.openmetadata.service.util.DescriptionSanitizer;
 import org.owasp.html.HtmlPolicyBuilder;
@@ -120,8 +122,6 @@ public final class PromptText {
       Pattern.compile("(?i)&(?:lt|#0*60|#x0*3c);img\\b|!\\[");
   private static final Pattern HTML_ENTITY =
       Pattern.compile("&(?:[a-zA-Z][a-zA-Z0-9]*+|#(?:[0-9]++|[xX][0-9a-fA-F]++));");
-  private static final Pattern LEADING_ARTICLE_PARAGRAPH =
-      Pattern.compile("[\\s\\p{Z}]*+<p>(.*?)</p>", Pattern.DOTALL);
 
   private PromptText() {}
 
@@ -152,33 +152,65 @@ public final class PromptText {
     return readArticleHtml(forPrompt(richText));
   }
 
-  /** Skips leading paragraphs left empty by image removal so the budget reaches readable text. */
+  /** Skips leading blocks left empty by image removal so the budget reaches readable text. */
   public static String forBudgetedArticleRead(String richText) {
     String html = forPrompt(richText);
-    int start = 0;
-    if (html != null) {
-      Matcher paragraph = LEADING_ARTICLE_PARAGRAPH.matcher(html);
-      while (paragraph.region(start, html.length()).lookingAt()
-          && readArticleHtml(paragraph.group(1)).isEmpty()) {
-        start = paragraph.end();
-      }
+    String result;
+    if (html != null && hasHtmlTag(html)) {
+      Element body = Parser.htmlParser().setTrackPosition(true).parseInput(html, "").body();
+      result = readFromFirstReadableBlock(html, body);
+    } else {
+      result = readArticleHtml(html);
     }
-    return readArticleHtml(start == 0 ? html : html.substring(start).stripLeading());
+    return result;
+  }
+
+  private static String readFromFirstReadableBlock(String html, Element body) {
+    String result = "";
+    boolean hasSkippedEmptyBlock = false;
+    for (Node child : body.childNodes()) {
+      if (hasReadableArticleText(child)) {
+        Range source = child.sourceRange();
+        // Slice the encoded source so literal markup and the remaining HTML retain their form.
+        String included =
+            hasSkippedEmptyBlock && source.isTracked()
+                ? html.substring(source.startPos()).stripLeading()
+                : html;
+        result = decodeArticleHtml(included);
+        break;
+      }
+      hasSkippedEmptyBlock |= child instanceof Element;
+    }
+    return result;
+  }
+
+  private static boolean hasReadableArticleText(Node node) {
+    String text =
+        switch (node) {
+          case Element element -> element.text();
+          case TextNode textNode -> textNode.text();
+          default -> "";
+        };
+    return hasReadableCharacters(stripDecodedImages(text));
   }
 
   private static String readArticleHtml(String html) {
-    String rendered = stripDecodedImages(StringEscapeUtils.unescapeHtml4(html));
+    String rendered = decodeArticleHtml(html);
     // Inspect the encoded markup so literal examples such as &lt;div&gt; count as text.
     String plain =
         html != null && hasHtmlTag(html)
             ? stripDecodedImages(Jsoup.parseBodyFragment(html).body().text())
             : rendered;
-    boolean readable =
-        plain != null
-            && plain
-                .codePoints()
-                .anyMatch(c -> !Character.isWhitespace(c) && !Character.isSpaceChar(c));
-    return readable ? rendered : "";
+    return hasReadableCharacters(plain) ? rendered : "";
+  }
+
+  private static String decodeArticleHtml(String html) {
+    return stripDecodedImages(StringEscapeUtils.unescapeHtml4(html));
+  }
+
+  private static boolean hasReadableCharacters(String text) {
+    return text != null
+        && text.codePoints().anyMatch(c -> !Character.isWhitespace(c) && !Character.isSpaceChar(c));
   }
 
   /** Image spans in the source can cross word-based index chunk boundaries. */
