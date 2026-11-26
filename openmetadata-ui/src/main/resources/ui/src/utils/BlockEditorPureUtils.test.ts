@@ -889,15 +889,9 @@ describe('getHtmlStringFromMarkdownString: CommonMark lists', () => {
     expect(doc.body.textContent).toBe(emoji);
   });
 
-  it('preserves the existing image-based emoji', () => {
-    const doc = new DOMParser().parseFromString(
-      getHtmlStringFromMarkdownString(':octocat:'),
-      'text/html'
-    );
-
-    expect(doc.querySelector('img')?.getAttribute('alt')).toBe(':octocat:');
-    expect(doc.querySelector('img')?.getAttribute('src')).toBe(
-      'https://assets-cdn.github.com/images/icons/emoji/octocat.png'
+  it('leaves the legacy octocat shortcode as text', () => {
+    expect(getHtmlStringFromMarkdownString(':octocat:')).toBe(
+      '<p>:octocat:</p>'
     );
   });
 

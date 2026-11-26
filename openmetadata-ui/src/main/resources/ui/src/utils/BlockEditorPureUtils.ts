@@ -265,15 +265,6 @@ const markdownConverter = new Marked({
 
         const [, shortcode] = match;
 
-        // This legacy shortcode is an image and has no Unicode equivalent.
-        if (shortcode === 'octocat') {
-          return {
-            type: 'emoji',
-            raw: match[0],
-            html: '<img alt=":octocat:" height="20" width="20" align="absmiddle" src="https://assets-cdn.github.com/images/icons/emoji/octocat.png">',
-          };
-        }
-
         const html = emojiByShortcode.get(shortcode);
 
         // Unknown shortcodes can contain URL schemes; leave them to Marked's autolinker.

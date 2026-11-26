@@ -17,7 +17,6 @@
       "katex",
       "pako",
       "qs",
-      "showdown",
       "tinycolor2",
       "turndown",
       "testing-library__jest-dom",
