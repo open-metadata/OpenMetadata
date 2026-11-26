@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-11-16 (initial: a `lifecycleRequest` entity field) · v2 2026-11-17 (a status update
   task instead of the field, after review) · v3 2026-11-17 (exits generalised to transitions between any stages) ·
   v4 2026-11-17 (any transition takes conditions and approvers; path steps on request; the lifecycle carries on
-  after an approved request) · v5 2026-11-26 (a raised request is frozen and decided only by its assignees)
+  after an approved request) · v5 2026-11-26 (a raised request is frozen and decided only by its assignees; the restart's retry budget)
 - **Deciders:** Ram Narayan Balaji, Pere Miquel Brull, Adrià Manero
 - **Guard:** `WorkflowDefinitionResourceIT#test_approvedStatusRequestMovesTheAssetAndEndsItsOnboardingApproval`,
   `#test_rejectedStatusRequestLeavesTheStageAndTheOnboardingApproval`,
@@ -52,7 +52,9 @@ approval, and they need no edit permission on the asset. Withdrawing closes the 
 closing any workflow task on a user's request does. Once an approved request has
 moved the asset, the owning lifecycle starts again through a signal of its own (`LifecycleRestart`), on the
 async executor, so its next step runs at once; only an approved request restarts it, so no chain of moves
-loops by itself.
+loops by itself. The restart polls for the moved stage up to 10 times, 500 ms apart, since the approval's
+transaction may not have committed yet; if the stage is not seen by then, the restart is dropped with a
+warning and the lifecycle resumes on the asset's next edit.
 
 A lifecycle may hold several approvals on one asset at once, one per move, so a new approval replaces only an
 earlier one for the same move (`CreateTask.decidesSameMove`); approvals that gate no move replace as before.
