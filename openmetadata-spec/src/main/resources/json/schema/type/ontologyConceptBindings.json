@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/type/ontologyConceptBindings.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OntologyConceptBindings",
-  "description": "Operational catalog associations for a native concept, stored separately from semantic definitions and releases.",
+  "description": "The binding revision of a native concept, stored separately from semantic definitions and releases. Documents written before 2.1 also carried the bindings themselves, which now live in ontology_concept_binding rows.",
   "type": "object",
   "javaType": "org.openmetadata.schema.type.OntologyConceptBindings",
   "definitions": {
@@ -54,12 +54,12 @@
   "properties": {
     "revision": { "$ref": "#/definitions/revision" },
     "assets": {
+      "description": "Bindings of documents written before 2.1. Read only by the migration that copies them into rows.",
       "type": "array",
       "items": { "$ref": "#/definitions/assetBinding" },
-      "maxItems": 100,
       "default": []
     }
   },
-  "required": ["revision", "assets"],
+  "required": ["revision"],
   "additionalProperties": false
 }

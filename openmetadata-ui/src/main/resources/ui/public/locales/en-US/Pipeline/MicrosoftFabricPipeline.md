@@ -68,7 +68,7 @@ $$note
 OpenMetadata now fetches actual **task-level execution details** from Microsoft Fabric API, providing precise timing and status for each activity in your pipeline runs. This is a significant improvement over inferring task status from pipeline-level information.
 $$
 
-You can find further information on the Microsoft Fabric Pipeline connector in the <a href="https://docs.open-metadata.org/connectors/pipeline/microsoft-fabric-pipeline" target="_blank">docs</a>.
+You can find further information on the Microsoft Fabric Pipeline connector in the <a href="https://docs.getcollate.io/connectors/pipeline/microsoftfabricpipeline" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -210,7 +210,7 @@ The connector extracts metadata for all Microsoft Fabric Data Factory activities
 ### Getting Help
 
 If you encounter issues:
-1. Check the <a href="https://docs.open-metadata.org/connectors/pipeline/microsoft-fabric-pipeline" target="_blank">full documentation</a>
+1. Check the <a href="https://docs.getcollate.io/connectors/pipeline/microsoftfabricpipeline" target="_blank">full documentation</a>
 2. Review ingestion logs for detailed error messages
 3. Verify all prerequisites are met
 4. Report issues on <a href="https://github.com/open-metadata/OpenMetadata/issues" target="_blank">GitHub</a>

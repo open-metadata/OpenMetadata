@@ -1,7 +1,6 @@
 package org.openmetadata.service.migration.api;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.util.EntityUtil.hash;
 
 import java.util.HashMap;
 import java.util.List;
@@ -22,10 +21,12 @@ import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationOps;
 import org.openmetadata.service.migration.utils.MigrationCodeFingerprint;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.SqlUnit;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class MigrationProcessImpl implements MigrationProcess {
+  private static final int MAX_LOGGED_STATEMENT_LENGTH = 10000;
   protected MigrationDAO migrationDAO;
   protected CollectionDAO collectionDAO;
   protected Jdbi jdbi;
@@ -110,37 +111,20 @@ public class MigrationProcessImpl implements MigrationProcess {
   public static Map<String, QueryStatus> performSqlExecutionAndUpdate(
       Handle handle,
       MigrationDAO migrationDAO,
-      List<String> queryList,
+      List<SqlUnit> units,
       String version,
       boolean isForceMigration) {
     // These are DDL Statements and will cause an Implicit commit even if part of transaction still
     // committed inplace
     Map<String, QueryStatus> queryStatusMap = new HashMap<>();
-    if (!nullOrEmpty(queryList)) {
-      for (String sql : queryList) {
+    if (!nullOrEmpty(units)) {
+      for (SqlUnit unit : units) {
         try {
-          String previouslyRanSql = null;
-          try {
-            previouslyRanSql = migrationDAO.getSqlQuery(version, hash(sql));
-          } catch (Exception dbException) {
-            // If SERVER_MIGRATION_SQL_LOGS table doesn't exist yet, assume query hasn't run
-            previouslyRanSql = null;
-          }
-
-          if ((previouslyRanSql == null || previouslyRanSql.isEmpty())) {
-            handle.execute(sql);
-            try {
-              migrationDAO.upsertServerMigrationSQL(version, sql, hash(sql));
-            } catch (Exception logException) {
-              // If logging fails (table doesn't exist yet), continue - the SQL was executed
-              // successfully
-            }
-          }
           queryStatusMap.put(
-              sql, new QueryStatus(QueryStatus.Status.SUCCESS, "Successfully Executed Query"));
+              unit.text(), executeUnlessAlreadyRun(handle, migrationDAO, unit, version));
         } catch (Exception e) {
-          String message = String.format("Failed to run sql: [%s] due to [%s]", sql, e);
-          queryStatusMap.put(sql, new QueryStatus(QueryStatus.Status.FAILURE, message));
+          String message = String.format("Failed to run sql: [%s] due to [%s]", unit.text(), e);
+          queryStatusMap.put(unit.text(), new QueryStatus(QueryStatus.Status.FAILURE, message));
           if (!isForceMigration) {
             throw new RuntimeException(message, e);
           }
@@ -148,6 +132,53 @@ public class MigrationProcessImpl implements MigrationProcess {
       }
     }
     return queryStatusMap;
+  }
+
+  // A unit's statements run on this one handle, so a guarded block's PREPARE is still there for its
+  // EXECUTE. The unit is recorded only after its last statement, so an interrupted block reruns
+  // whole.
+  private static QueryStatus executeUnlessAlreadyRun(
+      Handle handle, MigrationDAO migrationDAO, SqlUnit unit, String version) {
+    if (ranInVersion(migrationDAO, unit, version)) {
+      LOG.warn(
+          "[MigrationWorkflow] Skipping a statement of version {} because identical text already"
+              + " ran earlier in this version: {}",
+          version,
+          unit.text());
+      return new QueryStatus(
+          QueryStatus.Status.SKIPPED, "Identical statement already executed in version " + version);
+    }
+    unit.statements().forEach(handle::execute);
+    recordExecution(migrationDAO, unit, version);
+    return new QueryStatus(QueryStatus.Status.SUCCESS, "Successfully Executed Query");
+  }
+
+  private static boolean ranInVersion(MigrationDAO migrationDAO, SqlUnit unit, String version) {
+    try {
+      return !nullOrEmpty(migrationDAO.getSqlQuery(version, unit.checksum()));
+    } catch (Exception dbException) {
+      // If SERVER_MIGRATION_SQL_LOGS table doesn't exist yet, assume query hasn't run
+      return false;
+    }
+  }
+
+  private static void recordExecution(MigrationDAO migrationDAO, SqlUnit unit, String version) {
+    try {
+      migrationDAO.upsertServerMigrationSQL(
+          version, truncateToLoggedLength(unit.text()), unit.checksum());
+    } catch (Exception logException) {
+      // If logging fails (table doesn't exist yet), continue - the SQL was executed successfully
+    }
+  }
+
+  // SERVER_MIGRATION_SQL_LOGS.sqlStatement holds 10000 characters. Lookups use the checksum of the
+  // full text, so only the stored copy is cut.
+  static String truncateToLoggedLength(String text) {
+    int end = Math.min(text.length(), MAX_LOGGED_STATEMENT_LENGTH);
+    if (end < text.length() && Character.isHighSurrogate(text.charAt(end - 1))) {
+      end--;
+    }
+    return text.substring(0, end);
   }
 
   @Override

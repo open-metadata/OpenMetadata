@@ -22,12 +22,15 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
+import java.net.URI;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -39,6 +42,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -53,6 +57,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.LandingPageSettings;
 import org.openmetadata.schema.type.Paging;
+import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.UserCreationException;
@@ -289,6 +296,44 @@ class UserUtilTest {
   }
 
   @Test
+  void addOrUpdateUserRecordsAChangeEventWithTheProfileWebhookSecretMasked() {
+    UserRepository userRepository = mock(UserRepository.class);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+    Webhook webhook =
+        new Webhook()
+            .withEndpoint(URI.create("https://hooks.example.com/hook"))
+            .withAuthType(Map.of("type", "bearer", "secretKey", "the-webhook-secret"));
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("alice")
+            .withFullyQualifiedName("alice")
+            .withUpdatedAt(1234L)
+            .withVersion(2.0)
+            .withProfile(
+                new Profile().withSubscription(new SubscriptionConfig().withGeneric(webhook)));
+
+    when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
+    when(userRepository.findByNameOrNull("alice", NON_DELETED)).thenReturn(user);
+    when(userRepository.createOrUpdate(null, user, ADMIN_USER_NAME))
+        .thenReturn(new PutResponse<>(Response.Status.OK, user, EventType.ENTITY_UPDATED));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+      mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      UserUtil.addOrUpdateUser(user);
+
+      ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+      verify(changeEventDAO).insert(jsonCaptor.capture());
+      String eventJson = jsonCaptor.getValue();
+      assertFalse(eventJson.contains("the-webhook-secret"), eventJson);
+      assertTrue(eventJson.contains(PASSWORD_MASK), eventJson);
+    }
+  }
+
+  @Test
   void addOrUpdateUserReturnsUserWhenChangeEventInsertFails() {
     UserRepository userRepository = mock(UserRepository.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
@@ -329,6 +374,7 @@ class UserUtilTest {
             .withId(UUID.randomUUID())
             .withName("bot-user")
             .withFullyQualifiedName("bot-user")
+            .withIsBot(true)
             .withAuthenticationMechanism(existingMechanism);
     User botUser =
         new User()
@@ -352,6 +398,39 @@ class UserUtilTest {
       User returnedUser = UserUtil.addOrUpdateBotUser(botUser);
 
       assertEquals(existingMechanism, returnedUser.getAuthenticationMechanism());
+    }
+  }
+
+  @Test
+  void addOrUpdateBotUserRefusesToTurnAPersonsAccountIntoABot() {
+    UserRepository userRepository = mock(UserRepository.class);
+    User person =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("future-bot")
+            .withFullyQualifiedName("future-bot")
+            .withIsBot(false)
+            .withAuthenticationMechanism(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.BASIC)
+                    .withConfig(new BasicAuthMechanism().withPassword("hash")));
+    User seededBot =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("future-bot")
+            .withFullyQualifiedName("future-bot")
+            .withEmail("future-bot@example.com")
+            .withIsBot(true);
+    when(userRepository.getByName(any(), eq("future-bot"), any(Fields.class))).thenReturn(person);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+
+      IllegalStateException refused =
+          assertThrows(IllegalStateException.class, () -> UserUtil.addOrUpdateBotUser(seededBot));
+
+      assertTrue(refused.getMessage().contains("future-bot"), refused.getMessage());
+      verify(userRepository, never()).createOrUpdate(any(), any(User.class), any());
     }
   }
 
@@ -1013,6 +1092,13 @@ class UserUtilTest {
     List<String> adminEmails = List.of("Admin@Company.COM");
 
     assertTrue(UserUtil.isAdminEmail("admin@company.com", adminEmails));
+  }
+
+  @Test
+  void testIsAdminEmail_upperCaseFoldingAloneDoesNotMatch() {
+    List<String> adminEmails = List.of("admin@company.com");
+
+    assertFalse(UserUtil.isAdminEmail("admın@company.com", adminEmails));
   }
 
   @Test

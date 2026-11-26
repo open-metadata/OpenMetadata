@@ -5,16 +5,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.openmetadata.schema.configuration.LLMConfiguration;
 
 class LLMCompletionClientTest {
 
   record PillLike(
       String title, String question, String answer, String summary, String memoryType) {}
 
-  private static final class StubClient extends LLMCompletionClient {
+  private static class StubClient extends LLMCompletionClient {
     private final String response;
 
     StubClient(String response) {
@@ -74,6 +76,71 @@ class LLMCompletionClientTest {
     List<PillLike> pills = new StubClient(json).completeStructured("sys", "user", PillLike.class);
     assertEquals(1, pills.size());
     assertEquals("Q", pills.getFirst().question());
+  }
+
+  @Test
+  void correctsTheFormatOnRetryWithoutRepeatingTheInvalidResponse() {
+    AtomicInteger attempts = new AtomicInteger();
+    LLMCompletionClient client =
+        new StubClient("[]") {
+          @Override
+          protected CompletionResult doComplete(
+              String systemPrompt, String userPrompt, CompletionOptions options) {
+            if (attempts.getAndIncrement() == 0) {
+              return new CompletionResult("I cannot identify an equivalent fact.", 0, 0);
+            }
+            assertTrue(systemPrompt.contains("previous response"));
+            assertTrue(systemPrompt.contains("JSON array"));
+            assertEquals("document", userPrompt);
+            return new CompletionResult("[]", 0, 0);
+          }
+        };
+
+    assertEquals(List.of(), client.completeStructured("Compare facts", "document", PillLike.class));
+    assertEquals(2, attempts.get());
+  }
+
+  @Test
+  void rejectsProseAfterBothAttempts() {
+    assertThrows(
+        LLMCompletionException.class,
+        () ->
+            new StubClient("I cannot identify an equivalent fact.")
+                .completeStructured("Compare facts", "document", PillLike.class));
+  }
+
+  @Test
+  void retriesProviderFailuresWithoutChangingTheFormatInstructions() {
+    AtomicInteger attempts = new AtomicInteger();
+    LLMCompletionClient client =
+        new StubClient("[]") {
+          @Override
+          protected CompletionResult doComplete(
+              String systemPrompt, String userPrompt, CompletionOptions options) {
+            if (attempts.getAndIncrement() == 0) {
+              throw new LLMCompletionException("Provider temporarily unavailable");
+            }
+            assertEquals("Compare facts", systemPrompt);
+            return new CompletionResult("[]", 0, 0);
+          }
+        };
+
+    assertEquals(List.of(), client.completeStructured("Compare facts", "document", PillLike.class));
+    assertEquals(2, attempts.get());
+  }
+
+  @ParameterizedTest
+  @CsvSource({"3, 3", "0, 5", "-1, 5", ", 5"})
+  void concurrencyUsesTheConfiguredPositiveLimitOrTheDefault(Integer configured, int expected) {
+    assertEquals(
+        expected,
+        LLMCompletionClient.resolveMaxConcurrent(
+            new LLMConfiguration().withMaxConcurrentRequests(configured)));
+  }
+
+  @Test
+  void concurrencyUsesTheDefaultWhenConfigurationIsMissing() {
+    assertEquals(5, LLMCompletionClient.resolveMaxConcurrent(null));
   }
 
   @Test

@@ -16,6 +16,7 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -29,7 +30,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { PIPELINE_TASK_TABS } from '../../../constants/pipeline.constants';
 import {
@@ -317,7 +317,7 @@ export const PipelineTaskTab = () => {
               <div className="d-flex items-center">
                 <span className="break-all">{getEntityName(record)}</span>
 
-                <ExternalLinkIcon className="tw:ml-2 tw:shrink-0 tw:size-3.5" />
+                <LinkExternal01 className="tw:ml-2 tw:shrink-0" size={14} />
               </div>
             </Link>
           ) : (

@@ -53,6 +53,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.searchindex.SearchIndexResource;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -60,6 +61,9 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("fields.description");
+  // A PUT loads the stored index with these fields, and the bulk loader reads field tags only
+  // with fields. Without it, a re-run that sends no field tags indexes the fields bare.
+  private static final String UPDATE_FIELDS = "fields";
 
   public SearchIndexRepository() {
     super(
@@ -68,7 +72,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         SearchIndex.class,
         Entity.getCollectionDAO().searchIndexDAO(),
         "",
-        "",
+        UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
     // Covered by the parent service delete cascade: search docs by service.id
@@ -382,12 +386,21 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     List<TagLabel> allTags = new ArrayList<>();
     SearchIndex searchIndex = (SearchIndex) entity;
     EntityUtil.mergeTags(allTags, searchIndex.getTags());
-    List<SearchIndexField> schemaFields =
-        searchIndex.getFields() != null ? searchIndex.getFields() : null;
-    for (SearchIndexField schemaField : listOrEmpty(schemaFields)) {
-      EntityUtil.mergeTags(allTags, schemaField.getTags());
-    }
+    mergeSearchIndexFieldTags(allTags, searchIndex.getFields());
     return allTags;
+  }
+
+  private static void mergeSearchIndexFieldTags(
+      List<TagLabel> allTags, List<SearchIndexField> fields) {
+    for (SearchIndexField field : listOrEmpty(fields)) {
+      EntityUtil.mergeTags(allTags, field.getTags());
+      mergeSearchIndexFieldTags(allTags, field.getChildren());
+    }
+  }
+
+  @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,fields");
   }
 
   private Map<UUID, List<EntityReference>> batchFetchFollowers(List<SearchIndex> searchIndexes) {
@@ -438,7 +451,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
             if (updated.getFields() != null) {
               updateSearchIndexFields(
                   "fields",
-                  original.getFields() == null ? null : original.getFields(),
+                  original.getFields(),
                   updated.getFields(),
                   EntityUtil.searchIndexFieldMatch);
             }
@@ -470,6 +483,11 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         List<SearchIndexField> origFields,
         List<SearchIndexField> updatedFields,
         BiPredicate<SearchIndexField, SearchIndexField> fieldMatch) {
+      // Normalize null lists to empty, mirroring EntityRepository.updateColumns, so that a stored
+      // SearchIndex whose `fields` is null (reachable via JSON PATCH that removes/nulls `/fields`)
+      // does not cause an NPE here on the subsequent write carrying fields.
+      origFields = listOrEmpty(origFields);
+      updatedFields = listOrEmpty(updatedFields);
       List<SearchIndexField> deletedFields = new ArrayList<>();
       List<SearchIndexField> addedFields = new ArrayList<>();
       recordListChange(
@@ -499,7 +517,11 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
       // Delete tags related to deleted fields
       deletedFields.forEach(
           deleted ->
-              daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+              daoCollection
+                  .tagUsageDAO()
+                  .deleteFieldTags(
+                      deleted.getFullyQualifiedName(),
+                      addedFieldMap.containsKey(deleted.getName())));
 
       // Add tags related to newly added fields
       for (SearchIndexField added : addedFields) {
@@ -514,16 +536,16 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         if (stored == null) { // New field added
           continue;
         }
-        String searchFieldPrefix =
-            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
+        String searchFieldPrefix = EntityFieldPath.childKey(fieldName, updated.getName());
         updateFieldDescription(searchFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(searchFieldPrefix, stored, updated);
         updateFieldDisplayName(searchFieldPrefix, stored, updated);
-        updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(searchFieldPrefix, FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
+        updated.setTags(
+            updateTags(
+                stored.getFullyQualifiedName(),
+                EntityUtil.getFieldName(searchFieldPrefix, FIELD_TAGS),
+                stored.getTags(),
+                updated.getTags()));
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           updateSearchIndexFields(

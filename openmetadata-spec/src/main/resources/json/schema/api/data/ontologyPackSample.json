@@ -1,0 +1,115 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyPackSample.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyPackSample",
+  "description": "Bounded preview of the concepts and relations that installing the selected modules of a verified library pack creates. The server derives it from the catalogue alone and reads no target ontology.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyPackSample",
+  "definitions": {
+    "concept": {
+      "description": "Concept that the install creates.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.OntologyPackSampleConcept",
+      "properties": {
+        "iri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 4096
+        }
+      },
+      "required": ["iri", "label"],
+      "additionalProperties": false
+    },
+    "relation": {
+      "description": "Relation that the install creates between two concepts.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.OntologyPackSampleRelation",
+      "properties": {
+        "sourceIri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "propertyIri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "label": {
+          "description": "Local name of the property IRI, for example broader.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "targetIri": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": ["sourceIri", "propertyIri", "label", "targetIri"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "packId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "moduleIds": {
+      "description": "Selected modules with their dependencies, in catalogue order.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "conceptCount": {
+      "description": "Concepts the selection creates, before the preview bound applies.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "relationCount": {
+      "description": "Relations the selection creates, before the preview bound applies.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "concepts": {
+      "description": "At most 60 concepts, starting from the top of the hierarchy.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/concept"
+      },
+      "maxItems": 60
+    },
+    "relations": {
+      "description": "Relations whose source and target are both in concepts.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/relation"
+      }
+    }
+  },
+  "required": [
+    "packId",
+    "version",
+    "moduleIds",
+    "conceptCount",
+    "relationCount",
+    "concepts",
+    "relations"
+  ],
+  "additionalProperties": false
+}

@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -26,6 +27,8 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -47,6 +50,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ReactionType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -666,10 +670,12 @@ public class ActivityResourceIT {
 
     for (Map.Entry<String, OpenMetadataClient> feed : feeds.entrySet()) {
       assertTrue(
-          feedIdsSince(feed.getValue(), feed.getKey(), before).contains(activity.getId()),
+          feedIds(feed.getValue(), feed.getKey(), Map.of("startTs", String.valueOf(before)))
+              .contains(activity.getId()),
           feed.getKey() + " must return the item when startTs is before it");
       assertFalse(
-          feedIdsSince(feed.getValue(), feed.getKey(), after).contains(activity.getId()),
+          feedIds(feed.getValue(), feed.getKey(), Map.of("startTs", String.valueOf(after)))
+              .contains(activity.getId()),
           feed.getKey() + " must drop the item when startTs is after it");
     }
   }
@@ -1259,6 +1265,114 @@ public class ActivityResourceIT {
     assertNotNull(events.getData());
   }
 
+  private static final List<String> PERSONAL_FEEDS = List.of("/my-feed", "/following", "/mentions");
+
+  @Test
+  void test_personalFeedsCanBeScopedToAnotherUser(TestNamespace ns) throws Exception {
+    User member = UserTestFactory.createUser(ns, "scopedfeed");
+    ActivityEvent activity = seedPersonalFeedActivity(ns, member);
+
+    for (String feed : PERSONAL_FEEDS) {
+      assertTrue(
+          feedIds(SdkClients.adminClient(), feed, userIdParam(member.getId()))
+              .contains(activity.getId()),
+          feed + " scoped to the member must return the member's activity");
+      assertFalse(
+          feedIds(SdkClients.adminClient(), feed, Map.of()).contains(activity.getId()),
+          feed + " without userId must stay scoped to the caller");
+    }
+  }
+
+  @Test
+  void test_personalFeedsOfAnotherUserAreFilteredToWhatTheCallerMayView(TestNamespace ns)
+      throws Exception {
+    User member = UserTestFactory.createUser(ns, "viewfeed");
+    ActivityEvent activity = seedPersonalFeedActivity(ns, member);
+    OpenMetadataClient tableDenied =
+        DenyPolicyPrincipals.clientDenied(
+            ns.shortPrefix("tableview"), Entity.TABLE, MetadataOperation.VIEW_BASIC);
+
+    for (String feed : PERSONAL_FEEDS) {
+      assertTrue(
+          feedIds(SdkClients.user2Client(), feed, userIdParam(member.getId()))
+              .contains(activity.getId()),
+          feed + " must show a non-admin caller the member's activity they may view");
+      assertFalse(
+          feedIds(tableDenied, feed, userIdParam(member.getId())).contains(activity.getId()),
+          feed + " must hide the member's activity on a table the caller may not view");
+    }
+  }
+
+  @Test
+  void test_personalFeedsForAnotherUserRequireViewOnThatUser(TestNamespace ns) throws Exception {
+    String prefix = ns.shortPrefix("feedview");
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDenied(prefix, Entity.USER, MetadataOperation.VIEW_BASIC);
+    UUID ownId = SdkClients.adminClient().users().getByName(prefix + "_user").getId();
+    UUID otherUserId = UserTestFactory.createUser(ns, "feedother").getId();
+
+    for (String feed : PERSONAL_FEEDS) {
+      assertThrows(
+          ForbiddenException.class,
+          () -> feedIds(denied, feed, userIdParam(otherUserId)),
+          feed + " for another user must need ViewBasic on that user");
+      assertDoesNotThrow(
+          () -> feedIds(denied, feed, Map.of()), feed + " for the caller needs no user grant");
+      assertDoesNotThrow(
+          () -> feedIds(denied, feed, userIdParam(ownId)),
+          feed + " for the caller's own id needs no user grant");
+    }
+  }
+
+  @Test
+  void test_personalFeedsOfSoftDeletedUserStayReadable(TestNamespace ns) throws Exception {
+    User member = UserTestFactory.createUser(ns, "deletedfeed");
+    Table table = createTestTable(ns, "deleted-user-feed-table");
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    addActivityReply(
+        SdkClients.adminClient(),
+        activity.getId(),
+        "<#E::user::" + member.getName() + "> please review");
+    SdkClients.adminClient()
+        .users()
+        .delete(member.getId().toString(), Map.of("hardDelete", "false"));
+
+    // The user detail keeps a soft-deleted user's Activity tab, so their feeds must not 404.
+    assertTrue(
+        feedIds(SdkClients.adminClient(), "/mentions", userIdParam(member.getId()))
+            .contains(activity.getId()),
+        "/mentions for a soft-deleted user must still return their activity");
+    for (String feed : List.of("/my-feed", "/following")) {
+      assertDoesNotThrow(
+          () -> feedIds(SdkClients.adminClient(), feed, userIdParam(member.getId())),
+          feed + " for a soft-deleted user must not 404");
+    }
+  }
+
+  /** An admin-authored event on a table {@code member} owns, follows and is mentioned on. */
+  private ActivityEvent seedPersonalFeedActivity(TestNamespace ns, User member) throws Exception {
+    Table table = createTestTable(ns, "personal-feed-table");
+    Tables.findByName(table.getFullyQualifiedName())
+        .fetch()
+        .withOwners(List.of(member.getEntityReference()))
+        .save();
+    addTableFollower(table.getId(), member.getId());
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    addActivityReply(
+        SdkClients.adminClient(),
+        activity.getId(),
+        "<#E::user::" + member.getName() + "> please review");
+    return activity;
+  }
+
+  private static Map<String, String> userIdParam(UUID userId) {
+    return Map.of("userId", userId.toString());
+  }
+
   // ==================== EntityLink (About) Tests ====================
 
   @Test
@@ -1610,18 +1724,15 @@ public class ActivityResourceIT {
     return MAPPER.readValue(response, ActivityEventList.class);
   }
 
-  private List<UUID> feedIdsSince(OpenMetadataClient client, String feed, long startTs)
+  private List<UUID> feedIds(OpenMetadataClient client, String feed, Map<String, String> params)
       throws Exception {
-    RequestOptions options =
-        RequestOptions.builder()
-            .queryParam("days", "30")
-            .queryParam("limit", "200")
-            .queryParam("startTs", String.valueOf(startTs))
-            .build();
+    RequestOptions.Builder options =
+        RequestOptions.builder().queryParam("days", "30").queryParam("limit", "200");
+    params.forEach(options::queryParam);
     String response =
         client
             .getHttpClient()
-            .executeForString(HttpMethod.GET, ACTIVITY_PATH + feed, null, options);
+            .executeForString(HttpMethod.GET, ACTIVITY_PATH + feed, null, options.build());
     return MAPPER.readValue(response, ActivityEventList.class).getData().stream()
         .map(ActivityEvent::getId)
         .toList();

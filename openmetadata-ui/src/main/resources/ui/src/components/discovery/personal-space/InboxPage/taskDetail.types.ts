@@ -43,9 +43,12 @@ export type TaskDetailRowIcon =
 
 export type TaskDetailRowValue =
   | { kind: 'text'; text: string }
+  | { kind: 'richText'; text: string }
   | { kind: 'date'; timestamp?: number }
   // `title` heads the "+N" overflow, plural where the row's label is not.
   | { kind: 'users'; refs: EntityReference[]; title?: string }
+  // The AI agent that proposed the task's subject, named instead of its bot.
+  | { kind: 'agent'; name: string }
   | { kind: 'tags'; tags: TagLabel[] }
   | { kind: 'link'; label: string; to: string }
   // A long list, e.g. requested columns: the first few inline, the rest in a
@@ -126,6 +129,8 @@ export interface TaskAboutEntity {
   tier?: TagLabel;
   columnCount?: number;
   piiColumnCount?: number;
+  /** PII.Sensitive on the entity itself or on any of its columns. */
+  isPii?: boolean;
   downstreamCount?: number;
   /** Rolling seven-day usage count as of the last usage ingestion. */
   weeklyQueryCount?: number;
@@ -151,8 +156,8 @@ export interface StatTile {
   label: string;
   value: string;
   /**
-   * `metric` puts a large value over its label — a count or a time. `field`
-   * puts the label first — a named property such as a test type.
+   * Both read value over label. `metric` sets a large value — a count or a
+   * time; `field` a smaller one — a named property such as a test type.
    */
   layout?: 'metric' | 'field';
   /** Colours a value that needs a reviewer's attention. */

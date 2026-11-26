@@ -52,10 +52,12 @@ describe('bundle suite search with the core combobox', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    mockGetSuites.mockImplementation(async ({ q } = {}) => ({
-      data: q ? [initialSuite, serverMatch] : [initialSuite],
-      paging: { total: q ? 2 : 16 },
-    }));
+    mockGetSuites.mockImplementation(
+      async ({ q }: Parameters<typeof getListTestSuitesBySearch>[0] = {}) => ({
+        data: q ? [initialSuite, serverMatch] : [initialSuite],
+        paging: { total: q ? 2 : 16 },
+      })
+    );
     mockAddTestCases.mockResolvedValue(initialSuite);
   });
 

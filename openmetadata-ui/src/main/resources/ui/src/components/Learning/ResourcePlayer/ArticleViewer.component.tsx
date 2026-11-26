@@ -23,6 +23,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LearningResource } from '../../../rest/learningResourceAPI';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -95,7 +96,7 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ resource }) => {
             rightContent={
               <Button
                 color="link-color"
-                href={resource.source.url}
+                href={getSafeHttpUrl(resource.source.url)}
                 iconLeading={LinkExternal01}
                 rel="noopener noreferrer"
                 size="sm"

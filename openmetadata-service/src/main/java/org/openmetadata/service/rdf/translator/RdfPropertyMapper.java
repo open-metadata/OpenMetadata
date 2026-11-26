@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -25,14 +26,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.sys.JenaSystem;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.rdf.RdfOwnedResources;
 import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -42,7 +44,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class RdfPropertyMapper {
 
-  private static final int MAX_IDENTIFIER_CACHE_ENTRIES = 1_000;
   private static final int MAX_UNMAPPED_JSON_LITERAL_CHARS = 32_768;
   private static final int MAX_MERGED_CONTEXT_ENTRIES = 50;
   private static final String TIER_CLASSIFICATION_PREFIX = "Tier.";
@@ -65,30 +66,54 @@ public class RdfPropertyMapper {
 
   // Properties that never belong in the graph, for three reasons:
   //   1. Audit/helper data with no place in the graph: changeDescription, votes.
-  //   2. Embedded time-series data with no structured RDF equivalent, belonging in the time-series
-  //      store rather than the knowledge graph: testCaseResult. A testCase carries its latest
-  //      testCaseResult inline; serializing it would push per-run test-result time-series into the
-  //      graph on every reindex/update.
-  //   3. Authentication material, which must not become SPARQL-queryable metadata:
+  //   2. Authentication material, which must not become SPARQL-queryable metadata:
   //      identityProviderSubject is the IdP's 'sub' claim, stored only to bind an account to one
   //      provider identity. It carries no discovery value and is an identity correlator. Contrast
-  //      user email, which reaches the graph only through a deliberate foaf:mbox mapping.
+  //      user email, which reaches the graph only through a deliberate foaf:mbox mapping. The
+  //      CREDENTIAL_PROPERTIES below carry stored secrets: a service's connection, a pipeline's
+  //      source config and server connection, a user's password hash or bot token.
+  //      ADR:2026-10-30-the-rdf-projection-never-carries-stored-secrets
+  //   3. Per-user UI state with no metadata meaning: isFirstTimeUser only decides whether the
+  //      first-login welcome screen shows.
   //
   // These must not be fetched at all — see isIndexableEntityField.
+  static final Set<String> CREDENTIAL_PROPERTIES =
+      Set.of(
+          "identityProviderSubject",
+          "connection",
+          "sourceConfig",
+          "openMetadataServerConnection",
+          "authenticationMechanism");
   private static final Set<String> NON_GRAPH_PROPERTIES =
-      Set.of("changeDescription", "votes", "testCaseResult", "identityProviderSubject");
+      Stream.concat(
+              Stream.of("changeDescription", "votes", "isFirstTimeUser"),
+              CREDENTIAL_PROPERTIES.stream())
+          .collect(Collectors.toUnmodifiableSet());
+
+  // Fields the graph carries but the entity read must not load: the RDF projection loads the
+  // latest test result and incident status from their tables itself (RdfQualityEvidence), where
+  // a test case read would look the result up in search first, and masks them as the API does.
+  private static final Set<String> EVIDENCE_LOADED_PROPERTIES =
+      Set.of("testCaseResult", "incidentStatus");
 
   // Properties that DO belong in the graph but are emitted by a dedicated structured-emission step
   // (emitStructuredProperties) rather than the generic field loop, so the generic loop must not
-  // also write them as opaque JSON literals: tableConstraints (emitTableConstraints, needs the
-  // parent table FQN to mint constrained-column URIs), profile (RdfQualityMapper DQV measurements),
+  // also write them as opaque JSON literals: tableConstraints (RdfTableKeyMapper needs the
+  // parent table FQN to mint constrained-column URIs), profile (RdfQualityMapper literal facts),
   // pipelineStatus (RdfActivityMapper prov:Activity), usageSummary (RdfUsageMapper usage-count
-  // triples).
+  // triples), testCaseResult and incidentStatus (RdfTestResultMapper, the latest result and the
+  // open incident).
   //
   // Skipping the generic loop is NOT a reason to skip fetching them: the dedicated mappers read the
   // same entity JSON, so a field that is not loaded silently emits nothing.
   private static final Set<String> DEDICATED_MAPPER_PROPERTIES =
-      Set.of("tableConstraints", "profile", "pipelineStatus", "usageSummary");
+      Set.of(
+          "tableConstraints",
+          "profile",
+          "pipelineStatus",
+          "usageSummary",
+          "testCaseResult",
+          "incidentStatus");
 
   // The generic field-mapping loop skips both groups, for the two different reasons above.
   private static final Set<String> IGNORED_PROPERTIES =
@@ -149,14 +174,20 @@ public class RdfPropertyMapper {
           // Source provenance (translator only, not a hook)
           DCT_NS + "source",
           OM_NS + "sourceUrl",
-          // Structured sub-resources attached to the entity — the entity's
-          // direct triple pointing at the blank node must be deleted so the
-          // new model's blank node replaces it. The blank node subtree itself
-          // becomes orphaned; that's a separate (out-of-scope) GC concern.
+          // Structured sub-resources attached to the entity: the entity's link to each must be
+          // replaced when the sub-resource changes or disappears.
           OM_NS + "hasLifeCycle",
           OM_NS + "hasCertification",
           OM_NS + "hasExtension",
           OM_NS + "hasCustomProperty",
+          OM_NS + "hasColumn",
+          OM_NS + "hasConstraint",
+          "http://www.w3.org/ns/dqv#hasQualityMeasurement",
+          // A test case's target, latest result and open incident, which a later write can drop.
+          OM_NS + "testsEntity",
+          OM_NS + "testsColumn",
+          OM_NS + "hasTestResult",
+          OM_NS + "hasOpenIncident",
           // Remove stale roles from unreleased glossary realizations on the next entity write.
           OM_NS + "hasPrimaryStore",
           OM_NS + "hasDerivedAsset",
@@ -169,14 +200,29 @@ public class RdfPropertyMapper {
   // mapper rather than once per entity.
   private final Cache<String, Map<String, Object>> mergedContextCache =
       Caffeine.newBuilder().maximumSize(MAX_MERGED_CONTEXT_ENTRIES).build();
-  private final Cache<String, Optional<UUID>> glossaryTermIdCache = identifierCache();
-  private final Cache<String, Optional<UUID>> classificationTagIdCache = identifierCache();
+  private final LiveReferenceFilter liveReferences;
+  private final RdfTableKeyMapper keyMapper;
 
   public RdfPropertyMapper(
       String baseUri, ObjectMapper objectMapper, Map<String, Object> contextCache) {
+    this(baseUri, objectMapper, contextCache, LiveTagLookup.database(), ReferenceScope.LIVE);
+  }
+
+  public RdfPropertyMapper(
+      String baseUri,
+      ObjectMapper objectMapper,
+      Map<String, Object> contextCache,
+      LiveTagLookup tagLookup,
+      ReferenceScope referenceScope) {
     this.baseUri = Objects.requireNonNull(baseUri, "baseUri");
     this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
     this.contextCache = Map.copyOf(Objects.requireNonNull(contextCache, "contextCache"));
+    this.liveReferences =
+        new LiveReferenceFilter(
+            this.baseUri,
+            Objects.requireNonNull(tagLookup, "tagLookup"),
+            Objects.requireNonNull(referenceScope, "referenceScope"));
+    this.keyMapper = new RdfTableKeyMapper(this.baseUri);
   }
 
   public static boolean isIgnoredEntityField(String fieldName) {
@@ -193,17 +239,67 @@ public class RdfPropertyMapper {
    * pipeline status and usage from the graph.
    */
   public static boolean isIndexableEntityField(String fieldName) {
-    return !NON_GRAPH_PROPERTIES.contains(fieldName);
+    return !NON_GRAPH_PROPERTIES.contains(fieldName)
+        && !EVIDENCE_LOADED_PROPERTIES.contains(fieldName);
   }
 
   /**
    * Convert all entity properties to RDF triples based on context mappings
    */
   public void mapEntityToRdf(EntityInterface<?> entity, Resource entityResource, Model model) {
+    JsonNode entityJson = document(Objects.requireNonNull(entity, "entity"));
+    liveReferences.apply(entityJson);
+    mapDocumentToRdf(entity, entityJson, liveReferences.lookup(), entityResource, model);
+  }
+
+  /**
+   * Maps a reindex page entity whose labels {@code labels} resolved for the whole page, from the
+   * document {@link #document} built for it.
+   */
+  void mapEntityToRdf(
+      EntityInterface<?> entity,
+      JsonNode entityJson,
+      LiveTagLookup labels,
+      Resource entityResource,
+      Model model) {
+    liveReferences.apply(entityJson, labels);
+    mapDocumentToRdf(entity, entityJson, labels, entityResource, model);
+  }
+
+  JsonNode document(EntityInterface<?> entity) {
+    return objectMapper.valueToTree(entity);
+  }
+
+  /**
+   * Resolves together the labels of a page's documents and the tables its test cases test, so the
+   * page links each test case to its table without a lookup per test case.
+   */
+  LiveTagLookup resolveLabelsTogether(Map<EntityInterface<?>, JsonNode> documents) {
+    final Set<String> testedTables = new HashSet<>();
+    documents.forEach(
+        (entity, document) -> {
+          if (isTestCase(entity)) {
+            RdfTestResultMapper.testedTableFqn(document).ifPresent(testedTables::add);
+          }
+        });
+    return liveReferences.resolveTogether(
+        documents.values(),
+        testedTables.isEmpty() ? Map.of() : Map.of(Entity.TABLE, Set.copyOf(testedTables)));
+  }
+
+  private static boolean isTestCase(EntityInterface<?> entity) {
+    return Entity.TEST_CASE.equals(entity.getEntityReference().getType());
+  }
+
+  private void mapDocumentToRdf(
+      EntityInterface<?> entity,
+      JsonNode entityJson,
+      LiveTagLookup liveEntities,
+      Resource entityResource,
+      Model model) {
     EntityInterface<?> requiredEntity = Objects.requireNonNull(entity, "entity");
     Resource requiredResource = Objects.requireNonNull(entityResource, "entityResource");
     Model requiredModel = Objects.requireNonNull(model, "model");
-    JsonNode entityJson = objectMapper.valueToTree(requiredEntity);
     String entityType = requiredEntity.getEntityReference().getType();
     String contextName = getContextName(entityType);
     Object context = contextCache.get(contextName);
@@ -220,15 +316,26 @@ public class RdfPropertyMapper {
     }
 
     emitStructuredProperties(requiredEntity, entityJson, requiredResource, requiredModel);
+    if (isTestCase(requiredEntity)) {
+      RdfTestResultMapper.emit(
+          entityJson,
+          liveEntities,
+          new RdfTestResultMapper.MappingTarget(requiredResource, requiredModel),
+          baseUri);
+    }
     addStandardProperties(requiredEntity, requiredResource, requiredModel);
   }
 
   private void emitStructuredProperties(
       EntityInterface<?> entity, JsonNode entityJson, Resource entityResource, Model model) {
+    if (Entity.TABLE.equals(entity.getEntityReference().getType())) {
+      keyMapper.emitColumnLevelKey(
+          entityJson, entity.getFullyQualifiedName(), entityResource, model);
+    }
     RdfJsonNode.array(entityJson, "tableConstraints")
         .ifPresent(
             constraints ->
-                emitTableConstraints(
+                keyMapper.emitDeclared(
                     constraints, entity.getFullyQualifiedName(), entityResource, model));
     RdfJsonNode.object(entityJson, "profile")
         .ifPresent(profile -> RdfQualityMapper.emitTableProfile(profile, entityResource, model));
@@ -582,22 +689,33 @@ public class RdfPropertyMapper {
   }
 
   /**
-   * Resolves a TagLabel to the canonical entity URI. When the underlying tag or glossary term can
-   * be looked up by FQN, the asset is linked to the real entity (e.g. {@code entity/tag/{uuid}})
-   * so SPARQL traversals reach the tag's metadata, owners, classification, etc. Falls back to a
-   * deterministic synthetic URI only if lookup fails (e.g. tag deleted concurrently).
+   * Resolves a TagLabel to the canonical entity URI, so SPARQL traversals reach the tag's metadata,
+   * owners, classification, etc. {@link LiveReferenceFilter} has already resolved every live label
+   * of the entity; a label mapped on its own falls back to its href, then to a deterministic
+   * synthetic URI.
+   *
+   * <p>The synthetic fallback URL-encodes the FQN path so tag names that the entity schema permits
+   * (spaces and {@code { } | ^ \}) cannot produce an IRI that violates RFC 3986. {@code
+   * RdfEntityDiffService} converts each statement IRI with {@link java.net.URI#create(String)},
+   * which throws on those characters and would otherwise abort the diff response.
    */
   private Resource resolveTagResource(
       String tagFqn, String source, JsonNode tagLabel, Model model) {
-    boolean isGlossary = GLOSSARY_SOURCE.equalsIgnoreCase(source);
-    Optional<UUID> id =
-        isGlossary
-            ? resolveGlossaryTermId(tagFqn, tagLabel)
-            : resolveClassificationTagId(tagFqn, tagLabel);
-    String entityType = isGlossary ? Entity.GLOSSARY_TERM : Entity.TAG;
+    String entityType =
+        GLOSSARY_SOURCE.equalsIgnoreCase(source) ? Entity.GLOSSARY_TERM : Entity.TAG;
     String resourceUri =
-        id.map(value -> baseUri + "entity/" + entityType + "/" + value)
-            .orElseGet(() -> baseUri + "tag/" + tagFqn.replace(".", "/"));
+        RdfJsonNode.field(tagLabel, LiveReferenceFilter.LABEL_IRI)
+            .filter(JsonNode::isTextual)
+            .map(JsonNode::asText)
+            .or(
+                () ->
+                    tryResolveUuidFromHref(tagLabel)
+                        .map(id -> baseUri + "entity/" + entityType + "/" + id))
+            .orElseGet(
+                () ->
+                    baseUri
+                        + "tag/"
+                        + URLEncoder.encode(tagFqn.replace(".", "/"), StandardCharsets.UTF_8));
     return model.createResource(resourceUri);
   }
 
@@ -612,44 +730,6 @@ public class RdfPropertyMapper {
           : Optional.of(FullyQualifiedName.unquoteName(parts[parts.length - 1]));
     } catch (RuntimeException exception) {
       LOG.debug("Could not extract certification level from FQN {}", tagFqn);
-      return Optional.empty();
-    }
-  }
-
-  private Optional<UUID> resolveClassificationTagId(String tagFqn, JsonNode tagLabel) {
-    return resolveTagEntityId(tagFqn, tagLabel, Entity.TAG, classificationTagIdCache);
-  }
-
-  private Optional<UUID> resolveGlossaryTermId(String termFqn, JsonNode tagLabel) {
-    return resolveTagEntityId(termFqn, tagLabel, Entity.GLOSSARY_TERM, glossaryTermIdCache);
-  }
-
-  private Optional<UUID> resolveTagEntityId(
-      String fqn,
-      JsonNode tagLabel,
-      String entityType,
-      Cache<String, Optional<UUID>> identifierCache) {
-    if (nullOrEmpty(fqn)) {
-      return Optional.empty();
-    }
-    return identifierCache.get(fqn, key -> findTagEntityId(key, tagLabel, entityType));
-  }
-
-  private static Cache<String, Optional<UUID>> identifierCache() {
-    return Caffeine.newBuilder().maximumSize(MAX_IDENTIFIER_CACHE_ENTRIES).build();
-  }
-
-  private Optional<UUID> findTagEntityId(String fqn, JsonNode tagLabel, String entityType) {
-    return tryResolveUuidFromHref(tagLabel).or(() -> findEntityId(entityType, fqn));
-  }
-
-  private Optional<UUID> findEntityId(String entityType, String fqn) {
-    try {
-      EntityInterface<?> entity =
-          Entity.findEntityByNameOrNull(entityType, fqn, Include.NON_DELETED);
-      return Optional.ofNullable(entity).map(EntityInterface<?>::getId);
-    } catch (RuntimeException exception) {
-      LOG.debug("Could not resolve {} id for FQN {}", entityType, fqn, exception);
       return Optional.empty();
     }
   }
@@ -1243,20 +1323,7 @@ public class RdfPropertyMapper {
       Property property = createProperty(propertyId, model);
 
       if ("@list".equals(container)) {
-        // Create RDF list
-        org.apache.jena.rdf.model.RDFList list = model.createList();
-        for (JsonNode item : value) {
-          if (item.isTextual()) {
-            list = list.with(model.createLiteral(item.asText()));
-          } else if (item.isObject() && item.has("id")) {
-            // Entity reference in list
-            String refUri =
-                baseUri + "entity/" + item.get("type").asText() + "/" + item.get("id").asText();
-            list = list.with(model.createResource(refUri));
-          }
-        }
-        resource.addProperty(property, list);
-
+        resource.addProperty(property, listOf(resource, property, listItems(value, model), model));
       } else {
         // @set or default - add multiple values
         for (JsonNode item : value) {
@@ -1268,6 +1335,40 @@ public class RdfPropertyMapper {
         }
       }
     }
+  }
+
+  private List<RDFNode> listItems(JsonNode value, Model model) {
+    List<RDFNode> items = new ArrayList<>();
+    for (JsonNode item : value) {
+      if (item.isTextual()) {
+        items.add(model.createLiteral(item.asText()));
+      } else if (item.isObject() && item.has("id")) {
+        items.add(
+            model.createResource(
+                baseUri + "entity/" + item.get("type").asText() + "/" + item.get("id").asText()));
+      }
+    }
+    return items;
+  }
+
+  /**
+   * Builds the RDF list from named cells instead of blank nodes. Every projection of the same list
+   * names the same cells, so a live write can compare them with what the store holds, and a write
+   * that replaces or drops the list can find its cells and delete them
+   * ({@link RdfOwnedResources#ownedTriplesPattern()}).
+   */
+  private static RDFNode listOf(
+      Resource owner, Property property, List<RDFNode> items, Model model) {
+    RDFNode rest = RDF.nil;
+    for (int index = items.size() - 1; index >= 0; index--) {
+      Resource cell =
+          model.createResource(
+              RdfOwnedResources.listCellIri(owner.getURI(), property.getURI(), index));
+      cell.addProperty(RDF.first, items.get(index));
+      cell.addProperty(RDF.rest, rest);
+      rest = cell;
+    }
+    return rest;
   }
 
   /**
@@ -1289,125 +1390,6 @@ public class RdfPropertyMapper {
         }
       }
     }
-  }
-
-  /**
-   * Emit table-level constraints (PRIMARY_KEY, UNIQUE, FOREIGN_KEY, ...) from
-   * {@code Table.tableConstraints[]} as named om:TableConstraint resources, and project
-   * back onto the constrained columns. For FOREIGN_KEY, also emit
-   * {@code <sourceColumn> om:references <referredColumn>} triples so SPARQL queries can
-   * traverse FK edges directly.
-   */
-  private void emitTableConstraints(
-      JsonNode constraints, String tableFqn, Resource tableResource, Model model) {
-    if (tableFqn == null || tableFqn.isEmpty()) {
-      return;
-    }
-    Property hasConstraint = model.createProperty(OM_NS, "hasConstraint");
-    Property constraintType = model.createProperty(OM_NS, "constraintType");
-    Property hasConstrainedColumn = model.createProperty(OM_NS, "hasConstrainedColumn");
-    Property hasReferredColumn = model.createProperty(OM_NS, "hasReferredColumn");
-    Property references = model.createProperty(OM_NS, "references");
-    Property relationshipType = model.createProperty(OM_NS, "relationshipType");
-    Property isUnique = model.createProperty(OM_NS, "isUnique");
-    Property isPrimaryKey = model.createProperty(OM_NS, "isPrimaryKey");
-    Resource tableConstraintClass = model.createResource(OM_NS + "TableConstraint");
-
-    int index = 0;
-    for (JsonNode constraint : constraints) {
-      if (!constraint.isObject() || !constraint.has("constraintType")) {
-        index++;
-        continue;
-      }
-      String type = constraint.get("constraintType").asText();
-      Resource constraintResource = model.createResource(constraintUri(tableResource, type, index));
-      constraintResource.addProperty(RDF.type, tableConstraintClass);
-      constraintResource.addProperty(constraintType, type);
-      tableResource.addProperty(hasConstraint, constraintResource);
-      if (constraint.has("relationshipType") && !constraint.get("relationshipType").isNull()) {
-        constraintResource.addProperty(
-            relationshipType, constraint.get("relationshipType").asText());
-      }
-
-      List<Resource> sourceColumns = resolveColumns(constraint.get("columns"), tableFqn, model);
-      for (Resource sourceColumn : sourceColumns) {
-        constraintResource.addProperty(hasConstrainedColumn, sourceColumn);
-        if ("PRIMARY_KEY".equals(type)) {
-          sourceColumn.addProperty(isPrimaryKey, model.createTypedLiteral(true));
-          sourceColumn.addProperty(
-              model.createProperty(OM_NS, "isNullable"), model.createTypedLiteral(false));
-          sourceColumn.addProperty(isUnique, model.createTypedLiteral(true));
-        } else if ("UNIQUE".equals(type)) {
-          sourceColumn.addProperty(isUnique, model.createTypedLiteral(true));
-        }
-      }
-
-      if ("FOREIGN_KEY".equals(type)) {
-        List<Resource> referredColumns =
-            resolveReferredColumns(constraint.get("referredColumns"), model);
-        for (Resource referred : referredColumns) {
-          constraintResource.addProperty(hasReferredColumn, referred);
-        }
-        // Pair source columns with referred columns positionally so SPARQL can traverse
-        // <sourceCol> om:references <referredCol> directly without going through the
-        // constraint resource. The pairs are in declared array order.
-        int pairs = Math.min(sourceColumns.size(), referredColumns.size());
-        for (int i = 0; i < pairs; i++) {
-          sourceColumns.get(i).addProperty(references, referredColumns.get(i));
-        }
-      }
-      index++;
-    }
-  }
-
-  private String constraintUri(Resource tableResource, String type, int index) {
-    return tableResource.getURI() + "/constraint/" + type + "/" + index;
-  }
-
-  private List<Resource> resolveColumns(JsonNode columnNames, String tableFqn, Model model) {
-    List<Resource> resolved = new ArrayList<>();
-    if (columnNames == null || !columnNames.isArray()) {
-      return resolved;
-    }
-    for (JsonNode name : columnNames) {
-      if (!name.isTextual()) {
-        continue;
-      }
-      String columnFqn = tableFqn + "." + name.asText();
-      Resource columnResource = ensureColumnResource(columnFqn, model);
-      if (columnResource != null) {
-        resolved.add(columnResource);
-      }
-    }
-    return resolved;
-  }
-
-  private List<Resource> resolveReferredColumns(JsonNode referred, Model model) {
-    List<Resource> resolved = new ArrayList<>();
-    if (referred == null || !referred.isArray()) {
-      return resolved;
-    }
-    for (JsonNode fqnNode : referred) {
-      if (!fqnNode.isTextual()) {
-        continue;
-      }
-      Resource columnResource = ensureColumnResource(fqnNode.asText(), model);
-      if (columnResource != null) {
-        resolved.add(columnResource);
-      }
-    }
-    return resolved;
-  }
-
-  private Resource ensureColumnResource(String columnFqn, Model model) {
-    String columnUri = RdfUtils.columnUri(baseUri, columnFqn);
-    if (columnUri == null) {
-      return null;
-    }
-    Resource columnResource = model.createResource(columnUri);
-    columnResource.addProperty(RDF.type, model.createResource(OM_NS + "Column"));
-    columnResource.addProperty(model.createProperty(OM_NS, "fullyQualifiedName"), columnFqn);
-    return columnResource;
   }
 
   private void emitColumnChildren(JsonNode children, Resource parentColumn, Model model) {
@@ -1611,9 +1593,6 @@ public class RdfPropertyMapper {
 
   private Resource createTypeResource(String entityType, Model model) {
     String curieOrUri = getRdfType(entityType);
-    if (curieOrUri == null || curieOrUri.isEmpty()) {
-      return model.createResource();
-    }
     if (curieOrUri.startsWith("http://") || curieOrUri.startsWith("https://")) {
       return model.createResource(curieOrUri);
     }

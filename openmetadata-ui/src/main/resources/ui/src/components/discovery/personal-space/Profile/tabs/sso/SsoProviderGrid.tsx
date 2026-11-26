@@ -50,7 +50,7 @@ const SsoProviderGrid = ({ onSelect }: SsoProviderGridProps) => {
                 onSelect(provider.key);
               }
             }}>
-            <Card.Content className="tw:flex tw:items-center tw:gap-4">
+            <Card.Content className="tw:flex tw:items-center tw:gap-4 tw:px-3">
               <Box
                 align="center"
                 className="tw:size-12 tw:shrink-0 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface"

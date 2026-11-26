@@ -22,14 +22,15 @@ import {
 import { ArrowLeft, FilterLines } from '@openmetadata/ui-core-components/icons';
 import { Key, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
+import {
+  LIST_PAGE_SIZE_OPTIONS,
+  NO_DATA_PLACEHOLDER,
+} from '../../../../constants/constants';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import IncidentGroupRelatedBadge from './IncidentGroupRelatedBadge';
 import {
-  INCIDENT_GROUPS_PAGE_SIZE,
-  INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
   INCIDENT_GROUP_SEPARATOR,
   INCIDENT_TABLE_CARD_CLASS,
   INCIDENT_TABLE_PAGER_CLASS,
@@ -73,7 +74,6 @@ const IncidentGroupDetail = ({
   } = useIncidentGroupIncidents({
     group,
     filters,
-    defaultPageSize: INCIDENT_GROUPS_PAGE_SIZE,
   });
   const name = getIncidentGroupName(
     group,
@@ -171,7 +171,7 @@ const IncidentGroupDetail = ({
           </Box>
         )}
       </Box>
-      <TableCard.Root className={INCIDENT_TABLE_CARD_CLASS}>
+      <TableCard.Root className={INCIDENT_TABLE_CARD_CLASS} variant="muted">
         {isError ? (
           <IncidentGroupsLoadError
             data-testid="incident-group-incidents-error"
@@ -191,7 +191,7 @@ const IncidentGroupDetail = ({
           className={INCIDENT_TABLE_PAGER_CLASS}
           page={currentPage}
           pageSize={pageSize}
-          pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}
+          pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
           total={Math.max(
             1,
             computeTotalPages(pageSize, paging?.total ?? incidents.length)

@@ -73,8 +73,9 @@ export default function SummaryList({
                       aria-label={t('label.entity-detail-plural', {
                         entity: item.name,
                       })}
-                      className="tw:w-auto"
-                    />
+                      className="tw:w-auto">
+                      {null}
+                    </AccordionHeader>
                     <Box className="tw:min-w-0 tw:flex-1">
                       <SummaryListItems
                         entityDetails={item}

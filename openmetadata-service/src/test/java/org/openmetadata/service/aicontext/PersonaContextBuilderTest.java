@@ -25,22 +25,35 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.ServiceUnavailableException;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.MetricAssetDirection;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.teams.Persona;
@@ -57,12 +70,509 @@ import org.openmetadata.schema.type.personaContext.SearchScope;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.DataProductRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MetricRepository;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 class PersonaContextBuilderTest {
+  @ParameterizedTest
+  @CsvSource({"0, false", "50, false", "0, true", "50, true"})
+  void memberScansStopAtOneThousandCandidatesAndReportPartialContext(int visible, boolean exhausted)
+      throws IOException {
+    SearchRepository repository = mock(SearchRepository.class);
+    when(repository.listWithDeepPagination(
+            anyString(), isNull(), anyString(), any(), any(), anyInt(), nullable(Object[].class)))
+        .thenAnswer(
+            invocation -> {
+              Object[] cursor = invocation.getArgument(6);
+              int start = cursor == null ? 0 : Integer.parseInt(cursor[0].toString()) + 1;
+              if (start >= 1000) {
+                throw new AssertionError("Rule scanned beyond its 1000-candidate budget");
+              }
+              int end = start + invocation.<Integer>getArgument(5);
+              var documents =
+                  IntStream.range(start, end)
+                      .mapToObj(
+                          index -> Map.<String, Object>of("fullyQualifiedName", "table-" + index))
+                      .toList();
+              return new SearchResultListMapper(
+                  documents,
+                  exhausted ? 1000 : 200000,
+                  exhausted && end == 1000 ? null : new Object[] {end - 1});
+            });
+    Authorizer authorizer = mock(Authorizer.class);
+    AtomicInteger checked = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              if (checked.getAndIncrement() >= visible) {
+                throw new AuthorizationException("Hidden table");
+              }
+              return null;
+            })
+        .when(authorizer)
+        .authorize(any(), any(), any());
+    Persona persona =
+        persona()
+            .withContextDefinition(
+                new PersonaContextDefinition()
+                    .withRules(List.of(assetRule("Sparse tables", "").withMaxAssets(200))));
+    PersonaContextSourceCache cache = new PersonaContextSourceCache();
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityRepository(anyString()))
+          .thenReturn(mock(EntityRepository.class));
+      for (int read = 0; read < 2; read++) {
+        checked.set(0);
+        var result =
+            new PersonaContextBuilder(persona, repository)
+                .withSourceCache(cache)
+                .withSecurity(authorizer, mock(SecurityContext.class))
+                .build();
+        assertEquals(visible, result.context().getRules().getFirst().getEntities().size());
+        assertEquals(
+            exhausted ? Integer.valueOf(visible) : null,
+            result.context().getRules().getFirst().getMatched());
+        assertEquals(!exhausted, result.context().getTruncated());
+        assertEquals(
+            !exhausted, result.markdown().contains("selection limited; total matches unavailable"));
+        assertFalse(result.markdown().contains("200000"));
+        assertEquals(1000, checked.get());
+      }
+      verify(repository, times(10))
+          .listWithDeepPagination(
+              anyString(), isNull(), anyString(), any(), any(), anyInt(), nullable(Object[].class));
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2})
+  void dataProductMembersShareTheRulesCandidateBudget(int roots) throws IOException {
+    List<UUID> ids = IntStream.range(0, roots).mapToObj(ignored -> UUID.randomUUID()).toList();
+    List<Map<String, Object>> products =
+        IntStream.range(0, roots)
+            .mapToObj(
+                index ->
+                    Map.<String, Object>of(
+                        "id", ids.get(index).toString(), "fullyQualifiedName", "product-" + index))
+            .toList();
+    DataProductRepository productRepository = mock(DataProductRepository.class);
+    when(productRepository.getDataProductAssets(any(), anyInt(), anyInt()))
+        .thenAnswer(
+            invocation -> {
+              int limit = invocation.getArgument(1);
+              int offset = invocation.getArgument(2);
+              assertEquals(ids.getFirst(), invocation.getArgument(0));
+              assertEquals(1000 - roots, limit);
+              assertEquals(0, offset);
+              var members =
+                  IntStream.range(0, limit)
+                      .mapToObj(
+                          index ->
+                              new EntityReference()
+                                  .withType(Entity.DASHBOARD)
+                                  .withFullyQualifiedName("member-" + index))
+                      .toList();
+              return new ResultList<>(members, 0, limit, 200000);
+            });
+    SearchRepository repository = mock(SearchRepository.class);
+    when(repository.listWithDeepPagination(
+            anyString(), isNull(), anyString(), any(), any(), anyInt(), nullable(Object[].class)))
+        .thenAnswer(
+            invocation -> {
+              if (Entity.DATA_PRODUCT.equals(invocation.getArgument(0))) {
+                return new SearchResultListMapper(products, roots);
+              }
+              Object[] cursor = invocation.getArgument(6);
+              int start = cursor == null ? 0 : Integer.parseInt(cursor[0].toString()) + 1;
+              int end = Math.min(start + invocation.<Integer>getArgument(5), 1000 - roots);
+              var members =
+                  IntStream.range(start, end)
+                      .mapToObj(
+                          index -> Map.<String, Object>of("fullyQualifiedName", "member-" + index))
+                      .toList();
+              return new SearchResultListMapper(
+                  members, 1000 - roots, end < 1000 - roots ? new Object[] {end - 1} : null);
+            });
+    Authorizer authorizer = mock(Authorizer.class);
+    doAnswer(
+            invocation -> {
+              OperationContext operation = invocation.getArgument(1);
+              if (!Entity.DATA_PRODUCT.equals(operation.getResource())) {
+                throw new AuthorizationException("Hidden member");
+              }
+              return null;
+            })
+        .when(authorizer)
+        .authorize(any(), any(), any());
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityRepository(anyString()))
+          .thenReturn(mock(EntityRepository.class));
+      entities
+          .when(() -> Entity.getEntityRepository(Entity.DATA_PRODUCT))
+          .thenReturn(productRepository);
+      var result =
+          new PersonaContextBuilder(persona(), repository)
+              .withSecurity(authorizer, mock(SecurityContext.class))
+              .selectRules(
+                  new PersonaContextDefinition()
+                      .withRules(
+                          List.of(
+                              assetRule("Products", "")
+                                  .withEntityType(Entity.DATA_PRODUCT)
+                                  .withFullyRendered(true))));
+      assertEquals(roots, result.getFirst().entities().size());
+      assertNull(result.getFirst().matched());
+      verify(productRepository, times(1)).getDataProductAssets(ids.getFirst(), 1000 - roots, 0);
+      verify(authorizer, times(1000)).authorize(any(), any(), any());
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {Entity.DATA_PRODUCT, Entity.DASHBOARD})
+  void dataProductMembersKeepTheirLightweightContext(String ruleEntityType) {
+    ContextRule rule =
+        new ContextRule()
+            .withName("Rendered assets")
+            .withEntityType(ruleEntityType)
+            .withFullyRendered(true);
+    Persona persona =
+        persona().withContextDefinition(new PersonaContextDefinition().withRules(List.of(rule)));
+    var selected =
+        new PersonaContextBuilder.SelectedEntity(
+            null,
+            Map.of(),
+            new AIContext()
+                .withEntityType(Entity.DASHBOARD)
+                .withFullyQualifiedName("service.dashboard"),
+            null,
+            null,
+            List.of());
+    PersonaContextBuilder builder =
+        new PersonaContextBuilder(persona, mock(SearchRepository.class)) {
+          @Override
+          List<RuleMaterialization> selectRules(PersonaContextDefinition definition) {
+            return List.of(new RuleMaterialization(rule, 1, List.of(selected)));
+          }
+        };
+    AIContext heavy =
+        new AIContext()
+            .withUpstream(List.of("service.source"))
+            .withObservability(
+                new Observability().withDataQuality(new DataQuality().withTotal(1).withPassed(1)));
+    try (MockedConstruction<AIContextBuilder> enrichment =
+        mockConstruction(
+            AIContextBuilder.class, (mock, context) -> when(mock.build()).thenReturn(heavy))) {
+      AIContext result = builder.build().context().getRules().getFirst().getEntities().getFirst();
+      boolean productMember = Entity.DATA_PRODUCT.equals(ruleEntityType);
+      assertEquals(productMember ? List.of() : heavy.getUpstream(), result.getUpstream());
+      assertEquals(productMember ? null : heavy.getObservability(), result.getObservability());
+      assertEquals(productMember ? 0 : 1, enrichment.constructed().size());
+    }
+  }
+
+  @Test
+  void memberSelectionContinuesBeyondTheSearchEnginesCappedTotal() throws IOException {
+    SearchRepository repository = mock(SearchRepository.class);
+    when(repository.listWithDeepPagination(
+            anyString(), isNull(), anyString(), any(), any(), anyInt(), nullable(Object[].class)))
+        .thenAnswer(
+            invocation -> {
+              Object[] cursor = invocation.getArgument(6);
+              int start = cursor == null ? 0 : Integer.parseInt(cursor[0].toString()) + 1;
+              int end = Math.min(start + 100, 201);
+              return new SearchResultListMapper(
+                  documents(start, end), 100, end < 201 ? new Object[] {end - 1} : null);
+            });
+    Authorizer authorizer = mock(Authorizer.class);
+    AtomicInteger checked = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              if (checked.getAndIncrement() < 200) {
+                throw new AuthorizationException("Hidden asset");
+              }
+              return null;
+            })
+        .when(authorizer)
+        .authorize(any(), any(), any());
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityRepository(anyString()))
+          .thenReturn(mock(EntityRepository.class));
+      var result =
+          new PersonaContextBuilder(persona(), repository)
+              .withSecurity(authorizer, mock(SecurityContext.class))
+              .search(assetRule("Visible beyond total", "").withMaxAssets(1));
+      assertEquals(1, result.documents().size());
+      assertEquals(1, result.matched());
+      assertEquals(
+          "service.db.schema.table-200", result.documents().getFirst().get("fullyQualifiedName"));
+    }
+  }
+
+  @Test
+  void dataProductSelectionStopsAtTheScanLimitAndReusesItsSourcePages() throws IOException {
+    UUID productId = UUID.randomUUID();
+    DataProductRepository products = mock(DataProductRepository.class);
+    List<EntityReference> firstPage =
+        documents(0, 1000).stream()
+            .map(
+                document ->
+                    new EntityReference()
+                        .withType(Entity.TABLE)
+                        .withFullyQualifiedName(document.get("fullyQualifiedName").toString()))
+            .toList();
+    when(products.getDataProductAssets(productId, 1000, 0))
+        .thenReturn(new ResultList<>(firstPage, 0, 1000, 1001));
+    SearchRepository repository = mock(SearchRepository.class);
+    when(repository.listWithDeepPagination(
+            eq(Entity.TABLE),
+            isNull(),
+            anyString(),
+            any(),
+            any(),
+            anyInt(),
+            nullable(Object[].class)))
+        .thenAnswer(
+            invocation -> {
+              Object[] cursor = invocation.getArgument(6);
+              int start = cursor == null ? 0 : Integer.parseInt(cursor[0].toString()) + 1;
+              int end = Math.min(start + 100, 1000);
+              return new SearchResultListMapper(
+                  documents(start, end), 1000, end < 1000 ? new Object[] {end - 1} : null);
+            });
+    Authorizer authorizer = mock(Authorizer.class);
+    doAnswer(
+            invocation -> {
+              OperationContext operation = invocation.getArgument(1);
+              if (Entity.TABLE.equals(operation.getResource())) {
+                throw new AuthorizationException("Hidden table");
+              }
+              return null;
+            })
+        .when(authorizer)
+        .authorize(any(), any(), any());
+    Persona persona = persona();
+    PersonaContextSourceCache cache = new PersonaContextSourceCache();
+    var product =
+        new PersonaContextBuilder.SelectedEntity(
+            productId.toString(),
+            Map.of(),
+            new AIContext().withEntityType(Entity.DATA_PRODUCT).withFullyQualifiedName("product"),
+            null,
+            null,
+            List.of());
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityRepository(anyString()))
+          .thenReturn(mock(EntityRepository.class));
+      entities.when(() -> Entity.getEntityRepository(Entity.DATA_PRODUCT)).thenReturn(products);
+      for (int read = 0; read < 2; read++) {
+        var members =
+            new PersonaContextBuilder(persona, repository)
+                .withSourceCache(cache)
+                .withSecurity(authorizer, mock(SecurityContext.class))
+                .expandDataProductAssets(product, 1, new PersonaContextBuilder.ScanBudget());
+        assertTrue(members.isEmpty());
+      }
+      verify(products, times(1)).getDataProductAssets(productId, 1000, 0);
+      verify(products, never()).getDataProductAssets(productId, 1000, 1000);
+      verify(repository, times(10))
+          .listWithDeepPagination(
+              anyString(), isNull(), anyString(), any(), any(), anyInt(), nullable(Object[].class));
+    }
+  }
+
+  @Test
+  void memberSelectionContinuesBeyondTwoHiddenPages() throws IOException {
+    SearchRepository repository = mock(SearchRepository.class);
+    when(repository.listWithDeepPagination(
+            anyString(), isNull(), anyString(), any(), any(), anyInt(), nullable(Object[].class)))
+        .thenReturn(
+            new SearchResultListMapper(documents(0, 100), 202, new Object[] {"99"}),
+            new SearchResultListMapper(documents(100, 200), 202, new Object[] {"199"}),
+            new SearchResultListMapper(documents(200, 202), 202));
+    Authorizer authorizer = mock(Authorizer.class);
+    AtomicInteger checked = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              if (checked.getAndIncrement() < 200) {
+                throw new AuthorizationException("Hidden asset");
+              }
+              return null;
+            })
+        .when(authorizer)
+        .authorize(any(), any(), any());
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityRepository(anyString()))
+          .thenReturn(mock(EntityRepository.class));
+      PersonaContextBuilder.RuleSearchResult result =
+          new PersonaContextBuilder(persona(), repository)
+              .withSecurity(authorizer, mock(SecurityContext.class))
+              .search(assetRule("Visible tables", "").withMaxAssets(2));
+
+      assertEquals(2, result.documents().size());
+      assertEquals(2, result.matched());
+      assertEquals(
+          "service.db.schema.table-200", result.documents().getFirst().get("fullyQualifiedName"));
+      assertEquals(
+          "service.db.schema.table-201", result.documents().getLast().get("fullyQualifiedName"));
+    }
+  }
+
+  @Test
+  void aLimitedMemberDocumentDoesNotClaimItsSelectedCountIsTheTotal() throws IOException {
+    SearchRepository repository = mock(SearchRepository.class);
+    List<Map<String, Object>> page =
+        IntStream.range(0, 100)
+            .mapToObj(index -> Map.<String, Object>of("fullyQualifiedName", "table-" + index))
+            .toList();
+    when(repository.listWithDeepPagination(
+            anyString(), isNull(), anyString(), any(), any(), anyInt(), isNull()))
+        .thenReturn(new SearchResultListMapper(page, 1000, new Object[] {"99"}));
+    Persona persona =
+        persona()
+            .withContextDefinition(
+                new PersonaContextDefinition()
+                    .withRules(List.of(assetRule("Limited selection", "").withMaxAssets(1))));
+    PersonaContextSourceCache cache = new PersonaContextSourceCache();
+    PersonaContextBuilder.MaterializedPersonaContext admin =
+        new PersonaContextBuilder(persona, repository).withSourceCache(cache).build();
+    assertEquals(1000, admin.context().getRules().getFirst().getMatched());
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityRepository(anyString()))
+          .thenReturn(mock(EntityRepository.class));
+      PersonaContextBuilder.MaterializedPersonaContext result =
+          new PersonaContextBuilder(persona, repository)
+              .withSourceCache(cache)
+              .withSecurity(mock(Authorizer.class), mock(SecurityContext.class))
+              .build();
+
+      assertEquals(1, result.context().getRules().getFirst().getEntities().size());
+      assertNull(result.context().getRules().getFirst().getMatched());
+      assertTrue(result.context().getTruncated());
+      assertTrue(result.markdown().contains("selection limited; total matches unavailable"));
+      assertTrue(result.markdown().contains("matched: null"));
+      assertFalse(result.markdown().contains("1000 matched"));
+    }
+  }
+
+  @Test
+  void sharedSourcesStayWarmWhileEveryReadRechecksPermissionsAndCopiesContent() throws IOException {
+    SearchRepository repository = mock(SearchRepository.class);
+    when(repository.listWithDeepPagination(
+            anyString(), isNull(), anyString(), any(), any(), anyInt(), isNull()))
+        .thenReturn(
+            new SearchResultListMapper(
+                List.of(
+                    Map.of(
+                        "fullyQualifiedName",
+                        "restricted.table",
+                        "description",
+                        "original content")),
+                1));
+    Persona persona =
+        persona()
+            .withContextDefinition(
+                new PersonaContextDefinition().withRules(List.of(assetRule("Cached source", ""))));
+    PersonaContextSourceCache cache = new PersonaContextSourceCache();
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext security = mock(SecurityContext.class);
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityRepository(anyString()))
+          .thenReturn(mock(EntityRepository.class));
+      PersonaContextBuilder.MaterializedPersonaContext first =
+          new PersonaContextBuilder(persona, repository)
+              .withSourceCache(cache)
+              .withSecurity(authorizer, security)
+              .build();
+      assertTrue(first.markdown().contains("original content"));
+      first
+          .context()
+          .getRules()
+          .getFirst()
+          .getEntities()
+          .getFirst()
+          .setDescription("mutated response");
+
+      doThrow(new AuthorizationException("Revoked"))
+          .when(authorizer)
+          .authorize(any(), any(), any());
+      PersonaContextBuilder.MaterializedPersonaContext denied =
+          new PersonaContextBuilder(persona, repository)
+              .withSourceCache(cache)
+              .withSecurity(authorizer, security)
+              .build();
+      assertFalse(denied.markdown().contains("restricted.table"));
+      assertFalse(JsonUtils.pojoToJson(denied.context()).contains("original content"));
+
+      doNothing().when(authorizer).authorize(any(), any(), any());
+      PersonaContextBuilder.MaterializedPersonaContext restored =
+          new PersonaContextBuilder(persona, repository)
+              .withSourceCache(cache)
+              .withSecurity(authorizer, security)
+              .build();
+      assertTrue(restored.markdown().contains("original content"));
+      assertFalse(restored.markdown().contains("mutated response"));
+      verify(repository, times(1))
+          .listWithDeepPagination(
+              anyString(), isNull(), anyString(), any(), any(), anyInt(), isNull());
+      verify(authorizer, times(3)).authorize(any(), any(), any());
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"{", "[]", "{\"regexp\":{\"name\":\"[shop\"}}"})
+  void invalidSavedScopesDoNotBlockContextOrReachSearchDefaults(String filter) throws IOException {
+    SearchRepository repository = mock(SearchRepository.class);
+    SearchClient client = mock(SearchClient.class);
+    when(repository.getSearchClient()).thenReturn(client);
+    when(repository.getIndexOrAliasName(Entity.TABLE)).thenReturn("tables");
+    when(client.rawSearchRequest(anyString(), anyString(), anyString()))
+        .thenReturn(new SearchClient.RawSearchResponse(200, "{\"valid\":false}"));
+    when(repository.listWithDeepPagination(
+            anyString(), isNull(), anyString(), any(), any(), anyInt(), nullable(Object[].class)))
+        .thenReturn(
+            new SearchResultListMapper(
+                List.of(Map.of("fullyQualifiedName", "visible.preload")), 1));
+    ContextRule broken = assetRule("Broken scope", filter).withFilteredInSearch(true);
+    ContextRule healthy =
+        assetRule("Healthy scope", "").withEntityType(Entity.DASHBOARD).withFilteredInSearch(true);
+    ContextRule preload = assetRule("Preloaded tables", "");
+    for (boolean includeHealthyScope : List.of(true, false)) {
+      PersonaContextDefinition definition =
+          new PersonaContextDefinition()
+              .withRules(
+                  includeHealthyScope
+                      ? List.of(broken, healthy, preload)
+                      : List.of(broken, preload));
+      var result =
+          new PersonaContextBuilder(persona().withContextDefinition(definition), repository)
+              .withSourceCache(new PersonaContextSourceCache())
+              .build();
+      var scope = result.context().getSearchScope();
+      assertEquals(
+          includeHealthyScope ? List.of("Healthy scope") : List.of(),
+          scope.getRules().stream().map(rule -> rule.getRuleName()).toList());
+      assertFalse(scope.getEntityTypes().contains(Entity.TABLE));
+      assertEquals(!includeHealthyScope, nullOrEmpty(scope.getQueryFilter()));
+      assertEquals(
+          "visible.preload",
+          result.context().getRules().getFirst().getEntities().getFirst().getFullyQualifiedName());
+      assertTrue(result.markdown().contains("visible.preload"));
+      assertTrue(broken.getEnabled());
+    }
+  }
 
   @Test
   void metricKnowledgeLoadsEveryAssetThroughBoundedRepositoryPages() {
@@ -320,7 +830,7 @@ class PersonaContextBuilderTest {
   }
 
   @Test
-  void searchScopeKeepsKnowledgeAndPreloadedAssetTypesSearchable() {
+  void preloadedRulesDoNotWidenTheIndependentSearchScope() {
     ContextRule scopedTable =
         assetRule("Finance tables", "{\"term\":{\"domain\":\"finance\"}}")
             .withFilteredInSearch(true);
@@ -338,13 +848,68 @@ class PersonaContextBuilderTest {
                 .withEnabled(true));
 
     assertEquals(
-        Set.of(Entity.TABLE, Entity.DASHBOARD, Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC),
+        Set.of(Entity.TABLE, Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC),
         scope.getEntityTypes());
     JsonNode clauses =
         JsonUtils.readTree(scope.getQueryFilter()).at("/query/bool/filter/1/bool/should");
     assertEquals(
-        Set.of(Entity.TABLE, Entity.DASHBOARD, Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC),
+        Set.of(Entity.TABLE, Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC),
         Set.copyOf(clauses.findValuesAsText("entityType")));
+  }
+
+  @Test
+  void preloadingDomainBDoesNotChangeTheDomainASearchFilter() {
+    ContextRule scoped =
+        assetRule("Domain A", "{\"term\":{\"domain\":\"A\"}}").withFilteredInSearch(true);
+    ContextRule preload =
+        assetRule("Domain B", "{\"term\":{\"domain\":\"B\"}}").withFilteredInSearch(false);
+    String scopedOnly =
+        PersonaContextBuilder.searchScope(new PersonaContextDefinition().withRules(List.of(scoped)))
+            .getQueryFilter();
+    String combined =
+        PersonaContextBuilder.searchScope(
+                new PersonaContextDefinition().withRules(List.of(scoped, preload)))
+            .getQueryFilter();
+    assertNotNull(scopedOnly);
+    assertEquals(scopedOnly, combined);
+  }
+
+  @Test
+  void deniedAssetsReachNeitherJsonNorMarkdownOrMatchedCounts() throws IOException {
+    SearchRepository repository = mock(SearchRepository.class);
+    Map<String, Object> document =
+        Map.of("fullyQualifiedName", "restricted.table", "description", "restricted SQL");
+    when(repository.listWithDeepPagination(
+            anyString(), isNull(), anyString(), any(), any(), anyInt(), isNull()))
+        .thenReturn(new SearchResultListMapper(List.of(document), 1, null, null));
+    Authorizer authorizer = mock(Authorizer.class);
+    doThrow(new AuthorizationException("Denied")).when(authorizer).authorize(any(), any(), any());
+    Persona memberPersona =
+        persona()
+            .withContextDefinition(
+                new PersonaContextDefinition()
+                    .withRules(List.of(assetRule("Preloaded tables", ""))));
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityRepository(anyString()))
+          .thenReturn(mock(EntityRepository.class));
+      PersonaContextBuilder.MaterializedPersonaContext result =
+          new PersonaContextBuilder(memberPersona, repository)
+              .withSecurity(authorizer, mock(SecurityContext.class))
+              .build();
+
+      assertFalse(result.markdown().contains("restricted.table"));
+      assertFalse(JsonUtils.pojoToJson(result.context()).contains("restricted SQL"));
+      assertEquals(0, result.context().getRules().getFirst().getMatched());
+      assertTrue(result.context().getRules().getFirst().getEntities().isEmpty());
+      PersonaContextBuilder.MaterializedPersonaContext allowed =
+          new PersonaContextBuilder(memberPersona, repository)
+              .withSecurity(mock(Authorizer.class), mock(SecurityContext.class))
+              .build();
+      assertTrue(allowed.markdown().contains("restricted.table"));
+      assertTrue(JsonUtils.pojoToJson(allowed.context()).contains("restricted SQL"));
+      assertEquals(1, allowed.context().getRules().getFirst().getMatched());
+    }
   }
 
   @Test
@@ -532,9 +1097,9 @@ class PersonaContextBuilderTest {
             .withEntityType(Entity.TABLE)
             .withFullyQualifiedName(String.valueOf(document.get("fullyQualifiedName")));
     PersonaContextBuilder.SelectedEntity firstEntity =
-        new PersonaContextBuilder.SelectedEntity("id", document, context, null, null);
+        new PersonaContextBuilder.SelectedEntity("id", document, context, null, null, List.of());
     PersonaContextBuilder.SelectedEntity equalButDistinctEntity =
-        new PersonaContextBuilder.SelectedEntity("id", document, context, null, null);
+        new PersonaContextBuilder.SelectedEntity("id", document, context, null, null, List.of());
     ContextRule firstRule = assetRule("First", "");
     ContextRule secondRule = assetRule("Second", "");
 
@@ -642,7 +1207,7 @@ class PersonaContextBuilderTest {
         new PersonaContextBuilder(persona(), repository) {
           @Override
           protected List<SelectedEntity> expandDataProductAssets(
-              SelectedEntity dataProduct, int maxAssets) {
+              SelectedEntity dataProduct, int maxAssets, ScanBudget scanBudget) {
             AIContext tableContext =
                 new AIContext()
                     .withEntityType(Entity.TABLE)
@@ -659,7 +1224,8 @@ class PersonaContextBuilderTest {
                         tableContext.getFullyQualifiedName()),
                     tableContext,
                     null,
-                    null));
+                    null,
+                    List.of()));
           }
         };
     ContextRule rule =

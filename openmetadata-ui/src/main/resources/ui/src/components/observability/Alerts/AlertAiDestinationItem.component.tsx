@@ -14,7 +14,7 @@
 import {
   Alert,
   Box,
-  Button,
+  ButtonUtility,
   Input,
   Select,
   Toggle,
@@ -30,17 +30,15 @@ import {
   useState,
 } from 'react';
 import type { Key } from 'react-aria-components';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
+import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from '../../../constants/Alerts.constants';
 import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
 import { normalizeDestinationConfig } from '../../../utils/Alerts/AlertsUtilPure';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
-import {
-  ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH,
-  ALERT_AI_FORM_CLASS_NAMES,
-} from './AlertAiFormFields.constants';
+import { ALERT_AI_FORM_CLASS_NAMES } from './AlertAiFormFields.constants';
 import { AlertAiDestinationItemProps } from './AlertAiFormFields.interface';
 import {
   getDestinationTypeUpdate,
@@ -265,13 +263,14 @@ const AlertAiDestinationItem = ({
           )}
         </div>
         {!isViewOnly && (
-          <Button
-            className={ALERT_AI_FORM_CLASS_NAMES.removeButton}
-            color="secondary"
+          <ButtonUtility
+            className="tw:shrink-0"
+            color="tertiary-destructive"
             data-testid={`remove-destination-${name}`}
-            iconLeading={Trash01}
-            size="sm"
-            onPress={() => remove?.(name)}
+            icon={Trash01}
+            size="lg"
+            tooltip={t('label.remove')}
+            onClick={() => remove?.(name)}
           />
         )}
       </Box>
@@ -321,15 +320,18 @@ const AlertAiDestinationItem = ({
       destinationType === SubscriptionCategory.Owners &&
       destination.type !== SubscriptionType.Email;
 
-    const message = isOwnerNonEmailDestination
-      ? t('message.destination-owner-selection-warning', {
-          subscriptionCategory: destinationType,
-          subscriptionType: destination.type,
-        })
-      : t('message.destination-selection-warning', {
-          subscriptionCategory: destinationType,
-          subscriptionType: destination.type,
-        });
+    const message = isOwnerNonEmailDestination ? (
+      <Trans
+        components={[<strong key="team" />]}
+        i18nKey="message.destination-owner-selection-warning"
+        values={{ subscriptionType: destination.type }}
+      />
+    ) : (
+      t('message.destination-selection-warning', {
+        subscriptionCategory: destinationType,
+        subscriptionType: destination.type,
+      })
+    );
 
     return (
       // A one-line notice reads as body copy with a small icon; as a bold

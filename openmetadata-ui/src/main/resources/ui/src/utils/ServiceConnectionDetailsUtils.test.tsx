@@ -12,6 +12,9 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import datalakeSchema from '../../public/jsons/connectionSchemas/connections/database/datalakeConnection.json';
+import teradataSchema from '../../public/jsons/connectionSchemas/connections/database/teradataConnection.json';
+import mlflowSchema from '../../public/jsons/connectionSchemas/connections/mlmodel/mlflowConnection.json';
 import {
   getKeyValues,
   getSchemaProperties,
@@ -85,6 +88,20 @@ describe('getSchemaProperties', () => {
     ).toHaveProperty('password.format', 'password');
   });
 
+  it('matches a branch by its nested keys when branches share a top-level key', () => {
+    // Azure, GCS and S3 all declare `securityConfig`; only S3's declares the AWS keys.
+    const resolved = getSchemaProperties(
+      datalakeSchema.properties.configSource,
+      { securityConfig: { awsSecretAccessKey: '*********' } },
+      datalakeSchema
+    );
+
+    expect(resolved.securityConfig).toHaveProperty(
+      'properties.awsSecretAccessKey.format',
+      'password'
+    );
+  });
+
   it('returns an empty object for a property with neither properties nor branches', () => {
     expect(getSchemaProperties({ type: 'string' }, {}, SFTP_SCHEMA)).toEqual(
       {}
@@ -116,6 +133,41 @@ describe('getSchemaProperties', () => {
 });
 
 describe('getKeyValues', () => {
+  it.each([
+    {
+      schema: mlflowSchema,
+      field: 'registryUri',
+      value: 'http://localhost:5000',
+      serviceCategory: 'mlmodelServices',
+    },
+    {
+      schema: teradataSchema,
+      field: 'logdata',
+      value: 'EXAMPLE.REALM',
+      serviceCategory: 'databaseServices',
+    },
+  ])(
+    'renders $field as a password input using the generated schema',
+    ({ schema, field, value, serviceCategory }) => {
+      render(
+        <>
+          {getKeyValues({
+            obj: { [field]: value },
+            schemaPropertyObject: schema.properties,
+            schema,
+            serviceCategory,
+          })}
+        </>
+      );
+
+      expect(screen.getByTestId('input-field')).toHaveAttribute(
+        'type',
+        'password'
+      );
+      expect(screen.getByTestId('input-field')).toHaveValue(value);
+    }
+  );
+
   const renderConnection = (connection: Record<string, unknown>) =>
     render(
       <div>
@@ -140,6 +192,35 @@ describe('getKeyValues', () => {
     );
 
     expect(password).toHaveAttribute('type', 'password');
+  });
+
+  it('masks a Datalake S3 secret while keeping the access key id readable', () => {
+    render(
+      <div>
+        {getKeyValues({
+          obj: {
+            configSource: {
+              securityConfig: {
+                awsAccessKeyId: 'AKIA-EXAMPLE',
+                awsSecretAccessKey: '*********',
+                awsRegion: 'us-east-1',
+              },
+            },
+          },
+          schemaPropertyObject: datalakeSchema.properties,
+          schema: datalakeSchema,
+          serviceCategory: 'databaseServices',
+        })}
+      </div>
+    );
+
+    expect(screen.getByRole('textbox', { name: 'awsAccessKeyId' })).toHaveValue(
+      'AKIA-EXAMPLE'
+    );
+    expect(screen.getByLabelText('awsSecretAccessKey')).toHaveAttribute(
+      'type',
+      'password'
+    );
   });
 
   it('leaves non-secret fields readable', () => {

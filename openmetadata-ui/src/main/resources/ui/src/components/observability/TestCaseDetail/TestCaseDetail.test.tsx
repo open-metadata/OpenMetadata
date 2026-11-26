@@ -180,20 +180,6 @@ jest.mock('components/common/Badge/Badge.component', () => ({
   BetaBadge: () => <span data-testid="beta-badge">beta</span>,
 }));
 
-jest.mock('components/common/IconButtons/EditIconButton', () => ({
-  AlignRightIconButton: ({
-    onClick,
-  }: {
-    onClick?: (...args: unknown[]) => void;
-  }) => (
-    <button
-      aria-label="expand-collapse-button"
-      data-testid="expand-collapse-button"
-      onClick={onClick}
-    />
-  ),
-}));
-
 jest.mock('utils/ObservabilityRouterClassBase', () => ({
   __esModule: true,
   default: {
@@ -315,8 +301,9 @@ describe('TestCaseDetail', () => {
   it('should render the breadcrumb, title row, details row, tabs and active tab body', () => {
     render(<TestCaseDetail />);
 
-    expect(screen.getByTestId('observability-page-shell')).toBeInTheDocument();
-    expect(screen.getByTestId('test-case-detail-page')).toBeInTheDocument();
+    expect(screen.getByTestId('test-case-detail-page')).toHaveClass(
+      'tw:isolate'
+    );
     expect(screen.getByTestId(HEADER_BREADCRUMB_TEST_ID)).toHaveAttribute(
       'data-first-item-icon',
       'true'
@@ -370,7 +357,7 @@ describe('TestCaseDetail', () => {
   it('should call toggleTabExpanded from the expand/collapse button', () => {
     render(<TestCaseDetail />);
 
-    fireEvent.click(screen.getByTestId('expand-collapse-button'));
+    fireEvent.click(screen.getByTestId('tab-expand-button'));
 
     expect(mockToggleTabExpanded).toHaveBeenCalled();
   });

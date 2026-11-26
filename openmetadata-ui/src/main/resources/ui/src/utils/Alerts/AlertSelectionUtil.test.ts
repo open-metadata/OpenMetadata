@@ -255,4 +255,11 @@ describe('getAlertSourceChanges', () => {
       destinations: [],
     });
   });
+
+  it('keeps rules stored without selections listed when sources change', () => {
+    expect(getAlertSourceChanges(['topic'], ['table'], true)).toEqual({
+      resources: ['topic'],
+      destinations: [],
+    });
+  });
 });

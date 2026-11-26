@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useState } from 'react';
+import { usePageSizeState } from '../../../../hooks/paging/usePageSizeState';
 
 interface PageState {
   /** The query the page belongs to; a page of another query is page 1. */
@@ -25,11 +26,8 @@ interface PageState {
  * reset is derived rather than set from an effect, so the stale page is never
  * fetched on the way.
  */
-export const useIncidentPaging = (
-  queryKey: string,
-  defaultPageSize: number
-) => {
-  const [pageSize, setPageSize] = useState(defaultPageSize);
+export const useIncidentPaging = (queryKey: string) => {
+  const [pageSize, setPageSize] = usePageSizeState();
   const pagedKey = `${queryKey}|${pageSize}`;
   const [page, setPage] = useState<PageState>({
     queryKey: pagedKey,

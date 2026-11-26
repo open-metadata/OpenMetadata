@@ -12,12 +12,10 @@
  */
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Icon as ImageIcon } from '@openmetadata/ui-core-components/icon';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
 
+import { DataProduct as DataProductIcon } from '@openmetadata/ui-core-components/icons';
 import { lazy } from 'react';
-import {
-  ReactComponent as DataProductIcon,
-  ReactComponent as DefaultDataProductIcon,
-} from '../assets/svg/entity/data-product.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback, {
   TAB_CONTENT_FALLBACK,
@@ -70,6 +68,12 @@ const ActivityFeedProvider = withSuspenseFallback(
   )
 );
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import(
@@ -145,7 +149,10 @@ export interface DataProductDetailPageTabProps {
 export const getDataProductIconByUrl = (iconURL?: string) => (
   <ImageIcon
     fallback={
-      <DefaultDataProductIcon className="tw:text-quaternary data-product-default-icon" />
+      <DataProductIcon
+        className="tw:text-quaternary data-product-default-icon"
+        size={24}
+      />
     }
     iconValue={iconURL}
     imageClassName="tw:h-6 tw:w-6 tw:text-quaternary"
@@ -197,8 +204,7 @@ const getDataProductPreviewSecondPanel = (
       key={previewAsset.details.id ?? previewAsset.details.fullyQualifiedName}
     />
   ),
-  minWidth: 400,
-  flex: 0.33,
+  ...COMMON_RESIZABLE_PANEL_CONFIG.ENTITY_SUMMARY_PANEL,
   className:
     'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
 });
@@ -222,8 +228,9 @@ const getDataProductNonVersionTabs = ({
 }: DataProductNonVersionTabsProps) => [
   {
     label: (
-      <TabsLabel
+      <ActivityFeedTabLabel
         count={feedCount.totalCount}
+        entityType={EntityType.DATA_PRODUCT}
         id={EntityTabs.ACTIVITY_FEED}
         isActive={activeTab === EntityTabs.ACTIVITY_FEED}
         name={
@@ -467,7 +474,7 @@ export const DataProductListItemRenderer = (props: EntityReference) => {
         className="layout-space layout-space-horizontal"
         gap={2}
         itemClassName="layout-space-item">
-        <DataProductIcon className="tw:size-4 tw:shrink-0" />
+        <DataProductIcon className="tw:shrink-0" size={16} />
         <Typography>{getEntityName(props)}</Typography>
       </Box>
       {props.description && (

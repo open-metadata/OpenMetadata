@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useNavigate } from 'react-router-dom';
 import type { Task } from '../../../../../generated/entity/tasks/task';
+import type { User } from '../../../../../generated/entity/teams/user';
 import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
 import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../inbox.constants';
 
@@ -22,6 +23,7 @@ const mockListTasks = jest.fn();
 const mockListVisibleTasks = jest.fn();
 const mockSetItems = jest.fn();
 const mockSetTotal = jest.fn();
+const mockLoadMore = jest.fn();
 const mockInvalidateQueries = jest.fn();
 let capturedFetchPage: (after?: string) => unknown;
 let capturedQueryKey: unknown[];
@@ -31,6 +33,7 @@ let hookState: {
   isLoading: boolean;
   total: number;
   hasMore?: boolean;
+  isLoadMoreError?: boolean;
   error?: unknown;
 };
 const mockRefetch = jest.fn();
@@ -48,9 +51,14 @@ jest.mock('@tanstack/react-query', () => ({
 }));
 
 let mockCurrentUserIds: ReadonlySet<string> = new Set();
+const mockCurrentUserIdsFor = jest.fn();
 
 jest.mock('../useCurrentUserIds', () => ({
-  useCurrentUserIds: () => mockCurrentUserIds,
+  useCurrentUserIds: (user?: unknown) => {
+    mockCurrentUserIdsFor(user);
+
+    return mockCurrentUserIds;
+  },
 }));
 
 jest.mock('../useInboxInfiniteList', () => ({
@@ -75,6 +83,8 @@ jest.mock('../useInboxInfiniteList', () => ({
       sentinelRef: { current: null },
       setItems: mockSetItems,
       setTotal: mockSetTotal,
+      loadMore: mockLoadMore,
+      isLoadMoreError: Boolean(hookState.isLoadMoreError),
     };
   },
 }));
@@ -100,6 +110,7 @@ jest.mock('../components/InboxTaskListToolbar', () => ({
     onSearchChange,
     onGroupingChange,
     onTypeFilterChange,
+    onSortOrderChange,
   }: {
     statusTabs: ReactNode;
     statusOptions: string[];
@@ -108,6 +119,7 @@ jest.mock('../components/InboxTaskListToolbar', () => ({
     onSearchChange: (value: string) => void;
     onGroupingChange: (value: string) => void;
     onTypeFilterChange: (value: string[]) => void;
+    onSortOrderChange: (value: string) => void;
   }) => (
     <div
       data-status={statusFilter.join(',')}
@@ -139,6 +151,11 @@ jest.mock('../components/InboxTaskListToolbar', () => ({
         onClick={() => onTypeFilterChange(['label.tag-request'])}>
         filter tag
       </button>
+      <button
+        data-testid="toolbar-sort-oldest"
+        onClick={() => onSortOrderChange('asc')}>
+        oldest first
+      </button>
     </div>
   ),
 }));
@@ -164,13 +181,20 @@ jest.mock('../components/TaskDetailPanel', () => ({
     taskId,
     onResolved,
     onTaskUpdated,
+    onLoaded,
   }: {
     taskId?: string;
     onResolved: (...args: unknown[]) => void;
     onTaskUpdated: (...args: unknown[]) => void;
+    onLoaded: (...args: unknown[]) => void;
   }) => (
     <div data-testid="detail">
       <span>{taskId}</span>
+      <button
+        data-testid="loaded"
+        onClick={() => onLoaded({ id: taskId, ...resolvedPayload })}>
+        loaded
+      </button>
       <button
         data-testid="resolve"
         onClick={() => onResolved({ id: taskId, ...resolvedPayload })}>
@@ -196,16 +220,20 @@ jest.mock('components/common/Loader/Loader', () => ({
 }));
 
 let tabsOnChange: ((key: string) => void) | undefined;
+let tabsSelectedKey: string | undefined;
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const TabsRoot = ({
     onSelectionChange,
+    selectedKey,
     children,
   }: {
     onSelectionChange?: (...args: unknown[]) => void;
+    selectedKey?: string;
     children?: ReactNode;
   }) => {
     tabsOnChange = onSelectionChange;
+    tabsSelectedKey = selectedKey;
 
     return <div>{children}</div>;
   };
@@ -225,6 +253,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }) => (
     <button
       data-badge={badge}
+      data-selected={id === tabsSelectedKey}
       data-testid={`task-status-${id}`}
       type="button"
       onClick={() => tabsOnChange?.(id)}>
@@ -253,6 +282,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Badge: ({ children }: { children?: ReactNode }) => (
       <span data-testid="count-badge">{children}</span>
     ),
+    Divider: () => <hr />,
     Skeleton: () => <div data-testid="skeleton" />,
     Typography: ({ children }: { children?: ReactNode }) => (
       <span>{children}</span>
@@ -278,6 +308,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
         ))}
       </div>
     ),
+    Button: ({
+      children,
+      onClick,
+    }: {
+      children?: ReactNode;
+      onClick?: () => void;
+    }) => <button onClick={onClick}>{children}</button>,
     Tabs,
   };
 });
@@ -427,9 +464,12 @@ describe('TasksTab', () => {
 
     fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
 
-    expect(screen.getByTestId('inbox-tasks-no-match')).toHaveTextContent(
-      'message.no-match-found'
-    );
+    // Under the filters it answers, not across the empty detail pane.
+    expect(
+      within(screen.getByTestId('inbox-tasks-scroll')).getByTestId(
+        'inbox-tasks-no-match'
+      )
+    ).toHaveTextContent('message.no-match-found');
     expect(
       screen.queryByText('label.no-open-tasks-yet')
     ).not.toBeInTheDocument();
@@ -513,6 +553,14 @@ describe('TasksTab', () => {
     expect(capturedCanLoadMore?.(scanned)).toBe(false);
   });
 
+  it('shows a task that landed on two loaded pages once', () => {
+    const task = { id: 't1', type: 'TestCaseResolution' } as unknown as Task;
+    hookState = { items: [task, task], isLoading: false, total: 1 };
+    renderTab();
+
+    expect(screen.getAllByTestId('task-t1')).toHaveLength(1);
+  });
+
   it('shows the skeleton while loading', () => {
     hookState = { items: [], isLoading: true, total: 0 };
     renderTab();
@@ -548,6 +596,7 @@ describe('TasksTab', () => {
       fields: 'assignees,createdBy,about,comments,payload,resolution',
       limit: 25,
       after: 'cur',
+      sortOrder: 'desc',
     });
     // Never the unscoped /tasks endpoint for the personal inbox.
     expect(mockListTasks).not.toHaveBeenCalled();
@@ -564,6 +613,7 @@ describe('TasksTab', () => {
       fields: 'assignees,createdBy,about,comments,payload,resolution',
       limit: 25,
       after: 'cur',
+      sortOrder: 'desc',
     });
   });
 
@@ -575,17 +625,6 @@ describe('TasksTab', () => {
 
     expect(mockListVisibleTasks.mock.calls[0][0]).not.toHaveProperty('startTs');
     expect(mockListVisibleTasks.mock.calls[0][0]).not.toHaveProperty('endTs');
-  });
-
-  it('lists all entity tasks (listTasks) when scoped to an entity', () => {
-    renderTab({ aboutEntity: 'svc.db.schema.table.tc' });
-
-    capturedFetchPage(undefined);
-
-    expect(mockListTasks).toHaveBeenCalledWith(
-      expect.objectContaining({ aboutEntity: 'svc.db.schema.table.tc' })
-    );
-    expect(mockListVisibleTasks).not.toHaveBeenCalled();
   });
 
   it('merges a custom className with the base card classes on the root', () => {
@@ -625,6 +664,148 @@ describe('TasksTab', () => {
     fireEvent.click(screen.getByTestId('task-t2'));
 
     expect(screen.getByTestId('detail')).toHaveTextContent('t2');
+  });
+
+  // The My Tasks card on the home page links to a task that may have been
+  // resolved since the card last cached it, so the default Open tab can be
+  // empty and settled when the deep link lands. The linked task's detail
+  // must render; the per-status empty state moves to the list column.
+  it('opens on the linked task even when the visible list is empty and settled', () => {
+    hookState = { items: [] as unknown as Task[], isLoading: false, total: 0 };
+
+    renderTab({}, '/inbox/tasks?taskId=t9');
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+    expect(
+      within(screen.getByTestId('inbox-tasks-scroll')).getByTestId(
+        'inbox-tasks-open-empty'
+      )
+    ).toBeInTheDocument();
+  });
+
+  // A narrowing that empties the list must neither drop the linked task's
+  // detail nor hide why the list is empty: "no match" and its "Clear all"
+  // show in the list column.
+  it('keeps the linked task detail and says nothing matches when a narrowing empties the list', () => {
+    hookState = {
+      items: [{ id: 't1', type: 'TestCaseResolution' } as unknown as Task],
+      isLoading: false,
+      total: 1,
+    };
+
+    renderTab({}, '/inbox/tasks?taskId=t9');
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    const list = within(screen.getByTestId('inbox-tasks-scroll'));
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+    expect(list.getByTestId('inbox-tasks-no-match')).toBeInTheDocument();
+
+    fireEvent.click(list.getByText('label.clear-all'));
+
+    expect(list.queryByTestId('inbox-tasks-no-match')).not.toBeInTheDocument();
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+  });
+
+  it('opens a linked closed task on the Closed tab, once', () => {
+    resolvedPayload = { status: 'Cancelled' };
+    renderTab({}, '/inbox/tasks?taskId=t9');
+
+    fireEvent.click(screen.getByTestId('loaded'));
+
+    expect(screen.getByTestId('task-status-closed')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(capturedQueryKey[2]).toBe('closed');
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+
+    fireEvent.click(screen.getByTestId('task-status-open'));
+    fireEvent.click(screen.getByTestId('loaded'));
+
+    expect(screen.getByTestId('task-status-open')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+  });
+
+  // The notification bell can link to another task while the tab stays open.
+  it('opens a second linked closed task on the Closed tab while mounted', () => {
+    const FollowLink = () => {
+      const navigate = useNavigate();
+
+      return (
+        <button
+          data-testid="follow-link"
+          onClick={() => navigate('/inbox/tasks?taskId=t8')}>
+          follow
+        </button>
+      );
+    };
+    resolvedPayload = { status: 'Cancelled' };
+    render(
+      <MemoryRouter initialEntries={['/inbox/tasks?taskId=t9']}>
+        <TasksTab />
+        <FollowLink />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('loaded'));
+    fireEvent.click(screen.getByTestId('task-status-open'));
+    fireEvent.click(screen.getByTestId('follow-link'));
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t8');
+
+    fireEvent.click(screen.getByTestId('loaded'));
+
+    expect(screen.getByTestId('task-status-closed')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('detail')).toHaveTextContent('t8');
+  });
+
+  it('keeps the Open tab for a linked open task', () => {
+    resolvedPayload = { status: 'Open' };
+    renderTab({}, '/inbox/tasks?taskId=t9');
+
+    fireEvent.click(screen.getByTestId('loaded'));
+
+    expect(screen.getByTestId('task-status-open')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+  });
+
+  // A capped scan is the only way to reach matches on later pages, so its
+  // "Load more" must stay reachable while the linked task holds the detail.
+  it('keeps "Load more" reachable on a capped scan while a linked task is open', () => {
+    const scanned = Array.from(
+      { length: 200 },
+      (_, index) =>
+        ({ id: `t${index}`, type: 'TestCaseResolution' } as unknown as Task)
+    );
+    hookState = { items: scanned, isLoading: false, total: 500, hasMore: true };
+
+    renderTab({}, '/inbox/tasks?taskId=linked');
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    const list = within(screen.getByTestId('inbox-tasks-scroll'));
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('linked');
+    expect(
+      list.getByTestId('inbox-tasks-no-match-scanned')
+    ).toBeInTheDocument();
+
+    fireEvent.click(list.getByText('label.load-more'));
+
+    expect(capturedCanLoadMore?.(scanned)).toBe(true);
   });
 
   it('removes a resolved task and decrements the total when it leaves the filter', () => {
@@ -672,7 +853,7 @@ describe('TasksTab', () => {
     // A reassigned task can leave the current user's visible set, so the list
     // must re-sync with the server rather than being patched client-side.
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['inbox-task-list', 'me'],
+      queryKey: ['inbox-task-list'],
       refetchType: 'active',
     });
     expect(mockSetTotal).not.toHaveBeenCalled();
@@ -709,7 +890,7 @@ describe('TasksTab', () => {
     // The other status lists may now hold or miss this task; they re-read on
     // their next visit while the showing list keeps its in-place edit.
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['inbox-task-list', 'me'],
+      queryKey: ['inbox-task-list'],
       refetchType: 'none',
     });
   });
@@ -721,7 +902,13 @@ describe('TasksTab', () => {
 
     renderTab();
 
-    expect(capturedQueryKey).toEqual(['inbox-task-list', 'me', 'open', '']);
+    expect(capturedQueryKey).toEqual([
+      'inbox-task-list',
+      'me',
+      'open',
+      '',
+      'desc',
+    ]);
   });
 
   it('invalidates the sidebar open-task count after a task is resolved', () => {
@@ -799,6 +986,69 @@ describe('TasksTab', () => {
       expect(screen.getByTestId('detail')).toHaveTextContent('t2');
     });
 
+    // Groups sort by urgency, so one built from the newest page alone would
+    // hide an older incident until the list was scrolled to its end.
+    it('reads on past the screen while grouped, up to the scan cap', () => {
+      hookState = { ...hookState, hasMore: true };
+      renderTab();
+
+      expect(mockLoadMore).toHaveBeenCalled();
+
+      mockLoadMore.mockClear();
+      fireEvent.click(screen.getByTestId('toolbar-group-none'));
+
+      expect(mockLoadMore).not.toHaveBeenCalled();
+    });
+
+    // A failed page would otherwise be requested again on every settle.
+    it('stops reading on after a page fails', () => {
+      hookState = { ...hookState, hasMore: true, isLoadMoreError: true };
+      renderTab();
+
+      expect(mockLoadMore).not.toHaveBeenCalled();
+    });
+
+    // A filter that hides every loaded row leaves nothing to scroll, so the
+    // sentinel can't retry the failed page; the list must offer it.
+    it('offers a retry for a failed page under a filter that empties the list', () => {
+      hookState = { ...hookState, hasMore: true, isLoadMoreError: true };
+      renderTab();
+      fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+      fireEvent.click(screen.getByTestId('toolbar-status-pending'));
+
+      const retry = screen.getByTestId('inbox-tasks-load-more-error');
+
+      expect(retry).toHaveTextContent('server.entity-fetch-error');
+
+      fireEvent.click(within(retry).getByText('label.retry'));
+
+      expect(mockLoadMore).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops reading on at the scan cap', () => {
+      hookState = {
+        items: Array.from(
+          { length: 200 },
+          (_, index) => ({ ...TAG_TASK, id: `t${index}` } as Task)
+        ),
+        isLoading: false,
+        total: 500,
+        hasMore: true,
+      };
+      renderTab();
+
+      expect(mockLoadMore).not.toHaveBeenCalled();
+    });
+
+    it('marks group counts as floors while pages are still unread', () => {
+      hookState = { ...hookState, hasMore: true };
+      renderTab();
+
+      expect(screen.getAllByTestId('inbox-task-group')[0]).toHaveTextContent(
+        '1+'
+      );
+    });
+
     it('drops the group headers when grouping is turned off', () => {
       renderTab();
 
@@ -818,7 +1068,31 @@ describe('TasksTab', () => {
 
       expect(screen.getByTestId('task-t1')).toBeInTheDocument();
       expect(screen.queryByTestId('task-t2')).not.toBeInTheDocument();
-      expect(capturedQueryKey).toEqual(['inbox-task-list', 'me', 'open', '']);
+      expect(capturedQueryKey).toEqual([
+        'inbox-task-list',
+        'me',
+        'open',
+        '',
+        'desc',
+      ]);
+    });
+
+    it('lists oldest first, under its own cache key, once asked to', () => {
+      renderTab();
+
+      fireEvent.click(screen.getByTestId('toolbar-sort-oldest'));
+      capturedFetchPage();
+
+      expect(capturedQueryKey).toEqual([
+        'inbox-task-list',
+        'me',
+        'open',
+        '',
+        'asc',
+      ]);
+      expect(mockListVisibleTasks).toHaveBeenCalledWith(
+        expect.objectContaining({ sortOrder: 'asc' })
+      );
     });
 
     it('sends the search text to the server once typing settles', () => {
@@ -949,6 +1223,143 @@ describe('TasksTab', () => {
         'approved,rejected'
       );
       expect(screen.getByTestId('toolbar')).toHaveAttribute('data-status', '');
+    });
+  });
+
+  // The glossary Review tab: an entity's tasks, never the viewer's own Inbox.
+  describe('scoped to an entity', () => {
+    const ABOUT = 'svc.db.schema.table.tc';
+
+    it('lists every task about the entity, keyed on it', async () => {
+      renderTab({ aboutEntity: ABOUT });
+
+      await capturedFetchPage(undefined);
+
+      expect(capturedQueryKey[1]).toBe(`entity:${ABOUT}`);
+      expect(mockListTasks).toHaveBeenCalledWith(
+        expect.objectContaining({ aboutEntity: ABOUT, statusGroup: 'open' })
+      );
+      expect(mockListVisibleTasks).not.toHaveBeenCalled();
+    });
+
+    it('keeps the entity scope when a user is also given', async () => {
+      renderTab({
+        aboutEntity: ABOUT,
+        user: { id: 'u1', name: 'alice' } as unknown as User,
+      });
+
+      await capturedFetchPage(undefined);
+
+      expect(capturedQueryKey[1]).toBe(`entity:${ABOUT}`);
+      expect(mockListTasks).toHaveBeenCalledTimes(1);
+      expect(mockListTasks).toHaveBeenCalledWith(
+        expect.objectContaining({ aboutEntity: ABOUT })
+      );
+      expect(mockListTasks).not.toHaveBeenCalledWith(
+        expect.objectContaining({ createdById: 'u1' })
+      );
+      expect(mockListVisibleTasks).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('scoped to a user', () => {
+    const user = {
+      id: 'u1',
+      name: 'alice',
+      teams: [{ id: 'team1', type: 'team', name: 'Finance' }],
+    } as unknown as User;
+
+    it('fetches the tasks assigned to them or their teams, or created by them', async () => {
+      renderTab({ user });
+
+      await capturedFetchPage(undefined);
+
+      expect(capturedQueryKey[1]).toBe('user:u1');
+      expect(mockListTasks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assignee: 'alice,Finance',
+          statusGroup: 'open',
+        })
+      );
+      expect(mockListTasks).toHaveBeenCalledWith(
+        expect.objectContaining({ createdById: 'u1', statusGroup: 'open' })
+      );
+      expect(mockListVisibleTasks).not.toHaveBeenCalled();
+    });
+
+    it('reads "pending approval" from their side, not the viewer\'s', () => {
+      renderTab({ user });
+
+      expect(mockCurrentUserIdsFor).toHaveBeenCalledWith(user);
+    });
+  });
+
+  describe('list-only layout', () => {
+    beforeEach(() => {
+      hookState = {
+        items: [{ id: 't1' } as Task, { id: 't2' } as Task],
+        isLoading: false,
+        total: 2,
+      };
+    });
+
+    it('opens a clicked task through onOpenTask, with no detail pane', () => {
+      const onOpenTask = jest.fn();
+      renderTab({ onOpenTask });
+
+      fireEvent.click(screen.getByTestId('task-t2'));
+
+      expect(onOpenTask).toHaveBeenCalledWith('t2');
+      expect(screen.queryByTestId('detail')).not.toBeInTheDocument();
+    });
+
+    it('shows the empty state in the list', () => {
+      hookState = { items: [], isLoading: false, total: 0 };
+      renderTab({ onOpenTask: jest.fn() });
+
+      expect(
+        within(screen.getByTestId('inbox-tasks-scroll')).getByText(
+          'label.no-open-tasks-yet'
+        )
+      ).toBeInTheDocument();
+    });
+
+    it("names another user in their empty state instead of 'you', keeping the status", () => {
+      hookState = { items: [], isLoading: false, total: 0 };
+      renderTab({
+        onOpenTask: jest.fn(),
+        user: { id: 'u1', name: 'alice', displayName: 'Alice Doe' } as User,
+      });
+
+      // The tab opens on Open: an empty Open list says no open tasks, not none.
+      expect(
+        screen.getByTestId('inbox-tasks-user-open-empty')
+      ).toBeInTheDocument();
+      expect(screen.getByText('label.no-open-tasks-yet')).toBeInTheDocument();
+      expect(
+        screen.getByText('message.user-open-tasks-empty-description')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.tasks-open-empty-description')
+      ).not.toBeInTheDocument();
+    });
+
+    // Alice may have only open tasks: her empty Closed list must not say she
+    // has no tasks at all.
+    it('says another user has no closed tasks on their Closed tab', () => {
+      hookState = { items: [], isLoading: false, total: 0 };
+      renderTab({
+        onOpenTask: jest.fn(),
+        user: { id: 'u1', name: 'alice', displayName: 'Alice Doe' } as User,
+      });
+
+      fireEvent.click(screen.getByTestId('task-status-closed'));
+
+      expect(
+        screen.getByTestId('inbox-tasks-user-closed-empty')
+      ).toBeInTheDocument();
+      expect(screen.getByText('label.no-closed-tasks-yet')).toBeInTheDocument();
+      expect(screen.queryByText('label.no-tasks-yet')).not.toBeInTheDocument();
     });
   });
 });

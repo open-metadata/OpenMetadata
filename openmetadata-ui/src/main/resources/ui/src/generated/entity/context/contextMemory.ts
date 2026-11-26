@@ -53,8 +53,9 @@ export interface ContextMemory {
      * Lifecycle stage of the memory: Unprocessed (awaiting reconciliation), Draft, Approved (in
      * use), Superseded (replaced), Invalidated (found incorrect) or Archived. Deprecated and
      * Rejected remain supported legacy retirement stages. Superseded and Deprecated memories
-     * require supersededBy. When omitted at creation, the memory starts Unprocessed. Only
-     * Approved memories ground new memories and agent responses.
+     * require supersededBy. When omitted at creation, OSS starts the memory Approved;
+     * distributions that require review start it Unprocessed. Approved memories are available
+     * for grounding according to their visibility rules.
      */
     entityStatus?: ContextMemoryStatus;
     /**
@@ -366,8 +367,9 @@ export interface MemoryDispute {
  * Lifecycle stage of the memory: Unprocessed (awaiting reconciliation), Draft, Approved (in
  * use), Superseded (replaced), Invalidated (found incorrect) or Archived. Deprecated and
  * Rejected remain supported legacy retirement stages. Superseded and Deprecated memories
- * require supersededBy. When omitted at creation, the memory starts Unprocessed. Only
- * Approved memories ground new memories and agent responses.
+ * require supersededBy. When omitted at creation, OSS starts the memory Approved;
+ * distributions that require review start it Unprocessed. Approved memories are available
+ * for grounding according to their visibility rules.
  *
  * Lifecycle stage of a context memory. Unprocessed awaits reconciliation; only Approved
  * memories ground new memories and agent responses. Deprecated and Rejected remain readable

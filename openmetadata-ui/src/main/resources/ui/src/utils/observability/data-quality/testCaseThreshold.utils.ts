@@ -23,6 +23,7 @@ import {
   TestCaseEvaluationScope,
   TestCaseResult,
   TestCaseStatus,
+  ThresholdUnit,
 } from '../../../generated/tests/testCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { unwrapSelectValue } from '../../ParameterForm/ParameterFieldsUtils';
@@ -40,10 +41,7 @@ const MATCH_ENUM_PARAM = 'matchEnum';
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
 const COLUMN_VALUES_TO_BE_IN_SET = 'columnValuesToBeInSet';
 
-export enum ThresholdUnit {
-  Absolute = 'ABSOLUTE',
-  Percentage = 'PERCENTAGE',
-}
+export { ThresholdUnit };
 
 export enum CustomSqlStrategy {
   Rows = 'ROWS',
@@ -165,6 +163,7 @@ const ROW_COUNTABLE_DENOMINATORS: Record<string, ThresholdNoun> = {
   columnValuesToBeNotInSet: ThresholdNoun.Rows,
   columnValuesToBeNotNull: ThresholdNoun.Rows,
   columnValuesToNotMatchRegex: ThresholdNoun.Rows,
+  columnValuesToBeAtExpectedLocation: ThresholdNoun.Rows,
 };
 
 export const THRESHOLD_NOUN_KEYS: Record<ThresholdNoun, string> = {
@@ -464,6 +463,8 @@ export interface ThresholdPreviewInput {
   /** Column name for column-level tests, table name for table-level ones. */
   target?: string;
   profilerConfig?: TableProfilerConfig;
+  /** True when the form's Dynamic Assertion switch is on. */
+  useDynamicAssertion?: boolean;
 }
 
 export interface ThresholdSampling {
@@ -488,6 +489,8 @@ export interface ThresholdPreviewData {
   bound?: string;
   /** Statistical only: the bound after the deviation. Absent when there is none. */
   effectiveRange?: string;
+  /** Statistical only: the bound is learned at run time, not configured. */
+  isBoundLearned: boolean;
   /** Custom SQL only: the raw comparison operator id. */
   operator?: string;
   /** Custom SQL only: sentence key for `operator`, absent for an unknown id. */
@@ -630,7 +633,9 @@ const getCustomSqlPreview = (
  * Builds the data behind the live preview of what the configured threshold
  * actually does. Returns `undefined` when the selected test has no
  * `thresholdUnit` param, or when a statistical test has no bound yet — in both
- * cases there is nothing truthful to say.
+ * cases there is nothing truthful to say. A dynamic statistical assertion
+ * always has something to say: its bounds are learned, so the sentence
+ * describes the tolerance without quoting configured values.
  */
 export const getThresholdPreviewData = (
   input: ThresholdPreviewInput
@@ -657,6 +662,7 @@ export const getThresholdPreviewData = (
     target: input.target,
     sampling: getThresholdSampling(input.profilerConfig),
     hasZeroBound: false,
+    isBoundLearned: false,
     needsMatchEnum,
     // The match-enum case has its own, more specific warning.
     isThresholdIgnored:
@@ -664,6 +670,13 @@ export const getThresholdPreviewData = (
   };
 
   if (semantic === ThresholdTestSemantic.Statistical) {
+    // A dynamic assertion learns its bounds, so the static ones the form still
+    // holds are not what the run judges against — the sentence describes the
+    // tolerance around the learned bounds and quotes no configured values.
+    if (input.useDynamicAssertion) {
+      return { ...common, isBoundLearned: true };
+    }
+
     const statistical = getStatisticalPreview(input, threshold, unit);
 
     return statistical ? { ...common, ...statistical } : undefined;
@@ -699,20 +712,29 @@ export type RunThresholdResult = Pick<
   | 'failedRowsPercentage'
   | 'minBound'
   | 'maxBound'
+  | 'configuredMinBound'
+  | 'configuredMaxBound'
+  | 'appliedThreshold'
 >;
 
 /**
  * What one run measured next to the threshold it was judged by, as data. The
- * threshold is re-read from the test case's parameters, never parsed out of
- * `TestCaseResult.result`: that string is English free text built in
- * ingestion.
+ * threshold comes from the run's own snapshot of it, never from the test
+ * case's current parameters — those can have been edited since the run, and
+ * the tolerance a verdict was taken under is part of that verdict. It is never
+ * parsed out of `TestCaseResult.result` either: that string is English free
+ * text built in ingestion.
  */
 export interface RunThresholdData {
   semantic:
     | ThresholdTestSemantic.RowCountable
     | ThresholdTestSemantic.Statistical;
-  /** `0` when unset: the run tolerated nothing. */
-  threshold: number;
+  /**
+   * `0` when the run tolerated nothing. `undefined` when the run recorded no
+   * threshold — a run from an agent that predates the snapshot, whose
+   * tolerance cannot be recovered.
+   */
+  threshold?: number;
   isPercentage: boolean;
   noun: ThresholdNoun;
   /** Row-countable only: the run's failing rows, when it counted them. */
@@ -721,7 +743,7 @@ export interface RunThresholdData {
   /** Row-countable only: the population the percentage is a share of. */
   evaluatedRows?: number;
   populationNoun?: ThresholdNoun;
-  /** Statistical only: the bound as configured. Absent when it is learned. */
+  /** Statistical only: the bound as configured when the run executed. */
   configuredRange?: string;
   /** Statistical only: the bound the run was judged against, once widened. */
   effectiveRange?: string;
@@ -765,25 +787,24 @@ const getRowCountableRun = (
 };
 
 /**
- * The configured bound comes from the parameters, unless a dynamic assertion
- * learns it. The effective one is the bound the run reports: it is the one the
- * run was judged against, and a run from an agent that predates the threshold
- * reports the configured bound — which is the truth about that run.
+ * Both bounds come from the run itself: the configured one as it stood when
+ * the run executed, the effective one as the run was judged against it, after
+ * a failure threshold widened it or a dynamic assertion learned it. A run that
+ * recorded no configured bound — one from an agent that predates the snapshot,
+ * or a dynamic assertion that configured none — reports only the effective
+ * one, which is the truth about that run either way.
  */
 const getStatisticalRun = (
-  testCase: Pick<TestCase, 'useDynamicAssertion'>,
-  definitionName: string,
-  params: Record<string, unknown>,
   result: RunThresholdResult
 ): Pick<RunThresholdData, 'configuredRange' | 'effectiveRange'> => {
-  const bounds = STATISTICAL_BOUND_PARAMS[definitionName];
   const toBound = (value: number | undefined) =>
     isNil(value) ? undefined : normalizeValue(value);
 
   return {
-    configuredRange: testCase.useDynamicAssertion
-      ? undefined
-      : formatBound(toNumber(params[bounds.min]), toNumber(params[bounds.max])),
+    configuredRange: formatBound(
+      toBound(result.configuredMinBound),
+      toBound(result.configuredMaxBound)
+    ),
     effectiveRange: formatBound(
       toBound(result.minBound),
       toBound(result.maxBound)
@@ -797,21 +818,25 @@ const getStatisticalRun = (
  * verdict (queued, aborted), or the test reads no tolerance — including
  * `tableCustomSQLQuery`, whose threshold is its expected result, already the
  * card's Expected value.
+ *
+ * Only the shape of the comparison is read from the test case — which test
+ * definition it is, and so which numbers a run of it reports. The tolerance
+ * itself is the run's own, so that editing the test case cannot rewrite what
+ * an earlier run tolerated.
  */
 export const getRunThresholdData = (
-  testCase: Pick<
-    TestCase,
-    'parameterValues' | 'testDefinition' | 'useDynamicAssertion'
-  >,
+  testCase: Pick<TestCase, 'testDefinition'>,
   result: RunThresholdResult
 ): RunThresholdData | undefined => {
-  if (!COMPLETED_RUN_STATUSES.has(result.testCaseStatus)) {
+  if (
+    !COMPLETED_RUN_STATUSES.has(result.testCaseStatus) ||
+    result.appliedThreshold?.applied === false
+  ) {
     return undefined;
   }
 
   const definitionName = testCase.testDefinition?.name ?? '';
-  const params = getTestCaseParams(testCase);
-  const { semantic } = getEffectiveSemantic(definitionName, params);
+  const semantic = getThresholdTestSemantic(definitionName);
 
   if (
     semantic !== ThresholdTestSemantic.RowCountable &&
@@ -820,21 +845,20 @@ export const getRunThresholdData = (
     return undefined;
   }
 
-  const unit =
-    unwrapSelectValue(params[THRESHOLD_UNIT_PARAM]) ?? ThresholdUnit.Absolute;
+  const applied = result.appliedThreshold;
+  // The noun a threshold is counted in follows its unit, and an unrecorded
+  // threshold shows no amount at all, so the default only picks the noun.
+  const unit = applied?.unit ?? ThresholdUnit.Absolute;
   const common = {
     semantic,
-    threshold: toNumber(params[THRESHOLD_PARAM]) ?? 0,
+    threshold: isNil(applied) ? undefined : applied.value ?? 0,
     isPercentage: unit === ThresholdUnit.Percentage,
     noun: getThresholdNoun(unit, definitionName),
   };
 
   return semantic === ThresholdTestSemantic.RowCountable
     ? { ...common, ...getRowCountableRun(definitionName, result) }
-    : {
-        ...common,
-        ...getStatisticalRun(testCase, definitionName, params, result),
-      };
+    : { ...common, ...getStatisticalRun(result) };
 };
 
 /** How the rows behind a run were narrowed, as data for its badges. */

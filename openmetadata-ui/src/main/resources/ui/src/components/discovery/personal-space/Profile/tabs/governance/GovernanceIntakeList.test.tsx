@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TargetEntityType } from '../../../../../../generated/governance/intakeForm';
 
@@ -41,176 +46,12 @@ jest.mock(
     ))
 );
 
-jest.mock('../../../../../../pages/IntakeForms/IntakeFormsTable', () =>
-  jest.fn(
-    ({
-      forms,
-      onEdit,
-      onDelete,
-      onToggleEnabled,
-    }: {
-      forms: Array<{ id: string; entityType: string; enabled: boolean }>;
-      onEdit: (form: { id: string }) => void;
-      onDelete: (form: { id: string; entityType: string }) => void;
-      onToggleEnabled: (form: { id: string }, enabled: boolean) => void;
-    }) => (
-      <div data-testid="intake-forms-table">
-        {forms.map((f) => (
-          <div key={f.id}>
-            <span data-testid={`row-${f.entityType}`}>{f.entityType}</span>
-            <button
-              data-testid={`edit-${f.entityType}`}
-              onClick={() => onEdit(f)}>
-              Edit
-            </button>
-            <button
-              data-testid={`delete-${f.entityType}`}
-              onClick={() => onDelete(f)}>
-              Delete
-            </button>
-            <button
-              data-testid={`toggle-${f.entityType}`}
-              onClick={() => onToggleEnabled(f, !f.enabled)}>
-              Toggle
-            </button>
-          </div>
-        ))}
-      </div>
-    )
-  )
-);
-
-jest.mock('@openmetadata/ui-core-components', () => {
-  const DialogContent = ({ children }: { children?: React.ReactNode }) => (
-    <div>{children}</div>
-  );
-  const DialogFooter = ({ children }: { children?: React.ReactNode }) => (
-    <div>{children}</div>
-  );
-  const Dialog = Object.assign(
-    ({
-      children,
-      title,
-      'data-testid': testId,
-    }: {
-      children?: React.ReactNode;
-      title?: string;
-      'data-testid'?: string;
-    }) => (
-      <div data-testid={testId ?? 'dialog'} role="dialog">
-        <span>{title}</span>
-        {children}
-      </div>
-    ),
-    { Content: DialogContent, Footer: DialogFooter }
-  );
-
-  const DropdownItem = ({
-    label,
-    id,
-    isDisabled,
-    'data-testid': testId,
-  }: {
-    label?: string;
-    id?: string;
-    isDisabled?: boolean;
-    'data-testid'?: string;
-  }) => (
-    <div
-      aria-disabled={isDisabled ? 'true' : undefined}
-      data-testid={testId}
-      role="menuitem">
-      {label ?? id}
-    </div>
-  );
-
-  const DropdownMenu = ({
-    items,
-    onAction,
-    children,
-  }: {
-    items?: Array<{ id: string; label: string; isDisabled: boolean }>;
-    onAction?: (key: string) => void;
-    children?: (item: {
-      id: string;
-      label: string;
-      isDisabled: boolean;
-    }) => React.ReactNode;
-  }) => (
-    <div role="menu">
-      {(items ?? []).map((item) =>
-        children ? children({ ...item, onAction } as typeof item) : null
-      )}
-    </div>
-  );
-
-  const Dropdown = Object.assign(
-    ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-    {
-      Root: ({ children }: { children?: React.ReactNode }) => (
-        <div>{children}</div>
-      ),
-      Popover: ({ children }: { children?: React.ReactNode }) => (
-        <div>{children}</div>
-      ),
-      Menu: DropdownMenu,
-      Item: DropdownItem,
-    }
-  );
-
-  return {
-    Box: ({
-      children,
-      ...props
-    }: React.PropsWithChildren<Record<string, unknown>>) => (
-      <div {...props}>{children}</div>
-    ),
-    Button: ({
-      children,
-      onPress,
-      'data-testid': testId,
-      isDisabled,
-    }: {
-      children?: React.ReactNode;
-      onPress?: () => void;
-      'data-testid'?: string;
-      isDisabled?: boolean;
-    }) => (
-      <button data-testid={testId} disabled={isDisabled} onClick={onPress}>
-        {children}
-      </button>
-    ),
-    Dialog,
-    Dropdown,
-    Modal: ({ children }: { children?: React.ReactNode }) => (
-      <div>{children}</div>
-    ),
-    ModalOverlay: ({
-      children,
-      isOpen,
-    }: {
-      children?: React.ReactNode;
-      isOpen?: boolean;
-    }) => (isOpen ? <div data-testid="modal-overlay">{children}</div> : null),
-    Tooltip: ({ children }: { children?: React.ReactNode }) => (
-      <div>{children}</div>
-    ),
-    Typography: ({ children }: { children?: React.ReactNode }) => (
-      <span>{children}</span>
-    ),
-  };
-});
-
-jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  Building01: () => <svg />,
-  ChevronDown: () => <svg />,
-}));
-
 import {
   deleteIntakeForm,
   listIntakeForms,
   patchIntakeForm,
 } from '../../../../../../rest/intakeFormsAPI';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import GovernanceIntakeList from './GovernanceIntakeList';
 
 const mockListIntakeForms = listIntakeForms as jest.Mock;
@@ -289,7 +130,9 @@ describe('GovernanceIntakeList', () => {
     await renderAndWait();
     await act(async () => {
       fireEvent.click(
-        screen.getByTestId(`toggle-${TargetEntityType.DataProduct}`)
+        screen
+          .getByTestId(`toggle-${TargetEntityType.DataProduct}`)
+          .querySelector('input') as HTMLInputElement
       );
     });
 
@@ -301,39 +144,65 @@ describe('GovernanceIntakeList', () => {
     );
   });
 
-  it('opens delete confirm dialog when delete is clicked', async () => {
+  it('opens the delete confirmation popover when delete is clicked', async () => {
     await renderAndWait();
     fireEvent.click(
       screen.getByTestId(`delete-${TargetEntityType.DataProduct}`)
     );
 
-    expect(screen.getByTestId('modal-overlay')).toBeInTheDocument();
     expect(
-      screen.getByTestId('intake-form-delete-confirm')
+      await screen.findByTestId('intake-form-delete-popover')
     ).toBeInTheDocument();
   });
 
-  it('calls deleteIntakeForm on confirm', async () => {
+  it('calls deleteIntakeForm on confirm and reloads the forms', async () => {
     await renderAndWait();
     fireEvent.click(
       screen.getByTestId(`delete-${TargetEntityType.DataProduct}`)
     );
     await act(async () => {
-      fireEvent.click(screen.getByText('label.delete'));
+      fireEvent.click(
+        await screen.findByTestId('intake-form-delete-popover-confirm')
+      );
     });
 
     expect(mockDeleteIntakeForm).toHaveBeenCalledWith('form-1');
+    expect(mockListIntakeForms).toHaveBeenCalledTimes(2);
   });
 
-  it('closes delete dialog on cancel without deleting', async () => {
+  it('keeps the popover open without reloading when the delete fails', async () => {
+    mockDeleteIntakeForm.mockRejectedValue(new Error('boom'));
     await renderAndWait();
     fireEvent.click(
       screen.getByTestId(`delete-${TargetEntityType.DataProduct}`)
     );
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByTestId('intake-form-delete-popover-confirm')
+      );
+    });
 
-    expect(screen.getByTestId('modal-overlay')).toBeInTheDocument();
+    expect(showErrorToast).toHaveBeenCalled();
+    expect(mockListIntakeForms).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByTestId('intake-form-delete-popover')
+    ).toBeInTheDocument();
+  });
 
-    fireEvent.click(screen.getByText('label.cancel'));
+  it('closes the popover on cancel without deleting', async () => {
+    await renderAndWait();
+    fireEvent.click(
+      screen.getByTestId(`delete-${TargetEntityType.DataProduct}`)
+    );
+    fireEvent.click(
+      await screen.findByTestId('intake-form-delete-popover-cancel')
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('intake-form-delete-popover')
+      ).not.toBeInTheDocument()
+    );
 
     expect(mockDeleteIntakeForm).not.toHaveBeenCalled();
   });

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { Column } from 'react-data-grid';
+import DataGrid, { Column } from 'react-data-grid';
 import { MemoryRouter } from 'react-router-dom';
 import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
 import { EntityType } from '../../enums/entity.enum';
@@ -190,12 +190,19 @@ const defaultProps: BulkEditEntityProps = {
   handlePaste: jest.fn().mockReturnValue({}),
   pushToUndoStack: jest.fn(),
   handleOnRowsChange: jest.fn(),
+  searchText: '',
+  visibleRows: mockDataSource,
+  onSearchTextChange: jest.fn(),
 };
 
 const renderComponent = (props: Partial<BulkEditEntityProps> = {}) => {
   return render(
     <MemoryRouter>
-      <BulkEditEntity {...defaultProps} {...props} />
+      <BulkEditEntity
+        {...defaultProps}
+        visibleRows={props.dataSource ?? defaultProps.visibleRows}
+        {...props}
+      />
     </MemoryRouter>
   );
 };
@@ -257,6 +264,35 @@ describe('BulkEditEntity', () => {
       renderComponent();
 
       expect(screen.getByTestId('data-grid')).toBeInTheDocument();
+    });
+  });
+
+  describe('Search and editing', () => {
+    it('shows the no-results placeholder instead of an empty grid when search matches nothing', () => {
+      renderComponent({ searchText: 'zzz', visibleRows: [] });
+
+      expect(
+        screen.getByTestId('bulk-edit-no-search-results')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('data-grid')).not.toBeInTheDocument();
+    });
+
+    it('grows the row whose editor reports a taller height', async () => {
+      // No ids, like rows added in bulk edit: the lookup must key on the row, not row.id.
+      const rows = [{ col1: 'a' }, { col1: 'b' }];
+      renderComponent({
+        dataSource: rows,
+        visibleRows: rows,
+        editingRowHeight: { rowIdx: 1, height: 140 },
+      });
+      await screen.findByTestId('data-grid');
+
+      const { rowHeight, rows: gridRows } = (
+        DataGrid as unknown as jest.Mock
+      ).mock.calls.at(-1)[0];
+
+      expect(rowHeight(gridRows[0])).toBe(52);
+      expect(rowHeight(gridRows[1])).toBe(140);
     });
   });
 
@@ -620,6 +656,28 @@ describe('BulkEditEntity', () => {
       expect(mockTriggerExportForBulkEdit).toHaveBeenCalled();
     });
 
+    it('labels the rows of a table bulk edit as columns', () => {
+      mockEntityType = EntityType.TABLE;
+      renderComponent();
+
+      expect(
+        screen.getByText(
+          `label.edit ${mockDataSource.length} label.column-plural`
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('labels the rows of a glossary bulk edit as glossary terms', () => {
+      mockEntityType = EntityType.GLOSSARY;
+      renderComponent();
+
+      expect(
+        screen.getByText(
+          `label.edit ${mockDataSource.length} label.glossary-term-plural`
+        )
+      ).toBeInTheDocument();
+    });
+
     it('should handle DATABASE entity type', () => {
       mockEntityType = EntityType.DATABASE;
       renderComponent();
@@ -821,6 +879,26 @@ describe('BulkEditEntity', () => {
       expect(operationSummary.getByText('1')).toBeInTheDocument();
       expect(screen.getByText('1 label.error')).toBeInTheDocument();
     });
+
+    it('hides the add-metric footer while a search is active', () => {
+      mockEntityType = EntityType.METRIC;
+      const { rerender } = renderComponent({
+        searchText: 'zzz',
+        visibleRows: [],
+      });
+
+      expect(
+        screen.queryByTestId('bulk-edit-add-metric')
+      ).not.toBeInTheDocument();
+
+      rerender(
+        <MemoryRouter>
+          <BulkEditEntity {...defaultProps} />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByTestId('bulk-edit-add-metric')).toBeInTheDocument();
+    });
   });
 
   describe('Loading State', () => {
@@ -912,6 +990,87 @@ describe('BulkEditEntity', () => {
 
       expect(clearData).toHaveBeenCalled();
       expect(triggerExport).toHaveBeenCalled();
+    });
+  });
+
+  describe('Abort Reason Banner', () => {
+    const abortedValidationData: CSVImportResult = {
+      status: Status.Aborted,
+      abortReason: 'CSV file contains invalid data',
+      numberOfRowsProcessed: 0,
+    };
+
+    it('shows an error banner with the abort reason when validationData is aborted at the edit step', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        validationData: abortedValidationData,
+      });
+
+      expect(screen.getByTestId('bulk-edit-abort-reason')).toBeInTheDocument();
+      expect(screen.getByTestId('banner-message')).toHaveTextContent(
+        'CSV file contains invalid data'
+      );
+      expect(screen.getByTestId('banner-type')).toHaveTextContent('error');
+      expect(screen.getByTestId('banner-loading')).toHaveTextContent('false');
+    });
+
+    it('keeps the edit grid mounted alongside the abort banner', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        validationData: abortedValidationData,
+      });
+
+      expect(screen.getByTestId('data-grid')).toBeInTheDocument();
+      expect(screen.getByTestId('bulk-edit-abort-reason')).toBeInTheDocument();
+    });
+
+    it('keeps the cancel and next footer buttons enabled after an abort', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        validationData: abortedValidationData,
+        changedCellCount: 1,
+        changedCellKeysByRowId: { '0': ['col1'] },
+        changedRowCount: 1,
+      });
+
+      expect(
+        screen.getByRole('button', { name: 'label.cancel' })
+      ).not.toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: 'label.next' })
+      ).not.toBeDisabled();
+    });
+
+    it('hides the abort banner while a new validation is in progress', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        isValidating: true,
+        validationData: abortedValidationData,
+        changedCellCount: 1,
+        changedCellKeysByRowId: { '0': ['col1'] },
+        changedRowCount: 1,
+      });
+
+      expect(
+        screen.queryByTestId('bulk-edit-abort-reason')
+      ).not.toBeInTheDocument();
+    });
+
+    it('renders both the job and abort banners when an active job overlaps an abort reason', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        activeAsyncImportJob: {
+          jobId: 'test-job-123',
+          message: 'Processing...',
+          type: 'onValidate',
+        },
+        validationData: abortedValidationData,
+      });
+
+      const banners = screen.getAllByTestId('banner');
+
+      expect(banners).toHaveLength(2);
+      expect(screen.getByTestId('bulk-edit-abort-reason')).toBeInTheDocument();
     });
   });
 });

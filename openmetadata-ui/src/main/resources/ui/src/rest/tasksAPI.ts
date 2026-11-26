@@ -13,6 +13,7 @@
 import { AxiosHeaders, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { SORT_ORDER } from '../enums/common.enum';
 import {
   CreateTask,
   TaskCategory,
@@ -84,6 +85,8 @@ interface TaskScopedListParams {
   startTs?: number;
   endTs?: number;
   include?: Include;
+  /** Creation-time order; the server defaults to newest first. */
+  sortOrder?: SORT_ORDER;
 }
 
 export interface ListTasksParams {
@@ -103,12 +106,19 @@ export interface ListTasksParams {
   approver?: string;
   approverId?: string;
   mentionedUser?: string;
+  /** Inclusive lower bound on the last update time, in epoch milliseconds. */
+  updatedSince?: number;
+  sortBy?: 'createdAt' | 'updatedAt';
+  /** Free-text search across the task name, request reason and about-entity. */
+  q?: string;
   limit?: number;
   before?: string;
   after?: string;
   startTs?: number;
   endTs?: number;
   include?: Include;
+  /** The server defaults to newest first. */
+  sortOrder?: SORT_ORDER;
 }
 
 export interface ListDataAccessRequestsParams {
@@ -134,9 +144,13 @@ export interface ListDataAccessRequestsParams {
 /**
  * Get a list of tasks with optional filters.
  */
-export const listTasks = async (params?: ListTasksParams) => {
+export const listTasks = async (
+  params?: ListTasksParams,
+  signal?: AbortSignal
+) => {
   const response = await APIClient.get<PagingResponse<Task[]>>(BASE_URL, {
     params,
+    signal,
   });
 
   return response.data;
@@ -225,6 +239,21 @@ export const getTaskByTaskId = async (
 ): Promise<AxiosResponse<Task>> => {
   return APIClient.get<Task>(`${BASE_URL}/name/${taskId}`, { params });
 };
+
+const READABLE_TASK_ID_PREFIX = 'TASK-';
+
+/**
+ * A task by its UUID or by its readable `TASK-…` id. Links may carry either,
+ * but `/tasks/{id}` only takes the UUID; the readable id goes through
+ * `/tasks/name/{taskId}`.
+ */
+export const getTask = (
+  id: string,
+  params?: { fields?: string; include?: Include }
+): Promise<AxiosResponse<Task>> =>
+  id.startsWith(READABLE_TASK_ID_PREFIX)
+    ? getTaskByTaskId(id, params)
+    : getTaskById(id, params);
 
 /**
  * Get all versions of a task.

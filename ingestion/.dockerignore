@@ -8,5 +8,6 @@ examples/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+**/.nox/
 **/__pycache__/
 **/*.py[cod]

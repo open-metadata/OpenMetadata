@@ -482,9 +482,7 @@ describe('EmbeddedConnectionConfigForm', () => {
 
   it('does not gate the submit button on test connection results', async () => {
     await act(async () => {
-      render(
-        <EmbeddedConnectionConfigForm {...mockProps} requireTestConnection />
-      );
+      render(<EmbeddedConnectionConfigForm {...mockProps} />);
     });
 
     expect(await screen.findByTestId('submit-button')).not.toBeDisabled();
@@ -505,9 +503,7 @@ describe('EmbeddedConnectionConfigForm', () => {
     (flattenAuthTypeIntoConfig as jest.Mock).mockReturnValue(flattenedFormData);
 
     await act(async () => {
-      render(
-        <EmbeddedConnectionConfigForm {...mockProps} requireTestConnection />
-      );
+      render(<EmbeddedConnectionConfigForm {...mockProps} />);
     });
 
     fireEvent.click(screen.getByTestId('change-valid-form'));
@@ -522,9 +518,7 @@ describe('EmbeddedConnectionConfigForm', () => {
 
   it('passes required field validation to test connection', async () => {
     await act(async () => {
-      render(
-        <EmbeddedConnectionConfigForm {...mockProps} requireTestConnection />
-      );
+      render(<EmbeddedConnectionConfigForm {...mockProps} />);
     });
 
     fireEvent.click(screen.getByTestId('validate-required-fields'));
@@ -618,9 +612,7 @@ describe('EmbeddedConnectionConfigForm', () => {
     );
 
     await act(async () => {
-      render(
-        <EmbeddedConnectionConfigForm {...mockProps} requireTestConnection />
-      );
+      render(<EmbeddedConnectionConfigForm {...mockProps} />);
     });
 
     fireEvent.click(screen.getByTestId('change-valid-form'));

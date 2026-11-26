@@ -375,5 +375,43 @@ describe('FeaturesPlaceholder', () => {
     expect(screen.getByText('Set it up in three steps')).toBeInTheDocument();
     expect(screen.getByText('Define it')).toBeInTheDocument();
     expect(screen.getByText('Own it')).toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('turns the title of a feature with an action into a button that runs it', () => {
+    const onPress = jest.fn();
+    render(
+      <FeaturesPlaceholder
+        features={[
+          {
+            key: 'enabled',
+            icon: <span />,
+            title: 'Install it',
+            description: 'From the library',
+            action: { color: 'primary', onPress },
+          },
+          {
+            key: 'disabled',
+            icon: <span />,
+            title: 'Build it',
+            action: { color: 'secondary', isDisabled: true, onPress },
+          },
+          { key: 'plain', icon: <span />, title: 'Read about it' },
+        ]}
+        title="Get started"
+      />
+    );
+
+    expect(
+      screen.getAllByRole('button').map((button) => button.textContent)
+    ).toEqual(['Install it', 'Build it']);
+    expect(screen.getByText('From the library')).toBeInTheDocument();
+    expect(screen.getByText('Read about it')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Build it' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Install it' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Build it' }));
+
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
 import {
-  Building01,
-  GlossaryTerm,
+  IntakeForms,
+  KnowledgePanels,
 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +25,7 @@ interface LandingCard {
   descriptionKey: string;
   icon: FC<{ className?: string }>;
   id: string;
+  isDeprecated?: boolean;
   titleKey: string;
   view: GovernanceView;
 }
@@ -32,16 +33,17 @@ interface LandingCard {
 const LANDING_CARDS: LandingCard[] = [
   {
     id: 'glossary-relations',
-    icon: GlossaryTerm,
+    icon: KnowledgePanels,
     titleKey: 'label.glossary-term-relation-plural',
     descriptionKey: 'message.glossary-term-relation-settings-description',
     view: { type: 'glossary-list' },
   },
   {
     id: 'intake-forms',
-    icon: Building01,
+    icon: IntakeForms,
     titleKey: 'label.intake-form-plural',
     descriptionKey: 'message.intake-form-plural-description',
+    isDeprecated: true,
     view: { type: 'intake-list' },
   },
 ];
@@ -75,7 +77,7 @@ const GovernanceLanding: FC<GovernanceLandingProps> = ({ onNavigate }) => {
                 onNavigate(card.view);
               }
             }}>
-            <Card.Content>
+            <Card.Content className="tw:px-3">
               <Box
                 align="start"
                 data-testid={`governance-card-${card.id}`}
@@ -83,19 +85,26 @@ const GovernanceLanding: FC<GovernanceLandingProps> = ({ onNavigate }) => {
                 gap={4}>
                 <Box
                   align="center"
-                  className={`tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
+                  className={`tw:mt-1 tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
                     index
                   )}`}
                   justify="center">
                   <Icon className="tw:size-6" />
                 </Box>
                 <Box className="tw:min-w-0" direction="col" gap={1}>
-                  <Typography
-                    className="tw:text-primary"
-                    size="text-sm"
-                    weight="semibold">
-                    {t(card.titleKey)}
-                  </Typography>
+                  <Box align="center" direction="row" gap={2}>
+                    <Typography
+                      className="tw:text-primary"
+                      size="text-sm"
+                      weight="semibold">
+                      {t(card.titleKey)}
+                    </Typography>
+                    {card.isDeprecated && (
+                      <Badge color="warning" size="sm" type="pill-color">
+                        {t('label.deprecated')}
+                      </Badge>
+                    )}
+                  </Box>
                   <Typography
                     className="tw:text-tertiary tw:line-clamp-2"
                     size="text-sm"

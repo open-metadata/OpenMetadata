@@ -95,6 +95,13 @@ class StoredProcedureLineageMixin(ABC):
         """
         yield self.get_stored_procedure_sql_statement()
 
+    def yield_supplementary_stored_procedure_queries(self, conn: Connection) -> Iterator[QueryByProcedure]:
+        """
+        Procedure queries the query history cannot hold, read over the same connection.
+        Sources whose history misses some statements override this; none by default.
+        """
+        yield from ()
+
     def narrow_stored_procedure_statement(self, statement: str, exc: Exception) -> Iterator[str]:
         """
         Statements to try instead of one that failed, for sources that can read the same
@@ -129,6 +136,7 @@ class StoredProcedureLineageMixin(ABC):
             with connection as conn:
                 for query in self.get_stored_procedure_sql_statements():
                     yield from self._yield_queries_for_statement(conn, query)
+                yield from self.yield_supplementary_stored_procedure_queries(conn)
 
     def _yield_queries_for_statement(self, conn: Connection, query: str) -> Iterator[QueryByProcedure]:
         """

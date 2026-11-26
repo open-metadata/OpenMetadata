@@ -96,3 +96,38 @@ def test_fetch_report_pages_logs_an_empty_response(_msal, response, logged, capl
         if record.levelno == logging.DEBUG and "for report [report-1] in workspace [ws-1]" in record.getMessage()
     ]
     assert bool(empty_logs) is logged
+
+
+def _groups_page(*workspace_ids: str, count: int) -> dict:
+    return {
+        "@odata.context": "ctx",
+        "@odata.count": count,
+        "value": [{"id": workspace_id, "name": workspace_id} for workspace_id in workspace_ids],
+    }
+
+
+@pytest.mark.parametrize(
+    "responses, listed, is_incomplete",
+    [
+        (
+            [_groups_page("ws-1", count=2), _groups_page("ws-1", count=2), _groups_page("ws-2", count=2)],
+            ["ws-1", "ws-2"],
+            False,
+        ),
+        ([_groups_page("ws-1", count=2), _groups_page("ws-1", count=2), None, None], ["ws-1"], True),
+        ([None, _groups_page("ws-1", count=2)], ["ws-1"], True),
+    ],
+    ids=["complete", "page-lost-after-retry", "unreadable-count"],
+)
+@patch("metadata.ingestion.source.dashboard.powerbi.client.msal")
+def test_fetch_all_workspaces_reports_a_listing_short_of_its_count(_msal, responses, listed, is_incomplete):
+    """Stale deletion trusts an empty run only after a workspace listing that is known to be whole."""
+    api_client = PowerBiApiClient(PowerBIConnection(**CONNECTION_CONFIG, pagination_entity_per_page=1))
+    api_client.client = MagicMock()
+    api_client.client.get.side_effect = responses
+    on_incomplete = MagicMock()
+
+    workspaces = api_client.fetch_all_workspaces(on_incomplete=on_incomplete)
+
+    assert [workspace.id for workspace in workspaces] == listed
+    assert on_incomplete.called is is_incomplete

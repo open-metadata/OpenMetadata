@@ -11,62 +11,34 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.ImageFromDockerfile;
-import org.testcontainers.utility.DockerImageName;
-import org.testcontainers.utility.MountableFile;
 
+/**
+ * The access contract of the published Fuseki image as OpenMetadata configures it: only the admin
+ * account reaches any dataset, and every anonymous read or write is refused before it touches data.
+ */
 class RdfFusekiAuthorizationIT {
   private static final String BOUNDARY = "rdf-upload-test";
   private static final String GRAPH = "urn:review:upload";
+  private static final String ADMIN =
+      FusekiTestImage.ADMIN_USER + ":" + FusekiTestImage.ADMIN_PASSWORD;
   private static final HttpClient HTTP = HttpClient.newHttpClient();
   private static GenericContainer<?> fuseki;
   private static String endpoint;
 
   @BeforeAll
-  static void start() throws Exception {
-    fuseki =
-        shippedFuseki()
-            .withExposedPorts(3030)
-            .withEnv("FUSEKI_ADMIN_PASSWORD", "test-admin")
-            .withEnv("FUSEKI_OPENMETADATA_PASSWORD", "test-writer")
-            .withEnv("JVM_ARGS", "-Xms512m -Xmx512m")
-            .waitingFor(Wait.forHttp("/$/ping").withStartupTimeout(Duration.ofMinutes(2)))
-            .withCopyFileToContainer(
-                MountableFile.forHostPath(
-                    RdfTestDatabase.repositoryRoot()
-                        .resolve("docker/rdf-store/shiro.ini.template")),
-                "/fuseki/shiro.ini.template");
+  static void start() {
+    fuseki = FusekiTestImage.forOpenMetadata("-Xms512m -Xmx512m");
     fuseki.start();
-    endpoint = "http://" + fuseki.getHost() + ":" + fuseki.getMappedPort(3030);
-    for (String dataset : List.of("openmetadata_a", "openmetadata_b")) {
-      final var response =
-          send(
-              request("/$/datasets")
-                  .header("Authorization", basic("admin:test-admin"))
-                  .header("Content-Type", "application/x-www-form-urlencoded")
-                  .POST(HttpRequest.BodyPublishers.ofString("dbName=" + dataset + "&dbType=tdb2")));
-      assertTrue(response.statusCode() / 100 == 2 || response.statusCode() == 409, response.body());
-    }
-  }
-
-  private static GenericContainer<?> shippedFuseki() {
-    // General RDF profiles can use third-party images that do not contain our Shiro template.
-    final String image = System.getProperty("rdfAuthorizationContainerImage");
-    return image != null
-        ? new GenericContainer<>(DockerImageName.parse(image))
-        : new GenericContainer<>(
-            new ImageFromDockerfile()
-                .withFileFromPath(
-                    ".", RdfTestDatabase.repositoryRoot().resolve("docker/rdf-store")));
+    endpoint = FusekiTestImage.serverUrl(fuseki);
   }
 
   @AfterAll
@@ -77,38 +49,24 @@ class RdfFusekiAuthorizationIT {
     HTTP.close();
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {"openmetadata", "openmetadata_a", "openmetadata_b"})
-  void writerHasTheSameUploadPermissionsAsAdmin(final String dataset) throws Exception {
-    final String subject = "urn:review:" + UUID.randomUUID();
-    final var admin =
-        send(upload(dataset, subject).header("Authorization", basic("admin:test-admin")));
-    final var response =
-        send(upload(dataset, subject).header("Authorization", basic("openmetadata:test-writer")));
-    // Assemblers can omit the legacy upload handler; compare authorization independently of it.
-    assertTrue(admin.statusCode() / 100 == 2 || admin.statusCode() == 405, admin.body());
-    assertEquals(admin.statusCode(), response.statusCode(), response.body());
+  @Test
+  void pingStaysAnonymousForHealthChecks() throws Exception {
+    assertEquals(200, send(request("/$/ping").GET()).statusCode());
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"openmetadata", "openmetadata_a", "openmetadata_b"})
-  void writerCanUploadThroughGraphStore(final String dataset) throws Exception {
+  void adminCanWriteThroughGraphStore(final String dataset) throws Exception {
     final String subject = "urn:review:" + UUID.randomUUID();
     final var response =
-        send(
-            request("/" + dataset + "/data?graph=" + GRAPH)
-                .header("Authorization", basic("openmetadata:test-writer"))
-                .header("Content-Type", "text/turtle")
-                .POST(
-                    HttpRequest.BodyPublishers.ofString(
-                        "<" + subject + "> <urn:review:predicate> <urn:review:object> .")));
+        send(graphStorePost(dataset, subject).header("Authorization", basic(ADMIN)));
     assertEquals(2, response.statusCode() / 100, response.body());
     assertTrue(contains(dataset, GRAPH, subject));
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"openmetadata", "openmetadata_a", "openmetadata_b"})
-  void graphStorePutReplacesAtomicallyWithWriterCredentials(final String dataset) throws Exception {
+  void adminReplacesAGraphAtomicallyThroughGraphStorePut(final String dataset) throws Exception {
     final String graph = "urn:review:replacement:" + UUID.randomUUID();
     final String first = "urn:review:" + UUID.randomUUID();
     final String second = "urn:review:" + UUID.randomUUID();
@@ -125,19 +83,56 @@ class RdfFusekiAuthorizationIT {
 
   private static HttpResponse<String> replace(
       final String dataset, final String graph, final String turtle) throws Exception {
-    return send(
-        request("/" + dataset + "/data?graph=" + graph)
-            .header("Authorization", basic("openmetadata:test-writer"))
-            .header("Content-Type", "text/turtle")
-            .PUT(HttpRequest.BodyPublishers.ofString(turtle)));
+    return send(graphStorePut(dataset, graph, turtle).header("Authorization", basic(ADMIN)));
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"openmetadata", "openmetadata_a", "openmetadata_b"})
-  void anonymousUploadCannotMutateAnyDataset(final String dataset) throws Exception {
+  void anonymousWritesCannotMutateAnyDataset(final String dataset) throws Exception {
     final String subject = "urn:review:" + UUID.randomUUID();
     assertEquals(401, send(upload(dataset, subject)).statusCode());
+    assertEquals(401, send(graphStorePost(dataset, subject)).statusCode());
+    assertEquals(
+        401,
+        send(graphStorePut(
+                dataset, GRAPH, "<" + subject + "> <urn:review:predicate> <urn:review:object> ."))
+            .statusCode());
+    assertEquals(
+        401,
+        send(request("/" + dataset + "/update")
+                .header("Content-Type", "application/sparql-update")
+                .POST(
+                    HttpRequest.BodyPublishers.ofString(
+                        "INSERT DATA { GRAPH <"
+                            + GRAPH
+                            + "> { <"
+                            + subject
+                            + "> <urn:review:predicate> <urn:review:object> } }")))
+            .statusCode());
     assertFalse(contains(dataset, GRAPH, subject));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"openmetadata", "openmetadata_a", "openmetadata_b"})
+  void anonymousQueriesAreRefused(final String dataset) throws Exception {
+    for (String service : new String[] {"sparql", "query"}) {
+      assertEquals(401, send(ask(dataset, service, "ASK { ?s ?p ?o }")).statusCode(), service);
+    }
+  }
+
+  private static HttpRequest.Builder graphStorePost(final String dataset, final String subject) {
+    return request("/" + dataset + "/data?graph=" + GRAPH)
+        .header("Content-Type", "text/turtle")
+        .POST(
+            HttpRequest.BodyPublishers.ofString(
+                "<" + subject + "> <urn:review:predicate> <urn:review:object> ."));
+  }
+
+  private static HttpRequest.Builder graphStorePut(
+      final String dataset, final String graph, final String turtle) {
+    return request("/" + dataset + "/data?graph=" + graph)
+        .header("Content-Type", "text/turtle")
+        .PUT(HttpRequest.BodyPublishers.ofString(turtle));
   }
 
   private static HttpRequest.Builder upload(final String dataset, final String subject) {
@@ -164,16 +159,20 @@ class RdfFusekiAuthorizationIT {
         .POST(HttpRequest.BodyPublishers.ofString(body));
   }
 
+  private static HttpRequest.Builder ask(
+      final String dataset, final String service, final String query) {
+    return request("/" + dataset + "/" + service)
+        .header("Content-Type", "application/sparql-query")
+        .header("Accept", "application/sparql-results+json")
+        .POST(HttpRequest.BodyPublishers.ofString(query));
+  }
+
   private static boolean contains(final String dataset, final String graph, final String subject)
       throws Exception {
     final var response =
         send(
-            request("/" + dataset + "/query")
-                .header("Content-Type", "application/sparql-query")
-                .header("Accept", "application/sparql-results+json")
-                .POST(
-                    HttpRequest.BodyPublishers.ofString(
-                        "ASK { GRAPH <" + graph + "> { <" + subject + "> ?p ?o } }")));
+            ask(dataset, "query", "ASK { GRAPH <" + graph + "> { <" + subject + "> ?p ?o } }")
+                .header("Authorization", basic(ADMIN)));
     assertEquals(200, response.statusCode(), response.body());
     return JsonUtils.readTree(response.body()).path("boolean").asBoolean();
   }

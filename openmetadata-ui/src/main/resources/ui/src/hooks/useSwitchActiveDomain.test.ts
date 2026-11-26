@@ -77,7 +77,7 @@ describe('useSwitchActiveDomain', () => {
 
     await switchTo(pickedDomain);
 
-    expect(mockUpdateActiveDomain).toHaveBeenCalledWith(pickedDomain);
+    expect(mockUpdateActiveDomain).not.toHaveBeenCalled();
     expect(updateUserDetail).toHaveBeenCalledWith('user-id', [
       {
         op: 'add',
@@ -89,26 +89,46 @@ describe('useSwitchActiveDomain', () => {
     expect(mockNavigate).toHaveBeenCalledWith(0);
   });
 
+  it('drops the list page from the URL before reloading', async () => {
+    (updateUserDetail as jest.Mock).mockResolvedValue({ id: 'user-id' });
+    window.history.replaceState(
+      {},
+      '',
+      '/tables?currentPage=3&cursorType=after&cursorValue=abc&pageSize=25'
+    );
+
+    await switchTo(pickedDomain);
+
+    expect(mockNavigate).toHaveBeenNthCalledWith(
+      1,
+      { search: 'pageSize=25', hash: '' },
+      { replace: true }
+    );
+    expect(mockNavigate).toHaveBeenLastCalledWith(0);
+
+    window.history.replaceState({}, '', '/');
+  });
+
   it('clears the saved domain when switching to all domains', async () => {
     (updateUserDetail as jest.Mock).mockResolvedValue({ id: 'user-id' });
 
     await switchTo(undefined);
 
-    expect(mockUpdateActiveDomain).toHaveBeenCalledWith(undefined);
+    expect(mockUpdateActiveDomain).not.toHaveBeenCalled();
     expect(updateUserDetail).toHaveBeenCalledWith('user-id', [
       { op: 'add', path: '/defaultDomain', value: null },
     ]);
     expect(mockNavigate).toHaveBeenCalledWith(0);
   });
 
-  it('rolls back and does not reload when the save fails', async () => {
+  it('keeps the current pick and does not reload when the save fails', async () => {
     const error = new Error('save failed');
     (updateUserDetail as jest.Mock).mockRejectedValue(error);
 
     await switchTo(pickedDomain);
 
     expect(showErrorToast).toHaveBeenCalledWith(error);
-    expect(mockUpdateActiveDomain).toHaveBeenLastCalledWith(savedDomain);
+    expect(mockUpdateActiveDomain).not.toHaveBeenCalled();
     expect(mockUpdateCurrentUser).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
   });

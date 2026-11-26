@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import {
   KeyboardEvent,
@@ -47,15 +48,19 @@ const ExpressionCodeCell = ({
   );
   const anchorRef = useRef<HTMLSpanElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
-  // Computed once so the floating editor can escape the grid's scroll clipping
-  // and sit over the rows like the design (flips above the cell near the bottom).
+  // Portaled with fixed coordinates so the floating editor can escape the grid's scroll clipping
+  // and sit over the rows like the design (flips above the cell near the bottom). It is re-placed
+  // on every scroll, or scrolling the grid would leave it over other (and frozen) columns.
   const [position, setPosition] = useState<{ top: number; left: number }>();
   const lineCount = Math.max(1, code.split('\n').length);
 
   useLayoutEffect(() => {
-    const cell = anchorRef.current?.closest('.rdg-cell') ?? anchorRef.current;
-    const rect = cell?.getBoundingClientRect();
-    if (rect) {
+    const updatePosition = () => {
+      const cell = anchorRef.current?.closest('.rdg-cell') ?? anchorRef.current;
+      const rect = cell?.getBoundingClientRect();
+      if (!rect) {
+        return;
+      }
       const spaceBelow = window.innerHeight - rect.bottom;
       const top =
         spaceBelow >= EDITOR_HEIGHT
@@ -66,7 +71,19 @@ const ExpressionCodeCell = ({
         Math.min(rect.left, window.innerWidth - EDITOR_WIDTH - 8)
       );
       setPosition({ top, left });
-    }
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, {
+      capture: true,
+      passive: true,
+    });
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
   }, []);
 
   useEffect(() => {
@@ -124,22 +141,20 @@ const ExpressionCodeCell = ({
                   ))}
                 </div>
                 <div className="bulk-edit-code-editor-actions">
-                  <button
-                    aria-label={t('label.save')}
-                    className="bulk-edit-code-editor-btn"
+                  <ButtonUtility
                     data-testid="code-editor-save"
-                    type="button"
-                    onClick={() => onCommit(code, activeLanguage)}>
-                    <Check size={14} />
-                  </button>
-                  <button
-                    aria-label={t('label.cancel')}
-                    className="bulk-edit-code-editor-btn"
+                    icon={Check}
+                    size="sm"
+                    tooltip={t('label.save')}
+                    onClick={() => onCommit(code, activeLanguage)}
+                  />
+                  <ButtonUtility
                     data-testid="code-editor-cancel"
-                    type="button"
-                    onClick={onCancel}>
-                    <XClose size={14} />
-                  </button>
+                    icon={XClose}
+                    size="sm"
+                    tooltip={t('label.cancel')}
+                    onClick={onCancel}
+                  />
                 </div>
               </div>
               <div className="bulk-edit-code-editor-body">

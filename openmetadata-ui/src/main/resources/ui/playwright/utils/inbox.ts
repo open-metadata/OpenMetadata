@@ -99,6 +99,42 @@ export const visitInbox = async (page: Page) => {
   await expect(page.getByTestId('inbox-activity-tab')).toBeVisible();
 };
 
+/**
+ * Wait for an entry in the Inbox Activity tab, scrolling as far as it has to.
+ *
+ * The tab loads the 200 newest events of every user and renders them 40 at a
+ * time, revealing the next 40 when `inbox-activity-sentinel` nears the
+ * viewport. On a busy shard other workers' events land above this one within
+ * seconds, so it can sit below the first batch and is in the DOM only once the
+ * list is scrolled to it.
+ */
+export const expectInboxActivity = async (
+  page: Page,
+  entry: string | RegExp
+) => {
+  await expect(async () => {
+    await visitInbox(page);
+    const item = page.getByText(entry);
+    const sentinel = page.getByTestId('inbox-activity-sentinel');
+
+    await expect
+      .poll(
+        async () => {
+          if ((await item.count()) > 0) {
+            return true;
+          }
+          if ((await sentinel.count()) > 0) {
+            await sentinel.scrollIntoViewIfNeeded();
+          }
+
+          return false;
+        },
+        { timeout: 15_000 }
+      )
+      .toBe(true);
+  }).toPass({ timeout: 90_000 });
+};
+
 /** Open the Inbox on Triage, its task queue. */
 export const visitTriage = async (page: Page) => {
   await openInboxFromSidebar(page);
@@ -108,7 +144,7 @@ export const visitTriage = async (page: Page) => {
 };
 
 /**
- * Open My Data from the user menu, which shows it in the personal-space panel.
+ * Open My Data & Following from the user menu, which shows it in the personal-space panel.
  * A direct `goto('/my-data')` races the AI-mode route registration as `/inbox`
  * does, and the sidebar brand leads Home, not here.
  */
@@ -125,7 +161,9 @@ export const visitMyData = async (page: Page) => {
   // open it covers the menu, and its content waits on the permission check and
   // a lazy chunk, so wait for the content instead of opening it again.
   const myDataItem = page.getByTestId('ai-user-menu-my-data');
-  const myDataDialog = page.getByRole('dialog', { name: 'My Data' });
+  const myDataDialog = page.getByRole('dialog', {
+    name: 'My Data & Following',
+  });
   const myDataPage = page.getByTestId('my-data-page');
   await expect(async () => {
     if (await myDataPage.isVisible()) {
@@ -140,6 +178,23 @@ export const visitMyData = async (page: Page) => {
     await expect(myDataPage).toBeVisible({ timeout: 5_000 });
   }).toPass({ timeout: AI_SHELL_TIMEOUT });
 };
+
+/** The Following tab's search: the assets `userId` follows. */
+export const isFollowedAssetsSearch = (userId: string) => (r: Response) => {
+  const url = new URL(r.url());
+
+  return (
+    r.request().method() === 'GET' &&
+    url.pathname === '/api/v1/search/query' &&
+    url.searchParams
+      .get('query_filter')
+      ?.includes(`"followers":"${userId}"`) === true
+  );
+};
+
+/** The Quill editor of the Inbox comment/reply composer inside `scope`. */
+export const composerEditor = (scope: Locator) =>
+  scope.getByTestId('inbox-comment-composer').locator('.ql-editor');
 
 /** Pick one of the Activity feed's sub-tabs (All, Mentions, …). */
 export const switchActivityFeed = async (

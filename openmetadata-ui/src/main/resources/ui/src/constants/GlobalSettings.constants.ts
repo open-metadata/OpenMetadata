@@ -99,6 +99,7 @@ export enum GlobalSettingOptions {
   FILES = 'files',
   SPREADSHEETS = 'spreadsheets',
   WORKSHEETS = 'worksheets',
+  ARTICLES = 'articles',
   COLUMN_BULK_OPERATIONS = 'columnBulkOperations',
   AUDIT_LOGS = 'audit-logs',
   GLOSSARY_TERM_RELATIONS = 'glossary-term-relations',

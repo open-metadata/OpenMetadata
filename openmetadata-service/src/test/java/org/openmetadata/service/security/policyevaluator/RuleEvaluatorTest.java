@@ -483,6 +483,98 @@ class RuleEvaluatorTest {
   }
 
   @Test
+  void test_matchAnyDomain() {
+    EntityReference finance =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withName("Finance")
+            .withFullyQualifiedName("Domain.Finance");
+    EntityReference procurement =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withName("Procurement")
+            .withFullyQualifiedName("Domain.Procurement");
+
+    CreateResourceContext<?> contextWithDomains = mock(CreateResourceContext.class);
+    Mockito.when(contextWithDomains.getDomains()).thenReturn(listOf(finance, procurement));
+    StandardEvaluationContext ctx =
+        new StandardEvaluationContext(new RuleEvaluator(null, subjectContext, contextWithDomains));
+
+    // Resource belongs to Finance; both the first and the second input match
+    assertTrue(
+        parseExpression("matchAnyDomain('Domain.Finance', 'Domain.Engineering')")
+            .getValue(ctx, Boolean.class));
+    assertTrue(
+        parseExpression("matchAnyDomain('Domain.Engineering', 'Domain.Procurement')")
+            .getValue(ctx, Boolean.class));
+    assertTrue(parseExpression("matchAnyDomain('Domain.Finance')").getValue(ctx, Boolean.class));
+    assertFalse(parseExpression("!matchAnyDomain('Domain.Finance')").getValue(ctx, Boolean.class));
+
+    // Domain.Finance is not present in the resource's domains
+    assertFalse(
+        parseExpression("matchAnyDomain('Domain.Engineering')").getValue(ctx, Boolean.class));
+    assertTrue(
+        parseExpression("!matchAnyDomain('Domain.Engineering')").getValue(ctx, Boolean.class));
+    assertFalse(
+        parseExpression("matchAnyDomain('Domain.Engineering', 'Domain.Marketing')")
+            .getValue(ctx, Boolean.class));
+
+    // Resource with no domains never matches
+    CreateResourceContext<?> contextNoDomains = mock(CreateResourceContext.class);
+    Mockito.when(contextNoDomains.getDomains()).thenReturn(new ArrayList<>());
+    StandardEvaluationContext emptyCtx =
+        new StandardEvaluationContext(new RuleEvaluator(null, subjectContext, contextNoDomains));
+    assertFalse(
+        parseExpression("matchAnyDomain('Domain.Finance')").getValue(emptyCtx, Boolean.class));
+    assertTrue(
+        parseExpression("!matchAnyDomain('Domain.Finance')").getValue(emptyCtx, Boolean.class));
+
+    // getDomains() returning null must not blow up
+    CreateResourceContext<?> contextNullDomains = mock(CreateResourceContext.class);
+    Mockito.when(contextNullDomains.getDomains()).thenReturn(null);
+    StandardEvaluationContext nullCtx =
+        new StandardEvaluationContext(new RuleEvaluator(null, subjectContext, contextNullDomains));
+    assertFalse(
+        parseExpression("matchAnyDomain('Domain.Finance')").getValue(nullCtx, Boolean.class));
+
+    // A null resource context never matches
+    StandardEvaluationContext noResourceCtx =
+        new StandardEvaluationContext(new RuleEvaluator(null, subjectContext, null));
+    assertFalse(
+        parseExpression("matchAnyDomain('Domain.Finance')").getValue(noResourceCtx, Boolean.class));
+  }
+
+  @Test
+  void test_matchAnyDomain_matchesTheExactSubDomainFqnOnly() {
+    EntityReference payments =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withName("Payments")
+            .withFullyQualifiedName("Finance.Payments");
+    CreateResourceContext<?> context = mock(CreateResourceContext.class);
+    Mockito.when(context.getDomains()).thenReturn(listOf(payments));
+    StandardEvaluationContext ctx =
+        new StandardEvaluationContext(new RuleEvaluator(null, subjectContext, context));
+
+    assertTrue(parseExpression("matchAnyDomain('Finance.Payments')").getValue(ctx, Boolean.class));
+    // Like matchAnyTag, the match is on the exact FQN: neither the parent domain nor the
+    // sub-domain's bare name matches. Widening this later would silently widen existing policies.
+    assertFalse(parseExpression("matchAnyDomain('Finance')").getValue(ctx, Boolean.class));
+    assertFalse(parseExpression("matchAnyDomain('Payments')").getValue(ctx, Boolean.class));
+  }
+
+  @Test
+  void test_matchAnyDomain_duringExpressionValidation() {
+    // The validating RuleEvaluator has no resource context; the function must only resolve the
+    // referenced domains and return false instead of throwing or NPE-ing.
+    StandardEvaluationContext ctx = new StandardEvaluationContext(new RuleEvaluator(false));
+    assertFalse(
+        parseExpression("matchAnyDomain('Domain.Finance', 'Domain.Procurement')")
+            .getValue(ctx, Boolean.class));
+    assertTrue(parseExpression("!matchAnyDomain('Domain.Finance')").getValue(ctx, Boolean.class));
+  }
+
+  @Test
   void test_matchAnyCertification() {
     // Certification is not Present
     assertTrue(evaluateExpression("!matchAnyCertification('Certification.Gold')"));
@@ -779,8 +871,8 @@ class RuleEvaluatorTest {
    * A ResourceContext built with neither an id nor a name never resolves an entity, so every
    * attribute a policy condition reads comes back empty - and nothing reports that it did. A tag
    * condition then answers the same way whether or not the tag is present, which makes a Deny fire
-   * on every entity in one polarity and on none in the other. This is the root cause of #31941;
-   * the fix is that callers holding a specific entity must pass its identity in.
+   * on every entity in one polarity and on none in the other. This is the root cause of #31941; the
+   * fix is that callers holding a specific entity must pass its identity in.
    */
   @Test
   void test_bareResourceContextCannotSeeTags() {
@@ -817,6 +909,20 @@ class RuleEvaluatorTest {
       // An application bot's entity name and its user name differ only in case, and either one can
       // be what a policy author copies in, so a rule written with the user name must still fire.
       assertTrue(evaluateExpression("impersonatedBy('mcpapplicationbot')"));
+    } finally {
+      ImpersonationContext.clear();
+    }
+  }
+
+  /**
+   * Case-insensitive matching must not also fold distinct letters: {@code equalsIgnoreCase} equates
+   * a dotless {@code ı} with {@code i}, so a bot named with one would satisfy a rule naming another.
+   */
+  @Test
+  void test_impersonatedByDoesNotFoldDistinctLetters() {
+    try {
+      ImpersonationContext.setImpersonatedBy("mcpappl\u0131cationbot");
+      assertFalse(evaluateExpression("impersonatedBy('McpApplicationBot')"));
     } finally {
       ImpersonationContext.clear();
     }
@@ -1058,13 +1164,15 @@ class RuleEvaluatorTest {
     table.setDomains(List.of(corpSubDomain.getEntityReference()));
     assertTrue(
         evaluateExpression("hasDomain()"),
-        "User with '\"Corp.Domain\"' should have access to '\"Corp.Domain\".\"Sub.Division\"' resources");
+        "User with '\"Corp.Domain\"' should have access to '\"Corp.Domain\".\"Sub.Division\"'"
+            + " resources");
 
     user.setDomains(List.of(corpDomain.getEntityReference()));
     table.setDomains(List.of(corpDifferent.getEntityReference()));
     assertTrue(
         evaluateExpression("hasDomain()"),
-        "User with '\"Corp.Domain\"' should have access to '\"Corp.Domain\".\"Other.Division\"' resources");
+        "User with '\"Corp.Domain\"' should have access to '\"Corp.Domain\".\"Other.Division\"'"
+            + " resources");
 
     // Edge Case 2: Similar but different root domains
     Domain engineering = createDomain("Engineering", "Engineering");
@@ -1209,6 +1317,39 @@ class RuleEvaluatorTest {
     assertTrue(
         evaluateExpression("hasDomain() || noOwner()"),
         "hasDomain should work correctly in OR expressions");
+  }
+
+  @Test
+  void test_hasDomain_onCreate_needsTheContainersDomainAndEveryRequestedDomain() {
+    EntityReference finance =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DOMAIN)
+            .withName("Finance")
+            .withFullyQualifiedName("Finance");
+    EntityReference marketing =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DOMAIN)
+            .withName("Marketing")
+            .withFullyQualifiedName("Marketing");
+    SubjectContext marketer =
+        new SubjectContext(new User().withName("marketer").withDomains(List.of(marketing)), null);
+
+    assertFalse(hasDomainOnCreate(marketer, List.of(finance), List.of(marketing)));
+    assertFalse(hasDomainOnCreate(marketer, List.of(marketing), List.of(finance)));
+    assertFalse(hasDomainOnCreate(marketer, List.of(), List.of(finance)));
+    assertTrue(hasDomainOnCreate(marketer, List.of(marketing), List.of(marketing)));
+    assertTrue(hasDomainOnCreate(marketer, List.of(marketing), List.of()));
+    assertTrue(hasDomainOnCreate(marketer, List.of(), List.of()));
+  }
+
+  private static boolean hasDomainOnCreate(
+      SubjectContext subject, List<EntityReference> container, List<EntityReference> requested) {
+    CreateResourceContext<?> create = mock(CreateResourceContext.class);
+    Mockito.when(create.getContainerDomains()).thenReturn(container);
+    Mockito.when(create.getRequestedDomains()).thenReturn(requested);
+    return new RuleEvaluator(null, subject, create).hasDomain();
   }
 
   @Test

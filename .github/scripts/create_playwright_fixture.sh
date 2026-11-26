@@ -9,7 +9,6 @@ fi
 
 output_path=$(realpath -m "$1")
 runner_temp=${RUNNER_TEMP:-/tmp}
-stage_dir=$(mktemp -d "${runner_temp}/playwright-fixture.XXXXXX")
 workspace_root=${GITHUB_WORKSPACE:-$(pwd)}
 playwright_root="$workspace_root/openmetadata-ui/src/main/resources/ui/playwright"
 auth_source="$playwright_root/.auth"
@@ -17,15 +16,28 @@ entity_state_source="$playwright_root/output/entity-response-data.json"
 lineage_state_source="$playwright_root/output/lineage-data.json"
 shared_infra_state_source="$playwright_root/output/shared-infra.json"
 fingerprint_script="$workspace_root/.github/scripts/playwright_cache_fingerprint.py"
+database=${PLAYWRIGHT_DATABASE:-postgresql}
+
+# shellcheck source=playwright_fixture_profile.sh
+source "$workspace_root/.github/scripts/playwright_fixture_profile.sh"
+load_playwright_fixture_profile "$database"
+stage_dir=$(mktemp -d "${runner_temp}/playwright-fixture.XXXXXX")
 
 cleanup() {
   sudo rm -rf "$stage_dir"
 }
 trap cleanup EXIT
 
-postgres_source=$(docker inspect openmetadata_postgresql --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Source}}{{end}}{{end}}')
-opensearch_source=$(docker inspect openmetadata_opensearch --format '{{range .Mounts}}{{if eq .Destination "/usr/share/opensearch/data"}}{{.Source}}{{end}}{{end}}')
-opensearch_reference=$(docker inspect openmetadata_opensearch --format '{{.Config.Image}}')
+mount_source() {
+  docker inspect "$1" --format "{{range .Mounts}}{{if eq .Destination \"$2\"}}{{.Source}}{{end}}{{end}}"
+}
+
+database_source=$(mount_source "$PW_DATABASE_CONTAINER" "$PW_DATABASE_DATA_PATH")
+search_source=$(mount_source "$PW_SEARCH_CONTAINER" "$PW_SEARCH_DATA_PATH")
+search_reference=$(docker inspect "$PW_SEARCH_CONTAINER" --format '{{.Config.Image}}')
+# The seeded database container runs an image built from this Dockerfile; the
+# fast environment restores the data directory onto its upstream base image.
+database_reference=$(sed -n 's/^FROM[[:space:]]\{1,\}//p' "$workspace_root/$PW_DATABASE_DOCKERFILE" | head -1)
 search_cluster_alias=$(
   docker inspect openmetadata_server --format '{{range .Config.Env}}{{println .}}{{end}}' |
     sed -n 's/^ELASTICSEARCH_CLUSTER_ALIAS=//p' |
@@ -33,8 +45,8 @@ search_cluster_alias=$(
     sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/^"([^"]+)"$/\1/'
 )
 
-if [[ -z "$postgres_source" || -z "$opensearch_source" || -z "$search_cluster_alias" ]]; then
-  echo "Could not resolve PostgreSQL, OpenSearch, or search cluster fixture settings" >&2
+if [[ -z "$database_source" || -z "$search_source" || -z "$database_reference" || -z "$search_cluster_alias" ]]; then
+  echo "Could not resolve the $database database, search, or search cluster fixture settings" >&2
   exit 1
 fi
 
@@ -51,7 +63,7 @@ for state_file in \
 done
 
 docker stop --time 30 openmetadata_ingestion openmetadata_server >/dev/null 2>&1 || true
-docker stop --time 30 openmetadata_postgresql openmetadata_opensearch >/dev/null
+docker stop --time 30 "$PW_DATABASE_CONTAINER" "$PW_SEARCH_CONTAINER" >/dev/null
 
 resolve_digest() {
   local reference=$1
@@ -73,18 +85,18 @@ resolve_digest() {
 }
 
 sudo mkdir -p \
-  "$stage_dir/postgres" \
-  "$stage_dir/opensearch" \
+  "$stage_dir/database" \
+  "$stage_dir/search" \
   "$stage_dir/playwright-state/auth"
-sudo cp -a "$postgres_source/." "$stage_dir/postgres/"
-sudo cp -a "$opensearch_source/." "$stage_dir/opensearch/"
+sudo cp -a "$database_source/." "$stage_dir/database/"
+sudo cp -a "$search_source/." "$stage_dir/search/"
 sudo cp -a "$auth_source/." "$stage_dir/playwright-state/auth/"
 sudo cp -a "$entity_state_source" "$stage_dir/playwright-state/entity-response-data.json"
 sudo cp -a "$lineage_state_source" "$stage_dir/playwright-state/lineage-data.json"
 sudo cp -a "$shared_infra_state_source" "$stage_dir/playwright-state/shared-infra.json"
 
-postgres_image=$(resolve_digest postgres:15)
-opensearch_image=$(resolve_digest "$opensearch_reference")
+database_image=$(resolve_digest "$database_reference")
+search_image=$(resolve_digest "$search_reference")
 fixture_compatibility_hash=$(python3 "$fingerprint_script" --kind fixture)
 schema_hash=$(python3 "$fingerprint_script" --kind schema)
 seed_hash=$(python3 "$fingerprint_script" --kind seed)
@@ -103,20 +115,22 @@ jq -n \
   --arg sourceSha "$source_sha" \
   --arg createdAt "$created_at" \
   --arg compatibilityHash "$fixture_compatibility_hash" \
-  --arg postgresImage "$postgres_image" \
-  --arg opensearchImage "$opensearch_image" \
+  --arg database "$database" \
+  --arg databaseImage "$database_image" \
+  --arg searchImage "$search_image" \
   --arg searchClusterAlias "$search_cluster_alias" \
   --arg schemaHash "$schema_hash" \
   --arg seedHash "$seed_hash" \
   --arg seedVersion "$seed_version" \
   --arg playwrightStateHash "$playwright_state_hash" \
   '{
-    version: 2,
+    version: 3,
     sourceSha: $sourceSha,
     createdAt: $createdAt,
     compatibilityHash: $compatibilityHash,
-    postgresImage: $postgresImage,
-    opensearchImage: $opensearchImage,
+    database: $database,
+    databaseImage: $databaseImage,
+    searchImage: $searchImage,
     searchClusterAlias: $searchClusterAlias,
     schemaHash: $schemaHash,
     seedHash: $seedHash,

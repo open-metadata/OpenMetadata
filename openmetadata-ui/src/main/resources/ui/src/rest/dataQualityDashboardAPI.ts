@@ -70,7 +70,7 @@ export const fetchTotalEntityCount = (
       },
     }),
     index: 'table',
-    aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+    aggregationQuery: `bucketName=count:aggType=value_count:field=fullyQualifiedName`,
     domain: filters?.domainFqn,
   });
 };
@@ -140,7 +140,7 @@ export const fetchTestCaseSummaryByNoDimension = (
 };
 
 export const fetchCountOfIncidentStatusTypeByDays = (
-  status: TestCaseResolutionStatusTypes,
+  statuses: TestCaseResolutionStatusTypes[],
   filters?: DataQualityDashboardChartFilters
 ) => {
   const mustFilter = [];
@@ -164,7 +164,7 @@ export const fetchCountOfIncidentStatusTypeByDays = (
       query: {
         bool: {
           must: [
-            { term: { testCaseResolutionStatusType: status } },
+            { terms: { testCaseResolutionStatusType: statuses } },
             {
               range: {
                 timestamp: {

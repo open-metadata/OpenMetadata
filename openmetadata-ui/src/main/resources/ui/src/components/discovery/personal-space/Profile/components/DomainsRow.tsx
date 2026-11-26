@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { User } from '../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { useProfileCopy } from '../../../../../hooks/discovery/personal-space/useUserProfile';
 import DomainSelect from '../../../../common/DomainSelect/DomainSelect';
 import {
   getDirectDomains,
@@ -27,7 +28,7 @@ import InlineEditCard from './InlineEditCard';
 
 interface DomainsRowProps {
   userData: User;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
   // Overrides the default admin-only rule (e.g. per-user EditAll permission).
   canEdit?: boolean;
   // Overrides the first-person description used on your own profile.
@@ -41,6 +42,7 @@ const DomainsRow: React.FC<DomainsRowProps> = ({
   description,
 }) => {
   const { t } = useTranslation();
+  const copy = useProfileCopy(userData);
   const { isAdminUser } = useAuth();
   const canEdit = canEditProp ?? (Boolean(isAdminUser) && !userData.deleted);
   const [draft, setDraft] = useState<EntityReference[]>(
@@ -48,7 +50,7 @@ const DomainsRow: React.FC<DomainsRowProps> = ({
   );
 
   const handleSave = async () => {
-    await updateUserDetails(
+    return updateUserDetails(
       {
         domains:
           mergeDomainEdits(
@@ -63,7 +65,13 @@ const DomainsRow: React.FC<DomainsRowProps> = ({
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={description ?? t('message.domain-belong-description')}
+      description={
+        description ??
+        copy(
+          'message.domain-belong-description',
+          'message.domain-belong-description-of-user'
+        )
+      }
       isSaveDisabled={
         !hasDirectDomainChanges(
           userData.domains,

@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DASHBOARD;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.getEntityReference;
@@ -56,6 +57,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
+import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -520,6 +522,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,mlFeatures");
+  }
+
+  @Override
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     MlModel mlModel = (MlModel) entity;
@@ -618,11 +625,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         // Index the feature's tags the way the pipeline updater does for a task. applyTags only
         // runs on create, so without this a tag added or removed by a patch never reaches
         // tag_usage and any reader querying by FQN prefix keeps seeing the pre-patch set.
-        updateTags(
-            storedFeature.getFullyQualifiedName(),
-            EntityUtil.getFieldName(FEATURES_FIELD, updatedFeature.getName(), FIELD_TAGS),
-            storedFeature.getTags(),
-            updatedFeature.getTags());
+        updatedFeature.setTags(
+            updateTags(
+                storedFeature.getFullyQualifiedName(),
+                EntityUtil.getFieldName(
+                    EntityFieldPath.childKey(FEATURES_FIELD, updatedFeature.getName()), FIELD_TAGS),
+                storedFeature.getTags(),
+                updatedFeature.getTags()));
       }
 
       indexTagsOfAddedAndRemovedFeatures(origModel, updatedModel);
@@ -667,7 +676,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       }
 
       recordChange(
-          "mlFeatures." + originalFeature.getName() + ".description",
+          EntityUtil.getFieldName(
+              EntityFieldPath.childKey(FEATURES_FIELD, originalFeature.getName()),
+              FIELD_DESCRIPTION),
           originalFeature.getDescription(),
           updatedFeature.getDescription());
     }

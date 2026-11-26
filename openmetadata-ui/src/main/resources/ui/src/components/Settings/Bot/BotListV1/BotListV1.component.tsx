@@ -20,6 +20,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 
 import { AxiosError } from 'axios';
@@ -27,7 +28,6 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { BOTS_DOCS } from '../../../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
@@ -110,6 +110,7 @@ const BotListV1 = ({
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const latestSearchRequest = useRef(0);
+  const latestBotsRequest = useRef(0);
   const botsByUserNameRef = useRef<Map<string, Bot>>(new Map());
   const botMapLoadPromiseRef = useRef<Promise<void> | null>(null);
 
@@ -184,7 +185,8 @@ const BotListV1 = ({
               'name.keyword',
               'displayName.keyword',
               'fullyQualifiedName.keyword',
-              'email.keyword',
+              // Search refuses queries on email fields from anyone but admins.
+              ...(isAdminUser ? ['email.keyword'] : []),
             ].map((field) => ({
               wildcard: {
                 [field]: { value: wildcardPattern, case_insensitive: true },
@@ -251,6 +253,7 @@ const BotListV1 = ({
     showDeleted?: boolean,
     pagingOffset?: Partial<Paging>
   ) => {
+    const requestId = ++latestBotsRequest.current;
     try {
       setLoading(true);
       const { data, paging } = await getBots({
@@ -259,6 +262,9 @@ const BotListV1 = ({
         limit: pageSize,
         include: showDeleted ? Include.Deleted : Include.NonDeleted,
       });
+      if (requestId !== latestBotsRequest.current) {
+        return;
+      }
       const activeSearchTerm = searchTerm.trim();
 
       handlePagingChange(paging);
@@ -270,9 +276,13 @@ const BotListV1 = ({
       }
       setHandleErrorPlaceholder(!showDeleted && isEmpty(data));
     } catch (error) {
-      showErrorToast((error as AxiosError).message);
+      if (requestId === latestBotsRequest.current) {
+        showErrorToast((error as AxiosError).message);
+      }
     } finally {
-      setLoading(false);
+      if (requestId === latestBotsRequest.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -330,16 +340,15 @@ const BotListV1 = ({
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (
-            <Tooltip arrow placement="top right" title={title}>
-              <ButtonUtility
-                color="tertiary"
-                data-testid={`bot-delete-${record.name}`}
-                icon={IconDelete}
-                isDisabled={isDisabled}
-                size="sm"
-                onClick={() => setSelectedUser(record)}
-              />
-            </Tooltip>
+            <ButtonUtility
+              data-testid={`bot-delete-${record.name}`}
+              icon={Trash01}
+              isDisabled={isDisabled}
+              size="lg"
+              tooltip={title}
+              tooltipPlacement="top right"
+              onClick={() => setSelectedUser(record)}
+            />
           );
         },
       },
@@ -356,10 +365,6 @@ const BotListV1 = ({
     cursorType,
   }: PagingHandlerParams) => {
     if (cursorType) {
-      fetchBots(false, {
-        [cursorType]: paging[cursorType],
-        total: paging.total,
-      } as Paging);
       handlePageChange(
         currentPage,
         { cursorType, cursorValue: paging[cursorType] },

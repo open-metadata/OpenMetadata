@@ -11,21 +11,28 @@
   <packaging>jar</packaging>
   <properties>
     <maven.surefire.version>3.1.2</maven.surefire.version>
-    <maven.failsafe.version>3.1.2</maven.failsafe.version>
+    <maven.failsafe.version>3.6.1</maven.failsafe.version>
     <junit.jupiter.version>${org.junit.jupiter.version}</junit.jupiter.version>
     <junit.platform.version>${org.junit.platform.version}</junit.platform.version>
-    <dockerjava.version>3.4.2</dockerjava.version>
+    <dockerjava.version>3.7.1</dockerjava.version>
     <integrationTests.parallelStrategy>dynamic</integrationTests.parallelStrategy>
     <integrationTests.parallelism>4</integrationTests.parallelism>
     <integrationTests.maxPoolSize>16</integrationTests.maxPoolSize>
-    <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
-    <integrationTests.skipParallel>false</integrationTests.skipParallel>
+    <!-- Failsafe 3.6 (SUREFIRE-823) skips only on -DskipITs. Builds that pass just -DskipTests
+         (sonar, Collate's compatibility build, the Playwright nightly) still mean "no ITs", so
+         skipITs follows skipTests. The lane executions set <skipITs> explicitly, which overrides
+         -DskipITs, so they default to it too; each integrationTests.lane profile sets both. -->
+    <skipTests>false</skipTests>
+    <skipITs>${skipTests}</skipITs>
+    <integrationTests.skipIsolated>${skipITs}</integrationTests.skipIsolated>
+    <integrationTests.skipParallel>${skipITs}</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryDerivationIT</integrationTests.globalStateTests>
-    <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,TokenRevocationRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryExtractionRequestIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT,OntologyConcurrentHardDeleteIT,NativeOntologyEveryPackInstallIT,DataProductDeleteRaceIT,DataProductPortsAtomicityIT,ContextProcessingConditionalWriteSqlIT,PipelineStatusPaginationSqlIT,DataAssetChartScopeIT,AWSSSMSecretsManagerLocalStackIT,AWSSecretsManagerLocalStackIT,OntologyActiveGraphStorageIT,OntologyHierarchyStorageIT,OntologyConceptStatusStorageIT,OntologyDerivedStatusStorageIT,OntologyPropertyInverseStorageIT,OntologyPublicationStorageIT,OntologyReleaseActivationIT,OntologyReleaseComparisonStorageIT,OntologyReleaseCaptureIT,OntologyReleaseReviewListIT,OntologyServedBindingsStorageIT,OntologyEntityDAOIT</integrationTests.globalStateTests>
+    <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CredentialRevocationTwoProcessIT,RevokeWaitForPropagationIT,OpsRegenerateBotTokensIT,CsvExportMultiNodeIT,RdfDisabledMarkLifecycleIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
-    <!-- Tests that need the RDF store. The rdf lane runs them against a Fuseki the bootstrap
-         builds from docker/rdf-store; every other run leaves RDF off and they skip. -->
+    <!-- Tests that need the RDF store. The rdf lane runs them against the published
+         openmetadata/fuseki image pinned in FusekiTestImage (override with -DrdfContainerImage);
+         every other run leaves RDF off and they skip. -->
     <integrationTests.rdfTests>Rdf*IT,LodResourceIT,AgentSparqlResourceIT</integrationTests.rdfTests>
     <integrationTests.enableRdf>false</integrationTests.enableRdf>
     <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
@@ -50,7 +57,7 @@
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-compress</artifactId>
-      <version>1.27.1</version>
+      <version>1.28.0</version>
       <scope>test</scope>
     </dependency>
     <!-- SDK client -->
@@ -112,6 +119,11 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>junit-jupiter</artifactId>
       <version>1.21.4</version>
@@ -127,7 +139,7 @@
     <dependency>
       <groupId>io.fabric8</groupId>
       <artifactId>kubernetes-client</artifactId>
-      <version>6.12.0</version>
+      <version>${fabric8.version}</version>
       <scope>test</scope>
     </dependency>
     <!-- OMJob operator model for K8s integration tests -->
@@ -175,7 +187,7 @@
     <dependency>
       <groupId>org.awaitility</groupId>
       <artifactId>awaitility</artifactId>
-      <version>4.2.0</version>
+      <version>4.3.0</version>
       <scope>test</scope>
     </dependency>
     <!-- JWT signing -->
@@ -189,7 +201,7 @@
     <dependency>
       <groupId>com.microsoft.playwright</groupId>
       <artifactId>playwright</artifactId>
-      <version>1.49.0</version>
+      <version>1.65.1</version>
       <scope>test</scope>
     </dependency>
     <!--
@@ -229,7 +241,7 @@
     <dependency>
       <groupId>org.eclipse.parsson</groupId>
       <artifactId>parsson</artifactId>
-      <version>1.1.8</version>
+      <version>1.1.9</version>
       <scope>test</scope>
     </dependency>
     <!-- RDF support (Apache Jena) for RDF tests. Version unified with
@@ -276,18 +288,29 @@
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi</artifactId>
-      <version>5.4.1</version>
+      <version>6.0.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi-ooxml</artifactId>
-      <version>5.4.1</version>
+      <version>6.0.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
   <build>
     <plugins>
+      <!-- The parent's surefire includes cover org.openmetadata.service.* packages, where ITs that
+           need package-private access live; they run only in the failsafe lanes. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <excludes>
+            <exclude>**/*IT.java</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
@@ -324,6 +347,7 @@
                 <include>org/openmetadata/it/tests/alerts/LatchedConsumer*</include>
                 <include>org/openmetadata/it/tests/alerts/ReportingConsumer*</include>
                 <include>org/openmetadata/it/tests/alerts/FailingCommitConsumer*</include>
+                <include>org/openmetadata/it/tests/alerts/ErrorThrowingConsumer*</include>
                 <include>private_key.der</include>
                 <include>public_key.der</include>
                 <include>openmetadata-secure-test.yaml</include>
@@ -465,18 +489,44 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 
@@ -519,22 +569,51 @@
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/Sso*IT.java</exclude>
+                    <exclude>**/OntologyConcurrentHardDeleteIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -546,7 +625,6 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 
@@ -615,18 +693,44 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
 
@@ -675,16 +779,44 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -696,7 +828,6 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
 
@@ -766,18 +897,44 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
                     <cacheProvider>redis</cacheProvider>
@@ -827,16 +984,44 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -848,7 +1033,6 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
                     <cacheProvider>redis</cacheProvider>
@@ -918,18 +1102,44 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 
@@ -978,16 +1188,44 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -999,7 +1237,6 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 
@@ -1068,18 +1305,44 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
 
@@ -1128,16 +1391,44 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -1149,7 +1440,6 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
 
@@ -1217,18 +1507,44 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     <cacheProvider>redis</cacheProvider>
@@ -1278,16 +1594,44 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -1299,7 +1643,6 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     <cacheProvider>redis</cacheProvider>
@@ -1384,18 +1727,44 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:16-alpine</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     <cacheProvider>redis</cacheProvider>
@@ -1446,16 +1815,44 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -1467,7 +1864,6 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:16-alpine</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     <cacheProvider>redis</cacheProvider>
@@ -1497,10 +1893,11 @@
       </build>
     </profile>
     <!-- RDF integration tests profile.
-         No rdfContainerImage is set on purpose: TestSuiteBootstrap then builds the
-         supported image from docker/rdf-store (Fuseki 6.2.0 + unionDefaultGraph +
-         write extension). The previous secoresearch/fuseki:5.5.0 pin ran a bare
-         server with no update service, so every SPARQL update failed with 405. -->
+         No rdfContainerImage is set on purpose: TestSuiteBootstrap then runs the pinned
+         published openmetadata/fuseki image configured as OpenMetadata deploys it (three
+         datasets, union default graph, server deadlines, write extension). The previous
+         secoresearch/fuseki:5.5.0 pin ran a bare server with no update service, so every
+         SPARQL update failed with 405. -->
     <profile>
       <id>postgres-rdf-tests</id>
       <build>
@@ -1542,19 +1939,45 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/CredentialDatabaseOutageIT.java</include>
+                    <include>**/CredentialRedisNoRoundTripIT.java</include>
+                    <include>**/CredentialRedisDownIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
-                    <include>**/TokenRevocationRedisMultiNodeIT.java</include>
+                    <include>**/CredentialRevocationTwoProcessIT.java</include>
+                    <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
+                    <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 
@@ -1603,16 +2026,44 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/CredentialDatabaseOutageIT.java</exclude>
+                    <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
+                    <exclude>**/CredentialRedisDownIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
-                    <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
+                    <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
+                    <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
+                    <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -1624,7 +2075,6 @@
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
                     <databaseType>postgres</databaseType>
-                    <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 
@@ -1729,6 +2179,8 @@
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
                     <include>**/tests/search/scale/*IT.java</include>
+                    <include>**/tests/security/scale/*IT.java</include>
+                    <include>**/tests/dataquality/scale/*IT.java</include>
                   </includes>
                   <includedGroups>scale</includedGroups>
                   <systemPropertyVariables>
@@ -1781,6 +2233,7 @@
                   </includes>
                   <excludes>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>**/tests/security/scale/**</exclude>
                     <!-- StaticDatasetSeedIT (@Tag("seed")) and ClusterPurgeIT (@Tag("purge")) match
                          the include glob but must NEVER run in a normal search-it pass — the former
                          seeds the full bulk cohort, the latter hard-deletes data. Excluded by path

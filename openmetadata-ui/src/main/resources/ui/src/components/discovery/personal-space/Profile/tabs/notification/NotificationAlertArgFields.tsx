@@ -18,20 +18,17 @@ import {
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DATA_CONTRACT_STATUS_OPTIONS } from '../../../../../../constants/Alerts.constants';
 import { EntityType } from '../../../../../../enums/entity.enum';
-import { StatusType } from '../../../../../../generated/entity/data/pipeline';
-import { PipelineState } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { TestCaseStatus } from '../../../../../../generated/tests/testCase';
+import { SearchIndex } from '../../../../../../enums/search.enum';
 import { EventType } from '../../../../../../generated/type/changeEvent';
 import {
   getDataContractSuggestions,
   getDomainOptions,
   getEntityByIdOptions,
   getFqnSearchIndexes,
+  getOptionsByFqns,
   getOwnerOptions,
   getTableSuggestions,
-  getTestSuiteSuggestions,
   getUserBotOptions,
   getUserOptions,
   searchEntity,
@@ -42,6 +39,9 @@ import { t } from '../../../../../../utils/i18next/LocalUtil';
 
 interface AlertAsyncAutocompleteProps {
   api: (search: string) => Promise<{ value: string; label: string }[]>;
+  resolveLabels?: (
+    values: string[]
+  ) => Promise<{ value: string; label: string }[]>;
   value: string[];
   onChange: (val: string[]) => void;
   placeholder: string;
@@ -53,6 +53,7 @@ const ASYNC_ITEM_CAP = 500;
 
 function AlertAsyncAutocomplete({
   api,
+  resolveLabels,
   value,
   onChange,
   placeholder,
@@ -76,10 +77,10 @@ function AlertAsyncAutocomplete({
     [value, asyncItems]
   );
 
-  const loadAsync = useCallback(
-    async (search: string) => {
+  const loadItems = useCallback(
+    async (request: Promise<{ value: string; label: string }[]>) => {
       try {
-        const results = await api(search);
+        const results = await request;
         const fetched = results.map((item) => ({
           id: String(item.value),
           label: String(
@@ -109,7 +110,12 @@ function AlertAsyncAutocomplete({
         // Error handled by the API function
       }
     },
-    [api]
+    []
+  );
+
+  const loadAsync = useCallback(
+    (search: string) => loadItems(api(search)),
+    [api, loadItems]
   );
 
   useEffect(() => {
@@ -118,6 +124,28 @@ function AlertAsyncAutocomplete({
       loadAsync('');
     }
   }, [loadAsync]);
+
+  // Saved values can arrive after mount and lie outside the first page, so resolve any
+  // selected value still shown by its raw FQN. Tracking only the current selection keeps
+  // this bounded and stops a value the search cannot find from being looked up again.
+  const resolveAttemptsRef = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (!resolveLabels) {
+      return;
+    }
+    const attempted = new Set(
+      value.filter((id) => resolveAttemptsRef.current.has(id))
+    );
+    const unresolved = value.filter(
+      (id) => !attempted.has(id) && !asyncItemMap.has(id)
+    );
+    unresolved.forEach((id) => attempted.add(id));
+    resolveAttemptsRef.current = attempted;
+    if (!isEmpty(unresolved)) {
+      loadItems(resolveLabels(unresolved));
+    }
+  }, [asyncItemMap, loadItems, resolveLabels, value]);
 
   const handleItemInserted = useCallback(
     (key: Key) => onChange([...value, String(key)]),
@@ -236,20 +264,20 @@ export const getControlledArgumentFieldCoreUI = (
     });
   };
 
-  const translatedContractStatusOptions = DATA_CONTRACT_STATUS_OPTIONS.map(
-    (option) => ({ id: String(option.value), label: t(option.label) })
-  );
-
   const asyncField = (
     api: (search: string) => Promise<{ value: string; label: string }[]>,
     testId: string,
-    placeholder: string
+    placeholder: string,
+    searchIndex?: SearchIndex | SearchIndex[]
   ) => (
     <AlertAsyncAutocomplete
       api={api}
       data-testid={testId}
       isDisabled={isDisabled}
       placeholder={placeholder}
+      resolveLabels={
+        searchIndex ? (fqns) => getOptionsByFqns(fqns, searchIndex) : undefined
+      }
       value={value}
       onChange={onChange}
     />
@@ -281,7 +309,8 @@ export const getControlledArgumentFieldCoreUI = (
       asyncField(
         getDomainOptions,
         'domain-select',
-        t('label.search-by-type', { type: t('label.domain-lowercase') })
+        t('label.search-by-type', { type: t('label.domain-lowercase') }),
+        SearchIndex.DOMAIN
       ),
     tableNameList: () =>
       asyncField(
@@ -301,19 +330,22 @@ export const getControlledArgumentFieldCoreUI = (
         'owner-name-select',
         t('label.search-by-type', {
           type: t('label.owner-lowercase-plural'),
-        })
+        }),
+        [SearchIndex.TEAM, SearchIndex.USER]
       ),
     updateByUserList: () =>
       asyncField(
         getUserBotOptions,
         'updater-name-select',
-        t('label.search-by-type', { type: t('label.user') })
+        t('label.search-by-type', { type: t('label.user') }),
+        SearchIndex.USER
       ),
     userList: () =>
       asyncField(
         getUserOptions,
         'user-name-select',
-        t('label.search-by-type', { type: t('label.user') })
+        t('label.search-by-type', { type: t('label.user') }),
+        SearchIndex.USER
       ),
     eventTypeList: () =>
       staticField(
@@ -322,42 +354,6 @@ export const getControlledArgumentFieldCoreUI = (
           : valuesToSelectItems(supportedEventTypes),
         'event-type-select',
         t('label.search-by-type', { type: t('label.event-type-lowercase') })
-      ),
-    pipelineStateList: () =>
-      staticField(
-        enumToSelectItems(StatusType),
-        'pipeline-status-select',
-        t('label.select-field', { field: t('label.pipeline-state') })
-      ),
-    ingestionPipelineStateList: () =>
-      staticField(
-        enumToSelectItems(PipelineState),
-        'pipeline-status-select',
-        t('label.select-field', { field: t('label.pipeline-state') })
-      ),
-    testStatusList: () =>
-      staticField(
-        enumToSelectItems(TestCaseStatus),
-        'test-status-select',
-        t('label.select-field', { field: t('label.test-suite-status') })
-      ),
-    testResultList: () =>
-      staticField(
-        enumToSelectItems(TestCaseStatus),
-        'test-result-select',
-        t('label.select-field', { field: t('label.test-case-result') })
-      ),
-    contractStatusList: () =>
-      staticField(
-        translatedContractStatusOptions,
-        'contract-status-select',
-        t('label.select-field', { field: t('label.data-contract-status') })
-      ),
-    testSuiteList: () =>
-      asyncField(
-        getTestSuiteSuggestions,
-        'test-suite-select',
-        t('label.search-by-type', { type: t('label.test-suite') })
       ),
     entityIdList: () =>
       asyncField(

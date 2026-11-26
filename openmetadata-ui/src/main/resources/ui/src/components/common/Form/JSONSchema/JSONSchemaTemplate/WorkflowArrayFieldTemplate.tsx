@@ -13,18 +13,16 @@
 
 import {
   Autocomplete,
-  ButtonUtility,
   Grid,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import React, { Key, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyLeft } from '../../../../../assets/svg/copy-left.svg';
 import { useClipboard } from '../../../../../hooks/useClipBoard';
 import { splitCSV } from '../../../../../utils/CSV/CSVPureUtils';
+import CopyButton from '../../../CopyButton/CopyButton';
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {
   const { t } = useTranslation();
   const isFilterPatternField = (id: string) => {
@@ -62,17 +60,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
     ? t('message.filter-pattern-placeholder')
     : '';
   const options = generateOptions();
-  const { onCopyToClipBoard, onPasteFromClipBoard, hasCopied } = useClipboard(
-    JSON.stringify(value)
-  );
-
-  const handleCopy = useCallback(
-    async (e: React.MouseEvent) => {
-      e.stopPropagation();
-      await onCopyToClipBoard();
-    },
-    [value, onCopyToClipBoard]
-  );
+  const { onPasteFromClipBoard } = useClipboard(JSON.stringify(value));
 
   const handlePaste = useCallback(async () => {
     const text = await onPasteFromClipBoard();
@@ -157,21 +145,12 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
             {(item) => <Autocomplete.Item id={item.id} label={item.label} />}
           </Autocomplete>
         </div>
-        <Tooltip
-          arrow
-          placement="top"
-          title={hasCopied ? 'Copied to clipboard' : 'Copy'}>
-          <ButtonUtility
-            aria-label={t('label.copy')}
-            color="tertiary"
-            icon={CopyLeft}
-            size="xs"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCopy(e);
-            }}
-          />
-        </Tooltip>
+        <CopyButton
+          size="sm"
+          testId="copy-array-field"
+          tooltip={t('label.copy')}
+          value={JSON.stringify(value)}
+        />
       </Grid.Item>
     </Grid>
   );

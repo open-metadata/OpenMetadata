@@ -162,8 +162,12 @@ jest.mock('./DimensionalityHeatmap/DimensionalityHeatmap.component', () =>
 describe('DimensionalityTab', () => {
   it('preserves the origin when opening dimension details', async () => {
     mockGetTestCaseDimensionResultsByFqn.mockResolvedValueOnce({
+      paging: { total: 1 },
       data: [
         {
+          id: 'dimension-result-id',
+          testCaseResultId: 'test-case-result-id',
+          testCaseStatus: TestCaseStatus.Success,
           dimensionKey: 'country=US',
           dimensionValues: [{ name: 'country', value: 'US' }],
           timestamp: 1709576999999,

@@ -23,9 +23,10 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
-import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
@@ -38,7 +39,7 @@ class AlertDefinitionPolicyTest {
   private static final EventFilterRule WRITTEN =
       new EventFilterRule()
           .withName("writtenByHand")
-          .withEffect(ArgumentsInput.Effect.INCLUDE)
+          .withEffect(Effect.INCLUDE)
           .withCondition("true");
 
   @BeforeAll
@@ -205,10 +206,7 @@ class AlertDefinitionPolicyTest {
   }
 
   private static EventFilterRule rule(String name, String condition) {
-    return new EventFilterRule()
-        .withName(name)
-        .withEffect(ArgumentsInput.Effect.INCLUDE)
-        .withCondition(condition);
+    return new EventFilterRule().withName(name).withEffect(Effect.INCLUDE).withCondition(condition);
   }
 
   private static AlertFilteringInput selections(ArgumentsInput... filters) {
@@ -218,7 +216,7 @@ class AlertDefinitionPolicyTest {
   private static ArgumentsInput byOwner() {
     return new ArgumentsInput()
         .withName("filterByOwnerName")
-        .withEffect(ArgumentsInput.Effect.INCLUDE)
+        .withEffect(Effect.INCLUDE)
         .withArguments(
             List.of(new Argument().withName("ownerNameList").withInput(List.of("alice"))));
   }

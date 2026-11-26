@@ -40,6 +40,11 @@ public final class McpResponseTrim {
    */
   public static final int DESCRIPTION_TRUNCATE_LENGTH = 450;
 
+  /** Read-side ceiling on the metric expression a summary carries. */
+  public static final int MAX_METRIC_CODE_CHARS = 1000;
+
+  private static final String METRIC_CODE_KEY = "code";
+
   /** Final safety net: even slimmed, a wide payload can blow the LLM/MCP context limit. */
   public static final int MAX_RESPONSE_CHARS = 100_000;
 
@@ -231,6 +236,20 @@ public final class McpResponseTrim {
     return expiry;
   }
 
+  /**
+   * A metric expression as every metric summary returns it, with its code capped. A metric without
+   * its definition tells a caller almost nothing, but a 30 KB SQL body would crowd everything else
+   * out of the response budget.
+   */
+  public static Map<String, Object> cappedMetricExpression(Map<?, ?> expression) {
+    Map<String, Object> summary = new LinkedHashMap<>(expression.size());
+    expression.forEach((key, value) -> summary.put(String.valueOf(key), value));
+    if (summary.get(METRIC_CODE_KEY) instanceof String sql) {
+      summary.put(METRIC_CODE_KEY, truncate(sql, MAX_METRIC_CODE_CHARS));
+    }
+    return summary;
+  }
+
   /** Cuts {@code value} to {@code maxLength} characters plus an ellipsis when it is longer. */
   public static String truncate(String value, int maxLength) {
     String result = value;
@@ -326,6 +345,14 @@ public final class McpResponseTrim {
   }
 
   /**
+   * The request line a search client puts in front of its error: {@code method [POST], host
+   * [http://search:9200], URI [/index/_search?preference=user], }. It names the internal search
+   * host, which a caller has no use for; the status line after it is what says what went wrong.
+   */
+  private static final Pattern SEARCH_REQUEST_LINE =
+      Pattern.compile("method \\[[^\\]]*], host \\[[^\\]]*], URI \\[[^\\]]*], ");
+
+  /**
    * Returns the throwable's message, or a placeholder when it is null, so a client-facing payload
    * never renders {@code "... null"}. Use only for the message surfaced to the caller — logging
    * should keep passing the throwable itself for the stack trace.
@@ -333,7 +360,7 @@ public final class McpResponseTrim {
   public static String safeMessage(Throwable t) {
     String result = NO_MESSAGE;
     if (t != null && t.getMessage() != null) {
-      result = t.getMessage();
+      result = SEARCH_REQUEST_LINE.matcher(t.getMessage()).replaceAll("search request failed, ");
     }
     return result;
   }

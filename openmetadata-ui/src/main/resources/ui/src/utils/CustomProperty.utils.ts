@@ -221,6 +221,13 @@ const resolveSavedValue = (propertyTypeName: string, value: unknown) => {
   if (NUMERIC_PROPERTY_TYPES.has(propertyTypeName) && value) {
     return toNumber(value);
   }
+  // A table's column list is always present, so only its rows say whether it holds a value.
+  if (
+    propertyTypeName === TABLE_TYPE_CUSTOM_PROPERTY &&
+    isEmpty((value as { rows?: unknown[] } | undefined)?.rows)
+  ) {
+    return undefined;
+  }
 
   return value;
 };
@@ -377,6 +384,7 @@ const getCustomPropertyPageHeaderByEntityPath = (): Record<
       [ENTITY_PATH.files]: PAGE_HEADERS.FILE_CUSTOM_ATTRIBUTES,
       [ENTITY_PATH.spreadsheets]: PAGE_HEADERS.SPREADSHEET_CUSTOM_ATTRIBUTES,
       [ENTITY_PATH.worksheets]: PAGE_HEADERS.WORKSHEET_CUSTOM_ATTRIBUTES,
+      [ENTITY_PATH.articles]: PAGE_HEADERS.ARTICLE_CUSTOM_ATTRIBUTES,
       [ENTITY_PATH.column]: PAGE_HEADERS.COLUMN_CUSTOM_ATTRIBUTES,
       [ENTITY_PATH.teams]: PAGE_HEADERS.TEAM_CUSTOM_ATTRIBUTES,
       [ENTITY_PATH.users]: PAGE_HEADERS.USER_CUSTOM_ATTRIBUTES,

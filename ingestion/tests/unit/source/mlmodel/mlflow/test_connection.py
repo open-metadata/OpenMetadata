@@ -12,6 +12,11 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
+    MlflowConnection as MlflowConnectionConfig,
+)
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.mlmodel.mlflow.connection import MlflowConnection
 
@@ -22,13 +27,27 @@ def test_mlflow_connection_is_base_connection():
     assert issubclass(MlflowConnection, BaseConnection)
 
 
-def test_get_client_builds_mlflow_client():
+@pytest.mark.parametrize("registry_uri", ["mysql+pymysql://user:password@localhost/demo_db", "http://localhost:5000"])
+def test_get_client_builds_mlflow_client(registry_uri):
+    config = MlflowConnectionConfig(trackingUri="http://localhost:5000", registryUri=registry_uri)
     with patch(f"{CONNECTION_MODULE}.MlflowClient") as mock_builder:
-        conn = MlflowConnection(MagicMock())
+        conn = MlflowConnection(config)
         client = conn.client
 
     assert client is mock_builder.return_value
-    mock_builder.assert_called_once()
+    mock_builder.assert_called_once_with(tracking_uri="http://localhost:5000", registry_uri=registry_uri)
+
+
+def test_get_client_resolves_registry_secret_reference():
+    config = MlflowConnectionConfig(trackingUri="http://localhost:5000", registryUri="secret:my_registry")
+    with (
+        patch("metadata.utils.secrets.secrets_manager_factory.SecretsManagerFactory") as factory,
+        patch(f"{CONNECTION_MODULE}.MlflowClient") as mock_builder,
+    ):
+        factory.return_value.get_secrets_manager.return_value.get_string_value.return_value = "http://localhost:5000"
+        with MlflowConnection(config) as connection:
+            assert connection.client is mock_builder.return_value
+    mock_builder.assert_called_once_with(tracking_uri="http://localhost:5000", registry_uri="http://localhost:5000")
 
 
 def test_test_connection_runs_steps():

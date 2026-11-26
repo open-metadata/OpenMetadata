@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { get } from 'lodash';
+import {
+  CheckCircle02,
+  SlashCircle02,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
+import { get, maxBy } from 'lodash';
 import { lazy } from 'react';
-import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
-import { ReactComponent as IconSkippedBadge } from '../assets/svg/skipped-badge.svg';
-import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback, {
   TAB_CONTENT_FALLBACK,
@@ -46,6 +48,12 @@ const CustomPropertyTable = withSuspenseFallback(
   props: CustomPropertyProps<T>
 ) => JSX.Element;
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import(
@@ -86,20 +94,36 @@ const PipelineTaskTab = withSuspenseFallback(
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}, ${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
 
-export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
-  return tasks.find((task) => task.name === taskName)?.executionStatus;
+// A task retried within one run has a line per try, and its status is that of its latest try.
+export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) =>
+  maxBy(
+    tasks.filter((task) => task.name === taskName),
+    (task) => task.startTime ?? task.endTime ?? 0
+  )?.executionStatus;
+
+export const getStatusBadgeClassName = (status?: StatusType) => {
+  switch (status) {
+    case StatusType.Successful:
+      return 'tw:text-utility-green-500';
+
+    case StatusType.Failed:
+      return 'tw:text-utility-error-600';
+
+    default:
+      return 'tw:text-utility-gray-500';
+  }
 };
 
 export const getStatusBadgeIcon = (status?: StatusType) => {
   switch (status) {
     case StatusType.Successful:
-      return IconSuccessBadge;
+      return CheckCircle02;
 
     case StatusType.Failed:
-      return IconFailBadge;
+      return XCircle;
 
     default:
-      return IconSkippedBadge;
+      return SlashCircle02;
   }
 };
 
@@ -125,8 +149,9 @@ export const getPipelineDetailPageTabs = ({
     },
     {
       label: (
-        <TabsLabel
+        <ActivityFeedTabLabel
           count={feedCount.totalCount}
+          entityType={EntityType.PIPELINE}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={tab === EntityTabs.ACTIVITY_FEED}
           name={t('label.activity-feed-and-task-plural')}

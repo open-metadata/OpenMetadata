@@ -289,6 +289,121 @@ class MutationPlannerTest {
   }
 
   @Test
+  void mergeKeepsTheColumnEditsOfBothChanges() {
+    JsonNode published =
+        json("{'columns':[{'name':'order_id','tags':[]},{'name':'amount','tags':[]}]}");
+    List<MutationOp> prior =
+        MutationPlanner.plan(
+            published,
+            json(
+                "{'columns':[{'name':'order_id','tags':[]},{'name':'amount','tags':[{'tagFQN':'PII.Sensitive'}]}]}"),
+            Set.of("columns"),
+            Set.of("columns"));
+    List<MutationOp> next =
+        MutationPlanner.plan(
+            published,
+            json(
+                "{'columns':[{'name':'order_id','tags':[{'tagFQN':'PII.None'}]},{'name':'amount','tags':[]}]}"),
+            Set.of("columns"),
+            Set.of("columns"));
+
+    List<MutationOp> merged = MutationPlanner.merge(prior, next);
+
+    assertEquals(1, merged.size());
+    assertEquals(prior.get(0).getBaseValue(), merged.get(0).getBaseValue());
+    assertEquals(
+        json(
+            "[{'name':'order_id','tags':[{'tagFQN':'PII.None'}]},{'name':'amount','tags':[{'tagFQN':'PII.Sensitive'}]}]"),
+        JsonUtils.readTree(merged.get(0).getValue()));
+  }
+
+  @Test
+  void rebaseReplaysAPendingColumnEditOntoThePublishedColumns() {
+    List<MutationOp> carried =
+        MutationPlanner.plan(
+            json("{'columns':[{'name':'a','tags':[]},{'name':'b','tags':[]}]}"),
+            json("{'columns':[{'name':'a','tags':[{'tagFQN':'X'}]},{'name':'b','tags':[]}]}"),
+            Set.of("columns"),
+            Set.of("columns"));
+    JsonNode current =
+        json("{'columns':[{'name':'a','tags':[]},{'name':'b','tags':[{'tagFQN':'Y'}]}]}");
+
+    List<MutationOp> rebased = MutationPlanner.rebase(current, carried);
+
+    assertEquals(1, rebased.size());
+    assertEquals(
+        json("[{'name':'a','tags':[{'tagFQN':'X'}]},{'name':'b','tags':[{'tagFQN':'Y'}]}]"),
+        JsonUtils.readTree(rebased.get(0).getValue()));
+    assertTrue(MutationPlanner.splitConflicts(current, rebased).gatedConflicts().isEmpty());
+  }
+
+  @Test
+  void threeWayLetsTheirsWinWhereBothChangedTheSamePart() {
+    JsonNode base = json("[{'name':'a','description':'old'},{'name':'b'}]");
+    JsonNode ours = json("[{'name':'a','description':'ours'},{'name':'b'}]");
+    JsonNode theirs = json("[{'name':'a','description':'theirs'},{'name':'b'}]");
+
+    assertEquals(theirs, MutationPlanner.threeWay(base, ours, theirs));
+  }
+
+  @Test
+  void threeWayDropsAnElementOneSideRemovedAndKeepsAnotherSidesAddition() {
+    JsonNode base = json("[{'tagFQN':'A'},{'tagFQN':'B'}]");
+    JsonNode ours = json("[{'tagFQN':'A'},{'tagFQN':'B'},{'tagFQN':'C'}]");
+    JsonNode theirs = json("[{'tagFQN':'A'}]");
+
+    assertEquals(
+        json("[{'tagFQN':'A'},{'tagFQN':'C'}]"), MutationPlanner.threeWay(base, ours, theirs));
+  }
+
+  @Test
+  void mergeAndRebaseKeepAChangeToATagLabelsStateInsideAColumn() {
+    JsonNode suggested =
+        json("{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Suggested'}]}]}");
+    List<MutationOp> confirm =
+        MutationPlanner.plan(
+            suggested,
+            json("{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Confirmed'}]}]}"),
+            Set.of("columns"),
+            Set.of("columns"));
+    List<MutationOp> addY =
+        MutationPlanner.plan(
+            suggested,
+            json(
+                "{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Suggested'},{'tagFQN':'Y'}]}]}"),
+            Set.of("columns"),
+            Set.of("columns"));
+    JsonNode published =
+        json(
+            "{'columns':[{'name':'a','tags':[{'tagFQN':'X','state':'Suggested'},{'tagFQN':'Y'}]}]}");
+
+    List<MutationOp> merged = MutationPlanner.merge(addY, confirm);
+    List<MutationOp> rebased = MutationPlanner.rebase(published, confirm);
+
+    JsonNode expected =
+        json("[{'name':'a','tags':[{'tagFQN':'X','state':'Confirmed'},{'tagFQN':'Y'}]}]");
+    assertEquals(expected, JsonUtils.readTree(merged.get(0).getValue()));
+    assertEquals(1, rebased.size());
+    assertEquals(expected, JsonUtils.readTree(rebased.get(0).getValue()));
+  }
+
+  @Test
+  void threeWayTakesTheirReferenceWholeWhenBothSidesPickedADifferentOne() {
+    JsonNode base = json("{'id':'1','name':'a'}");
+    JsonNode ours = json("{'id':'2','name':'b','displayName':'B'}");
+    JsonNode theirs = json("{'id':'3','name':'c'}");
+
+    assertEquals(theirs, MutationPlanner.threeWay(base, ours, theirs));
+  }
+
+  @Test
+  void threeWayFallsBackToTheirsForAListWithoutNames() {
+    JsonNode base = json("[1,2]");
+
+    assertEquals(json("[3]"), MutationPlanner.threeWay(base, json("[1,2,4]"), json("[3]")));
+  }
+
+  @Test
   void digestIsOrderIndependentAndContentSensitive() {
     List<MutationOp> ops =
         MutationPlanner.plan(

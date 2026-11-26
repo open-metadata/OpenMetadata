@@ -1,10 +1,17 @@
 package org.openmetadata.it.sso.config;
 
+import java.net.InetAddress;
 import java.util.List;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.IdentityProviderConfig;
+import org.openmetadata.catalog.type.SamlSecurityConfig;
+import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.it.sso.oidc.MockOidcProvider;
 import org.openmetadata.schema.api.security.ClientType;
+import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.security.client.OidcClientConfig;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /**
@@ -65,6 +72,61 @@ public final class SsoConfigs {
         .withScope(SCOPE_WITH_REFRESH_TOKEN)
         .withCallbackUrl(SsoServer.url(SsoServer.CALLBACK_PATH))
         .withServerUrl(SsoServer.root());
+  }
+
+  /**
+   * SAML against a mock identity provider that the server never contacts: the test signs the IdP's
+   * responses itself and posts them to the ACS as a browser would.
+   */
+  public static SecurityConfiguration saml(
+      SecurityConfiguration live, String idpEntityId, String idpCertificate, String spEntityId) {
+    SecurityConfiguration config = copyOf(live);
+    config
+        .getAuthenticationConfiguration()
+        .withProvider(AuthProvider.SAML)
+        .withProviderName("Mock SAML")
+        .withClientType(ClientType.PUBLIC)
+        .withCallbackUrl(SsoServer.url(SsoServer.SPA_CALLBACK_PATH))
+        .withSamlConfiguration(
+            new SamlSSOClientConfig()
+                .withIdp(
+                    new IdentityProviderConfig()
+                        .withEntityId(idpEntityId)
+                        .withSsoLoginUrl("https://idp.saml-it.invalid/sso")
+                        .withIdpX509Certificate(idpCertificate))
+                .withSp(
+                    new ServiceProviderConfig()
+                        .withEntityId(spEntityId)
+                        .withAcs(SsoServer.url(SsoServer.SAML_ACS_PATH))
+                        .withCallback(SsoServer.url(SsoServer.SPA_CALLBACK_PATH)))
+                .withSecurity(
+                    new SamlSecurityConfig()
+                        .withStrictMode(false)
+                        .withWantMessagesSigned(false)
+                        .withWantAssertionsSigned(false)
+                        .withSendSignedAuthRequest(false)));
+    return config;
+  }
+
+  /** LDAP against a directory listening on the loopback address at {@code port}. */
+  public static SecurityConfiguration ldap(
+      SecurityConfiguration live, int port, String bindDn, String bindPassword, String userBaseDn) {
+    SecurityConfiguration config = copyOf(live);
+    config
+        .getAuthenticationConfiguration()
+        .withProvider(AuthProvider.LDAP)
+        .withProviderName("LDAP")
+        .withClientType(ClientType.PUBLIC)
+        .withLdapConfiguration(
+            new LdapConfiguration()
+                .withHost(InetAddress.getLoopbackAddress().getHostAddress())
+                .withPort(port)
+                .withDnAdminPrincipal(bindDn)
+                .withDnAdminPassword(bindPassword)
+                .withUserBaseDN(userBaseDn)
+                .withMailAttributeName("mail")
+                .withSslEnabled(false));
+    return config;
   }
 
   public static SecurityConfiguration copyOf(SecurityConfiguration config) {

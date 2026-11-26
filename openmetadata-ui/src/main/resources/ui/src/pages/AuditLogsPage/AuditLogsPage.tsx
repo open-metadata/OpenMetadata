@@ -22,13 +22,16 @@ import {
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Search, XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  Search,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ExportIcon } from '../../assets/svg/ic-download.svg';
 import AuditLogFilters from '../../components/AuditLog/AuditLogFilters.component';
 import AuditLogList from '../../components/AuditLog/AuditLogList.component';
 import '../../components/common/atoms/filters/FilterSelection.less';
@@ -40,9 +43,7 @@ import { CSVExportWebsocketResponse } from '../../components/Entity/EntityExport
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -50,6 +51,7 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
+import { usePageSizeState } from '../../hooks/paging/usePageSizeState';
 import { useStagedPickerValue } from '../../hooks/useStagedPickerValue';
 import {
   exportAuditLogs,
@@ -111,7 +113,7 @@ const AuditLogsPage = () => {
     {}
   );
   const filterParamsRef = useRef<Partial<AuditLogListParams>>({});
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_MEDIUM);
+  const [pageSize, setPageSize] = usePageSizeState();
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportDateRange, setExportDateRange] =
@@ -171,10 +173,13 @@ const AuditLogsPage = () => {
     [fetchAuditLogs, paging]
   );
 
-  const handlePageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-    setCurrentPage(1);
-  }, []);
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      setPageSize(size);
+      setCurrentPage(1);
+    },
+    [setPageSize]
+  );
 
   const handleFiltersChange = useCallback(
     (filters: AuditLogActiveFilter[], params: Partial<AuditLogListParams>) => {
@@ -490,7 +495,7 @@ const AuditLogsPage = () => {
           <Button
             color="primary"
             data-testid="export-audit-logs-button"
-            iconLeading={<ExportIcon height={16} width={16} />}
+            iconLeading={Download01}
             onPress={() => setIsExportModalOpen(true)}>
             {t('label.export')}
           </Button>
@@ -505,6 +510,7 @@ const AuditLogsPage = () => {
                 className="tw:shrink-0"
                 data-testid="audit-log-search-container">
                 <Input
+                  autoComplete="off"
                   className="tw:max-w-86"
                   icon={Search}
                   inputDataTestId="audit-log-search"
@@ -558,9 +564,9 @@ const AuditLogsPage = () => {
                       </div>
                       <ButtonUtility
                         aria-label="Remove filter"
-                        color="tertiary"
                         data-testid={`remove-filter-${filter.category}`}
-                        icon={<XClose size={14} />}
+                        icon={XClose}
+                        size="xs"
                         onClick={() => handleRemoveFilter(filter.category)}
                       />
                     </Badge>
@@ -596,11 +602,7 @@ const AuditLogsPage = () => {
                 currentPage={currentPage}
                 isLoading={isLoading}
                 pageSize={pageSize}
-                pageSizeOptions={[
-                  PAGE_SIZE_BASE,
-                  PAGE_SIZE_MEDIUM,
-                  PAGE_SIZE_LARGE,
-                ]}
+                pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
                 paging={paging}
                 pagingHandler={handlePaging}
                 onShowSizeChange={handlePageSizeChange}

@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -37,6 +38,7 @@ import org.openmetadata.service.security.JwtIdentityResolver;
 import org.openmetadata.service.security.OidcIdentityResolver;
 import org.openmetadata.service.security.SamlIdentityResolver;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 /**
  * Performs a dry-run "Test Login" against a candidate (unsaved) security configuration.
@@ -85,6 +87,10 @@ public final class TestLoginService {
   public record ResolvedCredentialIdentity(
       String userName, String email, List<String> roles, List<String> teams) {}
 
+  /** Verified OIDC identity kept inside the server, including the resolver's actual lookup mode. */
+  public record ResolvedAccountIdentity(
+      String userName, String email, boolean emailFirstFlow, String subject) {}
+
   private TestLoginService() {}
 
   /** Validate a browser-obtained OIDC id_token against the candidate config and resolve identity. */
@@ -105,12 +111,14 @@ public final class TestLoginService {
       // Constructing it triggers a JWKS fetch from the candidate IdP; this endpoint
       // is admin-only and low-frequency, and a slow/unreachable candidate authority
       // will fail this single request rather than affect live authentication.
+      // A dry run grants no access, and resolving the identity must not touch the database
+      // (resolveJwtClaims), so only the signature, expiry and issuer are checked here.
       JwtFilter transientFilter = new JwtFilter(ctx.authConfig(), ctx.authzConfig());
-      claims = Optional.of(transientFilter.validateJwtAndGetClaims(idToken));
+      claims = Optional.of(transientFilter.verifySignatureOnly(idToken));
       ctx.recorder().pass(TestLoginStage.TOKEN_VALIDATED);
     } catch (Exception e) {
-      // JwtFilter's constructor and validateJwtAndGetClaims are @SneakyThrows, so a JWKS fetch
-      // failure arrives as a checked exception; every failure must become a typed result rather
+      // JwtFilter's constructor and verifySignatureOnly can throw a JWKS fetch failure as a
+      // checked exception they do not declare; every failure must become a typed result rather
       // than a 500.
       LOG.debug("Test login token validation failed", e);
       ctx.recorder()
@@ -143,8 +151,17 @@ public final class TestLoginService {
       SecurityConfiguration securityConfig,
       Map<String, Object> claims,
       TestLoginStageRecorder recorder) {
+    return resolveOidcCallbackIdentity(
+        securityConfig, claims, recorder, ResolvedAccountIdentity::userName);
+  }
+
+  public static TestLoginResult resolveOidcCallbackIdentity(
+      SecurityConfiguration securityConfig,
+      Map<String, Object> claims,
+      TestLoginStageRecorder recorder,
+      Function<ResolvedAccountIdentity, String> admitAccount) {
     ResolutionContext ctx = contextFor(securityConfig, TestLoginProtocol.OIDC, recorder);
-    return resolve(ctx, () -> resolveOidcClaims(ctx, claims));
+    return resolve(ctx, () -> resolveOidcClaims(ctx, claims, admitAccount));
   }
 
   /**
@@ -209,7 +226,10 @@ public final class TestLoginService {
         requestFilterDomainRule(ctx, claims, identity.emailFirstFlow()));
   }
 
-  private static Resolution resolveOidcClaims(ResolutionContext ctx, Map<String, Object> claims) {
+  private static Resolution resolveOidcClaims(
+      ResolutionContext ctx,
+      Map<String, Object> claims,
+      Function<ResolvedAccountIdentity, String> admitAccount) {
     OidcIdentityResolver.ResolvedOidcIdentity identity =
         new OidcIdentityResolver(
                 ctx.authConfig(),
@@ -218,8 +238,14 @@ public final class TestLoginService {
                 listOrEmpty(ctx.authConfig().getJwtPrincipalClaims()),
                 principalDomainOf(ctx.authzConfig()))
             .resolve(claims);
+    final ResolvedAccountIdentity accountIdentity =
+        new ResolvedAccountIdentity(
+            userNameOrLocalPart(identity.userName(), identity.email()),
+            identity.email(),
+            identity.emailFirstFlow(),
+            SecurityUtil.getClaimOrObject(claims.get(JWTTokenGenerator.SUBJECT_CLAIM)));
     return new Resolution(
-        userNameOrLocalPart(identity.userName(), identity.email()),
+        admitAccount.apply(accountIdentity),
         identity.email(),
         rolesFromClaims(ctx.authzConfig(), claims),
         teamsFromClaims(ctx.authConfig(), claims),

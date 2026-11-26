@@ -84,7 +84,7 @@ const MENTION_LIST_CLASS = [
   'tw:[&_.ql-mention-list-container]:outline-solid!',
   'tw:[&_.ql-mention-list-container]:-outline-offset-1!',
   'tw:[&_.ql-mention-list-container]:outline-subtle!',
-  'tw:[&_.ql-mention-list-container]:bg-overlay-surface!',
+  'tw:[&_.ql-mention-list-container]:bg-floating!',
   // The theme's `shadow-lg` is empty here; the token carries the values.
   'tw:[&_.ql-mention-list-container]:[box-shadow:var(--om-shadow-lg)]!',
   'tw:[&_.ql-mention-list-item]:mx-1.5! tw:[&_.ql-mention-list-item]:my-px!',

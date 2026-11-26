@@ -17,10 +17,15 @@ Shared UI component library for OpenMetadata, built on UntitledUI design system 
 cd openmetadata-ui-core-components/src/main/resources/ui
 yarn build              # Production build to dist/
 yarn dev                # Watch mode build
-yarn type-check         # TypeScript type checking (tsc --noEmit)
+yarn type-check         # Native TypeScript 7 type checking (no emit)
+yarn type-check:tsrs    # Optional experimental Rust type checker (no emit)
 yarn storybook          # Launch Storybook on port 6006
 yarn clean              # Remove dist/
 ```
+
+`type-check:tsrs` is an optional development check on Apple Silicon and Linux.
+Builds and `type-check` continue to use Microsoft's native TypeScript compiler.
+See ADR:2026-10-25-native-typescript-ui-checking for the compiler split.
 
 ## Architecture
 
@@ -210,4 +215,6 @@ These are externalized in the build and must be provided by the consuming app:
 3. Use `cx()` for class merging and `sortCx()` for style variant maps
 4. Build on `react-aria-components` for accessibility
 5. Export from `src/components/index.ts`
-6. Run `yarn build` to verify compilation
+6. Add a one-line entry to "Components by job" in `skills/ui-core-components/SKILL.md`, so
+   feature work finds it instead of building a local copy
+7. Run `yarn build` to verify compilation

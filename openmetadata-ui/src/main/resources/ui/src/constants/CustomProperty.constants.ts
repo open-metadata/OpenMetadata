@@ -189,22 +189,23 @@ export const TABLE_TYPE_CUSTOM_PROPERTY = 'table-cp';
 
 export const HYPERLINK_TYPE_CUSTOM_PROPERTY = 'hyperlink-cp';
 
-export const CUSTOM_PROPERTIES_ICON_MAP = {
-  'date-cp': DateType,
-  'dateTime-cp': DateTimeType,
-  duration: Hourglass01,
-  email: Mail01,
-  entityReference: EntityReferenceType,
-  entityReferenceList: EntityReferenceListType,
-  enum: EnumType,
-  'hyperlink-cp': Link03,
-  integer: IntegerType,
-  markdown: MarkdownType,
-  number: NumberType,
-  sqlQuery: SqlQueryType,
-  string: StringType,
-  'table-cp': Table,
-  'time-cp': Clock,
-  timeInterval: ClockStopwatch,
-  timestamp: TimestampType,
-};
+export const CUSTOM_PROPERTIES_ICON_MAP: Partial<Record<string, typeof Table>> =
+  {
+    'date-cp': DateType,
+    'dateTime-cp': DateTimeType,
+    duration: Hourglass01,
+    email: Mail01,
+    entityReference: EntityReferenceType,
+    entityReferenceList: EntityReferenceListType,
+    enum: EnumType,
+    'hyperlink-cp': Link03,
+    integer: IntegerType,
+    markdown: MarkdownType,
+    number: NumberType,
+    sqlQuery: SqlQueryType,
+    string: StringType,
+    'table-cp': Table,
+    'time-cp': Clock,
+    timeInterval: ClockStopwatch,
+    timestamp: TimestampType,
+  };

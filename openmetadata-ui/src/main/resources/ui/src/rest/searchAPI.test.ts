@@ -86,6 +86,48 @@ const mockTableSearchResponse = {
 describe('searchAPI tests', () => {
   beforeEach(() => jest.resetModules());
 
+  it.each([
+    SearchIndex.LLM_SERVICE,
+    SearchIndex.MCP_SERVICE,
+    SearchIndex.MCP_EXECUTION,
+    SearchIndex.PROMPT_TEMPLATE,
+  ])(
+    'searches %s with an array of indexes and selected fields',
+    async (index) => {
+      const source = { id: 'result-1', entityType: index };
+      const get = jest.fn().mockResolvedValue({
+        data: {
+          hits: {
+            total: { value: 1 },
+            hits: [{ _index: index, _id: source.id, _source: source }],
+          },
+          aggregations: {},
+        },
+      });
+      jest.doMock('./axiosClient', () => ({ get }));
+      const {
+        searchQuery,
+      }: typeof import('./searchAPI') = require('./searchAPI');
+
+      const result = await searchQuery({
+        searchIndex: [index],
+        fetchSource: true,
+        includeFields: ['id', 'entityType'],
+      });
+      const entityTypes: string[] = result.hits.hits.map(
+        (hit) => hit._source.entityType
+      );
+
+      expect(entityTypes).toEqual([index]);
+      expect(result.hits.hits[0]._source).toEqual({ ...source, type: index });
+      expect(get.mock.calls[0][1].params).toMatchObject({
+        index,
+        fetch_source: true,
+        include_source_fields: ['id', 'entityType'],
+      });
+    }
+  );
+
   describe.each(['searchQuery', 'nlqSearch'] as const)(
     '%s pagination',
     (method) => {
@@ -107,11 +149,16 @@ describe('searchAPI tests', () => {
 
           const searchAPI: typeof import('./searchAPI') = require('./searchAPI');
 
-          await searchAPI[method]({
+          const request = {
             searchIndex: SearchIndex.TABLE,
             pageNumber,
             pageSize,
-          });
+          };
+          if (method === 'searchQuery') {
+            await searchAPI.searchQuery(request);
+          } else {
+            await searchAPI.nlqSearch(request);
+          }
 
           const [, config] = mockGet.mock.calls[0];
 
@@ -196,9 +243,9 @@ describe('searchAPI tests', () => {
       get: mockGet,
     }));
 
-    const { nlqSearch } = require('./searchAPI');
+    const { nlqSearch }: typeof import('./searchAPI') = require('./searchAPI');
 
-    await nlqSearch({
+    const response = await nlqSearch({
       query: 'show tables',
       searchIndex: SearchIndex.TABLE,
       queryFilter: {
@@ -217,6 +264,9 @@ describe('searchAPI tests', () => {
       pageNumber: 1,
       pageSize: 10,
     });
+    const names: string[] = response.hits.hits.map((hit) => hit._source.name);
+
+    expect(names).toEqual(['raw_product_catalog']);
 
     const [, config] = mockGet.mock.calls[0];
 
@@ -253,5 +303,146 @@ describe('searchAPI tests', () => {
       [SKIP_DOMAIN_FILTER_HEADER]: 'true',
     });
     expect(get.mock.calls[1][1].headers).toBeUndefined();
+  });
+
+  describe('searchQueryPost / rawSearchQueryPost', () => {
+    it('searchQueryPost POSTs to /search/query and JSON-stringifies the filter in the body', async () => {
+      const mockPost = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve({ data: mockTableSearchResponse })
+        );
+
+      jest.doMock('./axiosClient', () => ({ post: mockPost }));
+
+      const {
+        searchQueryPost,
+      }: typeof import('./searchAPI') = require('./searchAPI');
+
+      const queryFilter = {
+        query: { bool: { must: [{ ids: { values: ['a', 'b'] } }] } },
+      };
+
+      await searchQueryPost({
+        searchIndex: SearchIndex.TABLE,
+        query: '*',
+        queryFilter,
+        fetchSource: true,
+        includeFields: ['id', 'entityType'],
+        pageNumber: 3,
+        pageSize: 25,
+      });
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+
+      const [url, body] = mockPost.mock.calls[0];
+
+      expect(url).toBe('/search/query');
+      // queryFilter must travel as a JSON-serialized String in the body, matching the
+      // GET path's query_filter=JSON.stringify(filter) — never as the raw object.
+      expect(body.queryFilter).toBe(JSON.stringify(queryFilter));
+      expect(body).not.toHaveProperty('query_filter');
+      expect(body.index).toBe(SearchIndex.TABLE);
+      expect(body.from).toBe(50); // (3 - 1) * 25
+      expect(body.size).toBe(25);
+      expect(body.fetchSource).toBe(true);
+      expect(body.includeSourceFields).toEqual(['id', 'entityType']);
+    });
+
+    it('searchQueryPost drops the queryFilter field entirely when no filter is set', async () => {
+      const mockPost = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve({ data: mockTableSearchResponse })
+        );
+
+      jest.doMock('./axiosClient', () => ({ post: mockPost }));
+
+      const { searchQueryPost } = require('./searchAPI');
+
+      await searchQueryPost({
+        searchIndex: SearchIndex.TABLE,
+        fetchSource: false,
+      });
+
+      const [, body] = mockPost.mock.calls[0];
+
+      // Sending `undefined` (axios omits the key entirely) so the body never carries
+      // a literal `null`/`"undefined"` string the GET path would never produce.
+      expect(body.queryFilter).toBeUndefined();
+      expect(body).not.toHaveProperty('query_filter');
+      expect(body.postFilter).toBeUndefined();
+      // No `includeSourceFields` when fetchSource is false (matches rawSearchQuery).
+      expect(body.includeSourceFields).toBeUndefined();
+    });
+
+    it('searchQueryPost applies the same response formatting as the GET path', async () => {
+      const mockPost = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve({ data: mockTableSearchResponse })
+        );
+
+      jest.doMock('./axiosClient', () => ({ post: mockPost }));
+
+      const { searchQueryPost } = require('./searchAPI');
+
+      const response = await searchQueryPost({
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      // Same transformations as the existing GET-path assertions: the `owner: null` key is
+      // stripped, `entityType` is aliased to `type`, and the `sterms#` aggregation-key
+      // prefix is removed.
+      expect(response.hits.hits[0]._source.type).toBe('table');
+      expect(response.hits.hits[0]._source.owner).toBeUndefined();
+      expect(Object.keys(response.aggregations)).toEqual([
+        'EntityType',
+        'ServiceName',
+        'Tags',
+      ]);
+    });
+
+    it('rawSearchQueryPost skips the navbar domain filter when asked', async () => {
+      const mockPost = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve({ data: mockTableSearchResponse })
+        );
+
+      jest.doMock('./axiosClient', () => ({ post: mockPost }));
+      const { SKIP_DOMAIN_FILTER_HEADER } = require('../constants/constants');
+      const { rawSearchQueryPost } = require('./searchAPI');
+
+      await rawSearchQueryPost({
+        searchIndex: SearchIndex.TABLE,
+        skipDomainFilter: true,
+      });
+      await rawSearchQueryPost({ searchIndex: SearchIndex.TABLE });
+
+      expect(mockPost.mock.calls[0][2].headers).toEqual({
+        [SKIP_DOMAIN_FILTER_HEADER]: 'true',
+      });
+      expect(mockPost.mock.calls[1][2].headers).toBeUndefined();
+    });
+
+    it('rawSearchQueryPost forwards the AbortSignal through the axios config', async () => {
+      const mockPost = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve({ data: mockTableSearchResponse })
+        );
+
+      jest.doMock('./axiosClient', () => ({ post: mockPost }));
+      const { rawSearchQueryPost } = require('./searchAPI');
+      const controller = new AbortController();
+
+      await rawSearchQueryPost({
+        searchIndex: SearchIndex.TABLE,
+        signal: controller.signal,
+      });
+
+      expect(mockPost.mock.calls[0][2].signal).toBe(controller.signal);
+    });
   });
 });

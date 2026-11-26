@@ -17,9 +17,9 @@ import org.openmetadata.it.util.RdfAccessFixtures;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
+import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -29,7 +29,6 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyReleaseChangeType;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
-import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -192,7 +191,7 @@ public class IndependentOntologyWorkingDiffIT extends BaseOntologyApprovalIT {
                           .previewImport(
                               ontology.getId(),
                               new PreviewNativeOntologyImport()
-                                  .withFormat(PreviewNativeOntologyImport.Format.TURTLE)
+                                  .withFormat(NativeOntologyImportFormat.TURTLE)
                                   .withData(
                                       "<https://example.org/New> a <http://www.w3.org/2002/07/owl#Class> .")))
               .getStatusCode());
@@ -207,21 +206,5 @@ public class IndependentOntologyWorkingDiffIT extends BaseOntologyApprovalIT {
                 .withOntology(ontology.getFullyQualifiedName())
                 .withName(name)
                 .withConceptType(OntologyConceptType.OWL_CLASS));
-  }
-
-  private static OntologyRelease activate(TestNamespace ns, Ontology ontology) {
-    final OntologyRelease release = capture(ontology);
-    final var task = submit(ns, Entity.ONTOLOGY_RELEASE, release.getFullyQualifiedName());
-    SdkClients.user1Client()
-        .tasks()
-        .resolve(task.getId().toString(), decision(TaskResolutionType.Approved));
-    SdkClients.adminClient()
-        .ontologies()
-        .activate(
-            ontology.getId(),
-            new ActivateOntologyRelease()
-                .withReleaseId(release.getId())
-                .withExpectedActivationRevision(0L));
-    return release;
   }
 }

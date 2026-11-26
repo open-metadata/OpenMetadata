@@ -17,12 +17,11 @@ import {
   Owner,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Version } from '@openmetadata/ui-core-components/icons';
 import { toString } from 'lodash';
 import { useMemo, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
-import Loader from '../../../components/common/Loader/Loader';
 import TagsContainerV2 from '../../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { LayoutType } from '../../../components/Tag/TagsViewer/TagsViewer.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -51,12 +50,10 @@ import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;
-  loading: boolean;
 }
 
 const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
   knowledgePage,
-  loading,
 }) => {
   const { t } = i18n;
   const navigate = useNavigate();
@@ -112,10 +109,6 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
       contextCenterClassBase.getArticlePath(knowledgePage.fullyQualifiedName)
     );
   };
-
-  if (loading) {
-    return <Loader />;
-  }
 
   return (
     <Grid
@@ -185,7 +178,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
             <Button
               color={version ? 'secondary-brand' : 'secondary'}
               data-testid="version-button"
-              iconLeading={<VersionIcon className="tw:size-3.5 tw:shrink-0" />}
+              iconLeading={Version}
               onClick={handleVersionClick}>
               {toString(version)}
             </Button>

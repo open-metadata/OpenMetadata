@@ -21,9 +21,10 @@ from sqlalchemy.orm import Query
 
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.security.credentials.gcpValues import SingleProjectId
-from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.basic import EntityName, ProfileSampleType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
+from metadata.ingestion.source.database.bigquery.sharding import get_table_sharding
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.ssl_manager import get_ssl_connection
@@ -39,6 +40,12 @@ class BigQuerySampler(SQASampler):
     run the query in the whole table.
     """
 
+    def _partition_cte_column_name(self, column_name: str) -> str:
+        """Prefix digit-leading names so BigQuery can reference CTE columns."""
+        if column_name and column_name[0].isdigit():
+            return f"_{column_name}"
+        return column_name
+
     def __init__(self, *args, **kwargs):
         table_type = kwargs.pop("table_type", None)
         super().__init__(*args, **kwargs)
@@ -53,6 +60,21 @@ class BigQuerySampler(SQASampler):
             self.connection = get_ssl_connection(connection_config)
 
         self.session_factory = create_and_bind_thread_safe_session(self.connection)
+
+    def build_table_orm(self, table, service_conn_config, ometa_client):
+        self.execution_source = None
+        descriptor = get_table_sharding(table)
+        if descriptor:
+            self.execution_source = descriptor.representative.model_copy(deep=True)
+            table = table.model_copy(deep=True)
+            table.name = EntityName(self.execution_source.tableName)
+        return super().build_table_orm(table, service_conn_config, ometa_client)
+
+    def fetch_sample_data(self, columns=None):
+        sample = super().fetch_sample_data(columns)
+        if not self.sample_query:
+            sample.executionSource = self.execution_source
+        return sample
 
     def set_tablesample(self, static: StaticSamplingConfig | None, selectable: SqaTable):
         """Set the TABLESAMPLE clause for BigQuery

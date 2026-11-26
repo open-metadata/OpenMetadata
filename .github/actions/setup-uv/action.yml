@@ -1,0 +1,16 @@
+name: Set up uv
+description: Install the pinned uv once per runner job and select its executable for Python tools.
+runs:
+  using: composite
+  steps:
+    - name: Install uv
+      if: env.OM_UV_EXECUTABLE == ''
+      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      with:
+        version-file: ingestion/pyproject.toml
+        enable-cache: false
+    - name: Select uv
+      run: |
+        python_ci_uv="$(python3 scripts/python_tools.py uv-path)"
+        printf 'OM_UV_EXECUTABLE=%s\n' "$python_ci_uv" >> "$GITHUB_ENV"
+      shell: bash

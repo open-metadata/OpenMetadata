@@ -1,26 +1,39 @@
 package org.openmetadata.service.jdbi3;
 
+import jakarta.ws.rs.ClientErrorException;
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.rdf.RdfUpdater;
 
 /** Serializes a module's SQL writes with release capture on the caller's retained transaction. */
 final class OntologyWorkingState {
   private static final ThreadLocal<Changes> CHANGES = new ThreadLocal<>();
+
+  /**
+   * Finalizers rerun until a pass records no change. A mutation still unsettled after this many
+   * passes has a finalizer that never converges, so it fails instead of looping. See
+   * ADR:2026-10-21-native-relations-instantiate-registry-relationship-types.
+   */
+  private static final int SETTLE_PASSES = 8;
+
   private final CollectionDAO dao;
   private final OntologyStateDAO states;
   private final OntologyReferenceIndex references;
@@ -37,14 +50,15 @@ final class OntologyWorkingState {
       final EntityDAO<T> entities, final List<T> definitions, final Supplier<R> work) {
     final boolean outermost = CHANGES.get() == null;
     if (outermost) {
-      CHANGES.set(new Changes(new HashMap<>(), new HashSet<>()));
+      CHANGES.set(new Changes(new HashMap<>(), new HashSet<>(), new LinkedHashMap<>()));
     }
     try {
       final R result = mutateLocked(entities, definitions, work);
       if (outermost) {
+        settle();
         CHANGES.get().definitions().entrySet().stream()
             .sorted(Map.Entry.comparingByKey())
-            .forEach(entry -> model.requireValid(entry.getKey(), entry.getValue()));
+            .forEach(entry -> model.requireValid(entry.getKey(), net(entry.getValue())));
         CHANGES.get().graphs().stream()
             .sorted()
             .forEach(id -> RdfUpdater.enqueueOntologyGraph(dao, id));
@@ -55,6 +69,57 @@ final class OntologyWorkingState {
         CHANGES.remove();
       }
     }
+  }
+
+  /**
+   * Registers work for the end of the outermost mutation in progress: it runs after every nested
+   * write and before validation, sees each ontology's net changes so far, may write through the
+   * repositories, and runs again until a pass adds no change. A key registers once per mutation.
+   */
+  void beforeValidation(
+      final String key, final BiConsumer<UUID, List<OntologyWorkingModel.Change>> finalizer) {
+    final Changes changes = CHANGES.get();
+    if (changes == null) {
+      throw new IllegalStateException("No ontology mutation is in progress");
+    }
+    changes.finalizers().putIfAbsent(key, finalizer);
+  }
+
+  private void settle() {
+    final Changes changes = CHANGES.get();
+    for (int pass = 0; !changes.finalizers().isEmpty(); pass++) {
+      if (pass == SETTLE_PASSES) {
+        throw new IllegalStateException(
+            "Ontology writes did not settle within " + SETTLE_PASSES + " passes");
+      }
+      final int before = changes.count();
+      for (final var finalizer : List.copyOf(changes.finalizers().values())) {
+        for (final UUID ontologyId : changes.definitions().keySet().stream().sorted().toList()) {
+          finalizer.accept(ontologyId, net(changes.definitions().get(ontologyId)));
+        }
+      }
+      if (changes.count() == before) {
+        return;
+      }
+    }
+  }
+
+  /**
+   * One change per definition, from its state before the mutation to its latest. A nested write
+   * of a definition already in the list, such as a finalizer's, supersedes the earlier state, so
+   * validation never sees a row a later write has replaced.
+   */
+  private static List<OntologyWorkingModel.Change> net(
+      final List<OntologyWorkingModel.Change> changes) {
+    final Map<UUID, OntologyWorkingModel.Change> byId = new LinkedHashMap<>();
+    for (final OntologyWorkingModel.Change change : changes) {
+      final OntologyDefinition subject = change.after() == null ? change.before() : change.after();
+      final OntologyWorkingModel.Change first = byId.get(subject.getId());
+      byId.put(
+          subject.getId(),
+          first == null ? change : new OntologyWorkingModel.Change(first.before(), change.after()));
+    }
+    return List.copyOf(byId.values());
   }
 
   private <T extends OntologyDefinition, R> R mutateLocked(
@@ -84,7 +149,10 @@ final class OntologyWorkingState {
         final T current =
             json == null ? null : JsonUtils.readValue(json, entities.getEntityClass());
         references.replace(
-            Entity.getEntityTypeFromClass(entities.getEntityClass()), baseline.entityId(), current);
+            Entity.getEntityTypeFromClass(entities.getEntityClass()),
+            baseline.entityId(),
+            baseline.json() != null,
+            current);
         CHANGES
             .get()
             .definitions()
@@ -121,6 +189,7 @@ final class OntologyWorkingState {
         existing == null ? null : entities.findJsonByIdForUpdate(expected.getId(), Include.ALL);
     if (json != null) {
       final T current = JsonUtils.readValue(json, entities.getEntityClass());
+      requireStillDeleted(expected, current);
       if (!Objects.equals(expected.getVersion(), current.getVersion())
           || !Objects.equals(expected.getUpdatedAt(), current.getUpdatedAt())) {
         throw new PreconditionFailedException(
@@ -128,6 +197,23 @@ final class OntologyWorkingState {
       }
     }
     return new Baseline(ontologyId(expected), expected.getId(), json);
+  }
+
+  /**
+   * A write planned against a soft-deleted row, such as re-creating its name, finds it live when
+   * another request restored or re-created it first; the name is then taken, as for any create.
+   * ADR:2026-11-17-recreating-a-deleted-ontology-name-restores-its-record
+   */
+  private static void requireStillDeleted(
+      final OntologyDefinition expected, final OntologyDefinition current) {
+    if (Boolean.TRUE.equals(expected.getDeleted()) && !Boolean.TRUE.equals(current.getDeleted())) {
+      throw new ClientErrorException(
+          CatalogExceptionMessage.ENTITY_ALREADY_EXISTS
+              + ": "
+              + expected.getFullyQualifiedName()
+              + " was restored by another request",
+          Response.Status.CONFLICT);
+    }
   }
 
   private static UUID ontologyId(final OntologyDefinition entity) {
@@ -139,7 +225,13 @@ final class OntologyWorkingState {
   }
 
   private record Changes(
-      Map<UUID, List<OntologyWorkingModel.Change>> definitions, Set<UUID> graphs) {}
+      Map<UUID, List<OntologyWorkingModel.Change>> definitions,
+      Set<UUID> graphs,
+      Map<String, BiConsumer<UUID, List<OntologyWorkingModel.Change>>> finalizers) {
+    int count() {
+      return definitions.values().stream().mapToInt(List::size).sum();
+    }
+  }
 
   private record Baseline(UUID ontologyId, UUID entityId, String json) {}
 }

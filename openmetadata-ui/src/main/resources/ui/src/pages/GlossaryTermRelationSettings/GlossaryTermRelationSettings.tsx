@@ -29,13 +29,13 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { useAuth } from '../../hooks/authHooks';
+import { usePageSizeState } from '../../hooks/paging/usePageSizeState';
 import { getRelationTypeUsageCounts } from '../../rest/glossaryAPI';
 import {
   createRelationshipType,
@@ -57,8 +57,6 @@ import RelationshipTypeTable from './RelationshipTypeTable';
 
 const RELATIONSHIP_TYPE_FETCH_PAGE_SIZE = 1000;
 const RELATIONSHIP_TYPE_FIELDS = 'owners,reviewers';
-const PAGE_SIZE_OPTIONS = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE];
-
 const fetchAllRelationshipTypes = async (): Promise<RelationshipType[]> => {
   const relationshipTypes: RelationshipType[] = [];
   let after: string | undefined;
@@ -132,7 +130,7 @@ const GlossaryTermRelationSettingsPage = () => {
   );
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+  const [pageSize, setPageSize] = usePageSizeState();
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -267,7 +265,7 @@ const GlossaryTermRelationSettingsPage = () => {
     async (selectedRelationshipType: RelationshipType) => {
       setIsSaving(true);
       try {
-        await deleteRelationshipType(selectedRelationshipType.id);
+        await deleteRelationshipType(selectedRelationshipType.id, true);
         const updatedRelationshipTypes = relationshipTypes.filter(
           (relationshipType) =>
             relationshipType.id !== selectedRelationshipType.id
@@ -331,7 +329,9 @@ const GlossaryTermRelationSettingsPage = () => {
             {t('label.loading')}
           </div>
         ) : (
-          <>
+          // A block, not a fragment: the parent's flex gap would split the
+          // pager (a footer with no top edge) from the table card above it.
+          <div>
             <RelationshipTypeTable
               isAdminUser={Boolean(isAdminUser)}
               relationshipTypes={visibleRelationshipTypes}
@@ -343,7 +343,7 @@ const GlossaryTermRelationSettingsPage = () => {
               <PaginationCardWithControls
                 page={currentPage}
                 pageSize={pageSize}
-                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
                 total={totalPages}
                 onPageChange={setCurrentPage}
                 onPageSizeChange={(nextPageSize) => {
@@ -352,7 +352,7 @@ const GlossaryTermRelationSettingsPage = () => {
                 }}
               />
             ) : null}
-          </>
+          </div>
         )}
 
         <SlideoutMenu

@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.openmetadata.service.Entity;
 
 /**
@@ -25,9 +26,9 @@ import org.openmetadata.service.Entity;
  * EntityRepository#isSupportsDomains()} flag (so new domain-scoped entities are covered
  * automatically, with nothing to maintain here). This small denylist is the exception: these types
  * support domains, but their lists double as reference / administration surfaces — Settings members
- * and teams, permission resolution, and the tag/classification pickers on every entity page — that
- * must return their full contents regardless of the selected domain. Narrowing them with the strict
- * domain-membership condition would empty those surfaces.
+ * and teams, and permission resolution — that must return their full contents regardless of the
+ * selected domain. Narrowing them with the strict domain-membership condition would empty those
+ * surfaces.
  *
  * <p>The applies-to rule is therefore {@code supportsDomains && !isExcluded(entityType)}, composed
  * at the list injection point where {@code supportsDomains} is known.
@@ -39,17 +40,54 @@ public final class DomainFilterExclusions {
       Set.of(
           Entity.USER,
           Entity.TEAM,
-          Entity.TAG,
-          Entity.CLASSIFICATION,
           // Test cases, basic test suites and queries inherit their domain from the linked table
           // and never materialize a domain relationship of their own, so the strict membership
           // condition would always empty those lists rather than narrow them.
           Entity.TEST_CASE,
           Entity.TEST_SUITE,
-          Entity.QUERY);
+          Entity.QUERY,
+          // A user's tasks and approvals are their work queue (e.g. a reviewer's approval on
+          // another domain's glossary term), so a pick must never hide them.
+          Entity.TASK);
+
+  // Mostly global content (e.g. the built-in AI governance frameworks, Context Center articles):
+  // under a pick these lists keep items with no domain and drop other domains' items.
+  private static final Set<String> KEEPS_UNASSIGNED = ConcurrentHashMap.newKeySet();
+
+  static {
+    KEEPS_UNASSIGNED.addAll(
+        Set.of(
+            Entity.AI_GOVERNANCE_FRAMEWORK,
+            Entity.AI_GOVERNANCE_POLICY,
+            Entity.AI_FRAMEWORK_CONTROL,
+            Entity.PAGE,
+            Entity.CLASSIFICATION,
+            Entity.TAG));
+  }
+
+  // Shared vocabulary every domain applies (e.g. Tier, PII): system-provided items stay listed
+  // under
+  // a pick even when given a domain, so an asset can always be tiered or classified.
+  private static final Set<String> KEEPS_SYSTEM_PROVIDED =
+      Set.of(Entity.CLASSIFICATION, Entity.TAG);
 
   /** True when the global domain filter must never narrow lists of the given entity type. */
   public static boolean isExcluded(String entityType) {
     return !nullOrEmpty(entityType) && EXCLUDED.contains(entityType);
+  }
+
+  /** True when lists of the given type keep items with no domain under a pick. */
+  public static boolean keepsUnassigned(String entityType) {
+    return !nullOrEmpty(entityType) && KEEPS_UNASSIGNED.contains(entityType);
+  }
+
+  /** True when lists of the given type keep system-provided items under a pick. */
+  public static boolean keepsSystemProvided(String entityType) {
+    return !nullOrEmpty(entityType) && KEEPS_SYSTEM_PROVIDED.contains(entityType);
+  }
+
+  /** Marks an extension's shared-configuration type (e.g. a Collate entity) as keeping unassigned. */
+  public static void registerKeepsUnassigned(String entityType) {
+    KEEPS_UNASSIGNED.add(entityType);
   }
 }

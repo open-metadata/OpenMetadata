@@ -29,7 +29,11 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     SingleProjectId,
 )
 from metadata.ingestion.source.database.datalake.clients.base import DatalakeBaseClient
-from metadata.utils.credentials import GOOGLE_CREDENTIALS, set_google_credentials
+from metadata.utils.credentials import (
+    GOOGLE_CREDENTIALS,
+    get_gcp_impersonate_credentials_or_none,
+    set_google_credentials,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -65,7 +69,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
             raise RuntimeError("GCSConfig securityConfig can't be None.")
 
         set_google_credentials(gcp_credentials=gcs_config.securityConfig)
-        return storage.Client()
+        return storage.Client(credentials=get_gcp_impersonate_credentials_or_none(gcs_config.securityConfig))
 
     def update_temp_credentials_file_path_list(self):
         credentials = os.environ.get(GOOGLE_CREDENTIALS)

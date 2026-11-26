@@ -12,6 +12,7 @@ public final class OntologyMapper implements EntityMapper<Ontology, CreateOntolo
         .withNamespace(request.getNamespace())
         .withLayer(request.getLayer())
         .withPrefixes(request.getPrefixes())
+        .withApprovalRule(request.getApprovalRule())
         .withProvider(request.getProvider());
   }
 }

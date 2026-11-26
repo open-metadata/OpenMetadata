@@ -206,7 +206,7 @@ const ENTITY_LINK_HANDLERS: Record<
   [EntityType.APPLICATION]: ({ fullyQualifiedName }) =>
     getSettingsLink(getApplicationDetailsPath(fullyQualifiedName)),
   [EntityType.USER]: ({ fullyQualifiedName, tab, subTab }) =>
-    getUserPath(fullyQualifiedName, tab, subTab),
+    getSettingsLink(getUserPath(fullyQualifiedName, tab, subTab)),
   [EntityType.TEAM]: ({ fullyQualifiedName }) =>
     getSettingsLink(getTeamsWithFqnPath(fullyQualifiedName)),
   [EntityType.EVENT_SUBSCRIPTION]: ({
@@ -283,7 +283,6 @@ const FQN_PARENT_LEVEL_BY_TYPE: Record<string, number> = {
   [EntityType.TOPIC]: 2,
   [EntityType.SEARCH_INDEX]: 2,
   [EntityType.METRIC]: 2,
-  [EntityType.WORKSHEET]: 2,
   [EntityType.PIPELINE]: 2,
   [EntityType.DASHBOARD]: 2,
   [EntityType.MLMODEL]: 2,
@@ -441,6 +440,19 @@ class EntityUtilClassBase {
       fullyQualifiedName,
       tab,
       subTab
+    );
+  }
+
+  /**
+   * Whether getEntityLink has a route for this type, rather than its Table fallback. An ingestion
+   * pipeline is routed through its service, so without the service it has none.
+   */
+  public hasEntityLink(indexType: string): boolean {
+    return (
+      indexType === EntityType.TABLE ||
+      getOwnHandler(ENTITY_DETAILS_PATH_TYPE_MAP, indexType) !== undefined ||
+      (indexType !== EntityType.INGESTION_PIPELINE &&
+        getOwnHandler(ENTITY_LINK_HANDLERS, indexType) !== undefined)
     );
   }
 

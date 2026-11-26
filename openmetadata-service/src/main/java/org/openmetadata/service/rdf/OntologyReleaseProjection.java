@@ -3,6 +3,7 @@ package org.openmetadata.service.rdf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,13 +35,44 @@ import org.openmetadata.service.rdf.OwlEntityDeclarations.EntityKind;
 
 /** The ontology-release-v1 RDF projection reads sealed SQL members without any live lookup. */
 public final class OntologyReleaseProjection {
+  /**
+   * Whether each asserted statement also gets an {@code owl:Axiom} naming the release member that
+   * states it. Exports keep them so a native export re-imports losslessly; the serving graph
+   * leaves them out (ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release).
+   */
+  public enum StatementSources {
+    ANNOTATED,
+    OMITTED
+  }
+
+  private final StatementSources sources;
+
+  public OntologyReleaseProjection() {
+    this(StatementSources.ANNOTATED);
+  }
+
+  public OntologyReleaseProjection(final StatementSources sources) {
+    this.sources = sources;
+  }
+
   public Model build(final OntologyRelease release, final List<OntologyReleaseMember> members) {
+    return build(release, members, true);
+  }
+
+  /** {@code includeInverses} false leaves out every {@code owl:inverseOf} the properties state. */
+  public Model build(
+      final OntologyRelease release,
+      final List<OntologyReleaseMember> members,
+      final boolean includeInverses) {
     OntologyReleaseManifest.verify(release, members);
     final List<Definition> definitions =
         members.stream()
             .map(
                 member -> new Definition(member, OntologyReleaseReader.definition(release, member)))
             .toList();
+    if (!includeInverses) {
+      withoutInverses(definitions);
+    }
     final Ontology ontology = root(definitions);
     final Set<String> dataProperties =
         definitions.stream()
@@ -63,6 +95,14 @@ public final class OntologyReleaseProjection {
       model.close();
       throw exception;
     }
+  }
+
+  private static void withoutInverses(final List<Definition> definitions) {
+    definitions.stream()
+        .map(Definition::value)
+        .filter(OntologyProperty.class::isInstance)
+        .map(OntologyProperty.class::cast)
+        .forEach(property -> property.setInverse(null));
   }
 
   private static Ontology root(final List<Definition> definitions) {
@@ -93,14 +133,16 @@ public final class OntologyReleaseProjection {
             "xsd",
             XSD.NS,
             "dct",
-            DCTerms.NS));
+            DCTerms.NS,
+            "om",
+            OntologyRdfVocabulary.NAMESPACE));
     listOrEmpty(ontology.getPrefixes())
         .forEach(prefix -> model.setNsPrefix(prefix.getPrefix(), prefix.getNamespace().toString()));
     OwlEntityDeclarations.declare(model, DCTerms.source, EntityKind.ANNOTATION_PROPERTY);
     return model;
   }
 
-  private static void write(
+  private void write(
       final Model target,
       final OntologyRelease release,
       final Definition definition,
@@ -131,9 +173,10 @@ public final class OntologyReleaseProjection {
           };
       if (!(definition.value() instanceof OntologyAxiom)) {
         labels(subject, definition.value());
+        deprecation(fragment, subject, definition.value());
       }
       target.add(fragment);
-      if (!(definition.value() instanceof Ontology)) {
+      if (sources == StatementSources.ANNOTATED && !(definition.value() instanceof Ontology)) {
         final Resource source = target.createResource(memberIri);
         fragment
             .listStatements(subject, null, (RDFNode) null)
@@ -169,7 +212,38 @@ public final class OntologyReleaseProjection {
               OwlEntityDeclarations.declare(model, mapped, EntityKind.NAMED_INDIVIDUAL);
               subject.addProperty(predicate, mapped);
             });
+    if (Boolean.TRUE.equals(concept.getAbstract())) {
+      OwlEntityDeclarations.declare(
+          model, OntologyRdfVocabulary.ABSTRACT, EntityKind.ANNOTATION_PROPERTY);
+      subject.addLiteral(OntologyRdfVocabulary.ABSTRACT, true);
+    }
+    if (concept.getDefinitionSource() != null) {
+      subject.addProperty(
+          DCTerms.source, model.createResource(concept.getDefinitionSource().toString()));
+    }
     return subject;
+  }
+
+  private static void deprecation(
+      final Model model, final Resource subject, final OntologyDefinition definition) {
+    switch (definition) {
+      case OntologyConcept concept -> deprecation(
+          model, subject, concept.getDeprecated(), concept.getReplacedBy());
+      case OntologyProperty property -> deprecation(
+          model, subject, property.getDeprecated(), property.getReplacedBy());
+      default -> {}
+    }
+  }
+
+  private static void deprecation(
+      final Model model, final Resource subject, final Boolean deprecated, final URI replacement) {
+    if (Boolean.TRUE.equals(deprecated)) {
+      subject.addLiteral(OWL2.deprecated, true);
+    }
+    if (replacement != null) {
+      OwlEntityDeclarations.declare(model, DCTerms.isReplacedBy, EntityKind.ANNOTATION_PROPERTY);
+      subject.addProperty(DCTerms.isReplacedBy, model.createResource(replacement.toString()));
+    }
   }
 
   private static void labels(final Resource subject, final OntologyDefinition definition) {

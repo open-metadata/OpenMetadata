@@ -65,6 +65,22 @@ describe('ApplicationCard', () => {
     expect(onClick).toHaveBeenCalled();
   });
 
+  it('labels a runtime-unavailable app "Unavailable", not "Disabled"', () => {
+    render(
+      <ApplicationCard
+        isDisabled
+        appName="App"
+        title="App"
+        unavailableReason="cache not configured"
+        onClick={onClick}
+      />
+    );
+
+    expect(screen.getByTestId('disabled-badge')).toHaveTextContent(
+      'label.unavailable'
+    );
+  });
+
   it('is not clickable when unavailable', () => {
     render(
       <ApplicationCard
@@ -82,7 +98,7 @@ describe('ApplicationCard', () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it('opens the app from a Configure link instead of the whole card', () => {
+  it('opens the app from both the card and its Configure link', () => {
     render(
       <ApplicationCard
         actionLabel="label.configure"
@@ -97,11 +113,11 @@ describe('ApplicationCard', () => {
 
     fireEvent.click(card);
 
-    expect(onClick).not.toHaveBeenCalled();
+    expect(onClick).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByTestId('config-btn'));
 
-    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(onClick).toHaveBeenCalledTimes(2);
   });
 
   it('disables the Configure link when the app is unavailable', () => {

@@ -23,11 +23,16 @@ import { InboxDateRange } from '../interface/inbox.interface';
  */
 export type PersonalSpacePanel = 'profile' | 'my-data';
 
+/** The tab the My Data panel opens on. */
+export type MyDataTab = 'owned' | 'following';
+
 interface PersonalSpaceState {
   activePanel: PersonalSpacePanel | null;
+  myDataTab: MyDataTab;
   /** Set by `closeSilent` so the hash-sync effect skips clearing the URL hash. */
   suppressHashClear: boolean;
-  open: (panel: PersonalSpacePanel) => void;
+  /** `myDataTab` picks the My Data panel's starting tab; it defaults to owned. */
+  open: (panel: PersonalSpacePanel, myDataTab?: MyDataTab) => void;
   close: () => void;
   /** Close the modal without clearing the URL hash (used when a fullscreen customize overlay takes over). */
   closeSilent: () => void;
@@ -44,15 +49,17 @@ interface PersonalSpaceState {
   // When the user last looked at the Inbox activity list. Feeds have no
   // server-side read state, so "unread" is derived from this mark.
   inboxActivitySeenTs: number | null;
-  markInboxActivitySeen: () => void;
+  markInboxActivitySeen: (through?: number) => void;
 }
 
 export const usePersonalSpaceStore = create<PersonalSpaceState>()(
   persist(
     (set) => ({
       activePanel: null,
+      myDataTab: 'owned',
       suppressHashClear: false,
-      open: (panel) => set({ activePanel: panel, suppressHashClear: false }),
+      open: (panel, myDataTab = 'owned') =>
+        set({ activePanel: panel, myDataTab, suppressHashClear: false }),
       close: () => set({ activePanel: null }),
       closeSilent: () => set({ activePanel: null, suppressHashClear: true }),
       clearSuppressHashClear: () => set({ suppressHashClear: false }),
@@ -61,7 +68,13 @@ export const usePersonalSpaceStore = create<PersonalSpaceState>()(
       inboxDateRange: null,
       setInboxDateRange: (range) => set({ inboxDateRange: range }),
       inboxActivitySeenTs: null,
-      markInboxActivitySeen: () => set({ inboxActivitySeenTs: Date.now() }),
+      markInboxActivitySeen: (through = Date.now()) =>
+        set((state) => ({
+          inboxActivitySeenTs: Math.max(
+            state.inboxActivitySeenTs ?? 0,
+            through
+          ),
+        })),
     }),
     {
       name: 'ai-personal-space-store',

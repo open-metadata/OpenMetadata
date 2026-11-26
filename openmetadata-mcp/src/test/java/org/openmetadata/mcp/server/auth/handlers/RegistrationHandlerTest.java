@@ -12,6 +12,8 @@ import java.util.concurrent.CompletionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
@@ -36,6 +38,16 @@ class RegistrationHandlerTest {
     metadata.setClientName("TestClient");
     metadata.setRedirectUris(List.of(URI.create("https://example.com/callback")));
     return metadata;
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"ftp://example.com/cb", "https://user@example.com/cb", "https:/missing-host"})
+  void rejectsUnsafeRedirects(String redirect) {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setRedirectUris(List.of(URI.create(redirect)));
+    assertThatThrownBy(() -> handler.handle(metadata).join())
+        .hasRootCauseInstanceOf(RegistrationException.class);
   }
 
   @Test
@@ -190,6 +202,17 @@ class RegistrationHandlerTest {
   }
 
   @Test
+  void testLoopbackIpv6Http_accepted() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setRedirectUris(List.of(URI.create("http://[::1]:8080/callback")));
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getClientId()).isNotNull();
+    verify(clientRepository).register(any());
+  }
+
+  @Test
   void testPrivateUseScheme_accepted() {
     OAuthClientMetadata metadata = validMetadata();
     metadata.setRedirectUris(List.of(URI.create("cursor://callback")));
@@ -317,6 +340,20 @@ class RegistrationHandlerTest {
     assertThatThrownBy(() -> handler.handle(metadata).join())
         .isInstanceOf(CompletionException.class)
         .hasRootCauseInstanceOf(RegistrationException.class);
+
+    verify(clientRepository, never()).register(any());
+  }
+
+  @Test
+  void testRedirectUriTooLong_throwsRegistrationException() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setRedirectUris(
+        List.of(URI.create("https://example.com/callback?pad=" + "x".repeat(2048))));
+
+    assertThatThrownBy(() -> handler.handle(metadata).join())
+        .isInstanceOf(CompletionException.class)
+        .hasRootCauseInstanceOf(RegistrationException.class)
+        .hasRootCauseMessage("redirect_uri exceeds maximum length of 2048");
 
     verify(clientRepository, never()).register(any());
   }

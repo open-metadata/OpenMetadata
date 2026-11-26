@@ -20,10 +20,12 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
@@ -34,7 +36,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.teams.TeamGrantAuthorizer;
 import org.openmetadata.service.rules.RuleEngine;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -74,6 +78,7 @@ public class CreateEntityTool implements McpTool {
       Map<String, Object> params) {
     String entityType = CommonUtils.requireNonBlank(params.get("entityType"), "entityType");
     EntityCreationSpec type = EntityCreationSpec.resolve(entityType);
+    CommonUtils.refuseImpersonatedGrantWrite(securityContext, entityType);
     String userName = CommonUtils.principal(securityContext);
     EntityInterface<?> entity = buildEntity(type, params, userName);
     Boolean requestedMutuallyExclusive = requestedMutuallyExclusive(entity);
@@ -84,7 +89,9 @@ public class CreateEntityTool implements McpTool {
     RestUtil.PutResponse<EntityInterface<?>> response = persist(type, entity, userName);
 
     Map<String, Object> result =
-        McpResponseUtils.compact(response.getEntity(), response.getChangeType());
+        McpResponseUtils.compact(
+            CommonUtils.withVisibleEvidence(response.getEntity(), authorizer, securityContext),
+            response.getChangeType());
     addClassificationWarning(
         requestedMutuallyExclusive, response.getEntity(), response.getChangeType(), result);
     return result;
@@ -101,6 +108,27 @@ public class CreateEntityTool implements McpTool {
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, resourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeTeamGrants(authorizer, securityContext, entity);
+    // As TeamResource.create: the persona a Group hands its members is admin only, and never set
+    // while impersonating, since it outlives the request.
+    if (entity instanceof Team team && team.getDefaultPersona() != null) {
+      if (securityContext.impersonatedUser() != null) {
+        throw new AuthorizationException(
+            "Impersonated requests cannot set a team's default persona");
+      }
+      authorizer.authorizeAdmin(securityContext);
+    }
+  }
+
+  /**
+   * As TeamResource.create: a new team has nothing stored, so every role, policy and parent it
+   * carries is a grant to its members, and only who REST lets add them may.
+   */
+  private static void authorizeTeamGrants(
+      Authorizer authorizer, CatalogSecurityContext securityContext, EntityInterface<?> entity) {
+    if (entity instanceof Team team) {
+      TeamGrantAuthorizer.authorize(authorizer, securityContext, new Team(), team);
+    }
   }
 
   private static RestUtil.PutResponse<EntityInterface<?>> persist(
@@ -162,10 +190,39 @@ public class CreateEntityTool implements McpTool {
     return entity;
   }
 
+  // The hierarchy references of domains, glossary terms, teams and tags are resolved as the type
+  // each field holds, as the REST mappers build them, before authorization reads them: the
+  // attributes bind straight to the entity class.
   private static void applyRepositoryDefaults(EntityInterface<?> entity) {
     if (entity instanceof Tag tag) {
       deriveTagClassification(tag);
     }
+    if (entity instanceof Domain domain) {
+      domain.setParent(resolveAs(Entity.DOMAIN, domain.getParent()));
+    }
+    if (entity instanceof GlossaryTerm term) {
+      term.setGlossary(resolveAs(Entity.GLOSSARY, term.getGlossary()));
+      term.setParent(resolveAs(Entity.GLOSSARY_TERM, term.getParent()));
+    }
+    if (entity instanceof Team team && team.getParents() != null) {
+      team.getParents().replaceAll(parent -> resolveAs(Entity.TEAM, parent));
+    }
+  }
+
+  /** The persisted reference the caller's reference names, looked up as {@code entityType}. */
+  private static EntityReference resolveAs(String entityType, EntityReference reference) {
+    if (reference == null) {
+      return null;
+    }
+    EntityReference resolved =
+        Entity.getEntityReference(reference.withType(entityType), Include.NON_DELETED);
+    if (resolved == null) {
+      throw new IllegalArgumentException(
+          "A reference to a '"
+              + entityType
+              + "' needs an 'id' or a 'fullyQualifiedName'. Nothing was created.");
+    }
+    return resolved;
   }
 
   private static void deriveTagClassification(Tag tag) {
@@ -177,11 +234,11 @@ public class CreateEntityTool implements McpTool {
             "Attribute 'classification' is required for a tag unless 'parent' identifies a parent"
                 + " tag. Nothing was created.");
       }
-      tag.setClassification(Entity.getEntityReference(classification, Include.NON_DELETED));
+      tag.setClassification(resolveAs(Entity.CLASSIFICATION, classification));
       return;
     }
 
-    EntityReference resolvedParent = Entity.getEntityReference(parent, Include.NON_DELETED);
+    EntityReference resolvedParent = resolveAs(Entity.TAG, parent);
     tag.setParent(resolvedParent);
     String derivedClassification =
         FullyQualifiedName.split(resolvedParent.getFullyQualifiedName())[0];
@@ -192,8 +249,7 @@ public class CreateEntityTool implements McpTool {
               .withFullyQualifiedName(derivedClassification);
     }
 
-    EntityReference resolvedClassification =
-        Entity.getEntityReference(classification, Include.NON_DELETED);
+    EntityReference resolvedClassification = resolveAs(Entity.CLASSIFICATION, classification);
     if (!derivedClassification.equals(resolvedClassification.getFullyQualifiedName())) {
       throw new IllegalArgumentException(
           "Tag classification '"

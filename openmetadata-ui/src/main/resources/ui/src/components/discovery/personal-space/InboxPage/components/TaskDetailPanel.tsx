@@ -12,6 +12,7 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, {
@@ -26,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
+import Loader from '../../../../../components/common/Loader/Loader';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { INCIDENT_TASK_TYPES } from '../../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
@@ -39,11 +41,13 @@ import {
   TaskCategory,
 } from '../../../../../generated/entity/tasks/task';
 import { EntityReference } from '../../../../../generated/entity/teams/user';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { TaskFormSchema } from '../../../../../rest/taskFormSchemasAPI';
 import {
   addTaskComment,
-  getTaskById,
+  getTask,
   resolveTask,
+  TaskPayload,
 } from '../../../../../rest/tasksAPI';
 import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
@@ -51,17 +55,25 @@ import {
   EXTENSION_POINTS,
   InboxTaskPanelContribution,
 } from '../../../../../utils/ExtensionPointTypes';
+import ontologyExplorerClassBase from '../../../../../utils/OntologyExplorerClassBase';
 import { getPermissionErrorText } from '../../../../../utils/StringUtils';
-import { getResolvedTaskFormSchema } from '../../../../../utils/TaskFormSchemaUtils';
-import { getTaskAboutPath } from '../../../../../utils/TaskNavigationUtils';
-import { isOntologyReviewTask } from '../../../../../utils/TaskUtils';
+import {
+  getTaskAboutPath,
+  hasVotedInCurrentStage,
+  isAllowedDecider,
+} from '../../../../../utils/TaskNavigationUtils';
+import {
+  isAwaitingReviewPanel,
+  isOntologyReviewTask,
+} from '../../../../../utils/TaskUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import CommentComposer from '../../../../common/CommentComposer/CommentComposer';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
-import OntologyReviewPanel from '../../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
+import TaskReviewVotes from '../../../../Entity/Task/TaskReviewVotes/TaskReviewVotes';
 import { useApplicationsProvider } from '../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { formatInboxDate, isTaskOpen } from '../inbox.utils';
 import {
+  getProposingAgent,
   getTaskDetailDescriptor,
   resolveIncidentTestCaseFqn,
   withExistingValues,
@@ -74,21 +86,26 @@ import {
   applyActionLabels,
   buildResolveBody,
   getReassignBlocker,
+  getTaskActionInput,
   getTaskResolveActions,
+  resolveTaskFormSchema,
   TaskResolveAction,
 } from '../taskResolve.utils';
 import { getTaskTitleParts } from '../taskTitle.utils';
 import { useCurrentUserIds } from '../useCurrentUserIds';
 import { useIsScrolled } from '../useIsScrolled';
-import { useTaskAboutEntity } from '../useTaskAboutEntity';
-import ClampedText from './ClampedText';
+import {
+  TASK_ABOUT_ENTITY_QUERY_KEY,
+  useTaskAboutEntity,
+} from '../useTaskAboutEntity';
 import TaskActionCommentModal from './TaskActionCommentModal';
 import TaskActivityTimeline from './TaskActivityTimeline';
 import TaskAssetCard from './TaskAssetCard';
 import TaskDetailHeader from './TaskDetailHeader';
 import TaskDetailSkeleton from './TaskDetailSkeleton';
 import TaskDetailSummary from './TaskDetailSummary';
-import TaskTitleEntityBadge from './TaskTitleEntityBadge';
+import TaskTitle from './TaskTitle';
+import TaskTransitionFormModal from './TaskTransitionFormModal';
 
 const TASK_FIELDS =
   'about,createdBy,reviewers,assignees,resolution,approvedBy,approvedAt,availableTransitions,payload,comments';
@@ -116,6 +133,8 @@ export interface TaskDetailPanelProps {
   // Fired after a comment is added/edited/deleted with the reloaded task, so the
   // list row's comment count stays in sync.
   onCommentsChanged?: (task: Task) => void;
+  // Fired with the full task once it loads, and again whenever it changes.
+  onLoaded?: (task: Task) => void;
 }
 
 // Locate the whitespace-delimited token in the title that contains the asset
@@ -148,8 +167,8 @@ const matchAssetToken = (
 
 // The title reads as plain text in the heading's font and colour; only the
 // hover underline says it links to the asset. `!` beats the legacy
-// `.prose-typography a` rule (fonts.less), which makes Typography's links 14px
-// and blue.
+// `.prose-typography a` rule (fonts.less), which gives Typography's links a
+// medium weight and blue colour; `[font:inherit]` restores the heading weight.
 const TITLE_LINK_CLASS =
   'tw:[font:inherit]! tw:text-inherit! tw:no-underline! tw:hover:underline!';
 
@@ -244,6 +263,7 @@ const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
   // A closed task reads as its outcome — "Rejected by harsh.soni on Jul 21,
   // 2026" — led by whoever decided it, rather than by its request.
   const resolver = isTaskOpen(task) ? undefined : task.resolution?.resolvedBy;
+  const agent = resolver ? undefined : getProposingAgent(task, t);
   const person = resolver ?? task.createdBy;
   const text = resolver
     ? t('message.task-outcome-by-on', {
@@ -252,17 +272,18 @@ const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
         date: formatInboxDate(task.resolution?.resolvedAt),
       })
     : t(subtitleKey, {
-        user: getEntityName(task.createdBy),
+        user: agent ?? getEntityName(task.createdBy),
         time: getRelativeTime(task.createdAt),
       });
 
   return (
-    <Box align="center" gap={2}>
-      {person && (
+    <Box align="center" data-testid="task-byline" gap={2}>
+      {(agent || person) && (
         <ProfilePicture
           matchRingToFill
-          displayName={getEntityName(person)}
-          name={person.name ?? ''}
+          displayName={agent ?? getEntityName(person)}
+          isAgent={Boolean(agent)}
+          name={person?.name ?? ''}
           width="20"
         />
       )}
@@ -273,9 +294,26 @@ const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
   );
 };
 
+const getResolveDeniedMessageKey = (isFiler: boolean, isAssignee: boolean) => {
+  if (!isAssignee) {
+    return 'message.only-assignees-can-approve-or-reject';
+  }
+
+  return isFiler
+    ? 'message.no-permission-for-action'
+    : 'message.only-reviewers-can-approve-or-reject';
+};
+
 // A filer is denied their own task (self-approval); anyone else is not one of
-// its approvers.
-const TaskResolveDeniedHint = ({ isFiler }: { isFiler: boolean }) => {
+// its approvers. A workflow approval names its approvers as assignees, so a
+// reviewer added after it opened is told it is not assigned to them.
+const TaskResolveDeniedHint = ({
+  isFiler,
+  isAssignee,
+}: {
+  isFiler: boolean;
+  isAssignee: boolean;
+}) => {
   const { t } = useTranslation();
 
   return (
@@ -283,9 +321,7 @@ const TaskResolveDeniedHint = ({ isFiler }: { isFiler: boolean }) => {
       className="tw:text-tertiary"
       data-testid="task-resolve-denied-hint"
       size="text-sm">
-      {isFiler
-        ? t('message.no-permission-for-action')
-        : t('message.only-reviewers-can-approve-or-reject')}
+      {t(getResolveDeniedMessageKey(isFiler, isAssignee))}
     </Typography>
   );
 };
@@ -335,19 +371,20 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   onResolved,
   onTaskUpdated,
   onCommentsChanged,
+  onLoaded,
 }) => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { isScrolled: isBodyScrolled, onScroll: onBodyScroll } =
     useIsScrolled();
   const { getEntityPermission } = usePermissionProvider();
-  const { extensionRegistry } = useApplicationsProvider();
+  const currentUserId = useApplicationStore().currentUser?.id;
+  const currentUserIds = useCurrentUserIds();
+  const { getContributions } = useApplicationsProvider();
+  const ReviewPanel = ontologyExplorerClassBase.getReviewPanel();
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<AxiosError>();
-  // A failed first load renders its own placeholder; only a failed reload of a
-  // task already on screen needs the toast.
-  const hasTaskRef = useRef(Boolean(fallbackTask));
-  hasTaskRef.current = Boolean(task);
   const [readyReviewTask, setReadyReviewTask] = useState<string>();
   const handleReviewReady = useCallback(
     (ready: boolean) => {
@@ -359,6 +396,10 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // lacks availableTransitions, so actions wait for it — but only the first
   // time: a reload after a comment keeps the buttons and status steady.
   const [loadedTaskId, setLoadedTaskId] = useState<string>();
+  // A failed first load renders its own placeholder, even over the list row;
+  // only a failed reload of a fully loaded task needs the toast.
+  const hasTaskRef = useRef(false);
+  hasTaskRef.current = loadedTaskId === taskId;
   // Gates approve/reject/resolve on the server's ResolveTask verdict (assignee,
   // reviewer, owner; self-approval denied). Fail closed: undefined until the
   // permission resolves so the buttons never flash for a user who can't act.
@@ -372,13 +413,17 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   const syncRunRef = useRef(0);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const [commentAction, setCommentAction] = useState<TaskResolveAction>();
+  // A transition whose form declares required fields (a custom task `approve`
+  // needing `targetField`/`proposedText`); resolving it opens the form modal
+  // instead of firing, even when it also requires a comment.
+  const [formAction, setFormAction] = useState<TaskResolveAction>();
   const [formSchema, setFormSchema] = useState<TaskFormSchema>();
 
   const loadTask = useCallback(async () => {
     setIsLoading(true);
     let result: Task | undefined;
     try {
-      const res = await getTaskById(taskId, { fields: TASK_FIELDS });
+      const res = await getTask(taskId, { fields: TASK_FIELDS });
       setTask(res.data);
       setLoadedTaskId(taskId);
       setLoadError(undefined);
@@ -434,22 +479,18 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     };
   }, [getEntityPermission, task?.id, task?.type]);
 
-  // A task the workflow engine never touched resolves through the legacy path,
-  // whose newValue comes from the type's form schema (resolution is cached per
-  // type+category, so switching between tasks of one type refetches nothing).
-  const isLegacyTask = Boolean(task) && !task?.availableTransitions?.length;
-  const taskType = task?.type;
-  const taskCategory = task?.category;
-
+  // The legacy resolve body reads the form schema, and a workflow transition's
+  // `transitionForms` may declare fields to collect. Resolution is cached per
+  // type+category, so switching between tasks of one type refetches nothing.
   useEffect(() => {
     let active = true;
-    if (!isLegacyTask || !taskType || !taskCategory) {
-      setFormSchema(undefined);
-
-      return undefined;
-    }
-
-    getResolvedTaskFormSchema(taskType, taskCategory)
+    resolveTaskFormSchema({
+      type: task?.type,
+      category: task?.category,
+      taskFormSchemaId: task?.taskFormSchemaId,
+      payload: task?.payload,
+      availableTransitions: task?.availableTransitions,
+    })
       .then((schema) => active && setFormSchema(schema))
       // Without a schema the per-type defaults still produce a correct body.
       .catch(() => active && setFormSchema(undefined));
@@ -457,20 +498,30 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     return () => {
       active = false;
     };
-  }, [isLegacyTask, taskType, taskCategory]);
+  }, [
+    task?.type,
+    task?.category,
+    task?.taskFormSchemaId,
+    task?.payload,
+    task?.availableTransitions,
+  ]);
 
   // A plugin can refine how a task type it owns renders — its summary rows, its
   // stat tiles — without owning the pane. The first matching contribution wins.
+  // Depend on the provider's `getContributions` wrapper, not `extensionRegistry`
+  // directly: the registry is a mutable singleton, so its identity never changes
+  // when a plugin contributes after this task loaded — a memo keyed only on it
+  // would pin a deep-linked task to the empty registry it first saw and never
+  // recompute. The wrapper's identity updates once `contributionsVersion` bumps
+  // (right after registration), so a late-arriving contribution still applies.
   const contribution = useMemo(
     () =>
       task
-        ? extensionRegistry
-            .getContributions<InboxTaskPanelContribution>(
-              EXTENSION_POINTS.INBOX_TASK_PANELS
-            )
-            .find((panel) => panel.condition(task))
+        ? getContributions<InboxTaskPanelContribution>(
+            EXTENSION_POINTS.INBOX_TASK_PANELS
+          ).find((panel) => panel.condition(task))
         : undefined,
-    [extensionRegistry, task]
+    [getContributions, task]
   );
 
   const descriptor = useMemo(
@@ -484,6 +535,13 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // Actions wait for the full task: from the list row alone a workflow task
   // would offer the legacy resolve path.
   const hasFullTask = loadedTaskId === taskId;
+
+  useEffect(() => {
+    if (task && hasFullTask) {
+      onLoaded?.(task);
+    }
+  }, [task, hasFullTask, onLoaded]);
+
   const { actions, isResolveDenied } = useMemo(() => {
     if (!task || !hasFullTask || isSyncingTransitions) {
       return { actions: [], isResolveDenied: false };
@@ -497,9 +555,28 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       descriptor?.actionLabels
     ).filter((action) => !consumedTransitionIdsRef.current.has(action.id));
 
+    // A voter waits for the other approvers; TaskReviewVotes says so. Checked
+    // before the assignee rule: the server drops a voter's own assignee entry
+    // after a vote that does not reach the threshold.
+    if (hasVotedInCurrentStage(task, { id: currentUserId })) {
+      return {
+        actions: effective.filter(
+          (action) =>
+            action.kind !== 'approve' &&
+            action.kind !== 'reject' &&
+            action.id !== 'resolve'
+        ),
+        isResolveDenied: false,
+      };
+    }
+
+    // ResolveTask lets a reviewer through, but the server lets only an
+    // assignee decide a workflow approval.
+    const canDecide = canResolveTask && isAllowedDecider(task, currentUserIds);
+
     // Drop resolve actions when ResolveTask is denied; keep assignee
     // transitions — those are permissioned by EditTask, not ResolveTask.
-    if (!canResolveTask) {
+    if (!canDecide) {
       const permitted = effective.filter(
         (action) =>
           action.kind !== 'approve' &&
@@ -510,17 +587,16 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       return {
         actions: permitted,
         isResolveDenied:
-          canResolveTask === false && permitted.length < effective.length,
+          canResolveTask !== undefined && permitted.length < effective.length,
       };
     }
 
     return {
-      actions:
-        isOntologyReviewTask(task) && readyReviewTask !== task.id
-          ? effective.filter(
-              (action) => action.kind !== 'approve' && action.kind !== 'reject'
-            )
-          : effective,
+      actions: isAwaitingReviewPanel(task, readyReviewTask)
+        ? effective.filter(
+            (action) => action.kind !== 'approve' && action.kind !== 'reject'
+          )
+        : effective,
       isResolveDenied: false,
     };
   }, [
@@ -529,6 +605,8 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     hasFullTask,
     isSyncingTransitions,
     canResolveTask,
+    currentUserIds,
+    currentUserId,
     formSchema,
     descriptor,
     t,
@@ -565,7 +643,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         if (isStale()) {
           return true;
         }
-        const { data: fresh } = await getTaskById(taskId, {
+        const { data: fresh } = await getTask(taskId, {
           fields: TASK_FIELDS,
         });
         if (isStale()) {
@@ -635,7 +713,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         };
         consumedTransitionIdsRef.current.add(action.id);
         setTask(resolved);
+        void queryClient.invalidateQueries({
+          queryKey: [TASK_ABOUT_ENTITY_QUERY_KEY],
+        });
         setCommentAction(undefined);
+        setFormAction(undefined);
         if (extras?.isAssigneeChange) {
           onTaskUpdated?.(resolved);
         } else {
@@ -658,11 +740,50 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         setLoadingTransitionId(undefined);
       }
     },
-    [task, formSchema, onResolved, onTaskUpdated, syncTransitionsAfter, t]
+    [
+      task,
+      formSchema,
+      onResolved,
+      onTaskUpdated,
+      queryClient,
+      syncTransitionsAfter,
+      t,
+    ]
   );
 
   const handleTransition = useCallback(
-    (action: TaskResolveAction) => () => {
+    (action: TaskResolveAction) => async () => {
+      if (loadingTransitionId) {
+        return;
+      }
+      // An incident's root-cause modal collects its form's required reason.
+      if (
+        task &&
+        action.transition &&
+        !getTaskActionInput(task, action).requiresRootCause
+      ) {
+        // Lock the actions before the lookup so a second click can't race it.
+        setLoadingTransitionId(action.id);
+        try {
+          // A click can land before the schema loads; wait on the cached
+          // lookup rather than fire a transition whose form it has not seen.
+          const schema = await resolveTaskFormSchema(task);
+          setFormSchema(schema);
+          // The form wins over the comment-only modal, which would drop its
+          // required fields; a `comment` field in it still reaches the server.
+          if (getTaskActionInput(task, action, schema).requiresForm) {
+            setFormAction(action);
+
+            return;
+          }
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+
+          return;
+        } finally {
+          setLoadingTransitionId(undefined);
+        }
+      }
       if (action.requiresComment) {
         setCommentAction(action);
 
@@ -670,7 +791,24 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       }
       runTransition(action);
     },
-    [runTransition]
+    [loadingTransitionId, runTransition, task]
+  );
+
+  // The form modal collected the transition's required fields; resolve with
+  // them as the payload. A `comment` field in the form (e.g. a transition whose
+  // own schema carries a comment) is also forwarded as the top-level comment,
+  // mirroring `TaskTabNew.runWorkflowTransition`.
+  const handleFormConfirm = useCallback(
+    (payload: TaskPayload) => {
+      const action = formAction;
+      if (!action) {
+        return;
+      }
+      const comment =
+        typeof payload?.comment === 'string' ? payload.comment : undefined;
+      runTransition(action, { payload, ...(comment ? { comment } : {}) });
+    },
+    [formAction, runTransition]
   );
 
   // The backend reads payload.assignees, persists them and routes the workflow
@@ -722,7 +860,29 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
   const { about, isLoading: isAboutLoading } = useTaskAboutEntity(task);
 
-  const currentUserIds = useCurrentUserIds();
+  // Rendered as a helper so the modal's optional-label fallbacks do not push
+  // the component's cyclomatic complexity over the lint threshold — the
+  // `action.label ?? t(...)` lives in this nested function's scope, not the
+  // panel's.
+  const renderTransitionFormModal = () => {
+    if (!formAction || !task) {
+      return null;
+    }
+
+    return (
+      <TaskTransitionFormModal
+        open
+        actionLabel={formAction.label ?? t('label.submit')}
+        isLoading={loadingTransitionId !== undefined}
+        schema={formSchema}
+        task={task}
+        title={formAction.label ?? t('label.resolve')}
+        transition={formAction.transition}
+        onCancel={() => setFormAction(undefined)}
+        onConfirm={handleFormConfirm}
+      />
+    );
+  };
 
   if (!task || !descriptor) {
     return isLoading ? (
@@ -732,7 +892,9 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     );
   }
 
-  const statusBadge = getTaskStatusLabel(task, currentUserIds, t);
+  // The list row has no assignees, so its badge would read "Unassigned".
+  const getStatusBadge = () =>
+    hasFullTask ? getTaskStatusLabel(task, currentUserIds, t) : undefined;
   // Titleless tasks (governance workflows) carry the taskId as their name, so
   // getTaskTitleParts composes a title from the task type and the entity it is about
   // instead of repeating the id.
@@ -743,19 +905,16 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // Two lines, the full title in a tooltip when clamped; see ClampedText for
   // why Typography's own `ellipsis` cannot hold the inline asset link.
   const title = titleText ? (
-    <ClampedText text={titleText}>
+    <TaskTitle entityType={titleEntityType} size="text-md" text={titleText}>
       <Typography size="text-md" weight="medium">
         {resolveTaskAboutTitle(task, titleText)}
       </Typography>
-      <TaskTitleEntityBadge entityType={titleEntityType} />
-    </ClampedText>
+    </TaskTitle>
   ) : null;
   const LegacyPanel = contribution?.component;
   const renderDetails = () => {
-    if (isOntologyReviewTask(task)) {
-      return (
-        <OntologyReviewPanel task={task} onReadyChange={handleReviewReady} />
-      );
+    if (isOntologyReviewTask(task) && ReviewPanel) {
+      return <ReviewPanel task={task} onReadyChange={handleReviewReady} />;
     }
 
     return (
@@ -775,6 +934,32 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
             rows={descriptor.rows}
           />
         )}
+        <TaskReviewVotes currentUserId={currentUserId} task={task} />
+      </>
+    );
+  };
+
+  // The list row carries only what the header needs; the details and timeline
+  // read fields (payload, assignees, ontologyReview) only the full task has.
+  const renderBody = () => {
+    if (!hasFullTask) {
+      return isLoading ? (
+        <Loader size="small" />
+      ) : (
+        <TaskUnavailable error={loadError} onRetry={loadTask} />
+      );
+    }
+
+    return (
+      <>
+        {renderDetails()}
+
+        <TaskActivityTimeline
+          createdEvent={descriptor.createdEvent}
+          incidentStatuses={about?.incidentStatuses}
+          task={task}
+          onCommentChanged={handleCommentMutated}
+        />
       </>
     );
   };
@@ -794,7 +979,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         <TaskDetailHeader
           actions={actions}
           loadingTransitionId={loadingTransitionId}
-          statusBadge={statusBadge}
+          statusBadge={getStatusBadge()}
           task={task}
           typeBadge={descriptor.typeBadge}
           onAssigneeUpdate={handleAssigneeTransition}
@@ -806,6 +991,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           <TaskByline subtitleKey={descriptor.subtitleKey} task={task} />
           {isResolveDenied && (
             <TaskResolveDeniedHint
+              isAssignee={isAllowedDecider(task, currentUserIds)}
               isFiler={currentUserIds.has(task.createdBy?.id)}
             />
           )}
@@ -819,18 +1005,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         direction="col"
         gap={6}
         onScroll={onBodyScroll}>
-        {renderDetails()}
-
-        <TaskActivityTimeline
-          createdEvent={descriptor.createdEvent}
-          incidentStatuses={about?.incidentStatuses}
-          task={task}
-          onCommentChanged={handleCommentMutated}
-        />
+        {renderBody()}
       </Box>
 
       <Box
-        className="tw:relative tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4 tw:dark:bg-secondary"
+        className="tw:relative tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-6 tw:py-4"
         direction="col"
         gap={2}>
         {/* A soft fade into the card above the footer, so the activity reads
@@ -865,6 +1044,8 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           })
         }
       />
+
+      {renderTransitionFormModal()}
     </Box>
   );
 };

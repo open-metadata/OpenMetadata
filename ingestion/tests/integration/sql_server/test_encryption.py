@@ -51,7 +51,7 @@ def _encryption_reported_by_the_server(mssql_container, scheme: MssqlScheme, **k
         scheme=scheme,
         username=mssql_container.username,
         password=mssql_container.password,
-        hostPort=f"localhost:{mssql_container.get_exposed_port(mssql_container.port)}",
+        hostPort=mssql_container.host_port,
         database="master",
         **kwargs,
     )

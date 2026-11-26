@@ -94,7 +94,8 @@ profile against the complete frozen model. Runtime validation uses existing vali
 release-scoped `OwlProfileGuard`; OWLAPI remains test-scoped and checks projected models in tests.
 Logical consistency is explicitly `NOT_RUN` until Jena CHECK is available.
 
-Bound members to 1 MiB, releases to 10,000 members and total payloads to 64 MiB. Capture checks a
+Bound members to 1 MiB, releases to 50,000 members and total payloads to 256 MiB (10,000 and
+64 MiB until 2026-11-06; see ADR:2026-10-14-ontology-releases-seal-canonical-sql-members). Capture checks a
 cooperative 30-second budget between operations. Overflow, authorization or validation failure rolls
 back the entire capture. Canonical JSON preserves strings and decimals, rejects NUL, sorts object
 keys and hashes UTF-8 bytes with SHA-256. Sealed members cannot be edited or appended to.

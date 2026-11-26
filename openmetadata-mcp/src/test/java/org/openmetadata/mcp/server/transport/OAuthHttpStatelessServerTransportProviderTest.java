@@ -1,30 +1,502 @@
 package org.openmetadata.mcp.server.transport;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.nio.file.Path;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
+import org.openmetadata.mcp.auth.OAuthClientInformation;
+import org.openmetadata.mcp.server.auth.handlers.AuthorizationHandler;
+import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
+import org.openmetadata.mcp.server.auth.model.AuthorizationErrorResponse;
+import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
+import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
+import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
+import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider.AuthFailure;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.McpGrantTransaction;
+import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
+import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 class OAuthHttpStatelessServerTransportProviderTest {
 
   private static final URI RESOURCE_METADATA =
       URI.create("https://example.com/mcp/.well-known/oauth-protected-resource");
+
+  // ── consent route ─────────────────────────────────────────────────────────
+
+  private static final String BASE_PATH = "/data-catalog";
+  private static final String AUTH_REQUEST_ID = "auth-req-1";
+  private static final String CLIENT_ID = "client-1";
+  private static final String USER_NAME = "alice";
+  private static final String CLIENT_REDIRECT = "https://client.example/callback";
+  private static final Pattern FORM_ACTION =
+      Pattern.compile("<form method=\"POST\" action=\"([^\"]*)\"");
+  private static final Pattern FORM_FIELD =
+      Pattern.compile(
+          "<(?:input type=\"hidden\"|button type=\"submit\") name=\"([^\"]*)\" value=\"([^\"]*)\"");
+
+  @Test
+  void consentFormPostedThroughDoPostUnderBasePath_approveIssuesTheCode() throws Exception {
+    ConsentRoundTrip roundTrip = new ConsentRoundTrip();
+
+    String page = roundTrip.submitRenderedForm("approve");
+
+    ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
+    verify(roundTrip.codeRepo)
+        .store(
+            code.capture(),
+            eq(CLIENT_ID),
+            eq(USER_NAME),
+            anyString(),
+            anyString(),
+            eq(URI.create(CLIENT_REDIRECT)),
+            any(),
+            anyLong());
+    assertThat(page).contains(CLIENT_REDIRECT + "?").contains("code=" + code.getValue());
+  }
+
+  @Test
+  void consentFormPostedThroughDoPostUnderBasePath_denyRelaysAccessDenied() throws Exception {
+    ConsentRoundTrip roundTrip = new ConsentRoundTrip();
+
+    String page = roundTrip.submitRenderedForm("deny");
+
+    verifyNoInteractions(roundTrip.codeRepo);
+    assertThat(page).contains("error=access_denied").doesNotContain("code=");
+  }
+
+  /**
+   * Renders the consent page from the SSO callback, then posts what that page's form would send
+   * through {@code doPost} under {@link #BASE_PATH}. The pending-request repository only claims a
+   * consent for the token storeConsent received, so the token has to travel through the page.
+   */
+  private static final class ConsentRoundTrip {
+    private final McpPendingAuthRequestRepository pendingRepo =
+        mock(McpPendingAuthRequestRepository.class);
+    private final OAuthAuthorizationCodeRepository codeRepo =
+        mock(OAuthAuthorizationCodeRepository.class);
+    private final AtomicReference<String> storedToken = new AtomicReference<>();
+
+    ConsentRoundTrip() {
+      when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID)).thenReturn(pendingRequest());
+      when(pendingRepo.storeConsent(eq(AUTH_REQUEST_ID), anyString(), eq(USER_NAME)))
+          .thenAnswer(
+              invocation -> {
+                storedToken.set(invocation.getArgument(1));
+                return true;
+              });
+      when(pendingRepo.takeConsent(eq(AUTH_REQUEST_ID), any()))
+          .thenAnswer(
+              invocation -> storedToken.get().equals(invocation.getArgument(1)) ? USER_NAME : null);
+    }
+
+    String submitRenderedForm(String decision) throws Exception {
+      UserSSOOAuthProvider provider = provider();
+      try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+          MockedStatic<SecurityConfigurationManager> config =
+              mockStatic(SecurityConfigurationManager.class)) {
+        entity
+            .when(() -> Entity.getEntityByName(Entity.USER, USER_NAME, "", Include.NON_DELETED))
+            .thenReturn(new User().withName(USER_NAME));
+        config
+            .when(SecurityConfigurationManager::getCurrentMcpConfig)
+            .thenReturn(new MCPConfiguration().withBaseUrl("https://om.example" + BASE_PATH));
+        String consentPage = renderConsentPage(provider);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        StringWriter body = new StringWriter();
+        when(response.getWriter()).thenReturn(new PrintWriter(body));
+        transportWith(provider).doPost(formPost(consentPage, decision), response);
+        return body.toString();
+      }
+    }
+
+    private String renderConsentPage(UserSSOOAuthProvider provider) throws Exception {
+      HttpServletResponse response = mock(HttpServletResponse.class);
+      StringWriter page = new StringWriter();
+      when(response.getWriter()).thenReturn(new PrintWriter(page));
+      provider.handleSSOCallbackWithDbState(
+          mock(HttpServletRequest.class),
+          response,
+          USER_NAME,
+          "alice@example.com",
+          "mcp:" + AUTH_REQUEST_ID);
+      return page.toString();
+    }
+
+    private UserSSOOAuthProvider provider() throws Exception {
+      OAuthClientRepository clientRepo = mock(OAuthClientRepository.class);
+      OAuthClientInformation client = mock(OAuthClientInformation.class);
+      when(client.getClientId()).thenReturn(CLIENT_ID);
+      when(clientRepo.findByClientId(CLIENT_ID)).thenReturn(client);
+      UserSSOOAuthProvider provider =
+          (UserSSOOAuthProvider) unsafe().allocateInstance(UserSSOOAuthProvider.class);
+      setField(
+          provider,
+          "grantTransaction",
+          new McpGrantTransaction() {
+            @Override
+            public <T, E extends Exception> T execute(String clientId, Operation<T, E> operation)
+                throws E {
+              return operation.get();
+            }
+          });
+      setField(provider, "pendingAuthRepository", pendingRepo);
+      setField(provider, "clientRepository", clientRepo);
+      setField(provider, "codeRepository", codeRepo);
+      setField(provider, "issuer", "https://om.example" + BASE_PATH + "/mcp");
+      return provider;
+    }
+  }
+
+  /** The POST a browser sends for the page's form when the user clicks {@code decision}. */
+  private static HttpServletRequest formPost(String consentPage, String decision) {
+    Matcher action = FORM_ACTION.matcher(consentPage);
+    assertThat(action.find()).as("consent page has a form").isTrue();
+    URI target = URI.create(action.group(1).replace("&amp;", "&"));
+    Map<String, String> params = new HashMap<>();
+    for (String pair : target.getRawQuery().split("&")) {
+      String[] nameAndValue = pair.split("=", 2);
+      params.put(nameAndValue[0], nameAndValue[1]);
+    }
+    Matcher field = FORM_FIELD.matcher(consentPage);
+    boolean offersDecision = false;
+    while (field.find()) {
+      boolean isButton = field.group(0).contains("button");
+      offersDecision |= isButton && field.group(2).equals(decision);
+      if (!isButton || field.group(2).equals(decision)) {
+        params.put(field.group(1), field.group(2));
+      }
+    }
+    assertThat(offersDecision).as("consent page offers %s", decision).isTrue();
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getContextPath()).thenReturn(BASE_PATH);
+    when(request.getRequestURI()).thenReturn(target.getRawPath());
+    when(request.getParameter(anyString()))
+        .thenAnswer(inv -> params.get(inv.<String>getArgument(0)));
+    return request;
+  }
+
+  private static McpPendingAuthRequest pendingRequest() {
+    return new McpPendingAuthRequest(
+        AUTH_REQUEST_ID,
+        CLIENT_ID,
+        "codeChallenge-123456789012345678901234567890123456789012",
+        "S256",
+        CLIENT_REDIRECT,
+        "client-state",
+        List.of("openid"),
+        null,
+        null,
+        null,
+        System.currentTimeMillis() + 600_000L);
+  }
+
+  @Test
+  void doPost_consentForAClientRemovedMeanwhile_answersBadRequest() throws Exception {
+    UserSSOOAuthProvider ssoProvider = mock(UserSSOOAuthProvider.class);
+    HttpServletRequest request = consentPost("");
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    doThrow(new IllegalStateException("Client not found"))
+        .when(ssoProvider)
+        .handleConsentDecision(request, response);
+
+    transportWith(ssoProvider).doPost(request, response);
+
+    verify(response).sendError(eq(HttpServletResponse.SC_BAD_REQUEST), anyString());
+  }
+
+  private static HttpServletRequest consentPost(String contextPath) {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getContextPath()).thenReturn(contextPath);
+    when(request.getRequestURI()).thenReturn(contextPath + UserSSOOAuthProvider.CONSENT_PATH);
+    return request;
+  }
+
+  /**
+   * The constructor needs a running auth stack, so the transport is allocated without it and
+   * given only the provider that doPost routes the consent POST to.
+   */
+  private static OAuthHttpStatelessServerTransportProvider transportWith(
+      UserSSOOAuthProvider ssoProvider) throws Exception {
+    sun.misc.Unsafe unsafe = unsafe();
+    OAuthHttpStatelessServerTransportProvider transport =
+        (OAuthHttpStatelessServerTransportProvider)
+            unsafe.allocateInstance(OAuthHttpStatelessServerTransportProvider.class);
+    Field authProvider =
+        OAuthHttpStatelessServerTransportProvider.class.getDeclaredField("authProvider");
+    unsafe.putObject(transport, unsafe.objectFieldOffset(authProvider), ssoProvider);
+    return transport;
+  }
+
+  @Test
+  void authorizeErrorForRemoteWebCallback_isAPageWithALinkNotARedirect() throws Exception {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    StringWriter body = new StringWriter();
+    when(response.getWriter()).thenReturn(new PrintWriter(body));
+
+    authorizeAnswering("https://attacker.example/cb?error=invalid_scope&state=s1", false, response);
+
+    verify(response, never()).sendRedirect(anyString());
+    verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    assertThat(body.toString())
+        .contains("href=\"https://attacker.example/cb?error=invalid_scope&amp;state=s1\"")
+        .contains("Return to https://attacker.example")
+        .doesNotContain("http-equiv")
+        .doesNotContain("<script");
+  }
+
+  @Test
+  void authorizeErrorForLoopbackCallback_isStillARedirect() throws Exception {
+    String errorUrl = "http://127.0.0.1:33418/cb?error=invalid_scope&state=s1";
+    HttpServletResponse response = mock(HttpServletResponse.class);
+
+    authorizeAnswering(errorUrl, true, response);
+
+    verify(response).sendRedirect(errorUrl);
+  }
+
+  /** Runs GET /mcp/authorize with the handler answering an invalid_scope error at this URL. */
+  private static void authorizeAnswering(
+      String errorUrl, boolean isRedirect, HttpServletResponse response) throws Exception {
+    AuthorizationHandler authorizationHandler = mock(AuthorizationHandler.class);
+    when(authorizationHandler.handle(any()))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new AuthorizationHandler.AuthorizationResponse(
+                    errorUrl,
+                    isRedirect,
+                    new AuthorizationErrorResponse("invalid_scope", "Not allowed", "s1"))));
+    OAuthHttpStatelessServerTransportProvider transport =
+        transportWith(mock(UserSSOOAuthProvider.class));
+    sun.misc.Unsafe unsafe = unsafe();
+    unsafe.putObject(
+        transport,
+        unsafe.objectFieldOffset(
+            OAuthHttpStatelessServerTransportProvider.class.getDeclaredField(
+                "authorizationHandler")),
+        authorizationHandler);
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getRequestURI()).thenReturn("/mcp/authorize");
+    when(request.getParameterMap()).thenReturn(Map.of());
+
+    transport.doGet(request, response);
+  }
+
+  @Test
+  void disabledRegistrationRejectsPostBeforeReadingBody() throws Exception {
+    var transport = transportWith(mock(UserSSOOAuthProvider.class));
+    putField(transport, "objectMapper", new ObjectMapper());
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getRequestURI()).thenReturn("/mcp/register");
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    when(response.getOutputStream()).thenReturn(mock(ServletOutputStream.class));
+    try (var config = mockStatic(SecurityConfigurationManager.class)) {
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(new MCPConfiguration().withDynamicClientRegistrationEnabled(false));
+      transport.doPost(request, response);
+    }
+    verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+    verify(request, never()).getInputStream();
+  }
+
+  @Test
+  void discoveryRemovesDisabledRegistrationWithoutMutatingSharedMetadata() throws Exception {
+    var transport = transportWith(mock(UserSSOOAuthProvider.class));
+    putField(transport, "objectMapper", new ObjectMapper());
+    var metadata = new org.openmetadata.mcp.auth.OAuthMetadata();
+    metadata.setRegistrationEndpoint(URI.create("https://om.test/mcp/register"));
+    putField(transport, "oauthMetadata", metadata);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+    ServletOutputStream stream = mock(ServletOutputStream.class);
+    org.mockito.Mockito.doAnswer(
+            inv -> {
+              output.write(
+                  inv.<byte[]>getArgument(0),
+                  inv.<Integer>getArgument(1),
+                  inv.<Integer>getArgument(2));
+              return null;
+            })
+        .when(stream)
+        .write(any(byte[].class), anyInt(), anyInt());
+    when(response.getOutputStream()).thenReturn(stream);
+    try (var config = mockStatic(SecurityConfigurationManager.class)) {
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(new MCPConfiguration().withDynamicClientRegistrationEnabled(false));
+      transport.handleMetadata(mock(HttpServletRequest.class), response);
+    }
+    assertThat(new ObjectMapper().readTree(output.toByteArray()).has("registration_endpoint"))
+        .isFalse();
+    assertThat(metadata.getRegistrationEndpoint()).isNotNull();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void registrationLimitCannotBeResetBySpoofedForwardedPrefixes(boolean separateHeaders)
+      throws Exception {
+    var transport = transportWith(mock(UserSSOOAuthProvider.class));
+    var registration = mock(RegistrationHandler.class);
+    when(registration.handle(any()))
+        .thenReturn(CompletableFuture.completedFuture(new OAuthClientInformation()));
+    putField(transport, "registrationHandler", registration);
+    var attempts = new ConcurrentHashMap<String, AtomicInteger>();
+    putField(transport, "registrationAttempts", attempts);
+    putField(transport, "objectMapper", new ObjectMapper());
+    for (int attempt = 1; attempt <= 11; attempt++) {
+      var request = mock(HttpServletRequest.class);
+      when(request.getContextPath()).thenReturn("");
+      when(request.getRequestURI()).thenReturn("/mcp/register");
+      when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+      var headers =
+          separateHeaders
+              ? List.of("192.0.2." + attempt, "203.0.113.7")
+              : List.of("192.0.2." + attempt + ", 203.0.113.7");
+      when(request.getHeaders("X-Forwarded-For")).thenReturn(Collections.enumeration(headers));
+      when(request.getInputStream())
+          .thenReturn(
+              HttpServletStatelessServerTransportTest.bodyOf(
+                  new ByteArrayInputStream(new byte[] {'{', '}'})));
+      var response = mock(HttpServletResponse.class);
+      when(response.getOutputStream()).thenReturn(mock(ServletOutputStream.class));
+      transport.doPost(request, response);
+      verify(response).setStatus(attempt <= 10 ? 201 : 429);
+    }
+    assertThat(attempts).containsOnlyKeys("203.0.113.7");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"203.0.113.7, garbage", "203.0.113.7,", "203.0.113.7, 999.1.1.1"})
+  void malformedProxyAddressFallsBackToPeer(String forwarded) throws Exception {
+    assertThat(clientIp("127.0.0.1", forwarded)).isEqualTo("127.0.0.1");
+  }
+
+  @Test
+  void forwardedAddressRequiresLocalPeerAndCanonicalizesIpv6() throws Exception {
+    assertThat(clientIp("203.0.113.7", "192.0.2.1")).isEqualTo("203.0.113.7");
+    assertThat(clientIp("127.0.0.1", "192.0.2.1, 2001:0db8:0:0:0:0:0:1")).isEqualTo("2001:db8::1");
+    assertThat(clientIp("::1", "203.0.113.7")).isEqualTo("203.0.113.7");
+    assertThat(clientIp("127.0.0.1", null)).isEqualTo("127.0.0.1");
+  }
+
+  private String clientIp(String peer, String forwarded) throws Exception {
+    var request = mock(HttpServletRequest.class);
+    when(request.getRemoteAddr()).thenReturn(peer);
+    when(request.getHeaders("X-Forwarded-For"))
+        .thenReturn(Collections.enumeration(forwarded == null ? List.of() : List.of(forwarded)));
+    var method =
+        OAuthHttpStatelessServerTransportProvider.class.getDeclaredMethod(
+            "getClientIp", HttpServletRequest.class);
+    method.setAccessible(true);
+    return (String) method.invoke(transportWith(mock(UserSSOOAuthProvider.class)), request);
+  }
+
+  // ── registration body limit ───────────────────────────────────────────────
+
+  @Test
+  void doPost_oversizedRegistration_answers413WithoutRegistering() throws Exception {
+    OAuthHttpStatelessServerTransportProvider transport =
+        transportWith(mock(UserSSOOAuthProvider.class));
+    RegistrationHandler registrationHandler = mock(RegistrationHandler.class);
+    putField(transport, "registrationHandler", registrationHandler);
+    putField(transport, "registrationAttempts", new ConcurrentHashMap<>());
+    putField(transport, "objectMapper", new ObjectMapper());
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getRequestURI()).thenReturn("/mcp/register");
+    when(request.getRemoteAddr()).thenReturn("203.0.113.7");
+    byte[] oversized =
+        new byte[OAuthHttpStatelessServerTransportProvider.MAX_REGISTRATION_BODY_BYTES + 1];
+    when(request.getInputStream())
+        .thenReturn(
+            HttpServletStatelessServerTransportTest.bodyOf(new ByteArrayInputStream(oversized)));
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    when(response.getOutputStream()).thenReturn(mock(ServletOutputStream.class));
+
+    transport.doPost(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE);
+    verifyNoInteractions(registrationHandler);
+  }
+
+  private static void putField(Object target, String fieldName, Object value) throws Exception {
+    sun.misc.Unsafe unsafe = unsafe();
+    Field field = OAuthHttpStatelessServerTransportProvider.class.getDeclaredField(fieldName);
+    unsafe.putObject(target, unsafe.objectFieldOffset(field), value);
+  }
+
+  private static sun.misc.Unsafe unsafe() throws Exception {
+    Field unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+    unsafeField.setAccessible(true);
+    return (sun.misc.Unsafe) unsafeField.get(null);
+  }
+
+  private static void setField(Object target, String fieldName, Object value) throws Exception {
+    Field field = target.getClass().getDeclaredField(fieldName);
+    field.setAccessible(true);
+    field.set(target, value);
+  }
 
   // ── sanitizeRedirectUrlForLogging ─────────────────────────────────────────
 
@@ -70,8 +542,9 @@ class OAuthHttpStatelessServerTransportProviderTest {
         .contains("Mcp-Name")
         .contains("Mcp-Client-Name")
         .contains("X-OpenMetadata-Persona");
-    // Without this the browser hides the 401's challenge and the client cannot start OAuth.
-    verify(response).setHeader("Access-Control-Expose-Headers", "WWW-Authenticate");
+    // Without these the browser hides the 401's challenge, which the client needs to start OAuth,
+    // and the 503's retry hint.
+    verify(response).setHeader("Access-Control-Expose-Headers", "WWW-Authenticate, Retry-After");
     verify(response).setHeader("Vary", "Origin");
   }
 
@@ -94,6 +567,154 @@ class OAuthHttpStatelessServerTransportProviderTest {
   // Note: the committed-response guard in handleAuthorizeRequest() cannot be meaningfully
   // exercised at unit level because handleAuthorizeRequest is private and the class constructor
   // requires a full running auth stack. The guard is covered by integration tests.
+
+  // ── bearer token principal resolution ────────────────────────────────────
+
+  /**
+   * {@code authenticateRequest} shares {@code SocketAddressFilter.validatePrefixedTokenRequest},
+   * which binds the principal through {@link JwtFilter#resolveUserName}: with {@code emailClaim}
+   * configured, a token carrying only an email claim resolves to the stored username, exactly as
+   * the HTTP filter does. A token with no legacy principal claim must therefore authenticate here.
+   */
+  @Test
+  void authenticateRequest_emailFirstToken_resolvesThePrincipalLikeHttp() throws Exception {
+    initializeJwtTokenGenerator();
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getPublicKeyUrls()).thenReturn(List.of());
+    when(authConfig.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
+    when(authConfig.getJwtPrincipalClaimsMapping()).thenReturn(List.of());
+    when(authConfig.getEmailClaim()).thenReturn("email");
+    JwtFilter jwtFilter = spy(new JwtFilter(authConfig, mock(AuthorizerConfiguration.class)));
+    String token = JWT.create().withClaim("email", "mcp.user@company.com").sign(Algorithm.none());
+    doReturn(JWT.decode(token).getClaims()).when(jwtFilter).verifySignatureOnly(token);
+    doNothing().when(jwtFilter).checkValidationsForToken(any(), any(), any(), isNull());
+    OAuthHttpStatelessServerTransportProvider transport =
+        transportWith(mock(UserSSOOAuthProvider.class));
+    setField(transport, "jwtFilter", jwtFilter);
+    UserRepository userRepository = mock(UserRepository.class);
+    when(userRepository.getActiveUserByEmailForAuth(eq("mcp.user@company.com"), any()))
+        .thenReturn(new User().withName("mcp.user_q9z1"));
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+
+    boolean authenticated;
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getUserRepository).thenReturn(userRepository);
+      authenticated = transport.authenticateRequest(request, response);
+    }
+
+    assertThat(authenticated).isTrue();
+    verify(response, never()).setStatus(anyInt());
+    verify(jwtFilter).checkValidationsForToken(any(), eq(token), eq("mcp.user_q9z1"), isNull());
+  }
+
+  /** The real {@link JwtFilter} reads the local signing key from the generator at construction. */
+  private static void initializeJwtTokenGenerator() throws Exception {
+    initializeJwtTokenGenerator(AuthenticationConfiguration.TokenValidationAlgorithm.RS_256);
+  }
+
+  private static void initializeJwtTokenGenerator(
+      AuthenticationConfiguration.TokenValidationAlgorithm providerAlgorithm) throws Exception {
+    JWTTokenConfiguration tokenConfiguration = new JWTTokenConfiguration();
+    tokenConfiguration.setJwtissuer("open-metadata.org");
+    tokenConfiguration.setKeyId("test-key");
+    tokenConfiguration.setRsaprivateKeyFilePath(resourceFilePath("private_key.der"));
+    tokenConfiguration.setRsapublicKeyFilePath(resourceFilePath("public_key.der"));
+    JWTTokenGenerator.getInstance()
+        .init(
+            new AuthenticationConfiguration().withTokenValidationAlgorithm(providerAlgorithm),
+            tokenConfiguration);
+  }
+
+  // ── OpenID discovery ──────────────────────────────────────────────────────
+
+  /**
+   * An MCP client takes the signing algorithm from discovery and checks the server's tokens
+   * against it. The server signs them with its own key whatever the identity provider uses, so a
+   * provider on RS512 must not change what discovery advertises
+   * (ADR:2026-11-12-openmetadata-signs-its-own-tokens-with-rs256).
+   */
+  @Test
+  void openIdDiscoveryAdvertisesTheAlgorithmOfTheTokensTheServerIssues() throws Exception {
+    initializeJwtTokenGenerator(AuthenticationConfiguration.TokenValidationAlgorithm.RS_512);
+    String issued =
+        JWTTokenGenerator.getInstance()
+            .generateJWTToken(
+                USER_NAME,
+                Set.of(),
+                false,
+                "alice@example.com",
+                3600,
+                false,
+                ServiceTokenType.OM_USER,
+                List.of("openid"),
+                CLIENT_ID)
+            .getJWTToken();
+    AuthenticationConfiguration rs512Provider = mock(AuthenticationConfiguration.class);
+    when(rs512Provider.getTokenValidationAlgorithm())
+        .thenReturn(AuthenticationConfiguration.TokenValidationAlgorithm.RS_512);
+    when(rs512Provider.getPublicKeyUrls()).thenReturn(List.of());
+    when(rs512Provider.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
+    when(rs512Provider.getJwtPrincipalClaimsMapping()).thenReturn(List.of());
+    OAuthHttpStatelessServerTransportProvider transport =
+        transportWith(mock(UserSSOOAuthProvider.class));
+    putField(transport, "mcpEndpoint", "/mcp");
+    putField(transport, "objectMapper", new ObjectMapper());
+
+    try (MockedStatic<SecurityConfigurationManager> config =
+        mockStatic(SecurityConfigurationManager.class)) {
+      config.when(SecurityConfigurationManager::getCurrentAuthConfig).thenReturn(rs512Provider);
+      transport.onConfigurationChanged(
+          rs512Provider,
+          mock(AuthorizerConfiguration.class),
+          new MCPConfiguration().withBaseUrl("https://om.example"));
+    }
+
+    JsonNode advertised = discoveryDocument(transport).get("id_token_signing_alg_values_supported");
+    assertThat(advertised).hasSize(1);
+    assertThat(advertised.get(0).asText()).isEqualTo(JWT.decode(issued).getAlgorithm());
+  }
+
+  private static JsonNode discoveryDocument(OAuthHttpStatelessServerTransportProvider transport)
+      throws Exception {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getRequestURI()).thenReturn("/mcp/.well-known/openid-configuration");
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    ByteArrayOutputStream body = new ByteArrayOutputStream();
+    when(response.getOutputStream()).thenReturn(new CapturedOutput(body));
+
+    transport.doGet(request, response);
+
+    return new ObjectMapper().readTree(body.toByteArray());
+  }
+
+  private static final class CapturedOutput extends ServletOutputStream {
+    private final ByteArrayOutputStream body;
+
+    private CapturedOutput(ByteArrayOutputStream body) {
+      this.body = body;
+    }
+
+    @Override
+    public void write(int b) {
+      body.write(b);
+    }
+
+    @Override
+    public boolean isReady() {
+      return true;
+    }
+
+    @Override
+    public void setWriteListener(WriteListener listener) {}
+  }
+
+  private static String resourceFilePath(String resourceName) throws Exception {
+    return Path.of(Thread.currentThread().getContextClassLoader().getResource(resourceName).toURI())
+        .toString();
+  }
 
   // ── bearer credential classification ─────────────────────────────────────
 
@@ -223,6 +844,25 @@ class OAuthHttpStatelessServerTransportProviderTest {
       assertThat(failure.statusCode()).isEqualTo(HttpServletResponse.SC_UNAUTHORIZED);
       assertThat(failure.jsonRpcCode()).isEqualTo(JsonRpcErrorBody.UNAUTHORIZED);
     }
+  }
+
+  // ── 503 for a token that cannot be confirmed ─────────────────────────────
+
+  @Test
+  void writeUnavailable_answers503WithTheRetryHintAndNoChallenge() throws Exception {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    StringWriter body = new StringWriter();
+    when(response.getWriter()).thenReturn(new PrintWriter(body));
+
+    OAuthHttpStatelessServerTransportProvider.writeUnavailable(response, 2);
+
+    verify(response).setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+    verify(response).setHeader("Retry-After", "2");
+    verify(response, never()).setHeader(eq("WWW-Authenticate"), anyString());
+    assertThat(body.toString())
+        .isEqualTo(
+            "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32003,"
+                + "\"message\":\"Credential verification is temporarily unavailable\"}}");
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────

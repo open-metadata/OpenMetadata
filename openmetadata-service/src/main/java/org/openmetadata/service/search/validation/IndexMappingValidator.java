@@ -19,7 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
-import org.openmetadata.service.search.scripts.SoftDeleteScript;
 
 /**
  * Boot-time sanity check over the loaded {@code indexMapping.json}. For every parent → child
@@ -42,7 +41,6 @@ public final class IndexMappingValidator {
     if (indexMappings == null || indexMappings.isEmpty()) {
       return warnings;
     }
-    SoftDeleteScript softDelete = new SoftDeleteScript(true);
     for (Map.Entry<String, IndexMapping> entry : indexMappings.entrySet()) {
       String parentType = entry.getKey();
       IndexMapping mapping = entry.getValue();
@@ -58,7 +56,7 @@ public final class IndexMappingValidator {
                   + " propagation will skip it".formatted(parentType, childAlias));
           continue;
         }
-        if (!softDelete.compatibleWith(childCapability)) {
+        if (!childCapability.hasFieldDeleted()) {
           warnings.add(
               "Parent '%s' declares child alias '%s' which does not support SoftDelete (isTimeSeries=%s)"
                   .formatted(parentType, childAlias, childCapability.isTimeSeries()));

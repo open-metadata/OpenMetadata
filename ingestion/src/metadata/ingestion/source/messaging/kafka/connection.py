@@ -13,11 +13,10 @@
 Source connection handler
 """
 
-from copy import deepcopy
-
 from confluent_kafka import Consumer, KafkaException
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.schema_registry.schema_registry_client import SchemaRegistryClient
+from pydantic import BaseModel
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -33,6 +32,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.models.custom_pydantic import SECRET
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
@@ -57,6 +57,56 @@ TIMEOUT_SECONDS = 10
 
 # librdkafka rejects nothing, so consumer-only keys would silently ride along.
 CONSUMER_ONLY_CONFIG_KEYS = ("group.id", "enable.auto.commit", "auto.offset.reset")
+
+
+def _resolve_secret_value(value: str) -> str:
+    """Resolve a `secret:` reference against the configured secrets manager.
+
+    Imported lazily, as in custom_pydantic, to avoid a circular import.
+    """
+    from metadata.utils.secrets.db_secrets_manager import (  # pylint: disable=import-outside-toplevel
+        DBSecretsManager,
+    )
+    from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
+        SecretsManagerFactory,
+    )
+
+    secrets_manager = SecretsManagerFactory().get_secrets_manager()
+    # The server only hands out references with an external store; under the default DB
+    # provider a value starting with `secret:` is the literal setting and must reach the client.
+    if not secrets_manager or isinstance(secrets_manager, DBSecretsManager):
+        return value
+    secret_id = value.replace(SECRET, "", 1)
+    try:
+        resolved = secrets_manager.get_string_value(secret_id)
+    except Exception as exc:  # pylint: disable=broad-except
+        logger.error(
+            "Secret value [%s] not present in the configured secrets manager: %s",
+            secret_id,
+            exc,
+        )
+        return value
+    return resolved if resolved is not None else value
+
+
+def client_config(config: BaseModel | None) -> dict:
+    """consumerConfig/schemaRegistryConfig as the flat dict librdkafka takes: declared keys
+    (`sasl.password`) under their dotted names next to the free-form entries, with secrets left
+    as stored - `secret:` references are resolved separately."""
+    if config is None:
+        return {}
+    return config.model_dump(mode="json", by_alias=True, exclude_none=True)
+
+
+def _resolve_secret_values(config: dict) -> dict:
+    """consumerConfig/schemaRegistryConfig entries are encrypted per entry on the server.
+    With an external secrets manager the API hands the client `secret:` references, which
+    typed password fields resolve through CustomSecretStr but a free-form map cannot, so
+    resolve them here before the dict reaches librdkafka."""
+    return {
+        key: _resolve_secret_value(value) if isinstance(value, str) and value.startswith(SECRET) else value
+        for key, value in config.items()
+    }
 
 
 class KafkaClient:
@@ -84,8 +134,8 @@ def get_connection(connection: KafkaConnectionConfig | RedpandaConnection) -> Ka
     """
     Create connection
     """
-    consumer_config = deepcopy(connection.consumerConfig) or {}
-    schema_registry_config = deepcopy(connection.schemaRegistryConfig) or {}
+    consumer_config = _resolve_secret_values(client_config(connection.consumerConfig))
+    schema_registry_config = _resolve_secret_values(client_config(connection.schemaRegistryConfig))
 
     if connection.saslUsername or connection.saslPassword or connection.saslMechanism:
         if connection.saslUsername:
@@ -95,7 +145,7 @@ def get_connection(connection: KafkaConnectionConfig | RedpandaConnection) -> Ka
         if connection.saslMechanism:
             consumer_config["sasl.mechanism"] = connection.saslMechanism.value
 
-        if connection.consumerConfig.get("security.protocol") is None and connection.securityProtocol:
+        if consumer_config.get("security.protocol") is None and connection.securityProtocol:
             consumer_config["security.protocol"] = connection.securityProtocol.value
 
     if connection.basicAuthUserInfo:

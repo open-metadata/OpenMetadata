@@ -20,6 +20,11 @@ import {
   PaginationPageDefault,
   PaginationPageMinimalCenter,
 } from '../components/application/pagination/pagination';
+import { PaginationDot } from '../components/application/pagination/pagination-dot';
+import {
+  DEFAULT_PAGE_SIZE,
+  DEFAULT_PAGE_SIZE_OPTIONS,
+} from '../components/application/pagination/pagination.constants';
 
 const meta = {
   title: 'Components/Pagination',
@@ -113,7 +118,7 @@ export const ButtonGroup: StoryObj = {
 export const CardWithControls: StoryObj = {
   render: () => {
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
     const totalPages = Math.max(Math.ceil(TOTAL_ITEMS / pageSize), 1);
 
     return (
@@ -121,10 +126,31 @@ export const CardWithControls: StoryObj = {
         <PaginationCardWithControls
           page={page}
           pageSize={pageSize}
+          pageSizeOptions={DEFAULT_PAGE_SIZE_OPTIONS}
           total={totalPages}
           onPageChange={setPage}
           onPageSizeChange={setPageSize}
         />
+      </div>
+    );
+  },
+};
+
+export const Dots: StoryObj = {
+  render: () => {
+    const [page, setPage] = useState(1);
+
+    return (
+      <div className="tw:flex tw:flex-col tw:items-center tw:gap-6">
+        {(['sm', 'md', 'lg'] as const).map((size) => (
+          <PaginationDot
+            key={size}
+            page={page}
+            size={size}
+            total={5}
+            onPageChange={setPage}
+          />
+        ))}
       </div>
     );
   },

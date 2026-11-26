@@ -12,7 +12,7 @@
  */
 
 import { TFunction } from 'i18next';
-import { DateTime } from 'luxon';
+import { DateTime, Settings } from 'luxon';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import {
   ActivityEvent,
@@ -30,14 +30,15 @@ import {
 } from '../../../../rest/conversationsAPI';
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
-  getStartOfDayInMillis: (value: number) => value ?? 0,
-  getEndOfDayInMillis: (value: number) => value ?? 0,
-  getEpochMillisForPastDays: (days: number) => days,
   getCurrentMillis: () => 0,
 }));
 
 jest.mock('../../../../constants/profiler.constant', () => ({
-  PROFILER_FILTER_RANGE: { last30days: { days: 30 } },
+  PROFILER_FILTER_RANGE: {
+    yesterday: { days: 1, title: 'label.yesterday' },
+    last30days: { days: 30 },
+    last60days: { days: 60 },
+  },
 }));
 
 jest.mock('../../../../rest/activityAPI', () => ({
@@ -52,6 +53,12 @@ jest.mock('../../../../rest/conversationsAPI', () => ({
 
 import { Task } from '../../../../generated/entity/tasks/task';
 import {
+  INBOX_ACTIVITY_FILTER_PARAM,
+  INBOX_MY_ASSETS_ACTIVITY_PATH,
+  PERSONAL_SPACE_ROUTES,
+} from '../personalSpace.constants';
+import {
+  ActivityFilter,
   applyReaction,
   formatInboxCount,
   formatInboxDate,
@@ -59,11 +66,15 @@ import {
   getActivityChange,
   getActivityEventLabel,
   getActivityKindType,
+  getActivityLookbackDays,
   getFeedSortTimestamp,
+  getInboxDateRange,
   getInboxTabBadge,
+  INBOX_DATE_RANGE_OPTIONS,
   isSameLocalDay,
   isTaskOpen,
   pairFieldChanges,
+  parseActivityFilter,
   sendReaction,
 } from './inbox.utils';
 
@@ -73,7 +84,61 @@ const mockAddConversationReaction = addConversationReaction as jest.Mock;
 const mockRemoveConversationReaction = removeConversationReaction as jest.Mock;
 const t = ((key: string) => key) as TFunction;
 
+// The activity API takes no end time, so every preset runs up to now and a
+// one-day preset can only mean today.
+describe('INBOX_DATE_RANGE_OPTIONS', () => {
+  it('offers Today in place of Yesterday, up to 30 days', () => {
+    expect(INBOX_DATE_RANGE_OPTIONS).toEqual({
+      today: { days: 0, title: 'label.today' },
+      last30days: { days: 30 },
+    });
+  });
+
+  // The feed heads its days in the viewer's zone; a UTC day would start
+  // Today at 05:30 in India, and just after midnight still show yesterday.
+  it("bounds a window by the viewer's own days, not UTC's", () => {
+    const { defaultZone, now } = Settings;
+    Settings.defaultZone = 'Asia/Kolkata';
+    Settings.now = () => Date.parse('2026-11-16T19:30:00Z');
+
+    try {
+      expect(getInboxDateRange(INBOX_DATE_RANGE_OPTIONS.today.days)).toEqual({
+        startTs: Date.parse('2026-11-16T18:30:00Z'),
+        endTs: Date.parse('2026-11-17T18:29:59.999Z'),
+      });
+      expect(getInboxDateRange(3).startTs).toBe(
+        Date.parse('2026-11-13T18:30:00Z')
+      );
+    } finally {
+      Settings.defaultZone = defaultZone;
+      Settings.now = now;
+    }
+  });
+});
+
 describe('inbox.utils', () => {
+  describe('parseActivityFilter', () => {
+    it('accepts every Activity sub-tab and ignores anything else', () => {
+      Object.values(ActivityFilter).forEach((filter) =>
+        expect(parseActivityFilter(filter)).toBe(filter)
+      );
+
+      expect(parseActivityFilter('bogus')).toBeUndefined();
+      expect(parseActivityFilter(null)).toBeUndefined();
+    });
+
+    // The landing page spells this link out so it need not import this module;
+    // a renamed filter would otherwise send it to All without a failing test.
+    it('pins the landing My Assets link to the My Assets filter', () => {
+      const url = new URL(INBOX_MY_ASSETS_ACTIVITY_PATH, 'http://localhost');
+
+      expect(url.pathname).toBe(PERSONAL_SPACE_ROUTES.INBOX_ACTIVITY);
+      expect(
+        parseActivityFilter(url.searchParams.get(INBOX_ACTIVITY_FILTER_PARAM))
+      ).toBe(ActivityFilter.MyAssets);
+    });
+  });
+
   describe('isTaskOpen', () => {
     const task = (status: string, type: string) =>
       ({ status, type } as unknown as Task);
@@ -568,6 +633,27 @@ describe('inbox.utils', () => {
       const created = change('c', { fieldName: undefined, newValue: 'x' });
 
       expect(pairFieldChanges([created])).toEqual([created]);
+    });
+  });
+
+  // `getCurrentMillis` is mocked to 0 here, so a start is that far in the past.
+  describe('getActivityLookbackDays', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+
+    // A 30-day window starts at midnight 30 days ago: a 30-day look-back from
+    // mid-afternoon stops short of it.
+    it("reaches back to the window's first midnight", () => {
+      expect(getActivityLookbackDays(-(30 * DAY + 15 * 60 * 60 * 1000))).toBe(
+        31
+      );
+    });
+
+    it('asks for at least a day', () => {
+      expect(getActivityLookbackDays(0)).toBe(1);
+    });
+
+    it("holds to the endpoints' 90-day cap", () => {
+      expect(getActivityLookbackDays(-365 * DAY)).toBe(90);
     });
   });
 });

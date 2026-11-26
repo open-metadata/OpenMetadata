@@ -87,6 +87,14 @@ openmetadata-ui/src/main/resources/ui/playwright/tsconfig.tsbuildinfo
 /ingestion/junit/*
 /ingestion/tests/e2e/artifacts/*
 openmetadata-ui/src/main/resources/ui/src/test/unit/coverage
+openmetadata-ui/src/main/resources/ui/src/test/browser/coverage
+openmetadata-ui/src/main/resources/ui/src/test/browser/junit.xml
+openmetadata-ui/src/main/resources/ui/.vitest-reports
+openmetadata-ui/src/main/resources/ui/.impact
+openmetadata-ui/src/main/resources/ui/.vitest-attachments/
+# Vitest failure screenshots; committed visual baselines end in -<browser>-<os>.png
+openmetadata-ui/src/main/resources/ui/src/**/__screenshots__/**/*.png
+!openmetadata-ui/src/main/resources/ui/src/**/__screenshots__/**/*-chromium-linux.png
 openmetadata-ui/src/main/resources/ui/test-report.xml
 
 # Playwright artifacts
@@ -107,6 +115,7 @@ openmetadata-ui/src/main/resources/ui/downloads/*
 # Python generated sources
 ingestion-core/src/metadata/generated/**
 ingestion/src/metadata/generated/**
+ingestion/src/metadata/generated/.generation-manifest.json
 ingestion/requirements.txt
 ingestion/.python-version
 ingestion/venv2/**
@@ -149,6 +158,13 @@ search-volume/
 
 # Nox
 ingestion/.nox/
+openmetadata-airflow-apis/.venv/
+openmetadata-airflow-apis/.nox/
+openmetadata-airflow-apis/junit/
+openmetadata-airflow-apis/ci-diagnostics/
+openmetadata-airflow-apis/ci-coverage.xml
+openmetadata-airflow-apis/*-test-exit-code.txt
+openmetadata-airflow-apis/*-test-run.log
 
 # Environment variables
 .env
@@ -165,6 +181,7 @@ _bmad/
 
 # Claude Flow generated files
 .claude/*
+CLAUDE.local.md
 .mcp.json
 claude-flow.config.json
 .swarm/

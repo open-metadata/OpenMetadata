@@ -115,7 +115,7 @@ jobs:
   # Detects whether the PR touches Okta-specific files so the Okta leg (a
   # ~40-min live-tenant run) can be selectively enabled on PRs that touch
   # its own code without paying the cost on every unrelated auth PR.
-  # Mirrors the `check-changes` pattern used by playwright-visual.yml et al.
+  # Mirrors the `check-changes` pattern used by reusable-playwright-e2e.yml.
   # Empty output on schedule / dispatch is fine — the SKIP_LEG expression
   # only consults it inside the pull_request/push clause.
   check-changes:
@@ -172,6 +172,7 @@ jobs:
   #   4. Every SsoScenarios describe block is tagged `[@<slug>, @sso-matrix]`
   #      — the filter picks a leg's own describes automatically.
   sso-login:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: check-changes
     runs-on: ubuntu-latest
     environment: test
@@ -205,7 +206,10 @@ jobs:
           - name: 'msal-mock'
             env_prefix: 'MSAL_MOCK'
             filter: '--grep @msal-mock'
-            needs_docker: ''
+            # The MSAL SDK stays mocked in-page, but the ID token it hands
+            # the SPA comes from the mock IdP (`/test/id-token`) so the
+            # server verifies it against a real JWKS.
+            needs_docker: 'mock-oidc'
           - name: 'auth0-mock'
             env_prefix: 'AUTH0_MOCK'
             filter: '--grep @auth0-mock'
@@ -309,6 +313,10 @@ jobs:
             [ -f "$image" ] && docker load -i "$image" || true
           done
 
+      - name: Install ANTLR CLI
+        if: env.SKIP_LEG != 'true'
+        run: sudo make install_antlr_cli
+
       - name: Setup OpenMetadata Test Environment
         if: env.SKIP_LEG != 'true'
         # `PW_E2E_BUILD=true` propagates through this composite step into
@@ -326,10 +334,8 @@ jobs:
           PW_E2E_BUILD: 'true'
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: '3.10'
           args: '-d postgresql -i false'
           ingestion_dependency: 'all'
-          install-test-dependencies: 'false'
 
       - name: Setup Node.js
         if: env.SKIP_LEG != 'true'
@@ -341,6 +347,7 @@ jobs:
         if: env.SKIP_LEG != 'true'
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
+          corepack enable
           # Retry transient registry failures (5xx on tarball fetches) —
           # yarn v1 does not retry HTTP errors on its own.
           for attempt in 1 2 3; do
@@ -355,7 +362,7 @@ jobs:
 
       - name: Install Playwright Browsers
         if: env.SKIP_LEG != 'true'
-        run: npx playwright@1.57.0 install chromium --with-deps
+        run: npx playwright@1.65.1 install chromium --with-deps
 
       - name: Start OpenLDAP
         if: ${{ env.SKIP_LEG != 'true' && matrix.provider.needs_docker == 'ldap' }}
@@ -491,7 +498,7 @@ jobs:
   # with per-cell emoji and right-alignment — no monospace hack needed.
   # The summary Python script builds the full payload; this step just POSTs.
   notify-slack:
-    if: ${{ always() && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
+    if: ${{ always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
     needs: sso-login
     runs-on: ubuntu-latest
     steps:
@@ -506,7 +513,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Download leg outcomes
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: sso-login-outcome-*
           path: outcomes
@@ -537,62 +544,4 @@ jobs:
           if [ "$(echo "$response" | jq -r '.ok')" != "true" ]; then
             echo "::error::Slack post failed: $response"
             exit 1
-          fi
-
-  # continue-on-error on the post step: fork PRs run under a read-only
-  # GITHUB_TOKEN and the comment API returns 403 — swallow that rather
-  # than red-x'ing the whole workflow for a nice-to-have.
-  notify-pr:
-    if: ${{ always() && github.event_name == 'pull_request' }}
-    needs: sso-login
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Checkout (for shared summary script)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          sparse-checkout: |
-            .github/scripts/build_sso_login_summary.py
-          sparse-checkout-cone-mode: false
-
-      - name: Download leg outcomes
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          pattern: sso-login-outcome-*
-          path: outcomes
-
-      - name: Build consolidated summary
-        env:
-          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          REF_NAME: ${{ github.ref_name }}
-          EVENT_NAME: ${{ github.event_name }}
-        run: python3 .github/scripts/build_sso_login_summary.py /tmp/sso-summary
-
-      - name: Post sticky PR comment
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          set -euo pipefail
-          marker='<!-- sso-login-nightly-summary -->'
-
-          # Sticky lookup: match the marker AND scope to the workflow bot's
-          # own comments. Marker-only would let any PR participant paste
-          # the string into their comment and have subsequent runs
-          # overwrite it.
-          existing=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-            --paginate --jq \
-            ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"${marker}\"))) | .id" \
-            | head -n1 || true)
-
-          if [ -n "$existing" ]; then
-            gh api -X PATCH "repos/${REPO}/issues/comments/${existing}" \
-              -F body=@/tmp/sso-summary/pr_comment.md
-          else
-            gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-              -F body=@/tmp/sso-summary/pr_comment.md
           fi

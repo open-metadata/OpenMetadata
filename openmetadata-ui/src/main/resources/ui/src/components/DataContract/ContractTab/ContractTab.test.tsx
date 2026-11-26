@@ -220,7 +220,7 @@ describe('ContractTab', () => {
       expect(getContractByEntityId).toHaveBeenCalledWith(
         'table-1',
         EntityType.TABLE,
-        ['owners']
+        ['owners', 'reviewers']
       );
 
       await waitFor(() => {
@@ -430,7 +430,7 @@ describe('ContractTab', () => {
       expect(getContractByEntityId).toHaveBeenCalledWith(
         'table-1',
         EntityType.TABLE,
-        ['owners']
+        ['owners', 'reviewers']
       );
     });
 
@@ -450,7 +450,7 @@ describe('ContractTab', () => {
       expect(getContractByEntityId).toHaveBeenCalledWith(
         'table-2',
         EntityType.TABLE,
-        ['owners']
+        ['owners', 'reviewers']
       );
     });
   });

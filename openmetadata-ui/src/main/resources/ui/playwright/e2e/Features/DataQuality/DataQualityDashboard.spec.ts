@@ -101,7 +101,7 @@ test.describe(
   },
   () => {
     test.beforeAll('setup pre-test', async ({ browser }) => {
-      test.slow();
+      test.setTimeout(test.info().timeout * 3);
       table1 = new TableClass();
       table2 = new TableClass();
       table3 = new TableClass();
@@ -687,10 +687,9 @@ test.describe(
       });
     });
 
-    // Regression for #30455: a resolved incident must stay visible with its
-    // edit affordance so it can be reopened in place, continuing the SAME
-    // incident (stateId) instead of forking a new one.
-    test('Reopen resolved incident in place from the Test Case page', async ({
+    // Resolved incidents stay visible, but starting another incident preserves
+    // the completed incident and its history under the original stateId.
+    test('Start a distinct incident from a resolved incident on the Test Case page', async ({
       page,
     }) => {
       let resolvedStateId = '';
@@ -716,7 +715,7 @@ test.describe(
             .then((res) => res.json());
 
         let latest = await fetchLatestIncident();
-        // A failed earlier attempt may have left the incident reopened;
+        // A failed earlier attempt may have left a new incident open;
         // restore the resolved precondition so retries stay deterministic.
         if (
           latest.data?.[0]?.testCaseResolutionStatusType !==
@@ -748,32 +747,47 @@ test.describe(
         ).toBeVisible();
       });
 
-      await test.step('Reopen the incident as Acknowledged from the header', async () => {
+      await test.step('Start a new incident and preserve the resolved incident', async () => {
         await page.click('[data-testid="edit-resolution-icon"]');
         await page
           .getByTestId('test-case-resolution-status-type')
           .getByRole('button')
           .click();
-        await page.getByRole('option', { name: 'Ack', exact: true }).click();
+        await expect(
+          page.getByRole('option', { name: 'Ack', exact: true })
+        ).toHaveCount(0);
+        await page.getByRole('option', { name: 'New', exact: true }).click();
 
-        const reopenResponse = page.waitForResponse(
+        const createResponse = page.waitForResponse(
           (response) =>
-            response
-              .url()
-              .includes('/dataQuality/testCases/testCaseIncidentStatus') &&
+            new URL(response.url()).pathname === '/api/v1/tasks' &&
             response.request().method() === 'POST'
         );
         await page.click('#update-status-button');
-        const reopened = await (await reopenResponse).json();
+        const response = await createResponse;
 
-        expect(reopened.stateId).toBe(resolvedStateId);
-        expect(reopened.testCaseResolutionStatusType).toBe(
-          TestCaseResolutionStatusTypes.ACK
-        );
+        expect(response.status()).toBe(201);
+
+        const newIncident = await response.json();
+
+        expect(newIncident.id).toBeTruthy();
+        expect(newIncident.id).not.toBe(resolvedStateId);
 
         await expect(
           page.locator(`[data-testid="${uniquenessTestCaseName}-status"]`)
-        ).toContainText('Ack');
+        ).toContainText('New');
+
+        const { apiContext } = await getApiContext(page);
+        const resolvedResponse = await apiContext.get(
+          `/api/v1/tasks/${resolvedStateId}`
+        );
+
+        expect(resolvedResponse.status()).toBe(200);
+        expect(await resolvedResponse.json()).toMatchObject({
+          id: resolvedStateId,
+          status: 'Completed',
+          workflowStageId: 'resolved',
+        });
       });
     });
 
@@ -1030,68 +1044,43 @@ test.describe(
     test('Test Case Result pie chart segment click redirects to Test Cases with correct status', async ({
       page,
     }) => {
-      await test.step('Navigate to Data Quality dashboard', async () => {
-        await goToDataQualityDashboard(page);
-        await expect(
-          page.locator(`#${TEST_CASE_STATUS_PIE_CHART_TEST_ID}`)
-        ).toBeVisible();
-        await waitForAllLoadersToDisappear(page);
-      });
+      // Unfiltered, the pie counts every test case in the shared server, which
+      // parallel workers keep changing: a slice can be a sliver or move under
+      // the click. This spec's tier scopes it to 4 success, 4 failed, 4 aborted.
+      const segments = [
+        TestCaseStatus.Success,
+        TestCaseStatus.Failed,
+        TestCaseStatus.Aborted,
+      ];
 
-      await test.step('Click success segment and verify redirect', async () => {
-        await clickPieChartSegmentByIndex(
-          page,
-          TEST_CASE_STATUS_PIE_CHART_TEST_ID,
-          0
-        );
-        await expect(page).toHaveURL(
-          (url) =>
-            url.pathname === '/data-quality/test-cases' &&
-            url.searchParams.get('testCaseStatus') === TestCaseStatus.Success
-        );
-      });
+      for (const [index, status] of segments.entries()) {
+        await test.step(`Open dashboard filtered by tier before clicking ${status}`, async () => {
+          await goToDataQualityDashboard(page);
+          await applyDashboardTierFilter(
+            page,
+            tier.responseData.fullyQualifiedName
+          );
+          await assertPieChartLegendCounts(
+            page,
+            'test-case-status-pie-chart-widget',
+            { success: '4', failed: '4', aborted: '4' }
+          );
+          await waitForAllLoadersToDisappear(page);
+        });
 
-      await test.step('Navigate back to Data Quality dashboard', async () => {
-        await goToDataQualityDashboard(page);
-        await expect(
-          page.locator(`#${TEST_CASE_STATUS_PIE_CHART_TEST_ID}`)
-        ).toBeVisible();
-        await waitForAllLoadersToDisappear(page);
-      });
-
-      await test.step('Click failed segment and verify redirect', async () => {
-        await clickPieChartSegmentByIndex(
-          page,
-          TEST_CASE_STATUS_PIE_CHART_TEST_ID,
-          1
-        );
-        await expect(page).toHaveURL(
-          (url) =>
-            url.pathname === '/data-quality/test-cases' &&
-            url.searchParams.get('testCaseStatus') === TestCaseStatus.Failed
-        );
-      });
-
-      await test.step('Navigate back to Data Quality dashboard', async () => {
-        await goToDataQualityDashboard(page);
-        await expect(
-          page.locator(`#${TEST_CASE_STATUS_PIE_CHART_TEST_ID}`)
-        ).toBeVisible();
-        await waitForAllLoadersToDisappear(page);
-      });
-
-      await test.step('Click aborted segment and verify redirect', async () => {
-        await clickPieChartSegmentByIndex(
-          page,
-          TEST_CASE_STATUS_PIE_CHART_TEST_ID,
-          2
-        );
-        await expect(page).toHaveURL(
-          (url) =>
-            url.pathname === '/data-quality/test-cases' &&
-            url.searchParams.get('testCaseStatus') === TestCaseStatus.Aborted
-        );
-      });
+        await test.step(`Click ${status} segment and verify redirect`, async () => {
+          await clickPieChartSegmentByIndex(
+            page,
+            TEST_CASE_STATUS_PIE_CHART_TEST_ID,
+            index
+          );
+          await expect(page).toHaveURL(
+            (url) =>
+              url.pathname === '/data-quality/test-cases' &&
+              url.searchParams.get('testCaseStatus') === status
+          );
+        });
+      }
     });
 
     test('Data Assets Coverage pie chart segment click redirects to Test Suites and Explore', async ({

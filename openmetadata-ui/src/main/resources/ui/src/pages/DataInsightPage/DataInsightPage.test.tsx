@@ -54,21 +54,24 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('./DataInsightProvider', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
-  useDataInsightProvider: jest.fn().mockReturnValue({
-    teamFilter: {},
-    tierFilter: {},
-    chartFilter: { startTs: Date.now(), endTs: Date.now() },
-    onChartFilterChange: jest.fn(),
-    kpi: { isLoading: false, data: [] },
-    entitiesSummary: {},
-    updateEntitySummary: jest.fn(),
-  }),
-}));
+jest.mock(
+  '../../components/DataInsight/DataInsightProvider/DataInsightProvider',
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+    useDataInsightProvider: jest.fn().mockReturnValue({
+      teamFilter: {},
+      tierFilter: {},
+      chartFilter: { startTs: Date.now(), endTs: Date.now() },
+      onChartFilterChange: jest.fn(),
+      kpi: { isLoading: false, data: [] },
+      entitiesSummary: {},
+      updateEntitySummary: jest.fn(),
+    }),
+  })
+);
 
 jest.mock('./DataInsightHeader/DataInsightHeader.component', () =>
   jest

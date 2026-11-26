@@ -37,6 +37,7 @@ from metadata.generated.schema.entity.services.connections.database.common.basic
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
+    MySQLType,
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -237,7 +238,10 @@ def workflow(metadata, database_service, mysql_container):
         METADATA_INGESTION_CONFIG_TEMPLATE.format(
             type="mysql",
             service_name=service_name,
+            # `type` must be set explicitly: the dump excludes unset fields, and without the
+            # discriminator the untagged DatabaseConnection union can resolve to another connector.
             service_config=MysqlConnection(
+                type=MySQLType.Mysql,
                 username=mysql_container.username,
                 authType=BasicAuth(
                     password=mysql_container.password,

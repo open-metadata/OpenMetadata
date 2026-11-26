@@ -21,7 +21,8 @@ jest.mock(
   '../../../../../components/common/ProfilePicture/ProfilePicture',
   () => ({
     __esModule: true,
-    default: () => <span />,
+    default: ({ isAgent }: { isAgent?: boolean }) =>
+      isAgent ? <span data-testid="agent-avatar" /> : <span />,
   })
 );
 
@@ -34,10 +35,6 @@ jest.mock(
     ),
   })
 );
-
-jest.mock('../../../../../utils/FeedUtilsPure', () => ({
-  getFrontEndFormat: (message: string) => `front:${message}`,
-}));
 
 // The stack itself is the core component's; here, only what it is given.
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -59,6 +56,13 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
+import {
+  Task,
+  TaskEntityStatus,
+  TaskEntityType,
+  TaskResolutionType,
+} from '../../../../../rest/tasksAPI';
+import { getTaskDetailDescriptor } from '../taskDetail.utils';
 import TaskDetailSummary from './TaskDetailSummary';
 
 describe('TaskDetailSummary', () => {
@@ -82,6 +86,24 @@ describe('TaskDetailSummary', () => {
 
     expect(screen.getByText('harsh (label.you)')).toBeInTheDocument();
     expect(screen.queryByTestId('avatar-group')).not.toBeInTheDocument();
+  });
+
+  it('names an AI agent with its avatar, as it does a person', () => {
+    render(
+      <TaskDetailSummary
+        rows={[
+          {
+            key: 'createdBy',
+            icon: 'owner',
+            label: 'Created by',
+            value: { kind: 'agent', name: 'Glossary Agent' },
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('agent-avatar')).toBeInTheDocument();
+    expect(screen.getByText('Glossary Agent')).toBeInTheDocument();
   });
 
   // Several people stack as owners do; the overflow reads "5 Assignees", not
@@ -126,7 +148,26 @@ describe('TaskDetailSummary', () => {
     );
 
     expect(screen.getByTestId('callout-markdown')).toHaveTextContent(
-      'front:**Need access** for Q3'
+      '**Need access** for Q3, [@dana](/users/dana)'
     );
+  });
+
+  it('renders the resolution note of a closed task through the rich text viewer', () => {
+    const comment =
+      '<p>Resolved with <#E::user::dana|[@dana](http://localhost:8585/users/dana)></p>';
+    const task = {
+      type: TaskEntityType.TestCaseResolution,
+      status: TaskEntityStatus.Completed,
+      resolution: { type: TaskResolutionType.Completed, comment },
+    } as Task;
+    const { rows } = getTaskDetailDescriptor(task, (key) => key);
+
+    render(<TaskDetailSummary rows={rows} />);
+
+    const preview = screen.getByTestId('callout-markdown');
+
+    expect(preview).toHaveTextContent('data-type="mention"');
+    expect(preview).toHaveTextContent('>@dana</a>');
+    expect(preview).not.toHaveTextContent('<#E::user::');
   });
 });

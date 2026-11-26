@@ -36,6 +36,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -73,15 +74,20 @@ import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
+import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.AuditReportSearchVisibility;
 import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
+import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import os.org.opensearch.client.json.JsonData;
@@ -96,9 +102,13 @@ import os.org.opensearch.client.opensearch._types.SortMode;
 import os.org.opensearch.client.opensearch._types.SortOrder;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregate;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
+import os.org.opensearch.client.opensearch._types.aggregations.CompositeAggregate;
+import os.org.opensearch.client.opensearch._types.aggregations.CompositeAggregationSource;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import os.org.opensearch.client.opensearch._types.mapping.Property;
+import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
+import os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
 import os.org.opensearch.client.opensearch.core.search.Hit;
@@ -118,6 +128,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final ContextMemorySearchVisibility contextMemoryVisibility =
       new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
+  private final AuditReportSearchVisibility auditReportVisibility =
+      new AuditReportSearchVisibility(new OpenSearchQueryBuilderFactory());
   private final NLQService nlqService;
   private static final String SORT_FIELD_SCORE = "_score";
   private static final String SORT_TYPE_KEYWORD = "keyword";
@@ -206,7 +218,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                     .query(
                         restrictToOrgWideMemories(
                             OpenSearchRbacQueries.withAccessPolicies(
-                                sourceUrlQuery, subjectContext, rbacConditionEvaluator))));
+                                sourceUrlQuery, subjectContext, rbacConditionEvaluator),
+                            subjectContext)));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
@@ -243,18 +256,21 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                                 f ->
                                     f.term(
                                         t -> t.field("deleted").value(FieldValue.of(deleted))))));
-    SearchRequest request =
-        SearchRequest.of(
-            search ->
-                search
-                    .index(Entity.getSearchRepository().getIndexOrAliasName(index))
-                    .from(from)
-                    .size(size)
-                    .query(
-                        restrictToOrgWideMemories(
-                            OpenSearchRbacQueries.withAccessPolicies(
-                                query, subjectContext, rbacConditionEvaluator))));
-    return executeSearchRequest(request);
+    SearchRequest.Builder request =
+        new SearchRequest.Builder()
+            .index(Entity.getSearchRepository().getIndexOrAliasName(index))
+            .from(from)
+            .size(size)
+            .query(
+                restrictToOrgWideMemories(
+                    OpenSearchRbacQueries.withAccessPolicies(
+                        query, subjectContext, rbacConditionEvaluator),
+                    subjectContext));
+    List<String> sourceExcludes = PrivateSearchFields.sourceExcludes(subjectContext, index, null);
+    if (!sourceExcludes.isEmpty()) {
+      request.source(source -> source.filter(filter -> filter.excludes(sourceExcludes)));
+    }
+    return executeSearchRequest(request.build());
   }
 
   @Override
@@ -585,10 +601,85 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       }
     }
 
-    applyContextMemoryVisibility(
-        subjectContext, requestBuilder, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
+    OMQueryBuilder memoryVisibility =
+        ContextMemorySearchVisibility.isMemoryListingIndex(index)
+            ? contextMemoryVisibility.buildListingVisibilityFilter(
+                subjectContext,
+                statuses,
+                matchingListingAnchors(index, requestBuilder, subjectContext, statuses))
+            : contextMemoryVisibility.buildVisibilityFilter(
+                subjectContext, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
+    applyContextMemoryVisibility(subjectContext, requestBuilder, memoryVisibility);
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
+  }
+
+  Set<String> matchingListingAnchors(
+      String index,
+      OpenSearchRequestBuilder listing,
+      SubjectContext subject,
+      List<ContextMemoryStatus> statuses)
+      throws IOException {
+    Set<String> anchors = Set.of();
+    if (contextMemoryVisibility.needsListingAnchorAccess(subject, statuses)) {
+      OpenSearchRequestBuilder candidates =
+          new OpenSearchRequestBuilder()
+              .query(listing.query())
+              .size(0)
+              .timeout("30s")
+              .contextMemoryVisibilityResolved()
+              .filter(
+                  ((OpenSearchQueryBuilder)
+                          contextMemoryVisibility.buildListingAnchorCandidateFilter(statuses))
+                      .buildV2());
+      if (listing.postFilter() != null) {
+        candidates.filter(listing.postFilter());
+      }
+      anchors = matchingMemoryAnchorIds(index, candidates);
+    }
+    return anchors;
+  }
+
+  Set<String> matchingMemoryAnchorIds(String index, OpenSearchRequestBuilder candidates)
+      throws IOException {
+    Set<String> anchors = new LinkedHashSet<>();
+    Map<String, FieldValue> after = Map.of();
+    do {
+      CompositeAggregate page = memoryAnchorPage(index, candidates, after);
+      page.buckets()
+          .array()
+          .forEach(
+              bucket ->
+                  anchors.add(bucket.key().get(ContextMemoryIndex.FIELD_ANCHOR_ID).stringValue()));
+      after = page.afterKey();
+    } while (after != null && !after.isEmpty());
+    return anchors;
+  }
+
+  private CompositeAggregate memoryAnchorPage(
+      String index, OpenSearchRequestBuilder candidates, Map<String, FieldValue> after)
+      throws IOException {
+    var source =
+        CompositeAggregationSource.of(
+            s -> s.terms(t -> t.field(ContextMemoryIndex.FIELD_ANCHOR_ID)));
+    candidates.aggregation(
+        ContextMemoryIndex.FIELD_ANCHOR_ID,
+        Aggregation.of(
+            a ->
+                a.composite(
+                    c -> {
+                      c.sources(List.of(Map.of(ContextMemoryIndex.FIELD_ANCHOR_ID, source)))
+                          .size(ContextMemorySearchVisibility.LISTING_ANCHOR_PAGE_SIZE);
+                      if (!after.isEmpty()) {
+                        c.after(after);
+                      }
+                      return c;
+                    })));
+    SearchResponse<JsonData> response = client.search(candidates.build(index), JsonData.class);
+    if (response.timedOut() || response.shards().failed() > 0) {
+      throw new IOException("Incomplete memory anchor listing for " + index);
+    }
+    return response.aggregations().get(ContextMemoryIndex.FIELD_ANCHOR_ID).composite();
   }
 
   @Override
@@ -747,6 +838,11 @@ public class OpenSearchSearchManager implements SearchManagementClient {
           LOG.info("Failed to get Transformed NLQ query");
           return fallbackToBasicSearch(request, subjectContext);
         }
+        if (PrivateSearchFields.namesPrivateField(
+            subjectContext, request.getIndex(), transformedQuery)) {
+          LOG.info("NLQ query names a field the caller may not search; using keyword search");
+          return fallbackToBasicSearch(request, subjectContext);
+        }
 
         LOG.debug("Transformed NLQ query: {}", transformedQuery);
 
@@ -885,6 +981,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     Set<Map<String, Object>> nodes = new HashSet<>();
     searchDataQualityLineageInternal(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
     LineageDomainFilter.pruneDataQualityLineage(nodes, edges, subjectContext);
+    SearchLineagePermissionFilter.filterDataQualityLineageFor(subjectContext, nodes, edges);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return Response.status(OK).entity(responseMap).build();
@@ -1049,8 +1146,19 @@ public class OpenSearchSearchManager implements SearchManagementClient {
    * must fail closed. Non-memory documents are unaffected.
    */
   private Query restrictToOrgWideMemories(Query query) {
+    return restrictToOrgWideMemories(query, null);
+  }
+
+  private Query restrictToOrgWideMemories(Query query, SubjectContext subjectContext) {
     Query memoryFilter =
-        ((OpenSearchQueryBuilder) contextMemoryVisibility.buildOrgWideOnlyFilter()).buildV2();
+        ((OpenSearchQueryBuilder)
+                new OpenSearchQueryBuilderFactory()
+                    .boolQuery()
+                    .must(
+                        List.of(
+                            contextMemoryVisibility.buildOrgWideOnlyFilter(),
+                            auditReportVisibility.buildVisibilityFilter(subjectContext))))
+            .buildV2();
     return query == null
         ? memoryFilter
         : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
@@ -1068,12 +1176,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     if (nullOrEmpty(queryFilter) || EMPTY_JSON_OBJECT.equals(queryFilter)) {
       return;
     }
-    String queryDsl = QueryFilterShape.requireQueryDsl(queryFilter);
-    String encodedQuery = Base64.getEncoder().encodeToString(queryDsl.getBytes(UTF_8));
-    Query filterQuery = Query.of(q -> q.wrapper(w -> w.query(encodedQuery)));
+    Query filterQuery = wrapped(QueryFilterShape.requireQueryDsl(queryFilter));
     Query existingQuery = requestBuilder.query();
     requestBuilder.query(
         existingQuery == null ? filterQuery : filteredBy(existingQuery, filterQuery));
+  }
+
+  private static Query wrapped(String queryDsl) {
+    String encodedQuery = Base64.getEncoder().encodeToString(queryDsl.getBytes(UTF_8));
+    return Query.of(q -> q.wrapper(w -> w.query(encodedQuery)));
   }
 
   private static Query filteredBy(Query existingQuery, Query filterQuery) {
@@ -1153,7 +1264,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       String transformedQuery)
-      throws com.fasterxml.jackson.core.JsonProcessingException {
+      throws IOException {
     OpenSearchRequestBuilder requestBuilder = new OpenSearchRequestBuilder();
     String queryToProcess = OsUtils.parseJsonQuery(transformedQuery);
     requestBuilder.query(Query.of(q -> q.wrapper(w -> w.query(queryToProcess))));
@@ -1161,14 +1272,55 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     requestBuilder.size(request.getSize());
 
     applyRbacQueryWithCaching(subjectContext, requestBuilder);
-    applyContextMemoryVisibility(
-        subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
-    applyQueryFilter(requestBuilder, request);
+    applyMemoryVisibilityAndQueryFilter(request, subjectContext, requestBuilder, true);
     // Strip any clusterAlias prefix first, the same way doSearch does — the deleted filter compares
     // this against the dataAsset/all aliases.
     String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
     applyDeletedFilter(requestBuilder, request, indexName);
+    String[] privateFields =
+        toArrayOrNull(PrivateSearchFields.sourceExcludes(subjectContext, request.getIndex(), null));
+    if (privateFields != null) {
+      requestBuilder.fetchSource(null, privateFields);
+    }
     return requestBuilder;
+  }
+
+  private static String[] toArrayOrNull(List<String> fields) {
+    return nullOrEmpty(fields) ? null : fields.toArray(String[]::new);
+  }
+
+  /**
+   * A search of the memory index alone checks the anchors of the memories it matches, as the Context
+   * Center listing does, so a reader finds an anchored memory without pinning its anchor. Other
+   * searches keep the pinned-anchor rule, and so does the memory bucket of a count over several
+   * indexes ({@code listsMemoryAnchors} false), so its total matches what that search lists. The
+   * query filter goes first because the anchors are collected from the memories the full query
+   * matches.
+   * ADR:2026-11-12-context-center-authorizes-memory-anchors-before-paging
+   */
+  private void applyMemoryVisibilityAndQueryFilter(
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext,
+      OpenSearchRequestBuilder requestBuilder,
+      boolean listsMemoryAnchors)
+      throws IOException {
+    if (listsMemoryAnchors
+        && ContextMemorySearchVisibility.isMemoryOnlySearch(request.getIndex())) {
+      final List<ContextMemoryStatus> statuses = ContextMemorySearchVisibility.SEARCHABLE_STATUSES;
+      applyQueryFilter(requestBuilder, request);
+      applyContextMemoryVisibility(
+          subjectContext,
+          requestBuilder,
+          contextMemoryVisibility.buildListingVisibilityFilter(
+              subjectContext,
+              statuses,
+              matchingListingAnchors(
+                  request.getIndex(), requestBuilder, subjectContext, statuses)));
+    } else {
+      applyContextMemoryVisibility(
+          subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
+      applyQueryFilter(requestBuilder, request);
+    }
   }
 
   private void applyContextMemoryVisibility(
@@ -1189,6 +1341,18 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       Collection<String> pinnedAnchorIds) {
     OMQueryBuilder visibilityBuilder =
         contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses, pinnedAnchorIds);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, visibilityBuilder);
+  }
+
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext,
+      OpenSearchRequestBuilder requestBuilder,
+      OMQueryBuilder visibilityBuilder) {
+    requestBuilder
+        .filter(
+            ((OpenSearchQueryBuilder) auditReportVisibility.buildVisibilityFilter(subjectContext))
+                .buildV2())
+        .auditReportVisibilityResolved();
     if (visibilityBuilder != null) {
       requestBuilder.filter(((OpenSearchQueryBuilder) visibilityBuilder).buildV2());
     }
@@ -1215,6 +1379,10 @@ public class OpenSearchSearchManager implements SearchManagementClient {
    */
   static String rbacCacheKey(SubjectContext subjectContext) {
     return ServiceAttributeResolver.generation()
+        + ":"
+        // A policy-rule or role-policy edit leaves the ids below unchanged, so without this the
+        // compiled query would be served stale until the TTL; it bumps on every policy-cache drop.
+        + SubjectCache.policyGeneration()
         + ":"
         + subjectContext.user().getId()
         + ":"
@@ -1401,7 +1569,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
         return Response.status(OK).entity(searchResponse.toJsonString()).build();
       } else {
-        List<?> response = buildSearchHierarchy(request, searchResponse, clusterAlias);
+        List<?> response =
+            buildSearchHierarchy(request, searchResponse, clusterAlias, subjectContext);
         return Response.status(OK).entity(response).build();
       }
 
@@ -1424,7 +1593,12 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     try {
       return new SearchEntityTypeCounts(
               Entity.getSearchRepository(),
-              (perType, configured) -> prepareCountQuery(perType, subjectContext, configured),
+              (perType, configured) ->
+                  prepareCountQuery(
+                      perType,
+                      subjectContext,
+                      configured,
+                      ContextMemorySearchVisibility.isMemoryOnlySearch(index)),
               (body, indexes) -> executeCountAggregation(body, indexes, subjectContext),
               hint -> doSearch(hint, subjectContext, settings, clusterAlias))
           .search(request, index, settings);
@@ -1436,10 +1610,12 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private ObjectNode prepareCountQuery(
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
-      SearchSettings settings)
+      SearchSettings settings,
+      boolean listsMemoryAnchors)
       throws IOException {
     SearchRequest prepared =
-        buildSearchRequestBuilder(request, subjectContext, settings, clusterAlias)
+        buildSearchRequestBuilder(
+                request, subjectContext, settings, clusterAlias, listsMemoryAnchors)
             .build(request.getIndex());
     return SearchEntityTypeCounts.toJson(
         client._transport().jsonpMapper().jsonProvider(),
@@ -1472,7 +1648,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             .trackTotalHits(false)
             .timeout("30s")
             .preference(SearchUtils.searchPreferenceFor(subjectContext))
-            .contextMemoryVisibilityResolved();
+            .contextMemoryVisibilityResolved()
+            .auditReportVisibilityResolved();
     body.path("aggs")
         .fields()
         .forEachRemaining(
@@ -1545,7 +1722,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       String clusterAlias)
       throws IOException {
     OpenSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, true);
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     try {
       return client.search(requestBuilder.build(request.getIndex()), JsonData.class);
@@ -1563,47 +1740,77 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     OpenSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, true);
+    return completeResults(requestBuilder.build(request.getIndex()), request.getIndex());
+  }
 
+  @Override
+  public SearchResultListMapper searchSimilarContextMemories(
+      String text, String filterJson, int size) throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("OpenSearch client is not available");
+    }
+    String index = Entity.getSearchRepository().getIndexOrAliasName(Entity.CONTEXT_MEMORY);
+    // The caller's filter decides which memories qualify, so the org-wide-only default stays off.
+    OpenSearchRequestBuilder requestBuilder =
+        new OpenSearchRequestBuilder()
+            .query(sharedTermsQuery(text))
+            .filter(wrapped(QueryFilterShape.requireQueryDsl(filterJson)))
+            .fetchSource(ContextMemoryIndex.SIMILARITY_RESULT_FIELDS.toArray(String[]::new), null)
+            .size(size)
+            .timeout("30s")
+            .contextMemoryVisibilityResolved();
+    return completeResults(requestBuilder.build(index), index);
+  }
+
+  private static Query sharedTermsQuery(String text) {
+    return Query.of(
+        q ->
+            q.multiMatch(
+                m ->
+                    m.query(text)
+                        .fields(ContextMemoryIndex.SIMILARITY_FIELDS)
+                        .type(TextQueryType.CrossFields)
+                        .operator(Operator.Or)
+                        .minimumShouldMatch(ContextMemoryIndex.SIMILARITY_MINIMUM_SHOULD_MATCH)));
+  }
+
+  /** A response missing hits, timed out or with a failed shard, fails instead of reading short. */
+  private SearchResultListMapper completeResults(SearchRequest searchRequest, String index)
+      throws IOException {
     try {
-      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> response =
-          searchForCompleteExportResponse(searchRequest, request.getIndex());
-
-      if (response.timedOut() || response.shards().failed() > 0) {
-        throw new IOException("Incomplete search export for " + request.getIndex());
-      }
-
-      List<Map<String, Object>> results = new ArrayList<>();
-      Object[] lastHitSortValues = null;
-
-      if (response.hits().hits() != null && !response.hits().hits().isEmpty()) {
-        List<Hit<JsonData>> hits = response.hits().hits();
-        for (Hit<JsonData> hit : hits) {
-          if (hit.source() != null) {
-            results.add(OsUtils.jsonDataToMap(hit.source()));
-          }
-        }
-        Hit<JsonData> lastHit = hits.getLast();
-        if (lastHit.sort() != null && !lastHit.sort().isEmpty()) {
-          lastHitSortValues =
-              lastHit.sort().stream().map(fv -> fv == null ? null : fv._get()).toArray();
-        }
-      }
-
-      long totalHits = 0;
-      if (response.hits().total() != null) {
-        totalHits = response.hits().total().value();
-      }
-
-      return new SearchResultListMapper(results, totalHits, lastHitSortValues);
+      return toResultList(searchForCompleteExportResponse(searchRequest, index));
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
-        throw SearchEngineErrors.indexNotFound(request.getIndex());
+        throw SearchEngineErrors.indexNotFound(index);
       } else {
         throw buildSearchException(e);
       }
     }
+  }
+
+  private static SearchResultListMapper toResultList(SearchResponse<JsonData> response) {
+    List<Hit<JsonData>> hits = listOrEmpty(response.hits().hits());
+    long totalHits = response.hits().total() == null ? 0 : response.hits().total().value();
+    return new SearchResultListMapper(sourcesOf(hits), totalHits, lastSortValues(hits));
+  }
+
+  private static List<Map<String, Object>> sourcesOf(List<Hit<JsonData>> hits) {
+    List<Map<String, Object>> results = new ArrayList<>();
+    for (Hit<JsonData> hit : hits) {
+      if (hit.source() != null) {
+        results.add(OsUtils.jsonDataToMap(hit.source()));
+      }
+    }
+    return results;
+  }
+
+  private static Object[] lastSortValues(List<Hit<JsonData>> hits) {
+    Object[] values = null;
+    if (!hits.isEmpty() && !nullOrEmpty(hits.getLast().sort())) {
+      values = hits.getLast().sort().stream().map(fv -> fv == null ? null : fv._get()).toArray();
+    }
+    return values;
   }
 
   private SearchResponse<JsonData> searchForCompleteExportResponse(
@@ -1654,7 +1861,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       SearchSettings searchSettings,
-      String clusterAlias)
+      String clusterAlias,
+      boolean listsMemoryAnchors)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("OpenSearch client is not available");
@@ -1662,7 +1870,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
     OpenSearchSourceBuilderFactory searchBuilderFactory =
-        new OpenSearchSourceBuilderFactory(searchSettings);
+        new OpenSearchSourceBuilderFactory(
+            searchSettings,
+            PrivateSearchFields.matchesPrivateFields(subjectContext, request.getIndex()));
 
     OpenSearchRequestBuilder requestBuilder =
         searchBuilderFactory.getSearchSourceBuilderV2(
@@ -1672,6 +1882,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             request.getSize(),
             request.getExplain(),
             request.getIncludeAggregations() != null ? request.getIncludeAggregations() : true);
+    if (Boolean.FALSE.equals(request.getIncludeHighlights())) {
+      requestBuilder.highlighter(null);
+    }
 
     requestBuilder.preference(SearchUtils.searchPreferenceFor(subjectContext));
 
@@ -1683,10 +1896,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     // Apply RBAC query with caching
     applyRbacQueryWithCaching(subjectContext, requestBuilder);
-    applyContextMemoryVisibility(
-        subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
-
-    applyQueryFilter(requestBuilder, request);
+    applyMemoryVisibilityAndQueryFilter(
+        request, subjectContext, requestBuilder, listsMemoryAnchors);
 
     // Apply post filter
     if (!nullOrEmpty(request.getPostFilter())) {
@@ -1739,25 +1950,24 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     // Build hierarchy query if needed
     if (Boolean.TRUE.equals(request.getIsHierarchy())) {
-      requestBuilder = buildHierarchyQuery(request, requestBuilder, clusterAlias);
+      requestBuilder = buildHierarchyQuery(request, requestBuilder, clusterAlias, subjectContext);
     }
 
-    // Handle fetch source
-    String[] includeFields =
-        !nullOrEmpty(request.getIncludeSourceFields())
-            ? request.getIncludeSourceFields().toArray(String[]::new)
-            : null;
+    // Handle fetch source; a fetched source never carries a field the caller may not read
+    String[] includeFields = toArrayOrNull(request.getIncludeSourceFields());
     String[] excludeFields =
-        !nullOrEmpty(request.getExcludeSourceFields())
-            ? request.getExcludeSourceFields().toArray(String[]::new)
-            : null;
+        toArrayOrNull(
+            PrivateSearchFields.sourceExcludes(
+                subjectContext, request.getIndex(), request.getExcludeSourceFields()));
 
-    if (Boolean.TRUE.equals(request.getFetchSource())
+    if (Boolean.FALSE.equals(request.getFetchSource())
+        && includeFields == null
+        && nullOrEmpty(request.getExcludeSourceFields())) {
+      requestBuilder.fetchSource(false);
+    } else if (Boolean.TRUE.equals(request.getFetchSource())
         || includeFields != null
         || excludeFields != null) {
       requestBuilder.fetchSource(includeFields, excludeFields);
-    } else if (Boolean.FALSE.equals(request.getFetchSource())) {
-      requestBuilder.fetchSource(false);
     }
 
     // Handle track total hits
@@ -1774,7 +1984,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private OpenSearchRequestBuilder buildHierarchyQuery(
       org.openmetadata.schema.search.SearchRequest request,
       OpenSearchRequestBuilder requestBuilder,
-      String clusterAlias)
+      String clusterAlias,
+      SubjectContext subjectContext)
       throws IOException {
 
     String indexName = request.getIndex();
@@ -1841,7 +2052,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     // The subject's visibility filter was ANDed into the query this rewrite has just demoted to a
     // should clause, where minimumShouldMatch(1) lets a name/displayName phrase match satisfy the
     // query without it. Re-AND the memory guard so hierarchy search cannot become a bypass.
-    Query originalQuery = restrictToOrgWideMemories(baseQueryBuilder.build());
+    Query originalQuery =
+        restrictToOrgWideMemories(
+            hierarchyConstrained(baseQueryBuilder.build(), request, subjectContext));
     requestBuilder.query(originalQuery);
 
     // Add fqnParts aggregation to fetch parent terms
@@ -1887,12 +2100,17 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                           // Add the original query as a should clause to preserve high scores
                           b.should(originalQuery);
                           // Add parent term queries as should clauses to fetch hierarchy
-                          if (indexName.equalsIgnoreCase(glossaryTermIndex)
-                              || indexName.equalsIgnoreCase(glossaryTermAlias)) {
-                            b.should(withZeroScore(parentTermQueries));
-                          } else {
-                            parentTermQueries.forEach(b::should);
-                          }
+                          Query parentTerms =
+                              indexName.equalsIgnoreCase(glossaryTermIndex)
+                                      || indexName.equalsIgnoreCase(glossaryTermAlias)
+                                  ? withZeroScore(parentTermQueries)
+                                  : Query.of(
+                                      pq ->
+                                          pq.bool(
+                                              pb ->
+                                                  pb.should(parentTermQueries)
+                                                      .minimumShouldMatch("1")));
+                          b.should(hierarchyConstrained(parentTerms, request, subjectContext));
                           if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
                             b.must(
                                 m ->
@@ -1930,7 +2148,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private List<?> buildSearchHierarchy(
       org.openmetadata.schema.search.SearchRequest request,
       SearchResponse<JsonData> searchResponse,
-      String clusterAlias) {
+      String clusterAlias,
+      SubjectContext subjectContext) {
     List<?> response = new ArrayList<>();
 
     String indexName = request.getIndex();
@@ -1945,7 +2164,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     if (indexName.equalsIgnoreCase(glossaryTermIndex)
         || indexName.equalsIgnoreCase(glossaryTermAlias)) {
-      response = buildGlossaryTermSearchHierarchy(indexName, searchResponse);
+      response = buildGlossaryTermSearchHierarchy(request, searchResponse, subjectContext);
     } else if (indexName.equalsIgnoreCase(domainIndex) || indexName.equalsIgnoreCase(domainAlias)) {
       response = buildDomainSearchHierarchy(searchResponse);
     }
@@ -1953,7 +2172,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   private List<EntityHierarchy> buildGlossaryTermSearchHierarchy(
-      String indexName, SearchResponse<JsonData> searchResponse) {
+      org.openmetadata.schema.search.SearchRequest request,
+      SearchResponse<JsonData> searchResponse,
+      SubjectContext subjectContext) {
     Map<String, EntityHierarchy> termMap = new LinkedHashMap<>();
     Map<String, EntityHierarchy> rootTerms = new LinkedHashMap<>();
 
@@ -1977,7 +2198,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       termMap.putIfAbsent(term.getFullyQualifiedName(), term);
     }
 
-    addMissingParents(indexName, termMap);
+    addMissingParents(request, termMap, subjectContext);
     termMap.putAll(rootTerms);
 
     termMap
@@ -2016,8 +2237,34 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                         .boost(0f)));
   }
 
+  /**
+   * The hierarchy rewrite folds the caller's query, which carried their access policies and deleted
+   * flag, into one should clause among name matches, so those are applied again around each query it
+   * builds. The caller's query_filter is not: it is their own filter, never an access control, and
+   * the navbar sends its selected domain through it, which would leave the domain picker unable to
+   * find any other domain. A policy that yields no filter matches nothing.
+   */
+  private Query hierarchyConstrained(
+      Query query,
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext) {
+    List<Query> filters = new ArrayList<>();
+    if (!nullOrEmpty(request.getDeleted())) {
+      filters.add(
+          Query.of(
+              q -> q.term(t -> t.field("deleted").value(FieldValue.of(request.getDeleted())))));
+    }
+    Query filtered =
+        filters.isEmpty() ? query : Query.of(q -> q.bool(b -> b.must(query).filter(filters)));
+    return OpenSearchRbacQueries.withAccessPolicies(
+        filtered, subjectContext, rbacConditionEvaluator);
+  }
+
   // A hit whose parent ranked below the page cut would otherwise be dropped from the tree
-  private void addMissingParents(String indexName, Map<String, EntityHierarchy> termMap) {
+  private void addMissingParents(
+      org.openmetadata.schema.search.SearchRequest request,
+      Map<String, EntityHierarchy> termMap,
+      SubjectContext subjectContext) {
     List<FieldValue> missing =
         termMap.keySet().stream()
             .flatMap(fqn -> parentTermFqns(fqn).stream())
@@ -2026,26 +2273,29 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             .map(FieldValue::of)
             .toList();
     if (!missing.isEmpty()) {
-      for (EntityHierarchy parent : fetchApprovedTermsByFqn(indexName, missing)) {
+      for (EntityHierarchy parent : fetchApprovedTermsByFqn(request, missing, subjectContext)) {
         parent.setChildren(new ArrayList<>());
         termMap.putIfAbsent(parent.getFullyQualifiedName(), parent);
       }
     }
   }
 
-  private List<EntityHierarchy> fetchApprovedTermsByFqn(String indexName, List<FieldValue> fqns) {
+  private List<EntityHierarchy> fetchApprovedTermsByFqn(
+      org.openmetadata.schema.search.SearchRequest request,
+      List<FieldValue> fqns,
+      SubjectContext subjectContext) {
     Query byFqn =
         Query.of(q -> q.terms(t -> t.field("fullyQualifiedName").terms(tv -> tv.value(fqns))));
     Query approved =
         Query.of(q -> q.match(m -> m.field("entityStatus").query(FieldValue.of("Approved"))));
+    Query parents =
+        hierarchyConstrained(
+            Query.of(q -> q.bool(b -> b.filter(List.of(byFqn, approved)))),
+            request,
+            subjectContext);
     try {
       return client
-          .search(
-              s ->
-                  s.index(indexName)
-                      .size(fqns.size())
-                      .query(q -> q.bool(b -> b.filter(List.of(byFqn, approved)))),
-              JsonData.class)
+          .search(s -> s.index(request.getIndex()).size(fqns.size()).query(parents), JsonData.class)
           .hits()
           .hits()
           .stream()

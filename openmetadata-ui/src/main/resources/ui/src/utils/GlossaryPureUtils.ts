@@ -380,33 +380,3 @@ export const isAiGeneratedDraft = (
 ): boolean =>
   term.provider === ProviderType.Automation &&
   AWAITING_DECISION.has(term.entityStatus ?? EntityStatus.Approved);
-
-const isReviewerOf = (term: GlossaryTerm, user?: User): boolean => {
-  const teamIds = new Set(user?.teams?.map((team) => team.id));
-
-  return (
-    term.reviewers?.some(
-      (reviewer) =>
-        reviewer.id === user?.id ||
-        (reviewer.type === EntityType.TEAM && teamIds.has(reviewer.id))
-    ) ?? false
-  );
-};
-
-const isUndecidedAiDraft = (term: GlossaryTerm): boolean =>
-  term.provider === ProviderType.Automation &&
-  term.entityStatus === EntityStatus.Draft;
-
-const isAllowedToDecide = (term: GlossaryTerm, user?: User): boolean =>
-  !term.reviewers?.length || isReviewerOf(term, user);
-
-/**
- * Mirrors the server: people decide an AI draft directly, its reviewers when it has any, anyone
- * who can edit it otherwise. An In Review draft is decided through its approval task instead.
- */
-export const canDecideAiGeneratedDraft = (
-  term: GlossaryTerm,
-  user: User | undefined,
-  canEditAll: boolean
-): boolean =>
-  canEditAll && isUndecidedAiDraft(term) && isAllowedToDecide(term, user);

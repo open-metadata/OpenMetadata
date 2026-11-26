@@ -11,11 +11,18 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { Edit05, XCircle } from '@openmetadata/ui-core-components/icons';
+import {
+  Box,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  CheckCircle02,
+  Edit01,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
 import './applied-filter-text.less';
 
 interface AppliedFilterTextProps {
@@ -49,24 +56,25 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
             aria-label="success-badge"
             className="align-middle m-l-xs tw:inline-flex tw:items-center tw:leading-none"
             role="img">
-            <IconSuccessBadge height={16} width={16} />
+            <CheckCircle02 className="tw:text-utility-green-500" size={16} />
           </span>
           <Typography data-testid="advance-search-filter-text">
             {filterText}
           </Typography>
         </Box>
         <Box>
-          <Button
-            color="tertiary"
+          <ButtonUtility
             data-testid="advance-search-filter-btn"
-            iconLeading={<Edit05 size={16} />}
+            icon={Edit01}
             size="sm"
+            tooltip={t('label.edit')}
             onClick={onEdit}
           />
-          <Button
-            color="tertiary"
+          <ButtonUtility
             data-testid="advance-search-clear-btn"
-            iconLeading={<XCircle size={16} />}
+            icon={XCircle}
+            size="sm"
+            tooltip={t('label.clear')}
             onClick={onClear}
           />
         </Box>

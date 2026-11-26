@@ -33,14 +33,17 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.EntityReference;
@@ -52,9 +55,13 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.topics.TopicResource;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -64,6 +71,9 @@ public class TopicRepository extends EntityRepository<Topic> {
   private static final Set<String> CHANGE_SUMMARY_FIELDS =
       Set.of("messageSchema.schemaFields.description");
   public static final String TOPIC_SAMPLE_DATA_EXTENSION = "topic.sampleData";
+  // A PUT loads the stored topic with these fields, and the bulk loader reads schema field tags
+  // only with messageSchema. Without it, a re-run that sends no field tags indexes the fields bare.
+  private static final String UPDATE_FIELDS = "messageSchema";
 
   public TopicRepository() {
     super(
@@ -72,7 +82,7 @@ public class TopicRepository extends EntityRepository<Topic> {
         Topic.class,
         Entity.getCollectionDAO().topicDAO(),
         "",
-        "",
+        UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
     // Covered by the parent service delete cascade: search docs by service.id
@@ -333,6 +343,86 @@ public class TopicRepository extends EntityRepository<Topic> {
     return topic;
   }
 
+  /** One search request against a topic's schema fields; a null sortBy keeps schema order. */
+  public record SchemaFieldSearch(
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder) {}
+
+  /**
+   * Matches name, displayName or description at every nesting level, so a hit on a nested field
+   * comes back as its own row. See ADR:2026-11-16-topic-schema-field-search-returns-flat-rows.
+   */
+  public ResultList<Field> searchSchemaFieldsByFQN(String fqn, SchemaFieldSearch search) {
+    final String requestedFields =
+        search.fieldsParam() != null && search.fieldsParam().contains(FIELD_TAGS) ? FIELD_TAGS : "";
+    final Topic topic = getByName(null, fqn, getFields(requestedFields), search.include(), false);
+    final List<Field> matches =
+        filterSchemaFields(flattenSchemaFields(schemaFieldsOf(topic)), search.query());
+    final List<Field> ordered = sortSchemaFields(matches, search.sortBy(), search.sortOrder());
+    return pageOfSchemaFields(ordered, search.limit(), search.offset());
+  }
+
+  static List<Field> sortSchemaFields(List<Field> fields, String sortBy, String sortOrder) {
+    return ChildFieldPageReader.sortChildFields(
+            new ArrayList<FieldInterface>(fields), sortBy, sortOrder)
+        .stream()
+        .map(Field.class::cast)
+        .toList();
+  }
+
+  private static List<Field> schemaFieldsOf(Topic topic) {
+    return topic.getMessageSchema() == null
+        ? List.of()
+        : listOrEmpty(topic.getMessageSchema().getSchemaFields());
+  }
+
+  static List<Field> flattenSchemaFields(List<Field> fields) {
+    final List<Field> flattened = new ArrayList<>();
+    for (Field field : fields) {
+      flattened.add(field);
+      flattened.addAll(flattenSchemaFields(listOrEmpty(field.getChildren())));
+    }
+    return flattened;
+  }
+
+  static List<Field> filterSchemaFields(List<Field> fields, String query) {
+    if (nullOrEmpty(query) || query.isBlank()) {
+      return fields;
+    }
+    final String searchTerm = query.trim().toLowerCase(Locale.ROOT);
+    return fields.stream().filter(field -> schemaFieldMatches(field, searchTerm)).toList();
+  }
+
+  private static boolean schemaFieldMatches(Field field, String searchTerm) {
+    return Stream.of(field.getName(), field.getDisplayName(), field.getDescription())
+        .anyMatch(value -> value != null && value.toLowerCase(Locale.ROOT).contains(searchTerm));
+  }
+
+  static ResultList<Field> pageOfSchemaFields(List<Field> fields, int limit, int offset) {
+    final int total = fields.size();
+    final int fromIndex = Math.min(offset, total);
+    final int toIndex = Math.min(offset + limit, total);
+    final String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
+    final String after = toIndex < total ? String.valueOf(toIndex) : null;
+    final List<Field> page =
+        fields.subList(fromIndex, toIndex).stream().map(TopicRepository::withoutChildren).toList();
+    return new ResultList<>(new ArrayList<>(page), before, after, total);
+  }
+
+  /**
+   * Search lists every match as its own row, so a matched parent must not also carry its children:
+   * a child that matches too would appear twice with the same FQN. Copied because the parent topic
+   * may be a cached instance.
+   */
+  private static Field withoutChildren(Field field) {
+    return JsonUtils.deepCopy(field, Field.class).withChildren(null);
+  }
+
   private void setFieldFQN(String parentFQN, List<Field> fields) {
     fields.forEach(
         c -> {
@@ -425,10 +515,13 @@ public class TopicRepository extends EntityRepository<Topic> {
     EntityUtil.mergeTags(allTags, topic.getTags());
     List<Field> schemaFields =
         topic.getMessageSchema() != null ? topic.getMessageSchema().getSchemaFields() : null;
-    for (Field schemaField : listOrEmpty(schemaFields)) {
-      EntityUtil.mergeTags(allTags, schemaField.getTags());
-    }
+    EntityUtil.mergeFieldTags(allTags, schemaFields);
     return allTags;
+  }
+
+  @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,messageSchema");
   }
 
   public static Set<TagLabel> getAllFieldTags(Field field) {
@@ -478,22 +571,27 @@ public class TopicRepository extends EntityRepository<Topic> {
       return serviceMap;
     }
 
-    // Single batch query to get all services for all topics
-    var records =
+    final var records =
         daoCollection
             .relationshipDAO()
             .findFromBatch(
                 entityListToStrings(topics),
                 org.openmetadata.schema.type.Relationship.CONTAINS.ordinal());
 
-    records.forEach(
-        record -> {
-          var topicId = UUID.fromString(record.getToId());
-          var serviceRef =
-              Entity.getEntityReferenceById(
-                  Entity.MESSAGING_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-          serviceMap.put(topicId, serviceRef);
-        });
+    final var serviceIds =
+        records.stream().map(record -> UUID.fromString(record.getFromId())).toList();
+    final var serviceRefs =
+        Entity.getEntityReferencesByIds(Entity.MESSAGING_SERVICE, serviceIds, NON_DELETED).stream()
+            .collect(Collectors.toMap(EntityReference::getId, Function.identity()));
+    for (final var record : records) {
+      final var serviceId = UUID.fromString(record.getFromId());
+      final var serviceRef = serviceRefs.get(serviceId);
+      if (serviceRef == null) {
+        throw EntityNotFoundException.byMessage(
+            CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE, serviceId));
+      }
+      serviceMap.put(UUID.fromString(record.getToId()), serviceRef);
+    }
 
     return serviceMap;
   }
@@ -644,7 +742,11 @@ public class TopicRepository extends EntityRepository<Topic> {
       // Delete tags related to deleted fields
       deletedFields.forEach(
           deleted ->
-              daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+              daoCollection
+                  .tagUsageDAO()
+                  .deleteFieldTags(
+                      deleted.getFullyQualifiedName(),
+                      addedFieldMap.containsKey(deleted.getName())));
 
       // Add tags related to newly added fields
       for (Field added : addedFields) {
@@ -660,16 +762,16 @@ public class TopicRepository extends EntityRepository<Topic> {
           continue;
         }
 
-        String schemaFieldPrefix =
-            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
+        String schemaFieldPrefix = EntityFieldPath.childKey(fieldName, updated.getName());
         updateFieldDescription(schemaFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(schemaFieldPrefix, stored, updated);
         updateFieldDisplayName(schemaFieldPrefix, stored, updated);
-        updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(schemaFieldPrefix, FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
+        updated.setTags(
+            updateTags(
+                stored.getFullyQualifiedName(),
+                EntityUtil.getFieldName(schemaFieldPrefix, FIELD_TAGS),
+                stored.getTags(),
+                updated.getTags()));
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           updateSchemaFields(

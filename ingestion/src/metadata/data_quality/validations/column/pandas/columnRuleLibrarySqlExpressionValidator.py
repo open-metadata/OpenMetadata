@@ -17,6 +17,7 @@ from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressio
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
+from metadata.utils.helpers import is_safe_pandas_query
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -50,6 +51,8 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, PandasValidatorMixi
         Returns:
             Total count of matching rows across all dataframe chunks
         """
+        if not is_safe_pandas_query(sql_expression):
+            raise RuntimeError(f"Unsafe pandas query expression\n\n{sql_expression}")
         total_count = 0
         evaluated_rows = 0
         for df in self.runner:

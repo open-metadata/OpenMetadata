@@ -25,6 +25,7 @@ import { showErrorToast } from '../utils/ToastUtils';
 
 interface UseSparqlQueryLibraryResult {
   isLoading: boolean;
+  loadStatus: 'loading' | 'ready' | 'error';
   queryTemplates: SavedSparqlQuery[];
   savedQueries: SavedSparqlQuery[];
   deleteQueryTemplate: (id: string) => Promise<boolean>;
@@ -116,7 +117,9 @@ const removeLegacySavedQueries = () => {
 
 export const useSparqlQueryLibrary = (): UseSparqlQueryLibraryResult => {
   const { t } = useTranslation();
-  const [isLoading, setIsLoading] = useState(true);
+  const [loadStatus, setLoadStatus] = useState<'loading' | 'ready' | 'error'>(
+    'loading'
+  );
   const [savedQueries, setSavedQueries] = useState<SavedSparqlQuery[]>([]);
   const [queryTemplates, setQueryTemplates] = useState<SavedSparqlQuery[]>([]);
 
@@ -124,6 +127,7 @@ export const useSparqlQueryLibrary = (): UseSparqlQueryLibraryResult => {
     let isMounted = true;
 
     const loadQueryLibrary = async () => {
+      setLoadStatus('loading');
       try {
         const [serverSavedQueries, nextQueryTemplates] = await Promise.all([
           getSavedSparqlQueries(),
@@ -142,16 +146,14 @@ export const useSparqlQueryLibrary = (): UseSparqlQueryLibraryResult => {
         if (isMounted) {
           setSavedQueries(nextSavedQueries);
           setQueryTemplates(nextQueryTemplates);
+          setLoadStatus('ready');
         }
       } catch (error) {
         if (isMounted) {
+          setLoadStatus('error');
           showErrorToast(
             isAxiosError(error) ? error : t('server.unexpected-error')
           );
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
         }
       }
     };
@@ -244,7 +246,8 @@ export const useSparqlQueryLibrary = (): UseSparqlQueryLibraryResult => {
   );
 
   return {
-    isLoading,
+    isLoading: loadStatus === 'loading',
+    loadStatus,
     queryTemplates,
     savedQueries,
     deleteQueryTemplate,

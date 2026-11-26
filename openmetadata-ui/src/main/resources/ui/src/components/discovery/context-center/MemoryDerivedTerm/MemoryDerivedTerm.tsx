@@ -17,16 +17,19 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ContextMemory } from '../../../../generated/entity/context/contextMemory';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { navigatesThisTab } from '../../../../utils/LinkClickUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
 import { getDerivedTerms } from './MemoryDerivedTerm.utils';
 
 export interface MemoryDerivedTermProps {
   memory: ContextMemory;
+  isViewOnly: boolean;
   onNavigate: () => void;
 }
 
 const MemoryDerivedTerm: FC<MemoryDerivedTermProps> = ({
   memory,
+  isViewOnly,
   onNavigate,
 }) => {
   const { t } = useTranslation();
@@ -41,15 +44,25 @@ const MemoryDerivedTerm: FC<MemoryDerivedTermProps> = ({
       <Typography size="text-sm" weight="medium">
         {t('label.derived-term')}
       </Typography>
-      {derivedTerms.map((term) => (
-        <Link
-          className="tw:text-link tw:hover:underline"
-          key={term.id}
-          to={getGlossaryPath(term.fullyQualifiedName)}
-          onClick={onNavigate}>
-          {getEntityName(term)}
-        </Link>
-      ))}
+      {derivedTerms.map((term) =>
+        isViewOnly ? (
+          <Link
+            className="tw:text-link tw:hover:underline"
+            key={term.id}
+            to={getGlossaryPath(term.fullyQualifiedName)}
+            onClick={(event) => {
+              if (navigatesThisTab(event)) {
+                onNavigate();
+              }
+            }}>
+            {getEntityName(term)}
+          </Link>
+        ) : (
+          <Typography className="tw:text-tertiary" key={term.id} size="text-sm">
+            {getEntityName(term)}
+          </Typography>
+        )
+      )}
     </Box>
   );
 };

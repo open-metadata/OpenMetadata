@@ -20,6 +20,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
@@ -54,7 +55,7 @@ class SlackOAuth2AtRestEncryptionIT {
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("slack_oauth2_at_rest"))
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
             .withDestinations(

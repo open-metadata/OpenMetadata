@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getSchemaEditorValue } from './SchemaEditor.utils';
+import { getJSONEditorValue, getSchemaEditorValue } from './SchemaEditor.utils';
 
 describe('getSchemaEditorValue', () => {
   describe('with autoFormat enabled (default)', () => {
@@ -59,5 +59,18 @@ describe('getSchemaEditorValue', () => {
       expect(getSchemaEditorValue(42 as unknown as string)).toBe('');
       expect(getSchemaEditorValue(undefined as unknown as string)).toBe('');
     });
+  });
+});
+
+describe('getJSONEditorValue', () => {
+  it('should stringify a non-empty object', () => {
+    expect(getJSONEditorValue({ 'cleanup.policy': 'delete' })).toBe(
+      '{"cleanup.policy":"delete"}'
+    );
+  });
+
+  it('should return an empty string for an empty object or a missing value', () => {
+    expect(getJSONEditorValue({})).toBe('');
+    expect(getJSONEditorValue(undefined)).toBe('');
   });
 });

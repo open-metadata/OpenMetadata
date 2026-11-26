@@ -1,6 +1,5 @@
 package org.openmetadata.service.alerting.content.preview;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -64,8 +63,8 @@ public final class MockChangeEventRegistry {
     }
   }
 
-  private final Map<String, EntityFixtureBuilder> builders = new HashMap<>();
-  private final Map<Scenario, EntityFixtureEventApplier> appliers = new HashMap<>();
+  // Holds no state of its own: one registry serves every preview and test send at once, and the
+  // loader keeps the fixture files.
   private final EntityFixtureLoader fixtures;
 
   public MockChangeEventRegistry(EntityFixtureLoader fixtures) {
@@ -76,42 +75,35 @@ public final class MockChangeEventRegistry {
    * Get builder for a resource using convention-based loading.
    * Automatically loads from {resource}/base.json if not explicitly registered.
    * Falls back to generic fixture if resource-specific fixture not found.
-   * Uses lazy loading with automatic caching.
    *
    * @param resource Resource type (e.g., "table", "dashboard")
    * @return Builder for the resource
    */
   public EntityFixtureBuilder builder(String resource) {
-    return builders.computeIfAbsent(
-        resource, r -> entity -> entity.putAll(fixtures.loadBaseFixture(r)));
+    return entity -> entity.putAll(fixtures.loadBaseFixture(resource));
   }
 
   /**
    * Get applier for a scenario using convention-based loading.
    * Automatically loads from {resource}/scenarios/{eventType}.json if not explicitly registered.
    * Gracefully handles missing scenario fixtures (uses base entity only).
-   * Uses lazy loading with automatic caching.
    *
    * @param scenario Scenario containing resource and optional event type
    * @return Applier for the scenario
    */
   public EntityFixtureEventApplier scenarioApplier(Scenario scenario) {
-    return appliers.computeIfAbsent(
-        scenario,
-        s -> {
-          if (s.eventType().isEmpty()) {
-            // Neutral scenario - no fixture loading needed
-            return (event, entity) -> {};
-          }
+    if (scenario.eventType().isEmpty()) {
+      // Neutral scenario - no fixture loading needed
+      return (event, entity) -> {};
+    }
 
-          String eventTypeValue = s.eventType().get().value();
+    String eventTypeValue = scenario.eventType().get().value();
 
-          return (event, entity) -> {
-            Map<String, Object> scenarioData =
-                fixtures.loadScenarioFixture(s.resource(), eventTypeValue);
-            applyScenario(event, scenarioData);
-          };
-        });
+    return (event, entity) -> {
+      Map<String, Object> scenarioData =
+          fixtures.loadScenarioFixture(scenario.resource(), eventTypeValue);
+      applyScenario(event, scenarioData);
+    };
   }
 
   /**

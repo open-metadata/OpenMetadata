@@ -25,12 +25,14 @@ class McpContextMemoryVisibilityIT extends McpTestBase {
   private static final String SHARED_PILL_ANSWER = "the-pill-body-is-for-its-principals";
   private static final String ANCHORED_ANSWER = "the-orders-total-is-for-table-readers";
   private static final String ANCHORED_PILL_ANSWER = "the-orders-pill-is-for-table-readers";
+  private static final String ANNOUNCEMENT_TEXT = "the-orders-notice-is-for-table-readers";
 
   private static String memoryFqn;
   private static String memoryId;
   private static String sharedPillFqn;
   private static String anchoredMemoryFqn;
   private static String anchoredPillFqn;
+  private static String anchoredAnnouncementFqn;
   private static String ownerToken;
   private static String intruderToken;
   private static String blockedToken;
@@ -75,6 +77,24 @@ class McpContextMemoryVisibilityIT extends McpTestBase {
     anchoredPillFqn =
         createAnchoredMemory(
             "mcp_vis_anchored_pill_" + suffix, anchor, ANCHORED_PILL_ANSWER, "FileExtraction");
+    long now = System.currentTimeMillis();
+    anchoredAnnouncementFqn =
+        post(
+                "announcements",
+                Map.of(
+                    "name",
+                    "mcp_vis_announcement_" + suffix,
+                    "description",
+                    ANNOUNCEMENT_TEXT,
+                    "entityLink",
+                    "<#E::table::" + anchor.getFullyQualifiedName() + ">",
+                    "startTime",
+                    now,
+                    "endTime",
+                    now + 86_400_000L),
+                JsonNode.class)
+            .get("fullyQualifiedName")
+            .asText();
   }
 
   /**
@@ -240,6 +260,19 @@ class McpContextMemoryVisibilityIT extends McpTestBase {
     JsonNode withheld = executeMcpRequest(call, blockedToken);
     assertThat(withheld.toString()).doesNotContain(ANCHORED_PILL_ANSWER);
     assertThat(withheld.toString()).contains("not a shared Company Context knowledge pill");
+  }
+
+  /** An announcement is shown on its table, so MCP reads it under the table's view check too. */
+  @Test
+  void plainRead_deniesAnAnnouncementOnATableTheCallerCannotView() throws Exception {
+    Map<String, Object> call =
+        McpTestUtils.createGetEntityToolCall(Entity.ANNOUNCEMENT, anchoredAnnouncementFqn);
+
+    assertThat(executeMcpRequest(call, intruderToken).toString()).contains(ANNOUNCEMENT_TEXT);
+
+    JsonNode denied = executeMcpRequest(call, blockedToken);
+    assertThat(denied.toString()).doesNotContain(ANNOUNCEMENT_TEXT);
+    assertThat(denied.path("result").path("isError").asBoolean(false)).isTrue();
   }
 
   private static JsonNode createUser(String name) throws Exception {

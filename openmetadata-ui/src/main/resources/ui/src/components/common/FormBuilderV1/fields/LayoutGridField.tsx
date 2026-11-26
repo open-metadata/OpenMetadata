@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   FieldProps,
   getUiOptions,
@@ -29,6 +30,7 @@ interface LayoutGridColumn {
 
 interface LayoutGridRow {
   className?: string;
+  title?: string;
   columns: LayoutGridColumn[];
 }
 
@@ -165,6 +167,18 @@ const LayoutGridField = (props: FieldProps) => {
           )}
           // eslint-disable-next-line react/no-array-index-key -- static form layout rows
           key={`layout-row-${rowIndex}`}>
+          {row.title && (
+            // Typography wraps a heading in a prose div, so the grid cell is this div.
+            <div className="tw:col-span-full">
+              <Typography
+                as="h3"
+                className="tw:text-primary"
+                size="text-md"
+                weight="semibold">
+                {row.title}
+              </Typography>
+            </div>
+          )}
           {Array.isArray(row.columns) &&
             row.columns.map((column: LayoutGridColumn) =>
               renderField(column.name, column.uiSchema, column.className)

@@ -40,4 +40,11 @@ export interface UserSelectDropdownProps {
   overlayClassName?: string;
   /** data-testid for the built-in edit trigger. Defaults to 'edit-owner'. */
   triggerDataTestId?: string;
+  /** Classes for the span wrapping a `children` trigger. */
+  triggerClassName?: string;
+  /**
+   * Offer only these users and teams: the tabs, their counts and the search
+   * work on this list instead of the user and team search indexes.
+   */
+  options?: EntityReference[];
 }

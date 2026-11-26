@@ -15,18 +15,76 @@ package org.openmetadata.service.resources.databases;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TablePartition;
+import org.openmetadata.schema.type.TableType;
 
 public final class DatabaseUtil {
   private DatabaseUtil() {}
+
+  public static void validateTableSharding(Table table) {
+    var sharding = table.getTableSharding();
+    if ((table.getTableType() == TableType.Sharded) != (sharding != null)) {
+      throw new IllegalArgumentException(
+          "Sharded tables require tableSharding; other table types cannot carry it");
+    }
+    if (sharding == null) return;
+    var source = sharding.getRepresentative();
+    if (source == null
+        || nullOrEmpty(source.getDatabaseName())
+        || nullOrEmpty(source.getSchemaName())
+        || nullOrEmpty(source.getTableName())
+        || sharding.getSuffixFormat() == null
+        || source.getShardDate() == null
+        || sharding.getFirstShardDate() == null
+        || sharding.getLastShardDate() == null
+        || sharding.getShardCount() == null
+        || sharding.getPrefix() == null) {
+      throw new IllegalArgumentException(
+          "Sharding requires complete source names, dates, suffix format, count and prefix");
+    }
+    var first = parseShardDate(sharding.getFirstShardDate());
+    var last = parseShardDate(sharding.getLastShardDate());
+    if (first.getYear() < 1
+        || last.getYear() > 9999
+        || first.isAfter(last)
+        || !last.equals(parseShardDate(source.getShardDate()))
+        || sharding.getShardCount() < 1
+        || sharding.getShardCount() > last.toEpochDay() - first.toEpochDay() + 1
+        || (sharding.getShardCount() == 1 && !first.equals(last))) {
+      throw new IllegalArgumentException(
+          "Inconsistent shard count, date range or representative date");
+    }
+    String prefix = sharding.getPrefix();
+    if (prefix.contains("$")
+        || (!prefix.isEmpty()
+            && prefix.charAt(prefix.length() - 1) >= '0'
+            && prefix.charAt(prefix.length() - 1) <= '9')
+        || !table.getName().equals(prefix + "yyyymmdd")
+        || !source.getTableName().equals(prefix + last.format(DateTimeFormatter.BASIC_ISO_DATE))) {
+      throw new IllegalArgumentException(
+          "Sharding names must preserve the exact daily family prefix");
+    }
+  }
+
+  private static LocalDate parseShardDate(String value) {
+    try {
+      return LocalDate.parse(value);
+    } catch (DateTimeParseException exception) {
+      throw new IllegalArgumentException("Shard dates must be valid ISO calendar dates", exception);
+    }
+  }
 
   public static boolean validateSinglePrimaryColumn(List<Column> columns) {
     int primaryKeyColumns = 0;

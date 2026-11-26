@@ -24,7 +24,6 @@ import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import * as jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
-import openMetadataAntd from './eslint-rules/openmetadata-antd.mjs';
 import openMetadataI18n from './eslint-rules/openmetadata-i18n.mjs';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
@@ -32,57 +31,6 @@ import openMetadataPermissions from './eslint-rules/openmetadata-permissions.mjs
 import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
 import openMetadataUiPatterns from './eslint-rules/openmetadata-ui-patterns.mjs';
 import omPlaywright from './playwright/eslint-rules/index.mjs';
-
-// antd components with no remaining imports anywhere in src. Add a component
-// here in the PR that removes its last import (open-metadata/openmetadata-collate#6884).
-const MIGRATED_ANTD_COMPONENTS = [
-  'AutoComplete',
-  'DatePicker',
-  'Form',
-  'Input',
-  'Select',
-  'Checkbox',
-  'InputNumber',
-  'Radio',
-  'Slider',
-  'TimePicker',
-  'TreeSelect',
-  'Upload',
-  'Alert',
-  'Avatar',
-  'Badge',
-  'Carousel',
-  'Collapse',
-  'ConfigProvider',
-  'Drawer',
-  'Layout',
-  'List',
-  'Menu',
-  'Pagination',
-  'Progress',
-  'Steps',
-  'Tree',
-  'Table',
-  'Affix',
-  'Button',
-  'Card',
-  'Col',
-  'Divider',
-  'Dropdown',
-  'Empty',
-  'Image',
-  'Modal',
-  'Popover',
-  'Result',
-  'Row',
-  'Skeleton',
-  'Space',
-  'Spin',
-  'Switch',
-  'Tag',
-  'Tooltip',
-  'Typography',
-];
 
 export default [
   // Base recommended configs
@@ -227,17 +175,6 @@ export default [
 
       // React hooks rules
       'react-hooks/rules-of-hooks': 'error',
-
-      // Jest rules
-      'jest/consistent-test-it': [
-        'error',
-        {
-          fn: 'it',
-          withinDescribe: 'it',
-        },
-      ],
-      'jest/no-disabled-tests': 'error',
-      'jest-formatting/padding-around-all': 'error',
 
       // TypeScript rules
       '@typescript-eslint/explicit-function-return-type': 'off',
@@ -399,9 +336,15 @@ export default [
       // per-area, then promote to 'error' (and re-add a shade-restricted
       // fixer). See docs/colors.md + the dark-mode guidelines.
       'openmetadata-ui-patterns/no-non-adaptive-palette': 'warn',
+      // The error baseline preserves existing consumers; its counts only shrink.
+      // Keep warnings visible while new references exceed the baseline and fail.
+      'openmetadata-ui-patterns/deprecated-om-tokens': 'warn',
+      'openmetadata-ui-patterns/no-new-om-tokens': 'error',
       // A Typography ellipsis tooltip inside a link/button renders a nested
       // <button> (#30779). Report-only, so `eslint --fix` never edits it.
       'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'error',
+      // An undefined fallback on a controlled React Aria prop flips it to uncontrolled (#37771). ADR:2026-11-13-react-aria-controlled-props-are-cleared-with-null-not-undefined
+      'openmetadata-ui-patterns/no-undefined-controlled-prop': 'error',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
@@ -515,22 +458,6 @@ export default [
             },
           ],
         },
-      ],
-    },
-  },
-  {
-    // Existing antd usage is frozen in eslint-suppressions.json; see
-    // eslint-rules/openmetadata-antd.mjs for how the ratchet works.
-    files: ['src/**/*.{js,jsx,ts,tsx}'],
-    plugins: { 'openmetadata-antd': openMetadataAntd },
-    rules: {
-      'openmetadata-antd/no-antd-import': [
-        'error',
-        { components: MIGRATED_ANTD_COMPONENTS },
-      ],
-      'openmetadata-antd/no-migrated-antd-import': [
-        'error',
-        { components: MIGRATED_ANTD_COMPONENTS },
       ],
     },
   },
@@ -910,6 +837,67 @@ export default [
     },
   },
 
+  // Unit-test JSX is deliberately simplified mock UI, not shipped UI. Applying
+  // production accessibility, rendering-cost and architecture rules here forces
+  // mocks to reproduce behavior the tests are meant to isolate.
+  {
+    files: ['src/**/*.test.{js,jsx,ts,tsx}'],
+    rules: {
+      ...Object.fromEntries(
+        Object.keys(jsxA11y.rules).map((rule) => [`jsx-a11y/${rule}`, 'off'])
+      ),
+      ...Object.fromEntries(
+        Object.keys(openMetadataImports.rules).map((rule) => [
+          `openmetadata-imports/${rule}`,
+          'off',
+        ])
+      ),
+      ...Object.fromEntries(
+        Object.keys(openMetadataPerformance.rules).map((rule) => [
+          `openmetadata-performance/${rule}`,
+          'off',
+        ])
+      ),
+      // Long fixtures and regex cases must preserve their exact input text.
+      'max-len': [
+        'error',
+        {
+          code: 200,
+          comments: 120,
+          ignoreTrailingComments: true,
+          ignoreUrls: true,
+          ignoreStrings: true,
+          ignoreTemplateLiterals: true,
+          ignoreRegExpLiterals: true,
+        },
+      ],
+      'react/no-array-index-key': 'off',
+      'react/no-unstable-nested-components': 'off',
+      'react/jsx-no-constructed-context-values': 'off',
+      'react/no-danger': 'off',
+      'sonarjs/cognitive-complexity': 'off',
+      'sonarjs/cyclomatic-complexity': 'off',
+      'sonarjs/expression-complexity': 'off',
+      'sonarjs/no-nested-functions': 'off',
+      'sonarjs/no-nested-conditional': 'off',
+      'sonarjs/no-identical-functions': 'off',
+      'openmetadata-ui-patterns/no-new-om-tokens': 'off',
+      'openmetadata-ui-patterns/deprecated-om-tokens': 'off',
+      'openmetadata-ui-patterns/no-non-adaptive-palette': 'off',
+      'jest/consistent-test-it': ['error', { fn: 'it', withinDescribe: 'it' }],
+      'jest/no-disabled-tests': 'error',
+      'jest-formatting/padding-around-all': 'error',
+      // A committed `.only` silently shrinks a suite to one test.
+      'jest/no-focused-tests': 'error',
+      'jest/valid-expect-in-promise': 'error',
+      'jest/valid-describe-callback': 'error',
+      'jest/no-done-callback': 'error',
+      'jest/no-mocks-import': 'error',
+      'jest/no-test-prefixes': 'error',
+      'jest/no-identical-title': 'error',
+    },
+  },
+
   // Test fixtures and mock data use literal and repeated strings as selectors and
   // sample values, so production-facing string rules create noise without protecting
   // user-visible copy.
@@ -965,7 +953,6 @@ export default [
       'src/**/*.mock.{ts,tsx}',
       'src/**/mocks/**/*.{ts,tsx}',
       'src/**/__mocks__/**/*.{ts,tsx}',
-      'src/constants/mockTourData.constants.ts',
     ],
     rules: {
       'openmetadata-i18n/no-duplicate-string': 'off',
@@ -990,17 +977,14 @@ export default [
   // production code paths. Test fixtures and mock data legitimately embed
   // sample http:// self-links (mirroring backend responses), localhost IPs, and
   // dummy credentials — exempt them, matching how SonarQube excludes test
-  // sources from security scanning. mockTourData is a 100%-mock guided-tour
-  // fixture whose sample links point at the local dev server (http://localhost),
-  // so it is exempt too; production constants files are NOT — their sample URLs
-  // were fixed to https and the rules stay enforced there.
+  // sources from security scanning. Production constants files are NOT exempt —
+  // their sample URLs were fixed to https and the rules stay enforced there.
   {
     files: [
       'src/**/*.test.{js,jsx,ts,tsx}',
       'src/**/*.mock.{ts,tsx}',
       'src/**/mocks/**/*.{ts,tsx}',
       'src/**/__mocks__/**/*.{ts,tsx}',
-      'src/constants/mockTourData.constants.ts',
     ],
     rules: {
       'sonarjs/no-clear-text-protocols': 'off',

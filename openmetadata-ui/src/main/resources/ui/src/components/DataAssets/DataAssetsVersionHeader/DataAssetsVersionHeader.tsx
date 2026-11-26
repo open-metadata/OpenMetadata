@@ -20,10 +20,10 @@ import {
   Tooltip,
 } from '@openmetadata/ui-core-components';
 
+import { Version } from '@openmetadata/ui-core-components/icons';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityType } from '../../../enums/entity.enum';
@@ -96,7 +96,8 @@ function DataAssetsVersionHeader({
             />
           </Grid.Item>
           <Grid.Item className="layout-column" span={24}>
-            <div className="d-flex version-domain-container no-wrap">
+            {/* Wrap between items, never inside one: a squeezed item broke "No Domains" in two. */}
+            <div className="d-flex version-domain-container tw:flex-wrap tw:items-center tw:gap-y-1 tw:whitespace-nowrap">
               {entityType !== EntityType.METADATA_SERVICE && (
                 <>
                   <DomainLabel
@@ -116,6 +117,7 @@ function DataAssetsVersionHeader({
               )}
               <Owner
                 isCompactView={false}
+                labelVariant="header"
                 ownerDisplayName={ownerDisplayName}
                 owners={currentVersionData?.owners ?? ownerRef}
                 showLabel={false}
@@ -157,7 +159,7 @@ function DataAssetsVersionHeader({
               <Button
                 color="secondary"
                 data-testid="version-button"
-                iconLeading={VersionIcon}
+                iconLeading={Version}
                 size="sm"
                 onPress={onVersionClick}>
                 {version}

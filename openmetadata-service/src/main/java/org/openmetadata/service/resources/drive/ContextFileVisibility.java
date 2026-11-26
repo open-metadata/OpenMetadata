@@ -22,6 +22,10 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
@@ -30,6 +34,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.JsonPatchUtils;
 
 /**
  * Visibility rules for {@link ContextFile}, driven by its {@code shareConfig} rather than by the
@@ -45,19 +50,32 @@ public final class ContextFileVisibility {
   /** The field selection that already asks for every allowed field, owners included. */
   private static final String ALL_FIELDS = "*";
 
-  private static final String PATCH_PATH = "path";
   private static final String SHARE_CONFIG_PATH = "/shareConfig";
 
   private ContextFileVisibility() {}
 
   public static boolean isVisibleToUser(ContextFile file, String userName, boolean isAdmin) {
-    return isAdmin
-        || isOrgWide(file)
-        || isOwnedBy(file, userName)
-        || isSharedWithUser(file.getShareConfig(), userName);
+    return visibleTo(userName, isAdmin).test(file);
   }
 
-  /** Whether everyone may read the file: nothing restricts it, or its visibility is Entity. */
+  /** The test for one caller over many files, resolving their teams and domains at most once. */
+  private static Predicate<ContextFile> visibleTo(String userName, boolean isAdmin) {
+    Supplier<Set<String>> principalIds = ContextMemoryVisibility.principalIdsOf(userName);
+    return file ->
+        isAdmin
+            || isOrgWide(file)
+            || isOwnedBy(file, userName)
+            || isSharedWithUser(file.getShareConfig(), principalIds);
+  }
+
+  private static Predicate<ContextFile> visibleTo(SecurityContext securityContext) {
+    return visibleTo(callerName(securityContext), isAdmin(securityContext));
+  }
+
+  /**
+   * Whether everyone may read the file: nothing restricts it, or its visibility is Entity. The
+   * counts in {@code ContextFileDAO} apply the same rule to the {@code visibility} column.
+   */
   public static boolean isOrgWide(ContextFile file) {
     MemoryShareConfig share = file.getShareConfig();
     return share == null
@@ -65,9 +83,10 @@ public final class ContextFileVisibility {
         || share.getVisibility() == MemoryVisibility.ENTITY;
   }
 
-  private static boolean isSharedWithUser(MemoryShareConfig share, String userName) {
+  private static boolean isSharedWithUser(
+      MemoryShareConfig share, Supplier<Set<String>> principalIds) {
     return share.getVisibility() == MemoryVisibility.SHARED
-        && ContextMemoryVisibility.isSharedWith(share.getSharedWith(), userName);
+        && ContextMemoryVisibility.isSharedWith(share.getSharedWith(), principalIds);
   }
 
   public static void enforceVisibility(ContextFile file, SecurityContext securityContext) {
@@ -96,11 +115,13 @@ public final class ContextFileVisibility {
     }
   }
 
-  /** Whether any operation of {@code patch} writes the file's sharing. */
+  /**
+   * Whether any operation of {@code patch} touches the file's sharing, including a move or copy
+   * from it and a write of the whole document.
+   */
   public static boolean touchesSharing(JsonPatch patch) {
-    return patch.toJsonArray().stream()
-        .map(operation -> operation.asJsonObject().getString(PATCH_PATH, ""))
-        .anyMatch(path -> path.startsWith(SHARE_CONFIG_PATH));
+    return JsonPatchUtils.touchedLocations(patch).stream()
+        .anyMatch(location -> JsonPatchUtils.isAtOrUnder(location, SHARE_CONFIG_PATH));
   }
 
   private static boolean isRestricted(ContextFile file) {
@@ -111,29 +132,42 @@ public final class ContextFileVisibility {
   }
 
   /**
-   * Drops the files this caller may not see, keeping the page's cursors. A filtered page can come
-   * back shorter than the limit asked for; the cursors still walk every file, which is what keeps
-   * the next page from skipping any.
+   * Drops the files this caller may not see, keeping the page's cursors and total. A filtered page
+   * can come back shorter than the limit asked for; the cursors still walk every file, which is
+   * what keeps the next page from skipping any.
    */
   public static ResultList<ContextFile> filterByVisibility(
       ResultList<ContextFile> files, SecurityContext securityContext) {
     if (files == null || nullOrEmpty(files.getData())) {
       return files;
     }
-    String userName = callerName(securityContext);
-    boolean admin = isAdmin(securityContext);
     // ResultList.filter rebuilds the paging for an offset read and leaves the cursors out.
-    return files
-        .filter(file -> isVisibleToUser(file, userName, admin))
-        .setPaging(files.getPaging());
+    return files.filter(visibleTo(securityContext)).setPaging(files.getPaging());
   }
 
   /** Drops the files this caller may not see from an unpaged list, such as a folder's children. */
   public static List<ContextFile> filterVisible(
       List<ContextFile> files, SecurityContext securityContext) {
-    String userName = callerName(securityContext);
-    boolean admin = isAdmin(securityContext);
-    return files.stream().filter(file -> isVisibleToUser(file, userName, admin)).toList();
+    return files.stream().filter(visibleTo(securityContext)).toList();
+  }
+
+  /** Whether the caller sees every file without filtering, as an admin does. */
+  public static boolean seesEveryFile(SecurityContext securityContext) {
+    return isAdmin(securityContext);
+  }
+
+  /**
+   * The {@code snapshots} whose file, among {@code current}, the caller may see now. A snapshot
+   * carries the sharing it was written with, so deciding on it would keep showing a file as it was
+   * before it was made private.
+   */
+  public static List<ContextFile> retainVisibleNow(
+      List<ContextFile> snapshots, List<ContextFile> current, SecurityContext securityContext) {
+    Set<UUID> visible =
+        filterVisible(current, securityContext).stream()
+            .map(ContextFile::getId)
+            .collect(Collectors.toSet());
+    return snapshots.stream().filter(snapshot -> visible.contains(snapshot.getId())).toList();
   }
 
   /**
@@ -157,6 +191,7 @@ public final class ContextFileVisibility {
       return false;
     }
     return file.getOwners().stream()
+        .filter(owner -> Entity.USER.equals(owner.getType()))
         .anyMatch(
             owner ->
                 userName.equals(owner.getName()) || userName.equals(owner.getFullyQualifiedName()));

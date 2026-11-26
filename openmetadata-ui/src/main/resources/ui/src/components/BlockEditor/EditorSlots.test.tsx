@@ -126,49 +126,46 @@ describe('EditorSlots link handling', () => {
 
     expect(tippy).toHaveBeenCalled();
 
-    const options = (tippy as jest.Mock).mock.calls[0][1];
+    const options = jest.mocked(tippy).mock.calls[0][1];
 
     // The popup must mount inside the dialog (not document.body) so its actions
     // remain clickable inside a focus-trapping overlay.
-    expect(options.appendTo()).toBe(dialog);
+    expect(
+      typeof options?.appendTo === 'function' && options.appendTo(anchor)
+    ).toBe(dialog);
 
     editor.destroy();
     document.body.removeChild(dialog);
   });
+});
 
-  it('falls back to document.body when the editor is inside an antd drawer', () => {
-    // antd drawers also expose role="dialog" but do not trap focus and would
-    // misposition a nested overlay, so the link overlays must stay in body.
-    const dialog = document.createElement('div');
-    dialog.setAttribute('role', 'dialog');
-    dialog.className = 'ant-drawer';
-
-    document.body.appendChild(dialog);
-    const editorElement = document.createElement('div');
-    dialog.appendChild(editorElement);
-
-    const editor = new Editor({
-      element: editorElement,
-      extensions: [StarterKit, LinkExtension],
-      content: '<p><a href="https://example.com">link</a></p>',
-    });
+describe('EditorSlots mention links', () => {
+  it('opens a mention link without giving the new tab an opener', () => {
+    const editor = createTestEditor('<p>Hello</p>');
     const ref = createRef<EditorSlotsRef>();
+    const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
 
     render(<EditorSlots editor={editor} menuType="bar" ref={ref} />);
 
-    const anchor = editorElement.querySelector('a') as HTMLElement;
+    const mention = document.createElement('a');
+    mention.setAttribute('data-type', 'mention');
+    mention.setAttribute('href', 'https://example.com/profile');
+    mention.setAttribute('target', '_blank');
+
     act(() => {
       ref.current?.onMouseDown({
-        target: anchor,
+        target: mention,
       } as unknown as Parameters<EditorSlotsRef['onMouseDown']>[0]);
     });
 
-    const options = (tippy as jest.Mock).mock.calls[0][1];
+    expect(openSpy).toHaveBeenCalledWith(
+      'https://example.com/profile',
+      '_blank',
+      'noopener,noreferrer'
+    );
 
-    expect(options.appendTo()).toBe(document.body);
-
+    openSpy.mockRestore();
     editor.destroy();
-    document.body.removeChild(dialog);
   });
 });
 

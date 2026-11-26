@@ -1,0 +1,55 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/nativeOntologyAssetCluster.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NativeOntologyAssetCluster",
+  "description": "A native concept with the catalog assets bound to it that the caller may view.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.NativeOntologyAssetCluster",
+  "definitions": {
+    "asset": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.NativeOntologyClusterAsset",
+      "properties": {
+        "asset": {
+          "$ref": "../../type/entityReference.json"
+        },
+        "serviceType": {
+          "description": "Service type of the asset, for asset types that record one.",
+          "type": "string"
+        },
+        "columnCount": {
+          "description": "Number of column paths bound on this asset.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["asset", "columnCount"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "concept": {
+      "description": "Concept represented by the cluster.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "assetCount": {
+      "description": "Number of bound assets the caller may view.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "assets": {
+      "description": "First page of viewable assets, ordered by asset id.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/asset"
+      },
+      "default": []
+    },
+    "after": {
+      "description": "Cursor the concept's bindings endpoint accepts for the next page of viewable assets. Absent when this page holds every viewable asset.",
+      "type": "string"
+    }
+  },
+  "required": ["concept", "assetCount", "assets"],
+  "additionalProperties": false
+}

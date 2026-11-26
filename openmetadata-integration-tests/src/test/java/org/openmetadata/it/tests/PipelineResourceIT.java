@@ -4,8 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.UriTestUtils.assertHttpStatusFor;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -16,33 +18,51 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.PipelineExecutionTrendList;
+import org.openmetadata.schema.type.PipelineMetrics;
+import org.openmetadata.schema.type.PipelineRuntimeTrendList;
 import org.openmetadata.schema.type.PipelineSummary;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.StatusType;
@@ -52,6 +72,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -72,9 +93,14 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
 
   private static final String CERTIFICATION_GOLD = "Certification.Gold";
+  private static final String PIPELINE_METRICS_PATH = "/v1/pipelines/metrics";
+  // 2100-01-01: the trend endpoints require a window, and this one covers every recorded run.
+  private static final long AGGREGATE_WINDOW_END_TS = 4_102_444_800_000L;
 
   {
     supportsLifeCycle = true;
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
@@ -723,6 +749,222 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     assertTrue(injectionResult.getData().isEmpty());
   }
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        PIPELINE_METRICS_PATH,
+        "/v1/pipelines/summary",
+        "/v1/pipelines/executionTrend?startTs=0&endTs=" + AGGREGATE_WINDOW_END_TS,
+        "/v1/pipelines/runtimeTrend?startTs=0&endTs=" + AGGREGATE_WINDOW_END_TS
+      })
+  void get_pipelineAggregate_deniedViewBasic_403(final String path, final TestNamespace ns) {
+    final OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDenied(ns, Entity.PIPELINE, MetadataOperation.VIEW_BASIC);
+
+    assertHttpStatusFor(denied, 403, HttpMethod.GET, path, null);
+  }
+
+  static Stream<Arguments> principalsAllowedToViewPipelines() {
+    return Stream.of(
+        principal("admin", ns -> SdkClients.adminClient()),
+        principal("ingestion-bot", ns -> SdkClients.ingestionBotClient()),
+        principal("DataConsumer role", ns -> clientWithRole(ns, "DataConsumer")),
+        principal("DataSteward role", ns -> clientWithRole(ns, "DataSteward")),
+        principal("user without roles or teams", ns -> SdkClients.user3Client()));
+  }
+
+  @ParameterizedTest
+  @MethodSource("principalsAllowedToViewPipelines")
+  void get_pipelineMetrics_allowedPrincipal_200(
+      final Function<TestNamespace, OpenMetadataClient> principal, final TestNamespace ns) {
+    final String serviceName = createMetricsPipelineService(ns);
+    final PipelineMetrics metrics = getPipelineMetrics(principal.apply(ns), serviceName);
+
+    assertTrue(metrics.getDataAvailable());
+    assertEquals(1, metrics.getTotalPipelines());
+    assertNull(metrics.getErrorMessage());
+  }
+
+  @Test
+  void get_pipelineMetrics_denyConditionedOnEntityTag_200(final TestNamespace ns) {
+    final String serviceName = createMetricsPipelineService(ns);
+    final OpenMetadataClient deniedOnTaggedPipelines =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns, Entity.PIPELINE, MetadataOperation.VIEW_BASIC, "matchAnyTag('PII.Sensitive')");
+
+    final PipelineMetrics metrics = getPipelineMetrics(deniedOnTaggedPipelines, serviceName);
+
+    assertTrue(metrics.getDataAvailable());
+    assertEquals(1, metrics.getTotalPipelines());
+  }
+
+  @Test
+  void get_pipelineMetrics_denyUnlessOwner_403(final TestNamespace ns) {
+    final OpenMetadataClient deniedUnlessOwner =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns, Entity.PIPELINE, MetadataOperation.VIEW_BASIC, "!isOwner()");
+
+    assertHttpStatusFor(deniedUnlessOwner, 403, HttpMethod.GET, PIPELINE_METRICS_PATH, null);
+  }
+
+  @Test
+  void get_pipelineMetricsWithServiceTypeFilterWorks(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_metrics_service_type"));
+    request.setService(service.getFullyQualifiedName());
+    createEntity(request);
+    PipelineRepository repository =
+        (PipelineRepository) Entity.getEntityRepository(Entity.PIPELINE);
+
+    // Regression: a single MySQL-only JSON_UNQUOTE/JSON_EXTRACT serviceType fragment was spliced
+    // into the PostgreSQL query variants of getPipelineMetricsData and getServiceBreakdown, so
+    // filtering by serviceType failed on Postgres with dataAvailable=false + "Database
+    // unavailable". The fragment is now dialect-specific; the query must succeed on both dialects.
+    PipelineMetrics metrics =
+        repository.getPipelineMetrics(
+            null, service.getName(), "Airflow", null, null, null, null, null, null);
+    assertTrue(
+        metrics.getDataAvailable(), "metrics must be available when filtering by serviceType");
+    assertNull(metrics.getErrorMessage(), "no error expected when filtering by serviceType");
+    assertEquals(1, metrics.getTotalPipelines());
+    assertEquals(1, metrics.getServiceCount());
+    assertFalse(metrics.getServiceBreakdown().isEmpty());
+
+    // Non-matching serviceType: the query must still succeed (no dialect error) and match nothing.
+    PipelineMetrics noMatch =
+        repository.getPipelineMetrics(
+            null, service.getName(), "GluePipeline", null, null, null, null, null, null);
+    assertTrue(
+        noMatch.getDataAvailable(), "query must succeed even with a non-matching serviceType");
+    assertNull(noMatch.getErrorMessage());
+    assertEquals(0, noMatch.getTotalPipelines());
+
+    // Injection-style value is bound as a parameter, matching nothing on both dialects.
+    PipelineMetrics injected =
+        repository.getPipelineMetrics(
+            null, service.getName(), "Airflow' OR '1'='1", null, null, null, null, null, null);
+    assertTrue(injected.getDataAvailable());
+    assertNull(injected.getErrorMessage());
+    assertEquals(0, injected.getTotalPipelines());
+  }
+
+  @Test
+  void get_pipelineExecutionTrendWithServiceTypeFilterWorks(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_exec_trend_service_type"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(Arrays.asList(new Task().withName("task1").withDescription("Task 1")));
+    Pipeline pipeline = createEntity(request);
+
+    long timestamp = System.currentTimeMillis();
+    Status taskStatus =
+        new Status()
+            .withName("task1")
+            .withExecutionStatus(StatusType.Successful)
+            .withStartTime(timestamp)
+            .withEndTime(timestamp + 60_000L);
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withTimestamp(timestamp)
+            .withEndTime(timestamp + 60_000L)
+            .withTaskStatus(Arrays.asList(taskStatus));
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), pipelineStatus);
+
+    PipelineRepository repository =
+        (PipelineRepository) Entity.getEntityRepository(Entity.PIPELINE);
+    long startTs = timestamp - 60_000L;
+    long endTs = timestamp + 120_000L;
+
+    // Regression: the same MySQL-only serviceType fragment was spliced into the PostgreSQL variant
+    // of getExecutionTrendData. The query must succeed on both dialects.
+    PipelineExecutionTrendList trend =
+        repository.getPipelineExecutionTrend(
+            startTs, endTs, null, service.getName(), "Airflow", null, null, null, null, null, null);
+    assertNull(trend.getErrorMessage(), "execution trend must not error with serviceType filter");
+    assertTrue(
+        trend.getDataAvailable(), "execution trend must surface data with serviceType filter");
+    assertFalse(trend.getData().isEmpty());
+
+    PipelineExecutionTrendList noMatch =
+        repository.getPipelineExecutionTrend(
+            startTs,
+            endTs,
+            null,
+            service.getName(),
+            "GluePipeline",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+    assertNull(
+        noMatch.getErrorMessage(), "non-matching serviceType must not raise a dialect error");
+    assertTrue(noMatch.getData().isEmpty());
+  }
+
+  @Test
+  void get_pipelineRuntimeTrendWithServiceTypeFilterWorks(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_runtime_trend_service_type"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(Arrays.asList(new Task().withName("task1").withDescription("Task 1")));
+    Pipeline pipeline = createEntity(request);
+
+    long startTime = System.currentTimeMillis();
+    long endTime = startTime + 600_000L;
+    Status taskStatus =
+        new Status()
+            .withName("task1")
+            .withExecutionStatus(StatusType.Successful)
+            .withStartTime(startTime)
+            .withEndTime(endTime);
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withExecutionStatus(StatusType.Successful)
+            .withTimestamp(endTime)
+            .withEndTime(endTime)
+            .withTaskStatus(Arrays.asList(taskStatus));
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), pipelineStatus);
+
+    PipelineRepository repository =
+        (PipelineRepository) Entity.getEntityRepository(Entity.PIPELINE);
+    long startTs = startTime - 60_000L;
+    long endTs = endTime + 60_000L;
+
+    // Regression: the same MySQL-only serviceType fragment was spliced into the PostgreSQL variant
+    // of getRuntimeTrendData. The query must succeed on both dialects.
+    PipelineRuntimeTrendList trend =
+        repository.getPipelineRuntimeTrend(
+            startTs, endTs, null, service.getName(), "Airflow", null, null, null, null, null, null);
+    assertNull(trend.getErrorMessage(), "runtime trend must not error with serviceType filter");
+    assertTrue(trend.getDataAvailable(), "runtime trend must surface data with serviceType filter");
+    assertFalse(trend.getData().isEmpty());
+
+    PipelineRuntimeTrendList noMatch =
+        repository.getPipelineRuntimeTrend(
+            startTs,
+            endTs,
+            null,
+            service.getName(),
+            "GluePipeline",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+    assertNull(
+        noMatch.getErrorMessage(), "non-matching serviceType must not raise a dialect error");
+    assertTrue(noMatch.getData().isEmpty());
+  }
+
   @Test
   void test_pipelineWithOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -909,6 +1151,28 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   @Test
+  void test_pipelineScheduleIntervalUpdate_200_OK(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_schedule_interval"));
+    request.setService(service.getFullyQualifiedName());
+    request.setScheduleInterval("0 2 * * *");
+
+    Pipeline pipeline = createEntity(request);
+    assertEquals("0 2 * * *", pipeline.getScheduleInterval());
+
+    // A cadence-only change must be stored, not just echoed in the response
+    pipeline.setScheduleInterval("0 */6 * * *");
+    Pipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+    assertEquals("0 */6 * * *", updated.getScheduleInterval());
+
+    Pipeline stored = getEntity(pipeline.getId().toString());
+    assertEquals("0 */6 * * *", stored.getScheduleInterval());
+    assertTrue(stored.getVersion() > pipeline.getVersion());
+  }
+
+  @Test
   void test_pipelineConcurrency_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
@@ -1001,6 +1265,30 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
 
     assertEquals("Updated description", updated.getTasks().get(0).getDescription());
     assertEquals("Original description 2", updated.getTasks().get(1).getDescription());
+  }
+
+  @Test
+  void test_taskWithADotInItsName_recordsItsChangeUnderTheQuotedName(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_dotted_task"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(List.of(new Task().withName("extract.load").withDescription("Original")));
+    Pipeline pipeline = createEntity(request);
+
+    pipeline.setTasks(List.of(new Task().withName("extract.load").withDescription("Updated")));
+    Pipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+
+    assertTrue(
+        changedFieldNames(updated.getChangeDescription())
+            .contains("tasks.\"extract.load\".description"));
+  }
+
+  private static List<String> changedFieldNames(ChangeDescription change) {
+    return Stream.of(change.getFieldsAdded(), change.getFieldsUpdated(), change.getFieldsDeleted())
+        .flatMap(List::stream)
+        .map(FieldChange::getName)
+        .toList();
   }
 
   @Test
@@ -1281,6 +1569,66 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
         6, statusList.getData().size(), "Should be 6: 5 original + 1 new, overlap upserted");
   }
 
+  /**
+   * A bulk status write emits one change event per written status, even when the events of one
+   * request span several inserts.
+   */
+  @Test
+  void put_bulkPipelineStatus_emitsOneChangeEventPerStatus_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_bulk_events"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(List.of(new Task().withName("task1").withDescription("Task 1")));
+    Pipeline pipeline = createEntity(request);
+    long since = System.currentTimeMillis();
+    long baseTime = since - 3600000;
+    List<PipelineStatus> statuses = new ArrayList<>();
+    for (int run = 0; run < 150; run++) {
+      statuses.add(successfulStatus(baseTime + run * 1000L));
+    }
+
+    client.pipelines().addBulkPipelineStatus(pipeline.getFullyQualifiedName(), statuses);
+
+    List<Long> eventStatusTimestamps =
+        pipelineUpdateEvents(client, pipeline.getId(), since).stream()
+            .map(PipelineResourceIT::eventStatusTimestamp)
+            .sorted()
+            .toList();
+    assertEquals(
+        statuses.stream().map(PipelineStatus::getTimestamp).toList(), eventStatusTimestamps);
+  }
+
+  /** Every pipeline update event about one pipeline since a time, read through the cursor. */
+  private static List<JsonNode> pipelineUpdateEvents(
+      OpenMetadataClient client, UUID pipelineId, long since) {
+    String window =
+        "/v1/events?entityUpdated=pipeline&limit=1000&timestamp=%d&endTs=%d"
+            .formatted(since, System.currentTimeMillis());
+    List<JsonNode> events = new ArrayList<>();
+    String after = null;
+    do {
+      String path =
+          after == null
+              ? window
+              : window + "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8);
+      JsonNode page =
+          JsonUtils.readTree(client.getHttpClient().executeForString(HttpMethod.GET, path, null));
+      page.path("data").forEach(events::add);
+      after = page.path("paging").path("after").textValue();
+    } while (after != null);
+    return events.stream()
+        .filter(event -> pipelineId.toString().equals(event.path("entityId").asText()))
+        .toList();
+  }
+
+  private static long eventStatusTimestamp(JsonNode event) {
+    JsonNode entity = event.path("entity");
+    JsonNode pipeline = entity.isTextual() ? JsonUtils.readTree(entity.asText()) : entity;
+    return pipeline.path("pipelineStatus").path("timestamp").asLong();
+  }
+
   @Test
   void put_bulkPipelineStatus_invalidTask_4xx(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -1308,6 +1656,54 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
             client
                 .pipelines()
                 .addBulkPipelineStatus(pipeline.getFullyQualifiedName(), Arrays.asList(ps)));
+  }
+
+  /**
+   * The status list always pages: without a limit it answers one default page, a limit above the
+   * maximum is refused, and 0 returns only the total. A whole range is read through the cursor.
+   */
+  @Test
+  void list_pipelineStatuses_pagedByDefault_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_status_pages"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(List.of(new Task().withName("task1").withDescription("Task 1")));
+    String fqn = createEntity(request).getFullyQualifiedName();
+    long baseTime = System.currentTimeMillis() - 3600000;
+    List<PipelineStatus> statuses =
+        LongStream.range(0, 12).mapToObj(run -> successfulStatus(baseTime + run * 1000)).toList();
+    client.pipelines().addBulkPipelineStatus(fqn, statuses);
+    long startTs = baseTime - 1;
+    long endTs = baseTime + 12000;
+
+    ResultList<PipelineStatus> firstPage = listPipelineStatuses(client, fqn, startTs, endTs, "");
+    assertEquals(10, firstPage.getData().size());
+    assertEquals(12, firstPage.getPaging().getTotal());
+    assertEquals(baseTime + 11000, firstPage.getData().getFirst().getTimestamp());
+    String after = encodeQueryValue(firstPage.getPaging().getAfter());
+    assertEquals(
+        List.of(baseTime + 1000, baseTime),
+        listPipelineStatuses(client, fqn, startTs, endTs, "&after=" + after).getData().stream()
+            .map(PipelineStatus::getTimestamp)
+            .toList());
+
+    ResultList<PipelineStatus> totalOnly =
+        listPipelineStatuses(client, fqn, startTs, endTs, "&limit=0");
+    assertTrue(totalOnly.getData().isEmpty());
+    assertEquals(12, totalOnly.getPaging().getTotal());
+
+    InvalidRequestException tooLarge =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> listPipelineStatuses(client, fqn, startTs, endTs, "&limit=1001"));
+    assertEquals(400, tooLarge.getStatusCode());
+    assertTrue(
+        tooLarge.getResponseBody().contains("must be less than or equal to 1000"),
+        tooLarge.getResponseBody());
+
+    assertEquals(12, client.pipelines().listPipelineStatuses(fqn, startTs, endTs).getData().size());
   }
 
   /**
@@ -1531,6 +1927,55 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     return JsonUtils.readValue(response, new TypeReference<ResultList<PipelineSummary>>() {});
   }
 
+  private String createMetricsPipelineService(final TestNamespace ns) {
+    final PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    createEntity(
+        new CreatePipeline()
+            .withName(ns.prefix("pipeline_metrics"))
+            .withService(service.getFullyQualifiedName()));
+    return service.getName();
+  }
+
+  private PipelineMetrics getPipelineMetrics(
+      final OpenMetadataClient client, final String serviceName) {
+    final String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                PIPELINE_METRICS_PATH + "?service=" + encodeQueryValue(serviceName),
+                null);
+    return JsonUtils.readValue(response, PipelineMetrics.class);
+  }
+
+  private static Arguments principal(
+      final String name, final Function<TestNamespace, OpenMetadataClient> client) {
+    return Arguments.of(Named.of(name, client));
+  }
+
+  private static OpenMetadataClient clientWithRole(final TestNamespace ns, final String roleName) {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final Role role = admin.roles().getByName(roleName);
+    final String name = ns.shortPrefix(roleName.toLowerCase(Locale.ROOT));
+    final String email = name + "@test.openmetadata.org";
+    ns.trackRoot(
+        Entity.USER,
+        admin
+            .users()
+            .create(
+                new CreateUser().withName(name).withEmail(email).withRoles(List.of(role.getId()))));
+    return SdkClients.createClient(name, email, new String[] {});
+  }
+
+  private ResultList<PipelineStatus> listPipelineStatuses(
+      OpenMetadataClient client, String fqn, long startTs, long endTs, String query) {
+    String path =
+        "/v1/pipelines/%s/status?startTs=%d&endTs=%d%s"
+            .formatted(encodeQueryValue(fqn), startTs, endTs, query);
+    String response = client.getHttpClient().executeForString(HttpMethod.GET, path, null);
+    return JsonUtils.readValue(response, new TypeReference<ResultList<PipelineStatus>>() {});
+  }
+
   private String encodeQueryValue(String value) {
     return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
@@ -1540,5 +1985,23 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     CreatePipeline request = new CreatePipeline();
     request.setName(ns.prefix("invalid_pipeline"));
     return request;
+  }
+
+  @Test
+  void patch_rejectedRenameKeepsTaskFqns(TestNamespace ns) {
+    Pipeline created =
+        createEntity(
+            createMinimalRequest(ns)
+                .withTasks(List.of(new Task().withName("task1"), new Task().withName("task2"))));
+    Pipeline patch = getEntity(created.getId().toString());
+    patch.setName(created.getName() + "_renamed");
+
+    Pipeline updated = patchEntity(created.getId().toString(), patch);
+
+    String fqn = created.getFullyQualifiedName();
+    List<String> taskFqns = updated.getTasks().stream().map(Task::getFullyQualifiedName).toList();
+    assertEquals(fqn, updated.getFullyQualifiedName());
+    assertEquals(2, taskFqns.size());
+    assertTrue(taskFqns.stream().allMatch(f -> f.startsWith(fqn + ".")), taskFqns::toString);
   }
 }

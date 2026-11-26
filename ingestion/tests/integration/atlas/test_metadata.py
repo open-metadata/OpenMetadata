@@ -287,9 +287,10 @@ class AtlasUnitTest(TestCase):
     Atlas Metadata Unit Test
     """
 
+    # setUp, not __init__: pytest >= 8.2 also instantiates TestCase classes at collection, so writes made
+    # in __init__ would run at session start, before every earlier test, rather than right before this one.
     @patch("metadata.ingestion.source.metadata.atlas.metadata.AtlasSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_atlas_config)
         self.atlas_source = AtlasSource.create(

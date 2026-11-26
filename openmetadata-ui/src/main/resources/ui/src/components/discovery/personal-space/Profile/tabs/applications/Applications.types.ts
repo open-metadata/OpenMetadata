@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
+import type { RJSFSchema } from '@rjsf/utils';
+import type { App } from '../../../../../../generated/entity/applications/app';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 
 export type ApplicationsView =
@@ -29,9 +32,30 @@ export type InstallStep = 'details' | 'configure' | 'schedule';
 export type ApplicationsHeader = Omit<
   ProfileHeaderOverride,
   'breadcrumbs' | 'onBreadcrumbAction'
-> & { crumb?: string };
+> & {
+  crumb?: string;
+  /** A page nested under the current view, e.g. one run's configuration. */
+  subPage?: { label: string; onBack: () => void };
+};
 
 export interface ApplicationsViewProps {
-  onNavigate: (view: ApplicationsView) => void;
+  onNavigate: (
+    view: ApplicationsView,
+    options?: SettingsNavigateOptions
+  ) => void;
   onHeaderChange: (header: ApplicationsHeader) => void;
+}
+
+export interface AppScheduleEditProps {
+  appData: App;
+  isSaving: boolean;
+  onCancel: () => void;
+  onSave: (cron: string, timezone?: string) => void;
+}
+
+export interface McpConfigFormProps {
+  appData: App;
+  jsonSchema: RJSFSchema;
+  showHint: boolean;
+  onCancel: () => void;
 }

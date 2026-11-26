@@ -18,6 +18,7 @@ import { Column, State, Table } from '../../../generated/entity/data/table';
 import { LabelType } from '../../../generated/tests/testCase';
 import { DataType } from '../../../generated/tests/testDefinition';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getColumnByFQN } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -45,45 +46,6 @@ jest.mock('react-router-dom', () => ({
   }),
   useParams: jest.fn().mockReturnValue({}),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
-}));
-
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Drawer: jest
-    .fn()
-    .mockImplementation(({ children, open, title, footer, ...props }) => (
-      <div data-open={open} data-testid="drawer" {...props}>
-        {title && <div data-testid="drawer-title">{title}</div>}
-        <div data-testid="drawer-content">{children}</div>
-        {footer && <div data-testid="drawer-footer">{footer}</div>}
-      </div>
-    )),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, onClick, disabled, ...props }) => (
-      <button
-        data-testid={props['data-testid'] || 'button'}
-        disabled={disabled}
-        onClick={onClick}
-        {...props}>
-        {children}
-      </button>
-    )),
-  Card: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="card" {...props}>
-      {children}
-    </div>
-  )),
-  Space: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="space" {...props}>
-      {children}
-    </div>
-  )),
-  Tooltip: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="tooltip" {...props}>
-      {children}
-    </div>
-  )),
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -114,10 +76,6 @@ jest.mock('../../../assets/svg/down-arrow-icon.svg', () => ({
 
 jest.mock('../../../assets/svg/up-arrow-icon.svg', () => ({
   ReactComponent: () => <div data-testid="arrow-up-icon">ArrowUp</div>,
-}));
-
-jest.mock('../../../assets/svg/entity/column.svg', () => ({
-  ReactComponent: () => <div data-testid="column-icon">ColumnIcon</div>,
 }));
 
 jest.mock('../../common/DescriptionSection/DescriptionSection', () => ({
@@ -592,6 +550,33 @@ describe('ColumnDetailPanel', () => {
 
       await waitFor(() => {
         expect(mockGetColumnByFQN).not.toHaveBeenCalled();
+      });
+    });
+
+    it('should fetch the tableColumn type for TABLE entityType', async () => {
+      await act(async () => {
+        render(
+          <ColumnDetailPanel {...mockProps} entityType={EntityType.TABLE} />
+        );
+      });
+
+      await waitFor(() => {
+        expect(getTypeByFQN).toHaveBeenCalledWith('tableColumn');
+      });
+    });
+
+    it('should not fetch the tableColumn type for DASHBOARD_DATA_MODEL entityType', async () => {
+      await act(async () => {
+        render(
+          <ColumnDetailPanel
+            {...mockProps}
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+          />
+        );
+      });
+
+      await waitFor(() => {
+        expect(getTypeByFQN).not.toHaveBeenCalled();
       });
     });
 

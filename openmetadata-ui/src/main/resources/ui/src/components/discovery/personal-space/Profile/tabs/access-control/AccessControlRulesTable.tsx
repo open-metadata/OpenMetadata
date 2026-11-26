@@ -13,12 +13,18 @@
 import {
   Box,
   ButtonUtility,
+  ConfirmPopover,
   Table,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  Policy,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
 import {
   Effect,
@@ -41,10 +47,12 @@ interface AccessControlRulesTableProps {
   canEdit: boolean;
   isDisabled: boolean;
   onEdit: (rule: Rule) => void;
-  onDelete: (ruleName: string) => void;
+  /** Resolve `false` to keep the confirmation open, e.g. when the delete failed. */
+  onDelete: (ruleName: string) => Promise<boolean>;
 }
 
-const formatList = (items?: string[]) => items?.join(', ') || '--';
+const formatList = (items?: string[]) =>
+  items?.join(', ') || NO_DATA_PLACEHOLDER;
 
 const EffectCell = ({ effect }: { effect: Rule['effect'] }) => (
   <Typography
@@ -86,7 +94,7 @@ const AccessControlRulesTable: FC<AccessControlRulesTableProps> = ({
       { id: 'effect', label: t('label.effect'), className: 'tw:w-24' },
       { id: 'condition', label: t('label.condition') },
       { id: 'description', label: t('label.description') },
-      { id: 'actions', label: t('label.action-plural'), className: 'tw:w-20' },
+      { id: 'actions', label: t('label.action-plural'), className: 'tw:w-28' },
     ],
     [t]
   );
@@ -118,31 +126,38 @@ const AccessControlRulesTable: FC<AccessControlRulesTableProps> = ({
         return rule.description ? (
           <RichTextEditorPreviewerV1 markdown={rule.description} />
         ) : (
-          '--'
+          NO_DATA_PLACEHOLDER
         );
       default:
         return (
           <Box direction="row" gap={1}>
             <ButtonUtility
-              color="tertiary"
               data-testid={`edit-rule-${rule.name}`}
               icon={Edit01}
               isDisabled={actionsDisabled}
-              size="xs"
+              size="lg"
               tooltip={actionTooltip(t('label.edit'))}
               tooltipPlacement="left"
               onPress={() => onEdit(rule)}
             />
-            <ButtonUtility
-              color="tertiary"
-              data-testid={`delete-rule-${rule.name}`}
-              icon={Trash01}
-              isDisabled={actionsDisabled}
-              size="xs"
-              tooltip={actionTooltip(t('label.delete'))}
-              tooltipPlacement="left"
-              onPress={() => onDelete(rule.name ?? '')}
-            />
+            <ConfirmPopover
+              confirmText={t('label.delete')}
+              data-testid="delete-rule-popover"
+              description={t(
+                'message.are-you-sure-you-want-to-delete-this-entity',
+                { entity: t('label.rule') }
+              )}
+              title={t('label.delete-entity', { entity: rule.name })}
+              onConfirm={() => onDelete(rule.name ?? '')}>
+              <ButtonUtility
+                data-testid={`delete-rule-${rule.name}`}
+                icon={Trash01}
+                isDisabled={actionsDisabled}
+                size="lg"
+                tooltip={actionTooltip(t('label.delete'))}
+                tooltipPlacement="left"
+              />
+            </ConfirmPopover>
           </Box>
         );
     }
@@ -169,11 +184,17 @@ const AccessControlRulesTable: FC<AccessControlRulesTableProps> = ({
         dependencies={[canEdit, isDisabled]}
         items={rules.map((rule) => ({ ...rule, id: rule.name ?? '' }))}
         renderEmptyState={() => (
-          <NoDataPlaceholder
-            title={t('label.no-entity-found', {
-              entity: t('label.rule-plural'),
-            })}
-          />
+          <Box
+            align="center"
+            className="tw:relative tw:min-h-60"
+            justify="center">
+            <NoDataPlaceholder
+              icon={<Policy />}
+              title={t('label.no-entity-found', {
+                entity: t('label.rule-plural'),
+              })}
+            />
+          </Box>
         )}>
         {(rule) => (
           <Table.Row

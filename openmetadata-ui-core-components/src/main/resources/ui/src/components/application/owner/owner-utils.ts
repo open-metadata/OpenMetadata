@@ -24,6 +24,7 @@ export interface OwnerDetails {
   displayName?: string;
   href?: string;
   profileUrl?: string;
+  inherited?: boolean;
 }
 
 export const toOwnerRef = (ref: OwnerDetails): OwnerEntityReference => ({
@@ -38,6 +39,7 @@ export const toOwnerRef = (ref: OwnerDetails): OwnerEntityReference => ({
   // in-app route via the app-level `getOwnersWithHref` helper, which sets `href`
   // after this conversion. `profileUrl` (the avatar image) is safe to carry.
   profileUrl: ref.profileUrl,
+  inherited: ref.inherited,
 });
 
 export const toOwnerRefs = (refs?: OwnerDetails[]): OwnerEntityReference[] =>

@@ -10,11 +10,12 @@ from presidio_analyzer import (
     RecognizerRegistry,
     RecognizerResult,
 )
-from presidio_analyzer.nlp_engine import NlpEngine
+from presidio_analyzer.nlp_engine import NlpArtifacts, NlpEngine
+from presidio_analyzer.predefined_recognizers import SpacyRecognizer
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.type import recognizer, tagLabelRecognizerMetadata
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
@@ -23,6 +24,7 @@ from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import RecognizerException
 from metadata.pii.algorithms import presidio_constants
 from metadata.pii.algorithms.feature_extraction import split_column_name
+from metadata.pii.algorithms.preprocessing import ner_normalize_values
 from metadata.pii.algorithms.presidio_patches import (
     PresidioRecognizerResultPatcher,
     combine_patchers,
@@ -36,9 +38,6 @@ from metadata.pii.algorithms.presidio_utils import (
     explain_recognition_results,
     load_nlp_engine,
 )
-from metadata.utils.entity_link import (
-    get_entity_link,  # pyright: ignore[reportUnknownVariableType]
-)
 from metadata.utils.fqn import FQN_SEPARATOR
 
 TARGET_MAP = {
@@ -48,6 +47,23 @@ TARGET_MAP = {
 
 _NAMED_ENTITY_TYPES = frozenset({"PERSON", "LOCATION", "NRP"})
 _MIN_DISTINCT_UNCONTEXTUALIZED_NER_MATCHES = 2
+# Keeps the first N parses and evicts none: ADR:2026-11-26-auto-classification-memoizes-the-first-500-spacy-parses-per-column
+NLP_ARTIFACTS_MEMO_MAX_SIZE = 500
+
+
+def _column_fqn_named_by(entity_link: str) -> str | None:
+    """The FQN of the table column a recognizer exception's entity link names, or None.
+
+    The link names the column by its path under the table, as a test case link does
+    (ADR:2026-11-19-recognizer-exception-links-address-columns-like-test-case-links): a nested column
+    as a dotted path (``contact.email``) and a column whose own name has a dot in it quoted
+    (``"user.email"``), so the path is the rest of the column's FQN.
+    """
+    parts = entity_link.removeprefix("<#E::").removesuffix(">").split("::")
+    if len(parts) != 4 or parts[0] != "table" or parts[2] != "columns":
+        return None
+    table_fqn, column_path = parts[1], parts[3]
+    return f"{table_fqn}{FQN_SEPARATOR}{column_path}"
 
 
 @dataclass(frozen=True)
@@ -56,13 +72,17 @@ class _RecognitionEvidence:
     result: RecognizerResult
 
 
-def _is_uncontextualized_spacy_named_entity(result: RecognizerResult) -> bool:
+def _is_spacy_named_entity(result: RecognizerResult) -> bool:
     metadata = result.recognition_metadata or {}
     return (
         result.entity_type in _NAMED_ENTITY_TYPES
         and metadata.get(presidio_constants.RECOGNIZER_METADATA_NAME) == Name.SpacyRecognizer.value
-        and not metadata.get(RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY)
     )
+
+
+def _is_uncontextualized_spacy_named_entity(result: RecognizerResult) -> bool:
+    metadata = result.recognition_metadata or {}
+    return _is_spacy_named_entity(result) and not metadata.get(RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY)
 
 
 def _normalized_match(evidence: _RecognitionEvidence) -> str:
@@ -127,24 +147,30 @@ class TagAnalyzer:
         column: Column,
         nlp_engine: NlpEngine,
         language: ClassificationLanguage = ClassificationLanguage.en,
+        nlp_artifacts_memo: dict[tuple[str, str], NlpArtifacts] | None = None,
     ):
         self.tag = tag
         self._column = column
         self._nlp_engine = nlp_engine
         self._language = language
+        # spaCy parsing dominates classification CPU and does not depend on the tag, so the
+        # analyzers of one column share a memo instead of re-parsing every sample value per tag.
+        self._nlp_artifacts_memo = {} if nlp_artifacts_memo is None else nlp_artifacts_memo
+
+    def _nlp_artifacts(self, value: str, language: str, nlp_engine: NlpEngine) -> NlpArtifacts:
+        key = (language, value)
+        artifacts = self._nlp_artifacts_memo.get(key)
+        if artifacts is None:
+            artifacts = nlp_engine.process_text(value, language)
+            if len(self._nlp_artifacts_memo) < NLP_ARTIFACTS_MEMO_MAX_SIZE:
+                self._nlp_artifacts_memo[key] = artifacts
+        return artifacts
 
     def should_skip_recognizer(self, exception_list: list[RecognizerException]):
-        blacklisted_entities = {ex.entityLink.root for ex in exception_list}
-
-        (
-            *table_fqn_parts,
-            column_name,
-        ) = self._column.fullyQualifiedName.root.split(  # pyright: ignore[reportOptionalMemberAccess]
-            FQN_SEPARATOR
-        )
-        return (
-            get_entity_link(Table, FQN_SEPARATOR.join(table_fqn_parts), column_name=column_name) in blacklisted_entities
-        )
+        # Compare FQNs rather than links: splitting the column FQN on every dot to build its link broke
+        # a quoted name such as "user.email" apart and put a nested column's parent into the table name.
+        column_fqn = self._column.fullyQualifiedName.root  # pyright: ignore[reportOptionalMemberAccess]
+        return any(_column_fqn_named_by(exception.entityLink.root) == column_fqn for exception in exception_list)
 
     def _supports_language(self, created: EntityRecognizer) -> bool:
         return self._language is ClassificationLanguage.any or created.supported_language in {
@@ -239,6 +265,7 @@ class TagAnalyzer:
                     language=self._language.value,
                     context=context,
                     return_decision_process=True,
+                    nlp_artifacts=self._nlp_artifacts(value, self._language.value, self._nlp_engine),
                 )
                 patched_results = result_patcher(value_results, value) if result_patcher else value_results
                 evidence.extend(_RecognitionEvidence(value=value, result=result) for result in patched_results)
@@ -265,10 +292,50 @@ class TagAnalyzer:
                     language=effective_lang,
                     context=context,
                     return_decision_process=True,
+                    nlp_artifacts=self._nlp_artifacts(value, effective_lang, effective_nlp),
                 )
                 patched_results = result_patcher(value_results, value) if result_patcher else value_results
                 evidence.extend(_RecognitionEvidence(value=value, result=result) for result in patched_results)
         return evidence
+
+    def _analyze_upper_cased_names(
+        self,
+        str_values: Sequence[str],
+        content_recognizers: list[EntityRecognizer],
+        context: list[str],
+        result_patcher: PresidioRecognizerResultPatcher,
+    ) -> list[_RecognitionEvidence]:
+        """Re-run spaCy NER on title-cased copies of ALL-CAPS values.
+
+        spaCy NER is trained on mixed-case text and misses names such as "SERGE DUPONT".
+        Only spaCy named-entity recognizers and only values whose casing changed are
+        re-analyzed: pattern recognizers must keep seeing the original casing, and
+        unchanged values would only repeat the first pass.
+        """
+        ner_recognizers: list[EntityRecognizer] = [
+            rec
+            for rec in content_recognizers
+            if isinstance(rec, SpacyRecognizer) and _NAMED_ENTITY_TYPES.intersection(rec.supported_entities)
+        ]
+        if not ner_recognizers:
+            return []
+        normalized_values = [
+            normalized
+            for original, normalized in zip(str_values, ner_normalize_values(list(str_values)), strict=True)
+            if normalized != original
+        ]
+        if not normalized_values:
+            return []
+        return [
+            evidence
+            for evidence in self._analyze_with(
+                normalized_values,
+                ner_recognizers,
+                context=context,
+                result_patcher=result_patcher,
+            )
+            if _is_spacy_named_entity(evidence.result)
+        ]
 
     def analyze(
         self,
@@ -281,11 +348,15 @@ class TagAnalyzer:
             content_recognizers = self.content_recognizers
             if content_recognizers:
                 context = split_column_name(self._column_name)
+                result_patcher = combine_patchers(date_time_patcher, named_entity_patcher)
                 content_evidence = self._analyze_with(
                     str_values,
                     content_recognizers,
                     context=context,
-                    result_patcher=combine_patchers(date_time_patcher, named_entity_patcher),
+                    result_patcher=result_patcher,
+                )
+                content_evidence += self._analyze_upper_cased_names(
+                    str_values, content_recognizers, context, result_patcher
                 )
                 content_results = _corroborated_content_results(content_evidence)
                 # Use the maximum individual recogniser score rather than the average over all

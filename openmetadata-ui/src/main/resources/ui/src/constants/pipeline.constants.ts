@@ -27,6 +27,12 @@ export enum PIPELINE_EXECUTION_TABS {
   TREE_VIEW = 'Tree',
 }
 
+/**
+ * The largest page the pipeline status API returns, so whole-range reads page at
+ * this size (ADR:2026-11-05-pipeline-entity-status-reads-hold-at-most-one-page).
+ */
+export const MAX_PIPELINE_STATUS_PAGE_SIZE = 1000;
+
 export const PIPELINE_INGESTION_RUN_STATUS = {
   queued: '#777777',
   success: '#07a35a',

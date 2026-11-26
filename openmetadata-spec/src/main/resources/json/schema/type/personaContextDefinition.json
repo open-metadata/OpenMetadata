@@ -128,7 +128,7 @@
     "rules": {
       "description": "Ordered dynamic entity-selection rules. An entity matched by multiple rules is rendered under the first rule only.",
       "type": "array",
-      "maxItems": 25,
+      "maxItems": 50,
       "items": {
         "$ref": "#/definitions/contextRule"
       },

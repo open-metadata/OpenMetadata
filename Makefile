@@ -1,5 +1,4 @@
 .DEFAULT_GOAL := help
-PY_SOURCE ?= ingestion/src
 include ingestion/Makefile
 
 .PHONY: help
@@ -73,16 +72,13 @@ js_antlr:  ## Generate the Python code for parsing FQNs
 	antlr4 -Dlanguage=JavaScript -o openmetadata-ui/src/main/resources/ui/src/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
 
 ## Ingestion models generation
+.PHONY: check-generated
+check-generated:  ## Check whether ingestion generated files are current
+	@python scripts/check_generated_models.py --check
+
 .PHONY: generate
-generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
-	@echo "Running Datamodel Code Generator"
-	@echo "Make sure to first run the install_dev recipe"
-	rm -rf ingestion/src/metadata/generated
-	mkdir -p ingestion/src/metadata/generated
-	python scripts/datamodel_generation.py
-	$(MAKE) py_antlr js_antlr
-	ruff check --isolated --no-respect-gitignore --fix --select F401,UP006,UP007,UP035,UP045 --target-version py310 ingestion/src/metadata/generated
-	$(MAKE) install
+generate: python_tools  ## Generate the pydantic models from the JSON Schemas to the ingestion module
+	$(NOX) -s generate -- $(ARGS)
 
 ## Reference docs generation (deterministic; CI fails if the committed output drifts)
 .PHONY: generate-entity-index
@@ -95,6 +91,15 @@ generate-api-reference:  ## Generate docs/generated/api-reference.md from JAX-RS
 
 .PHONY: generate-reference-docs
 generate-reference-docs: generate-entity-index generate-api-reference  ## Regenerate all docs/generated/*.md
+
+## Ontology library packs (verbatim pinned upstream releases; see docs/decisions/2026-11-06-ontology-library-packs-are-verbatim-pinned-upstream-releases.md)
+.PHONY: ontology-packs
+ontology-packs:  ## Regenerate the bundled ontology library packs from scripts/ontology-packs/sources.json
+	python3 -I scripts/ontology-packs/generate.py $(if $(CACHE),--cache $(CACHE))
+
+.PHONY: ontology-packs-check
+ontology-packs-check:  ## Verify the bundled ontology library packs match sources.json (offline)
+	python3 -I scripts/ontology-packs/generate.py --check
 
 .PHONY: harness-check
 harness-check:  ## Warn on harness decay (dead refs, doc sizes, rule globs, generated-doc freshness)
@@ -254,8 +259,8 @@ snyk-ui-report:  ## Uses Snyk CLI to validate the UI dependencies. Don't stop th
 .PHONY: snyk-dependencies-report
 snyk-dependencies-report:  ## Uses Snyk CLI to validate the project dependencies: MySQL, Postgres and ES. Only local testing.
 	@echo "Validating dependencies images..."
-	snyk container test mysql/mysql-server:latest $(SNYK_ARGS) --json > security-report/mysql-scan.json | true;
-	snyk container test postgres:latest $(SNYK_ARGS) --json > security-report/postgres-scan.json | true;
+	snyk container test mysql:8.4.13 $(SNYK_ARGS) --json > security-report/mysql-scan.json | true;
+	snyk container test postgres:15 $(SNYK_ARGS) --json > security-report/postgres-scan.json | true;
 	snyk container test docker.elastic.co/elasticsearch/elasticsearch:7.10.2 $(SNYK_ARGS) --json > security-report/es-scan.json | true;
 
 .PHONY: docker-base-image-cve-test
@@ -303,12 +308,12 @@ build-ingestion-slim-local:  ## Builds the SLIM ingestion DEV docker operator wi
 #Upgrade release automation scripts below
 .PHONY: update_all
 update_all:  ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2
-	@echo "The release version is: $(RELEASE_VERSION)" ; \
-	$(MAKE) update_maven ; \
-	$(MAKE) update_openapi_version ; \
-	$(MAKE) update_pyproject_version ; \
-	$(MAKE) update_dockerfile_version ; \
-	$(MAKE) update_dockerfile_ri_version ; \
+	@echo "The release version is: $(RELEASE_VERSION)"
+	$(MAKE) update_maven
+	$(MAKE) update_openapi_version
+	$(MAKE) update_pyproject_version
+	$(MAKE) update_dockerfile_version
+	$(MAKE) update_dockerfile_ri_version
 #remove comment and use the below section when want to use this sub module "update_all" independently to update github actions
 #make update_all RELEASE_VERSION=2.2.2
 
@@ -326,13 +331,9 @@ update_openapi_version:  ## To update the OpenAPI version in OpenMetadataApplica
 #make update_openapi_version RELEASE_VERSION=2.2.2
 
 .PHONY: update_pyproject_version
-update_pyproject_version:  ## To update the pyproject.toml files
-	file_paths="ingestion/pyproject.toml \
-				openmetadata-airflow-apis/pyproject.toml"; \
-	echo "Updating pyproject.toml versions to $(RELEASE_VERSION)... "; \
-	for file_path in $$file_paths; do \
-	    python3 scripts/update_version.py update_pyproject_version -f $$file_path -v $(RELEASE_VERSION) ; \
-	done
+update_pyproject_version: python_tools  ## To update the pyproject.toml files
+	"$(NOX_BOOTSTRAP)/bin/python" scripts/update_version.py update_pyproject_version \
+		-f ingestion/pyproject.toml -f openmetadata-airflow-apis/pyproject.toml -v "$(RELEASE_VERSION)"
 # Commented section for independent usage of the module update_pyproject_version independently to update github actions
 #make update_pyproject_version RELEASE_VERSION=2.2.2
 

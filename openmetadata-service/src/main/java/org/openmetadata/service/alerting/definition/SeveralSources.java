@@ -11,9 +11,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
-import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
 import org.openmetadata.schema.entity.events.AlertSourceKind;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
@@ -111,7 +112,7 @@ public final class SeveralSources {
             .collect(Collectors.joining(" || "));
     return new EventFilterRule()
         .withName(GROUPED_TRIGGERS)
-        .withEffect(ArgumentsInput.Effect.INCLUDE)
+        .withEffect(Effect.INCLUDE)
         .withCondition(grouped);
   }
 
@@ -135,7 +136,7 @@ public final class SeveralSources {
 
   // An excluded trigger is negated inside its own group.
   private static String wrapped(EventFilterRule rule) {
-    boolean excluded = rule.getEffect() == ArgumentsInput.Effect.EXCLUDE;
+    boolean excluded = rule.getEffect() == Effect.EXCLUDE;
     return (excluded ? "(!" : "(") + rule.getCondition() + ")";
   }
 

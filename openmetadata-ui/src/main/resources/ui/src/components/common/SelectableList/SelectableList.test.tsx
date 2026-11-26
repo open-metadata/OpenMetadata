@@ -228,4 +228,28 @@ describe('SelectableList Component Test', () => {
 
     expect(removeIcon).toHaveLength(1);
   });
+
+  it('should keep the list body at its full height while empty so the popover is placed at its final size', async () => {
+    render(
+      <SelectableList
+        multiSelect
+        fetchOptions={mockFetchOptions}
+        height={200}
+        selectedItems={[]}
+        onCancel={mockOnCancel}
+        onUpdate={mockOnUpdate}
+      />
+    );
+
+    expect(screen.getByTestId('selectable-list-body')).toHaveStyle({
+      minHeight: '200px',
+    });
+
+    expect(
+      await screen.findByText('message.no-data-available')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('selectable-list-body')).toHaveStyle({
+      minHeight: '200px',
+    });
+  });
 });

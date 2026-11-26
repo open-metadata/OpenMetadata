@@ -14,10 +14,10 @@ import {
   Alert,
   Box,
   Button,
+  ButtonUtility,
   Checkbox,
   Input,
   Skeleton,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { Check, Search, XClose } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
@@ -29,6 +29,8 @@ import type { Metric } from '../../../generated/entity/data/metric';
 import type { EntityReference } from '../../../generated/type/entityReference';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 
 export interface RelatedMetricOption {
   label: string;
@@ -136,25 +138,25 @@ export const RelatedMetricsForm: FC<RelatedMetricsFormProps> = ({
       <Box direction="col" gap={3}>
         {showActions && (
           <Box align="center" gap={2} justify="end">
-            <Button
-              aria-label={t('label.cancel')}
-              color="secondary"
+            <ButtonUtility
               data-testid="cancelRelatedMetrics"
-              iconLeading={XClose}
+              icon={XClose}
               isDisabled={isSubmitting}
-              onPress={onCancel}
+              tooltip={t('label.cancel')}
+              onClick={onCancel}
             />
-            <Button
-              aria-label={t('label.save')}
+            <ButtonUtility
               color="primary"
               data-testid="saveRelatedMetrics"
-              iconLeading={Check}
+              icon={Check}
               isLoading={isSubmitting}
+              tooltip={t('label.save')}
               type="submit"
             />
           </Box>
         )}
         <Input
+          autoComplete="off"
           icon={Search}
           placeholder={t('label.search-entity', {
             entity: t('label.related-metric-plural'),
@@ -205,9 +207,15 @@ export const RelatedMetricsForm: FC<RelatedMetricsFormProps> = ({
                 />
               ))
             ) : (
-              <Typography className="tw:text-tertiary" size="text-sm">
-                {t('label.no-data')}
-              </Typography>
+              <Box
+                className="tw:relative tw:min-h-48"
+                data-testid="related-metrics-empty">
+                {searchText.trim() ? (
+                  <NoSearchResultsPlaceholder />
+                ) : (
+                  <NoDataPlaceholder />
+                )}
+              </Box>
             )}
           </Box>
         )}

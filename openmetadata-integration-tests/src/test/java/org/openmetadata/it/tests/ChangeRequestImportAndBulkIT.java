@@ -15,11 +15,14 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.it.tests.ChangeRequestITSupport.*;
 
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.net.URLEncoder;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,6 +63,7 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
+import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.governance.changeRequest.MutationOpType;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
@@ -227,6 +231,81 @@ class ChangeRequestImportAndBulkIT {
             .filter(op -> Entity.FIELD_TAGS.equals(op.getField()))
             .map(op -> "%s %s".formatted(op.getOp().name(), op.getKey()))
             .collect(Collectors.toSet()));
+  }
+
+  // Two held column writes by one requester answer like a held PATCH and merge into one request
+  // that keeps each column's edit: the second write's columns, read from the published table, must
+  // not wipe the first.
+  @Test
+  void heldColumnWritesAnswerAcceptedAndKeepEachColumnsEdit(TestNamespace ns) throws Exception {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.shortPrefix("crcols"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            new Column().withName("order_id").withDataType(ColumnDataType.BIGINT),
+                            new Column().withName("amount").withDataType(ColumnDataType.DOUBLE)))
+                    .withOwners(List.of(SharedEntities.get().USER1.getEntityReference())));
+    deployHookWorkflowFor(
+        ns, Entity.TABLE, "", "", filterScopedTo(Entity.TABLE, table.getFullyQualifiedName()));
+    String sensitive = SharedEntities.get().PII_SENSITIVE_TAG_LABEL.getTagFQN();
+    String personal = SharedEntities.get().PERSONAL_DATA_TAG_LABEL.getTagFQN();
+
+    HttpResponse<String> amount = putColumnTag(table, "amount", sensitive);
+    HttpResponse<String> orderId = putColumnTag(table, "order_id", personal);
+
+    ChangeRequest request = onlyPendingRequest(table.getId());
+    for (HttpResponse<String> response : List.of(amount, orderId)) {
+      assertEquals(202, response.statusCode(), response.body());
+      assertEquals(
+          request.getId().toString(),
+          response.headers().firstValue(RestUtil.PENDING_CHANGE_HEADER).orElseThrow());
+    }
+    assertEquals(
+        Map.of("order_id", Set.of(personal), "amount", Set.of(sensitive)),
+        proposedColumnTags(request));
+    assertTrue(
+        SdkClients.adminClient()
+            .tables()
+            .getByName(table.getFullyQualifiedName(), "columns,tags")
+            .getColumns()
+            .stream()
+            .allMatch(column -> listOrEmpty(column.getTags()).isEmpty()),
+        "nothing is published before approval");
+  }
+
+  private static HttpResponse<String> putColumnTag(Table table, String column, String tagFqn)
+      throws Exception {
+    String fqn =
+        URLEncoder.encode(table.getFullyQualifiedName() + "." + column, StandardCharsets.UTF_8)
+            .replace("+", "%20");
+    return sendAsAdmin(
+        "PUT",
+        "/v1/columns/name/%s?entityType=table".formatted(fqn),
+        "application/json",
+        "{\"tags\":[%s]}".formatted(tagLabelJson(tagFqn)));
+  }
+
+  private static Map<String, Set<String>> proposedColumnTags(ChangeRequest request) {
+    String columns =
+        request.getActiveRevision().getOps().stream()
+            .filter(op -> "columns".equals(op.getField()))
+            .map(MutationOp::getValue)
+            .findFirst()
+            .orElseThrow();
+    return Arrays.stream(JsonUtils.readValue(columns, Column[].class))
+        .collect(
+            Collectors.toMap(
+                Column::getName,
+                column ->
+                    listOrEmpty(column.getTags()).stream()
+                        .map(TagLabel::getTagFQN)
+                        .collect(Collectors.toSet())));
   }
 
   private static GlossaryTerm ownedTerm(

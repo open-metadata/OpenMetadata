@@ -26,7 +26,7 @@ import { expect, test } from '../../../support/fixtures/base';
  * The left nav is pinned explicitly in every case. It is persisted per user in
  * localStorage (`user-preferences-store`), so it rides along in the saved
  * storageState and differs between machines — and it moves the table's container
- * from 1178px (expanded) to 1334px (collapsed). At 1334px the pre-fix layout
+ * from 1180px (expanded) to 1336px (collapsed). At 1336px the pre-fix layout
  * happens to fit, so without pinning the headline test below passes against the
  * unfixed code.
  */
@@ -45,8 +45,9 @@ const SEVERITY_CHIP_LABEL_TEST_ID = 'severity-chip-label';
  * bound under test — a precondition, so that a layout change which moves the
  * container fails loudly here instead of quietly changing what the geometry
  * assertions mean.
+ * TableCard draws its frame with an outline, so neither side consumes width.
  */
-const EXPANDED_NAV_CONTAINER_WIDTH = 1178;
+const EXPANDED_NAV_CONTAINER_WIDTH = 1180;
 
 /** The two widths LeftSidebar declares (`width` / `collapsedWidth`). */
 const EXPANDED_NAV_WIDTH = 228;

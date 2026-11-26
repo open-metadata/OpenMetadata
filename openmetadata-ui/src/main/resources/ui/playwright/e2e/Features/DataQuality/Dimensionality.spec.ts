@@ -16,11 +16,16 @@ import {
   PLAYWRIGHT_INGESTION_TAG_OBJ,
 } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../../utils/common';
+import {
+  chooseSelectOption,
+  createNewPage,
+  redirectToHomePage,
+} from '../../../utils/common';
 import {
   expectFormHint,
   ObservabilityFeature,
   selectAddObservabilityFeature,
+  selectTestType,
 } from '../../../utils/dataQuality';
 import {
   submitTestCaseForm,
@@ -53,6 +58,8 @@ const closeDimensionsListbox = async (page: Page) => {
   await page.getByTestId('form-heading').click();
   await expect(page.getByRole('listbox')).toBeHidden();
 };
+
+const dimensionsSelect = (page: Page) => page.getByTestId('dimensionColumns');
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
@@ -95,10 +102,12 @@ test(
       await page.click('[id="root\\/column"]');
       await expectFormHint(page, 'Select Column');
 
-      await page
-        .getByRole('option')
-        .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column })
-        .click();
+      await chooseSelectOption(
+        page.getByTestId('selectedColumn'),
+        page
+          .getByRole('option')
+          .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column })
+      );
 
       await page.locator('[id="root\\/dimensionColumns"]').click();
       await expectFormHint(page, 'Select Dimensions');
@@ -110,7 +119,10 @@ test(
       ).not.toBeVisible();
 
       for (const dimension of NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.dimensions) {
-        await page.getByRole('option').filter({ hasText: dimension }).click();
+        await chooseSelectOption(
+          dimensionsSelect(page),
+          page.getByRole('option').filter({ hasText: dimension })
+        );
       }
 
       await closeDimensionsListbox(page);
@@ -121,12 +133,10 @@ test(
         NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name
       );
 
-      await page.click('[id="root\\/testType"]');
-      await page
-        .getByRole('option')
-        .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.label })
-        .first()
-        .click();
+      await selectTestType(
+        page,
+        NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.label
+      );
 
       await submitTestCaseForm(page);
       await expect(
@@ -164,12 +174,12 @@ test(
           .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column })
       ).not.toBeVisible();
 
-      await page
-        .getByRole('option')
-        .filter({
+      await chooseSelectOption(
+        dimensionsSelect(page),
+        page.getByRole('option').filter({
           hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.editDimensions[0],
         })
-        .click();
+      );
 
       await closeDimensionsListbox(page);
 

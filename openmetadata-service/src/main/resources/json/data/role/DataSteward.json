@@ -8,6 +8,14 @@
     {
       "type" : "policy",
       "name" : "DataStewardPolicy"
+    },
+    {
+      "type" : "policy",
+      "name" : "OntologyAuthorPolicy"
+    },
+    {
+      "type" : "policy",
+      "name" : "OntologyReviewerPolicy"
     }
   ]
 }

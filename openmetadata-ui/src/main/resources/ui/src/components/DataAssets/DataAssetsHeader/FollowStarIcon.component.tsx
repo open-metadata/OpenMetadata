@@ -11,31 +11,23 @@
  *  limitations under the License.
  */
 
+import { Star01, StarFilled } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
-import { ReactComponent as FollowStarFilled } from '../../../assets/svg/ic-follow-star-filled.svg';
-import { ReactComponent as FollowStarOutline } from '../../../assets/svg/ic-follow-star-outline.svg';
 import { FollowStarIconProps } from './FollowStarIcon.interface';
-
-// The SVGs bake in a light brand-50 disc and brand-100 ring; in dark they read
-// as a white badge, so retint them to the theme-aware brand scale.
-const DARK_RING_CLASS_NAME =
-  'tw:dark:[&_g>circle:last-child]:[stroke:var(--color-utility-brand-200)]';
-const DARK_OUTLINE_DISC_CLASS_NAME =
-  'tw:dark:[&_g>circle:first-child]:[fill:var(--color-utility-brand-50)]';
 
 export const FollowStarIcon: FC<FollowStarIconProps> = ({
   className,
   selected,
 }) =>
   selected ? (
-    <FollowStarFilled className={classNames(className, DARK_RING_CLASS_NAME)} />
+    <StarFilled
+      className={classNames('tw:text-utility-yellow-400', className)}
+      size={20}
+    />
   ) : (
-    <FollowStarOutline
-      className={classNames(
-        className,
-        DARK_RING_CLASS_NAME,
-        DARK_OUTLINE_DISC_CLASS_NAME
-      )}
+    <Star01
+      className={classNames('tw:text-utility-gray-500', className)}
+      size={20}
     />
   );

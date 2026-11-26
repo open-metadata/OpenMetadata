@@ -25,11 +25,15 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.configuration.ConfigSourceConfiguration;
 import org.openmetadata.schema.configuration.ConfigSourceMode;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -42,6 +46,22 @@ class DeploymentConfigTest {
         provider: ${AUTHENTICATION_PROVIDER:-basic}
         maxActiveSessionsPerUser: ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}
       """;
+
+  private static final String OPERATIONS_YAML =
+      """
+      email:
+        emailingEntity: ${OM_EMAIL_ENTITY:-"OpenMetadata"}
+        enableSmtpServer: ${AUTHORIZER_ENABLE_SMTP:-false}
+        senderMail: ${OPENMETADATA_SMTP_SENDER_MAIL:-"sender@example.com"}
+        serverEndpoint: ${SMTP_SERVER_ENDPOINT:-"smtp.example.com"}
+        serverPort: ${SMTP_SERVER_PORT:-"587"}
+        transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
+        templates: ${TEMPLATES:-"openmetadata"}
+      serverUrl:
+        openMetadataUrl: ${OPENMETADATA_SERVER_URL:-"http://localhost:8585"}
+      """;
+
+  @TempDir Path tempDir;
 
   @AfterEach
   void tearDown() {
@@ -100,5 +120,39 @@ class DeploymentConfigTest {
 
     assertEquals(List.of("authorizerConfiguration", "scimConfiguration"), undefined);
     assertFalse(undefined.contains("authenticationConfiguration"));
+  }
+
+  /**
+   * With operational config disabled no operations file is read, and the email and server URL the
+   * configuration carries are built-in fallbacks that ENV mode would store over the database.
+   */
+  @Test
+  void reportsEnvModeEmailAndServerUrlWhenNoOperationsFileIsRead() {
+    OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
+    config.setOpsConfig(new OpsConfig().withEnable(false));
+    config.setConfigSourceConfiguration(operationsGroupsInEnvMode());
+
+    assertEquals(
+        List.of("emailConfiguration", "openMetadataBaseUrlConfiguration"),
+        DeploymentConfig.capture(config).envModeSettingsWithoutDeploymentValue());
+  }
+
+  @Test
+  void acceptsEnvModeEmailAndServerUrlReadFromTheOperationsFile() throws IOException {
+    Path operations = tempDir.resolve("operations.yaml");
+    Files.writeString(operations, OPERATIONS_YAML);
+    OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
+    config.setOpsConfig(
+        new OpsConfig().withEnable(true).withOperationsConfigFile(operations.toString()));
+    config.setConfigSourceConfiguration(operationsGroupsInEnvMode());
+
+    assertEquals(
+        List.of(), DeploymentConfig.capture(config).envModeSettingsWithoutDeploymentValue());
+  }
+
+  private static ConfigSourceConfiguration operationsGroupsInEnvMode() {
+    return new ConfigSourceConfiguration()
+        .withEmail(ConfigSourceMode.ENV)
+        .withServerUrl(ConfigSourceMode.ENV);
   }
 }

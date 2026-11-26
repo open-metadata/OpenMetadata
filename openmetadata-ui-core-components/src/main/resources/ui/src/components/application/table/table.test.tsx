@@ -41,6 +41,40 @@ const renderTable = (props: Partial<Parameters<typeof Table>[0]> = {}) =>
 const firstCell = () =>
   screen.getAllByRole('row')[1].querySelector('td, th') as HTMLElement;
 
+const renderLabelledHead = (wrapLabel?: boolean) =>
+  render(
+    <Table aria-label="label-table">
+      <Table.Header>
+        <Table.Head isRowHeader id="name" label="Name" wrapLabel={wrapLabel} />
+      </Table.Header>
+      <Table.Body>
+        <Table.Row id="r1">
+          <Table.Cell>alpha</Table.Cell>
+        </Table.Row>
+      </Table.Body>
+    </Table>
+  );
+
+describe('Table.Head wrapLabel', () => {
+  it('keeps the label on one line by default', () => {
+    renderLabelledHead();
+
+    expect(screen.getByText('Name')).toHaveClass('tw:whitespace-nowrap');
+  });
+
+  // A width-capped column must wrap its header, or it spills into the next one.
+  it('wraps the label and lets its wrappers shrink when wrapLabel is set', () => {
+    renderLabelledHead(true);
+
+    const label = screen.getByText('Name');
+
+    expect(label).not.toHaveClass('tw:whitespace-nowrap');
+    expect(label).toHaveClass('tw:whitespace-normal', 'tw:wrap-anywhere');
+    expect(label.parentElement).toHaveClass('tw:min-w-0');
+    expect(label.parentElement?.parentElement).toHaveClass('tw:min-w-0');
+  });
+});
+
 describe('Table header accessibility', () => {
   it('names the columnheader from its title content', () => {
     renderTable();
@@ -56,6 +90,35 @@ describe('Table header accessibility', () => {
         .getByRole('columnheader', { name: 'Name' })
         .querySelector('[role="group"]')
     ).toBeNull();
+  });
+});
+
+describe('Table header alignment', () => {
+  it('starts header content by default and centres it on request', () => {
+    render(
+      <Table aria-label="aligned-table">
+        <Table.Header>
+          <Table.Head isRowHeader id="name">
+            Name
+          </Table.Head>
+          <Table.Head align="center" id="allowed">
+            Allowed
+          </Table.Head>
+        </Table.Header>
+        <Table.Body>
+          <Table.Row id="r1">
+            <Table.Cell>alpha</Table.Cell>
+            <Table.Cell>yes</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>
+    );
+
+    const content = (name: string) =>
+      screen.getByRole('columnheader', { name }).firstElementChild;
+
+    expect(content('Name')).not.toHaveClass('tw:justify-center');
+    expect(content('Allowed')).toHaveClass('tw:justify-center');
   });
 });
 
@@ -82,6 +145,43 @@ describe('Table sizes', () => {
     renderTable();
 
     expect(screen.getAllByRole('row')[1]).toHaveClass('tw:h-18');
+  });
+});
+
+describe('Table variant', () => {
+  const container = () => screen.getByRole('grid').parentElement;
+
+  it('leaves the container unframed by default', () => {
+    renderTable();
+
+    expect(container()).not.toHaveClass('tw:bg-primary_alt');
+  });
+
+  it('frames the container on the muted step with a single-layer hover', () => {
+    renderTable({ variant: 'muted' });
+
+    expect(container()).toHaveClass(
+      'tw:bg-primary_alt',
+      'tw:dark:border-primary',
+      'tw:[&_tbody:not(table_table_tbody):not([data-empty])>tr:hover>td]:bg-primary_hover'
+    );
+  });
+
+  it('marks only an empty body with the data-empty hook the hover rules skip', () => {
+    const { container: populated } = renderTable();
+    const { container: empty } = render(
+      <Table aria-label="empty-table">
+        <Table.Header>
+          <Table.Head isRowHeader id="name">
+            Name
+          </Table.Head>
+        </Table.Header>
+        <Table.Body renderEmptyState={() => 'nothing here'}>{[]}</Table.Body>
+      </Table>
+    );
+
+    expect(populated.querySelector('tbody')).not.toHaveAttribute('data-empty');
+    expect(empty.querySelector('tbody')).toHaveAttribute('data-empty');
   });
 });
 
@@ -226,13 +326,38 @@ describe('TableCard theme roles', () => {
 
     expect(screen.getByTestId('table-card')).toHaveClass(
       'tw:bg-surface',
-      'tw:outline-subtle'
+      'tw:after:outline-subtle'
     );
     // Drawn inside the card: an outer outline is clipped by any scrolling
     // parent the card sits flush against (e.g. the top of a modal body).
     expect(screen.getByTestId('table-card')).toHaveClass(
-      'tw:-outline-offset-1'
+      'tw:after:-outline-offset-1'
+    );
+    // On an overlay above the content, inside the card's own stacking
+    // context: an outline on the card itself is painted over by a sticky
+    // (z-10, opaque) table header.
+    expect(screen.getByTestId('table-card')).toHaveClass(
+      'tw:isolate',
+      'tw:after:absolute',
+      'tw:after:z-20'
     );
     expect(header).toHaveClass('tw:bg-surface', 'tw:border-subtle');
+  });
+
+  it('muted variant sits on primary_alt with a visible edge and row hover', () => {
+    render(<TableCard.Root data-testid="table-card" variant="muted" />);
+    const card = screen.getByTestId('table-card');
+
+    expect(card).toHaveClass(
+      'tw:bg-primary_alt',
+      'tw:after:outline-secondary',
+      'tw:dark:after:outline-primary',
+      'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
+      'tw:[&_tbody:not(table_table_tbody):not([data-empty])>tr:hover>td]:bg-primary_hover',
+      // Clamped markdown must fade into the muted row, not the surface.
+      'tw:dark:[&_tbody:not(table_table_tbody)]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]!'
+    );
+    expect(card).not.toHaveClass('tw:bg-surface');
+    expect(card).not.toHaveClass('tw:after:outline-subtle');
   });
 });

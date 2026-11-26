@@ -77,13 +77,17 @@ public final class NativeOntologyChangeExecutor {
                 null,
                 definition.getFullyQualifiedName(),
                 repository.getFields(""),
-                Include.ALL,
+                Include.NON_DELETED,
                 false)
             .isPresent()) {
       throw new BadRequestException(
           "Definition already exists: " + definition.getFullyQualifiedName());
     }
-    final T saved = repository.createOrUpdate(uriInfo, definition, user).getEntity();
+    final T saved =
+        update
+            ? repository.createOrUpdate(uriInfo, definition, user).getEntity()
+            : repository.recreating(
+                () -> repository.createOrUpdate(uriInfo, definition, user).getEntity());
     if (operation.getSourceMemoryIds() != null) {
       for (final var memoryId : operation.getSourceMemoryIds()) {
         repository.addRelationship(

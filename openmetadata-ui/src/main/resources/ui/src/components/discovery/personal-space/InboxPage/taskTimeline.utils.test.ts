@@ -39,6 +39,18 @@ describe('buildTaskTimeline', () => {
     });
   });
 
+  // The task's "Created by" names the agent, so its timeline must too.
+  it('credits the creation to the proposing agent, not its bot', () => {
+    const [first] = buildTaskTimeline(buildTask(), {
+      proposingAgent: 'Glossary Agent',
+    });
+
+    expect(first).toMatchObject({
+      textKey: 'message.task-event-created',
+      textParams: { user: 'Glossary Agent' },
+    });
+  });
+
   it('reads an incident as opened and tones it as an alert', () => {
     const [first] = buildTaskTimeline(
       buildTask({ category: TaskCategory.Incident })
@@ -178,6 +190,35 @@ describe('buildTaskTimeline', () => {
         textKey: 'message.task-event-assigned',
       });
       expect(event?.timestamp).toBeUndefined();
+    });
+
+    it('names the one holder alone', () => {
+      const event = buildTaskTimeline(assigned).find(
+        (entry) => entry.id === 'assigned-a1'
+      );
+
+      expect(event).toMatchObject({ actor: { id: 'a1' } });
+      expect(event).not.toHaveProperty('count', expect.anything());
+    });
+
+    // The detail's Assignee stack shows them all; naming only the first read
+    // as if the task were assigned to that person alone.
+    it('names the first of several holders and counts the rest', () => {
+      const event = buildTaskTimeline(
+        buildTask({
+          assignees: [
+            { id: 'a1', name: 'admin' },
+            { id: 'a2', name: 'ana' },
+            { id: 'a3', name: 'jo' },
+          ],
+        } as unknown as Partial<Task>)
+      ).find((entry) => entry.id === 'assigned-a1');
+
+      expect(event).toMatchObject({
+        actor: { id: 'a1' },
+        textKey: 'message.task-event-assigned-others',
+        count: 2,
+      });
     });
 
     it('is omitted when nobody holds the task', () => {

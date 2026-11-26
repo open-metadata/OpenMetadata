@@ -20,19 +20,35 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { countBy, groupBy } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { ClientErrors } from '../../../../../enums/Axios.enum';
+import { User } from '../../../../../generated/entity/teams/user';
+import { useViewedUserFirstName } from '../../../../../hooks/discovery/personal-space/useViewedUserFirstName';
 import { usePersonalSpaceStore } from '../../../../../hooks/usePersonalSpaceStore';
 import { formatDate } from '../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import { TaskMentionCard } from '../../../../NotificationBox/TaskMentionCard';
+import {
+  ActivityScope,
+  getActivityScopeKey,
+  INBOX_SCOPE,
+  SCOPE_FILTERS,
+} from '../activityScope';
 import ActivityFeedItem from '../components/ActivityFeedItem';
+import { ACTIVITY_CARD_CLASS } from '../components/ActivityFeedItem.constants';
 import ActivitySkeleton from '../components/ActivitySkeleton';
 import ActivityToolbar from '../components/ActivityToolbar';
 import {
@@ -43,13 +59,17 @@ import {
   DEFAULT_INBOX_DATE_PRESET,
   getActivityDayLabel,
   getActivityTypeKey,
+  getDefaultInboxDateRange,
+  getInboxDateRange,
   InboxDateRange,
+  INBOX_DATE_RANGE_OPTIONS,
   INBOX_ENTITY_ICON_CLASS,
 } from '../inbox.utils';
 import {
   getInboxItemId,
   getInboxItemTimestamp,
   InboxActivityItem,
+  UseInboxActivity,
   useInboxActivity,
   useInboxActivityCounts,
 } from '../useInboxActivity';
@@ -60,10 +80,10 @@ import { useIsScrolled } from '../useIsScrolled';
 // but a small DOM keeps a modal over it (a delete confirm, say) cheap to open.
 const ACTIVITY_RENDER_BATCH = 40;
 
-const getItemEntity = ({ activity, feed }: InboxActivityItem) =>
-  activity?.entity ?? feed?.entityRef;
-const getItemActor = ({ activity, feed }: InboxActivityItem) =>
-  activity?.actor ?? feed?.createdBy;
+const getItemEntity = ({ activity, feed, taskMention }: InboxActivityItem) =>
+  activity?.entity ?? feed?.entityRef ?? taskMention?.task.about;
+const getItemActor = ({ activity, feed, taskMention }: InboxActivityItem) =>
+  activity?.actor ?? feed?.createdBy ?? taskMention?.comment.author;
 
 // An Asset group leads with its asset's icon, a User group with the user.
 const AssetGroupIcon = ({ item }: { item: InboxActivityItem }) => {
@@ -89,6 +109,9 @@ const UserGroupIcon = ({ item }: { item: InboxActivityItem }) => {
   ) : null;
 };
 
+// A day group is keyed by its date.
+const getDayKey = (timestamp: number) => formatDate(timestamp);
+
 // How each grouping keys an item, titles its group and marks its header.
 const GROUPING: Record<
   ActivityGrouping,
@@ -99,7 +122,7 @@ const GROUPING: Record<
   }
 > = {
   [ActivityGrouping.Day]: {
-    key: (item) => formatDate(getInboxItemTimestamp(item)),
+    key: (item) => getDayKey(getInboxItemTimestamp(item)),
     title: (item, t) => getActivityDayLabel(getInboxItemTimestamp(item), t),
   },
   [ActivityGrouping.Asset]: {
@@ -118,11 +141,18 @@ const GROUPING: Record<
 const ActivityEmptyState = ({
   error,
   isFiltered,
+  hasActivity,
+  userFirstName,
   onRetry,
+  onClearTypes,
 }: {
   error: unknown;
   isFiltered: boolean;
+  hasActivity: boolean;
+  // Set when the feed is another user's, so the empty state names them.
+  userFirstName?: string;
   onRetry: () => void;
+  onClearTypes?: () => void;
 }) => {
   const { t } = useTranslation();
 
@@ -144,6 +174,15 @@ const ActivityEmptyState = ({
     );
   }
 
+  if (onClearTypes && hasActivity) {
+    return (
+      <NoFilteredResultsPlaceholder
+        data-testid="inbox-activity-no-results"
+        onClearFilters={onClearTypes}
+      />
+    );
+  }
+
   return isFiltered ? (
     <NoFilteredResultsPlaceholder
       data-testid="inbox-activity-no-results"
@@ -154,55 +193,351 @@ const ActivityEmptyState = ({
   ) : (
     <NoDataPlaceholder
       data-testid="inbox-activity-empty"
-      description={t('message.activity-feed-empty-description')}
+      description={
+        userFirstName
+          ? t('message.user-activity-empty-description', {
+              name: userFirstName,
+            })
+          : t('message.activity-feed-empty-description')
+      }
       icon={<Hourglass01 className="tw:size-7 tw:text-utility-brand-600" />}
-      title={t('label.activity-feed-starts-here')}
+      title={
+        userFirstName
+          ? t('label.no-activity-yet')
+          : t('label.activity-feed-starts-here')
+      }
     />
   );
 };
 
+const showsEveryUnread = (
+  isCapped: boolean,
+  cutAt: number | undefined,
+  seenTs: number | null
+) => seenTs === null || !isCapped || (cutAt !== undefined && cutAt <= seenTs);
+
+// Looking at the viewer's own Inbox list is what clears the sidebar's unread
+// badge; feeds have no server-side read state to update. Another user's feed,
+// or an entity's, is not the viewer's Inbox. The badge stays until a view that
+// includes the viewer's task mentions loads, unfiltered.
+const useMarkInboxSeen = ({
+  scope,
+  isOtherUser,
+  feed,
+  isFiltered,
+  typeKeyCount,
+}: {
+  scope: ActivityScope;
+  isOtherUser: boolean;
+  feed: Pick<
+    UseInboxActivity,
+    | 'isLoading'
+    | 'error'
+    | 'isCapped'
+    | 'cutAt'
+    | 'taskMentionsLoaded'
+    | 'taskMentionsReadAt'
+  >;
+  isFiltered: boolean;
+  typeKeyCount: number;
+}) => {
+  const markInboxActivitySeen = usePersonalSpaceStore(
+    (s) => s.markInboxActivitySeen
+  );
+  const inboxActivitySeenTs = usePersonalSpaceStore(
+    (s) => s.inboxActivitySeenTs
+  );
+  const {
+    isLoading,
+    error,
+    isCapped,
+    cutAt,
+    taskMentionsLoaded,
+    taskMentionsReadAt,
+  } = feed;
+
+  useEffect(() => {
+    const isViewerInbox = scope.type === 'inbox' && !isOtherUser;
+    const isLoaded =
+      !isLoading &&
+      !error &&
+      taskMentionsLoaded &&
+      taskMentionsReadAt !== undefined;
+    const isUnfiltered = !isFiltered && typeKeyCount === 0;
+    if (
+      isViewerInbox &&
+      isLoaded &&
+      isUnfiltered &&
+      showsEveryUnread(isCapped, cutAt, inboxActivitySeenTs)
+    ) {
+      markInboxActivitySeen(taskMentionsReadAt);
+    }
+  }, [
+    scope.type,
+    isOtherUser,
+    isLoading,
+    error,
+    isCapped,
+    cutAt,
+    inboxActivitySeenTs,
+    taskMentionsLoaded,
+    taskMentionsReadAt,
+    isFiltered,
+    typeKeyCount,
+    markInboxActivitySeen,
+  ]);
+};
+
+// The Mentions feed (already read for its count) marks the cards that name the
+// feed's user, whichever feed they appear under. A scope without one reads its
+// showing feed instead, the same query, so nothing extra is fetched.
+const useMentionedIds = (
+  scope: ActivityScope,
+  filter: ActivityFilter,
+  dateRange?: InboxDateRange
+) => {
+  const hasMentions = SCOPE_FILTERS[scope.type].includes(
+    ActivityFilter.Mentions
+  );
+  const { items } = useInboxActivity(
+    hasMentions ? ActivityFilter.Mentions : filter,
+    dateRange,
+    scope
+  );
+
+  return useMemo(
+    () => new Set(hasMentions ? items.map(getInboxItemId) : undefined),
+    [hasMentions, items]
+  );
+};
+
+// Lifts with a shadow once the feed scrolls under it. The negative margin
+// cancels the panel's gutter so the shadow spans edge to edge, and shadow-md's
+// negative spread keeps it under the bar only. Beside a host's control, or on a
+// user's page, the bar spans the tab; alone it lines up with the feed column.
+const ActivityTabHeader = ({
+  isScrolled,
+  leading,
+  isUserFeed,
+  children,
+}: {
+  isScrolled: boolean;
+  leading?: ReactNode;
+  isUserFeed: boolean;
+  children: ReactNode;
+}) => (
+  <div
+    className={classNames(
+      'tw:relative tw:z-10 tw:-mx-3 tw:px-3 tw:py-3 tw:transition-shadow',
+      isScrolled && 'tw:shadow-md'
+    )}>
+    <div
+      className={classNames(
+        'tw:w-full',
+        !leading && !isUserFeed && 'tw:mx-auto tw:max-w-230'
+      )}>
+      {children}
+    </div>
+  </div>
+);
+
 export interface ActivityTabProps {
+  // Without one the tab keeps its own window, starting at the default preset.
   dateRange?: InboxDateRange;
   onDatePresetChange?: (key: string) => void;
   // Narrowed window → empty reads as "no activity in period" vs first-run state.
   isFiltered?: boolean;
+  // Show this user's feeds instead of the viewer's. Likes and replies still
+  // act as the viewer.
+  user?: User;
+  // Whose activity; the viewer's Inbox when omitted (or `user`'s, when set).
+  scope?: ActivityScope;
+  // The host's control for the toolbar's left side (an entity's Activity /
+  // Tasks switch); the feeds then move into a Show menu.
+  leading?: ReactNode;
+  /** The sub-tab the feed opens on; defaults to All. */
+  initialFilter?: ActivityFilter;
 }
 
-const ActivityTab: React.FC<ActivityTabProps> = ({
+const getDefaultDateRange = (): InboxDateRange => ({
+  ...getDefaultInboxDateRange(),
+  key: DEFAULT_INBOX_DATE_PRESET,
+});
+
+// The parent's window when it passes one, else the tab's own.
+const useActivityDateRange = ({
   dateRange,
-  onDatePresetChange,
   isFiltered = false,
+  onDatePresetChange,
+}: Pick<
+  ActivityTabProps,
+  'dateRange' | 'isFiltered' | 'onDatePresetChange'
+>) => {
+  const [ownDateRange, setOwnDateRange] = useState(getDefaultDateRange);
+  const handleOwnDatePresetChange = useCallback(
+    (key: string) =>
+      setOwnDateRange({
+        ...getInboxDateRange(INBOX_DATE_RANGE_OPTIONS[key].days),
+        key,
+      }),
+    []
+  );
+
+  return dateRange
+    ? { dateRange, isFiltered, onDatePresetChange }
+    : {
+        dateRange: ownDateRange,
+        isFiltered:
+          isFiltered || ownDateRange.key !== DEFAULT_INBOX_DATE_PRESET,
+        onDatePresetChange: handleOwnDatePresetChange,
+      };
+};
+
+interface ActivityGroup {
+  key: string;
+  first: InboxActivityItem;
+  title: string;
+  items: InboxActivityItem[];
+  total: number;
+  // The feed was cut inside this group, so `total` is only a floor.
+  isFloor: boolean;
+}
+
+// The loaded feed, one block per group, with the incremental-render sentinel.
+const ActivityGroupList = ({
+  groups,
+  GroupIcon,
+  mentionedIds,
+  userFirstName,
+  timeFormat,
+  hasMore,
+  isCapped,
+  sentinelRef,
+}: {
+  groups: ActivityGroup[];
+  GroupIcon?: React.FC<{ item: InboxActivityItem }>;
+  mentionedIds: Set<string>;
+  userFirstName?: string;
+  timeFormat: string;
+  hasMore: boolean;
+  // The server returned only the newest of the window's items.
+  isCapped: boolean;
+  sentinelRef: React.RefObject<HTMLDivElement>;
 }) => {
   const { t } = useTranslation();
-  const [filter, setFilter] = useState(ActivityFilter.All);
+
+  return (
+    <Box direction="col" gap={4}>
+      {groups.map((group) => (
+        <Box
+          data-testid="activity-group"
+          direction="col"
+          gap={3}
+          key={group.key}>
+          <Box align="center" gap={2}>
+            {GroupIcon && <GroupIcon item={group.first} />}
+            <Typography
+              className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-primary"
+              size="text-xs"
+              weight="semibold">
+              {group.title}
+            </Typography>
+            <Typography
+              className="tw:shrink-0 tw:text-quaternary"
+              size="text-xs">
+              {group.total === 1 && !group.isFloor
+                ? t('label.one-update')
+                : t('label.number-update-plural', {
+                    number: group.isFloor ? `${group.total}+` : group.total,
+                  })}
+            </Typography>
+          </Box>
+          {group.items.map((item) => {
+            const itemId = getInboxItemId(item);
+            if (item.taskMention) {
+              return (
+                <Box className={ACTIVITY_CARD_CLASS} key={itemId}>
+                  <Box className="tw:p-4">
+                    <TaskMentionCard mention={item.taskMention} />
+                  </Box>
+                </Box>
+              );
+            }
+
+            return (
+              <ActivityFeedItem
+                activity={item.activity}
+                feed={item.feed}
+                isMentioned={mentionedIds.has(itemId)}
+                key={itemId}
+                mentionedName={userFirstName}
+                timeFormat={timeFormat}
+              />
+            );
+          })}
+        </Box>
+      ))}
+      {hasMore && (
+        <div
+          aria-hidden
+          className="tw:h-px"
+          data-testid="inbox-activity-sentinel"
+          ref={sentinelRef}
+        />
+      )}
+      {isCapped && !hasMore && (
+        <Typography
+          className="tw:text-center tw:text-tertiary"
+          data-testid="inbox-activity-capped"
+          size="text-xs">
+          {t('message.inbox-activity-capped')}
+        </Typography>
+      )}
+    </Box>
+  );
+};
+
+const ActivityTab: React.FC<ActivityTabProps> = ({
+  user,
+  scope: scopeProp = INBOX_SCOPE,
+  leading,
+  initialFilter = ActivityFilter.All,
+  ...windowProps
+}) => {
+  const { t } = useTranslation();
+  const [filter, setFilter] = useState(initialFilter);
   const [grouping, setGrouping] = useState(ActivityGrouping.Day);
   const [typeKeys, setTypeKeys] = useState<string[]>([]);
-  const markInboxActivitySeen = usePersonalSpaceStore(
-    (s) => s.markInboxActivitySeen
+  const clearTypeKeys = useCallback(() => setTypeKeys([]), []);
+  // The Inbox centres a reading column; a user's profile tab spans its panel.
+  const feedColumnClass = classNames(
+    'tw:mx-auto tw:w-full',
+    !user && 'tw:max-w-230'
   );
-
-  // Looking at the list is what clears the sidebar's unread badge; feeds have no
-  // server-side read state to update.
-  useEffect(() => {
-    markInboxActivitySeen();
-  }, [markInboxActivitySeen]);
+  const { dateRange, isFiltered, onDatePresetChange } =
+    useActivityDateRange(windowProps);
+  const userFirstName = useViewedUserFirstName(user);
+  const isOtherUser = Boolean(userFirstName);
+  const userId = user?.id;
+  const scope = useMemo(
+    (): ActivityScope => (userId ? { type: 'inbox', userId } : scopeProp),
+    [userId, scopeProp]
+  );
+  const isInbox = scope.type === 'inbox';
 
   // Shared with the badge (one fetch); merge semantics documented on the hook.
-  const { items, isLoading, error, refetch } = useInboxActivity(
-    filter,
-    dateRange
-  );
-  const counts = useInboxActivityCounts(dateRange);
-  // The Mentions feed (already read for its count) marks the cards that name
-  // the viewer, whichever tab they appear under.
-  const { items: mentionItems } = useInboxActivity(
-    ActivityFilter.Mentions,
-    dateRange
-  );
-  const mentionedIds = useMemo(
-    () => new Set(mentionItems.map(getInboxItemId)),
-    [mentionItems]
-  );
+  const feed = useInboxActivity(filter, dateRange, scope);
+  const { items, isCapped, cutAt, isLoading, error, refetch } = feed;
+
+  useMarkInboxSeen({
+    scope,
+    isOtherUser,
+    feed,
+    isFiltered,
+    typeKeyCount: typeKeys.length,
+  });
+  const counts = useInboxActivityCounts(dateRange, scope);
+  const mentionedIds = useMentionedIds(scope, filter, dateRange);
   // ponytail: types filter the loaded page only; the server has no type filter.
   const filteredItems = useMemo(
     () =>
@@ -224,23 +559,40 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
     useIncrementalRender(
       filteredItems,
       grouping === ActivityGrouping.Day ? ACTIVITY_RENDER_BATCH : Infinity,
-      `${filter}:${typeKeys}:${dateRange?.startTs}:${dateRange?.endTs}`
+      `${getActivityScopeKey(scope)}:${filter}:${typeKeys}:${
+        dateRange?.startTs
+      }:${dateRange?.endTs}`
     );
 
   // Groups keep the feed's newest-first order, as does each group's cards. Only
   // the revealed batch renders, but a header counts its whole group.
+  // Older task mentions stay visible in All when the activity and conversation
+  // lists stop. Their days and the cut day only have a lower bound.
   const groups = useMemo(() => {
     const { key, title } = GROUPING[grouping];
     const totals = countBy(filteredItems, key);
+    const cutKey =
+      cutAt && grouping === ActivityGrouping.Day ? getDayKey(cutAt) : undefined;
 
-    return Object.values(groupBy(visibleItems, key)).map((groupItems) => ({
-      key: key(groupItems[0]),
-      first: groupItems[0],
-      title: title(groupItems[0], t),
-      items: groupItems,
-      total: totals[key(groupItems[0])],
-    }));
-  }, [filteredItems, visibleItems, grouping, t]);
+    const marksOlderDays =
+      cutKey !== undefined && filter === ActivityFilter.All;
+
+    return Object.values(groupBy(visibleItems, key)).map((groupItems) => {
+      const first = groupItems[0];
+      const groupKey = key(first);
+      const isOlderDay =
+        marksOlderDays && getInboxItemTimestamp(first) < (cutAt ?? 0);
+
+      return {
+        key: groupKey,
+        first,
+        title: title(first, t),
+        items: groupItems,
+        total: totals[groupKey],
+        isFloor: groupKey === cutKey || isOlderDay,
+      };
+    });
+  }, [filteredItems, visibleItems, grouping, cutAt, filter, t]);
   const GroupIcon = GROUPING[grouping].Icon;
   const timeFormat =
     grouping === ActivityGrouping.Day
@@ -254,98 +606,57 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
     activityContent = (
       <ActivityEmptyState
         error={error}
-        isFiltered={isFiltered || typeKeys.length > 0}
+        hasActivity={items.length > 0}
+        isFiltered={isFiltered}
+        userFirstName={userFirstName}
+        onClearTypes={typeKeys.length ? clearTypeKeys : undefined}
         onRetry={refetch}
       />
     );
   } else {
     activityContent = (
-      <Box direction="col" gap={4}>
-        {groups.map((group) => (
-          <Box
-            data-testid="activity-group"
-            direction="col"
-            gap={3}
-            key={group.key}>
-            <Box align="center" gap={2}>
-              {GroupIcon && <GroupIcon item={group.first} />}
-              <Typography
-                className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-primary"
-                size="text-xs"
-                weight="semibold">
-                {group.title}
-              </Typography>
-              <Typography
-                className="tw:shrink-0 tw:text-quaternary"
-                size="text-xs">
-                {group.total === 1
-                  ? t('label.one-update')
-                  : t('label.number-update-plural', {
-                      number: group.total,
-                    })}
-              </Typography>
-            </Box>
-            {group.items.map((item) => {
-              const itemId = getInboxItemId(item);
-
-              return (
-                <ActivityFeedItem
-                  activity={item.activity}
-                  feed={item.feed}
-                  isMentioned={mentionedIds.has(itemId)}
-                  key={itemId}
-                  timeFormat={timeFormat}
-                />
-              );
-            })}
-          </Box>
-        ))}
-        {hasMore && (
-          <div
-            aria-hidden
-            className="tw:h-px"
-            data-testid="inbox-activity-sentinel"
-            ref={sentinelRef}
-          />
-        )}
-      </Box>
+      <ActivityGroupList
+        GroupIcon={GroupIcon}
+        groups={groups}
+        hasMore={hasMore}
+        isCapped={isCapped}
+        mentionedIds={mentionedIds}
+        sentinelRef={sentinelRef}
+        timeFormat={timeFormat}
+        userFirstName={userFirstName}
+      />
     );
   }
 
   return (
     <Box className="tw:flex tw:h-full tw:min-h-0" direction="col">
-      {/* Lifts with a shadow once the feed scrolls under it. The negative
-          margin cancels the panel's gutter so the shadow spans edge to edge,
-          and shadow-md's negative spread keeps it under the bar only. */}
+      <ActivityTabHeader
+        isScrolled={isScrolled}
+        isUserFeed={Boolean(user)}
+        leading={leading}>
+        <ActivityToolbar
+          counts={counts}
+          datePreset={dateRange?.key ?? DEFAULT_INBOX_DATE_PRESET}
+          filter={filter}
+          filters={SCOPE_FILTERS[scope.type]}
+          grouping={grouping}
+          leading={leading}
+          typeKeys={typeKeys}
+          onDatePresetChange={onDatePresetChange}
+          onFilterChange={setFilter}
+          onGroupingChange={isInbox ? setGrouping : undefined}
+          onTypeKeysChange={setTypeKeys}
+        />
+      </ActivityTabHeader>
+      {/* The gutter stays reserved so the feed does not shift as the scrollbar
+          comes and goes. Only the end edge: Chromium clips a full-width feed
+          under a classic scrollbar when both edges are reserved. */}
       <div
-        className={classNames(
-          'tw:relative tw:z-10 tw:-mx-3 tw:px-3 tw:py-3 tw:transition-shadow',
-          isScrolled && 'tw:shadow-md'
-        )}>
-        <div className="tw:mx-auto tw:w-full tw:max-w-230">
-          <ActivityToolbar
-            counts={counts}
-            datePreset={dateRange?.key ?? DEFAULT_INBOX_DATE_PRESET}
-            filter={filter}
-            grouping={grouping}
-            typeKeys={typeKeys}
-            onDatePresetChange={onDatePresetChange}
-            onFilterChange={setFilter}
-            onGroupingChange={setGrouping}
-            onTypeKeysChange={setTypeKeys}
-          />
-        </div>
-      </div>
-      {/* A gutter on both edges keeps the feed centred under the toolbar while
-          the scrollbar shows. */}
-      <div
-        className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pt-5 tw:pb-4 tw:[scrollbar-gutter:stable_both-edges]"
+        className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pt-5 tw:pb-4 tw:[scrollbar-gutter:stable]"
         data-testid="inbox-activity-tab"
         ref={scrollRef}
         onScroll={onScroll}>
-        <div className="tw:mx-auto tw:w-full tw:max-w-230">
-          {activityContent}
-        </div>
+        <div className={feedColumnClass}>{activityContent}</div>
       </div>
     </Box>
   );

@@ -50,7 +50,12 @@ export interface CreateWorkflowDefinition {
  * Configuration for the Workflow Definition
  */
 export interface WorkflowConfiguration {
-    lifecycle?: LifecycleConfiguration;
+    /**
+     * If True, tasks created by this workflow are assigned to the owners of the entity they are
+     * about (for incidents, the test case owners). Defaults to True when not set.
+     */
+    autoAssignOwners?: boolean;
+    lifecycle?:        LifecycleConfiguration;
     /**
      * If True, all the stage status will be stored in the database.
      */
@@ -484,6 +489,11 @@ export interface Assignees {
      */
     candidates?: EntityReference[];
     /**
+     * When no reviewer or owner of the asset resolves, assign its service's owners, and when
+     * those resolve to no one, its domains' owners. Runs before emptyAssigneeStrategy.
+     */
+    cascadeOwners?: boolean;
+    /**
      * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
      * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
      * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
@@ -522,12 +532,14 @@ export interface ExpiryTimer {
     closeAsResolution?: ResolutionType;
     /**
      * Name of the process variable holding the absolute ISO 8601 date/time when the timer
-     * should fire (e.g. 'accessExpirationDate' → '2026-12-31T23:59:59Z').
+     * should fire (e.g. 'accessExpirationDate' → '2026-12-31T23:59:59Z'). Must be a bare
+     * variable name: letters, digits and '_', starting with a letter or underscore.
      */
     dateVariable?: string;
     /**
      * Name of the process variable holding the ISO 8601 duration (e.g. 'accessDuration' →
-     * 'P14D').
+     * 'P14D'). Must be a bare variable name: letters, digits and '_', starting with a letter or
+     * underscore.
      */
     durationVariable?: string;
     /**
@@ -729,24 +741,26 @@ export enum Event {
 /**
  * Entity-specific filters with optional default
  */
-export interface FilterConditionObject {
+export type FilterConditionObject = {
     /**
      * Default filter for entity types not explicitly configured
      */
     default?: string;
+} & {
     [property: string]: string;
-}
+};
 
 /**
  * Entity-specific filters with optional default
  */
-export interface FiltersObject {
+export type FiltersObject = {
     /**
      * Default filter for entity types not explicitly configured
      */
     default?: string;
+} & {
     [property: string]: string;
-}
+};
 
 export interface AppScheduleClass {
     /**
@@ -754,6 +768,11 @@ export interface AppScheduleClass {
      */
     cronExpression?:  string;
     scheduleTimeline: ScheduleTimeline;
+    /**
+     * IANA timezone the schedule runs in, for example Europe/Berlin. When unset the server
+     * timezone applies, which is UTC in the official images.
+     */
+    timezone?: string;
 }
 
 /**

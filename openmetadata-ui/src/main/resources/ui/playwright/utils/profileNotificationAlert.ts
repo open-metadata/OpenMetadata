@@ -25,6 +25,7 @@ import { expect, Locator, Page } from '@playwright/test';
 import { ALERT_DESCRIPTION } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
 import { ACTION_TIMEOUT } from '../constant/common';
+import { dismissPopover } from '../e2e/Utils/aiAlertDrawer';
 import { enableAiAppMode } from '../e2e/Utils/appMode';
 import { TableClass } from '../support/entity/TableClass';
 import {
@@ -549,10 +550,7 @@ export const navigateToAlertsList = async (page: Page): Promise<void> => {
 };
 
 export const closeSourcePicker = async (page: Page) => {
-  await page
-    .getByTestId('ai-profile-page')
-    .getByText('Stay current with timely alerts using webhooks.')
-    .click();
+  await dismissPopover(page.getByTestId('ai-profile-page'));
   await expect(page.getByRole('listbox')).toBeHidden();
 };
 
@@ -679,11 +677,12 @@ export const deleteAlertFromList = async (
   const displayName = getEntityDisplayName(alertDetails);
 
   await page.getByTestId(`alert-delete-${displayName}`).click();
+  await expect(page.getByTestId('delete-alert-popover')).toBeVisible();
 
   const deleteResponse = page.waitForResponse(
     (response) => response.request().method() === 'DELETE'
   );
-  await page.getByTestId('confirm-button').click();
+  await page.getByTestId('delete-alert-popover-confirm').click();
   expect((await deleteResponse).status()).toBe(200);
   await toastNotification(page, `"${displayName}" deleted successfully!`);
 };

@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  AlertTriangle,
-  Lightbulb01,
-} from '@openmetadata/ui-core-components/icons';
+import { Alert, Lightbulb01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -53,7 +50,7 @@ export interface MarkdownCaveatProps {
 const MarkdownCaveat: FC<MarkdownCaveatProps> = ({ caveatType, children }) => {
   const { t } = useTranslation();
   const isDivergence = DIVERGENCE_TYPES.has(caveatType);
-  const Icon = isDivergence ? AlertTriangle : Lightbulb01;
+  const Icon = isDivergence ? Alert : Lightbulb01;
 
   return (
     <div

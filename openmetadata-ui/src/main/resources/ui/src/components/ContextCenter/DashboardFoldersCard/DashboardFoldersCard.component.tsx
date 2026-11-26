@@ -17,7 +17,7 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Documents, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -29,7 +29,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import { FOLDER_CARD_CHILDREN_LIMIT } from '../../../constants/ContextCenter.constants';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { listContextFiles } from '../../../rest/assetAPI';
@@ -131,7 +130,7 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
           : undefined
       }
       emptyMessage={t('message.no-folders-yet-create-one')}
-      icon={FolderIcon}
+      icon={Documents}
       isEmpty={folders.length === 0}
       isLoading={isLoading}
       title={t('label.folder-plural')}>
@@ -160,7 +159,7 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                   justify="between">
                   <Box
                     align="center"
-                    className="tw:min-w-0 tw:flex-1 tw:cursor-pointer tw:rounded tw:px-2 tw:hover:bg-primary_hover tw:focus-visible:bg-primary_hover"
+                    className="tw:min-w-0 tw:flex-1 tw:cursor-pointer tw:rounded tw:px-2 tw:focus-visible:bg-primary_hover"
                     gap={2}
                     role="button"
                     tabIndex={0}
@@ -170,8 +169,11 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                     onKeyDown={(e: KeyboardEvent) =>
                       handleToggleExpandKeyDown(e, folder.id)
                     }>
-                    <FolderIcon className="tw:size-4 tw:shrink-0 tw:text-quaternary" />
-                    <div className="tw:min-w-0">
+                    <Documents
+                      className="tw:shrink-0 tw:text-quaternary"
+                      size={16}
+                    />
+                    <div className="tw:flex tw:min-w-0">
                       <Typography
                         ellipsis
                         className="tw:flex-1 tw:min-w-0 tw:text-secondary"
@@ -200,7 +202,7 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                   <Tree.ItemContent className="tw:ml-6!" showExpandIcon={false}>
                     <Box
                       align="center"
-                      className="tw:min-w-0 tw:flex-1 tw:cursor-pointer tw:rounded tw:px-2 tw:hover:bg-primary_hover tw:focus-visible:bg-primary_hover"
+                      className="tw:min-w-0 tw:flex-1 tw:cursor-pointer tw:rounded tw:px-2 tw:focus-visible:bg-primary_hover"
                       gap={2}
                       role="button"
                       tabIndex={0}

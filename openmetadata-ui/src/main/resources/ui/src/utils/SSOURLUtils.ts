@@ -12,41 +12,19 @@
  */
 import { isDev } from './EnvironmentUtils';
 
-/**
- * Get dynamic callback URL based on environment
- * @returns The callback URL for SSO authentication
- */
-export const getCallbackUrl = (): string => {
-  if (isDev()) {
-    return 'http://localhost:8585/callback';
-  }
-
-  // In production, use the current domain with /callback path
-  return `${globalThis.location.origin}/callback`;
-};
-
-/**
- * Get dynamic server URL based on environment
- * @returns The server URL for SSO configuration
- */
 export const getServerUrl = (): string => {
   if (isDev()) {
-    return 'http://localhost:8585';
+    return new URL(
+      process.env.SSO_SERVER_URL ||
+        process.env.DEV_SERVER_TARGET ||
+        'http://localhost:8585/'
+    ).origin;
   }
 
-  // In production, use the current domain
   return globalThis.location.origin;
 };
 
-/**
- * Get the authority URL for SAML authentication
- * @returns The authority URL for SAML login
- */
-export const getAuthorityUrl = (): string => {
-  if (isDev()) {
-    return 'http://localhost:8585/api/v1/auth/login';
-  }
+export const getCallbackUrl = (): string => `${getServerUrl()}/callback`;
 
-  // In production, use the current domain with /api/auth/login path
-  return `${globalThis.location.origin}/api/v1/auth/login`;
-};
+export const getAuthorityUrl = (): string =>
+  `${getServerUrl()}/api/v1/auth/login`;

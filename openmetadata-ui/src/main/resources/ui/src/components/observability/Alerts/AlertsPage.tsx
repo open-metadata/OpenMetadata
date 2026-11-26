@@ -30,8 +30,11 @@ import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
-import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
+import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
+import {
+  OBSERVABILITY_ALERT_COUNT_QUERY_KEY,
+  OBSERVABILITY_PAGE_LAYOUT_CLASS,
+} from '../observability.constants';
 import AlertEditModal from './AlertEditModal.component';
 import { AlertKind, OBSERVABILITY_ALERT_KIND } from './alertKinds';
 import ObservabilityAlertsAiTable from './ObservabilityAlertsAiTable.component';
@@ -172,76 +175,75 @@ const AlertsPage = ({ kind = OBSERVABILITY_ALERT_KIND }: AlertsPageProps) => {
 
   return (
     <>
-      <ObservabilityPageShell
-        header={
-          <PageLayout.PageHeader
-            actions={
-              // Mirrors the classic alert pages (Create or All, behind the limit);
-              // getDerivedPermissionFlags' canCreate ignores All, so it is not used here.
-              alertResourcePermission?.Create ||
-              alertResourcePermission?.All ? (
-                <LimitWrapper resource="eventsubscription">
-                  <Button
-                    color="primary"
-                    data-testid="add-alert-button"
-                    iconLeading={Plus}
-                    size="md"
-                    onPress={handleAddAlert}>
-                    {t('label.add-entity', { entity: t('label.alert') })}
-                  </Button>
-                </LimitWrapper>
-              ) : null
-            }
-            badge={
-              <LearningIcon
-                pageId={LEARNING_PAGE_IDS.ALERTS}
-                title={t(kind.titleKey)}
-              />
-            }
-            breadcrumb={
-              <HeaderBreadcrumb
-                noMargin
-                className="tw:text-xs"
-                items={[
-                  ...kind.getRootBreadcrumbs(t),
-                  {
-                    label: t('label.alert-plural'),
-                    ariaLabel: t('label.alert-plural'),
-                  },
-                ]}
-                showHome={false}
-              />
-            }
-            subtitle={t('message.alerts-description')}
-            title={t(kind.titleKey)}
-            variant="gradient"
-          />
-        }
-        pageTitle={t(kind.titleKey)}>
-        <ObservabilityAlertsAiTable
-          alertPermissions={alertPermissions}
-          alertResourcePermission={alertResourcePermission}
-          alerts={alerts}
-          alertsError={alertsError}
-          ariaLabel={t(kind.titleKey)}
-          columnList={columnList}
-          currentPage={currentPage}
-          getAlertDetailsPath={getAlertDetailsPath}
-          hasResourcePermissionError={hasResourcePermissionError}
-          loading={loading}
-          loadingCount={loadingCount}
-          pageSize={pageSize}
-          paging={paging}
-          showPagination={showPagination}
-          onAddAlert={handleAddAlert}
-          onEditAlert={handleEditAlert}
-          onPageChange={onPageChange}
-          onPageSizeChange={handlePageSizeChange}
-          onRetry={() => fetchAlerts()}
-          onRetryPermission={refetchResourcePermission}
-          onSelectAlert={handleSelectAlert}
+      <PageLayout className={OBSERVABILITY_PAGE_LAYOUT_CLASS}>
+        <DocumentTitle title={t(kind.titleKey)} />
+        <PageLayout.PageHeader
+          actions={
+            // Mirrors the classic alert pages (Create or All, behind the limit);
+            // getDerivedPermissionFlags' canCreate ignores All, so it is not used here.
+            alertResourcePermission?.Create || alertResourcePermission?.All ? (
+              <LimitWrapper resource="eventsubscription">
+                <Button
+                  color="primary"
+                  data-testid="add-alert-button"
+                  iconLeading={Plus}
+                  size="md"
+                  onPress={handleAddAlert}>
+                  {t('label.add-entity', { entity: t('label.alert') })}
+                </Button>
+              </LimitWrapper>
+            ) : null
+          }
+          badge={
+            <LearningIcon
+              pageId={LEARNING_PAGE_IDS.ALERTS}
+              title={t(kind.titleKey)}
+            />
+          }
+          breadcrumb={
+            <HeaderBreadcrumb
+              noMargin
+              className="tw:text-xs"
+              items={[
+                ...kind.getRootBreadcrumbs(t),
+                {
+                  label: t('label.alert-plural'),
+                  ariaLabel: t('label.alert-plural'),
+                },
+              ]}
+              showHome={false}
+            />
+          }
+          subtitle={t('message.alerts-description')}
+          title={t(kind.titleKey)}
+          variant="gradient"
         />
-      </ObservabilityPageShell>
+        <PageLayout.Content>
+          <ObservabilityAlertsAiTable
+            alertPermissions={alertPermissions}
+            alertResourcePermission={alertResourcePermission}
+            alerts={alerts}
+            alertsError={alertsError}
+            ariaLabel={t(kind.titleKey)}
+            columnList={columnList}
+            currentPage={currentPage}
+            getAlertDetailsPath={getAlertDetailsPath}
+            hasResourcePermissionError={hasResourcePermissionError}
+            loading={loading}
+            loadingCount={loadingCount}
+            pageSize={pageSize}
+            paging={paging}
+            showPagination={showPagination}
+            onAddAlert={handleAddAlert}
+            onEditAlert={handleEditAlert}
+            onPageChange={onPageChange}
+            onPageSizeChange={handlePageSizeChange}
+            onRetry={() => fetchAlerts()}
+            onRetryPermission={refetchResourcePermission}
+            onSelectAlert={handleSelectAlert}
+          />
+        </PageLayout.Content>
+      </PageLayout>
       <DeleteModal
         entityTitle={getEntityName(selectedAlert)}
         isDeleting={isDeleting}

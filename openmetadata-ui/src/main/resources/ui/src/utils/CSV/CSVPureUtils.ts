@@ -314,6 +314,20 @@ const convertCustomPropertyValueExtensionToStringBasedOnType = (
   }
 };
 
+// Mirrors CsvUtil.java: a formula trigger, possibly behind leading quotes (e.g. "=x", "'=x").
+export const FORMULA_LIKE = /^'*[=+\-@\t\r]/;
+const isFormulaLike = (value: string) => FORMULA_LIKE.test(value);
+
+// Prefix cells a spreadsheet would evaluate (e.g. "=HYPERLINK(..)") the way the server export does.
+export const neutralizeFormula = (value: string) =>
+  isFormulaLike(value) ? `'${value}` : value;
+
+// Undo neutralizeFormula, so the grid shows the stored value.
+export const restoreFormula = (value: string) =>
+  value.startsWith("'") && isFormulaLike(value.slice(1))
+    ? value.slice(1)
+    : value;
+
 export const getCSVStringFromColumnsAndDataSource = (
   columns: Array<Pick<Column<unknown>, 'key'>>,
   dataSource: Record<string, string>[]
@@ -323,7 +337,7 @@ export const getCSVStringFromColumnsAndDataSource = (
   const data = dataSource.map((row) =>
     Object.fromEntries(
       fieldNames.map((key) => {
-        const value = String(row[key] ?? '');
+        const value = neutralizeFormula(String(row[key] ?? ''));
 
         return [key, value];
       })
@@ -469,7 +483,10 @@ export const getFailedImportRowIds = ({
 
   const failedIds = new Set<string>();
   submitted.forEach((row, position) => {
-    const key = toKey(submittedHeader.map((_, index) => row[index] ?? ''));
+    // The server echoes parsed (restored) cells, so compare stored values (e.g. "- x" not "'- x").
+    const key = toKey(
+      submittedHeader.map((_, index) => restoreFormula(row[index] ?? ''))
+    );
     const remaining = pendingFailures.get(key) ?? 0;
 
     if (remaining > 0) {
@@ -511,3 +528,26 @@ export const getCustomPropertyEntityType = (entityType: EntityType) => {
       return entityType;
   }
 };
+
+// A quoted cell (a quote at the start of the text, after a comma or after a line break, as
+// papaparse reads one) or a line break outside such a cell. Lookbehind is avoided because the
+// build still targets Safari 16.0.
+const QUOTED_CELL_OR_LINE_BREAK = /(^|,|\r\n|\r|\n)("(?:[^"]|"")*")|\r\n?/g;
+
+const normalizeCellBoundary = (boundary: string): string =>
+  boundary === '' || boundary === ',' ? boundary : '\n';
+
+/**
+ * Rewrites each CRLF and lone CR that ends a row as LF, leaving line breaks inside quoted cells as
+ * they are. Papaparse infers one line separator for the whole text, so a file mixing CRLF and LF
+ * rows (an export with rows appended in another editor) would otherwise merge the minority rows
+ * into their neighbours.
+ */
+export const normalizeCsvLineBreaks = (content: string): string =>
+  content.replaceAll(
+    QUOTED_CELL_OR_LINE_BREAK,
+    (_match, boundary?: string, quotedCell?: string) =>
+      quotedCell === undefined
+        ? '\n'
+        : `${normalizeCellBoundary(boundary ?? '')}${quotedCell}`
+  );

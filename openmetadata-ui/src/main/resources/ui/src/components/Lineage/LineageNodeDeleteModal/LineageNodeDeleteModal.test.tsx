@@ -45,9 +45,18 @@ describe('LineageNodeDeleteModal', () => {
     expect(props.onCancel).toHaveBeenCalledTimes(1);
   });
 
+  it('is named by its visible title', () => {
+    render(<LineageNodeDeleteModal {...props} />);
+
+    expect(
+      screen.getByTestId('delete-node-confirmation-modal')
+    ).toHaveAccessibleName('label.delete-entity');
+  });
+
   it('disables confirm while deleting', () => {
     render(<LineageNodeDeleteModal {...props} isDeleting />);
 
     expect(screen.getByTestId('confirm-button')).toBeDisabled();
+    expect(screen.getByTestId('cancel-button')).toBeDisabled();
   });
 });

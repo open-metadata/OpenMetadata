@@ -680,7 +680,7 @@ class TestHexIngestionWithLineage(TestCase):
                         "token": "test_token",
                     }
                 },
-                "sourceConfig": {"config": {}},
+                "sourceConfig": {"config": {"type": "DashboardMetadata", "includeDataModels": False}},
             },
             metadata=metadata,
         )

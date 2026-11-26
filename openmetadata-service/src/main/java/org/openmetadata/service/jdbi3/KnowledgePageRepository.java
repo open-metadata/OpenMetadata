@@ -10,10 +10,12 @@ import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.getEntityReferencesByIds;
+import static org.openmetadata.service.context.center.MemoryExtractionState.NEVER_EXTRACTED;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,17 +44,27 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.AiProviderHolder;
+import org.openmetadata.service.context.center.MemoryExtractionState;
+import org.openmetadata.service.context.center.MemorySourceLifecycle;
 import org.openmetadata.service.context.center.PageContextProcessingEngineHolder;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.PageBodyTextContributor;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.RowDecisionGate;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -95,6 +107,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     // NOTE: SearchIndexFactory registration handled by OpenMetadata core
     this.daoExtension = jdbi.onDemand(CollectionDAO.class).knowledgePageDAO();
     this.assetDAO = jdbi.onDemand(CollectionDAO.class).assetDAO();
+    fieldFetchers.put(NEVER_EXTRACTED, this::fetchAndSetNeverExtracted);
   }
 
   @Override
@@ -129,6 +142,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
                   Entity.CONTEXT_MEMORY)
               .size());
     }
+    fetchAndSetNeverExtracted(List.of(knowledgePage), fields);
     if (knowledgePage.getPageType().equals(PageType.ARTICLE)) {
       Article article = new Article();
       if (knowledgePage.getPage() != null) {
@@ -175,6 +189,12 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
         MemoryCountFetcher.countByEntityId(
             daoCollection, entityListToStrings(entities), KNOWLEDGE_PAGE_ENTITY);
     entities.forEach(page -> page.setMemoryCount(countsByPageId.getOrDefault(page.getId(), 0)));
+  }
+
+  private void fetchAndSetNeverExtracted(List<Page> pages, EntityUtil.Fields fields) {
+    if (fields.contains(NEVER_EXTRACTED)) {
+      pages.forEach(page -> page.setNeverExtracted(MemoryExtractionState.neverExtracted(page)));
+    }
   }
 
   private void fetchAndSetParents(List<Page> entities, EntityUtil.Fields fields) {
@@ -324,6 +344,17 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   }
 
   @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(Entity.PAGE);
+  }
+
+  /** A top-level page's FQN is its bare name, dots included. */
+  @Override
+  protected boolean nestsUnderUnrelatedFqns() {
+    return true;
+  }
+
+  @Override
   public void setFullyQualifiedName(Page page) {
     if (page.getParent() == null) {
       page.setFullyQualifiedName(page.getName());
@@ -398,6 +429,9 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     entity.setChildren(fields.contains("children") ? entity.getChildren() : null);
     if (!fields.contains(MEMORY_COUNT)) {
       entity.setMemoryCount(null);
+    }
+    if (!fields.contains(NEVER_EXTRACTED)) {
+      entity.setNeverExtracted(null);
     }
     if (entity.getPageType().equals(PageType.ARTICLE)) {
       Article article = new Article();
@@ -474,15 +508,31 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
             activeFqn, pageTypeValue, sortFilter, offset, limit, caller);
   }
 
-  public List<PageHierarchy> listHierarchy(ListFilter filter, int limit) {
+  public List<PageHierarchy> listHierarchy(
+      ListFilter filter, int limit, SecurityContext securityContext, Authorizer authorizer) {
     List<PageHierarchy> pageHierarchyList = new ArrayList<>();
+    // Each page is checked only when a rule could refuse one the listing's check allowed.
+    boolean rowsMayDiffer =
+        RowDecisionGate.mayDiffer(
+            DefaultAuthorizer.getSubjectContext(securityContext),
+            Entity.PAGE,
+            List.of(MetadataOperation.VIEW_BASIC));
     EntityUtil.Fields fields = getFields("parent,children");
+    if (rowsMayDiffer) {
+      fields = ResourceContext.authorizationFields(this, fields);
+    }
 
-    ResultList<Page> resultList = listAfter(null, fields, filter, limit, null);
-    Map<UUID, Page> lookUp =
-        resultList.getData().stream().collect(Collectors.toMap(Page::getId, p -> p));
-    List<Page> topLevelPages =
-        resultList.getData().stream().filter(p -> p.getParent() == null).toList();
+    List<Page> pages = listAfter(null, fields, filter, limit, null).getData();
+    if (rowsMayDiffer) {
+      // Built from the pages the caller may view, so the tree and its child counts match what
+      // opens.
+      pages =
+          new ViewPermissionFilter(authorizer)
+              .retainPermitted(
+                  securityContext, Entity.PAGE, this, pages, List.of(MetadataOperation.VIEW_BASIC));
+    }
+    Map<UUID, Page> lookUp = pages.stream().collect(Collectors.toMap(Page::getId, p -> p));
+    List<Page> topLevelPages = pages.stream().filter(p -> p.getParent() == null).toList();
 
     for (Page page : topLevelPages) {
       pageHierarchyList.add(getHierarchy(lookUp, page));
@@ -529,11 +579,16 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
    * store time and nothing persists it. That is a coincidence of the field list rather than a
    * guarantee: adding editors to the patch or update fields would start writing a snapshot of the
    * relationship into the entity json, where setFields would then serve it back to any caller that
-   * did not ask for the field.
+   * did not ask for the field. neverExtracted is derived from the page's own state on every read.
    */
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of(EDITORS);
+    return List.of(EDITORS, NEVER_EXTRACTED);
+  }
+
+  @Override
+  protected List<String> getFieldsHiddenFromHistory() {
+    return List.of(NEVER_EXTRACTED);
   }
 
   @Override
@@ -556,6 +611,36 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
 
     store(knowledgePage, update);
     knowledgePage.withRelatedEntities(relatedEntities).withParent(parent).withChildren(children);
+  }
+
+  @Override
+  protected void storeEntityWithVersion(
+      Page page, boolean update, Double expectedVersion, Long expectedUpdatedAt) {
+    Page stored =
+        JsonUtils.deepCopy(page, Page.class)
+            .withRelatedEntities(null)
+            .withParent(null)
+            .withChildren(null);
+    if (stored.getPageType() == PageType.ARTICLE) {
+      stored.setPage(
+          JsonUtils.convertValue(stored.getPage(), Article.class).withRelatedArticles(null));
+    }
+    if (expectedUpdatedAt == null) {
+      store(stored, update, expectedVersion);
+    } else {
+      int updatedRows =
+          daoExtension.updateWithVersionAndTimestamp(
+              stored.getId().toString(),
+              stored.getFullyQualifiedName(),
+              serializeForStorage(stored),
+              expectedVersion.toString(),
+              expectedUpdatedAt);
+      if (updatedRows == 0) {
+        throw new PreconditionFailedException(
+            "The entity has been modified by another user. Please refresh and retry.");
+      }
+      invalidate(page);
+    }
   }
 
   @Override
@@ -682,6 +767,10 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   public class KnowledgePageUpdater extends EntityUpdater {
     public KnowledgePageUpdater(Page original, Page updated, Operation operation) {
       super(original, updated, operation);
+      // Consolidated edits still need distinct timestamps for conditional processing writes.
+      if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
+        updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
+      }
     }
 
     @Override
@@ -739,7 +828,8 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
      * transaction — because a later out-of-band write would race the body change and could clobber
      * it. Any other update preserves the stored values when the request omits them (so a body edit
      * through PUT never wipes them), and both fields record with updateVersion=false so machine
-     * status transitions never churn the article's version history.
+     * status transitions never churn the article's version history. A status change carries its
+     * own error, so a retried article does not keep its last failure's.
      */
     private void recordProcessingStatus(Page original, Page updated) {
       boolean bodyRequeued =
@@ -753,7 +843,8 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
         if (updated.getProcessingStatus() == null) {
           updated.setProcessingStatus(original.getProcessingStatus());
         }
-        if (updated.getProcessingError() == null) {
+        if (updated.getProcessingError() == null
+            && updated.getProcessingStatus() == original.getProcessingStatus()) {
           updated.setProcessingError(original.getProcessingError());
         }
       }
@@ -896,26 +987,24 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     }
   }
 
-  // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
-  // those fire while the page -> memory MENTIONED_IN edges still exist. postDelete runs after
-  // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
-  // nothing and orphan the pills. Both hooks hard-delete: a pill is regenerable from its source,
-  // so a deleted page must leave none behind in either form. Mirrors DashboardRepository's chart
-  // cascade.
+  // Memory cleanup runs in these hooks while the page -> memory MENTIONED_IN edges still exist; a
+  // hard delete's cleanup() removes them before postDelete. A page has no deleted field, so every
+  // delete is permanent and releases them; the soft hook mirrors ContextFileRepository's archive.
   @Override
   @Transaction
   protected void softDeleteAdditionalChildren(UUID pageId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
+    memorySourceLifecycle().archiveExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
   }
 
   @Override
   @Transaction
   protected void hardDeleteAdditionalChildren(UUID pageId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
+    memorySourceLifecycle().releaseExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
   }
 
-  private ContextMemoryRepository contextMemoryRepository() {
-    return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+  private MemorySourceLifecycle memorySourceLifecycle() {
+    return new MemorySourceLifecycle(
+        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY));
   }
 
   /** True when an article's markdown body changed — the only edit that warrants re-extraction. */
@@ -926,20 +1015,22 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
 
   /**
    * Enqueues a delayed job, coalescing autosaves in the persistent background job table. A no-op
-   * when the LLM is disabled, mirroring the file pipeline.
+   * when extraction is unavailable, mirroring the file pipeline. A job the queue refuses leaves the
+   * article Failed to retry; the write has committed, so nothing here may fail it.
    */
   private void schedulePillExtraction(UUID pageId) {
     if (isExtractionEnabled()) {
       try {
-        PageContextProcessingEngineHolder.get().schedule(pageId);
+        PageContextProcessingEngineHolder.get().submit(pageId);
       } catch (RuntimeException e) {
-        LOG.warn("Unable to queue memory extraction for page {}", pageId, e);
+        LOG.warn(
+            "Unable to queue memory extraction for page {} or record that it failed", pageId, e);
       }
     }
   }
 
-  /** True when the LLM is configured and article (page) memory extraction is toggled on. */
+  /** The file pipeline's gate; the Queued stamps and the scheduler both ask it, so they agree. */
   private boolean isExtractionEnabled() {
-    return LLMClientHolder.isMemoryExtractionEnabled();
+    return AiProviderHolder.isExtractionAvailable();
   }
 }

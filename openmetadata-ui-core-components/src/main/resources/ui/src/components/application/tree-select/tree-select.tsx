@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronDown, RefreshCw01, Search, XClose } from '../../../icons';
+import {
+  ChevronDown,
+  Folder,
+  NoSearch,
+  RefreshCw01,
+  Search,
+  XClose,
+} from '../../../icons';
 import {
   DropdownSearchField,
   DropdownStagedFooter,
@@ -19,6 +26,7 @@ import {
   TriggerCountBadge,
 } from '../filter-select/filter-select.shared';
 import {
+  type MouseEvent,
   type ReactElement,
   type RefObject,
   useCallback,
@@ -32,10 +40,12 @@ import {
 import { FocusScope } from 'react-aria';
 import type { Key, Selection } from 'react-aria-components';
 import { Button } from '@/components/base/buttons/button';
+import { ButtonUtility } from '@/components/base/buttons/button-utility';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
+import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
 import { sizes } from '@/components/base/select/select';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
@@ -214,6 +224,22 @@ const collectSelectableNodes = <T,>(
   return result;
 };
 
+const collectDisabledIds = <T,>(
+  nodes: TreeSelectNode<T>[],
+  ids: Set<string>
+): Set<string> => {
+  for (const node of nodes) {
+    if (node.disabled) {
+      ids.add(node.id);
+    }
+    if (node.children) {
+      collectDisabledIds(node.children, ids);
+    }
+  }
+
+  return ids;
+};
+
 export const TreeSelect = <T = unknown,>({
   label,
   id,
@@ -286,7 +312,7 @@ export const TreeSelect = <T = unknown,>({
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const prevValueRef = useRef<typeof value>(undefined);
+  const prevValueKeyRef = useRef<string | undefined>(undefined);
   // Armed until a focus event consumes it; a timed reset loses the race and reopens.
   const skipNextFocusOpen = useRef(false);
   // What was expanded before a search took over, restored when it clears.
@@ -378,12 +404,43 @@ export const TreeSelect = <T = unknown,>({
     onChange: commit,
   });
 
+  // A disabled node keeps its state, ticked or not, through every control that
+  // reaches it, not only a click on its row. The flag can come from the tree or
+  // from `value`, which the chips and Backspace see before the tree has loaded.
+  const lockedIds = useMemo(() => {
+    const ids = collectDisabledIds(treeData, new Set());
+    selectedData.forEach((node) => {
+      if (node.disabled) {
+        ids.add(node.id);
+      }
+    });
+
+    return ids;
+  }, [treeData, selectedData]);
+  const isLocked = useCallback(
+    (node: TreeSelectNode<T>) =>
+      Boolean(node.disabled) || lockedIds.has(node.id),
+    [lockedIds]
+  );
+  const lockedSelection = useMemo(
+    () => selectedData.filter((node) => isLocked(node)),
+    [selectedData, isLocked]
+  );
+
+  // Keyed by the selected nodes' content, not the array's identity: a parent
+  // that re-renders with an equal array (an entity refetch rebuilds its tags)
+  // must not discard a staged draft, but a changed label or data (a renamed
+  // domain) still updates the selection.
+  const valueKey = JSON.stringify(
+    toArray(value).map((node) => [node.id, node.label, node.data ?? null])
+  );
   useEffect(() => {
-    if (value !== prevValueRef.current) {
-      prevValueRef.current = value;
+    if (valueKey !== prevValueKeyRef.current) {
+      prevValueKeyRef.current = valueKey;
       setSelection(toArray(value));
     }
-  }, [value, setSelection]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valueKey, setSelection]);
 
   // Resync on open, including a programmatic one via `isOpen`. Staged mode
   // drops the draft; a controlled immediate picker drops an optimistic pick the
@@ -511,7 +568,8 @@ export const TreeSelect = <T = unknown,>({
 
   const handleNodeAction = useCallback(
     async (node: TreeSelectNode<T>, parentNode?: TreeSelectNode<T>) => {
-      if (disabled || node.allowSelection === false) {
+      // Keyboard activation arrives here without the row's own click guard.
+      if (disabled || isLocked(node) || node.allowSelection === false) {
         return;
       }
 
@@ -544,6 +602,7 @@ export const TreeSelect = <T = unknown,>({
     },
     [
       disabled,
+      isLocked,
       toggleNodeSelection,
       multiple,
       clearSearch,
@@ -700,7 +759,7 @@ export const TreeSelect = <T = unknown,>({
         return (
           <Tree.Item id={node.id} key={node.id} textValue={node.label}>
             <TreeSelectTreeItemContent
-              disabled={disabled}
+              disabled={disabled || isLocked(node)}
               hasChildItems={
                 Boolean(node.children?.length) || node.isLeaf === false
               }
@@ -750,6 +809,7 @@ export const TreeSelect = <T = unknown,>({
       getDescendantSelection,
       loadingNodes,
       disabled,
+      isLocked,
       multiple,
       cascadeSelection,
       showCheckbox,
@@ -764,11 +824,11 @@ export const TreeSelect = <T = unknown,>({
   const removeSelection = useCallback(
     (id: string) => {
       const node = selectedData.find((n) => n.id === id);
-      if (node) {
+      if (node && !isLocked(node)) {
         toggleNodeSelection(node);
       }
     },
-    [selectedData, toggleNodeSelection]
+    [selectedData, isLocked, toggleNodeSelection]
   );
 
   const displayedNodes = useMemo(() => {
@@ -903,9 +963,10 @@ export const TreeSelect = <T = unknown,>({
     [cascadeSelection, selectedData, stableRootIds]
   );
 
+  // Select all counts and toggles only the nodes it may change.
   const selectableNodes = useMemo(
-    () => collectSelectableNodes(treeData),
-    [treeData]
+    () => collectSelectableNodes(treeData).filter((node) => !isLocked(node)),
+    [treeData, isLocked]
   );
   const allSelectedCount = useMemo(
     () => selectableNodes.filter((n) => isNodeSelected(n.id)).length,
@@ -923,23 +984,34 @@ export const TreeSelect = <T = unknown,>({
     [setSelection, commit, multiple]
   );
 
+  // For Clear and Select all: locked picks stay, other locked nodes stay out.
+  const replaceUnlocked = useCallback(
+    (nodes: TreeSelectNode<T>[]) =>
+      replaceSelection([
+        ...lockedSelection,
+        ...nodes.filter((node) => !isLocked(node)),
+      ]),
+    [replaceSelection, lockedSelection, isLocked]
+  );
+  const hasClearableSelection = selectedData.length > lockedSelection.length;
+
   const handleSelectAll = useCallback(
     async (checked: boolean) => {
       if (!checked) {
-        replaceSelection([]);
+        replaceUnlocked([]);
 
         return;
       }
       if (cascadeSelection && lazyLoad) {
         const deep = await Promise.all(treeData.map(loadAllDescendants));
-        replaceSelection(collectSelectableNodes(deep));
+        replaceUnlocked(collectSelectableNodes(deep));
       } else {
-        replaceSelection(selectableNodes);
+        replaceUnlocked(selectableNodes);
       }
     },
     [
       selectableNodes,
-      replaceSelection,
+      replaceUnlocked,
       cascadeSelection,
       lazyLoad,
       treeData,
@@ -973,8 +1045,8 @@ export const TreeSelect = <T = unknown,>({
   const showStatusFooter = usesDropdownChrome && multiple && !isStaged;
 
   const handleClearAll = useCallback(() => {
-    replaceSelection([]);
-  }, [replaceSelection]);
+    replaceUnlocked([]);
+  }, [replaceUnlocked]);
 
   const handleApply = useCallback(() => {
     onChange?.(multiple ? selectedData : selectedData[0] ?? null);
@@ -1008,9 +1080,13 @@ export const TreeSelect = <T = unknown,>({
     <div
       className="tw:contents"
       data-testid={dataTestId ? `${dataTestId}-popover` : undefined}
-      ref={popoverRef}>
+      ref={popoverRef}
+      // Portaled, but still a React child of the trigger: keys typed here must
+      // not reach an ancestor menu's arrow-key and typeahead handlers.
+      onKeyDown={(event) => event.stopPropagation()}>
       {usesDropdownChrome && searchable && (
         <DropdownSearchField
+          autoFocus={isCustomTrigger}
           inputDataTestId={dataTestId ? `${dataTestId}-search` : undefined}
           placeholder={searchPlaceholder ?? t('label.search')}
           value={inputValue}
@@ -1048,7 +1124,15 @@ export const TreeSelect = <T = unknown,>({
             {resolvedLoadingMessage}
           </div>
         ) : filteredTreeData.length === 0 ? (
-          <div className="tw:px-4 tw:py-2 tw:text-center tw:text-xs tw:text-tertiary">
+          <div
+            className="tw:flex tw:flex-col tw:items-center tw:gap-2 tw:px-4 tw:py-4 tw:text-center tw:text-xs tw:text-tertiary"
+            data-testid="tree-select-empty">
+            <FeaturedIcon
+              color="gray"
+              icon={searchTerm ? NoSearch : Folder}
+              size="sm"
+              theme="modern"
+            />
             {resolvedNoDataMessage}
           </div>
         ) : (
@@ -1085,7 +1169,7 @@ export const TreeSelect = <T = unknown,>({
       {showFooter && (
         <DropdownStagedFooter
           count={displayedSelectedCount}
-          isClearDisabled={selectedData.length === 0}
+          isClearDisabled={!hasClearableSelection}
           onApply={handleApply}
           onCancel={dismiss}
           onClear={handleClearAll}
@@ -1095,7 +1179,7 @@ export const TreeSelect = <T = unknown,>({
       {showStatusFooter && (
         <DropdownStatusFooter
           count={displayedSelectedCount}
-          isClearDisabled={selectedData.length === 0}
+          isClearDisabled={!hasClearableSelection}
           onClear={() => {
             handleClearAll();
             setShowSelectedOnly(false);
@@ -1180,7 +1264,7 @@ export const TreeSelect = <T = unknown,>({
           <Button
             className={cx(
               'tw:whitespace-nowrap',
-              !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
+              !bordered && 'tw:p-1',
               hasSelection && selectedTriggerClassName(bordered),
               triggerClassName
             )}
@@ -1232,7 +1316,7 @@ export const TreeSelect = <T = unknown,>({
             openTrigger();
             inputRef.current?.focus();
           }}>
-          <Search className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary" />
+          <Search className="tw:shrink-0 tw:text-fg-quaternary" size={20} />
 
           {renderSelectedItem
             ? visibleNodes.map((node) => (
@@ -1242,26 +1326,35 @@ export const TreeSelect = <T = unknown,>({
 
           {!renderSelectedItem &&
             multiple &&
-            visibleNodes.map((node) => (
-              <span
-                className="tw:flex tw:max-w-full tw:min-w-0 tw:items-center tw:gap-1 tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
-                key={node.id}>
-                <p className="tw:max-w-40 tw:truncate tw:text-sm tw:font-medium tw:text-secondary">
-                  {node.label}
-                </p>
-                <button
-                  aria-label={`${t('label.remove')} ${node.label}`}
-                  className="tw:flex tw:cursor-pointer tw:rounded-[3px] tw:p-0.5 tw:text-fg-quaternary tw:outline-transparent tw:transition tw:duration-100 tw:ease-linear tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover tw:disabled:cursor-not-allowed"
-                  disabled={disabled}
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    removeSelection(node.id);
-                  }}>
-                  <XClose className="tw:size-2.5" strokeWidth={3} />
-                </button>
-              </span>
-            ))}
+            visibleNodes.map((node) => {
+              const isNodeLocked = isLocked(node);
+
+              return (
+                <span
+                  className={cx(
+                    'tw:flex tw:max-w-full tw:min-w-0 tw:items-center tw:gap-1 tw:rounded-md tw:bg-primary tw:py-0.5 tw:pl-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary',
+                    // With no remove button, the label's padding is even.
+                    isNodeLocked ? 'tw:pr-1.5' : 'tw:pr-1'
+                  )}
+                  key={node.id}>
+                  <p className="tw:max-w-40 tw:truncate tw:text-sm tw:font-medium tw:text-secondary">
+                    {node.label}
+                  </p>
+                  {!isNodeLocked && (
+                    <ButtonUtility
+                      aria-label={`${t('label.remove')} ${node.label}`}
+                      icon={XClose}
+                      isDisabled={disabled}
+                      size="xs"
+                      onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                        event.stopPropagation();
+                        removeSelection(node.id);
+                      }}
+                    />
+                  )}
+                </span>
+              );
+            })}
 
           {hiddenNodes.length > 0 && (
             <span
@@ -1313,13 +1406,14 @@ export const TreeSelect = <T = unknown,>({
 
                   return;
                 }
-                if (
-                  event.key === 'Backspace' &&
-                  multiple &&
-                  !inputValue &&
-                  selectedData.length > 0
-                ) {
-                  removeSelection(selectedData[selectedData.length - 1].id);
+                if (event.key === 'Backspace' && multiple && !inputValue) {
+                  // Skip locked chips, or a locked last chip would absorb every press.
+                  const removable = [...selectedData]
+                    .reverse()
+                    .find((node) => !isLocked(node));
+                  if (removable) {
+                    removeSelection(removable.id);
+                  }
                 }
               }}
             />

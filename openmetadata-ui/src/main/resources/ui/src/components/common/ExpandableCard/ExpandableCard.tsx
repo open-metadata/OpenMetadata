@@ -70,11 +70,10 @@ const ExpandableCard = ({
         <Box className="tw:ml-3 tw:font-normal tw:text-primary">
           <ButtonUtility
             className="expand-collapse-icon"
-            color="secondary"
             data-testid="expand-collapse-icon"
             icon={isExpanded ? ChevronUp : ChevronDown}
             isDisabled={isExpandDisabled}
-            size="sm"
+            size="lg"
             tooltip={isExpanded ? t('label.collapse') : t('label.expand')}
             onClick={handleExpandClick}
           />

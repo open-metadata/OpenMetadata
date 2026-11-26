@@ -179,6 +179,29 @@ export const SmallSize: Story = {
   ),
 };
 
+export const CenteredColumn: Story = {
+  render: () => (
+    <Table aria-label="Users table (centred status)">
+      <Table.Header>
+        <Table.Head isRowHeader label="Name" />
+        <Table.Head align="center" label="Status" />
+      </Table.Header>
+      <AriaTableBody>
+        {SAMPLE_DATA.map((user) => (
+          <Table.Row id={String(user.id)} key={user.id}>
+            <Table.Cell>{user.name}</Table.Cell>
+            <Table.Cell>
+              <div className="tw:flex tw:justify-center">
+                <StatusBadge status={user.status} />
+              </div>
+            </Table.Cell>
+          </Table.Row>
+        ))}
+      </AriaTableBody>
+    </Table>
+  ),
+};
+
 const WithSelectionExample = () => {
   const [selectedKeys, setSelectedKeys] = useState<'all' | Set<string>>(
     new Set()
@@ -1171,6 +1194,107 @@ export const WithStickyHeader: StoryObj = {
       description: {
         story:
           'Pass `stickyHeader` to keep the `<thead>` pinned while the body scrolls. The table wrapper automatically gains `overflow-auto max-h-100`.',
+      },
+    },
+  },
+};
+
+const WIDE_COLUMNS = [
+  'Owner team responsible for the dataset',
+  'Region',
+  'Environment',
+  'SLA Tier',
+  'Cost Center',
+  'Retention',
+  'PII Level',
+  'Steward',
+  'Review Date',
+  'Notes',
+];
+
+const WIDE_ROWS = [
+  [
+    'Data Platform',
+    'us-east-1',
+    'Production',
+    'Gold',
+    'CC-1042',
+    '365 days',
+    'High',
+    'Jane Doe',
+    '2026-12-01',
+    'Quarterly audit pending',
+  ],
+  [
+    'Analytics',
+    'eu-west-1',
+    'Staging',
+    'Silver',
+    'CC-2088',
+    '90 days',
+    'Medium',
+    'John Roe',
+    '2027-01-15',
+    'Migrating warehouse',
+  ],
+  [
+    'Marketing',
+    'ap-south-1',
+    'Development',
+    'Bronze',
+    'CC-3120',
+    '30 days',
+    'Low',
+    'Ana Silva',
+    '2027-02-20',
+    '—',
+  ],
+];
+
+// Capped columns make the table wider than its box, so it scrolls.
+const WIDE_COLUMN_CLASS = 'tw:min-w-48 tw:max-w-48 tw:break-words';
+
+export const WithScrollShadows: StoryObj = {
+  render: () => (
+    <div className="tw:max-w-180 tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary">
+      <Table
+        scrollShadows
+        aria-label="Scroll shadow table"
+        className="tw:w-max tw:min-w-full"
+        size="sm">
+        <Table.Header>
+          {WIDE_COLUMNS.map((column, index) => (
+            <Table.Head
+              wrapLabel
+              className={WIDE_COLUMN_CLASS}
+              id={column}
+              isRowHeader={index === 0}
+              key={column}
+              label={column}
+            />
+          ))}
+        </Table.Header>
+        <Table.Body>
+          {WIDE_ROWS.map((row) => (
+            <Table.Row id={row[0]} key={row[0]}>
+              {row.map((cell, index) => (
+                <Table.Cell
+                  className={WIDE_COLUMN_CLASS}
+                  key={WIDE_COLUMNS[index]}>
+                  {cell}
+                </Table.Cell>
+              ))}
+            </Table.Row>
+          ))}
+        </Table.Body>
+      </Table>
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Pass `scrollShadows` to shadow whichever edge hides columns while the table scrolls horizontally — the only scroll cue where the scrollbar is an overlay (macOS). Scroll right: the start shadow appears, and the end shadow disappears at the last column. `wrapLabel` on `Table.Head` wraps a long header inside a width-capped column. For content that is not a core `Table`, wrap it in `ScrollShadow`.',
       },
     },
   },

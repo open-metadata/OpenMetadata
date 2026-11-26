@@ -14,6 +14,7 @@
 package org.openmetadata.service.rdf.storage;
 
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -22,7 +23,10 @@ import org.apache.jena.rdf.model.Model;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.inference.InferenceDirtyMarker;
 
-/** Marks inference output stale after each successful mutation of the source RDF dataset. */
+/**
+ * Marks inference output stale after each successful mutation of the source RDF dataset, and after
+ * an entity write that failed once it may have reached the store.
+ */
 public final class InferenceInvalidatingRdfStorage extends ForwardingRdfStorage {
   private final RdfStorageInterface delegate;
   private final InferenceDirtyMarker dirtyMarker;
@@ -38,9 +42,28 @@ public final class InferenceInvalidatingRdfStorage extends ForwardingRdfStorage 
     return delegate;
   }
 
+  /**
+   * A write that found the projection already stored changes nothing a rule reads. A failed one may
+   * have changed the graph anyway, for a difference can commit before its read-back or reply fails,
+   * and its retry then finds the projection stored and reports nothing changed.
+   */
   @Override
-  public void storeEntity(final String entityType, final UUID entityId, final Model entityModel) {
-    mutate(() -> delegate.storeEntity(entityType, entityId, entityModel));
+  public RdfEntityWriteResult storeEntity(
+      final String entityType,
+      final UUID entityId,
+      final Model entityModel,
+      final RdfEntityWriteStrategy strategy) {
+    final RdfEntityWriteResult result;
+    try {
+      result = delegate.storeEntity(entityType, entityId, entityModel, strategy);
+    } catch (RuntimeException failure) {
+      dirtyMarker.markAllDirty();
+      throw failure;
+    }
+    if (result.changesGraph()) {
+      dirtyMarker.markAllDirty();
+    }
+    return result;
   }
 
   @Override
@@ -87,13 +110,18 @@ public final class InferenceInvalidatingRdfStorage extends ForwardingRdfStorage 
   }
 
   @Override
+  public void executeMaintenanceUpdate(final String sparqlUpdate, final Duration timeout) {
+    mutate(() -> delegate.executeMaintenanceUpdate(sparqlUpdate, timeout));
+  }
+
+  @Override
   public void loadTurtleFile(final InputStream turtleStream, final String graphUri) {
     mutate(() -> delegate.loadTurtleFile(turtleStream, graphUri));
   }
 
   @Override
-  public void replaceGraph(final String graph, final Model model) {
-    mutate(() -> delegate.replaceGraph(graph, model));
+  public void replaceGraph(final String graph, final UUID releaseId, final Model model) {
+    mutate(() -> delegate.replaceGraph(graph, releaseId, model));
   }
 
   @Override

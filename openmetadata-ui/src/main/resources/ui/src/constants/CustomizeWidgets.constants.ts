@@ -89,12 +89,6 @@ export const REVIEWER_WIDGET: CommonWidgetType = {
   data: { gridSizes: ['small'] },
 };
 
-export const PENDING_REVIEW_WIDGET: CommonWidgetType = {
-  fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.PENDING_REVIEW,
-  name: i18n.t('label.pending-review'),
-  data: { gridSizes: ['small'] },
-};
-
 export const WORKFLOW_HISTORY_WIDGET: CommonWidgetType = {
   fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.WORKFLOW_HISTORY,
   name: i18n.t('label.workflow-history'),
@@ -123,7 +117,7 @@ export const DATA_PRODUCTS_WIDGET: CommonWidgetType = {
 
 export const KNOWLEDGE_ARTICLE_WIDGET = {
   fullyQualifiedName: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
-  name: i18n.t('label.article-plural'),
+  name: i18n.t('label.context-center'),
   data: {
     gridSizes: ['large'] as GridSizes[],
   },

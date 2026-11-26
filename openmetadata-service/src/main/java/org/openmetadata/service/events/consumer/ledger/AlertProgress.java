@@ -1,7 +1,6 @@
 package org.openmetadata.service.events.consumer.ledger;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Predicate;
 import org.openmetadata.schema.entity.events.AlertMetrics;
@@ -10,19 +9,31 @@ import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.consumer.ConsumerKind;
-import org.openmetadata.service.util.ChangeEventJsonUtils;
 
 /**
  * What an alert has handled and what it has still to read, answered the way its consumer works. A
  * consumer that reads change events is counted by the rows its events leave, and the events after
  * its position are still to read. One that makes its own work is counted by what it reported, and
  * reads no change event: none is still to read, and it stands at the latest offset whatever its
- * position row says.
+ * position row says. An alert that is switched off is not running: none is still to read either,
+ * since switching it back on starts it from the latest offset, but it reports its position row as
+ * stored (ADR:2026-11-19-a-disabled-alert-has-nothing-pending).
  */
 public sealed interface AlertProgress {
 
   /** Each event or piece of work once, so a partly delivered one is in both counts but handled once. */
   record Counts(long handled, long delivered, long failed) {}
+
+  /**
+   * One page of unread change events, newest first, and those of them the alert lets through.
+   * Both lists are listed without the entity each event carries.
+   */
+  record UnreadPage(List<ChangeEvent> relevant, List<ChangeEvent> all) {
+    static final UnreadPage EMPTY = new UnreadPage(List.of(), List.of());
+
+    /** No list, for a request that asks only for the counts. */
+    public static final UnreadPage UNLISTED = new UnreadPage(null, null);
+  }
 
   /** Which change events the alert lets through, given when it started alerting. */
   @FunctionalInterface
@@ -35,8 +46,24 @@ public sealed interface AlertProgress {
     EventSubscriptionOffset position = AlertRecord.positionOrLatest(alert.getId());
     long latest = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
     return ConsumerKind.of(alert).readsChangeEvents()
-        ? new ReadsChangeEvents(alert, position, latest)
+        ? readerOf(alert, position, latest)
         : new MakesItsOwnWork(alert.getId(), position, latest);
+  }
+
+  private static AlertProgress readerOf(
+      EventSubscription alert, EventSubscriptionOffset position, long latest) {
+    return Boolean.FALSE.equals(alert.getEnabled())
+        ? new SwitchedOff(alert.getId(), position, latest)
+        : new ReadsChangeEvents(alert, position, latest);
+  }
+
+  private static Counts countedFromRows(UUID alertId) {
+    String id = alertId.toString();
+    long delivered = Entity.getCollectionDAO().eventSubscriptionDAO().getSuccessfulRecordCount(id);
+    long failed = Entity.getCollectionDAO().changeEventDAO().countFailedEvents(id);
+    long countedTwice =
+        Entity.getCollectionDAO().eventSubscriptionDAO().countEventsBothDeliveredAndFailed(id);
+    return new Counts(delivered + failed - countedTwice, delivered, failed);
   }
 
   Counts counts();
@@ -47,12 +74,10 @@ public sealed interface AlertProgress {
 
   long latestOffset();
 
-  /** The unread change events the alert lets through. */
-  long relevantUnreadCount(Relevance relevance);
+  /** The unread change events the alert lets through, up to how many one request may evaluate. */
+  PendingCount relevantUnreadCount(Relevance relevance);
 
-  List<ChangeEvent> relevantUnread(int limit, int pageOffset, Relevance relevance);
-
-  List<ChangeEvent> allUnread(int limit, int pageOffset);
+  UnreadPage unreadPage(int limit, int pageOffset, Relevance relevance);
 
   default long unread() {
     return Math.max(0, latestOffset() - currentOffset());
@@ -67,13 +92,7 @@ public sealed interface AlertProgress {
 
     @Override
     public Counts counts() {
-      String id = alert.getId().toString();
-      long delivered =
-          Entity.getCollectionDAO().eventSubscriptionDAO().getSuccessfulRecordCount(id);
-      long failed = Entity.getCollectionDAO().changeEventDAO().countFailedEvents(id);
-      long countedTwice =
-          Entity.getCollectionDAO().eventSubscriptionDAO().countEventsBothDeliveredAndFailed(id);
-      return new Counts(delivered + failed - countedTwice, delivered, failed);
+      return countedFromRows(alert.getId());
     }
 
     @Override
@@ -92,27 +111,17 @@ public sealed interface AlertProgress {
     }
 
     @Override
-    public long relevantUnreadCount(Relevance relevance) {
-      return UnprocessedEvents.countMatching(currentOffset(), relevant(relevance));
+    public PendingCount relevantUnreadCount(Relevance relevance) {
+      return UnprocessedEvents.countMatching(currentOffset(), latest, relevant(relevance));
     }
 
     @Override
-    public List<ChangeEvent> relevantUnread(int limit, int pageOffset, Relevance relevance) {
-      return UnprocessedEvents.matching(unreadRows(limit, pageOffset), relevant(relevance));
-    }
-
-    @Override
-    public List<ChangeEvent> allUnread(int limit, int pageOffset) {
-      return unreadRows(limit, pageOffset).parallelStream()
-          .map(json -> ChangeEventJsonUtils.readOrNull(json, ChangeEvent.class))
-          .filter(Objects::nonNull)
-          .toList();
-    }
-
-    private List<String> unreadRows(int limit, int pageOffset) {
-      return Entity.getCollectionDAO()
-          .changeEventDAO()
-          .listUnprocessedEvents(currentOffset(), limit, pageOffset);
+    public UnreadPage unreadPage(int limit, int pageOffset, Relevance relevance) {
+      List<String> rows =
+          Entity.getCollectionDAO()
+              .changeEventDAO()
+              .listUnprocessedEvents(currentOffset(), limit, pageOffset);
+      return UnprocessedEvents.page(rows, relevant(relevance));
     }
 
     private Predicate<ChangeEvent> relevant(Relevance relevance) {
@@ -120,8 +129,61 @@ public sealed interface AlertProgress {
     }
   }
 
+  /** Has no change event still to read, whatever its position row says. */
+  sealed interface ReadsNothing extends AlertProgress {
+
+    EventSubscriptionOffset position();
+
+    long latest();
+
+    @Override
+    default long unread() {
+      return 0;
+    }
+
+    @Override
+    default boolean caughtUp() {
+      return true;
+    }
+
+    @Override
+    default long startingOffset() {
+      return position().getStartingOffset();
+    }
+
+    @Override
+    default long latestOffset() {
+      return latest();
+    }
+
+    @Override
+    default PendingCount relevantUnreadCount(Relevance relevance) {
+      return PendingCount.NONE;
+    }
+
+    @Override
+    default UnreadPage unreadPage(int limit, int pageOffset, Relevance relevance) {
+      return UnreadPage.EMPTY;
+    }
+  }
+
+  /** Not running: keeps the rows of what it handled and the position where it stopped. */
+  record SwitchedOff(UUID alertId, EventSubscriptionOffset position, long latest)
+      implements ReadsNothing {
+
+    @Override
+    public Counts counts() {
+      return countedFromRows(alertId);
+    }
+
+    @Override
+    public long currentOffset() {
+      return position.getCurrentOffset();
+    }
+  }
+
   record MakesItsOwnWork(UUID alertId, EventSubscriptionOffset position, long latest)
-      implements AlertProgress {
+      implements ReadsNothing {
 
     @Override
     public Counts counts() {
@@ -133,31 +195,6 @@ public sealed interface AlertProgress {
     @Override
     public long currentOffset() {
       return latest;
-    }
-
-    @Override
-    public long startingOffset() {
-      return position.getStartingOffset();
-    }
-
-    @Override
-    public long latestOffset() {
-      return latest;
-    }
-
-    @Override
-    public long relevantUnreadCount(Relevance relevance) {
-      return 0;
-    }
-
-    @Override
-    public List<ChangeEvent> relevantUnread(int limit, int pageOffset, Relevance relevance) {
-      return List.of();
-    }
-
-    @Override
-    public List<ChangeEvent> allUnread(int limit, int pageOffset) {
-      return List.of();
     }
   }
 }

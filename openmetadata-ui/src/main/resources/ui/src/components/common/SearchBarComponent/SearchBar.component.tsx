@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Input } from '@openmetadata/ui-core-components';
-import { Search } from '@openmetadata/ui-core-components/icons';
+import { ButtonUtility, Input } from '@openmetadata/ui-core-components';
+import { Search, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ReactComponent as CloseOutlined } from '../../../assets/svg/close.svg';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Loader from '../Loader/Loader';
 import './search-bar.less';
 
@@ -48,6 +48,7 @@ const Searchbar = ({
   showClearSearch = true,
   searchBarDataTestId,
 }: SearchBarProps) => {
+  const { t } = useTranslation();
   const [userSearch, setUserSearch] = useState(searchValue ?? '');
   const [loadingState, setLoadingState] = useState<LoadingState>('initial');
   const searchTextRef = useRef(searchValue ?? '');
@@ -57,15 +58,24 @@ const Searchbar = ({
     searchTextRef.current = searchValue ?? '';
   }, [searchValue]);
 
-  const debouncedOnSearch = useCallback((): void => {
-    setLoadingState((pre) => (pre === 'waiting' ? 'success' : pre));
-    onSearch(searchTextRef.current);
-  }, [onSearch]);
+  // The latest `onSearch`, read when the debounce fires. One debounced
+  // function per `typingInterval`, so a parent passing a new `onSearch` never
+  // leaves an older timer running.
+  const onSearchRef = useRef(onSearch);
+  onSearchRef.current = onSearch;
 
-  const debounceOnSearch = useCallback(
-    debounce(debouncedOnSearch, typingInterval),
-    [debouncedOnSearch, typingInterval]
+  const debounceOnSearch = useMemo(
+    () =>
+      debounce((): void => {
+        setLoadingState((pre) => (pre === 'waiting' ? 'success' : pre));
+        onSearchRef.current(searchTextRef.current);
+      }, typingInterval),
+    [typingInterval]
   );
+
+  // A search still pending when the bar unmounts (a picker closed within
+  // `typingInterval` of typing) would otherwise fire for a list that is gone.
+  useEffect(() => () => debounceOnSearch.cancel(), [debounceOnSearch]);
 
   const handleChange = (searchText: string): void => {
     searchTextRef.current = searchText;
@@ -88,13 +98,12 @@ const Searchbar = ({
   const trailingSlot =
     showClearSearch && userSearch ? (
       <span className="tw:absolute tw:right-3 tw:inset-y-0 tw:flex tw:items-center">
-        <button
-          aria-label="Clear search"
-          className="tw:flex tw:items-center tw:justify-center tw:text-tertiary hover:tw:text-primary"
-          type="button"
-          onClick={handleClear}>
-          <CloseOutlined aria-hidden className="tw:size-3" />
-        </button>
+        <ButtonUtility
+          icon={XClose}
+          size="xs"
+          tooltip={t('label.clear-entity', { entity: t('label.search') })}
+          onClick={handleClear}
+        />
       </span>
     ) : (
       loadingSlot
@@ -108,6 +117,7 @@ const Searchbar = ({
       data-testid="search-bar-container">
       {label !== '' && <span>{label}</span>}
       <Input
+        autoComplete="off"
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         icon={Search as any}
         inputClassName={inputClassName}

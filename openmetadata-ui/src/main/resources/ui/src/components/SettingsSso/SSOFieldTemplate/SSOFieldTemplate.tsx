@@ -14,7 +14,6 @@
 import { Badge } from '@openmetadata/ui-core-components';
 import { FieldTemplateProps } from '@rjsf/utils';
 import classNames from 'classnames';
-import { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEPRECATED_SSO_PROPERTIES } from '../../../constants/Services.constant';
 
@@ -65,9 +64,7 @@ const SSOFieldControl = ({
     children
   );
 
-export const SSOFieldTemplate: FunctionComponent<FieldTemplateProps> = (
-  props
-) => {
+export const SSOFieldTemplate = <T,>(props: FieldTemplateProps<T>) => {
   const {
     id,
     label,

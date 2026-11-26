@@ -9,6 +9,15 @@ OpenMetadata Ingestion is a simple framework to build connectors and ingest meta
 
 - Python &gt;= 3.10
 
+### Developing from this checkout
+
+Use the [locked local Python environment guide](https://github.com/open-metadata/OpenMetadata/blob/main/DEVELOPER.md#locked-local-python-environments)
+for setup, profile selection and test commands. The local profiles are validated on Python
+3.10, 3.11 and 3.12. From the repository root, `make install_dev_env` prepares the full test
+environment in `env/`; `make py_format_check` and `make generate ARGS=--python-only` prepare
+their own tool environments. Native build prerequisites and ANTLR are still required;
+`scripts/dev_setup.sh` prepares the development toolchain.
+
 ### Docs
 
 Please refer to the documentation here: [docs.open-metadata.org/connectors](https://docs.open-metadata.org/connectors)

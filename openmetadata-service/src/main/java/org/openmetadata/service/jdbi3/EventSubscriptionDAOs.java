@@ -127,6 +127,13 @@ public interface EventSubscriptionDAOs {
     @RegisterRowMapper(SubscriberExtensionMapper.class)
     List<SubscriberExtension> listSubscriberExtensions(@Bind("id") String id);
 
+    @SqlQuery(
+        "SELECT id, extension, json FROM change_event_consumers "
+            + "WHERE id IN (<ids>) AND extension IN (<extensions>)")
+    @RegisterRowMapper(AlertExtensionMapper.class)
+    List<AlertExtension> listAlertsExtensions(
+        @BindList("ids") List<String> ids, @BindList("extensions") List<String> extensions);
+
     @SqlUpdate("DELETE FROM change_event_consumers WHERE id = :id AND extension = :extension")
     int deleteSubscriberExtension(@Bind("id") String id, @Bind("extension") String extension);
 
@@ -143,6 +150,16 @@ public interface EventSubscriptionDAOs {
     long databaseTimeMillis();
 
     record SubscriberExtension(String extension, String json) {}
+
+    record AlertExtension(String id, String extension, String json) {}
+
+    class AlertExtensionMapper implements RowMapper<AlertExtension> {
+      @Override
+      public AlertExtension map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new AlertExtension(
+            rs.getString("id"), rs.getString("extension"), rs.getString("json"));
+      }
+    }
 
     class SubscriberExtensionMapper implements RowMapper<SubscriberExtension> {
       @Override
@@ -338,8 +355,20 @@ public interface EventSubscriptionDAOs {
         connectionType = POSTGRES)
     int deleteConsumersDlqInBatches(@Bind("cutoff") long cutoff, @Bind("limit") int limit);
 
-    @SqlQuery(
-        "SELECT json FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    // Answers each delivered event without the entity it carries, which can be as large as the
+    // asset that changed; the alert pages read only the event's own fields.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_REMOVE(json, '$.entity') AS json FROM successful_sent_change_events "
+                + "WHERE event_subscription_id = :eventSubscriptionId "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json - 'entity' AS json FROM successful_sent_change_events "
+                + "WHERE event_subscription_id = :eventSubscriptionId "
+                + "ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
     List<String> getSuccessfulChangeEventBySubscriptionId(
         @Bind("eventSubscriptionId") String eventSubscriptionId,
         @Bind("limit") int limit,

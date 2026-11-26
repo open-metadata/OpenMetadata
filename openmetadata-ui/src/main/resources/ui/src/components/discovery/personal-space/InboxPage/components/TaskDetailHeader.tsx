@@ -15,6 +15,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -100,8 +101,9 @@ const TaskActionButton = ({
         onUpdate={onAssigneeUpdate(action)}>
         <button
           className={
+            // Matches the core Button's xs size used by the other actions.
             'tw:cursor-pointer tw:rounded-md tw:border tw:border-secondary ' +
-            'tw:bg-primary tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold ' +
+            'tw:bg-primary tw:px-2 tw:py-1.25 tw:text-xs tw:font-medium ' +
             'tw:text-secondary tw:shadow-xs tw:hover:bg-secondary ' +
             'tw:disabled:cursor-not-allowed tw:disabled:opacity-50'
           }
@@ -120,7 +122,7 @@ const TaskActionButton = ({
       data-testid={getTaskActionTestId(action)}
       isDisabled={isDisabled}
       isLoading={isBusy}
-      size="sm"
+      size="xs"
       onClick={onTransition(action)}>
       {action.label}
     </Button>
@@ -131,7 +133,7 @@ const TaskActionButton = ({
  * The task's identity and what can be done about it: type chip, task id, the
  * state it is waiting in, and its actions.
  *
- * Two actions stay visible as buttons — the affirmative one filled — and the
+ * Two actions stay visible as buttons — the leading one filled — and the
  * rest fold into an overflow menu, so a task with many transitions does not
  * spread its header across the pane. An assignee action keeps its own picker
  * trigger, which a menu item cannot host.
@@ -147,7 +149,10 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { primary, secondary, overflow } = splitTaskActions(actions);
+  const { primary, secondary, overflow } = splitTaskActions(
+    actions,
+    task.workflowStageId
+  );
   // An assignee action opens a picker rather than firing, so it cannot live in
   // the menu — it stays a button even when it did not win a header slot.
   const menuActions = overflow.filter((action) => action.kind !== 'assignee');
@@ -222,15 +227,14 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
 
         {menuActions.length > 0 && (
           <Dropdown.Root isOpen={isMenuOpen} onOpenChange={setIsMenuOpen}>
-            <Button
-              aria-label={t('label.more-action-plural')}
-              color="secondary"
+            <ButtonUtility
               data-testid="task-actions-menu"
-              iconLeading={<DotsVertical className="tw:size-4" />}
+              icon={DotsVertical}
               // Like the header buttons, the menu waits out a running
               // transition, so no second one can start.
               isDisabled={loadingTransitionId !== undefined}
-              size="sm"
+              size="lg"
+              tooltip={t('label.more-action-plural')}
             />
             <Dropdown.Popover className="tw:w-max tw:min-w-40">
               <Dropdown.Menu

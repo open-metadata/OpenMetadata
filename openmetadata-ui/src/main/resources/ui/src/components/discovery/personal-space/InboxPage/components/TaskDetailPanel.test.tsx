@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { ComponentProps, ComponentType, ReactNode } from 'react';
 import APIClient from '../../../../../rest/axiosClient';
 import {
@@ -21,6 +21,11 @@ import {
 
 jest.mock('../../../../../rest/axiosClient', () => ({ get: jest.fn() }));
 runQueryNotificationsSynchronously();
+
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useQueryClient: () => ({ invalidateQueries: jest.fn() }),
+}));
 
 const mockGetTaskById = jest.fn();
 const mockResolveTask = jest.fn();
@@ -32,7 +37,12 @@ const mockShowErrorToast = jest.fn();
 const mockGetEntityPermission = jest.fn();
 const mockGetResolvedTaskFormSchema = jest.fn();
 
-let mockCurrentUser: { id?: string; name?: string; isAdmin?: boolean } = {
+let mockCurrentUser: {
+  id?: string;
+  name?: string;
+  isAdmin?: boolean;
+  teams?: { id: string; type: string }[];
+} = {
   name: 'bob',
 };
 
@@ -54,7 +64,10 @@ jest.mock('constants/Task.constant', () => ({
 }));
 
 jest.mock('rest/tasksAPI', () => ({
-  getTaskById: (...args: unknown[]) => mockGetTaskById(...args),
+  TaskEntityStatus: jest.requireActual('generated/entity/tasks/task')
+    .TaskStatus,
+  TaskEntityType: jest.requireActual('generated/entity/tasks/task').TaskType,
+  getTask: (...args: unknown[]) => mockGetTaskById(...args),
   resolveTask: (...args: unknown[]) => mockResolveTask(...args),
   addTaskComment: (...a: unknown[]) => mockAddComment(...a),
   editTaskComment: (...a: unknown[]) => mockEditComment(...a),
@@ -88,6 +101,12 @@ jest.mock('utils/TaskFormSchemaUtils', () => ({
     payload: Record<string, unknown>
   ) => payload.newDescription,
   shouldRequireTaskResolutionValue: () => false,
+  getTaskTransitionFormSchema: jest.requireActual('utils/TaskFormSchemaUtils')
+    .getTaskTransitionFormSchema,
+  getTaskTransitionUiSchema: jest.requireActual('utils/TaskFormSchemaUtils')
+    .getTaskTransitionUiSchema,
+  hasRequiredTaskFormFields: jest.requireActual('utils/TaskFormSchemaUtils')
+    .hasRequiredTaskFormFields,
 }));
 
 jest.mock('hooks/useApplicationStore', () => ({
@@ -103,6 +122,7 @@ jest.mock('context/PermissionProvider/PermissionProvider', () => ({
 jest.mock('utils/FeedUtilsPure', () => ({
   MarkdownToHTMLConverter: { makeHtml: (m: string) => m },
   getFrontEndFormat: (m: string) => m,
+  getFeedChangeFieldLabel: () => undefined,
 }));
 
 jest.mock('components/common/DeleteModal/DeleteModal', () => ({
@@ -176,13 +196,27 @@ jest.mock('utils/EntityNameUtils', () => ({
 }));
 
 const mockGetContributions = jest.fn().mockReturnValue([]);
+// The provider holds one ExtensionPointRegistry instance for the app lifecycle
+// and mutates it in place when plugins register, so the registry's identity
+// never changes. Mirror that with a single stable object so a memo keyed on
+// the registry cannot accidentally recompute per render and hide the
+// stale-lookup bug — the bug only shows when the singleton's identity is fixed
+// across renders, as it is in production.
+const stableExtensionRegistry = { getContributions: mockGetContributions };
+// The provider hands out a new `getContributions` wrapper each time plugins
+// register (its `contributionsVersion` bump); tests reassign this object to
+// simulate that bump — the new `getContributions` arrow gets a fresh identity,
+// exactly as the real wrapper does after registration.
+let mockApplicationsProvider = {
+  extensionRegistry: stableExtensionRegistry,
+  getContributions: (id: string) => mockGetContributions(id),
+  contributionsReady: true,
+};
 
 jest.mock(
   'components/Settings/Applications/ApplicationsProvider/ApplicationsProvider',
   () => ({
-    useApplicationsProvider: () => ({
-      extensionRegistry: { getContributions: mockGetContributions },
-    }),
+    useApplicationsProvider: () => mockApplicationsProvider,
   })
 );
 
@@ -253,6 +287,43 @@ jest.mock('./TaskActionCommentModal', () => ({
     ) : null,
 }));
 
+// The transition form modal is exercised through its onConfirm payload; the
+// real `TaskPayloadSchemaFields` form has its own suite, so stub the modal to a
+// confirm button that emits the form payload the test wants to send.
+const mockFormConfirmPayload = jest.fn();
+jest.mock('./TaskTransitionFormModal', () => ({
+  __esModule: true,
+  default: ({
+    open,
+    title,
+    actionLabel,
+    onConfirm,
+    onCancel,
+  }: {
+    open?: boolean;
+    title?: string;
+    actionLabel?: string;
+    onConfirm: (payload: unknown) => void;
+    onCancel?: (...args: unknown[]) => void;
+  }) =>
+    open ? (
+      <div data-testid="transition-form-modal">
+        <span data-testid="transition-form-title">{title}</span>
+        <span data-testid="transition-form-action-label">{actionLabel}</span>
+        <button
+          aria-label="transition-form-confirm"
+          data-testid="transition-form-confirm"
+          onClick={() => onConfirm(mockFormConfirmPayload())}
+        />
+        <button
+          aria-label="transition-form-cancel"
+          data-testid="transition-form-cancel"
+          onClick={onCancel}
+        />
+      </div>
+    ) : null,
+}));
+
 jest.mock('./TaskActivityTimeline', () => ({
   __esModule: true,
   default: () => <div data-testid="task-activity-timeline" />,
@@ -296,7 +367,8 @@ jest.mock('components/common/Loader/Loader', () => ({
 
 jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
   __esModule: true,
-  default: () => <div />,
+  default: ({ isAgent }: { isAgent?: boolean }) =>
+    isAgent ? <span data-testid="agent-avatar" /> : <div />,
 }));
 
 jest.mock('components/common/RichTextEditor/RichTextEditorPreviewerV1', () => ({
@@ -447,8 +519,10 @@ jest.mock(
     )
 );
 
+const mockT = jest.fn((key: string) => key);
+
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({ t: mockT }),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -472,6 +546,7 @@ jest.mock('react-router-dom', () => ({
 // Boundary stub for the routing layer: the panel only cares that a task with an
 // about-entity links to it, and that an incident falls back to its test case.
 jest.mock('utils/TaskNavigationUtils', () => ({
+  ...jest.requireActual('utils/TaskNavigationUtils'),
   getTaskAboutPath: (
     task: { about?: { type?: string; fullyQualifiedName?: string } },
     incidentTestCaseFqn: string
@@ -529,6 +604,11 @@ const DAR_TASK = { ...TASK, type: 'DataAccessRequest' };
 beforeEach(() => {
   jest.clearAllMocks();
   mockGetContributions.mockReturnValue([]);
+  mockApplicationsProvider = {
+    extensionRegistry: stableExtensionRegistry,
+    getContributions: (id: string) => mockGetContributions(id),
+    contributionsReady: true,
+  };
   mockCurrentUser = { name: 'bob' };
   mockGetTaskById.mockResolvedValue({ data: TASK });
   mockGetEntityPermission.mockResolvedValue({ ResolveTask: true });
@@ -561,6 +641,31 @@ describe('TaskDetailPanel', () => {
     expect(screen.getByText('message.task-outcome-by-on')).toBeInTheDocument();
   });
 
+  // An AI agent's proposal reads as opened by the agent, not by the bot it writes as.
+  it('names the AI agent that opened a proposal in the byline', async () => {
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        type: 'RequestApproval',
+        createdBy: { id: 'bot', name: 'aiautomationapplicationbot' },
+        payload: {
+          proposal: { provider: 'automation', agent: 'Glossary Agent' },
+        },
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    const byline = screen.getByTestId('task-byline');
+
+    expect(within(byline).getByTestId('agent-avatar')).toBeInTheDocument();
+    expect(byline).toHaveTextContent('message.task-opened-by');
+    expect(mockT).toHaveBeenCalledWith(
+      'message.task-opened-by',
+      expect.objectContaining({ user: 'Glossary Agent' })
+    );
+  });
+
   it('falls back to the description when the name is only the taskId', async () => {
     mockGetTaskById.mockResolvedValue({
       data: {
@@ -578,6 +683,33 @@ describe('TaskDetailPanel', () => {
     expect(
       screen.getAllByText('Approval required for sales_table').length
     ).toBeGreaterThan(0);
+  });
+
+  // Not the list row it falls back on: the server's task carries the status
+  // the list needs to file a linked task under its tab.
+  it('reports the full task once it loads', async () => {
+    const onLoaded = jest.fn();
+    const listRow = { ...TASK, status: 'Open' } as unknown as ComponentProps<
+      typeof TaskDetailPanel
+    >['fallbackTask'];
+    mockGetTaskById.mockResolvedValue({
+      data: { ...TASK, status: 'Rejected' },
+    });
+
+    await act(async () =>
+      render(
+        <TaskDetailPanel
+          fallbackTask={listRow}
+          taskId="task-1"
+          onLoaded={onLoaded}
+        />
+      )
+    );
+
+    expect(onLoaded).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Rejected' })
+    );
+    expect(onLoaded).not.toHaveBeenCalledWith(listRow);
   });
 
   it('fetches the task with the full field set', async () => {
@@ -1133,6 +1265,231 @@ describe('TaskDetailPanel', () => {
     expect(screen.queryByTestId('comment-modal')).not.toBeInTheDocument();
   });
 
+  // The bug: a workflow transition whose form (`transitionForms[formRef]`)
+  // declares required fields but is not `requiresComment` used to fire
+  // immediately with no payload, silently losing the required data. The fix
+  // opens the transition form modal instead, mirroring `TaskTabNew`.
+  describe('transition form modal', () => {
+    const FORM_TASK = {
+      ...TASK,
+      type: 'CustomTask',
+      category: 'Custom',
+      availableTransitions: [
+        {
+          id: 'approve',
+          label: 'label.approve',
+          resolutionType: 'Approved',
+          formRef: 'approve',
+          targetTaskStatus: 'Approved',
+        },
+      ],
+    };
+    const FORM_SCHEMA = {
+      name: 'CustomTask',
+      taskType: 'CustomTask',
+      taskCategory: 'Custom',
+      formSchema: { type: 'object', properties: {} },
+      transitionForms: {
+        approve: {
+          formSchema: {
+            type: 'object',
+            required: ['targetField', 'proposedText'],
+            properties: {
+              targetField: { type: 'string' },
+              proposedText: { type: 'string' },
+            },
+          },
+          uiSchema: { 'ui:resolution': { mode: 'payload' } },
+        },
+      },
+    };
+
+    beforeEach(() => {
+      mockGetTaskById.mockResolvedValue({ data: FORM_TASK });
+      mockGetResolvedTaskFormSchema.mockResolvedValue(FORM_SCHEMA);
+      mockResolveTask.mockResolvedValue({ ...FORM_TASK, status: 'Approved' });
+      mockFormConfirmPayload.mockReturnValue({
+        targetField: 'description',
+        proposedText: 'updated by resolver',
+      });
+    });
+
+    it('opens the form modal instead of firing for a transition with required form fields', async () => {
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+
+      // The transition must NOT fire until the form is collected.
+      expect(mockResolveTask).not.toHaveBeenCalled();
+      expect(screen.getByTestId('transition-form-modal')).toBeInTheDocument();
+    });
+
+    it('opens the form modal, not the comment modal, when the transition also requires a comment', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: {
+          ...FORM_TASK,
+          availableTransitions: [
+            { ...FORM_TASK.availableTransitions[0], requiresComment: true },
+          ],
+        },
+      });
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+
+      expect(screen.getByTestId('transition-form-modal')).toBeInTheDocument();
+      expect(screen.queryByTestId('comment-modal')).not.toBeInTheDocument();
+      expect(mockResolveTask).not.toHaveBeenCalled();
+    });
+
+    it('sends the form payload through the resolve body when the form is confirmed', async () => {
+      const onResolved = jest.fn();
+      await act(async () =>
+        render(<TaskDetailPanel taskId="task-1" onResolved={onResolved} />)
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('transition-form-confirm'));
+      });
+
+      expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+        transitionId: 'approve',
+        resolutionType: 'Approved',
+        payload: {
+          targetField: 'description',
+          proposedText: 'updated by resolver',
+        },
+      });
+      expect(onResolved).toHaveBeenCalled();
+    });
+
+    it('cancelling the form modal fires nothing', async () => {
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('transition-form-cancel'));
+      });
+
+      expect(mockResolveTask).not.toHaveBeenCalled();
+      expect(
+        screen.queryByTestId('transition-form-modal')
+      ).not.toBeInTheDocument();
+    });
+
+    // A transition whose form has no required fields keeps firing straight
+    // through — the inbox does not gain a modal for every optional form (the
+    // seeded DAR `approve` with an optional comment stays a one-click action).
+    it('fires immediately when the transition form has no required fields', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: {
+          ...TASK,
+          type: 'DataAccessRequest',
+          category: 'DataAccess',
+          availableTransitions: [
+            {
+              id: 'approve',
+              label: 'label.approve',
+              resolutionType: 'Approved',
+            },
+          ],
+        },
+      });
+      mockGetResolvedTaskFormSchema.mockResolvedValue({
+        transitionForms: {
+          approve: {
+            formSchema: {
+              type: 'object',
+              properties: { comment: { type: 'string' } },
+            },
+          },
+        },
+      });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+
+      expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+        transitionId: 'approve',
+        resolutionType: 'Approved',
+      });
+      expect(
+        screen.queryByTestId('transition-form-modal')
+      ).not.toBeInTheDocument();
+    });
+
+    it('fires one transition when clicked again while the form schema loads', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: {
+          ...TASK,
+          type: 'DataAccessRequest',
+          category: 'DataAccess',
+          availableTransitions: [
+            {
+              id: 'approve',
+              label: 'label.approve',
+              resolutionType: 'Approved',
+            },
+          ],
+        },
+      });
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      let resolveSchema: () => void = () => undefined;
+      mockGetResolvedTaskFormSchema.mockReturnValue(
+        new Promise((resolve) => {
+          resolveSchema = () => resolve(undefined);
+        })
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+      await act(async () => resolveSchema());
+
+      expect(mockResolveTask).toHaveBeenCalledTimes(1);
+    });
+
+    // A failed schema lookup must not let a required-form transition fire
+    // with no payload; the click reports the error and a later click retries.
+    it('does not fire the transition when the form schema fetch fails', async () => {
+      mockGetResolvedTaskFormSchema.mockReset();
+      mockGetResolvedTaskFormSchema.mockRejectedValue(
+        new Error('schema fetch failed')
+      );
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+
+      expect(mockResolveTask).not.toHaveBeenCalled();
+      expect(mockShowErrorToast).toHaveBeenCalled();
+
+      mockGetResolvedTaskFormSchema.mockResolvedValue(FORM_SCHEMA);
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+
+      expect(screen.getByTestId('transition-form-modal')).toBeInTheDocument();
+    });
+  });
+
   it('links only the asset name within the title', async () => {
     mockGetTaskById.mockResolvedValue({
       data: {
@@ -1348,6 +1705,116 @@ describe('TaskDetailPanel', () => {
       ).not.toBeInTheDocument();
     });
 
+    describe('workflow approval decided by its assignees', () => {
+      const APPROVAL_TASK = {
+        ...TASK,
+        type: 'RequestApproval',
+        workflowInstanceId: 'wf-1',
+        workflowStageId: 'review',
+        assignees: [
+          { id: 'u9', name: 'shailesh', type: 'user' },
+          { id: 'team-1', name: 'stewards', type: 'team' },
+        ],
+      };
+
+      it('hides Approve/Reject from a reviewer who is not an assignee, even with ResolveTask', async () => {
+        mockCurrentUser = { name: 'bob', id: 'u2' };
+        mockGetTaskById.mockResolvedValue({ data: APPROVAL_TASK });
+
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+        expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+        expect(screen.queryByText('label.reject')).not.toBeInTheDocument();
+        expect(
+          screen.getByTestId('task-resolve-denied-hint')
+        ).toHaveTextContent('message.only-assignees-can-approve-or-reject');
+      });
+
+      it('tells the requester who is not assigned that the task is not theirs to decide', async () => {
+        mockCurrentUser = { name: 'alice', id: 'u1' };
+        mockGetTaskById.mockResolvedValue({ data: APPROVAL_TASK });
+
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+        expect(
+          screen.getByTestId('task-resolve-denied-hint')
+        ).toHaveTextContent('message.only-assignees-can-approve-or-reject');
+      });
+
+      it('shows Approve/Reject to a member of an assigned team', async () => {
+        mockCurrentUser = {
+          name: 'bob',
+          id: 'u2',
+          teams: [{ id: 'team-1', type: 'team' }],
+        };
+        mockGetTaskById.mockResolvedValue({ data: APPROVAL_TASK });
+
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+        expect(screen.getByText('label.approve')).toBeInTheDocument();
+        expect(screen.getByText('label.reject')).toBeInTheDocument();
+      });
+
+      it('replaces Approve/Reject with the counted votes once the assignee voted in this stage', async () => {
+        mockCurrentUser = { name: 'shailesh', id: 'u9' };
+        mockGetTaskById.mockResolvedValue({
+          data: {
+            ...APPROVAL_TASK,
+            // The server drops the voter's own entry after a non-final vote.
+            assignees: [{ id: 'team-1', name: 'stewards', type: 'team' }],
+            reviewVotes: [
+              {
+                voter: { id: 'u9', name: 'shailesh', type: 'user' },
+                assignee: { id: 'u9', name: 'shailesh', type: 'user' },
+                decision: 'Approved',
+                stage: 'review',
+                timestamp: 1,
+              },
+            ],
+          },
+        });
+
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+        expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+        expect(screen.queryByText('label.reject')).not.toBeInTheDocument();
+        expect(screen.getByTestId('task-review-votes')).toHaveTextContent(
+          'message.user-approved-task'
+        );
+        expect(
+          screen.getByTestId('task-review-votes-waiting')
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId('task-resolve-denied-hint')
+        ).not.toBeInTheDocument();
+      });
+
+      it('keeps Approve/Reject when the assignee only voted in an earlier stage', async () => {
+        mockCurrentUser = { name: 'shailesh', id: 'u9' };
+        mockGetTaskById.mockResolvedValue({
+          data: {
+            ...APPROVAL_TASK,
+            reviewVotes: [
+              {
+                voter: { id: 'u9', name: 'shailesh', type: 'user' },
+                assignee: { id: 'u9', name: 'shailesh', type: 'user' },
+                decision: 'Approved',
+                stage: 'draft',
+                timestamp: 1,
+              },
+            ],
+          },
+        });
+
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+        expect(screen.getByText('label.approve')).toBeInTheDocument();
+        expect(
+          screen.queryByTestId('task-review-votes')
+        ).not.toBeInTheDocument();
+      });
+    });
+
     it('does not gate an incident task on ResolveTask and skips the permission fetch', async () => {
       mockGetTaskById.mockResolvedValue({
         data: { ...TASK, type: 'TestCaseResolution' },
@@ -1502,6 +1969,51 @@ describe('TaskDetailPanel', () => {
         screen.queryByTestId('task-detail-summary')
       ).not.toBeInTheDocument();
     });
+
+    // A deep link can resolve its task before the provider's contribution
+    // effect registers a plugin — the registry is a mutable singleton, so its
+    // identity never changes when the contribution lands. The provider surfaces
+    // a `getContributions` wrapper whose identity changes once
+    // `contributionsVersion` bumps; the contribution memo must depend on that
+    // wrapper so a contribution that lands after the task is in view still
+    // renders. Regression for the stale `[extensionRegistry, task]` memo, which
+    // computed against an empty registry on the first render and never
+    // recomputed for that task.
+    it('renders a contribution registered after the task loaded', async () => {
+      const lateContribution = contribution({
+        describe: () => ({ rows: [{ key: 'pluginRow' }] }),
+        stats: () => <div data-testid="plugin-stat-tiles" />,
+      });
+
+      // Plugins have not registered yet — the deep link beats the provider's
+      // contribution effect, so the panel first sees an empty registry.
+      let renderUtils!: ReturnType<typeof render>;
+      await act(async () => {
+        renderUtils = render(<TaskDetailPanel taskId="task-1" />);
+      });
+
+      expect(screen.queryByTestId('plugin-stat-tiles')).not.toBeInTheDocument();
+
+      // Plugins register: the provider bumps `contributionsVersion`, handing
+      // out a new `getContributions` wrapper identity (now returning the
+      // contribution). The task in view is unchanged — only the wrapper's
+      // identity change can prompt the memo to re-evaluate.
+      mockGetContributions.mockReturnValue([lateContribution]);
+      mockApplicationsProvider = {
+        extensionRegistry: stableExtensionRegistry,
+        getContributions: (id: string) => mockGetContributions(id),
+        contributionsReady: true,
+      };
+
+      await act(async () => {
+        renderUtils.rerender(<TaskDetailPanel taskId="task-1" />);
+      });
+
+      expect(screen.getByTestId('plugin-stat-tiles')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('task-detail-summary').getAttribute('data-rows')
+      ).toMatch(/^pluginRow/);
+    });
   });
 
   describe('legacy (non-workflow) tasks', () => {
@@ -1540,6 +2052,75 @@ describe('TaskDetailPanel', () => {
       await act(async () => pending.resolve?.({ data: LEGACY_APPROVAL_TASK }));
 
       expect(screen.getByTestId('task-approve')).toBeInTheDocument();
+    });
+
+    // The list row has no assignees, payload or ontologyReview: rendering the body
+    // from it flashed "Unassigned", a one-event timeline and, for an ontology
+    // review, a "could not be loaded" error before the full task replaced them.
+    it('renders only the header from the list row until the full task loads', async () => {
+      const pending: { resolve?: (value: { data: unknown }) => void } = {};
+      mockGetTaskById.mockReturnValue(
+        new Promise((resolve) => {
+          pending.resolve = resolve;
+        })
+      );
+
+      await act(async () =>
+        render(
+          <TaskDetailPanel
+            fallbackTask={{ ...LEGACY_APPROVAL_TASK, assignees: [] } as never}
+            taskId="task-1"
+          />
+        )
+      );
+
+      expect(screen.getByTestId('task-detail-panel')).toBeInTheDocument();
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('task-detail-summary')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('task-activity-timeline')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('label.unassigned')).not.toBeInTheDocument();
+
+      await act(async () => pending.resolve?.({ data: LEGACY_APPROVAL_TASK }));
+
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      expect(screen.getByTestId('task-detail-summary')).toBeInTheDocument();
+      expect(screen.getByTestId('task-activity-timeline')).toBeInTheDocument();
+    });
+
+    // The placeholder already explains a failed first load; a toast would say it twice.
+    it('shows why the task failed to load in place of the body, once, with a retry', async () => {
+      mockGetTaskById.mockRejectedValueOnce({ response: { status: 500 } });
+
+      await act(async () =>
+        render(
+          <TaskDetailPanel
+            fallbackTask={LEGACY_APPROVAL_TASK as never}
+            taskId="task-1"
+          />
+        )
+      );
+
+      expect(screen.getByTestId('task-detail-panel')).toBeInTheDocument();
+      expect(
+        screen.getByText('message.something-went-wrong')
+      ).toBeInTheDocument();
+      expect(mockShowErrorToast).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('task-activity-timeline')
+      ).not.toBeInTheDocument();
+
+      mockGetTaskById.mockResolvedValueOnce({ data: LEGACY_APPROVAL_TASK });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+      });
+
+      expect(screen.getByTestId('task-detail-summary')).toBeInTheDocument();
+      expect(screen.getByTestId('task-activity-timeline')).toBeInTheDocument();
     });
 
     // Only the first load gates the actions; a reload after a comment must not
@@ -1648,18 +2229,61 @@ describe('TaskDetailPanel', () => {
       });
     });
 
-    it('resolves the form schema for a legacy task only', async () => {
+    it('resolves the form schema for a typed task, legacy or workflow', async () => {
       mockGetTaskById.mockResolvedValue({ data: LEGACY_APPROVAL_TASK });
 
       await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
       expect(mockGetResolvedTaskFormSchema).toHaveBeenCalledWith(
         'RequestApproval',
-        'Approval'
+        'Approval',
+        expect.objectContaining({
+          // The legacy approval mock carries no stamped schema id; the panel
+          // forwards `task?.taskFormSchemaId` (undefined here) and the raw
+          // payload so Suggestion variants would disambiguate by suggestionType.
+          taskFormSchemaId: undefined,
+          payload: LEGACY_APPROVAL_TASK.payload,
+        })
       );
     });
 
-    it('skips the form schema fetch for a workflow-driven task', async () => {
+    // The fix fetches the schema for workflow-driven tasks too, so the
+    // transition guard can see `transitionForms` (previously only legacy tasks
+    // fetched it, so a workflow transition declaring required form fields was
+    // resolved with no payload — silent data loss).
+    it('fetches the form schema for a workflow-driven task so the transition guard can see it', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: {
+          ...TASK,
+          type: 'CustomTask',
+          category: 'Custom',
+          availableTransitions: [
+            {
+              id: 'approve',
+              label: 'Approve',
+              resolutionType: 'Approved',
+              formRef: 'approve',
+              targetTaskStatus: 'Approved',
+            },
+          ],
+        },
+      });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(mockGetResolvedTaskFormSchema).toHaveBeenCalledWith(
+        'CustomTask',
+        'Custom',
+        expect.objectContaining({
+          taskFormSchemaId: undefined,
+          payload: undefined,
+        })
+      );
+    });
+
+    // A typeless task (the fixture's plain TASK) has no schema to fetch; the
+    // panel gates nothing and renders actions straight away.
+    it('skips the form schema fetch for a typeless workflow task', async () => {
       await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
       expect(mockGetResolvedTaskFormSchema).not.toHaveBeenCalled();

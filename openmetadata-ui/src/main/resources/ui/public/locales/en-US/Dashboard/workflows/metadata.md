@@ -113,6 +113,20 @@ Option to include/exclude draft dashboards. By default it will include draft das
 $$
 
 $$section
+### Include Custom Properties $(id="includeCustomProperties")
+
+Option to add source-specific custom properties to dashboards, such as the app views, last run status, run time and refresh time of Hex projects. The custom property definitions are shared by every dashboard in OpenMetadata, so this is disabled by default.
+$$
+
+$$section
+### Include Direct Chart Lineage $(id="includeDirectChartLineage")
+
+Some connectors draw lineage straight from a chart's upstream sources to the chart, such as Looker Explore to Chart and Metabase Table to Chart. This is enabled by default. Disable it to skip those direct edges and the chart lookups behind them. The lineage from those sources to the dashboard and the Dashboard to Chart lineage are still created, so each chart stays connected to its sources through its dashboard.
+
+Direct edges written by earlier runs remain unless `Override Lineage` is enabled. In that case, the next run's Dashboard to Chart edges replace the dashboard lineage previously written to each chart.
+$$
+
+$$section
 ### Override Metadata $(id="overrideMetadata")
 
 Set the `Override Metadata` toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source.

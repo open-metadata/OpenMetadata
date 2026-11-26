@@ -98,6 +98,8 @@ interface DateRangePickerProps extends AriaDateRangePickerProps<DateValue> {
   size?: 'sm' | 'md';
   /** Stretch the trigger across its container instead of sizing it to the dates. */
   fullWidth?: boolean;
+  /** Trigger text while no range is set. Defaults to "Select dates". */
+  placeholder?: string;
 }
 
 export const DateRangePicker = ({
@@ -108,6 +110,7 @@ export const DateRangePicker = ({
   onCancel,
   size = 'md',
   fullWidth = false,
+  placeholder,
   ...props
 }: DateRangePickerProps) => {
   const { t } = useCoreTranslation();
@@ -161,7 +164,7 @@ export const DateRangePicker = ({
           size={size === 'md' ? 'lg' : 'md'}>
           {!value ? (
             <span className="tw:text-placeholder">
-              {t('label.select-dates', 'Select dates')}
+              {placeholder ?? t('label.select-dates', 'Select dates')}
             </span>
           ) : (
             `${formattedStartDate} – ${formattedEndDate}`
@@ -180,10 +183,7 @@ export const DateRangePicker = ({
         }
         offset={4}
         placement="bottom right">
-        {/* `outline-[3px]` ports the bare `tw:ring` faithfully (3px in Tailwind v4 — likely
-            unintended vs ring-1 elsewhere; tracked as a follow-up). `focus:outline-hidden`
-            removed: it would suppress this border. */}
-        <AriaDialog className="tw:flex tw:rounded-2xl tw:bg-overlay-surface tw:shadow-xl tw:outline-[3px] tw:outline-secondary_alt">
+        <AriaDialog className="tw:flex tw:rounded-2xl tw:bg-floating tw:shadow-raised">
           {({ close }) => (
             <>
               <div className="tw:hidden tw:w-38 tw:flex-col tw:gap-0.5 tw:border-r tw:border-solid tw:border-secondary tw:p-3 tw:lg:flex">

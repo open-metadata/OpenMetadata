@@ -62,14 +62,6 @@
         "@id": "om:pipelineType",
         "@type": "xsd:string"
       },
-      "sourceConfig": {
-        "@id": "om:hasSourceConfig",
-        "@type": "@json"
-      },
-      "openMetadataServerConnection": {
-        "@id": "om:hasServerConnection",
-        "@type": "@json"
-      },
       "airflowConfig": {
         "@id": "om:hasAirflowConfig",
         "@type": "@json"

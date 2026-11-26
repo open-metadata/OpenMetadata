@@ -255,6 +255,27 @@ describe('Test Pagination Component', () => {
     expect(pageIndicator).toHaveTextContent('label.page 1 label.of 2');
   });
 
+  it('should not count past the known total while the previous page cursor is still set', () => {
+    const paging = {
+      before: 'testString',
+      after: 'testString',
+      total: PAGE_SIZE * 2 + 2,
+    };
+
+    const { getByTestId } = render(
+      <NextPrevious
+        currentPage={3}
+        pageSize={PAGE_SIZE}
+        paging={paging}
+        pagingHandler={mockCallback}
+      />
+    );
+
+    expect(getByTestId('page-indicator')).toHaveTextContent(
+      'label.page 3 label.of 3'
+    );
+  });
+
   it('On clicking Previous and Next button respective pages should be rendered', async () => {
     const paging = {
       before: 'test',

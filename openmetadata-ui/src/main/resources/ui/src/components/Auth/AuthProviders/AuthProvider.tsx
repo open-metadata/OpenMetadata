@@ -74,6 +74,7 @@ import {
 } from '../../../hooks/useAppMode';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
+import { useProductTourStore } from '../../../hooks/useProductTourStore';
 import { queryClient } from '../../../queryClient';
 import axiosClient from '../../../rest/axiosClient';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
@@ -112,6 +113,7 @@ import { clearPersonaSession } from '../../../utils/PersonaSessionUtils';
 import {
   clearOidcToken,
   getOidcToken,
+  setApiOnlyTokenListener,
 } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
@@ -433,6 +435,9 @@ export const AuthProvider = ({
       clearEtagCache();
       queryClient.clear();
 
+      // A tour this user left open must not reopen for whoever signs in next.
+      useProductTourStore.getState().close();
+
       // Drop the tab-scoped app-mode session so the next user boots into
       // their own persona/preference-resolved mode rather than inheriting
       // this user's transient mode.
@@ -454,6 +459,8 @@ export const AuthProvider = ({
       // `handleRefreshFailed` recovery would never see the logout finish and
       // the SPA would be left half-logged-out with the flag stuck armed.
       isSigningOutRef.current = false;
+      // Refreshes were held off for the logout; the next sign-in needs them.
+      authCoordinator.resume();
       // A recovery that stood down for this logout returned without
       // navigating, so nothing reset this. Logout lands on /signin without a
       // reload; left set, it would swallow every refresh failure after the
@@ -464,6 +471,17 @@ export const AuthProvider = ({
 
   // Handler to perform logout within application
   const onLogoutHandler = useCallback(() => signOut(true), [signOut]);
+
+  // Bot and personal access tokens are API-only: a full sign-out pauses the
+  // AuthCoordinator, so a silent renewal cannot restore the session.
+  useEffect(() => {
+    setApiOnlyTokenListener(() => {
+      showErrorToast(t('server.api-only-token-ui-access-denied'));
+      onLogoutHandler();
+    });
+
+    return () => setApiOnlyTokenListener();
+  }, [onLogoutHandler, t]);
 
   // Signing out in one tab signs every tab out. Without this the others kept
   // showing a signed-in app until their next request failed.
@@ -539,12 +557,14 @@ export const AuthProvider = ({
    * Stores redirect URL for successful login. The query string is kept so a
    * re-authentication lands back on the same view (filters, tabs, search).
    */
-  const handleStoreProtectedRedirectPath = useCallback(() => {
-    const { pathname, search } = locationRef.current;
-    if (applicationRoutesClass.isProtectedRoute(pathname)) {
-      storeRedirectPath(`${pathname}${search}`);
-    }
-  }, [storeRedirectPath]);
+  const handleStoreProtectedRedirectPath = useCallback(
+    ({ pathname, search } = locationRef.current) => {
+      if (applicationRoutesClass.isProtectedRoute(pathname)) {
+        storeRedirectPath(`${pathname}${search}`);
+      }
+    },
+    [storeRedirectPath]
+  );
 
   const resetUserDetails = (forceLogout = false) => {
     clearPersonaSession();
@@ -576,6 +596,9 @@ export const AuthProvider = ({
 
       return;
     }
+    // Not resumed here: invokeSilentReauth leaves the page, and its failure
+    // signs out, which resumes.
+    // ADR:2026-10-28-auth-coordinator-pause-is-always-resumed-or-unloaded
     authCoordinator.pause();
     setApplicationLoading(true);
     try {
@@ -964,9 +987,10 @@ export const AuthProvider = ({
 
   // Signed-in session: load the user unless this is the SSO callback route.
   const resumeSignedInSession = async () => {
+    const entryLocation = locationRef.current;
     const oidcToken = await getOidcToken();
     if (!oidcToken) {
-      handleStoreProtectedRedirectPath();
+      handleStoreProtectedRedirectPath(entryLocation);
       setApplicationLoading(false);
 
       return;
@@ -977,8 +1001,8 @@ export const AuthProvider = ({
     // fresh token, and fetching with a token left over from before a silent
     // re-authentication would 401 into a refresh that races it.
     if (
-      ![ROUTES.AUTH_CALLBACK, ROUTES.CALLBACK, ROUTES.SILENT_CALLBACK].includes(
-        location.pathname
+      ![ROUTES.AUTH_CALLBACK, ROUTES.CALLBACK, ROUTES.SILENT_CALLBACK].some(
+        (route) => route === location.pathname
       )
     ) {
       // Fire-and-forget: `getLoggedInUserDetails` now re-throws a

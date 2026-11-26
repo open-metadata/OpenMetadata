@@ -42,8 +42,10 @@ import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggrega
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.AuditReportSearchVisibility;
 import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
+import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -51,6 +53,8 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class ElasticSearchAggregationManager implements AggregationManagementClient {
   private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
       new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory());
+  private static final AuditReportSearchVisibility REPORT_VISIBILITY =
+      new AuditReportSearchVisibility(new ElasticQueryBuilderFactory());
   private static final String MATCH_ALL_TEXT = "*";
 
   private final ElasticsearchClient client;
@@ -81,6 +85,11 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       SubjectContext subjectContext,
       ElasticSearchRequestBuilder requestBuilder,
       String queryFilter) {
+    requestBuilder
+        .filter(
+            ((ElasticQueryBuilder) REPORT_VISIBILITY.buildVisibilityFilter(subjectContext))
+                .buildV2())
+        .auditReportVisibilityResolved();
     OMQueryBuilder visibilityBuilder =
         MEMORY_VISIBILITY.buildVisibilityFilter(
             subjectContext,
@@ -135,20 +144,24 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
   /**
    * A bare query_string searches every field in the mapping, which on large data-asset mappings can
    * exceed the cluster's max_clause_count, so data-asset text goes through the configured fields
-   * instead. {@code *} and other indexes keep the bare query_string.
+   * instead. So does text from a caller who may not match on private fields, which every field
+   * includes. {@code *} and other indexes keep the bare query_string.
    */
-  private static Query plainTextQuery(String index, String text) {
+  private static Query plainTextQuery(String index, String text, boolean matchesPrivateFields) {
     String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(index);
-    if (!MATCH_ALL_TEXT.equals(text.trim()) && SearchUtils.usesDataAssetSearchBuilder(indexName)) {
-      return configuredFieldsQuery(index, text);
+    boolean configuredFields =
+        SearchUtils.usesDataAssetSearchBuilder(indexName) || !matchesPrivateFields;
+    if (!MATCH_ALL_TEXT.equals(text.trim()) && configuredFields) {
+      return configuredFieldsQuery(index, text, matchesPrivateFields);
     }
     return Query.of(q -> q.queryString(qs -> qs.query(text)));
   }
 
-  private static Query configuredFieldsQuery(String index, String text) {
+  private static Query configuredFieldsQuery(
+      String index, String text, boolean matchesPrivateFields) {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
-    return new ElasticSearchSourceBuilderFactory(searchSettings)
+    return new ElasticSearchSourceBuilderFactory(searchSettings, matchesPrivateFields)
         .getSearchSourceBuilderV2(index, text, 0, 0, false, false)
         .query();
   }
@@ -184,6 +197,8 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
 
       String indexName = Entity.getSearchRepository().getIndexOrAliasName(request.getIndex());
       searchRequestBuilder.index(indexName);
+      boolean matchesPrivateFields =
+          PrivateSearchFields.matchesPrivateFields(subjectContext, request.getIndex());
 
       Query query = null;
 
@@ -197,12 +212,13 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
             throw new IOException("Failed to parse JSON query: " + e.getMessage(), e);
           }
         } else {
-          query = plainTextQuery(indexName, request.getQuery());
+          query = plainTextQuery(indexName, request.getQuery(), matchesPrivateFields);
         }
       }
 
       if (!CommonUtil.nullOrEmpty(request.getQueryText())) {
-        Query textQuery = configuredFieldsQuery(indexName, request.getQueryText());
+        Query textQuery =
+            configuredFieldsQuery(indexName, request.getQueryText(), matchesPrivateFields);
         if (textQuery != null) {
           if (query != null) {
             final Query finalQuery = query;
@@ -237,14 +253,18 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       String includeValue = request.getFieldValue().toLowerCase();
       boolean isSearchPattern = SearchUtils.isBestMatchSearchPattern(includeValue);
 
+      List<String> sourceExcludes =
+          PrivateSearchFields.sourceExcludes(subjectContext, request.getIndex(), null);
       Map<String, Aggregation> aggregations = new HashMap<>();
 
       if (isSearchPattern) {
-        buildBestMatchAggregations(
-            aggregations, aggregationField, includeValue, bucketSize, request);
+        aggregations.putAll(
+            bestMatchAggregations(
+                aggregationField, includeValue, bucketSize, request, sourceExcludes));
       } else {
         aggregations.put(
-            aggregationField, buildSingleAgg(aggregationField, includeValue, bucketSize, request));
+            aggregationField,
+            buildSingleAgg(aggregationField, includeValue, bucketSize, request, sourceExcludes));
       }
 
       searchRequestBuilder.aggregations(aggregations);
@@ -274,22 +294,29 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
     }
   }
 
-  private void buildBestMatchAggregations(
-      Map<String, Aggregation> aggregations,
+  private Map<String, Aggregation> bestMatchAggregations(
       String field,
       String containsPattern,
       int size,
-      AggregationRequest request) {
-    String escapedRaw = SearchUtils.extractRawSearchValue(containsPattern).replace(".", "\\.");
-    aggregations.put(SearchUtils.exactAggKey(field), buildSingleAgg(field, escapedRaw, 1, request));
-    aggregations.put(
-        SearchUtils.prefixAggKey(field), buildSingleAgg(field, escapedRaw + ".*", size, request));
-    aggregations.put(
-        SearchUtils.containsAggKey(field), buildSingleAgg(field, containsPattern, size, request));
+      AggregationRequest request,
+      List<String> sourceExcludes) {
+    SearchUtils.BestMatchPatterns patterns =
+        SearchUtils.buildBestMatchIncludePatterns(containsPattern);
+    return Map.of(
+        SearchUtils.exactAggKey(field),
+        buildSingleAgg(field, patterns.exact(), 1, request, sourceExcludes),
+        SearchUtils.prefixAggKey(field),
+        buildSingleAgg(field, patterns.prefix(), size, request, sourceExcludes),
+        SearchUtils.containsAggKey(field),
+        buildSingleAgg(field, patterns.contains(), size, request, sourceExcludes));
   }
 
   private Aggregation buildSingleAgg(
-      String field, String includePattern, int size, AggregationRequest request) {
+      String field,
+      String includePattern,
+      int size,
+      AggregationRequest request,
+      List<String> sourceExcludes) {
     if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
       List<String> topHitFields = request.getSourceFields();
       int topHitSize = request.getTopHits() != null ? request.getTopHits().getSize() : 10;
@@ -310,7 +337,12 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
                                   topHit ->
                                       topHit
                                           .size(topHitSize)
-                                          .source(s -> s.filter(f -> f.includes(topHitFields)))))));
+                                          .source(
+                                              s ->
+                                                  s.filter(
+                                                      f ->
+                                                          f.includes(topHitFields)
+                                                              .excludes(sourceExcludes)))))));
     }
     return Aggregation.of(
         a ->

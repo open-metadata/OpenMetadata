@@ -33,6 +33,10 @@ def test_streams_ingested_as_topics(run_workflow, ingestion_config, nats_service
         )
         assert topic is not None
         assert topic.name.root == stream_name
+        if stream_name == "crawler-jobs":
+            assert topic.description.root == "Example stream description"
+        else:
+            assert topic.description is None
 
 
 def test_crawler_jobs_has_retention(run_workflow, ingestion_config, nats_service, metadata):

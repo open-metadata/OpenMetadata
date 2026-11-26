@@ -26,6 +26,7 @@ import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -485,7 +486,8 @@ public final class Entity {
         entity.toLowerCase(Locale.ROOT), entity);
     EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
-    EntityIndexCapabilityRegistry.register(EntityIndexCapability.forTimeSeries(entity));
+    EntityIndexCapabilityRegistry.register(
+        EntityIndexCapability.forTimeSeries(entity, entityRepository.getSearchDeletedField()));
 
     LOG.debug("Registering entity time series {} {}", clazz, entity);
   }
@@ -510,6 +512,10 @@ public final class Entity {
 
   public static Set<String> getEntityList() {
     return Collections.unmodifiableSet(ENTITY_LIST);
+  }
+
+  public static Collection<EntityRepository<? extends EntityInterface<?>>> getEntityRepositories() {
+    return Collections.unmodifiableCollection(ENTITY_REPOSITORY_MAP.values());
   }
 
   /**
@@ -782,7 +788,8 @@ public final class Entity {
         ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(
-          CatalogExceptionMessage.entityRepositoryNotFound(entityType));
+          CatalogExceptionMessage.entityRepositoryNotFound(
+              entityType, ENTITY_REPOSITORY_MAP.keySet()));
     }
     return entityRepository;
   }

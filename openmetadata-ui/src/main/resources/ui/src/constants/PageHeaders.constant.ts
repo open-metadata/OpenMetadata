@@ -283,6 +283,11 @@ export const PAGE_HEADERS = {
     subHeader: 'message.define-custom-property-for-entity',
     subHeaderParams: { entity: 'label.team-plural' },
   },
+  ARTICLE_CUSTOM_ATTRIBUTES: {
+    header: 'label.article-plural',
+    subHeader: 'message.define-custom-property-for-entity',
+    subHeaderParams: { entity: 'label.article-plural' },
+  },
   USER_CUSTOM_ATTRIBUTES: {
     header: 'label.user-plural',
     subHeader: 'message.define-custom-property-for-entity',

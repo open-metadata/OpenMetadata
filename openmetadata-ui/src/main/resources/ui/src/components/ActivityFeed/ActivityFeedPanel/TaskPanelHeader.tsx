@@ -68,11 +68,10 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
           </Typography>
           {onCancel && (
             <ButtonUtility
-              aria-label={t('label.close')}
-              color="tertiary"
               data-testid="close-drawer-button"
               icon={XClose}
-              size="xs"
+              size="lg"
+              tooltip={t('label.close')}
               onClick={onCancel}
             />
           )}

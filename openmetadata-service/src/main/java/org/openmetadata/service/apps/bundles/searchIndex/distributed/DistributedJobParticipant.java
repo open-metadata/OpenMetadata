@@ -25,12 +25,13 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
 
 /**
  * Background service that monitors for active distributed indexing jobs and joins them to help
@@ -317,9 +318,9 @@ public class DistributedJobParticipant implements Managed {
       // into this run's generation instead of relying on lossy cluster-state discovery (a 15s
       // JVM-local null cache that can silently drop the mirror write). Sink writes already
       // receive this target via ReindexContext; this closes the same gap for the live-edit mirror
-      // path. Cleared in the finally below. No-op when the OpenSearch vector service is not
-      // initialized (Elasticsearch backend, or embeddings disabled).
-      OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+      // path. Cleared in the finally below. No-op when embeddings are disabled, as there is then
+      // no vector service.
+      VectorIndexService vectorService = searchRepository.getVectorIndexService();
       if (vectorService != null) {
         reindexContext.getStagedChunkIndex().ifPresent(vectorService::latchParticipantStagedTarget);
       }
@@ -353,7 +354,8 @@ public class DistributedJobParticipant implements Managed {
                   : 100,
               job.getJobConfiguration().getPayLoadSize() != null
                   ? job.getJobConfiguration().getPayLoadSize()
-                  : SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES);
+                  : SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES,
+              ReindexingConfiguration.from(job.getJobConfiguration()).bulkRetryPolicy());
 
       int batchSize =
           job.getJobConfiguration().getBatchSize() != null
@@ -486,8 +488,8 @@ public class DistributedJobParticipant implements Managed {
       }
       // Drop the participant's run-scoped staged chunk latch so a later run cannot mirror or
       // delete into a generation that belongs to this finished (promoted or abandoned) run.
-      // No-op when the OpenSearch vector service was never initialized or never latched.
-      OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+      // No-op when there is no vector service or nothing was latched.
+      VectorIndexService vectorService = searchRepository.getVectorIndexService();
       if (vectorService != null) {
         vectorService.clearParticipantStagedTarget();
       }

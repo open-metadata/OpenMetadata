@@ -1,0 +1,200 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.security.credentials;
+
+import com.github.benmanes.caffeine.cache.Ticker;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.time.Duration;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
+import org.openmetadata.service.util.PostCommitActionQueue;
+
+/**
+ * Process-wide entry point. {@link #verifier()} is what the authentication filter checks tokens
+ * against; {@link #changed} is the write side's whole API and is optional for correctness, since
+ * the sweep finds every committed change by itself; {@link #awaitPropagation} is the opt-in
+ * synchronous revoke. Before a verifier is installed (early startup, the ops CLI) every Stored check
+ * and every {@link #awaitPropagation} call answer "cannot confirm", never "unchecked", and {@link
+ * #changed} and {@link #nudgeFromPeer} do nothing.
+ */
+@Slf4j
+public final class Credentials {
+  /** Waits that may run at once in this process, so they cannot hold every request slot. */
+  static final int MAX_CONCURRENT_PROPAGATION_WAITS = 8;
+
+  private static final Duration PROPAGATION_MARGIN = Duration.ofMillis(50);
+  private static final Semaphore PROPAGATION_WAITS =
+      new Semaphore(MAX_CONCURRENT_PROPAGATION_WAITS);
+  private static final CredentialVerifier UNINSTALLED =
+      new CredentialVerifier(
+          CredentialVerificationConfig.defaults(),
+          new NoSource(),
+          Ticker.systemTicker(),
+          new CredentialMetrics(new SimpleMeterRegistry()),
+          List.of());
+  private static volatile CredentialVerifier installed;
+
+  private Credentials() {}
+
+  public static void install(CredentialVerifier verifier) {
+    installed = Objects.requireNonNull(verifier, "verifier");
+  }
+
+  static void uninstall() {
+    installed = null;
+  }
+
+  public static CredentialVerifier verifier() {
+    CredentialVerifier verifier = installed;
+    return verifier == null ? UNINSTALLED : verifier;
+  }
+
+  /**
+   * A stored credential of {@code principalName} changed: created, rotated, revoked, or its user
+   * created, deleted or restored. Safe inside a transaction: the refresh runs after the surrounding
+   * {@link PostCommitActionQueue} scope commits, and at once outside one. Never fails the write.
+   */
+  public static void changed(String principalName) {
+    CredentialVerifier verifier = installed;
+    if (verifier != null) {
+      PostCommitActionQueue.runOrDefer(() -> refreshQuietly(verifier, principalName));
+    }
+  }
+
+  /** A peer's hint from pub/sub; the read happens on the verifier's sweep thread. */
+  public static void nudgeFromPeer(String principalName) {
+    CredentialVerifier verifier = installed;
+    if (verifier != null) {
+      try {
+        verifier.nudge(CredentialSubject.of(principalName));
+      } catch (IllegalArgumentException malformed) {
+        LOG.warn("Ignoring a credential nudge without a principal", malformed);
+      }
+    }
+  }
+
+  /**
+   * Returns once the installed verifier's maxStaleness, plus a margin for clock-rate differences
+   * between servers, has passed on the monotonic clock since this call. Call it after the revoking
+   * write has committed. By the verifier's staleness bound, a server rejects a revoked token on
+   * every check that begins at or after commit plus its own maxStaleness on its own clock. So once
+   * this returns, every server whose maxStaleness is at most this server's rejects it on every new
+   * request, and that is every server when all of them run the same settings.
+   *
+   * <p>It throws {@link CredentialUnavailableException}, answered with 503, when it cannot wait the
+   * bound out. That happens when no verifier is installed, so the bound is unknown, when {@value
+   * #MAX_CONCURRENT_PROPAGATION_WAITS} waits already run in this process, and when the thread is
+   * interrupted, in which case it restores the flag. The write has committed by then and repeating
+   * it is harmless, so the 503 asks the client to repeat the call, and the repeat waits the whole
+   * bound again.
+   */
+  public static void awaitPropagation() {
+    CredentialVerifier verifier = requireInstalled();
+    if (!PROPAGATION_WAITS.tryAcquire()) {
+      throw new CredentialUnavailableException(
+          "Too many revocations are already waiting to propagate",
+          verifier.retryAfterSeconds(),
+          null);
+    }
+    try {
+      waitOutBound(verifier);
+    } finally {
+      PROPAGATION_WAITS.release();
+    }
+  }
+
+  private static void waitOutBound(CredentialVerifier verifier) {
+    long deadline = System.nanoTime() + verifier.maxStaleness().plus(PROPAGATION_MARGIN).toNanos();
+    try {
+      sleepUntil(deadline);
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+      throw new CredentialUnavailableException(
+          "Interrupted before the revocation had propagated to every server",
+          verifier.retryAfterSeconds(),
+          interrupted);
+    }
+  }
+
+  private static void refreshQuietly(CredentialVerifier verifier, String principalName) {
+    try {
+      verifier.refreshNow(CredentialSubject.of(principalName));
+    } catch (RuntimeException failure) {
+      LOG.warn(
+          "Credential refresh for {} failed; the sweep converges within the bound",
+          principalName,
+          failure);
+    }
+    announceQuietly(principalName);
+  }
+
+  /** With Redis, peers re-read the principal at once instead of at their next sweep. */
+  private static void announceQuietly(String principalName) {
+    try {
+      CacheInvalidationPubSub pubSub = CacheBundle.getCacheInvalidationPubSub();
+      if (pubSub != null) {
+        pubSub.publish(
+            CacheInvalidationPubSub.TYPE_CREDENTIAL,
+            null,
+            CredentialSubject.of(principalName).principal(),
+            null);
+      }
+    } catch (RuntimeException failure) {
+      LOG.warn(
+          "Credential change of {} was not announced to other servers", principalName, failure);
+    }
+  }
+
+  private static CredentialVerifier requireInstalled() {
+    CredentialVerifier verifier = installed;
+    if (verifier == null) {
+      throw new CredentialUnavailableException(
+          "No credential verifier is installed to bound the propagation wait",
+          UNINSTALLED.retryAfterSeconds(),
+          null);
+    }
+    return verifier;
+  }
+
+  // Thread.sleep does not promise to sleep the whole time, so the loop re-reads the clock.
+  private static void sleepUntil(long deadlineNanos) throws InterruptedException {
+    long remaining = deadlineNanos - System.nanoTime();
+    while (remaining > 0) {
+      TimeUnit.NANOSECONDS.sleep(remaining);
+      remaining = deadlineNanos - System.nanoTime();
+    }
+  }
+
+  /** The source of the uninstalled verifier: it has no database, so every read fails. */
+  private static final class NoSource implements CredentialSource {
+    @Override
+    public Map<CredentialSubject, SourceFingerprint> fingerprints(
+        Collection<CredentialSubject> subjects) {
+      throw new IllegalStateException("No credential verifier has been installed");
+    }
+
+    @Override
+    public Map<CredentialSubject, CredentialRecord> read(
+        Collection<CredentialSubject> subjects, Map<CredentialSubject, CredentialRecord> previous) {
+      throw new IllegalStateException("No credential verifier has been installed");
+    }
+  }
+}

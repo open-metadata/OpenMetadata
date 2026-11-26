@@ -99,7 +99,7 @@ export interface TestIndicatorProps {
 export type OverallTableSummaryType = {
   title: string;
   value: number | string;
-  icon?: SvgComponent;
+  icon: SvgComponent;
   extra?: ReactNode;
   key: string;
 };

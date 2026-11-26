@@ -107,9 +107,6 @@ export const CATEGORY_TO_ENTITY_TYPE = Object.fromEntries(
 // The mode is derived from the response's own `total`, never guessed.
 export const SERVICES_ESTATE_LIMIT = 500;
 
-export const GRID_PAGE_SIZE_OPTIONS = [12, 24, 48];
-// Same steps as the grid so switching layout keeps the page you were on rather than resizing it.
-export const LIST_PAGE_SIZE_OPTIONS = [12, 24, 48];
 export const VIEW_MODE_PARAM = 'viewMode';
 export const CATEGORY_PARAM = 'category';
 // Health filter, set either by this page's own dropdown or by the landing Platform Health

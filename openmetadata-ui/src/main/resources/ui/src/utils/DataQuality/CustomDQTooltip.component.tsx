@@ -32,6 +32,7 @@ export interface DQTooltipContentProps {
   isPercentage?: boolean;
   valueFormatter?: DataInsightValueFormatter;
   className?: string;
+  footer?: ReactNode;
 }
 
 /**
@@ -45,6 +46,7 @@ export const DQTooltipContent = ({
   isPercentage,
   valueFormatter,
   className,
+  footer,
 }: DQTooltipContentProps) => (
   <div
     className={classNames(
@@ -74,6 +76,7 @@ export const DQTooltipContent = ({
         </div>
       ))}
     </div>
+    {footer}
   </div>
 );
 

@@ -191,14 +191,14 @@ class SecurityUtilTest {
         new CatalogSecurityContext(
             () -> "alice@example.com", "https", "openid", Set.of(), false, "admin");
 
-    assertEquals("alice", SecurityUtil.getUserName(impersonatedContext));
-    assertEquals("alice", SecurityUtil.getImpersonatedByUser(impersonatedContext));
+    assertEquals("alice@example.com", SecurityUtil.getUserName(impersonatedContext));
+    assertEquals("alice@example.com", SecurityUtil.getImpersonatedByUser(impersonatedContext));
 
     CatalogSecurityContext directContext =
         new CatalogSecurityContext(
             () -> "service-account/openmetadata", "https", "openid", Set.of());
 
-    assertEquals("service-account", SecurityUtil.getUserName(directContext));
+    assertEquals("service-account/openmetadata", SecurityUtil.getUserName(directContext));
     assertNull(SecurityUtil.getImpersonatedByUser(directContext));
 
     SecurityContext anonymous = mock(SecurityContext.class);
@@ -206,6 +206,15 @@ class SecurityUtilTest {
 
     assertNull(SecurityUtil.getUserName(anonymous));
     assertNull(SecurityUtil.getImpersonatedByUser(anonymous));
+  }
+
+  @Test
+  void testGetUserNameIsTheWholePrincipalName() {
+    for (String name : List.of("admin/mallory", "ingestion-bot/mallory", "admin@corp")) {
+      CatalogSecurityContext context =
+          new CatalogSecurityContext(() -> name, "https", "openid", Set.of());
+      assertEquals(name, SecurityUtil.getUserName(context));
+    }
   }
 
   @Test
@@ -566,6 +575,29 @@ class SecurityUtilTest {
 
     verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
     assertTrue(outputStream.content().contains("invalid username or password"));
+  }
+
+  /**
+   * The basic-auth email-failure paths raise {@code CustomExceptionMessage(424,
+   * FAILED_SEND_EMAIL, ...)} with a raw int status (424 is not a {@link
+   * jakarta.ws.rs.core.Response.Status} enum constant). {@link SecurityUtil#writeFailureResponse}
+   * reads the status off the exception's {@link
+   * org.openmetadata.sdk.exception.WebServiceException#getResponse()}, so a null stored status used
+   * to throw there and the filter fell through to a 500. It must now report the intended 424.
+   */
+  @Test
+  void testWriteFailureResponseKeepsNonEnum424StatusOfCustomExceptionMessage() throws IOException {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    RecordingServletOutputStream outputStream = new RecordingServletOutputStream();
+    when(response.getOutputStream()).thenReturn(outputStream);
+
+    SecurityUtil.writeFailureResponse(
+        response, new CustomExceptionMessage(424, "FAILED_SEND_EMAIL", "Email sending issue"));
+
+    verify(response).setStatus(424);
+    assertTrue(
+        outputStream.content().contains("Email sending issue"),
+        "the failure message must reach the client");
   }
 
   @Test
@@ -1352,5 +1384,36 @@ class SecurityUtilTest {
     assertEquals(
         List.of(SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN),
         SecurityUtil.configuredEmailDomains(null, "", null, true));
+  }
+
+  @Test
+  void sameIdentifierIgnoresCaseTheWayStoredNamesAreNormalized() {
+    assertTrue(SecurityUtil.sameIdentifier("John.Doe", "john.doe"));
+    assertTrue(SecurityUtil.sameIdentifier("ADMIN", "admin"));
+    assertTrue(SecurityUtil.sameIdentifier("Example.COM", "example.com"));
+  }
+
+  @Test
+  void sameIdentifierKeepsNamesApartThatOnlyUpperCaseFoldingWouldJoin() {
+    // String.equalsIgnoreCase treats each pair as equal: both characters upper-case to I and S
+    assertTrue("admın".equalsIgnoreCase("admin"));
+    assertFalse(SecurityUtil.sameIdentifier("admın", "admin"));
+    assertFalse(SecurityUtil.sameIdentifier("ſam", "sam"));
+    assertFalse(SecurityUtil.sameIdentifier("fıntech.com", "fintech.com"));
+  }
+
+  @Test
+  void sameIdentifierNeverMatchesAMissingValue() {
+    assertFalse(SecurityUtil.sameIdentifier(null, "admin"));
+    assertFalse(SecurityUtil.sameIdentifier("admin", null));
+    assertFalse(SecurityUtil.sameIdentifier(null, null));
+  }
+
+  @Test
+  void registrationDomainCheckRejectsADomainThatOnlyFoldsOntoAnAllowedOne() {
+    assertTrue(
+        SecurityUtil.isEmailRegistrationDomainAllowed("a@Fintech.com", Set.of("fintech.com")));
+    assertFalse(
+        SecurityUtil.isEmailRegistrationDomainAllowed("a@fıntech.com", Set.of("fintech.com")));
   }
 }

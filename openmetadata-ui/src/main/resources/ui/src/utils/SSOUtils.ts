@@ -25,7 +25,7 @@ import SamlIcon from '../assets/svg/ic-saml.svg';
 
 import { ErrorSchema } from '@rjsf/utils';
 import { AxiosError } from 'axios';
-import { isNil } from 'lodash';
+import { cloneDeep, isNil } from 'lodash';
 import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
@@ -518,8 +518,9 @@ const cleanupAuthorizerConfig = (
 
   authorizerConfig.enforcePrincipalDomain ??= false;
   authorizerConfig.enableSecureSocketConnection ??= false;
-  authorizerConfig.className = DEFAULT_AUTHORIZER_CLASS_NAME;
-  authorizerConfig.containerRequestFilter = DEFAULT_CONTAINER_REQUEST_FILTER;
+  // A deployment may run its own authorizer; the defaults only fill a gap.
+  authorizerConfig.className ??= DEFAULT_AUTHORIZER_CLASS_NAME;
+  authorizerConfig.containerRequestFilter ??= DEFAULT_CONTAINER_REQUEST_FILTER;
 };
 
 /**
@@ -581,6 +582,52 @@ const cleanupSamlIdp = (
   }
 };
 
+const SAML_ACS_SUFFIX = /\/api\/v1\/saml\/acs\/*$/;
+
+/**
+ * An earlier form version saved the ACS URL as the browser callback. The ACS
+ * servlet only accepts POST, so such a callback must not be kept.
+ */
+const isSamlAcsCallback = (callback: string, acs: string): boolean =>
+  callback === acs || SAML_ACS_SUFFIX.test(callback.split(/[?#]/)[0]);
+
+/**
+ * The UI callback next to an ACS URL. An ACS served under a base path keeps
+ * that path: https://host/om/api/v1/saml/acs pairs with
+ * https://host/om/callback, whatever trailing slashes the base path carries.
+ */
+const browserCallbackFor = (acs: URL): string => {
+  const suffix = SAML_ACS_SUFFIX.exec(acs.pathname);
+  const basePath = suffix
+    ? acs.pathname.slice(0, suffix.index).replace(/\/+$/, '')
+    : '';
+
+  return `${acs.origin}${basePath}/callback`;
+};
+
+/**
+ * The browser callback to save: the first saved callback that is not the ACS
+ * URL, or the one derived from the ACS when none is.
+ */
+const resolveSamlBrowserCallback = (
+  acs: string,
+  configuredCallbacks: Array<string | undefined>
+): string | undefined => {
+  const usableCallback = configuredCallbacks.find(
+    (callback) => callback && !isSamlAcsCallback(callback, acs)
+  );
+
+  try {
+    const url = new URL(acs);
+
+    return url.pathname.endsWith('/callback')
+      ? acs
+      : usableCallback || browserCallbackFor(url);
+  } catch {
+    return usableCallback;
+  }
+};
+
 /**
  * Cleans SAML SP configuration
  */
@@ -588,9 +635,22 @@ const cleanupSamlSp = (
   spConfig: Record<string, unknown>,
   authConfig: AuthenticationConfiguration
 ): void => {
-  if (typeof spConfig.callback === 'string') {
-    authConfig.callbackUrl = spConfig.callback;
-    spConfig.acs = spConfig.callback;
+  const acs =
+    typeof spConfig.acs === 'string' && spConfig.acs
+      ? spConfig.acs
+      : spConfig.callback;
+
+  if (typeof acs === 'string' && acs) {
+    spConfig.acs = acs;
+    const callbackUrl = resolveSamlBrowserCallback(acs, [
+      authConfig.callbackUrl,
+      typeof spConfig.callback === 'string' ? spConfig.callback : undefined,
+    ]);
+
+    if (callbackUrl) {
+      authConfig.callbackUrl = callbackUrl;
+      spConfig.callback = callbackUrl;
+    }
   }
   if (typeof spConfig.spX509Certificate === 'string') {
     spConfig.spX509Certificate = spConfig.spX509Certificate.replaceAll(
@@ -652,7 +712,9 @@ export const cleanupProviderSpecificFields = (
     return undefined;
   }
 
-  const cleanedData = { ...data };
+  // A deep copy: callers compare the result with the data they passed in, so
+  // cleaning must never change that data.
+  const cleanedData = cloneDeep(data);
 
   if (cleanedData.authenticationConfiguration) {
     cleanupAuthenticationConfig(
@@ -1102,14 +1164,9 @@ export const createFormKeyDownHandler = () => {
     ) {
       const target = e.target as HTMLElement;
 
-      if (
-        target.tagName === 'INPUT' ||
-        target.classList.contains('ant-input')
-      ) {
+      if (target.tagName === 'INPUT') {
         // Enter in a combobox picks or creates a value, so it must reach it.
-        const isInSelectTags = target.closest(
-          '.ant-select-selector, [role="combobox"]'
-        );
+        const isInSelectTags = target.closest('[role="combobox"]');
         if (!isInSelectTags) {
           e.preventDefault();
           e.stopPropagation();
@@ -1162,27 +1219,28 @@ const resolveSsoLoginUrl = (
   return fallback;
 };
 
-const resolveX509Certificate = (
+const resolveX509Certificates = (
   keyDescriptors: HTMLCollectionOf<Element>
-): string | undefined => {
-  let fallback: string | undefined;
-
-  for (const keyDescriptor of keyDescriptors) {
-    const use = keyDescriptor.getAttribute('use');
-    const x509 = keyDescriptor.getElementsByTagNameNS(
+): string[] => {
+  const signing: string[] = [];
+  const fallback: string[] = [];
+  for (const descriptor of keyDescriptors) {
+    const use = descriptor.getAttribute('use');
+    if (use && use !== 'signing') {
+      continue;
+    }
+    for (const certificate of descriptor.getElementsByTagNameNS(
       XMLDSIG_NS,
       'X509Certificate'
-    )[0];
-
-    if (use === 'signing' && x509?.textContent) {
-      return x509.textContent.replaceAll(/\s+/g, '');
-    }
-    if (!use && !fallback && x509?.textContent) {
-      fallback = x509.textContent.replaceAll(/\s+/g, '');
+    )) {
+      const value = certificate.textContent?.replaceAll(/\s+/g, '');
+      if (value) {
+        (use === 'signing' ? signing : fallback).push(value);
+      }
     }
   }
 
-  return fallback;
+  return [...new Set([...signing, ...fallback])];
 };
 
 export const parseSamlMetadataXml = (xmlString: string): SamlIdpMetadata => {
@@ -1193,9 +1251,8 @@ export const parseSamlMetadataXml = (xmlString: string): SamlIdpMetadata => {
     throw new Error('Invalid XML: the file could not be parsed.');
   }
 
-  const entityId = doc
-    .getElementsByTagNameNS(SAML_MD_NS, 'EntityDescriptor')[0]
-    ?.getAttribute('entityID');
+  const entity = doc.getElementsByTagNameNS(SAML_MD_NS, 'EntityDescriptor')[0];
+  const entityId = entity?.getAttribute('entityID');
 
   if (!entityId) {
     throw new Error(
@@ -1203,9 +1260,12 @@ export const parseSamlMetadataXml = (xmlString: string): SamlIdpMetadata => {
     );
   }
 
-  const ssoLoginUrl = resolveSsoLoginUrl(
-    doc.getElementsByTagNameNS(SAML_MD_NS, 'SingleSignOnService')
-  );
+  const idp = entity.getElementsByTagNameNS(SAML_MD_NS, 'IDPSSODescriptor')[0];
+  const ssoLoginUrl =
+    idp &&
+    resolveSsoLoginUrl(
+      idp.getElementsByTagNameNS(SAML_MD_NS, 'SingleSignOnService')
+    );
 
   if (!ssoLoginUrl) {
     throw new Error(
@@ -1213,11 +1273,11 @@ export const parseSamlMetadataXml = (xmlString: string): SamlIdpMetadata => {
     );
   }
 
-  const certText = resolveX509Certificate(
-    doc.getElementsByTagNameNS(SAML_MD_NS, 'KeyDescriptor')
+  const certificates = resolveX509Certificates(
+    idp.getElementsByTagNameNS(SAML_MD_NS, 'KeyDescriptor')
   );
 
-  if (!certText) {
+  if (!certificates.length) {
     throw new Error(
       'Invalid metadata: no X509Certificate found. A signing certificate is required.'
     );
@@ -1226,6 +1286,11 @@ export const parseSamlMetadataXml = (xmlString: string): SamlIdpMetadata => {
   return {
     entityId,
     ssoLoginUrl,
-    idpX509Certificate: `-----BEGIN CERTIFICATE-----\n${certText}\n-----END CERTIFICATE-----`,
+    idpX509Certificate: certificates
+      .map(
+        (certificate) =>
+          `-----BEGIN CERTIFICATE-----\n${certificate}\n-----END CERTIFICATE-----`
+      )
+      .join('\n'),
   };
 };

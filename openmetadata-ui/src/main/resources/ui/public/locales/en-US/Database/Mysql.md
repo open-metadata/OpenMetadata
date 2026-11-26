@@ -22,14 +22,14 @@ The user needs `SHOW VIEW` to ingest view definitions. When the user has no `SEL
 To ingest stored procedures and functions with their code, also run `GRANT SHOW_ROUTINE ON *.* TO '<username>';` (MySQL 8.0.20 and up). With only `EXECUTE`, the connector ingests them without their code.
 
 $$note
-OpenMetadata supports MySQL version `8.0.0` and up. 
+OpenMetadata supports MySQL version `8.0.0` and up.
 $$
 
-### Lineage & Usage 
+### Lineage & Usage
 To extract lineage & usage you need to enable the query logging in mysql and the user used in the connection needs to have select access to the `mysql.general_log`.
 
 ```sql
--- Enable Logging 
+-- Enable Logging
 SET GLOBAL general_log='ON';
 set GLOBAL log_output='table';
 
@@ -38,7 +38,7 @@ GRANT SELECT ON mysql.general_log TO '<username>'@'<host>';
 ```
 
 ### Profiler & Data Quality
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/profiler-workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/quality" target="_blank">here</a>.
 
 You can find further information on the MySQL connector in the <a href="https://docs.open-metadata.org/connectors/database/mysql" target="_blank">docs</a>.
 

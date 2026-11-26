@@ -20,6 +20,7 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
+import 'reactflow/dist/style.css';
 import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
@@ -35,7 +36,10 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getTaskExecStatus } from '../../../utils/PipelineDetailsUtils';
 import { replaceSpaceWith_ } from '../../../utils/StringUtils';
 import TaskNode from './TaskNode/TaskNode';
-import './tasks-dag-view.style.less';
+import {
+  TASKS_DAG_PRO_OPTIONS,
+  TASK_NODE_WRAPPER_STYLE,
+} from './TasksDAGView.constants';
 
 export interface Props {
   tasks: Task[];
@@ -82,8 +86,8 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       );
 
       return {
-        className: 'leaf-node',
         id: replaceSpaceWith_(task.name),
+        style: TASK_NODE_WRAPPER_STYLE,
         type: getNodeType(task),
         data: {
           label: getEntityName(task),
@@ -133,6 +137,7 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       minZoom={MIN_ZOOM_VALUE}
       nodeTypes={nodeTypes}
       nodes={nodesData}
+      proOptions={TASKS_DAG_PRO_OPTIONS}
       selectNodesOnDrag={false}
       zoomOnDoubleClick={false}
       zoomOnScroll={false}
@@ -142,11 +147,7 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       }}
       onNodesChange={onNodesChange}>
       <Background gap={12} size={1} />
-      <Controls
-        className="task-dag-control-btn"
-        position="bottom-right"
-        showInteractive={false}
-      />
+      <Controls position="bottom-right" showInteractive={false} />
     </ReactFlow>
   ) : (
     <Fragment />

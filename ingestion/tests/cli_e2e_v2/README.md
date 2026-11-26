@@ -1,7 +1,7 @@
 # CLI E2E v2
 
 Real source → `metadata` subprocess → real OpenMetadata sink/server → persisted SDK observations.
-MySQL is the reference connector. Postgres has a native v2 suite, BigQuery is the first cloud-warehouse migration (see [BigQuery](#bigquery)), Oracle is the first source whose schemas are database users (see [Oracle](#oracle)), and Snowflake reads its lagging ACCOUNT_USAGE views through an owned real-time shim (see [Snowflake](#snowflake)). Dashboard authoring is design-validated only; this suite does not ship live Metabase coverage.
+MySQL is the reference connector. Postgres has a native v2 suite, BigQuery is the first cloud-warehouse migration (see [BigQuery](#bigquery)), Oracle is the first source whose schemas are database users (see [Oracle](#oracle)), Snowflake reads its lagging ACCOUNT_USAGE views through an owned real-time shim (see [Snowflake](#snowflake)), and MSSQL owns one database and a least-privilege login inside a disposable SQL Server (see [MSSQL](#mssql)). Dashboard authoring is design-validated only; this suite does not ship live Metabase coverage.
 
 | Connector | Source ownership | v1 path it replaces |
 |---|---|---|
@@ -10,10 +10,11 @@ MySQL is the reference connector. Postgres has a native v2 suite, BigQuery is th
 | `bigquery` | fresh labelled dataset per test in two real GCP projects | `cli_e2e/test_cli_bigquery.py`, `cli_e2e/test_cli_bigquery_multiple_project.py` |
 | `oracle` | disposable testcontainers Oracle + restricted account, fresh schema (an Oracle user) per test | `cli_e2e/test_cli_oracle.py` |
 | `snowflake` | fresh schema per test in one real Snowflake database | `cli_e2e/test_cli_snowflake.py` |
+| `mssql` | disposable testcontainers SQL Server + restricted login, one owned database, fresh schema per test | `cli_e2e/test_cli_mssql.py` |
 
 ## Run
 
-From the repository root, activate a development virtual environment with the ingestion package, connector dependencies, and pytest installed. MySQL, Postgres and Oracle also require testcontainers and Docker for their disposable sources. Supply a running, compatible OpenMetadata server separately; the suite does not provision or stop that server.
+From the repository root, activate a development virtual environment with the ingestion package, connector dependencies, and pytest installed. MySQL, Postgres, Oracle and MSSQL also require testcontainers and Docker for their disposable sources. Supply a running, compatible OpenMetadata server separately; the suite does not provision or stop that server.
 
 ```bash
 source env/bin/activate
@@ -22,6 +23,17 @@ export OM_SERVER_URL=http://localhost:8585/api
 python -m pytest ingestion/tests/cli_e2e_v2/mysql --e2e-contract-check -v
 python -m pytest ingestion/tests/cli_e2e_v2/postgres --e2e-contract-check -v
 ```
+
+To use the same locked environment and command as CI, run from `ingestion/`:
+
+```bash
+nox --no-venv -s cli-e2e -- mysql --suite v2 --no-cov
+```
+
+The `cli-e2e` session defaults to legacy tests; `--suite v2` selects the replacement directory and
+enforces its contracts. BigQuery uses six workers and Snowflake four. Both workflows use
+`reusable-py-cli-e2e-tests.yml` for stack setup, reporting, failure diagnostics and teardown.
+V2 remains manually dispatched with coverage disabled during stabilization.
 
 Use `OM_JWT_TOKEN` for an existing token. Without it, `server.py` authenticates with `OM_ADMIN_EMAIL` / `OM_ADMIN_PASSWORD` (defaults: `admin@open-metadata.org` / `admin`) and obtains the ingestion-bot token. Missing credentials, unreachable services, and failed provisioning are errors, not skips.
 
@@ -40,10 +52,8 @@ env -u OM_JWT_TOKEN OM_SERVER_URL=http://127.0.0.1:1/api \
   python -m pytest ingestion/tests/cli_e2e_v2/meta -q
 ```
 
-The shared Python CI workflow runs this offline suite once, on Python 3.10, when E2E code,
-ingestion dependency/test configuration, generated-model schemas, or the relevant CI wiring changes.
-It reuses the unit-test environment and does not run live connectors. Unrelated changes skip this step;
-manual Python workflow runs include it. The live connector workflow remains manually triggered.
+Nightly runs this offline suite once, in the unit-test environment on the highest supported Python
+version. PR and merge-queue unit runs exclude it. The live connector workflow remains manually triggered.
 
 ## Boundaries
 
@@ -57,6 +67,7 @@ cli_e2e_v2/
   bigquery/            owned datasets in two GCP projects, same layout as mysql/ plus test_data_quality.py
   oracle/              owned container and one Oracle user per test, same layout as mysql/
   snowflake/           owned schemas in one Snowflake database, bigquery/ layout plus test_features.py
+  mssql/               owned SQL Server database and one schema per test, same layout as postgres/
   meta/                offline runtime and framework behavior tests
   server.py            explicit OM configuration and authentication
   conftest.py          shared fixtures and thin pytest hooks
@@ -181,10 +192,10 @@ types, per-table system metrics, foreign keys to the current database, `ARRAY`/`
 STRUCT-subfield sampling and unique counts, and a shared-session race between profiler metric threads.
 
 Do not relax these expectations to report a green run. Running with ADC as a user without project-level
-`bigquery.tables.list` on the second project also fails `catalog.multi-project` on the region-scoped
-life-cycle query (403). That is a permission difference in the environment, not a product defect.
+`bigquery.tables.list` on the second project also fails `catalog.multi-project` (403). That is a
+permission difference in the environment, not a product defect.
 
-Remove the v1 BigQuery tests and their `py-cli-e2e-tests.yml` matrix entries only after this suite has
+Remove the v1 BigQuery tests and their `ci-nightly.yml` default connector entries only after this suite has
 passed for the agreed stability window.
 The manually dispatched v2 workflow runs BigQuery with six workers and passes the existing test
 environment credentials only to its BigQuery matrix job.
@@ -249,7 +260,7 @@ Fixed while migrating, found by a strict assertion here: foreign keys were silen
 `get_foreign_keys` reported `referred_table` normalised while `get_table_names` returns the
 dictionary name verbatim, so the exact-FQN lookup never matched.
 
-Remove the v1 Oracle test and its `py-cli-e2e-tests.yml` matrix entry only after this suite has
+Remove the v1 Oracle test and its `ci-nightly.yml` default connector entry only after this suite has
 passed for the agreed stability window.
 
 ## Snowflake
@@ -340,5 +351,100 @@ The manually dispatched v2 workflow runs Snowflake with four workers and passes 
 test drops and recreates that database for every test, so the Snowflake jobs of both workflows share the
 concurrency group `cli-e2e-snowflake-database`, which runs one at a time and never cancels a running job.
 GitHub keeps one pending job per group, so a newer Snowflake run replaces a pending one, and a replaced
-v1 nightly leg reports as cancelled. Remove the v1 Snowflake test, its `py-cli-e2e-tests.yml` matrix entry
-and that workflow's concurrency group only after this suite has passed for the agreed stability window.
+v1 nightly leg reports as cancelled. Remove the v1 Snowflake test, its `ci-nightly.yml` default connector entry
+and the v1 Snowflake concurrency group in `reusable-py-cli-e2e-tests.yml` only after this suite has
+passed for the agreed stability window.
+
+## MSSQL
+
+`mssql/` boots a disposable SQL Server via testcontainers (`mcr.microsoft.com/mssql/server:2022-latest`,
+digest-pinned) and owns **one database** for the session plus **one schema per test** inside it. A
+separate least-privilege login does the ingesting: it owns nothing and holds `SELECT` and
+`VIEW DEFINITION` on exactly the owned schemas, which covers tables, view definitions and the
+extended-property descriptions. No credentials or ports to manage, so the `E2E_MSSQL_*` secrets v1
+needed are gone.
+
+```bash
+docker compose -f docker/development/docker-compose.yml up -d
+python -m pytest ingestion/tests/cli_e2e_v2/mssql --e2e-contract-check -v
+```
+
+The image is published for amd64 only, so an arm64 machine runs it under emulation and the first boot
+takes minutes; the fixture's readiness budget is sized for that. testcontainers 4.8 — the version
+`ingestion[test]` pins — waits by exec'ing `/opt/mssql-tools/bin/sqlcmd` without `-C`, which the 2022
+image (shipping `mssql-tools18`) can never satisfy, so the container subclass here replaces that probe
+with a `mssql+pytds` connection loop over the driver the connector itself uses.
+
+Every workflow carries an anchored `schemaFilterPattern` for the owned schemas, and the invocation
+helper rejects a filter naming anything else: `sys.schemas` lists `dbo`, `guest`, `INFORMATION_SCHEMA`
+and the `db_*` roles to the restricted login as well, so an unscoped run would reach beyond the fixture.
+Owned names also stay clear of the connector's default filters — schemas `^db_.*`, `^guest$`, `^sys$`,
+`^information_schema$`, databases `^msdb$`, `^model$`, `^tempdb$`, and stored procedures `^sp_`, `^xp_`,
+`^ms_`, which is why the fixture procedure is `usp_active_customer_count`.
+
+**Descriptions.** SQL Server keeps them in extended properties and no SQLAlchemy DDL emits them, so the
+baseline strips the shared declarations' comments and adds `sp_addextendedproperty` statements for the
+objects this suite asserts. The repeat-ingest scenario updates one with `sp_updateextendedproperty`.
+
+v1 → v2 mapping:
+
+| v1 behaviour | v2 contract |
+|---|---|
+| vanilla ingestion (int, varchar, date, bit), no failures, ≥ N records | `catalog.metadata` (complete inventory, native types, constraints, descriptions, view) |
+| create table + profiler (no system-profile cases) | `profile.metrics` |
+| auto-classification, exactly 6 sample rows | `sample.limit`, `sample.values.original`, `sample.values.updated`, `sample.values.replacement`, `classification.tags` |
+| deleted table marked deleted | `deletion.tables` (the dependent view too) |
+| schema include / exclude filters | `filter.schema.include-one`, `filter.schema.exclude-wins` |
+| table include / exclude / mix filters (filtered-count floors) | `filter.table.include-one`, `filter.table.exclude-one`, `filter.table.mix`, `filter.table.regex-exclude-wins`, `filter.table.exclude-wins` |
+| lineage run (`mssql-lineage`), 4 column edges `persons` → `view_persons` | `lineage.view` — the table edge and **every** native column |
+| profiler time partition (TIME-UNIT, `birthdate`, 30 YEAR) | `profile.partition.time-unit` |
+
+Added beyond v1: `procedure.code`, `fk.relationships`, `ingest.repeat`. v1 exercised none of them.
+
+v1 tests with no v2 counterpart exercise nothing: `test_usage` has an empty body, `test_data_quality`
+returns immediately because MSSQL declares no data-quality table, and `get_system_profile_cases`
+returns `[]`, so the profiler test's system-metrics half asserts nothing. Query-log lineage,
+stored-procedure lineage and synonyms stay out of scope, as for the other SQL suites.
+
+**The partition seeds follow the run date.** v1 configured a 30-YEAR window over fixed birthdates, so
+which rows it profiled depended on the year the test ran — `1997-12-03` leaves that window in December
+2027 and v1's expected metrics would start failing. Here three birthdates are seeded inside the window
+and three outside it, both resolved against the run date, and the contract checks that only the three
+inside are profiled.
+
+`error.containment` is declared `unsupported` in the inventory with its reason: SQL Server keeps a
+non-schemabound view's column metadata after the base column is dropped, so `get_view_names` still
+lists the view and `get_columns` still returns the dropped column from `sys.columns`; the reference
+induction produces no ingestion error, exactly as on Oracle.
+
+**Privileges.** `SELECT` and `VIEW DEFINITION` on the owned schemas cover metadata,
+view definitions and descriptions, but the profiler also needs
+`VIEW DATABASE PERFORMANCE STATE`: MSSQL table metrics read `sys.dm_db_partition_stats`
+for every table, and the connector only falls back to `sys.partitions` on a
+`ProgrammingError`, not on the permission error that DMV raises. That grant reads no data
+and writes nothing, so the account stays read-only — `test_fixture_safety.py` proves it.
+
+**Partitioned profiles.** Those same table metrics describe the whole table whatever the
+partition configuration says, so a TIME-UNIT profile shows its window in the column
+metrics only — exactly as Snowflake's INFORMATION_SCHEMA table metrics do. The contract
+asserts the full row count at table level and the in-window count per column.
+
+`rowversion` is stored as `TIMESTAMP`: SQL Server reflects the column through its ANSI synonym
+`timestamp` and ingestion has always mapped it that way (`column_type_parser`'s `ROWVERSION` entry is
+never reached for a reflected column). Renaming the type is a product decision beyond this migration,
+so the suite encodes what OM stores and asserts the **value** instead — #34360's conversion turns the
+raw 8 bytes into the unsigned counter they encode, which `test_samples.py` requires.
+
+Fixed while migrating, found by a strict assertion here: an `XML` column had no entry in the
+profiler's ORM type map, so it fell back to `CustomTypes.UNDETERMINED` and its sample data
+persisted as the literal `OPENMETADATA_UNDETERMIND[<root/>]` instead of the document. `XML`
+now maps to `TEXT`, like every other textual type, for every connector that has one.
+
+**Wired into CI.** `mssql` is in `py-cli-e2e-tests-v2.yml`'s dispatch default, which also defines the
+allowed connector list. Selection is validated before image builds. It runs in the
+generic `Run CLI E2E v2 tests` step, like Oracle and Postgres, because the suite owns its source
+through testcontainers and needs no secrets. The workflow is `workflow_dispatch` only, so the suite
+runs when it is dispatched rather than on every PR; the command above still runs it locally.
+
+Remove the v1 MSSQL test and its `ci-nightly.yml` default connector entry only after this suite has passed
+for the agreed stability window.

@@ -29,7 +29,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetri
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressNode;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
-import org.openmetadata.schema.entity.services.ingestionPipelines.ServiceProgressEvent;
+import org.openmetadata.service.monitoring.IngestionProgressTracker.ServiceProgressSnapshot;
 
 class IngestionProgressTrackerTest {
 
@@ -267,22 +267,22 @@ class IngestionProgressTrackerTest {
   void testServiceListenerReceivesAllPipelinesOfService() {
     UUID run1 = UUID.randomUUID();
     UUID run2 = UUID.randomUUID();
-    List<ServiceProgressEvent> received = new ArrayList<>();
+    List<ServiceProgressSnapshot> received = new ArrayList<>();
     tracker.registerServiceListener("svc", received::add);
 
     tracker.updateProgress("svc.metadata", run1, processing(run1, "m"));
     tracker.updateProgress("svc.lineage", run2, processing(run2, "l"));
 
     assertEquals(2, received.size());
-    assertEquals("svc.metadata", received.get(0).getPipelineFqn());
-    assertEquals("svc.lineage", received.get(1).getPipelineFqn());
-    assertEquals(run1.toString(), received.get(0).getRunId());
+    assertEquals("svc.metadata", received.get(0).event().getPipelineFqn());
+    assertEquals("svc.lineage", received.get(1).event().getPipelineFqn());
+    assertEquals(run1.toString(), received.get(0).event().getRunId());
   }
 
   @Test
   void testServiceListenerIsolation() {
     UUID run = UUID.randomUUID();
-    List<ServiceProgressEvent> svcA = new ArrayList<>();
+    List<ServiceProgressSnapshot> svcA = new ArrayList<>();
     tracker.registerServiceListener("svcA", svcA::add);
 
     tracker.updateProgress("svcB.metadata", run, processing(run, "b"));
@@ -298,35 +298,36 @@ class IngestionProgressTrackerTest {
     tracker.updateProgress("svc.metadata", run1, processing(run1, "m2"));
     tracker.updateProgress("svc.lineage", run2, processing(run2, "l1"));
 
-    List<ServiceProgressEvent> snaps = tracker.getActiveRunSnapshots("svc");
+    List<ServiceProgressSnapshot> snaps = tracker.getActiveRunSnapshots("svc");
     assertEquals(2, snaps.size());
 
     tracker.updateProgress("svc.metadata", run1, terminal(run1));
 
-    List<ServiceProgressEvent> after = tracker.getActiveRunSnapshots("svc");
+    List<ServiceProgressSnapshot> after = tracker.getActiveRunSnapshots("svc");
     assertEquals(1, after.size());
-    assertEquals("svc.lineage", after.get(0).getPipelineFqn());
+    assertEquals("svc.lineage", after.get(0).event().getPipelineFqn());
   }
 
   @Test
   void testTerminalEventIsForwardedBeforeDrop() {
     UUID run = UUID.randomUUID();
-    List<ServiceProgressEvent> received = new ArrayList<>();
+    List<ServiceProgressSnapshot> received = new ArrayList<>();
     tracker.registerServiceListener("svc", received::add);
 
     tracker.updateProgress("svc.metadata", run, processing(run, "p"));
     tracker.updateProgress("svc.metadata", run, terminal(run));
 
     assertEquals(2, received.size());
-    assertEquals(ProgressUpdateType.PIPELINE_COMPLETE, received.get(1).getEvent().getUpdateType());
+    assertEquals(
+        ProgressUpdateType.PIPELINE_COMPLETE, received.get(1).event().getEvent().getUpdateType());
     assertTrue(tracker.getActiveRunSnapshots("svc").isEmpty());
   }
 
   @Test
   void testUnregisterServiceListenerStopsDelivery() {
     UUID run = UUID.randomUUID();
-    List<ServiceProgressEvent> received = new ArrayList<>();
-    Consumer<ServiceProgressEvent> listener = received::add;
+    List<ServiceProgressSnapshot> received = new ArrayList<>();
+    Consumer<ServiceProgressSnapshot> listener = received::add;
     tracker.registerServiceListener("svc", listener);
     tracker.updateProgress("svc.metadata", run, processing(run, "a"));
     tracker.unregisterServiceListener("svc", listener);
@@ -337,7 +338,7 @@ class IngestionProgressTrackerTest {
   @Test
   void serviceEventCarriesIngestionPipelineWhenProvided() {
     UUID run = UUID.randomUUID();
-    List<ServiceProgressEvent> received = new ArrayList<>();
+    List<ServiceProgressSnapshot> received = new ArrayList<>();
     tracker.registerServiceListener("svc", received::add);
 
     IngestionPipeline pipeline =
@@ -345,20 +346,69 @@ class IngestionProgressTrackerTest {
     tracker.updateProgress("svc.metadata", run, discovery(run), pipeline);
 
     assertEquals(1, received.size());
-    assertNotNull(received.get(0).getIngestionPipeline());
-    assertEquals("svc.metadata", received.get(0).getIngestionPipeline().getFullyQualifiedName());
+    assertNotNull(received.get(0).event().getIngestionPipeline());
+    assertEquals(
+        "svc.metadata", received.get(0).event().getIngestionPipeline().getFullyQualifiedName());
+  }
+
+  @Test
+  void unresolvedRunCannotAdoptLaterPipelineIdentity() {
+    UUID run = UUID.randomUUID();
+    UUID pipelineId = UUID.randomUUID();
+    IngestionPipeline pipeline =
+        new IngestionPipeline()
+            .withId(pipelineId)
+            .withName("metadata")
+            .withFullyQualifiedName("svc.metadata");
+    List<ServiceProgressSnapshot> received = new ArrayList<>();
+    tracker.registerServiceListener("svc", received::add);
+
+    tracker.updateProgress("svc.metadata", run, processing(run, "unbound"));
+    tracker.updateProgress("svc.metadata", run, processing(run, "bound"), pipeline);
+
+    assertEquals(2, received.size());
+    assertNull(received.getFirst().pipelineId());
+    assertNull(received.getLast().pipelineId());
+    assertNull(tracker.getActiveRunSnapshots("svc").getFirst().pipelineId());
+  }
+
+  @Test
+  void serviceEventsKeepIdentityWithoutRepeatingDiscoveryPayload() {
+    UUID run = UUID.randomUUID();
+    UUID pipelineId = UUID.randomUUID();
+    IngestionPipeline pipeline =
+        new IngestionPipeline()
+            .withId(pipelineId)
+            .withName("metadata")
+            .withFullyQualifiedName("svc.metadata");
+    List<ServiceProgressSnapshot> received = new ArrayList<>();
+    tracker.registerServiceListener("svc", received::add);
+
+    tracker.updateProgress("svc.metadata", run, discovery(run), pipeline);
+    IngestionPipeline replacement =
+        new IngestionPipeline()
+            .withId(UUID.randomUUID())
+            .withName("metadata")
+            .withFullyQualifiedName("svc.metadata");
+    tracker.updateProgress("svc.metadata", run, processing(run, "processing"), replacement);
+
+    assertEquals(2, received.size());
+    assertTrue(received.stream().allMatch(snapshot -> pipelineId.equals(snapshot.pipelineId())));
+    assertNotNull(received.getFirst().event().getIngestionPipeline());
+    assertNull(received.getLast().event().getIngestionPipeline());
+    assertEquals(pipelineId, tracker.getActiveRunSnapshots("svc").getFirst().pipelineId());
   }
 
   @Test
   void serviceEventHasNoIngestionPipelineByDefault() {
     UUID run = UUID.randomUUID();
-    List<ServiceProgressEvent> received = new ArrayList<>();
+    List<ServiceProgressSnapshot> received = new ArrayList<>();
     tracker.registerServiceListener("svc", received::add);
 
     tracker.updateProgress("svc.metadata", run, processing(run, "p"));
 
     assertEquals(1, received.size());
-    assertNull(received.get(0).getIngestionPipeline());
+    assertNull(received.get(0).event().getIngestionPipeline());
   }
 
   private static ProgressUpdate discovery(UUID runId) {

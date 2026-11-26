@@ -17,10 +17,22 @@ import {
   TaskStatus as TaskEntityStatus,
   TaskType,
 } from '../generated/entity/tasks/task';
+import ontologyExplorerClassBase from './OntologyExplorerClassBase';
 
-export const isOntologyReviewTask = (task: Task): boolean =>
+export const isOntologyReviewTask = (
+  task: Pick<Task, 'type' | 'about'>
+): boolean =>
   task.type === TaskType.RequestApproval &&
   task.about?.type === 'ontologyRelease';
+
+/** Approve and Reject wait until the review panel, where there is one, has loaded the release. */
+export const isAwaitingReviewPanel = (
+  task: Pick<Task, 'id' | 'type' | 'about'>,
+  readyTaskId: string | undefined
+): boolean =>
+  isOntologyReviewTask(task) &&
+  ontologyExplorerClassBase.getReviewPanel() !== null &&
+  readyTaskId !== task.id;
 
 export const getTaskResolveBody = (
   task: Task,
@@ -53,7 +65,9 @@ export const isTaskClosed = (status?: TaskEntityStatus): boolean => {
 /**
  * Get the entity type from a task's about reference
  */
-export const getTaskEntityType = (task: Task): EntityType | undefined => {
+export const getTaskEntityType = (
+  task: Pick<Task, 'about'>
+): EntityType | undefined => {
   if (!task.about?.type) {
     return undefined;
   }
@@ -64,14 +78,18 @@ export const getTaskEntityType = (task: Task): EntityType | undefined => {
 /**
  * Get the entity FQN from a task's about reference
  */
-export const getTaskEntityFQN = (task: Task): string | undefined => {
+export const getTaskEntityFQN = (
+  task: Pick<Task, 'about'>
+): string | undefined => {
   return task.about?.fullyQualifiedName;
 };
 
 /**
  * Get the detail path for a task
  */
-export const getTaskDetailPath = (task: Task): string => {
+export const getTaskDetailPath = (
+  task: Pick<Task, 'id' | 'type' | 'about' | 'taskId'>
+): string => {
   const entityType = getTaskEntityType(task);
   const entityFQN = getTaskEntityFQN(task);
 
@@ -83,3 +101,6 @@ export const getTaskDetailPath = (task: Task): string => {
     task.taskId
   }`;
 };
+
+export const getTaskStatusIconClassName = (isOpen: boolean) =>
+  isOpen ? 'tw:text-utility-success-600' : 'tw:text-utility-blue-700';

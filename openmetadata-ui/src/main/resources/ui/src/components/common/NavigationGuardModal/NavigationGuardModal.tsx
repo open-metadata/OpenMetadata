@@ -17,8 +17,8 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
+import { Save } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as SaveIcon } from '../../../assets/svg/ic-save.svg';
 
 interface NavigationGuardModalProps {
   isOpen: boolean;
@@ -45,7 +45,7 @@ export const NavigationGuardModal = ({
             <div className="tw:relative tw:w-max">
               <FeaturedIcon
                 color="warning"
-                icon={SaveIcon}
+                icon={Save}
                 size="lg"
                 theme="light"
               />

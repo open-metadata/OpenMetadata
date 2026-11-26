@@ -15,6 +15,7 @@ import {
   SecurityConfiguration,
   TestLoginResult,
 } from '../../../rest/securityConfigAPI';
+import { toConnectionStepState } from './SsoTestLogin.utils';
 
 /** What the checks a save runs said about a configuration, before Test Login signs in with it. */
 export interface ConfigurationCheckOutcome {
@@ -48,14 +49,17 @@ export interface UseSsoTestLoginResult {
   reset: () => void;
 }
 
-export interface SsoTestLoginModalProps {
-  open: boolean;
+export interface SsoTestLoginContentProps {
   isTesting: boolean;
   isAwaitingCredentials: boolean;
   configurationCheck?: ConfigurationCheckState;
   result?: TestLoginResult;
   error?: string;
   onSubmitCredentials: (email: string, password: string) => Promise<void>;
+}
+
+export interface SsoTestLoginModalProps extends SsoTestLoginContentProps {
+  open: boolean;
   onClose: () => void;
 }
 
@@ -67,4 +71,20 @@ export interface SsoTestLoginCredentialsFormProps {
 export interface SsoTestLoginCredentialsFormValues {
   email: string;
   password: string;
+}
+
+export interface TimelineRowProps {
+  label: string;
+  messages: string[];
+  state: ReturnType<typeof toConnectionStepState>;
+  testId: string;
+}
+
+export interface StageTimelineProps {
+  configurationCheck?: ConfigurationCheckState;
+  result?: TestLoginResult;
+}
+
+export interface ResolvedIdentityProps {
+  result: TestLoginResult;
 }

@@ -38,7 +38,8 @@
         "SsrsDataModel",
         "RillModel",
         "RillMetricsView",
-        "OmniDataModel"
+        "OmniDataModel",
+        "HexDataModel"
       ],
       "javaEnums": [
         {
@@ -103,6 +104,9 @@
         },
         {
           "name": "OmniDataModel"
+        },
+        {
+          "name": "HexDataModel"
         }
       ]
     }

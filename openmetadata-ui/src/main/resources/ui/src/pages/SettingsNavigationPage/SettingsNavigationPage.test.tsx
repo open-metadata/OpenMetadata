@@ -174,7 +174,9 @@ describe('SettingsNavigationPage', () => {
     expect(screen.getByTestId('page-layout-v1')).toBeInTheDocument();
     expect(screen.getByTestId('save-button')).toBeInTheDocument();
     expect(screen.getByTestId('reset-button')).toBeInTheDocument();
-    expect(screen.getAllByText('label.navigation')[0]).toBeInTheDocument();
+    expect(
+      screen.getByText('label.navigation-menu-plural')
+    ).toBeInTheDocument();
   });
 
   it('should have save button enabled by default when state matches current navigation', () => {

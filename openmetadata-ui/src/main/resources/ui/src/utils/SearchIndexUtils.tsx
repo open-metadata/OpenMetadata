@@ -33,6 +33,7 @@ import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { t } from './i18next/LocalUtil';
+import { getJSONEditorValue } from './SchemaEditor.utils';
 import { SearchIndexDetailPageTabProps } from './SearchIndexDetailsClassBase';
 
 const CustomPropertyTable = withSuspenseFallback(
@@ -45,6 +46,12 @@ const CustomPropertyTable = withSuspenseFallback(
   props: CustomPropertyProps<T>
 ) => JSX.Element;
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import(
@@ -126,8 +133,9 @@ export const getSearchIndexDetailsTabs = ({
     },
     {
       label: (
-        <TabsLabel
+        <ActivityFeedTabLabel
           count={feedCount.totalCount}
+          entityType={EntityType.SEARCH_INDEX}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={
@@ -210,8 +218,7 @@ export const getSearchIndexDetailsTabs = ({
       children: (
         <QueryViewer
           isActive={activeTab === EntityTabs.SEARCH_INDEX_SETTINGS}
-          sqlQuery={JSON.stringify(searchIndexDetails?.searchIndexSettings)}
-          title={t('label.search-index-setting-plural')}
+          sqlQuery={getJSONEditorValue(searchIndexDetails?.searchIndexSettings)}
         />
       ),
     },

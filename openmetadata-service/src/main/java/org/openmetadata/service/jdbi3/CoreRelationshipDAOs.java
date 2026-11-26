@@ -14,7 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeLikeBindValue;
 import static org.openmetadata.service.jdbi3.TermRelationMetadataCodec.DEFAULT_RELATION_TYPE;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
@@ -141,6 +141,10 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT json FROM entity_extension WHERE id = :id AND extension = :extension FOR UPDATE")
+    String getExtensionForUpdate(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
     @SqlQuery(
         "SELECT id FROM entity_extension WHERE extension = :extension AND id > :after ORDER BY id LIMIT :limit")
@@ -1440,6 +1444,32 @@ public interface CoreRelationshipDAOs {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
+    /**
+     * Names compare binary on MySQL, as on Postgres, so a type never counts another's rows.
+     * relationType takes the database character set, which can be utf8mb3 or latin1, where
+     * utf8mb4_bin is not a valid collation, so it is converted to utf8mb4 first.
+     */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM entity_relationship WHERE fromEntity = :entity "
+                + "AND toEntity = :entity AND relation = :relation "
+                + "AND (relationshipTypeId = :relationshipTypeId "
+                + "OR CONVERT(relationType USING utf8mb4) COLLATE utf8mb4_bin "
+                + "= :relationshipTypeName)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM entity_relationship WHERE fromEntity = :entity "
+                + "AND toEntity = :entity AND relation = :relation "
+                + "AND (relationshipTypeId = :relationshipTypeId "
+                + "OR relationType = :relationshipTypeName)",
+        connectionType = POSTGRES)
+    int countRelationsOfType(
+        @Bind("entity") String entity,
+        @Bind("relation") int relation,
+        @BindUUID("relationshipTypeId") UUID relationshipTypeId,
+        @Bind("relationshipTypeName") String relationshipTypeName);
+
     @SqlQuery(
         "SELECT COUNT(toId) FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation IN (<relation>) AND deleted = FALSE")
@@ -1862,6 +1892,37 @@ public interface CoreRelationshipDAOs {
         @Bind("relation") int relation);
 
     @SqlQuery(
+        "SELECT EXISTS (SELECT 1 FROM entity_relationship "
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity "
+            + "AND toId = :toId AND toEntity = :toEntity "
+            + "AND relation = :relation AND deleted = FALSE)")
+    boolean exists(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @BindUUID("toId") UUID toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, relationType, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE fromId = :fromId AND toId = :toId "
+            + "AND fromEntity = :entityType AND toEntity = :entityType "
+            + "AND relation = :relation AND deleted = FALSE "
+            + "UNION ALL "
+            + "SELECT fromId, toId, fromEntity, toEntity, relation, relationType, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE fromId = :toId AND toId = :fromId AND fromId <> toId "
+            + "AND fromEntity = :entityType AND toEntity = :entityType "
+            + "AND relation = :relation AND deleted = FALSE")
+    @RegisterRowMapper(RelationshipWithTypeObjectMapper.class)
+    List<EntityRelationshipObject> findBetween(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("entityType") String entityType,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
         "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship where relation = :relation ORDER BY fromId, toId LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(RelationshipObjectMapper.class)
     List<EntityRelationshipObject> getRecordWithOffset(
@@ -1875,20 +1936,29 @@ public interface CoreRelationshipDAOs {
 
     // Keyset (seek) pagination over the FULL primary key (fromId, toId, relation, relationType).
     // The whole PK is required for a strict total order: the same (fromId, toId, relation) tuple
-    // can
-    // carry multiple rows that differ only in relationType (e.g. glossary-term RELATED_TO rows with
-    // relationType 'synonym' and 'seeAlso'), so a shorter cursor would skip rows when a LIMIT
-    // boundary lands inside such a group. Unlike OFFSET pagination this stays correct and O(1) per
-    // page even when rows are deleted mid-scan, letting the relationship cleanup delete orphans
-    // batch-by-batch without skipping rows or paying an ever-growing OFFSET cost. Seed the first
-    // page with fromId='', toId='', relation=-1, relationType=''.
-    @SqlQuery(
-        "SELECT toId, toEntity, fromId, fromEntity, relation, relationType, json, jsonSchema FROM entity_relationship "
-            + "WHERE fromId > :fromId "
-            + "   OR (fromId = :fromId AND toId > :toId) "
-            + "   OR (fromId = :fromId AND toId = :toId AND relation > :relation) "
-            + "   OR (fromId = :fromId AND toId = :toId AND relation = :relation AND relationType > :relationType) "
-            + "ORDER BY fromId, toId, relation, relationType LIMIT :limit")
+    // can carry multiple rows that differ only in relationType (e.g. glossary-term RELATED_TO rows
+    // with relationType 'synonym' and 'seeAlso'), so a shorter cursor would skip rows when a LIMIT
+    // boundary lands inside such a group. Unlike OFFSET pagination this stays correct when rows are
+    // deleted mid-scan, letting the relationship cleanup delete orphans batch-by-batch. Each page
+    // must be a range read of the primary key, or every page re-reads the table up to the cursor:
+    // Postgres makes that range only from a row comparison, MySQL only from the expanded OR form
+    // (ADR:2026-11-11-a-composite-keyset-page-is-a-row-comparison-on-postgres-and-an-or-chain-on-mysql).
+    // Seed the first page with fromId='', toId='', relation=-1, relationType=''.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT toId, toEntity, fromId, fromEntity, relation, relationType, json, jsonSchema FROM entity_relationship "
+                + "WHERE fromId > :fromId "
+                + "   OR (fromId = :fromId AND toId > :toId) "
+                + "   OR (fromId = :fromId AND toId = :toId AND relation > :relation) "
+                + "   OR (fromId = :fromId AND toId = :toId AND relation = :relation AND relationType > :relationType) "
+                + "ORDER BY fromId, toId, relation, relationType LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT toId, toEntity, fromId, fromEntity, relation, relationType, json, jsonSchema FROM entity_relationship "
+                + "WHERE (fromId, toId, relation, relationType) > (:fromId, :toId, :relation, :relationType) "
+                + "ORDER BY fromId, toId, relation, relationType LIMIT :limit",
+        connectionType = POSTGRES)
     @RegisterRowMapper(RelationshipWithTypeObjectMapper.class)
     List<EntityRelationshipObject> getAllRelationshipsAfter(
         @Bind("fromId") String fromId,
@@ -2286,18 +2356,51 @@ public interface CoreRelationshipDAOs {
         @Bind("otherType") String otherType,
         @Bind("relation") int relation);
 
-    default void deleteAllByPrefix(String fqn) {
-      String prefix = String.format("%s%s%%", FullyQualifiedName.buildHash(fqn), Entity.SEPARATOR);
-      String condition = "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)";
-      Map<String, String> bindMap = new HashMap<>();
-      bindMap.put("prefix", prefix);
+    /**
+     * Deletes the rows under {@code fqn}, an FQN of {@code entityType}. Custom property definitions
+     * are rows of type {@code type} under an entity type's name, so only deleting that type removes
+     * them; an entity of another type that shares the name leaves them alone.
+     */
+    default void deleteAllByPrefix(String fqn, String entityType) {
+      Map<String, String> bindMap = prefixBindings(fqn);
+      String condition =
+          "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)" + typeCondition(entityType);
       deleteAllByPrefixInternal(condition, bindMap);
     }
 
-    default void deleteAllByPrefixes(List<String> threadIds) {
-      for (String threadId : threadIds) {
-        deleteAllByPrefix(threadId);
-      }
+    /**
+     * {@link #deleteAllByPrefix} except the rows at and under the kept subtrees, which belong to
+     * entities a hard delete leaves in place.
+     */
+    default void deleteAllByPrefixOutside(
+        String fqn, String entityType, List<String> keptSubtreeHashes) {
+      Map<String, String> bindMap = prefixBindings(fqn);
+      String toOutside =
+          FqnKeyedRowCleanup.outsideKeptSubtrees("toFQNHash", keptSubtreeHashes, bindMap);
+      String fromOutside =
+          FqnKeyedRowCleanup.outsideKeptSubtrees("fromFQNHash", keptSubtreeHashes, bindMap);
+      String condition =
+          "WHERE ((toFQNHash LIKE :prefix"
+              + toOutside
+              + ") OR (fromFQNHash LIKE :prefix"
+              + fromOutside
+              + "))"
+              + typeCondition(entityType);
+      deleteAllByPrefixInternal(condition, bindMap);
+    }
+
+    private static Map<String, String> prefixBindings(String fqn) {
+      Map<String, String> bindMap = new HashMap<>();
+      bindMap.put(
+          "prefix", String.format("%s%s%%", FullyQualifiedName.buildHash(fqn), Entity.SEPARATOR));
+      bindMap.put("typeRow", Entity.TYPE);
+      return bindMap;
+    }
+
+    private static String typeCondition(String entityType) {
+      return Entity.TYPE.equals(entityType)
+          ? " AND fromType = :typeRow AND toType = :typeRow"
+          : " AND fromType <> :typeRow AND toType <> :typeRow";
     }
 
     @SqlUpdate("DELETE from field_relationship <cond>")
@@ -2334,20 +2437,29 @@ public interface CoreRelationshipDAOs {
         @Bind("newToFQNHash") String newToFQNHash);
 
     default void renameByToFQNPrefix(String oldToFQNPrefix, String newToFQNPrefix) {
-      String update =
-          String.format(
-              "UPDATE field_relationship SET toFQN  = REPLACE(toFQN, '%s.', '%s.') , toFQNHash  = REPLACE(toFQNHash, '%s.', '%s.') where fromtype = 'THREAD' AND relation='3' AND  toFQN like '%s.%%' and toFQNHash like '%s.%%' ",
-              escapeApostrophe(oldToFQNPrefix),
-              escapeApostrophe(newToFQNPrefix),
-              FullyQualifiedName.buildHash(oldToFQNPrefix),
-              FullyQualifiedName.buildHash(newToFQNPrefix),
-              escapeApostrophe(oldToFQNPrefix),
-              FullyQualifiedName.buildHash(oldToFQNPrefix));
-      renameByToFQNPrefixInternal(update);
+      String oldHash = FullyQualifiedName.buildHash(oldToFQNPrefix);
+      String newHash = FullyQualifiedName.buildHash(newToFQNPrefix);
+      renameByToFQNPrefixInternal(
+          oldToFQNPrefix + Entity.SEPARATOR,
+          newToFQNPrefix + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR,
+          newHash + Entity.SEPARATOR,
+          escapeLikeBindValue(oldToFQNPrefix) + Entity.SEPARATOR + "%",
+          oldHash + Entity.SEPARATOR + "%");
     }
 
-    @SqlUpdate("<update>")
-    void renameByToFQNPrefixInternal(@Define("update") String update);
+    @SqlUpdate(
+        "UPDATE field_relationship SET toFQN = REPLACE(toFQN, :oldPrefix, :newPrefix), "
+            + "toFQNHash = REPLACE(toFQNHash, :oldHashPrefix, :newHashPrefix) "
+            + "WHERE fromtype = 'THREAD' AND relation = '3' "
+            + "AND toFQN LIKE :oldPrefixLike AND toFQNHash LIKE :oldHashLike")
+    void renameByToFQNPrefixInternal(
+        @Bind("oldPrefix") String oldPrefix,
+        @Bind("newPrefix") String newPrefix,
+        @Bind("oldHashPrefix") String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix,
+        @Bind("oldPrefixLike") String oldPrefixLike,
+        @Bind("oldHashLike") String oldHashLike);
 
     class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override

@@ -70,7 +70,7 @@ const AnnouncementsNotificationSection = ({
           color="primary"
           data-testid="add-announcement"
           iconLeading={Plus}
-          size="sm"
+          size="xs"
           onPress={() => onNavigate?.(SYSTEM_ANNOUNCEMENT_SUB_PATHS.ADD)}>
           {addLabel}
         </Button>
@@ -95,7 +95,9 @@ const AnnouncementsNotificationSection = ({
         data-testid="announcements-notification-section"
         direction="col">
         <SystemAnnouncementsTable
+          deleteConfirmation="popover"
           list={list}
+          variant="muted"
           onAdd={openAdd}
           onDuplicate={openRow('DUPLICATE')}
           onEdit={openRow('EDIT')}
@@ -106,6 +108,7 @@ const AnnouncementsNotificationSection = ({
 
   return (
     <SystemAnnouncementFormLoader
+      centered
       id={id}
       mode={view}
       onCancel={backToList}

@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -37,6 +38,8 @@ import org.openmetadata.service.Entity;
 public class UserRecipientResolver implements RecipientResolutionStrategy {
 
   private static final String USER_FIELDS = "id,profile,email";
+  private static final Predicate<User> ANYONE = user -> true;
+  private static final Predicate<User> PEOPLE = user -> !Boolean.TRUE.equals(user.getIsBot());
 
   @Override
   public Recipients resolve(
@@ -58,12 +61,23 @@ public class UserRecipientResolver implements RecipientResolutionStrategy {
   }
 
   public Recipients resolve(List<UUID> userIds, AddressDirectory directory) {
+    return byId(userIds, ANYONE, directory);
+  }
+
+  /** Like {@link #resolve(List, AddressDirectory)}, but a bot user reaches nobody. */
+  public Recipients resolvePeople(List<UUID> userIds, AddressDirectory directory) {
+    return byId(userIds, PEOPLE, directory);
+  }
+
+  private static Recipients byId(
+      List<UUID> userIds, Predicate<User> reachable, AddressDirectory directory) {
     return listOrEmpty(userIds).stream()
         .map(
             id ->
                 reached(
                     "user " + id,
                     () -> Entity.<User>getEntity(Entity.USER, id, USER_FIELDS, Include.NON_DELETED),
+                    reachable,
                     directory))
         .collect(Recipients.combined());
   }
@@ -79,12 +93,20 @@ public class UserRecipientResolver implements RecipientResolutionStrategy {
                     () ->
                         Entity.<User>getEntityByName(
                             Entity.USER, name, USER_FIELDS, Include.NON_DELETED),
+                    ANYONE,
                     directory))
         .collect(Recipients.combined());
   }
 
-  private static Recipients reached(String what, Supplier<User> read, AddressDirectory directory) {
-    return Recipients.from(Lookup.of(what, () -> directory.ofUser(read.get())), Recipients::of);
+  private static Recipients reached(
+      String what, Supplier<User> read, Predicate<User> reachable, AddressDirectory directory) {
+    return Recipients.from(
+        Lookup.of(what, () -> addressOf(read.get(), reachable, directory)), Recipients::of);
+  }
+
+  private static Recipient addressOf(
+      User user, Predicate<User> reachable, AddressDirectory directory) {
+    return reachable.test(user) ? directory.ofUser(user) : null;
   }
 
   @Override

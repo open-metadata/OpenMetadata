@@ -396,4 +396,12 @@ describe('useMetricHierarchyCard', () => {
     ]);
     expect(result.current.isLoadingChildren).toBe(false);
   });
+
+  it('does not request the hierarchy of a soft-deleted metric', () => {
+    renderHook(() => useMetricHierarchyCard({ ...metric, deleted: true }), {
+      wrapper,
+    });
+
+    expect(getMetricHierarchyContext).not.toHaveBeenCalled();
+  });
 });

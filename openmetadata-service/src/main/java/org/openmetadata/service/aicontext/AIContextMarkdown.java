@@ -245,6 +245,7 @@ public final class AIContextMarkdown {
           .append(typeLabel(item))
           .append(")\n");
       appendYamlInline(markdown, item.getFullyQualifiedName());
+      appendHierarchy(markdown, item);
       appendKnowledgeContent(markdown, item, true);
     }
     if (!found.candidateAssets().isEmpty()) {
@@ -261,6 +262,16 @@ public final class AIContextMarkdown {
       }
     }
     return markdown.toString().strip() + "\n";
+  }
+
+  /** A metric's place in its hierarchy; a count of 0 is left out, as most metrics have none. */
+  private static void appendHierarchy(StringBuilder markdown, KnowledgeItem item) {
+    if (item.getParent() != null) {
+      appendYaml(markdown, "parent", item.getParent().getFullyQualifiedName());
+    }
+    if (orZero(item.getChildrenCount()) > 0) {
+      markdown.append("childrenCount: ").append(item.getChildrenCount()).append('\n');
+    }
   }
 
   private static String typeLabel(KnowledgeItem item) {
@@ -522,7 +533,7 @@ public final class AIContextMarkdown {
    * breaks that delimit a markdown table. Values are flattened to one line and capped so a single
    * blob column cannot crowd the rest of the context out of the model's window.
    */
-  private static String sampleCell(Object value) {
+  static String sampleCell(Object value) {
     String text = value == null ? "" : cell(Objects.toString(value).replaceAll("\\R+", " "));
     return text.length() > MAX_SAMPLE_CELL_CHARS
         ? text.substring(0, MAX_SAMPLE_CELL_CHARS) + "…"
@@ -657,11 +668,11 @@ public final class AIContextMarkdown {
     }
     if (Boolean.TRUE.equals(item.getContentTruncated())) {
       markdown
-          .append("\n_Excerpt — fetch the full content with get_knowledge_content(entityType=`")
+          .append("\n_Excerpt — fetch the full content with get_entity_details(entityType=`")
           .append(item.getType() == null ? "" : item.getType().value())
           .append("`, fqn=`")
           .append(nullOrEmpty(item.getFullyQualifiedName()) ? "" : item.getFullyQualifiedName())
-          .append("`)._\n");
+          .append("`, include=[\"content\"])._\n");
     }
   }
 

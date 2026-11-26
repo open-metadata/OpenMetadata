@@ -93,7 +93,9 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
   property,
   formId,
   showHint = false,
+  fieldDocVariant,
   onSubmit,
+  onDirtyChange,
 }) => {
   const { t } = useTranslation();
   const isEnum = isEnumProperty(property);
@@ -102,6 +104,11 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
   const form = useForm<EditCustomPropertyFormValues>({
     defaultValues: getEditFormValues(property),
   });
+
+  const { isDirty } = form.formState;
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   // The rich-text editor is uncontrolled, so a new property remounts it.
   const [editorKey, setEditorKey] = useState(0);
@@ -198,6 +205,7 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
           </Badge>
         ) : (
           <BadgeWithButton
+            buttonLabel={t('label.remove-entity', { entity: item.label })}
             color="gray"
             data-testid="autocomplete-selected-item"
             key={item.id}
@@ -215,6 +223,7 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
       className="tw:flex tw:flex-col tw:gap-6"
       data-testid="edit-custom-property-form"
       fieldDocDisplay="popover"
+      fieldDocVariant={fieldDocVariant}
       form={form}
       id={formId}
       renderFieldDoc={(text) => (

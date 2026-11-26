@@ -20,10 +20,12 @@ import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
 
 final class PersonaContextHash {
+  private static final String MATERIALIZATION_VERSION = "4";
+
   private PersonaContextHash() {}
 
   static String definitionHash(PersonaContextDefinition definition) {
-    return shortSha256(JsonUtils.pojoToJson(definition));
+    return shortSha256(MATERIALIZATION_VERSION + ':' + JsonUtils.pojoToJson(definition));
   }
 
   static String contentHash(String content) {

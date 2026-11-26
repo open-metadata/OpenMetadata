@@ -52,8 +52,8 @@ void loginRoundTrip(TestNamespace ns) {
   changed, because the server fills masked values from what is stored.
 - **Use a fresh identity per test** (`ns.shortPrefix(...)`). The lockout counters, the email-to-name
   cache and the permission cache are JVM-wide.
-- **Never reuse a key id.** The server caches keys by `kid` for a day; `MockOidcKeys` mints a new id
-  for every key.
+- **Never reuse a key id.** The server caches each key set it downloads for a day and resolves a
+  `kid` from it; `MockOidcKeys` mints a new id for every key.
 - **Edit stored sessions through `SessionStateInjector`.** It bumps the session's version and
   refreshes the server's 10-second session cache; a raw `UPDATE` is overwritten or ignored.
 - **Use `localhost`, never `127.0.0.1`,** in any URL the server validates: its outbound URL policy
@@ -82,6 +82,8 @@ reports success.
 | Public OIDC bearer tokens | `SsoOidcPublicBearerIT` | OP-01, 02, 03, 04, 06, 08, 09, 10, 11, 12, 14, 15, 16 |
 | Session renewal | `SsoTokenRenewalIT` | RN-01 to RN-09, RN-12, RN-16 |
 | Provider shapes (Okta, Google, Auth0, Cognito, Keycloak, Entra) | `SsoOidcProviderProfilesIT` | OC-02, OC-03, OP-01 per provider |
+| MCP client sign-in, per recorded client profile | `SsoMcpClientProfilesIT` | confidential OIDC and the password form |
+| MCP sign-in per provider shape, refusals and known gaps | `SsoMcpSignInChecksIT` | provider shapes, code replay, consent denial, cross-client refresh, no account, `gap...` |
 
 SAML, LDAP, identity resolution, role sync, settings changes, Test Login, multi-node sessions and
 SCIM follow the same pattern and are added phase by phase.

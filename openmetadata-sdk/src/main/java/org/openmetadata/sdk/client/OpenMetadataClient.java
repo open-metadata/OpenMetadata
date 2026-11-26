@@ -73,6 +73,7 @@ import org.openmetadata.sdk.services.services.DashboardServiceService;
 import org.openmetadata.sdk.services.services.DatabaseServiceService;
 import org.openmetadata.sdk.services.services.DriveServiceService;
 import org.openmetadata.sdk.services.services.LLMServiceService;
+import org.openmetadata.sdk.services.services.McpServiceService;
 import org.openmetadata.sdk.services.services.MessagingServiceService;
 import org.openmetadata.sdk.services.services.MetadataServiceService;
 import org.openmetadata.sdk.services.services.MlModelServiceService;
@@ -215,6 +216,7 @@ public class OpenMetadataClient {
   private final SearchServiceService searchServices;
   private final StorageServiceService storageServices;
   private final LLMServiceService llmServices;
+  private final McpServiceService mcpServices;
   private final APIServiceService apiServices;
 
   // Ingestion
@@ -356,6 +358,7 @@ public class OpenMetadataClient {
     this.searchServices = new SearchServiceService(httpClient);
     this.storageServices = new StorageServiceService(httpClient);
     this.llmServices = new LLMServiceService(httpClient);
+    this.mcpServices = new McpServiceService(httpClient);
     this.apiServices = new APIServiceService(httpClient);
 
     // Initialize ingestion services
@@ -709,6 +712,10 @@ public class OpenMetadataClient {
 
   public LLMServiceService llmServices() {
     return llmServices;
+  }
+
+  public McpServiceService mcpServices() {
+    return mcpServices;
   }
 
   public APIServiceService apiServices() {

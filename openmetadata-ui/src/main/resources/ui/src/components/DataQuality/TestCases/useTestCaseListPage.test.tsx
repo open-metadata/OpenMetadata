@@ -37,6 +37,7 @@ const mockShowModal = jest.fn();
 const mockLocation = { search: '' };
 
 const mockHandlePageChange = jest.fn();
+let mockCurrentPage = 1;
 const mockHandlePagingChange = jest.fn();
 const mockHandlePageSizeChange = jest.fn();
 
@@ -83,7 +84,7 @@ jest.mock(
 
 jest.mock('../../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn(() => ({
-    currentPage: 1,
+    currentPage: mockCurrentPage,
     pageSize: 10,
     paging: { after: '', before: '', total: 0 },
     showPagination: true,
@@ -130,6 +131,7 @@ describe('useTestCaseListPage', () => {
     mockNavigate.mockClear();
     mockShowModal.mockClear();
     mockLocation.search = '';
+    mockCurrentPage = 1;
     mockPermissions.testCase = { ViewAll: true, ViewBasic: true };
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: [],
@@ -185,8 +187,9 @@ describe('useTestCaseListPage', () => {
     expect(typeof current.pagingData.pagingHandler).toBe('function');
 
     // On mount getTestCases seeds selectedFilter from DEFAULT_SELECTED_FILTERS
-    // (status, type, table, tags) merged with the (empty) URL params.
+    // (lastRun, status, type, table, tags) merged with the (empty) URL params.
     expect(current.selectedFilter).toEqual([
+      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.status,
       TEST_CASE_FILTERS.type,
       TEST_CASE_FILTERS.table,
@@ -272,8 +275,8 @@ describe('useTestCaseListPage', () => {
     );
   });
 
-  it('should refetch for the requested page when the pagination handler is called', async () => {
-    const { result } = renderHook(() => useTestCaseListPage());
+  it('should fetch the requested page once the paging hook reports it', async () => {
+    const { result, rerender } = renderHook(() => useTestCaseListPage());
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
@@ -282,6 +285,8 @@ describe('useTestCaseListPage', () => {
     act(() => {
       result.current.pagingData.pagingHandler({ currentPage: 3 });
     });
+    mockCurrentPage = 3;
+    rerender();
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
@@ -530,8 +535,10 @@ describe('useTestCaseListPage', () => {
     const byKey = (key: string) =>
       result.current.filters.find((descriptor) => descriptor.key === key);
 
-    // Descriptors track selectedFilter (defaults: table/type/status/tags).
+    // Descriptors track selectedFilter (defaults: lastRun/table/type/status/tags),
+    // with Last Run first.
     expect(result.current.filters.map((descriptor) => descriptor.key)).toEqual([
+      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.table,
       TEST_CASE_FILTERS.type,
       TEST_CASE_FILTERS.status,
@@ -611,16 +618,13 @@ describe('useTestCaseListPage', () => {
     );
   });
 
-  it('should surface date and multiselect control types for lastRun and platform filters', async () => {
+  it('should surface the date control type for the default lastRun filter and multiselect for platform', async () => {
     const { result } = renderHook(() => useTestCaseListPage());
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
     );
 
-    act(() => {
-      result.current.handleMenuClick({ key: TEST_CASE_FILTERS.lastRun });
-    });
     act(() => {
       result.current.handleMenuClick({ key: TEST_CASE_FILTERS.platform });
     });
@@ -633,6 +637,7 @@ describe('useTestCaseListPage', () => {
     );
 
     expect(lastRunDescriptor?.controlType).toBe('date');
+    expect(lastRunDescriptor?.value).toBeUndefined();
     expect(platformDescriptor?.controlType).toBe('multiselect');
   });
 
@@ -710,6 +715,7 @@ describe('useTestCaseListPage', () => {
     });
 
     expect(result.current.selectedFilter).toEqual([
+      TEST_CASE_FILTERS.lastRun,
       TEST_CASE_FILTERS.status,
       TEST_CASE_FILTERS.type,
       TEST_CASE_FILTERS.table,
@@ -726,7 +732,7 @@ describe('useTestCaseListPage', () => {
   });
 
   it('should keep carrying sort options on a later fetch after sortTestCase', async () => {
-    const { result } = renderHook(() => useTestCaseListPage());
+    const { result, rerender } = renderHook(() => useTestCaseListPage());
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
@@ -742,6 +748,8 @@ describe('useTestCaseListPage', () => {
     act(() => {
       result.current.pagingData.pagingHandler({ currentPage: 2 });
     });
+    mockCurrentPage = 2;
+    rerender();
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(

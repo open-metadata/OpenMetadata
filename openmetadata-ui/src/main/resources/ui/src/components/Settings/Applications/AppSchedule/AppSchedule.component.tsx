@@ -22,7 +22,6 @@ import {
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import {
   App,
   AppScheduleClass,
@@ -30,13 +29,16 @@ import {
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
-import { getCronDefaultValue } from '../../../../utils/CronExpressionUtils';
+import {
+  getAppCronExpression,
+  getAppScheduleTimezone,
+} from '../../../../utils/ApplicationUtils';
 import Loader from '../../../common/Loader/Loader';
 import ScheduleInterval from '../../Services/AddIngestion/Steps/ScheduleInterval';
-import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
 import { AppScheduleProps } from './AppScheduleProps.interface';
+import { useAppScheduleOptions } from './useAppScheduleOptions';
 
 // The schedule read-out is self-contained; keeping it out of AppSchedule keeps
 // that component's branching down to the action buttons it actually owns.
@@ -48,6 +50,7 @@ const AppScheduleSummary = ({
   cronString: string;
 }) => {
   const { t } = useTranslation();
+  const timezone = getAppScheduleTimezone(appSchedule);
 
   if (!appSchedule) {
     return null;
@@ -71,6 +74,17 @@ const AppScheduleSummary = ({
           </Typography>
           <Typography className="font-medium" data-testid="cron-string">
             {cronString}
+          </Typography>
+        </Box>
+      )}
+
+      {!isEmpty(cronString) && timezone && (
+        <Box align="center" direction="row" gap={2}>
+          <Typography className="right-panel-label">
+            {t('label.timezone')}
+          </Typography>
+          <Typography className="font-medium" data-testid="schedule-timezone">
+            {timezone}
           </Typography>
         </Box>
       )}
@@ -145,9 +159,12 @@ const AppSchedule = ({
   canEdit = true,
   canTrigger = true,
   canDeploy = true,
+  runsHistoryVariant,
   onSave,
   onDemandTrigger,
   onDeployTrigger,
+  onEditSchedule,
+  onViewRunConfig,
 }: AppScheduleProps) => {
   const { t } = useTranslation();
   const [showModal, setShowModal] = useState(false);
@@ -156,8 +173,8 @@ const AppSchedule = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const [scheduleValue, setScheduleValue] = useState<string>();
+  const [timezoneValue, setTimezoneValue] = useState<string>();
   const [isScheduleValid, setIsScheduleValid] = useState(true);
-  const { config } = useLimitStore();
   const isAppDisabled = disabled || Boolean(appData.deleted);
 
   const showRunNowButton = useMemo(() => {
@@ -165,11 +182,6 @@ const AppSchedule = ({
       appData?.scheduleType
     );
   }, [appData]);
-
-  const { pipelineSchedules } =
-    config?.limits?.config.featureLimits.find(
-      (feature) => feature.name === 'app'
-    ) ?? {};
 
   // Keyed on the two fields it reads, not the whole app: a schedule save
   // replaces appData, and refetching then would flash the loader over the
@@ -201,8 +213,7 @@ const AppSchedule = ({
   const [cronString, setCronString] = useState<string>('');
 
   useEffect(() => {
-    const cronExpression = (appData.appSchedule as AppScheduleClass)
-      ?.cronExpression;
+    const cronExpression = getAppCronExpression(appData.appSchedule);
     if (!cronExpression) {
       setCronString('');
 
@@ -229,16 +240,17 @@ const AppSchedule = ({
   };
 
   const onDialogOpen = () => {
-    setScheduleValue(
-      (appData.appSchedule as AppScheduleClass)?.cronExpression ?? undefined
-    );
+    setScheduleValue(getAppCronExpression(appData.appSchedule));
+    // An app without a stored zone runs at the server default; it stays unset
+    // unless the user picks a zone, so saving the dialog unchanged cannot move it.
+    setTimezoneValue(getAppScheduleTimezone(appData.appSchedule));
     setIsScheduleValid(true);
     setShowModal(true);
   };
 
   const onDialogSave = async () => {
     setIsSaveLoading(true);
-    await onSave(scheduleValue ?? '');
+    await onSave(scheduleValue ?? '', timezoneValue);
     setIsSaveLoading(false);
     setShowModal(false);
   };
@@ -264,6 +276,8 @@ const AppSchedule = ({
           maxRecords={1}
           ref={appRunsHistoryRef}
           showPagination={false}
+          variant={runsHistoryVariant}
+          onViewRunConfig={onViewRunConfig}
         />
       );
     }
@@ -284,19 +298,12 @@ const AppSchedule = ({
     isPipelineDeployed,
     appRunsHistoryRef,
     jsonSchema,
+    onViewRunConfig,
+    runsHistoryVariant,
     t,
   ]);
 
-  const { initialOptions, defaultCron } = useMemo(() => {
-    return {
-      initialOptions: applicationsClassBase.getScheduleOptionsForApp(
-        appData.name,
-        appData.appType,
-        pipelineSchedules
-      ),
-      defaultCron: getCronDefaultValue(appData?.name ?? ''),
-    };
-  }, [appData.name, appData.appType, pipelineSchedules]);
+  const { initialOptions, defaultCron } = useAppScheduleOptions(appData);
 
   useEffect(() => {
     fetchPipelineDetails();
@@ -328,7 +335,7 @@ const AppSchedule = ({
               showEdit={canEdit && !appData.system}
               showRunNow={canTrigger && showRunNowButton}
               onDeploy={onDeployTrigger}
-              onEdit={onDialogOpen}
+              onEdit={onEditSchedule ?? onDialogOpen}
               onRunNow={onAppTrigger}
             />
           </Box>
@@ -352,8 +359,10 @@ const AppSchedule = ({
               <ScheduleInterval
                 defaultSchedule={defaultCron}
                 includePeriodOptions={initialOptions}
+                timezone={timezoneValue}
                 value={scheduleValue}
                 onChange={setScheduleValue}
+                onTimezoneChange={setTimezoneValue}
                 onValidityChange={setIsScheduleValid}
               />
             </Dialog.Content>

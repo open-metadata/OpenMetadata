@@ -533,7 +533,7 @@ test.describe('Workflow History', { tag: ['@workflow'] }, () => {
 
     // Look for status indicator - could be badge, tag, or status column
     const statusIndicator = termRow
-      .locator('[data-testid="status"], .status-badge, .ant-tag')
+      .locator('[data-testid="status"], .status-badge')
       .first();
 
     if (await statusIndicator.isVisible({ timeout: 3000 }).catch(() => false)) {

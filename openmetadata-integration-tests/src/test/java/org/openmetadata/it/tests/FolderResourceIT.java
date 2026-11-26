@@ -1,11 +1,15 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.openmetadata.it.util.SearchDocs.awaitDoc;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -14,8 +18,11 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.search.SearchClient;
+import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.type.EntityHistory;
@@ -23,6 +30,8 @@ import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.services.drives.FolderService;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
 
 /**
  * Integration tests for Folder entity operations.
@@ -175,6 +184,68 @@ public class FolderResourceIT extends BaseEntityIT<Folder, CreateFolder> {
   // ===================================================================
   // FOLDER-SPECIFIC TESTS
   // ===================================================================
+
+  @Test
+  void test_folderSearchDocumentCarriesNoChildrenCount(TestNamespace ns) {
+    Folder folder =
+        getFolderService().create(new CreateFolder().withName(ns.prefix("uncounted_folder")));
+    SdkClients.adminClient()
+        .contextFiles()
+        .create(
+            new CreateContextFile()
+                .withName(ns.prefix("uncounted_file"))
+                .withFolder(folder.getFullyQualifiedName()));
+
+    Folder edited = getFolderService().get(folder.getId().toString());
+    edited.setDescription("Edited folder description");
+    getFolderService().update(folder.getId().toString(), edited);
+
+    // The files a folder shows depend on who reads it, so its count is computed per caller.
+    awaitDoc(
+        "folder_search_index",
+        folder.getId(),
+        doc ->
+            "Edited folder description".equals(doc.path("description").asText())
+                && !doc.has("childrenCount"));
+  }
+
+  /**
+   * Releases before 2.1 indexed a folder's childrenCount. An update merges into the stored
+   * document, so it has to remove that value itself; otherwise it stays until a reindex.
+   */
+  @Test
+  void test_folderEditDropsTheChildrenCountAnEarlierReleaseIndexed(TestNamespace ns) {
+    assumeFalse(
+        OssTestServer.isExternalMode(),
+        "Writing an earlier release's document needs the embedded search stack");
+    Folder folder =
+        getFolderService().create(new CreateFolder().withName(ns.prefix("legacy_counted_folder")));
+    indexChildrenCountAsEarlierReleasesDid(folder);
+
+    Folder edited = getFolderService().get(folder.getId().toString());
+    edited.setDisplayName("Renamed counted folder");
+    getFolderService().update(folder.getId().toString(), edited);
+
+    JsonNode doc =
+        awaitDoc(
+            "folder_search_index",
+            folder.getId(),
+            written -> "Renamed counted folder".equals(written.path("displayName").asText()));
+    assertFalse(doc.has("childrenCount"), doc.toString());
+  }
+
+  private static void indexChildrenCountAsEarlierReleasesDid(Folder folder) {
+    awaitDoc("folder_search_index", folder.getId(), written -> true);
+    SearchRepository repository = Entity.getSearchRepository();
+    String alias =
+        repository.getIndexMapping(Entity.FOLDER).getIndexName(repository.getClusterAlias());
+    SearchClient search = new SearchClient(OssTestServer.defaultHandle());
+    String index = search.get("/" + alias + "/_doc/" + folder.getId()).path("_index").asText();
+    search.post(
+        "/" + index + "/_update/" + folder.getId() + "?refresh=true",
+        "{\"doc\":{\"childrenCount\":4}}");
+    awaitDoc("folder_search_index", folder.getId(), written -> written.has("childrenCount"));
+  }
 
   @Test
   void test_createFolder_minimalRequest(TestNamespace ns) {

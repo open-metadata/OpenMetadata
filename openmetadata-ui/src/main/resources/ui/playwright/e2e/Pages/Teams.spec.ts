@@ -38,13 +38,12 @@ import {
   toastNotification,
   uuid,
   visitOwnProfilePage,
-  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   addMultiOwner,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
-import { getCellByName } from '../../utils/scopedLocators';
+import { getCellByName, getRowByName } from '../../utils/scopedLocators';
 import { settingClick } from '../../utils/sidebar';
 import {
   addEmailTeam,
@@ -254,7 +253,6 @@ test.describe('Teams Page', () => {
       // row mid-animation puts mousedown on it and mouseup past it, so the
       // deselect never registers, the update below sends an unchanged member
       // list, and the row this step is trying to remove is still there.
-      await waitForAntdPopupToSettle(page);
 
       // Select the user to remove
       await page
@@ -1147,17 +1145,16 @@ test.describe('Teams Page with EditUser Permission', () => {
     });
 
     await test.step('Remove user from Team', async () => {
-      await editOnlyUserPage
-        .getByRole('row', {
-          name: `${user.data.firstName.slice(0, 1).toUpperCase()} ${
-            user.data.firstName
-          }.`,
-        })
+      await getRowByName(editOnlyUserPage, userName)
         .getByTestId('remove-user-btn')
         .click();
 
-      const userResponse = editOnlyUserPage.waitForResponse(
-        '/api/v1/users?fields=**'
+      const userResponse = waitForResponseWithStatus(
+        editOnlyUserPage,
+        (response) =>
+          response.url().includes('/api/v1/users?fields=') &&
+          response.request().method() === 'GET',
+        200
       );
       await editOnlyUserPage.getByRole('button', { name: 'Confirm' }).click();
       await userResponse;

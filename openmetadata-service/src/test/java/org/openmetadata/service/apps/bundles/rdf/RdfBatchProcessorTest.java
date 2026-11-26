@@ -51,10 +51,12 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
+import org.openmetadata.service.rdf.RdfEntityLiveness;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.storage.RdfStorageCircuitOpenException;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
+import org.openmetadata.service.rdf.storage.RdfStorageLowDiskException;
 import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 
 /**
@@ -79,6 +81,9 @@ import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 @DisplayName("RdfBatchProcessor.processEntities branching tests")
 class RdfBatchProcessorTest {
 
+  // Fixture entities are live regardless of repositories registered by other test classes.
+  private static final RdfEntityLiveness LIVE_ENTITIES = (type, ids) -> Set.copyOf(ids);
+
   @Mock private CollectionDAO collectionDAO;
   @Mock private EntityRelationshipDAO relationshipDAO;
   @Mock private RdfRepository rdfRepository;
@@ -97,7 +102,13 @@ class RdfBatchProcessorTest {
     lenient()
         .when(relationshipDAO.findFromBatch(anyList(), anyInt(), any(Include.class)))
         .thenReturn(List.of());
-    processor = new RdfBatchProcessor(collectionDAO, rdfRepository);
+    processor =
+        new RdfBatchProcessor(
+            collectionDAO,
+            rdfRepository,
+            RdfIndexingRunContext.reconcileDefaults(),
+            System::nanoTime,
+            LIVE_ENTITIES);
   }
 
   @Test
@@ -120,7 +131,11 @@ class RdfBatchProcessorTest {
         .bulkStorePreTranslated(requests, RdfWriteMode.RECONCILE);
     final RdfBatchProcessor timed =
         new RdfBatchProcessor(
-            collectionDAO, rdfRepository, RdfIndexingRunContext.reconcileDefaults(), now::get);
+            collectionDAO,
+            rdfRepository,
+            RdfIndexingRunContext.reconcileDefaults(),
+            now::get,
+            LIVE_ENTITIES);
 
     final var result = timed.processEntitiesPreTranslated("table", entities, requests, null);
 
@@ -148,7 +163,11 @@ class RdfBatchProcessorTest {
         .bulkCreateOrUpdate(entities.subList(0, 1), RdfWriteMode.RECONCILE);
     final RdfBatchProcessor timed =
         new RdfBatchProcessor(
-            collectionDAO, rdfRepository, RdfIndexingRunContext.reconcileDefaults(), now::get);
+            collectionDAO,
+            rdfRepository,
+            RdfIndexingRunContext.reconcileDefaults(),
+            now::get,
+            LIVE_ENTITIES);
 
     final var result = timed.processEntities("table", entities, null);
 
@@ -257,7 +276,9 @@ class RdfBatchProcessorTest {
         new RdfBatchProcessor(
             collectionDAO,
             rdfRepository,
-            new RdfIndexingRunContext(RdfWriteMode.RECONCILE, Set.of(), null, null, 2));
+            new RdfIndexingRunContext(RdfWriteMode.RECONCILE, Set.of(), null, null, 2),
+            System::nanoTime,
+            LIVE_ENTITIES);
     List<EntityInterface<?>> entities =
         List.of(mockEntity(), mockEntity(), mockEntity(), mockEntity(), mockEntity());
 
@@ -283,7 +304,9 @@ class RdfBatchProcessorTest {
         new RdfBatchProcessor(
             collectionDAO,
             rdfRepository,
-            new RdfIndexingRunContext(RdfWriteMode.RECONCILE, Set.of(), null, null, 2));
+            new RdfIndexingRunContext(RdfWriteMode.RECONCILE, Set.of(), null, null, 2),
+            System::nanoTime,
+            LIVE_ENTITIES);
     List<EntityInterface<?>> entities =
         List.of(mockEntity(), mockEntity(), mockEntity(), mockEntity(), mockEntity());
 
@@ -390,6 +413,23 @@ class RdfBatchProcessorTest {
     assertTrue(
         result.lastError().contains("table batch"),
         "lastError prefix should identify the failed entity-type batch");
+    verify(rdfRepository, times(1)).bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
+  }
+
+  @Test
+  @DisplayName(
+      "bulk failure the store refused for low disk: not bisected, batch marked failed once")
+  void bulkFailureRefusedForLowDiskIsNotBisected() {
+    List<EntityInterface<?>> entities = List.of(mockEntity(), mockEntity(), mockEntity());
+    doThrow(new RdfStorageLowDiskException("bulkStoreEntities"))
+        .when(rdfRepository)
+        .bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
+
+    RdfBatchProcessor.BatchProcessingResult result =
+        processor.processEntities("table", entities, null);
+
+    assertEquals(0, result.successCount());
+    assertEquals(3, result.failedCount(), "whole batch should be marked failed");
     verify(rdfRepository, times(1)).bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
   }
 
@@ -518,7 +558,9 @@ class RdfBatchProcessorTest {
         new RdfBatchProcessor(
             collectionDAO,
             rdfRepository,
-            new RdfIndexingRunContext(RdfWriteMode.INSERT_ONLY, Set.of("table")));
+            new RdfIndexingRunContext(RdfWriteMode.INSERT_ONLY, Set.of("table")),
+            System::nanoTime,
+            LIVE_ENTITIES);
     List<EntityInterface<?>> entities = List.of(mockEntity());
 
     processor.processEntities("table", entities, null);
@@ -534,7 +576,9 @@ class RdfBatchProcessorTest {
         new RdfBatchProcessor(
             collectionDAO,
             rdfRepository,
-            new RdfIndexingRunContext(RdfWriteMode.INSERT_ONLY, Set.of("table")));
+            new RdfIndexingRunContext(RdfWriteMode.INSERT_ONLY, Set.of("table")),
+            System::nanoTime,
+            LIVE_ENTITIES);
     EntityInterface<?> a = mockEntity();
     EntityInterface<?> b = mockEntity();
     List<EntityInterface<?>> entities = List.of(a, b);
@@ -561,7 +605,9 @@ class RdfBatchProcessorTest {
         new RdfBatchProcessor(
             collectionDAO,
             rdfRepository,
-            new RdfIndexingRunContext(RdfWriteMode.INSERT_ONLY, Set.of("table")));
+            new RdfIndexingRunContext(RdfWriteMode.INSERT_ONLY, Set.of("table")),
+            System::nanoTime,
+            LIVE_ENTITIES);
     UUID fromId = UUID.randomUUID();
     UUID toId = UUID.randomUUID();
     EntityInterface<?> from = mock(EntityInterface.class);

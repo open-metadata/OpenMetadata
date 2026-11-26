@@ -57,6 +57,7 @@ export const fetchMetricBulkEditGrid = async ({
   isBulkEdit,
   signal,
   onProgress,
+  onEditCellHeightChange,
 }: BulkEditListingGridArgs): Promise<BulkEditListingGrid> => {
   const selectedIds =
     scope.mode === 'selected' ? new Set(scope.ids) : new Set<string>();
@@ -75,7 +76,9 @@ export const fetchMetricBulkEditGrid = async ({
         after,
         fields: '*',
         limit: LISTING_PAGE_SIZE,
-        include: Include.All,
+        // Only live metrics are editable (the list page shows only live ones too); with
+        // `all`, one soft-deleted parent made this request 404 and the grid load nothing.
+        include: Include.NonDeleted,
       },
       { signal }
     );
@@ -122,7 +125,8 @@ export const fetchMetricBulkEditGrid = async ({
     headers,
     multipleOwner,
     true,
-    isBulkEdit
+    isBulkEdit,
+    onEditCellHeightChange
   );
 
   return {

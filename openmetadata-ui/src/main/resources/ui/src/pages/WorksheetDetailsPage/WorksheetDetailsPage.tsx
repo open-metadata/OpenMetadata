@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { get, isUndefined, omitBy, toString } from 'lodash';
+import { isUndefined, omitBy, toString } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -89,7 +89,6 @@ const WorksheetDetailsPage = () => {
     isLoading: isPermissionsLoading,
     error: permissionsError,
     canViewBasic,
-    hasViewAccess,
   } = useEntityPermissions(ResourceEntity.WORKSHEET, resolvedEntityFqn);
 
   const { id: worksheetId, version: currentVersion } = worksheetDetails;
@@ -244,7 +243,7 @@ const WorksheetDetailsPage = () => {
         USERId,
         EntityType.WORKSHEET
       );
-      const { newValue } = get(res, 'changeDescription.fieldsAdded[0]', {});
+      const newValue = res.changeDescription?.fieldsAdded?.[0]?.newValue ?? [];
       setWorksheetDetails((prev) => ({
         ...prev,
         followers: [...(prev?.followers ?? []), ...newValue],
@@ -400,7 +399,7 @@ const WorksheetDetailsPage = () => {
       </div>
     );
   }
-  if (!hasViewAccess) {
+  if (!canViewBasic) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <PermissionPlaceholder

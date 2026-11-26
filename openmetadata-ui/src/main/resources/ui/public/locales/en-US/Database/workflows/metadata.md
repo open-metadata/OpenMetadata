@@ -49,7 +49,7 @@ For example, to include only those tables whose name starts with the word `demo`
 
 For example, to exclude all tables with the name containing the word `demo`, add the regex pattern in the exclude field as `.*demo.*`.
 
-Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#table-filter-pattern" target="_blank">this</a> document for further examples on table filter patterns.
+Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/table#table-filter-patterns" target="_blank">this</a> document for further examples on table filter patterns.
 $$
 
 
@@ -74,7 +74,7 @@ Set this flag when you want to apply the filters on Fully Qualified Names (e.g `
 
 This Flag is useful in scenarios when you have different schemas with same name in multiple databases, or tables with same name in different schemas, and you want to filter out only one of them. 
 
-Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database#table-filter-pattern" target="_blank">this</a> document for further examples on how to use this field.
+Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/table#table-filter-patterns" target="_blank">this</a> document for further examples on how to use this field.
 
 $$
 

@@ -30,9 +30,9 @@ import {
   InfoCircle,
   LinkExternal01,
 } from '@openmetadata/ui-core-components/icons';
+import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import {
-  FC,
   ReactNode,
   useCallback,
   useEffect,
@@ -69,6 +69,7 @@ import {
   isSearchScopedRule,
 } from '../../../../utils/PersonaAIContextUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
+import { getErrorText } from '../../../../utils/StringUtils';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
 import { RuleQueryBuilderField } from './RuleQueryBuilderField.component';
 
@@ -99,7 +100,11 @@ const Field = ({
   <div className={`tw:mb-5 tw:flex tw:flex-col tw:gap-1.5 ${className ?? ''}`}>
     {label && <Label isRequired={isRequired}>{label}</Label>}
     {children}
-    {error && <HintText isInvalid>{error}</HintText>}
+    {error && (
+      <HintText isInvalid>
+        <span role="alert">{error}</span>
+      </HintText>
+    )}
   </div>
 );
 
@@ -113,10 +118,6 @@ const BEHAVIOR_CARD_CLASS =
 
 const ENTITY_TYPE_POPUP_CLASS =
   'tw:max-h-[min(320px,calc(100vh-96px))] tw:overflow-y-auto tw:overscroll-contain';
-
-const ViewInExploreIcon: FC<{ className?: string }> = ({ className }) => (
-  <LinkExternal01 className={`${className ?? ''} tw:size-4!`} />
-);
 
 const resolveFullyRendered = (
   rule: ContextRule | undefined,
@@ -201,9 +202,11 @@ export const ContextRuleEditor = ({
   const queryFilter = useWatch({ control: form.control, name: 'queryFilter' });
   const [filterIncomplete, setFilterIncomplete] = useState(false);
   const [filterErrorShown, setFilterErrorShown] = useState(false);
+  const [filterUnrendered, setFilterUnrendered] = useState(false);
   const clearFilterState = useCallback(() => {
     setFilterIncomplete(false);
     setFilterErrorShown(false);
+    setFilterUnrendered(false);
   }, []);
   const closeDrawerRef = useRef<() => void>(() => undefined);
   const lastResetRuleIdRef = useRef<string>();
@@ -302,6 +305,37 @@ export const ContextRuleEditor = ({
     t,
   ]);
 
+  const validateFilter = useCallback(
+    async (data: ContextRule) => {
+      try {
+        const unchangedFilter =
+          rule &&
+          data.entityType === rule.entityType &&
+          data.queryFilter === (rule.queryFilter ?? '');
+        const reEnabled = rule?.enabled === false && data.enabled !== false;
+        if (data.queryFilter && (!unchangedFilter || reEnabled)) {
+          await previewPersonaAIContextRule(personaId, data);
+        }
+        form.clearErrors('queryFilter');
+
+        return true;
+      } catch (error) {
+        let message = t('server.unexpected-error');
+        if (isAxiosError(error)) {
+          message = getErrorText(error, message);
+        } else if (error instanceof Error) {
+          message = error.message;
+        }
+        form.setError('queryFilter', {
+          message,
+        });
+
+        return false;
+      }
+    },
+    [form, personaId, rule, t]
+  );
+
   const handleSubmit = useCallback(
     async (data: ContextRule) => {
       // An unfinished condition contributes nothing to the emitted filter, so saving it would
@@ -310,6 +344,9 @@ export const ContextRuleEditor = ({
       if (filterIncomplete) {
         setFilterErrorShown(true);
 
+        return;
+      }
+      if (!(await validateFilter(data))) {
         return;
       }
       const scoped = isSearchScopedRule(data);
@@ -326,7 +363,7 @@ export const ContextRuleEditor = ({
       });
       closeDrawerRef.current();
     },
-    [filterIncomplete, onSubmit]
+    [filterIncomplete, onSubmit, validateFilter]
   );
 
   const handleDismiss = useCallback(() => {
@@ -394,6 +431,8 @@ export const ContextRuleEditor = ({
               aria-label={t('label.name')}
               inputDataTestId="context-rule-name"
               isInvalid={Boolean(fieldState.error)}
+              name={field.name}
+              ref={field.ref}
               value={field.value ?? ''}
               onBlur={field.onBlur}
               onChange={field.onChange}
@@ -404,11 +443,34 @@ export const ContextRuleEditor = ({
           required: t('message.field-text-is-required', {
             fieldText: t('label.name'),
           }),
-          validate: (value) =>
-            !existingRuleNames.some(
-              (name) => name.trim().toLowerCase() === value.trim().toLowerCase()
-            ) || t('message.name-already-exists'),
+          validate: {
+            nonBlank: (value) =>
+              value.trim().length > 0 ||
+              t('message.field-text-is-required', {
+                fieldText: t('label.name'),
+              }),
+            unique: (value) =>
+              !existingRuleNames.some(
+                (name) =>
+                  name.trim().toLowerCase() === value.trim().toLowerCase()
+              ) || t('message.name-already-exists'),
+          },
         }}
+      />
+
+      <Controller
+        control={form.control}
+        name="enabled"
+        render={({ field }) => (
+          <Field label={t('label.enabled')}>
+            <Toggle
+              aria-label={t('label.enabled')}
+              isSelected={field.value ?? true}
+              size="sm"
+              onChange={field.onChange}
+            />
+          </Field>
+        )}
       />
 
       <Controller
@@ -480,17 +542,23 @@ export const ContextRuleEditor = ({
         )}
       />
 
-      <Field label={t('label.filter')}>
+      <Field
+        error={form.formState.errors.queryFilter?.message}
+        label={t('label.filter')}>
         <RuleQueryBuilderField
           entityType={entityType}
           filterJsonTree={filterJsonTree}
           key={getFilterFieldKey(open, rule?.id, entityType)}
           queryFilter={queryFilter}
           onChange={(updatedQuery, updatedTree) => {
+            form.clearErrors('queryFilter');
             form.setValue('queryFilter', updatedQuery, { shouldDirty: true });
             form.setValue('filterJsonTree', updatedTree, {
               shouldDirty: true,
             });
+          }}
+          onReconstructionStatusChange={(rendered) => {
+            setFilterUnrendered(!rendered);
           }}
           onValidityChange={(isValid) => {
             setFilterIncomplete(!isValid);
@@ -499,6 +567,16 @@ export const ContextRuleEditor = ({
             }
           }}
         />
+        {filterUnrendered && (
+          <Alert
+            className="tw:mt-1.5"
+            data-testid="context-rule-filter-unrendered"
+            icon={AlertCircle}
+            iconSize="sm"
+            variant="warning">
+            {t('message.persona-context-rule-filter-unrendered')}
+          </Alert>
+        )}
         {shouldShowFilterError(filterErrorShown, filterIncomplete) && (
           <Typography
             className="tw:mt-1.5 tw:text-error-primary"
@@ -517,7 +595,7 @@ export const ContextRuleEditor = ({
               className="tw:shrink-0 tw:text-[13px] tw:font-semibold tw:text-brand-secondary"
               color="link-color"
               href={getRuleExplorePath(entityType, filterJsonTree, queryFilter)}
-              iconTrailing={ViewInExploreIcon}
+              iconTrailing={LinkExternal01}
               size="sm"
               target="_blank">
               {t('label.view-in-explore')}

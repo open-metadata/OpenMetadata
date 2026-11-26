@@ -19,6 +19,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAME
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.SUPERSEDED_BY_NEWER_RUN;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_VERSION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
@@ -35,10 +36,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
@@ -53,6 +56,7 @@ import org.flowable.engine.runtime.Execution;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.service.delegate.DelegateTask;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.context.MemoryDerivation;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.changeRequest.ReviewPolicy;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -75,9 +79,11 @@ import org.openmetadata.schema.type.TaskExternalReference;
 import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.MemoryDerivations;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
+import org.openmetadata.service.governance.workflows.TriggeringChange;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
@@ -88,6 +94,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.tasks.IncidentWorkflowStages;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.AsyncService;
@@ -169,7 +176,10 @@ public class CreateTask implements TaskListener {
       UUID workflowInstanceId = getWorkflowInstanceId(delegateTask);
 
       // Build workflow-specific payload for task types that need richer context.
-      Object payload = buildWorkflowPayload(taskType, inputNamespaces, varHandler);
+      Object payload =
+          AutomationProposals.decidesProposal(entityLink.getEntityType(), entity)
+              ? proposalPayload(entity)
+              : buildWorkflowPayload(taskType, inputNamespaces, varHandler);
 
       // Create or update the Task entity for the current workflow stage
       Task task =
@@ -197,10 +207,11 @@ public class CreateTask implements TaskListener {
       // A request can end (withdrawn, overridden, cancelled) or be revised while delivery is
       // still creating its task; that task is closed once this Flowable command commits.
       ReviewPolicy reviewPolicy =
-          new ReviewPolicy()
-              .withApprovalThreshold(approvalThreshold)
-              .withRejectionThreshold(rejectionThreshold)
-              .withPartialDecisions(partialDecisions(delegateTask));
+          reviewPolicy(
+              approvalThreshold,
+              rejectionThreshold,
+              partialDecisions(delegateTask),
+              task.getAssignees());
       ChangeRequestRun.from(varHandler)
           .filter(
               run ->
@@ -216,8 +227,16 @@ public class CreateTask implements TaskListener {
       // the task on the first resolution that moves it.
       boolean catalogCounts =
           reviewsChangeRequest(delegateTask) && reviewPolicy.getPartialDecisions();
-      delegateTask.setVariable("approvalThreshold", catalogCounts ? 1 : approvalThreshold);
-      delegateTask.setVariable("rejectionThreshold", catalogCounts ? 1 : rejectionThreshold);
+      int taskApprovalThreshold =
+          resolveApprovalThreshold(
+              WorkflowVariableResolver.stringVariable(
+                  delegateTask, WorkflowStartVariables.APPROVAL_MODE),
+              approvalThreshold,
+              task.getAssignees());
+      delegateTask.setVariable("approvalThreshold", catalogCounts ? 1 : taskApprovalThreshold);
+      delegateTask.setVariable(
+          "rejectionThreshold",
+          catalogCounts ? 1 : capAtUsersAbleToVote(rejectionThreshold, task.getAssignees()));
       delegateTask.setVariable("approversList", new ArrayList<String>());
       delegateTask.setVariable("rejectersList", new ArrayList<String>());
       delegateTask.setVariable("taskEntityId", task.getId().toString());
@@ -344,21 +363,9 @@ public class CreateTask implements TaskListener {
     if (workflowInstanceIdObj != null) {
       return UUID.fromString(workflowInstanceIdObj.toString());
     }
-    String businessKey = resolveProcessBusinessKey(delegateTask.getProcessInstanceId());
+    String businessKey =
+        WorkflowHandler.getInstance().getProcessBusinessKey(delegateTask.getProcessInstanceId());
     return businessKey != null && !businessKey.isBlank() ? UUID.fromString(businessKey) : null;
-  }
-
-  private static String resolveProcessBusinessKey(String processInstanceId) {
-    if (processInstanceId == null || processInstanceId.isBlank()) {
-      return null;
-    }
-    org.flowable.engine.runtime.ProcessInstance processInstance =
-        WorkflowHandler.getInstance()
-            .getRuntimeService()
-            .createProcessInstanceQuery()
-            .processInstanceId(processInstanceId)
-            .singleResult();
-    return processInstance != null ? processInstance.getBusinessKey() : null;
   }
 
   private List<EntityReference> getAssignees(DelegateTask delegateTask) {
@@ -569,7 +576,7 @@ public class CreateTask implements TaskListener {
                 effectiveWorkflowDefinitionId, workflowStageId);
       }
       List<EntityReference> resolvedAssignees =
-          resolveExistingTaskAssignees(currentTask, assignees, requestedAssignees);
+          resolveExistingTaskAssignees(currentTask, assignees, requestedAssignees, workflowStageId);
       boolean preserveTerminalWorkflowState = isTerminalTaskStatus(currentTask.getStatus());
       if (!preserveTerminalWorkflowState) {
         updatedTask.setStatus(stageStatus != null ? stageStatus : updatedTask.getStatus());
@@ -628,7 +635,7 @@ public class CreateTask implements TaskListener {
               entity,
               updatedTask.getPayload(),
               lifecycleMove,
-              pendingChange(delegateTask)));
+              previewChanges(delegateTask, entity, false)));
       updatedTask.setPayload(linkChangeRequest(updatedTask.getPayload(), delegateTask));
       if (requestedExternalReference != null) {
         updatedTask.setExternalReference(
@@ -728,7 +735,11 @@ public class CreateTask implements TaskListener {
     task.setPayload(mergeManualGrantReason(task.getPayload(), manualGrantReason));
     task.setPayload(
         approvalPayload(
-            taskType, entity, task.getPayload(), lifecycleMove, pendingChange(delegateTask)));
+            taskType,
+            entity,
+            task.getPayload(),
+            lifecycleMove,
+            previewChanges(delegateTask, entity, priorApprovalPayload == null)));
     task.setPayload(linkChangeRequest(task.getPayload(), delegateTask));
     if (requestedExternalReference != null) {
       task.setExternalReference(
@@ -778,7 +789,7 @@ public class CreateTask implements TaskListener {
     return task;
   }
 
-  private void supersedePriorApprovalTask(
+  void supersedePriorApprovalTask(
       DelegateTask delegateTask,
       TaskRepository taskRepository,
       EntityInterface<?> entity,
@@ -795,9 +806,12 @@ public class CreateTask implements TaskListener {
         // reviews survive. Every other run keeps the entity-level supersede (requesterToMatch =
         // null).
         String requesterToMatch = reviewsChangeRequest(delegateTask) ? updatedBy : null;
-        taskRepository
-            .listNonTerminalTasksByEntityAndCategory(entity.getFullyQualifiedName(), taskCategory)
-            .stream()
+        List<Task> priors =
+            reviewsStaleRevision(delegateTask)
+                ? List.of()
+                : taskRepository.listNonTerminalTasksByEntityAndCategory(
+                    entity.getFullyQualifiedName(), taskCategory);
+        priors.stream()
             .filter(
                 prior ->
                     isSupersedablePriorApprovalTask(
@@ -952,10 +966,66 @@ public class CreateTask implements TaskListener {
     }
   }
 
+  /**
+   * The approval threshold a new task starts with. Under {@link
+   * WorkflowStartVariables#APPROVAL_MODE_ALL_ASSIGNEES} every assignee entry must approve, so the
+   * node's threshold is raised to the entry count; a team is one entry, covered by any member.
+   * Every other mode keeps the node's threshold.
+   *
+   * <p>The threshold never exceeds the number of users able to vote. The requester is removed from
+   * the assignees to prevent self-approval, so a node requiring two approvals from an owner and a
+   * reviewer would otherwise leave the task open forever when the reviewer made the change. A list
+   * holding a team is not capped, since any number of its members can vote.
+   * ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters
+   */
+  static int resolveApprovalThreshold(
+      String approvalMode, int nodeThreshold, List<EntityReference> assignees) {
+    int threshold =
+        WorkflowStartVariables.APPROVAL_MODE_ALL_ASSIGNEES.equals(approvalMode)
+            ? Math.max(nodeThreshold, assignees == null ? 0 : assignees.size())
+            : nodeThreshold;
+    return capAtUsersAbleToVote(threshold, assignees);
+  }
+
+  /**
+   * The policy a change request is decided by. Both thresholds get the same cap as the task's, or
+   * the only eligible reviewer's decision would read as reviewers failing to agree.
+   * ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters
+   */
+  static ReviewPolicy reviewPolicy(
+      int nodeApprovalThreshold,
+      int rejectionThreshold,
+      boolean partialDecisions,
+      List<EntityReference> assignees) {
+    return new ReviewPolicy()
+        .withApprovalThreshold(capAtUsersAbleToVote(nodeApprovalThreshold, assignees))
+        .withRejectionThreshold(capAtUsersAbleToVote(rejectionThreshold, assignees))
+        .withPartialDecisions(partialDecisions);
+  }
+
+  /**
+   * Caps an approval or rejection threshold at the users able to vote, so neither is out of reach
+   * once the requester is removed. ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters
+   */
+  static int capAtUsersAbleToVote(int threshold, List<EntityReference> assignees) {
+    boolean onlyUsers =
+        assignees != null
+            && !assignees.isEmpty()
+            && assignees.stream().allMatch(assignee -> Entity.USER.equals(assignee.getType()));
+    return onlyUsers ? Math.min(threshold, assignees.size()) : threshold;
+  }
+
   static List<EntityReference> resolveExistingTaskAssignees(
       Task existingTask,
       List<EntityReference> workflowAssignees,
-      List<EntityReference> requestedAssignees) {
+      List<EntityReference> requestedAssignees,
+      String targetStageId) {
+    if (existingTask.getType() == TaskEntityType.TestCaseResolution
+        && requestedAssignees != null
+        && requestedAssignees.isEmpty()
+        && isIncidentReturnToTriage(existingTask.getWorkflowStageId(), targetStageId)) {
+      return List.of();
+    }
     List<EntityReference> existingAssignees = existingTask.getAssignees();
     boolean hasExistingAssignees = existingAssignees != null && !existingAssignees.isEmpty();
     boolean hasRequestedAssignees = requestedAssignees != null && !requestedAssignees.isEmpty();
@@ -973,6 +1043,13 @@ public class CreateTask implements TaskListener {
       return requestedAssignees;
     }
     return existingAssignees;
+  }
+
+  private static boolean isIncidentReturnToTriage(String currentStageId, String targetStageId) {
+    return (IncidentWorkflowStages.NEW_STAGE_ID.equals(targetStageId)
+            && !Objects.equals(currentStageId, targetStageId))
+        || (IncidentWorkflowStages.ACK_STAGE_ID.equals(targetStageId)
+            && IncidentWorkflowStages.ASSIGNED_STAGE_ID.equals(currentStageId));
   }
 
   // Delegates to TaskRepository.isTerminalStatus so the two predicates can't drift when a new
@@ -1057,7 +1134,8 @@ public class CreateTask implements TaskListener {
     if (taskId != null && !taskId.isBlank()) {
       return UUID.fromString(taskId);
     }
-    String businessKey = resolveProcessBusinessKey(delegateTask.getProcessInstanceId());
+    String businessKey =
+        WorkflowHandler.getInstance().getProcessBusinessKey(delegateTask.getProcessInstanceId());
     if (businessKey == null || businessKey.isBlank()) {
       return null;
     }
@@ -1166,9 +1244,9 @@ public class CreateTask implements TaskListener {
       EntityInterface<?> entity,
       Object payload,
       LifecycleMove move,
-      ChangeDescription pending) {
+      PreviewChanges changes) {
     return move == null
-        ? applyProposedChangesIfApproval(taskType, entity, payload, pending)
+        ? applyProposedChangesIfApproval(taskType, entity, payload, changes)
         : withLifecycleMove(payload, move);
   }
 
@@ -1194,14 +1272,34 @@ public class CreateTask implements TaskListener {
    * description.
    */
   static Object applyProposedChangesIfApproval(
-      TaskEntityType taskType,
-      EntityInterface<?> entity,
-      Object payload,
-      ChangeDescription pending) {
+      TaskEntityType taskType, EntityInterface<?> entity, Object payload, PreviewChanges changes) {
     if (taskType != TaskEntityType.GlossaryApproval && taskType != TaskEntityType.RequestApproval) {
       return payload;
     }
-    return ChangePreviewUtils.buildProposedChangesPayload(entity, payload, pending);
+    return ChangePreviewUtils.buildProposedChangesPayload(
+        entity, payload, changes.pending(), changes.opening());
+  }
+
+  /**
+   * The changes an approval task previews: the pending revision a change-request run reviews, and,
+   * for a task that opens an approval cycle, the change of the version the triggering edit produced.
+   * The workflow's own writes (setting the status to In Review before the task exists) are stored
+   * after that edit, so the entity's latest change is not the edit under review. A task that
+   * supersedes an open approval carries its preview forward and folds in each edit's own hop
+   * instead, which keeps edits cancelled earlier in the cycle from coming back.
+   */
+  record PreviewChanges(ChangeDescription pending, ChangeDescription opening) {
+    static final PreviewChanges NONE = new PreviewChanges(null, null);
+  }
+
+  private static PreviewChanges previewChanges(
+      DelegateTask delegateTask, EntityInterface<?> entity, boolean opensCycle) {
+    final Object triggeringVersion =
+        new WorkflowVariableHandler(delegateTask)
+            .getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE);
+    return new PreviewChanges(
+        pendingChange(delegateTask),
+        opensCycle ? TriggeringChange.of(entity, triggeringVersion) : null);
   }
 
   private static Object linkChangeRequest(Object payload, DelegateTask delegateTask) {
@@ -1214,6 +1312,17 @@ public class CreateTask implements TaskListener {
   }
 
   // Whether this run reviews a change request: such a run carries the request in its variables.
+  // A change request's runs can finish out of order. The run of a revision the request has since
+  // replaced must leave the newer revision's live review alone; attachTask then closes its own
+  // task.
+  static boolean reviewsStaleRevision(DelegateTask delegateTask) {
+    return ChangeRequestRun.from(new WorkflowVariableHandler(delegateTask))
+        .filter(
+            run ->
+                !ChangeRequestService.isActiveRevision(run.changeRequestId(), run.revisionNumber()))
+        .isPresent();
+  }
+
   private static boolean reviewsChangeRequest(DelegateTask delegateTask) {
     return ChangeRequestRun.from(new WorkflowVariableHandler(delegateTask)).isPresent();
   }
@@ -1435,6 +1544,15 @@ public class CreateTask implements TaskListener {
       LOG.warn("Failed to build recognizer feedback payload for task: {}", e.getMessage());
       return null;
     }
+  }
+
+  // The request keeps memories by id only, so it may read the derivation of any memory. The payload
+  // stays a map: the workflow merges the term's pending changes into it and drops anything else.
+  private static Object proposalPayload(EntityInterface<?> term) {
+    List<MemoryDerivation> derivations =
+        new MemoryDerivations()
+            .find(Entity.GLOSSARY_TERM, List.of(term.getId()), UnaryOperator.identity());
+    return JsonUtils.getMap(AutomationProposals.payloadFor(term, derivations));
   }
 
   @JsonInclude(JsonInclude.Include.NON_NULL)

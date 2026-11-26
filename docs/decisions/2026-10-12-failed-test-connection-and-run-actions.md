@@ -1,11 +1,11 @@
 # Downstream builds add an action to a failed test connection or agent run
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-12 (initial)
+- **Revisions:** v1 2026-10-12 (initial) · v2 2026-11-03 (`TestConnection` reads the point in AI mode)
 - **Deciders:** Ayush Shah
 - **Guard:** `TestConnectionModal.test.tsx` (failure action describe block),
   `RunHistoryDrawer.test.tsx` (run action describe block),
-  `ConnectionServiceDetailsPage.test.tsx` (`SERVICE_DETAILS_TEST_CONNECTION_ACTIONS` describe block)
+  `TestConnection.test.tsx` (`SERVICE_DETAILS_TEST_CONNECTION_ACTIONS` describe block)
 - **Related:** open-metadata/ai-platform#1085
 
 ## Context
@@ -42,3 +42,14 @@ where the plugin's own UI can respond to it. Showing the action on the classic p
 service forms means having those consumers read the point too, and the plugin must then work
 without the connection page's footer. Renaming the id or changing what `failure` carries breaks
 downstream builds silently, so change them only with the consumers.
+
+## Amendment
+
+v2 2026-11-03. The action was missing where a test connection fails most: while a service is being
+created or its connection edited. Collate now opens its chat from an overlay present on every AI-mode
+page, so the reason for limiting the point to the connection details page is gone.
+
+- `TestConnection` reads the point itself, only when `useIsAiMode()` is true, so every caller in AI
+  mode (details page, add service, edit connection) shows the action and classic pages never do.
+- `TestConnectionActionProps` is `serviceType`, `serviceName` (the unsaved name while creating),
+  `failure` and `onClose`. It no longer carries the page context, which a form has no entity for.

@@ -12,7 +12,7 @@
  */
 
 import { Button } from '@openmetadata/ui-core-components';
-import { AlertTriangle } from '@openmetadata/ui-core-components/icons';
+import { Alert } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -357,7 +357,7 @@ const AddIngestionPage = () => {
       <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
         <SomethingWentWrongPlaceholder
           description={getEntityMissingError(serviceCategory, serviceFQN)}
-          icon={<AlertTriangle />}
+          icon={<Alert />}
           title={t('message.something-went-wrong')}
         />
       </div>

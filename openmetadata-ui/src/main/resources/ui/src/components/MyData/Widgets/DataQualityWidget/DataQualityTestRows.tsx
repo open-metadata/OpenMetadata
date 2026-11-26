@@ -224,7 +224,7 @@ const DataQualityTestRows: React.FC<DataQualityTestRowsProps> = ({
           aria-label={group.tableFqn}
           data-testid={`dq-table-group-${group.tableFqn}`}
           key={group.tableFqn}>
-          <div className="tw:-mx-5 tw:flex tw:min-w-0 tw:items-center tw:gap-2.5 tw:bg-utility-gray-blue-50 tw:px-5 tw:py-2">
+          <div className="tw:-mx-5 tw:flex tw:min-w-0 tw:items-center tw:gap-2.5 tw:bg-secondary tw:px-5 tw:py-2">
             <FeaturedIcon
               color="brand"
               icon={Database01}

@@ -12,7 +12,10 @@
  */
 
 import { expect, Page } from '@playwright/test';
-import { ALERT_UPDATED_DESCRIPTION } from '../constant/alert';
+import {
+  ALERT_MASKED_SECRET,
+  ALERT_UPDATED_DESCRIPTION,
+} from '../constant/alert';
 import { AlertDetails } from '../constant/alert.interface';
 import { SidebarItem } from '../constant/sidebar';
 import { Domain } from '../support/domain/Domain';
@@ -403,7 +406,6 @@ export const createTaskAlert = async ({
     sourceDisplayName,
   });
 
-  // A task has no owners, so its recipients are the people it is assigned to or mentions.
   await page.click('[data-testid="add-destination-button"]');
   await addInternalDestination({
     page,
@@ -455,7 +457,6 @@ export const createConversationAlert = async ({
 export const checkAlertConfigDetails = async ({
   page,
   sourceName,
-  destinationEndpoint,
 }: {
   page: Page;
   sourceName: string;
@@ -487,8 +488,9 @@ export const checkAlertConfigDetails = async ({
   await expect(
     page.getByTestId('destination-category-select-0').getByRole('combobox')
   ).toHaveValue('Webhook');
+  // The endpoint is a credential, so the page shows the mask, never the URL.
   await expect(page.getByTestId('endpoint-input-field-0')).toHaveValue(
-    destinationEndpoint
+    ALERT_MASKED_SECRET
   );
 };
 

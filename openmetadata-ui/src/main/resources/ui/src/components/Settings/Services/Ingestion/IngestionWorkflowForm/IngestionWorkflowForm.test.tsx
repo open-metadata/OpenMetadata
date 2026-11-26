@@ -20,11 +20,17 @@ import {
 } from '@testing-library/react';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { PipelineType } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { DatabaseServiceType } from '../../../../../generated/entity/services/databaseService';
 import {
   IngestionWorkflowData,
   IngestionWorkflowFormProps,
 } from '../../../../../interface/service.interface';
+import profilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import IngestionWorkflowForm from './IngestionWorkflowForm';
+
+beforeEach(() => {
+  globalThis.HTMLElement.prototype.scrollIntoView = jest.fn();
+});
 
 const DBT_WORKFLOW_DATA = {
   name: 'dbt_agent',
@@ -49,6 +55,140 @@ const renderDbtForm = (onChange = jest.fn(), onSubmit = jest.fn()) =>
       onSubmit={onSubmit}
     />
   );
+
+describe('IngestionWorkflowForm processing-engine extension', () => {
+  beforeEach(() => {
+    jest
+      .spyOn(profilerConfigurationClassBase, 'getSparkAgentField')
+      .mockImplementation((serviceType) =>
+        serviceType === DatabaseServiceType.Mysql
+          ? ({ formData }) => (
+              <div data-testid="processing-engine-selector">
+                {formData?.id ?? 'Native'}
+              </div>
+            )
+          : undefined
+      );
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const renderProfilerForm = (
+    serviceType: DatabaseServiceType,
+    workflowData: IngestionWorkflowData,
+    onSubmit = jest.fn()
+  ) =>
+    render(
+      <IngestionWorkflowForm
+        pipeLineType={PipelineType.Profiler}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        serviceData={{ name: 'my_service', serviceType }}
+        workflowData={workflowData}
+        onCancel={jest.fn()}
+        onFocus={jest.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+  it.each([DatabaseServiceType.BigQuery, DatabaseServiceType.Redshift])(
+    'submits Native profiling with no engine panel for %s',
+    async (serviceType) => {
+      const onSubmit = jest.fn();
+      renderProfilerForm(
+        serviceType,
+        {
+          name: 'my_profiler',
+          type: 'Profiler',
+          processingEngine: { type: 'Native' },
+          rootProcessingEngine: undefined,
+        } as IngestionWorkflowData,
+        onSubmit
+      );
+
+      const submit = await screen.findByTestId('submit-btn');
+
+      expect(
+        screen.queryByTestId('processing-engine-selector')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('Processing Engine')).not.toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(submit);
+      });
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+      expect(onSubmit.mock.lastCall[0]).toEqual(
+        expect.objectContaining({ processingEngine: { type: 'Native' } })
+      );
+      expect(onSubmit.mock.lastCall[0].rootProcessingEngine).toBeUndefined();
+    }
+  );
+
+  it('renders and submits a saved supported engine reference', async () => {
+    const onSubmit = jest.fn();
+    const engine = { type: 'ingestionRunner', id: 'engine-1' };
+    renderProfilerForm(
+      DatabaseServiceType.Mysql,
+      {
+        name: 'my_profiler',
+        type: 'Profiler',
+        rootProcessingEngine: engine,
+      } as IngestionWorkflowData,
+      onSubmit
+    );
+
+    expect(
+      await screen.findByTestId('processing-engine-selector')
+    ).toHaveTextContent('engine-1');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-btn'));
+    });
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+    expect(onSubmit.mock.lastCall[0].rootProcessingEngine).toEqual(engine);
+  });
+
+  it('updates both the schema and field when the connector changes', async () => {
+    const formFor = (serviceType: DatabaseServiceType) => (
+      <IngestionWorkflowForm
+        pipeLineType={PipelineType.Profiler}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        serviceData={{ name: 'my_service', serviceType }}
+        workflowData={{ name: 'my_profiler' }}
+        onCancel={jest.fn()}
+        onFocus={jest.fn()}
+        onSubmit={jest.fn()}
+      />
+    );
+    const { rerender } = render(formFor(DatabaseServiceType.BigQuery));
+    await screen.findByTestId('submit-btn');
+
+    expect(
+      screen.queryByTestId('processing-engine-selector')
+    ).not.toBeInTheDocument();
+
+    rerender(formFor(DatabaseServiceType.Mysql));
+
+    expect(
+      await screen.findByTestId('processing-engine-selector')
+    ).toBeInTheDocument();
+
+    rerender(formFor(DatabaseServiceType.BigQuery));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('processing-engine-selector')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(screen.queryByText('Processing Engine')).not.toBeInTheDocument();
+  });
+});
 
 describe('IngestionWorkflowForm dbt catalogMapping', () => {
   it('renders the catalog mapping under its own title with the saved entries', async () => {
@@ -107,6 +247,171 @@ describe('IngestionWorkflowForm dbt catalogMapping', () => {
   });
 });
 
+// Pre-seeding `database` with a real object value selects the object branch of
+// the field's anyOf (string | object) so the map's Add button renders, without
+// having to drive the anyOf Select dropdown. RJSF selects the string branch for
+// an empty `{}`, so a non-empty value is required to reach the map branch.
+const METADATA_WORKFLOW_DATA = {
+  name: 'metadata-agent',
+  type: 'DatabaseMetadata',
+  ownerConfig: {
+    enableInheritance: true,
+    database: { existing_db: 'some-team' },
+  },
+} as unknown as IngestionWorkflowData;
+
+const renderMetadataForm = (onChange = jest.fn(), onSubmit = jest.fn()) =>
+  render(
+    <IngestionWorkflowForm
+      okText="Submit"
+      pipeLineType={PipelineType.Metadata}
+      serviceCategory={ServiceCategory.DATABASE_SERVICES}
+      workflowData={METADATA_WORKFLOW_DATA}
+      onCancel={jest.fn()}
+      onChange={onChange}
+      onFocus={jest.fn()}
+      onSubmit={onSubmit}
+    />
+  );
+
+describe('IngestionWorkflowForm ownerConfig map', () => {
+  it('drops an untouched ownerConfig.database row that RJSF seeded with {}', async () => {
+    const onChange = jest.fn();
+    const onSubmit = jest.fn();
+    const { container } = renderMetadataForm(onChange, onSubmit);
+
+    const addBtn = await screen.findByRole('button', {
+      name: 'label.add-entity',
+    });
+    await act(async () => {
+      fireEvent.click(addBtn);
+    });
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const { ownerConfig } = onChange.mock.calls.at(-1)[0];
+
+    // RJSF seeds the untouched row as { newKey: {} } — the type-less anyOf default
+    expect(ownerConfig.database).toEqual(
+      expect.objectContaining({ newKey: {} })
+    );
+
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+    // formatAdditionalProperties drops the untouched {} row before submit, while
+    // keeping the pre-existing filled row.
+    expect(onSubmit.mock.calls[0][0].ownerConfig.database).toEqual({
+      existing_db: 'some-team',
+    });
+    // and no validation alert surfaces for the dropped row
+    expect(container.querySelector('[role="alert"]')).not.toBeInTheDocument();
+  });
+
+  it('keeps a filled ownerConfig.database row through submit', async () => {
+    const onChange = jest.fn();
+    const onSubmit = jest.fn();
+    const { container } = render(
+      <IngestionWorkflowForm
+        okText="Submit"
+        pipeLineType={PipelineType.Metadata}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        workflowData={
+          {
+            name: 'metadata-agent',
+            type: 'DatabaseMetadata',
+            ownerConfig: {
+              enableInheritance: true,
+              database: { sales_db: 'sales-team' },
+            },
+          } as unknown as IngestionWorkflowData
+        }
+        onCancel={jest.fn()}
+        onChange={onChange}
+        onFocus={jest.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    // object branch is active for a non-empty database map
+    await screen.findByRole('button', { name: 'label.add-entity' });
+
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+    expect(onSubmit.mock.calls[0][0].ownerConfig.database).toEqual({
+      sales_db: 'sales-team',
+    });
+  });
+
+  it('blocks submit when a named ownerConfig.database row has no owner', async () => {
+    const onSubmit = jest.fn();
+    const { container } = renderMetadataForm(jest.fn(), onSubmit);
+
+    const addBtn = await screen.findByRole('button', {
+      name: 'label.add-entity',
+    });
+    await act(async () => {
+      fireEvent.click(addBtn);
+    });
+
+    // Name the added row but leave its owner untouched (RJSF keeps the {} default)
+    const keyInput = await screen.findByDisplayValue('newKey');
+    await act(async () => {
+      fireEvent.change(keyInput, { target: { value: 'sales_db' } });
+      fireEvent.blur(keyInput);
+    });
+
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    expect(
+      await screen.findAllByText('message.field-text-is-required')
+    ).not.toHaveLength(0);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('shows an error when a saved pipeline already holds a row with no owner', async () => {
+    const onSubmit = jest.fn();
+    const { container } = render(
+      <IngestionWorkflowForm
+        okText="Submit"
+        pipeLineType={PipelineType.Metadata}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        workflowData={
+          {
+            name: 'metadata-agent',
+            type: 'DatabaseMetadata',
+            ownerConfig: {
+              enableInheritance: true,
+              database: { existing_db: 'some-team', sales_db: {} },
+            },
+          } as unknown as IngestionWorkflowData
+        }
+        onCancel={jest.fn()}
+        onFocus={jest.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await screen.findByTestId('submit-btn');
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    expect(
+      await screen.findAllByText('message.field-text-is-required')
+    ).not.toHaveLength(0);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
 type ServiceData = IngestionWorkflowFormProps['serviceData'];
 
 const renderProfilerForm = (serviceData: ServiceData) =>
@@ -148,5 +453,213 @@ describe('IngestionWorkflowForm auto partition detection', () => {
     } as ServiceData);
 
     expect(await getAutoPartitionField()).toHaveClass('tw:hidden');
+  });
+});
+
+describe('BigQuery metadata sharding configuration', () => {
+  it('renders and submits only the grouping toggle in the metadata form', async () => {
+    const onSubmit = jest.fn();
+    const { container } = render(
+      <IngestionWorkflowForm
+        okText="Submit"
+        pipeLineType={PipelineType.Metadata}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        serviceData={{ name: 'demo_bigquery', serviceType: 'BigQuery' }}
+        workflowData={
+          {
+            name: 'metadata-agent',
+            type: 'DatabaseMetadata',
+            shardedTables: { enabled: true },
+          } as IngestionWorkflowData
+        }
+        onCancel={jest.fn()}
+        onFocus={jest.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByRole('button', { name: /label.scope-and-behaviour/ })
+      );
+    });
+    const toggle = await screen.findByRole('switch', {
+      name: 'Group Sharded Tables',
+    });
+
+    expect(toggle).toBeChecked();
+    expect(
+      screen.queryByRole('combobox', { name: 'Exclude Patterns' })
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(toggle);
+    });
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+    expect(onSubmit.mock.calls[0][0].shardedTables).toEqual({
+      enabled: false,
+    });
+  });
+});
+
+describe('metadata sharding visibility and omitted defaults', () => {
+  it.each(['BigQuery', 'Mysql'])(
+    'preserves omitted settings for %s',
+    async (serviceType) => {
+      const onSubmit = jest.fn();
+      const { container } = render(
+        <IngestionWorkflowForm
+          pipeLineType={PipelineType.Metadata}
+          serviceCategory={ServiceCategory.DATABASE_SERVICES}
+          serviceData={{ name: 'demo_service', serviceType }}
+          workflowData={
+            {
+              name: 'metadata-agent',
+              type: 'DatabaseMetadata',
+            } as IngestionWorkflowData
+          }
+          onCancel={jest.fn()}
+          onFocus={jest.fn()}
+          onSubmit={onSubmit}
+        />
+      );
+      await act(async () => {
+        fireEvent.click(
+          await screen.findByRole('button', {
+            name: /label.scope-and-behaviour/,
+          })
+        );
+      });
+      if (serviceType === 'BigQuery') {
+        expect(
+          await screen.findByRole('switch', { name: 'Group Sharded Tables' })
+        ).not.toBeChecked();
+      } else {
+        expect(
+          screen.queryByRole('switch', { name: 'Group Sharded Tables' })
+        ).not.toBeInTheDocument();
+      }
+      await act(async () => {
+        fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+      });
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      if (serviceType === 'BigQuery') {
+        expect(onSubmit.mock.calls[0][0].shardedTables?.enabled ?? false).toBe(
+          false
+        );
+      } else {
+        expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('shardedTables');
+      }
+    }
+  );
+});
+
+describe('IngestionWorkflowForm collapsed section validation', () => {
+  const renderAutoClassificationForm = (onSubmit = jest.fn()) =>
+    render(
+      <IngestionWorkflowForm
+        okText="Submit"
+        pipeLineType={PipelineType.AutoClassification}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        workflowData={
+          {
+            name: 'classification-agent',
+            type: 'AutoClassification',
+            confidence: 150,
+          } as unknown as IngestionWorkflowData
+        }
+        onCancel={jest.fn()}
+        onFocus={jest.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+  it('blocks submit and opens the section when a collapsed field is out of range', async () => {
+    const onSubmit = jest.fn();
+    const { container } = renderAutoClassificationForm(onSubmit);
+
+    await screen.findByTestId('submit-btn');
+
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    const error = await screen.findByText(
+      'message.value-must-be-less-than-or-equal'
+    );
+
+    expect(error.closest('.tw\\:hidden')).toBeNull();
+    expect(
+      container
+        .querySelector('[data-field-name="databaseFilterPattern"]')
+        ?.closest('.tw\\:hidden')
+    ).not.toBeNull();
+    expect(document.activeElement?.id).toBe('root/confidence');
+    expect(
+      jest.mocked(HTMLElement.prototype.scrollIntoView).mock.contexts[0]
+    ).toBe(document.activeElement);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('reopens the section on a later submit after the user collapses it again', async () => {
+    const onSubmit = jest.fn();
+    const { container } = renderAutoClassificationForm(onSubmit);
+    const form = container.querySelector('form') as HTMLFormElement;
+
+    await screen.findByTestId('submit-btn');
+    await act(async () => {
+      fireEvent.submit(form);
+    });
+    const error = await screen.findByText(
+      'message.value-must-be-less-than-or-equal'
+    );
+
+    fireEvent.click(screen.getByTestId('ingestion-section-advanced-toggle'));
+
+    expect(error.closest('.tw\\:hidden')).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.submit(form);
+    });
+
+    expect(
+      screen
+        .getByText('message.value-must-be-less-than-or-equal')
+        .closest('.tw\\:hidden')
+    ).toBeNull();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+describe('IngestionWorkflowForm field layout', () => {
+  it('renders a field that is alone in its row at full width', async () => {
+    const { container } = render(
+      <IngestionWorkflowForm
+        okText="Submit"
+        pipeLineType={PipelineType.AutoClassification}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        workflowData={
+          {
+            name: 'classification-agent',
+            type: 'AutoClassification',
+          } as unknown as IngestionWorkflowData
+        }
+        onCancel={jest.fn()}
+        onFocus={jest.fn()}
+        onSubmit={jest.fn()}
+      />
+    );
+
+    await screen.findByTestId('submit-btn');
+
+    const field = container.querySelector(
+      '[data-field-name="classificationLanguage"]'
+    );
+
+    expect(field).toHaveClass('tw:w-full');
+    expect(field?.parentElement).not.toHaveClass('tw:grid');
   });
 });

@@ -46,6 +46,11 @@ class ChangeActorTest {
   }
 
   @Test
+  void aNameThatOnlyUpperCaseFoldingMatchesToAdminIsNotTheSystemAuthor() {
+    assertFalse(ChangeActor.recorded("admın", null).system());
+  }
+
+  @Test
   void aSystemWriteKeepsTheNamesItRecords() {
     ChangeActor actor = ChangeActor.system("steward", "governance-bot");
 

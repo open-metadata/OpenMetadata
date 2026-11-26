@@ -1042,4 +1042,10 @@ public class DatabaseSchemaResource
         .getSchemaEntityRelationship(
             fqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
   }
+
+  @Override
+  protected List<ReferenceListField<DatabaseSchema>> viewFilteredReferenceFields() {
+    return List.of(
+        new ReferenceListField<>("tables", DatabaseSchema::getTables, DatabaseSchema::setTables));
+  }
 }

@@ -63,14 +63,13 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
-from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.api.topology_runner import PerSourceState, TopologyRunnerMixin
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.utils import model_str
@@ -91,6 +90,13 @@ class DataModelLink(BaseModel):
     table_entity: Table
     datamodel: DataModel
     upstream_table_ids: dict[str, UUID] = Field(default_factory=dict)
+    parse_query_lineage: bool = Field(
+        default=True,
+        description="False when datamodel.sql is not SQL, e.g. the code of a dbt Python model",
+    )
+    # The manifest itself lists no parents. An empty upstream alone cannot tell this apart from
+    # parents that were filtered out or are not in OpenMetadata yet, whose lineage must survive.
+    declared_no_upstream: bool = False
 
 
 class DatabaseServiceTopology(ServiceTopology):
@@ -215,10 +221,10 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
-    database_source_state: set = set()  # noqa: RUF012
-    stored_procedure_source_state: set = set()  # noqa: RUF012
-    database_entity_source_state: set = set()  # noqa: RUF012
-    schema_entity_source_state: set = set()  # noqa: RUF012
+    database_source_state = PerSourceState(set)
+    stored_procedure_source_state = PerSourceState(set)
+    database_entity_source_state = PerSourceState(set)
+    schema_entity_source_state = PerSourceState(set)
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.model_fields["config"].annotation  # noqa: F821
 
@@ -230,7 +236,6 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
     _connection: BaseConnection | None = None
 
     topology = DatabaseServiceTopology()
-    context = TopologyContextManager(topology)
 
     # ``vars(self).setdefault(...)`` for thread-safe lazy init.
     # See: https://docs.python.org/3/library/threadsafety.html

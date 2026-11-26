@@ -66,6 +66,31 @@ class EnrichmentPipelineTest {
   // ──────────────────────── failure isolation: one step ────────────────────────
 
   @Test
+  void requiredFailureRejectsTheSnapshotAndRecordsTheFailure() {
+    final EnrichmentStep required =
+        new EnrichmentStep() {
+          @Override
+          public String name() {
+            return "parent";
+          }
+
+          @Override
+          public boolean required() {
+            return true;
+          }
+
+          @Override
+          public void apply(EnrichmentTarget target) {
+            throw new IllegalStateException("Parent was deleted");
+          }
+        };
+    final EnrichmentPipeline pipeline = new EnrichmentPipeline(List.of(required));
+    assertThrows(IllegalStateException.class, () -> pipeline.run(newTarget()));
+    assertEquals(1, pipeline.snapshotStats().get("parent").getFailedRecords());
+    assertEquals(0, pipeline.snapshotStats().get("parent").getSuccessRecords());
+  }
+
+  @Test
   void oneStepThrows_siblingsStillRun_onlyThatStepMarkedFailed() {
     AtomicInteger siblingInvocations = new AtomicInteger();
     EnrichmentStep failing =
@@ -255,8 +280,6 @@ class EnrichmentPipelineTest {
             null,
             new HashMap<>(),
             Map.of(),
-            0L,
-            0L,
             new EnrichmentContext("table", List.of(), 0L, 0L),
             VersionShape.LATEST_HYDRATED);
     StepFailure failure = pipeline.run(target).get(0);
@@ -318,8 +341,6 @@ class EnrichmentPipelineTest {
         entity,
         new HashMap<>(),
         Map.of(),
-        0L,
-        86_400_000L,
         new EnrichmentContext("table", List.of(), 0L, 86_400_000L),
         VersionShape.LATEST_HYDRATED);
   }

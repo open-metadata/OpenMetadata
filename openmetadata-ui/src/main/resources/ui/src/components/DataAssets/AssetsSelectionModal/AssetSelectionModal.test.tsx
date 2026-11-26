@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { AssetsOfEntity } from '../../../enums/Assets.enum';
+import AssetSelectionFooter from './AssetSelectionFooter';
 import { AssetSelectionModal } from './AssetSelectionModal';
 import { useAssetSelectionState } from './useAssetSelectionState';
 
@@ -106,6 +107,7 @@ const baseState = {
   dryRunWarnings: undefined,
   exportJob: undefined,
   selectedItems: new Map(),
+  activeEntity: { id: 'entity-1' },
   isLoading: false,
   isSaveLoading: false,
   assetJobResponse: undefined,
@@ -205,6 +207,37 @@ describe('AssetSelectionModal', () => {
     );
   });
 
+  it('forwards useQueryPost to the asset-selection hook', () => {
+    render(
+      <AssetSelectionModal
+        open
+        useQueryPost
+        entityFqn="glossary.term"
+        onCancel={mockOnCancel}
+      />
+    );
+
+    expect(useAssetSelectionState).toHaveBeenCalledWith(
+      expect.objectContaining({ useQueryPost: true })
+    );
+  });
+
+  it('omits useQueryPost (so the hook defaults to GET) when the prop is not set', () => {
+    render(
+      <AssetSelectionModal
+        open
+        entityFqn="glossary.term"
+        onCancel={mockOnCancel}
+      />
+    );
+
+    // The hook must keep its default GET behavior for non-metric callers, so the modal
+    // must NOT pass `useQueryPost` through unless the caller opted in.
+    expect(useAssetSelectionState).toHaveBeenCalledWith(
+      expect.not.objectContaining({ useQueryPost: true })
+    );
+  });
+
   it('should always render the default add-entity title', () => {
     render(
       <AssetSelectionModal
@@ -292,5 +325,25 @@ describe('AssetSelectionModal', () => {
     );
 
     expect(screen.getByTestId('footer')).toBeInTheDocument();
+  });
+
+  it('should keep save disabled until the target entity has loaded', () => {
+    (useAssetSelectionState as jest.Mock).mockReturnValue({
+      ...baseState,
+      activeEntity: undefined,
+    });
+
+    render(
+      <AssetSelectionModal
+        open
+        entityFqn="glossary.term"
+        onCancel={mockOnCancel}
+      />
+    );
+
+    expect(AssetSelectionFooter).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isLoading: true }),
+      expect.anything()
+    );
   });
 });

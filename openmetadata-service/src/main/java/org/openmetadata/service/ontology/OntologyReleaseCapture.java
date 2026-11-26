@@ -4,14 +4,20 @@ import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyRelease;
+import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.OntologyReleaseChangeSummary;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
@@ -55,6 +61,38 @@ public final class OntologyReleaseCapture {
         working -> captureLocked(ontologyId, request, access, working));
   }
 
+  /** Working content shaped as a release so the release projections can write it; never stored. */
+  public record DraftContent(OntologyRelease release, List<OntologyReleaseMember> members) {}
+
+  /**
+   * The unpublished working content as an unstored release. It takes no revision number and writes
+   * no row, so exporting a draft leaves the release history as it was.
+   */
+  public DraftContent draftContent(final OntologyWorkingSnapshot.Snapshot working) {
+    final Ontology ontology = working.root();
+    final UUID id = UUID.randomUUID();
+    final Members members = new Members(id);
+    working.entries().forEach(entry -> members.add(entry.kind(), entry.definition()));
+    final OntologyRelease release =
+        new OntologyRelease()
+            .withId(id)
+            .withName("draft")
+            .withFullyQualifiedName(
+                FullyQualifiedName.add(ontology.getFullyQualifiedName(), "draft"))
+            .withOntology(ontology.getEntityReference())
+            .withOntologyIri(ontology.getIri())
+            .withVersionIri(URI.create("urn:openmetadata:ontology-release:" + id))
+            .withReleaseRevision(working.state().getLastReleaseRevision())
+            .withSourceWorkingRevision(working.state().getWorkingRevision())
+            .withEncodingVersion(
+                OntologyRelease.EncodingVersion.fromValue(OntologyReleaseManifest.ENCODING_VERSION))
+            .withContentDigest(OntologyReleaseManifest.digest(members.values))
+            .withMemberCount(members.values.size())
+            .withTotalBytes(members.bytes)
+            .withSealedAt(clock.millis());
+    return new DraftContent(release, List.copyOf(members.values));
+  }
+
   public OntologyWorkingSnapshot snapshot() {
     return snapshot;
   }
@@ -75,26 +113,97 @@ public final class OntologyReleaseCapture {
       throw new PreconditionFailedException(
           "Ontology activation changed; reload its working diff before capture");
     }
-    OntologyReleasePublication.validate(request, state);
+    OntologyReleasePublication.validateRequest(request);
     final Ontology ontology = working.root();
+    final String version = targetVersion(request, state);
+    final OntologyRelease existing = reusableDraft(draftsOf(ontology.getId()), state, version);
+    if (existing != null) {
+      return releases.get(
+          null,
+          existing.getId(),
+          releases.getFields("owners,reviewers"),
+          Include.NON_DELETED,
+          false);
+    }
+    OntologyReleasePublication.requireLatestRevision(request, state);
     final OntologyRelease release = header(ontology, state, access.user());
-    setPublicationMetadata(release, request);
+    release.setReleaseNotes(request.getReleaseNotes());
+    release.setSemanticVersion(version);
     final Members members = new Members(release.getId());
     working.entries().forEach(entry -> members.add(entry.kind(), entry.definition()));
     OntologyStructureValidator.requireValid(release, members.values);
+    release.setChangeSummary(changeSummary(state, members.values, access));
+    members.requireTimeRemaining();
     seal(release, state, members);
     return release;
   }
 
-  private void setPublicationMetadata(
-      final OntologyRelease release, final CaptureOntologyRelease request) {
-    release.setReleaseNotes(request.getReleaseNotes());
-    if (request.getVersionBump() != null) {
-      final String latest =
-          dao.ontologyReleaseDAO().findLatestSemanticVersion(release.getOntology().getId());
-      release.setSemanticVersion(
-          OntologyReleasePublication.nextVersion(latest, request.getVersionBump()));
+  private OntologyReleaseChangeSummary changeSummary(
+      final OntologyState state, final List<OntologyReleaseMember> proposed, final Access access) {
+    final List<OntologyReleaseMember> base =
+        state.getActiveReleaseId() == null
+            ? List.of()
+            : new OntologyReleaseReader(dao)
+                .read(
+                    releases.get(
+                        null,
+                        state.getActiveReleaseId(),
+                        releases.getFields("owners,reviewers"),
+                        Include.NON_DELETED,
+                        false),
+                    access.authorize());
+    return OntologyReleaseComparison.summarize(base, proposed);
+  }
+
+  /**
+   * The bump applies to the active release, so a draft never moves the next suggestion. A version
+   * a release already published is stepped past: after a rollback the active release trails the
+   * newest one, and suggesting its successor would collide with a published version.
+   */
+  private String targetVersion(final CaptureOntologyRelease request, final OntologyState state) {
+    if (request.getVersionBump() == null) {
+      return null;
     }
+    final String active =
+        state.getActiveReleaseId() == null
+            ? null
+            : releases
+                .get(
+                    null,
+                    state.getActiveReleaseId(),
+                    releases.getFields(""),
+                    Include.NON_DELETED,
+                    false)
+                .getSemanticVersion();
+    final Set<String> taken =
+        OntologyReleasePublication.publishedVersions(dao, state.getOntologyId());
+    String candidate = OntologyReleasePublication.nextVersion(active, request.getVersionBump());
+    while (taken.contains(candidate)) {
+      candidate = OntologyReleasePublication.nextVersion(candidate, request.getVersionBump());
+    }
+    return candidate;
+  }
+
+  private List<OntologyRelease> draftsOf(final UUID ontologyId) {
+    return dao.ontologyReleaseDAO().listByStatus(ontologyId, EntityStatus.DRAFT.value()).stream()
+        .map(json -> JsonUtils.readValue(json, OntologyRelease.class))
+        .toList();
+  }
+
+  /**
+   * A capture that would seal the same working revision on the same base under the same version
+   * as an open draft is that draft; sealing it again only mints a release nobody asked for.
+   */
+  static OntologyRelease reusableDraft(
+      final List<OntologyRelease> drafts, final OntologyState state, final String version) {
+    return drafts.stream()
+        .filter(draft -> draft.getSealedAt() != null)
+        .filter(
+            draft -> Objects.equals(draft.getSourceWorkingRevision(), state.getWorkingRevision()))
+        .filter(draft -> Objects.equals(draft.getBaseReleaseId(), state.getActiveReleaseId()))
+        .filter(draft -> Objects.equals(draft.getSemanticVersion(), version))
+        .max(Comparator.comparing(OntologyRelease::getReleaseRevision))
+        .orElse(null);
   }
 
   private OntologyRelease header(
@@ -135,12 +244,10 @@ public final class OntologyReleaseCapture {
       throw new PreconditionFailedException("Ontology release allocation changed");
     }
     dao.ontologyReleaseDAO().insert(release, release.getFullyQualifiedName());
-    for (final OntologyReleaseMember member : members.values) {
-      if (dao.ontologyReleaseDAO().insertMember(member) != 1) {
-        throw new PreconditionFailedException("Ontology release was sealed during capture");
-      }
-      members.requireTimeRemaining();
+    if (dao.ontologyReleaseDAO().insertMembers(members.values) != members.values.size()) {
+      throw new PreconditionFailedException("Ontology release was sealed during capture");
     }
+    members.requireTimeRemaining();
     sealHeader(release, digest, members);
   }
 
@@ -173,7 +280,8 @@ public final class OntologyReleaseCapture {
     private void add(final MemberKind kind, final OntologyDefinition entity) {
       requireTimeRemaining();
       if (values.size() >= OntologyReleaseManifest.MAX_MEMBERS) {
-        throw new BadRequestException("An ontology release exceeds the 10000 member limit");
+        throw new BadRequestException(
+            OntologyReleaseManifest.memberLimitMessage("An ontology release"));
       }
       final OntologyReleaseMember member =
           OntologyReleaseManifest.member(
@@ -181,14 +289,18 @@ public final class OntologyReleaseCapture {
               .withSourceVersion(entity.getVersion());
       bytes += member.getPayloadBytes();
       if (bytes > OntologyReleaseManifest.MAX_RELEASE_BYTES) {
-        throw new BadRequestException("Ontology release content exceeds the 64 MiB limit");
+        throw new BadRequestException(
+            OntologyReleaseManifest.byteLimitMessage("Ontology release content"));
       }
       values.add(member);
     }
 
     private void requireTimeRemaining() {
       if (System.nanoTime() >= deadline) {
-        throw new BadRequestException("Ontology capture exceeded its 30 second transaction budget");
+        throw new BadRequestException(
+            "Ontology capture exceeded its "
+                + CAPTURE_TIMEOUT.toSeconds()
+                + " second transaction budget");
       }
     }
   }

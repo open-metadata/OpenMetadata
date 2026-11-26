@@ -64,6 +64,7 @@ const makeProps = (
   onSortChange: mockOnSortChange,
   onEnableToggle: jest.fn(),
   onEdit: jest.fn(),
+  onView: jest.fn(),
   onDelete: jest.fn(),
   ...overrides,
 });
@@ -159,7 +160,7 @@ describe('TestDefinitionTable loading', () => {
 
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).not.toBeDisabled();
+    ).toBeEnabled();
 
     rerender(
       <TestDefinitionTable
@@ -207,10 +208,10 @@ describe('TestDefinitionTable loading', () => {
     ).not.toBeDisabled();
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).not.toBeDisabled();
+    ).toBeEnabled();
     expect(
       screen.getByTestId('delete-test-definition-columnValuesToBeNotNull')
-    ).not.toBeDisabled();
+    ).toBeEnabled();
   });
 
   it('should leave the row controls usable once the refetch lands', () => {
@@ -227,7 +228,7 @@ describe('TestDefinitionTable loading', () => {
     ).not.toBeDisabled();
     expect(
       screen.getByTestId('edit-test-definition-columnValuesToBeNotNull')
-    ).not.toBeDisabled();
+    ).toBeEnabled();
   });
 
   it('should not dim or mark the table busy when idle', () => {
@@ -294,5 +295,18 @@ describe('TestDefinitionTable sorting', () => {
     fireEvent.click(headerFor(/label.name/));
 
     expect(mockOnSortChange).toHaveBeenCalledWith('name', 'desc');
+  });
+});
+
+describe('TestDefinitionTable name cell', () => {
+  it('should open the details panel from the name', () => {
+    const onView = jest.fn();
+    render(<TestDefinitionTable {...makeProps({ onView })} />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Column Values To Be Not Null' })
+    );
+
+    expect(onView).toHaveBeenCalledWith(TEST_DEFINITIONS[0]);
   });
 });

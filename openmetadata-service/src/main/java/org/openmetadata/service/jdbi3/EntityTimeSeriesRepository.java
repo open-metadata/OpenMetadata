@@ -71,6 +71,15 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     Entity.registerEntity(entityClass, entityType, this);
   }
 
+  /**
+   * The search document field that marks a record deleted, or null when it carries none: its own
+   * {@code deleted} when the schema has one. Read once at registration, from the constructor, so an
+   * override returns a constant.
+   */
+  public String getSearchDeletedField() {
+    return allowedFields.contains(Entity.FIELD_DELETED) ? Entity.FIELD_DELETED : null;
+  }
+
   @Transaction
   public T createNewRecord(T recordEntity, String recordFQN) {
     return createNewRecord(recordEntity, null, recordFQN);
@@ -241,11 +250,12 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       boolean skipErrors) {
     // Mirror the data query's branching in listWithOffsetInternal: without a time range the
     // ranged count would evaluate `timestamp BETWEEN NULL AND NULL`, reporting total = 0 for a
-    // non-empty listing and suppressing the after-cursor.
+    // non-empty listing and suppressing the after-cursor, and latest would count revisions
+    // instead of the partitions its listing returns one row per.
     int total =
         (startTs != null && endTs != null)
             ? timeSeriesDao.listCount(filter, startTs, endTs, latest)
-            : timeSeriesDao.listCount(filter);
+            : timeSeriesDao.listCount(filter, latest);
     return listWithOffsetInternal(
         offset, filter, limitParam, startTs, endTs, latest, skipErrors, total);
   }
@@ -275,7 +285,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       List<String> jsons =
           (startTs != null && endTs != null)
               ? timeSeriesDao.listWithOffset(filter, limitParam, offsetInt, startTs, endTs, latest)
-              : timeSeriesDao.listWithOffset(filter, limitParam, offsetInt);
+              : timeSeriesDao.listWithOffset(filter, limitParam, offsetInt, latest);
       Map<String, List<?>> entityListMap = getEntityList(jsons, skipErrors);
       entityList = (List<T>) entityListMap.get("entityList");
       if (skipErrors) {
@@ -698,7 +708,9 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
   static SearchListFilter groupScopeFilter(
       SearchListFilter contentFilter, Set<String> invariantParams) {
-    SearchListFilter scope = new SearchListFilter();
+    // Whether a record's parent is deleted is shared by every record of a group, so the scope
+    // carries the caller's include rather than defaulting to non-deleted.
+    SearchListFilter scope = new SearchListFilter(contentFilter.getInclude());
     for (String param : invariantParams) {
       String value = contentFilter.getQueryParam(param);
       if (value != null) {

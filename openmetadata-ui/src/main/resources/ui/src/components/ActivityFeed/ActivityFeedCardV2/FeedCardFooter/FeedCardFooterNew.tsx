@@ -11,30 +11,43 @@
  *  limitations under the License.
  */
 
-import { AvatarStack, Box, Button } from '@openmetadata/ui-core-components';
+import {
+  AvatarStack,
+  Box,
+  ButtonUtility,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { noop } from 'lodash';
-import { useCallback, useMemo } from 'react';
-import { PressEvent } from 'react-aria-components';
+import { MouseEvent, useCallback, useMemo } from 'react';
+import {
+  ButtonProps as AriaButtonProps,
+  PressEvent,
+} from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
-import { ReactionOperation } from '../../../../enums/reactions.enum';
+import { FEED_FOOTER_AVATAR_SIZE } from '../../../../constants/Feeds.constants';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeedProvider';
 import Reactions from '../../Reactions/Reactions';
+import FeedCardReplyButton from '../FeedCardReplyButton/FeedCardReplyButton';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
+import { isReplyButtonShown } from './FeedCardFooterNew.utils';
 
 const MAX_VISIBLE_AVATARS = 3;
-const AVATAR_SIZE = 20;
 
 function FeedCardFooterNew({
   conversation,
   conversationId,
   reply,
   isReply = false,
-  isForFeedTab = false,
+  componentsVisibility,
+  onReplyPress,
+  showReplyCount = false,
 }: Readonly<FeedCardFooterProps>) {
   const { t } = useTranslation();
   const { showDrawer, updateReactions } = useActivityFeedProvider();
@@ -78,65 +91,78 @@ function FeedCardFooterNew({
     }
   }, [showDrawer, conversation]);
 
-  // The press must keep bubbling: the card container behind this footer
-  // selects the conversation on click, as it did when these were native
-  // buttons.
+  // A press handed to the caller keeps bubbling to the card behind this
+  // footer, as it did when these were native buttons. Opening the drawer
+  // selects the conversation itself, so that press stops here: the card's own
+  // click would fetch its replies a second time.
   const handleRepliesPress = useCallback(
     (event: PressEvent) => {
-      event.continuePropagation();
-      if (isForFeedTab) {
+      if (onReplyPress) {
+        event.continuePropagation();
+        onReplyPress();
+      } else {
         showReplies();
       }
     },
-    [isForFeedTab, showReplies]
+    [onReplyPress, showReplies]
   );
+  // The +N chip is a native button, so its click would also reach the card
+  // and select the conversation, fetching its replies a second time.
+  const handleOverflowClick = useCallback(
+    (event?: MouseEvent<HTMLButtonElement>) => {
+      event?.stopPropagation();
+      showReplies();
+    },
+    [showReplies]
+  );
+  // ButtonUtility forwards its props to a react-aria Button but does not declare
+  // onPress, and onClick would not let the click bubble, so the press handler is
+  // passed as typed react-aria props.
+  const repliesPressProps: Pick<AriaButtonProps, 'onPress'> = {
+    onPress: handleRepliesPress,
+  };
 
   return (
     <Box align="start" className={classNames({ 'm-y-md': isReply })}>
-      <Box
-        className="footer-container tw:w-full"
-        data-testid="feed-card-footer"
-        direction="col">
+      <Box className="tw:w-full" data-testid="feed-card-footer" direction="col">
         <div>
-          <Box align="center" className="w-full rounded-8" gap={2}>
-            {postLength > 0 && !isReply && (
+          <Box align="center" className="w-full rounded-8" gap={1}>
+            {postLength > 0 && !isReply && !showReplyCount && (
               <AvatarStack
-                avatarSize={AVATAR_SIZE}
+                avatarSize={FEED_FOOTER_AVATAR_SIZE}
+                // The avatar fills its button while the icons sit inside padding, so the
+                // stack takes extra space to match the icons' visible gap.
+                className="tw:mr-0.75"
                 items={repliedUsers.map((user) => (
-                  <Button
-                    noTextPadding
-                    className="p-0 tw:h-10! tw:border tw:border-transparent"
+                  <ButtonUtility
+                    aria-label={t('label.view-replies-by-user', { user })}
+                    className="tw:align-top"
                     color="tertiary"
+                    icon={
+                      <UserPopOverCard userName={user}>
+                        <ProfilePicture name={user} size="xs" />
+                      </UserPopOverCard>
+                    }
                     key={user}
-                    onPress={handleRepliesPress}>
-                    <UserPopOverCard userName={user}>
-                      <ProfilePicture name={user} width="20" />
-                    </UserPopOverCard>
-                  </Button>
+                    size="xs"
+                    {...repliesPressProps}
+                  />
                 ))}
                 maxCount={MAX_VISIBLE_AVATARS}
-                onOverflowClick={isForFeedTab ? showReplies : undefined}
+                onOverflowClick={handleOverflowClick}
               />
             )}
 
-            {!isReply && (
-              <Button
-                aria-label={t('label.reply')}
-                className="p-0 flex-center tw:h-10! tw:border tw:border-transparent"
-                color="tertiary"
-                data-testid="reply-button"
-                iconLeading={
-                  <ThreadIcon
-                    data-testid="reply-count"
-                    height={18}
-                    width={18}
-                  />
-                }
-                onPress={handleRepliesPress}
+            {isReplyButtonShown(isReply, componentsVisibility) && (
+              <FeedCardReplyButton
+                count={postLength}
+                pressProps={repliesPressProps}
+                showCount={showReplyCount}
               />
             )}
             <Reactions
               reactions={(reply ?? conversation)?.reactions ?? []}
+              variant={ReactionsVariant.Pill}
               onReactionSelect={onReactionUpdate ?? noop}
             />
           </Box>

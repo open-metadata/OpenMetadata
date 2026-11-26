@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +43,7 @@ import org.openmetadata.schema.type.DmlOperationType;
 import org.openmetadata.schema.type.EntityProfile;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableProfile;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
@@ -335,6 +337,67 @@ public class EntityProfileResourceIT {
     assertNotNull(profile);
     assertEquals(CreateEntityProfile.ProfileTypeEnum.SYSTEM, profile.getProfileType());
     assertEquals(table.getEntityReference().getId(), profile.getEntityReference().getId());
+  }
+
+  @Test
+  void addSystemProfile_repeatedEventUpdatesExistingRow(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    long eventTs = System.currentTimeMillis() - 120_000;
+    String path = "/v1/entity/profiles/id/table/" + table.getId();
+
+    postSystemEvent(client, path, eventTs, 10);
+    EntityProfile repeated = postSystemEvent(client, path, eventTs, 20);
+
+    assertNotNull(repeated);
+    assertEquals(CreateEntityProfile.ProfileTypeEnum.SYSTEM, repeated.getProfileType());
+    List<SystemProfile> insertEvents =
+        listSystemEvents(client, table, eventTs).stream()
+            .filter(profile -> profile.getOperation() == DmlOperationType.INSERT)
+            .toList();
+    assertEquals(1, insertEvents.size(), "Repeated save must keep exactly one stored INSERT event");
+    assertEquals(
+        Integer.valueOf(20),
+        insertEvents.getFirst().getRowsAffected(),
+        "Repeated save must update the stored event's rowsAffected");
+  }
+
+  private static EntityProfile postSystemEvent(
+      OpenMetadataClient client, String path, long timestamp, int rowsAffected) {
+    SystemProfile systemProfile =
+        new SystemProfile()
+            .withOperation(DmlOperationType.INSERT)
+            .withRowsAffected(rowsAffected)
+            .withTimestamp(timestamp);
+    CreateEntityProfile createProfile =
+        new CreateEntityProfile()
+            .withTimestamp(timestamp)
+            .withProfileData(systemProfile)
+            .withProfileType(CreateEntityProfile.ProfileTypeEnum.SYSTEM);
+    return client
+        .getHttpClient()
+        .execute(HttpMethod.POST, path, createProfile, EntityProfile.class);
+  }
+
+  private static List<SystemProfile> listSystemEvents(
+      OpenMetadataClient client, Table table, long timestamp) {
+    String getPath =
+        "/v1/entity/profiles/table/"
+            + table.getFullyQualifiedName()
+            + "?startTs="
+            + (timestamp - 1000)
+            + "&endTs="
+            + (timestamp + 1000)
+            + "&profileType=SYSTEM";
+    String response = client.getHttpClient().executeForString(HttpMethod.GET, getPath, null, null);
+    List<SystemProfile> events = new ArrayList<>();
+    JsonUtils.readTree(response)
+        .get("data")
+        .forEach(
+            node ->
+                events.add(
+                    JsonUtils.readValue(node.get("profileData").toString(), SystemProfile.class)));
+    return events;
   }
 
   @Test

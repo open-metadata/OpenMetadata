@@ -13,9 +13,13 @@
 import {
   Button,
   Dialog,
+  FeaturedIcon,
   Modal,
   ModalOverlay,
+  Typography,
 } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export type LineageNodeDeleteModalProps = {
@@ -34,6 +38,7 @@ const LineageNodeDeleteModal = ({
   onConfirm,
 }: LineageNodeDeleteModalProps) => {
   const { t } = useTranslation();
+  const titleId = useId();
 
   if (!isOpen) {
     return null;
@@ -49,25 +54,42 @@ const LineageNodeDeleteModal = ({
         }
       }}>
       <Modal>
-        <Dialog data-testid="delete-node-confirmation-modal" width={400}>
-          <Dialog.Header title={t('label.delete')} />
+        <Dialog
+          aria-labelledby={titleId}
+          data-testid="delete-node-confirmation-modal"
+          dividers="scroll"
+          width={400}>
+          <Dialog.Header className="tw:flex tw:flex-col tw:items-start tw:gap-4">
+            <FeaturedIcon
+              color="error"
+              icon={Trash01}
+              size="lg"
+              theme="light"
+            />
+            <Typography id={titleId} size="text-md" weight="semibold">
+              {t('label.delete-entity', { entity: nodeName })}
+            </Typography>
+          </Dialog.Header>
           <Dialog.Content>
-            {t('message.remove-lineage-node', { entity: nodeName })}
+            <Typography color="secondary" size="text-sm">
+              {t('message.remove-lineage-node', { entity: nodeName })}
+            </Typography>
           </Dialog.Content>
           <Dialog.Footer>
             <Button
-              color="tertiary"
+              color="secondary"
               data-testid="cancel-button"
+              isDisabled={isDeleting}
               onPress={onCancel}>
               {t('label.cancel')}
             </Button>
             <Button
-              color="primary"
+              color="primary-destructive"
               data-testid="confirm-button"
               isDisabled={isDeleting}
               isLoading={isDeleting}
               onPress={onConfirm}>
-              {t('label.confirm')}
+              {t('label.delete')}
             </Button>
           </Dialog.Footer>
         </Dialog>

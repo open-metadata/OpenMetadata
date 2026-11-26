@@ -93,9 +93,9 @@ describe('CustomPropertyVersionList', () => {
     expect(within(tiers).getByText('gold, silver')).toHaveClass('diff-added');
   });
 
-  it('shows "not set" for properties without a value', () => {
+  it('shows "no value yet" for properties without a value', () => {
     render(<CustomPropertyVersionList properties={properties} />);
 
-    expect(getValue('cost')).toHaveTextContent('label.not-set');
+    expect(getValue('cost')).toHaveTextContent('label.no-value-yet');
   });
 });

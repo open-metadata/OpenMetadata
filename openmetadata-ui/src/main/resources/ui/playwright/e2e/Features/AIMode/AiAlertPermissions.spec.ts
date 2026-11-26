@@ -60,7 +60,7 @@ const gotoAndSettle = async (page: Page, path: string) => {
 
 test.describe('AI mode — alert permissions match the classic alert pages', () => {
   test.beforeAll(async ({ browser }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     await commonPrerequisites({
@@ -101,7 +101,7 @@ test.describe('AI mode — alert permissions match the classic alert pages', () 
     await test.step('list hides create and row actions', async () => {
       await gotoAndSettle(page, '/observability/alerts');
 
-      await expect(page.getByTestId('observability-page-shell')).toBeVisible();
+      await expect(page.getByTestId('page-layout')).toBeVisible();
       await expect(
         page.getByRole('link', { name: alert.displayName })
       ).toBeVisible();

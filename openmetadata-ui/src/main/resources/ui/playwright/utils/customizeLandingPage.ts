@@ -283,7 +283,21 @@ const isLandingPageWidgetVisible = async (
     );
   }
 
-  return widget.isVisible().catch(() => false);
+  if (!(await widget.isVisible().catch(() => false))) {
+    return false;
+  }
+
+  // The grid cell is visible before its deferred slot mounts, and if the grid
+  // rendered after the reveal above nothing was scrolled, so the widget would
+  // never mount. Only a mounted slot counts; the next poll re-runs the reveal.
+  // The customize view renders no slot.
+  const slot = getLandingPageWidgetSlot(page, widgetKey);
+
+  if ((await slot.count()) === 0) {
+    return true;
+  }
+
+  return (await slot.locator(':scope > *').count()) > 0;
 };
 
 const isLandingPageWidgetLoading = async (widget: Locator) =>

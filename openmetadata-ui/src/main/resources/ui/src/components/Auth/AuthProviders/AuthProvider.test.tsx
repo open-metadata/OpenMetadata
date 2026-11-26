@@ -27,6 +27,7 @@ import {
 } from '../../../generated/configuration/authenticationConfiguration';
 import { Document } from '../../../generated/entity/docStore/document';
 import { useAppModeStore } from '../../../hooks/useAppMode';
+import { useProductTourStore } from '../../../hooks/useProductTourStore';
 import axiosClient from '../../../rest/axiosClient';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { fetchAuthenticationConfig } from '../../../rest/miscAPI';
@@ -175,6 +176,7 @@ const mockGetOidcToken = jest.fn().mockResolvedValue('');
 // tests override with `mockRejectedValueOnce` to exercise the
 // `onLogoutHandler` try/finally.
 const mockClearOidcToken = jest.fn().mockResolvedValue(undefined);
+const mockSetApiOnlyTokenListener = jest.fn();
 const mockExtractDetailsFromToken = jest.fn().mockReturnValue({
   exp: 0,
   isExpired: true,
@@ -188,6 +190,8 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => {
     ...actual,
     getOidcToken: (...args: unknown[]) => mockGetOidcToken(...args),
     clearOidcToken: (...args: unknown[]) => mockClearOidcToken(...args),
+    setApiOnlyTokenListener: (...args: unknown[]) =>
+      mockSetApiOnlyTokenListener(...args),
   };
 });
 
@@ -295,6 +299,7 @@ jest.mock('../../../utils/Auth/AuthCoordinator/AuthCoordinator', () => {
   );
   const registerRenewer = jest.fn();
   const pause = jest.fn();
+  const resume = jest.fn();
   const syncFromStoredToken = jest.fn().mockResolvedValue(undefined);
 
   return {
@@ -303,9 +308,11 @@ jest.mock('../../../utils/Auth/AuthCoordinator/AuthCoordinator', () => {
       on,
       registerRenewer,
       pause,
+      resume,
       syncFromStoredToken,
     },
     __mockPause: pause,
+    __mockResume: resume,
     __mockSyncFromStoredToken: syncFromStoredToken,
     __mockDisposeInterceptor: disposeInterceptor,
     __mockOffRefreshed: offRefreshed,
@@ -332,6 +339,7 @@ const {
   __mockAuthCoordinatorInstall: mockAuthCoordinatorInstall,
   __mockAuthCoordinatorOn: mockAuthCoordinatorOn,
   __mockPause: mockPause,
+  __mockResume: mockResume,
   __mockSyncFromStoredToken: mockSyncFromStoredToken,
 } = jest.requireMock('../../../utils/Auth/AuthCoordinator/AuthCoordinator');
 
@@ -537,6 +545,19 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
 
     return () => logout?.();
   };
+
+  it('closes an open product tour on sign-out, so it does not reopen at the next sign-in', async () => {
+    useProductTourStore.getState().open();
+    const logout = await renderForLogout();
+
+    await act(async () => {
+      logout();
+    });
+
+    await waitFor(() =>
+      expect(useProductTourStore.getState().isOpen).toBe(false)
+    );
+  });
 
   describe('refresh failure → one silent re-authentication, then sign-out', () => {
     let onFailed: ((payload?: RefreshFailedPayload) => void) | undefined;
@@ -1072,6 +1093,26 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     });
 
     expect(mockPause).toHaveBeenCalled();
+    // Refreshes stay held off for the whole logout, then are allowed again
+    // for the next sign-in.
+    expect(mockResume).toHaveBeenCalledTimes(1);
+    expect(mockPause.mock.invocationCallOrder[0]).toBeLessThan(
+      mockResume.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('signs out with a toast when a stored bot or personal access token is rejected', async () => {
+    await renderForLogout();
+    const onRejected = mockSetApiOnlyTokenListener.mock.calls.at(-1)?.[0];
+    await act(async () => {
+      onRejected?.();
+    });
+
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'server.api-only-token-ui-access-denied'
+    );
+    expect(mockPause).toHaveBeenCalled();
+    expect(markSignedOut).toHaveBeenCalled();
   });
 
   it('arms the proactive renewal timer after a successful login', async () => {
@@ -1205,6 +1246,56 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
       '/new-protected-path',
       expect.anything()
     );
+  });
+
+  it('stores the deep link an unauthenticated user opened even after the router has moved to /signin', async () => {
+    const useCustomLocationMock = jest.requireMock<jest.Mock>(
+      '../../../hooks/useCustomLocation/useCustomLocation'
+    );
+    useCustomLocationMock.mockImplementation(() => ({
+      pathname: '/table/sample.ecommerce.shopify.orders',
+      search: '?tab=schema',
+    }));
+    let resolveToken: ((token: string) => void) | undefined;
+    mockGetOidcToken.mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveToken = resolve;
+        })
+    );
+
+    try {
+      const { rerender } = render(<WrapperComponent />);
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      useCustomLocationMock.mockImplementation(() => ({
+        pathname: '/signin',
+        search: '',
+      }));
+
+      await act(async () => {
+        rerender(<WrapperComponent />);
+      });
+
+      await act(async () => {
+        resolveToken?.('');
+      });
+
+      expect(mockCookieSetItem).toHaveBeenCalledWith(
+        REDIRECT_PATHNAME,
+        '/table/sample.ecommerce.shopify.orders?tab=schema',
+        expect.anything()
+      );
+    } finally {
+      useCustomLocationMock.mockImplementation(() => ({
+        pathname: 'pathname',
+        search: '',
+      }));
+      mockGetOidcToken.mockResolvedValue('');
+    }
   });
 
   it('disposes the interceptor and event subscriptions on unmount', async () => {

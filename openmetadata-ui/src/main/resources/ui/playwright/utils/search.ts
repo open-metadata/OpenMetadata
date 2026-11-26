@@ -95,7 +95,8 @@ export const waitForDomainAssetCount = async (
 
           const payload = (await response.json()) as Record<string, number>;
 
-          return payload[domainFqn] ?? null;
+          // The aggregation omits domains with no assets.
+          return payload[domainFqn] ?? 0;
         },
         {
           intervals: [1_000, 2_000, 5_000],

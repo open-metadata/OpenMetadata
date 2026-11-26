@@ -154,9 +154,10 @@ test.describe.serial(
 
       await page.getByTestId('edit-button').click();
 
-      const scheduleDialog = page.getByTestId('update-schedule-modal');
+      const scheduleForm = page.getByTestId('update-schedule-form');
 
-      await expect(scheduleDialog).toBeVisible();
+      await expect(scheduleForm).toBeVisible();
+      await expect(page.getByTestId('update-schedule-modal')).toHaveCount(0);
 
       await selectScheduleType(page);
       await selectScheduleFrequency(page, 'week');
@@ -167,7 +168,10 @@ test.describe.serial(
           response.url().includes('/api/v1/apps/') &&
           response.request().method() === 'PATCH'
       );
-      await scheduleDialog.getByTestId('deploy-button').click();
+      await page
+        .getByTestId('app-schedule-footer')
+        .getByTestId('save-button')
+        .click();
       await patchResponse;
 
       await toastNotification(page, 'Schedule saved successfully');

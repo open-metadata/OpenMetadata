@@ -13,6 +13,7 @@
 
 import type { FieldProp } from '@openmetadata/ui-core-components';
 import {
+  Alert,
   Box,
   Button,
   FieldTypes,
@@ -28,6 +29,7 @@ import { EMAIL_REG_EX } from '../../../../../../constants/regex.constants';
 import { AuthType } from '../../../../../../generated/api/teams/createUser';
 import { JWTTokenExpiry } from '../../../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../../../hooks/authHooks';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { createBot } from '../../../../../../rest/botsAPI';
 import { createUserWithPut } from '../../../../../../rest/userAPI';
 import {
@@ -36,6 +38,7 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import type { BotsView } from './BotsPanel.types';
 import { TOKEN_EXPIRY_OPTIONS } from './BotToken.constants';
 
@@ -64,6 +67,12 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
       allowImpersonation: false,
     },
   });
+  // The description editor holds its value outside the form, so it counts
+  // as an edit too.
+  const [hasDescription, setHasDescription] = useState(false);
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    form.formState.isDirty || hasDescription
+  );
 
   const tokenExpiryOptions = useMemo(
     () =>
@@ -131,7 +140,6 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
               label: t('label.allow-impersonation'),
               type: FieldTypes.SWITCH,
               required: false,
-              helperText: t('message.allow-impersonation-help'),
               props: { 'data-testid': 'allow-impersonation' },
             },
           ]
@@ -215,11 +223,17 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
               data-testid="description-input"
               placeHolder={t('message.write-your-description')}
               ref={descriptionRef}
+              onTextChange={(value) => setHasDescription(Boolean(value.trim()))}
             />
           </Box>
 
           <FormFields fields={tokenFields} />
           <FormFields fields={switchFields} />
+          {isAdminUser && (
+            <Alert data-testid="impersonation-warning" variant="warning">
+              {t('message.allow-impersonation-help')}
+            </Alert>
+          )}
         </Box>
       </div>
 
@@ -232,14 +246,15 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
         <Button
           color="tertiary"
           data-testid="cancel-btn"
-          onPress={() => onNavigate({ type: 'list' })}>
+          onPress={() => runGuarded(() => onNavigate({ type: 'list' }))}>
           {t('label.cancel')}
         </Button>
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="submit-btn"
           isLoading={isSubmitting}
-          onPress={form.handleSubmit(handleSubmit)}>
+          onPress={() => form.handleSubmit(handleSubmit)()}>
           {t('label.create')}
         </Button>
       </Box>

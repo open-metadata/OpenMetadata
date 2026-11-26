@@ -12,80 +12,79 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { LearningResource } from '../../../rest/learningResourceAPI';
 import { StorylaneTour } from './StorylaneTour.component';
 
-const createMockResource = (url: string): LearningResource => ({
-  id: 'test-id',
-  name: 'test-storylane',
-  displayName: 'Test Storylane Tour',
-  resourceType: 'Storylane',
-  source: { url },
-  categories: [],
-  contexts: [{ pageId: 'glossary' }],
-});
+const DEMO_URL = 'https://app.storylane.io/demo/abc123';
+const TITLE = 'Test Storylane Tour';
 
 describe('StorylaneTour', () => {
   it('should render loading spinner initially', () => {
-    const resource = createMockResource('https://app.storylane.io/demo/abc123');
-    render(<StorylaneTour resource={resource} />);
+    render(<StorylaneTour title={TITLE} url={DEMO_URL} />);
 
     expect(screen.queryByTestId('loader')).toBeInTheDocument();
   });
 
-  it('should render iframe with correct URL', () => {
-    const resource = createMockResource('https://app.storylane.io/demo/abc123');
-    render(<StorylaneTour resource={resource} />);
+  it.each([
+    'javascript:alert(document.domain)',
+    'data:text/html,<script>alert(1)</script>',
+    'not-a-valid-url',
+  ])('should never load a non-web URL into the frame: %s', (url) => {
+    const { container } = render(<StorylaneTour title={TITLE} url={url} />);
 
-    const iframe = screen.getByTitle('Test Storylane Tour');
+    expect(container.querySelector('iframe')).toBeNull();
+    expect(screen.getByText('label.invalid-url')).toBeInTheDocument();
+  });
 
-    expect(iframe).toBeInTheDocument();
-    expect(iframe.getAttribute('src')).toBe(
-      'https://app.storylane.io/demo/abc123'
-    );
+  it('should render iframe with correct URL and title', () => {
+    render(<StorylaneTour title={TITLE} url={DEMO_URL} />);
+
+    expect(screen.getByTitle(TITLE)).toHaveAttribute('src', DEMO_URL);
   });
 
   it('should have sandbox attribute for security', () => {
-    const resource = createMockResource('https://app.storylane.io/demo/abc123');
-    render(<StorylaneTour resource={resource} />);
+    render(<StorylaneTour title={TITLE} url={DEMO_URL} />);
 
-    const iframe = screen.getByTitle('Test Storylane Tour');
-
-    expect(iframe.getAttribute('sandbox')).toBe(
+    expect(screen.getByTitle(TITLE).getAttribute('sandbox')).toBe(
       'allow-scripts allow-same-origin allow-presentation allow-popups allow-forms'
     );
   });
 
   it('should hide loading spinner after iframe loads', () => {
-    const resource = createMockResource('https://app.storylane.io/demo/abc123');
-    render(<StorylaneTour resource={resource} />);
+    render(<StorylaneTour title={TITLE} url={DEMO_URL} />);
 
-    const iframe = screen.getByTitle('Test Storylane Tour');
-    fireEvent.load(iframe);
+    fireEvent.load(screen.getByTitle(TITLE));
 
     expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
   });
 
-  it('should use resource name as title fallback', () => {
-    const resource: LearningResource = {
-      id: 'test-id',
-      name: 'storylane-name',
-      resourceType: 'Storylane',
-      source: { url: 'https://app.storylane.io/demo/abc123' },
-      categories: [],
-      contexts: [{ pageId: 'glossary' }],
-    };
-    render(<StorylaneTour resource={resource} />);
+  it('should keep the 16:9 player box unless asked to fill', () => {
+    const { container, rerender } = render(
+      <StorylaneTour title={TITLE} url={DEMO_URL} />
+    );
 
-    expect(screen.getByTitle('storylane-name')).toBeInTheDocument();
+    expect(container.firstChild).not.toHaveClass(
+      'storylane-tour-wrapper--fill'
+    );
+
+    rerender(<StorylaneTour fill title={TITLE} url={DEMO_URL} />);
+
+    expect(container.firstChild).toHaveClass('storylane-tour-wrapper--fill');
+  });
+
+  it('should add the caller class to the wrapper', () => {
+    const { container } = render(
+      <StorylaneTour className="custom-class" title={TITLE} url={DEMO_URL} />
+    );
+
+    expect(container.firstChild).toHaveClass(
+      'storylane-tour-wrapper',
+      'custom-class'
+    );
   });
 
   it('should not have allowFullScreen to use modal expand with visible minimize', () => {
-    const resource = createMockResource('https://app.storylane.io/demo/abc123');
-    render(<StorylaneTour resource={resource} />);
+    render(<StorylaneTour title={TITLE} url={DEMO_URL} />);
 
-    const iframe = screen.getByTitle('Test Storylane Tour');
-
-    expect(iframe).not.toHaveAttribute('allowfullscreen');
+    expect(screen.getByTitle(TITLE)).not.toHaveAttribute('allowfullscreen');
   });
 });

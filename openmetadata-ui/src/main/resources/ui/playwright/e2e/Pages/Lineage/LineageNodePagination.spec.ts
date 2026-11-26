@@ -84,12 +84,17 @@ test.describe.serial(
         }
       );
 
-      const table1ColumnFqn = table1Response.entity.columns?.map(
-        (col: { fullyQualifiedName: string }) => col.fullyQualifiedName
-      ) as string[];
-      const table2ColumnFqn = table2Response.entity.columns?.map(
-        (col: { fullyQualifiedName: string }) => col.fullyQualifiedName
-      ) as string[];
+      const columnFqn = (column: Column) => {
+        if (!column.fullyQualifiedName) {
+          throw new Error(
+            `Column ${column.name} is missing its fully qualified name`
+          );
+        }
+
+        return column.fullyQualifiedName;
+      };
+      const table1ColumnFqn = table1Response.entity.columns.map(columnFqn);
+      const table2ColumnFqn = table2Response.entity.columns.map(columnFqn);
 
       await test.step('Add edges between T1-P1 and T2-P1', async () => {
         await connectEdgeBetweenNodesViaAPI(

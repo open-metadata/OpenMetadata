@@ -182,13 +182,25 @@ describe('AppSchedule component', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Change schedule' }));
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
 
-    expect(mockOnSave).toHaveBeenCalledWith('0 12 * * *');
+    expect(mockOnSave).toHaveBeenCalledWith('0 12 * * *', undefined);
 
     await waitFor(() =>
       expect(
         screen.queryByTestId('update-schedule-modal')
       ).not.toBeInTheDocument()
     );
+  });
+
+  it('hands Edit to onEditSchedule instead of opening the dialog', () => {
+    const onEditSchedule = jest.fn();
+    render(<AppSchedule {...mockProps1} onEditSchedule={onEditSchedule} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
+
+    expect(onEditSchedule).toHaveBeenCalled();
+    expect(
+      screen.queryByTestId('update-schedule-modal')
+    ).not.toBeInTheDocument();
   });
 
   it('should show application disable message if appData.deleted is true', () => {

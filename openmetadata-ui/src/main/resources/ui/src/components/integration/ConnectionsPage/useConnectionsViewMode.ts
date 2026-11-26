@@ -22,6 +22,8 @@ const isConnectionsViewMode = (
   value: string | null | undefined
 ): value is ConnectionsViewMode => value === 'grid' || value === 'list';
 
+const PAGING_PARAMS = ['currentPage', 'pageSize', 'cursorType', 'cursorValue'];
+
 export const useConnectionsViewMode = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const {
@@ -43,6 +45,7 @@ export const useConnectionsViewMode = () => {
         (previous) => {
           const next = new URLSearchParams(previous);
           next.set(VIEW_MODE_PARAM, nextViewMode);
+          PAGING_PARAMS.forEach((param) => next.delete(param));
 
           return next;
         },

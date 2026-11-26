@@ -116,6 +116,11 @@ export interface Assignees {
      */
     candidates?: EntityReference[];
     /**
+     * When no reviewer or owner of the asset resolves, assign its service's owners, and when
+     * those resolve to no one, its domains' owners. Runs before emptyAssigneeStrategy.
+     */
+    cascadeOwners?: boolean;
+    /**
      * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
      * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
      * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
@@ -203,12 +208,14 @@ export interface ExpiryTimer {
     closeAsResolution?: ResolutionType;
     /**
      * Name of the process variable holding the absolute ISO 8601 date/time when the timer
-     * should fire (e.g. 'accessExpirationDate' → '2026-12-31T23:59:59Z').
+     * should fire (e.g. 'accessExpirationDate' → '2026-12-31T23:59:59Z'). Must be a bare
+     * variable name: letters, digits and '_', starting with a letter or underscore.
      */
     dateVariable?: string;
     /**
      * Name of the process variable holding the ISO 8601 duration (e.g. 'accessDuration' →
-     * 'P14D').
+     * 'P14D'). Must be a bare variable name: letters, digits and '_', starting with a letter or
+     * underscore.
      */
     durationVariable?: string;
     /**

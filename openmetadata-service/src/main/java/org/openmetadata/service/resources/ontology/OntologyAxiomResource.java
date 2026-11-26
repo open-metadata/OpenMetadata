@@ -81,7 +81,15 @@ public class OntologyAxiomResource extends EntityResource<OntologyAxiom, Ontolog
       @QueryParam("after") final String after,
       @QueryParam("include") @DefaultValue("non-deleted") final Include include) {
     final ListFilter filter = ontologyFilter(include, ontologyId);
-    return listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
+    OntologyResourceAccess.requireDraftListRead(authorizer, securityContext, ontologyId);
+    final ResultList<OntologyAxiom> page =
+        listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
+    OntologyResourceAccess.requireDraftRowsRead(
+        authorizer,
+        securityContext,
+        ontologyId,
+        OntologyResourceAccess.ontologyIdsOf(page.getData()));
+    return page;
   }
 
   private static ListFilter ontologyFilter(final Include include, final UUID ontologyId) {
@@ -123,7 +131,11 @@ public class OntologyAxiomResource extends EntityResource<OntologyAxiom, Ontolog
       @Context final SecurityContext securityContext,
       @Valid final CreateOntologyAxiom request) {
     final OntologyAxiom entity = mapper.createToEntity(request, user(securityContext));
-    return create(uriInfo, securityContext, entity);
+    return OntologyResourceAccess.createOrRecreate(
+        repository,
+        entity,
+        () -> create(uriInfo, securityContext, entity),
+        () -> createOrUpdate(uriInfo, securityContext, entity));
   }
 
   @POST
@@ -161,6 +173,8 @@ public class OntologyAxiomResource extends EntityResource<OntologyAxiom, Ontolog
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id,
       final JsonPatch patch) {
+    OntologyResourceAccess.requireEditForContentPatch(
+        authorizer, securityContext, Entity.ONTOLOGY_AXIOM, id, patch);
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -200,7 +214,12 @@ public class OntologyAxiomResource extends EntityResource<OntologyAxiom, Ontolog
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
       @Valid final RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return OntologyResourceAccess.restoreOrKeepLive(
+        authorizer,
+        securityContext,
+        repository,
+        restore.getId(),
+        () -> restoreEntity(uriInfo, securityContext, restore.getId()));
   }
 
   private static String user(final SecurityContext securityContext) {

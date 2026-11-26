@@ -340,10 +340,6 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
                   listHeight={200}
                   multiple={{ user: true, team: true }}
                   owner={candidates}
-                  popoverProps={{
-                    placement: 'bottomLeft',
-                    overlayStyle: { zIndex: 10000 },
-                  }}
                   onUpdate={(updated) => setCandidates(updated ?? [])}>
                   <Button
                     className="tw:h-10 tw:w-full tw:min-w-0 tw:justify-start tw:overflow-hidden"

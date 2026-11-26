@@ -25,11 +25,8 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.classification.Tag;
-import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -61,6 +58,26 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class EntityUtilTest {
+  @Test
+  void testTableConstraintMatch_nullReferredColumns() {
+    final TableConstraint missing = constraintWithReferences(null);
+    final TableConstraint populated = constraintWithReferences(List.of("schema.parent.id"));
+    final TableConstraint empty = constraintWithReferences(List.of());
+
+    assertTrue(EntityUtil.tableConstraintMatch.test(missing, constraintWithReferences(null)));
+    assertFalse(EntityUtil.tableConstraintMatch.test(missing, populated));
+    assertFalse(EntityUtil.tableConstraintMatch.test(populated, missing));
+    assertFalse(EntityUtil.tableConstraintMatch.test(missing, empty));
+    assertFalse(EntityUtil.tableConstraintMatch.test(empty, missing));
+  }
+
+  private static TableConstraint constraintWithReferences(List<String> references) {
+    return new TableConstraint()
+        .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+        .withColumns(List.of("parent_id"))
+        .withReferredColumns(references);
+  }
+
   @Test
   void test_isDescriptionRequired() {
     assertFalse(
@@ -291,14 +308,6 @@ class EntityUtilTest {
 
   @Test
   void testVersionAndFieldNameHelpers() {
-    Column column = new Column().withName("amount");
-    Topic topic = new Topic().withFullyQualifiedName("service.topic");
-    Field schemaField = new Field().withFullyQualifiedName("service.topic.user.id");
-    APIEndpoint apiEndpoint = new APIEndpoint().withFullyQualifiedName("service.api");
-    Field apiField = new Field().withFullyQualifiedName("service.api.request.body");
-    SearchIndex searchIndex = new SearchIndex().withFullyQualifiedName("service.search");
-    SearchIndexField searchIndexField =
-        new SearchIndexField().withFullyQualifiedName("service.search.keyword.raw");
     Rule rule = new Rule().withName("maskPII");
     CustomProperty property = new CustomProperty().withName("retention");
 
@@ -309,16 +318,6 @@ class EntityUtilTest {
         "address.city",
         EntityUtil.getLocalColumnName("service.db.table", "service.db.table.address.city"));
     assertEquals("owners.tags", EntityUtil.getFieldName("owners", "tags"));
-    assertEquals("columns.amount.description", EntityUtil.getColumnField(column, "description"));
-    assertEquals(
-        "schemaFields.\"user.id\".description",
-        EntityUtil.getSchemaField(topic, schemaField, "description"));
-    assertEquals(
-        "schemaFields.\"request.body\".description",
-        EntityUtil.getSchemaField(apiEndpoint, apiField, "description"));
-    assertEquals(
-        "fields.\"keyword.raw\".alias",
-        EntityUtil.getSearchIndexField(searchIndex, searchIndexField, "alias"));
     assertEquals("rules.maskPII.effect", EntityUtil.getRuleField(rule, "effect"));
     assertEquals("customProperties.retention", EntityUtil.getCustomField(property, null));
     assertEquals("extension.\"config.timeout\"", EntityUtil.getExtensionField("config.timeout"));
@@ -780,14 +779,6 @@ class EntityUtilTest {
 
   @Test
   void testFieldBuilderAndDomainQueryHelpers() {
-    Column column = new Column().withName("amount");
-    Topic topic = new Topic().withFullyQualifiedName("service.topic");
-    Field schemaField = new Field().withFullyQualifiedName("service.topic.user.id");
-    APIEndpoint apiEndpoint = new APIEndpoint().withFullyQualifiedName("service.api");
-    Field apiField = new Field().withFullyQualifiedName("service.api.request.body");
-    SearchIndex searchIndex = new SearchIndex().withFullyQualifiedName("service.search");
-    SearchIndexField searchField =
-        new SearchIndexField().withFullyQualifiedName("service.search.keyword.raw");
     Rule rule = new Rule().withName("maskPII");
     CustomProperty property = new CustomProperty().withName("retention");
     EntityReference domainRef =
@@ -802,12 +793,6 @@ class EntityUtilTest {
             .withName(DOMAIN_ONLY_ACCESS_ROLE);
     SecurityContext securityContext = mock(SecurityContext.class);
 
-    assertEquals("columns.amount", EntityUtil.getColumnField(column, null));
-    assertEquals("schemaFields.\"user.id\"", EntityUtil.getSchemaField(topic, schemaField, null));
-    assertEquals(
-        "schemaFields.\"request.body\"", EntityUtil.getSchemaField(apiEndpoint, apiField, null));
-    assertEquals(
-        "fields.\"keyword.raw\"", EntityUtil.getSearchIndexField(searchIndex, searchField, null));
     assertEquals("rules.maskPII", EntityUtil.getRuleField(rule, null));
     assertEquals("customProperties.retention.value", EntityUtil.getCustomField(property, "value"));
 
@@ -1053,6 +1038,61 @@ class EntityUtilTest {
   }
 
   @Test
+  void addDomainQueryParam_restrictedUserKeepsTheFullScopeForTypesThePickNeverNarrows() {
+    // A task list about an asset shows every task on it; for a domain-only user the role still
+    // limits it to their domains, but the pick must not (e.g. count and list would disagree).
+    EntityReference finance =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Finance");
+    EntityReference sales =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    EntityReference domainRole =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("role")
+            .withName(DOMAIN_ONLY_ACCESS_ROLE);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    org.openmetadata.schema.entity.teams.User analyst =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("analyst")
+            .withRoles(List.of(domainRole))
+            .withDomains(List.of(finance, sales))
+            .withDefaultDomain(sales);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      for (EntityReference domain : List.of(finance, sales)) {
+        entity
+            .when(() -> Entity.getEntityReferenceById("domain", domain.getId(), NON_DELETED))
+            .thenReturn(domain);
+      }
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(analyst, null));
+      ListFilter tables = new ListFilter();
+      ListFilter tasks = new ListFilter();
+
+      ActiveDomainContext.setActiveDomain(sales);
+      EntityUtil.addDomainQueryParam(securityContext, tables, "table");
+      EntityUtil.addDomainQueryParam(securityContext, tasks, Entity.TASK);
+      ActiveDomainContext.clear();
+
+      assertEquals("'" + sales.getId() + "'", tables.getQueryParam("domainId"));
+      String taskScope = tasks.getQueryParam("domainId");
+      assertTrue(taskScope.contains(finance.getId().toString()), taskScope);
+      assertTrue(taskScope.contains(sales.getId().toString()), taskScope);
+      assertEquals("true", tasks.getQueryParam("domainAccessControl"));
+    }
+  }
+
+  @Test
   void addNavbarDomainFilter_skipsTheDomainOnlyAccessCondition() {
     // Glossary terms never enforced domain access on their list; adding the navbar filter must not
     // bring the domain-only role's exact-id condition with it.
@@ -1269,8 +1309,9 @@ class EntityUtilTest {
 
   @Test
   void addDomainQueryParam_listKeyedBySeveralEntityIdsIsNotOneParent() {
-    // Some resources put a quoted id list in entityId (e.g. pages related to several users):
-    // there is no single parent, so the list is narrowed like any unscoped list.
+    // Some resources put a quoted id list in entityId (e.g. lists related to several users):
+    // there is no single parent, so the list is narrowed like any unscoped list. Uses a type
+    // with the strict rule, since pages also keep items with no domain.
     EntityReference selected =
         new EntityReference()
             .withId(UUID.randomUUID())
@@ -1291,8 +1332,8 @@ class EntityUtilTest {
       // Other test classes leave a SearchRepository set statically; pin the no-search fallback.
       entity.when(Entity::getSearchRepository).thenReturn(null);
       stubSubDomainIds(entity, List.of());
-      entity.when(() -> Entity.hasEntityRepository("page")).thenReturn(true);
-      entity.when(() -> Entity.getEntityRepository("page")).thenReturn(domainAwareRepository);
+      entity.when(() -> Entity.hasEntityRepository("dashboard")).thenReturn(true);
+      entity.when(() -> Entity.getEntityRepository("dashboard")).thenReturn(domainAwareRepository);
       entity
           .when(() -> Entity.getEntityReferenceById("domain", selected.getId(), NON_DELETED))
           .thenReturn(selected);
@@ -1303,7 +1344,7 @@ class EntityUtilTest {
       ListFilter filter = new ListFilter();
       filter.addQueryParam("entityId", "'" + UUID.randomUUID() + "','" + UUID.randomUUID() + "'");
       filter.addQueryParam("entityType", "user");
-      EntityUtil.addDomainQueryParam(carried, filter, "page");
+      EntityUtil.addDomainQueryParam(carried, filter, "dashboard");
 
       assertEquals(selected.getId().toString(), filter.getQueryParam("domainId"));
       assertNull(filter.getQueryParam("domainAccessControl"));
@@ -1623,5 +1664,88 @@ class EntityUtilTest {
             org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
         .thenReturn(ids);
     entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+  }
+
+  @Test
+  void testSortConstraintPairs_preservesFkColumnMapping() {
+    // FK: (country, alt_type) → (parent.country, parent.type)
+    // Independent sorting would produce columns=[alt_type,country] refs=[country,type] —
+    // pairing broken. sortConstraintPairs must keep alt_type→type and country→country.
+    List<String> cols = new ArrayList<>(List.of("country", "alt_type"));
+    List<String> refs = new ArrayList<>(List.of("schema.parent.country", "schema.parent.type"));
+    TableConstraint fk =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(cols)
+            .withReferredColumns(refs);
+
+    EntityUtil.sortConstraintPairs(fk);
+
+    // After sorting by local column name: alt_type first, country second.
+    assertEquals(List.of("alt_type", "country"), fk.getColumns());
+    // referredColumns must track the same permutation: alt_type→parent.type, country→parent.country
+    assertEquals(List.of("schema.parent.type", "schema.parent.country"), fk.getReferredColumns());
+  }
+
+  @Test
+  void testSortConstraintPairs_nonFkSortsColumnsOnly() {
+    List<String> cols = new ArrayList<>(List.of("z_col", "a_col", "m_col"));
+    TableConstraint unique =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+            .withColumns(cols);
+
+    EntityUtil.sortConstraintPairs(unique);
+
+    assertEquals(List.of("a_col", "m_col", "z_col"), unique.getColumns());
+    assertNull(unique.getReferredColumns());
+  }
+
+  @Test
+  void testSortConstraintPairs_singleColumnIsNoOp() {
+    List<String> cols = new ArrayList<>(List.of("only_col"));
+    List<String> refs = new ArrayList<>(List.of("parent.pk"));
+    TableConstraint fk =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(cols)
+            .withReferredColumns(refs);
+
+    EntityUtil.sortConstraintPairs(fk);
+
+    assertEquals(List.of("only_col"), fk.getColumns());
+    assertEquals(List.of("parent.pk"), fk.getReferredColumns());
+  }
+
+  @Test
+  void testSortConstraintPairs_fewerReferredColumnsSortsEachListIndependently() {
+    List<String> cols = new ArrayList<>(List.of("b_col", "a_col"));
+    List<String> refs = new ArrayList<>(List.of("parent.pk"));
+    TableConstraint fk =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(cols)
+            .withReferredColumns(refs);
+
+    EntityUtil.sortConstraintPairs(fk);
+
+    assertEquals(List.of("a_col", "b_col"), fk.getColumns());
+    assertEquals(List.of("parent.pk"), fk.getReferredColumns());
+  }
+
+  @Test
+  void testSortConstraintPairs_moreReferredColumnsKeepsEveryReferredColumn() {
+    List<String> cols = new ArrayList<>(List.of("b_col", "a_col"));
+    List<String> refs = new ArrayList<>(List.of("parent.z", "parent.y", "parent.x"));
+    TableConstraint fk =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(cols)
+            .withReferredColumns(refs);
+
+    EntityUtil.sortConstraintPairs(fk);
+
+    assertEquals(List.of("a_col", "b_col"), fk.getColumns());
+    assertEquals(List.of("parent.x", "parent.y", "parent.z"), fk.getReferredColumns());
   }
 }

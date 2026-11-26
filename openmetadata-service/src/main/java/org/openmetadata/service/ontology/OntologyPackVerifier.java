@@ -34,6 +34,7 @@ public final class OntologyPackVerifier {
 
   public void verify(final OntologyPackManifest manifest) {
     Objects.requireNonNull(manifest, "Ontology pack manifest is required");
+    Objects.requireNonNull(manifest.getIndustry(), "Ontology pack manifest requires an industry");
     requireUniqueModules(manifest.getModules());
     requireKnownDependencies(manifest.getModules());
     requireAcyclicDependencies(manifest.getModules());

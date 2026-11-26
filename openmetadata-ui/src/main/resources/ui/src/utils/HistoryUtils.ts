@@ -11,7 +11,19 @@
  *  limitations under the License.
  */
 export const getBasePath = () => {
-  return globalThis.BASE_PATH === '${basePath}'
-    ? ''
-    : globalThis.BASE_PATH?.slice(0, -1) ?? '';
+  const basePath: unknown = Reflect.get(globalThis, 'BASE_PATH');
+
+  return typeof basePath === 'string' && basePath !== '${basePath}'
+    ? basePath.replace(/\/+$/, '')
+    : '';
+};
+
+/** Removes the base path only when it is the leading segment(s) of `pathname`. */
+export const stripBasePath = (pathname: string) => {
+  const basePath = getBasePath();
+  const isUnderBasePath =
+    basePath !== '' &&
+    (pathname === basePath || pathname.startsWith(`${basePath}/`));
+
+  return isUnderBasePath ? pathname.slice(basePath.length) || '/' : pathname;
 };

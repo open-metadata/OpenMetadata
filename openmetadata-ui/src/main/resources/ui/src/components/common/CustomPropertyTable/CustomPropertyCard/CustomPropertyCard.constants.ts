@@ -151,6 +151,15 @@ export const CUSTOM_PROPERTY_TYPE_META: Record<string, CustomPropertyTypeMeta> =
     },
   };
 
+// Half-width ("compact") cards keep title, description and value on one line
+// and share one minimum height (icon row 40px + one-line value or empty state
+// 38px + padding and border), so collapsed cards line up across a row.
+export const COMPACT_CARD_CLASS = 'tw:min-h-32';
+
+// Design spec: 20px tall header badges (18px line + 1px border each side).
+export const HEADER_BADGE_CLASS =
+  'tw:py-px tw:px-[7px] tw:leading-[18px] tw:font-medium';
+
 // Full class strings (not interpolated) so Tailwind can see them at build time.
 export const TYPE_ICON_TILE_CLASS: Record<CustomPropertyTypeColor, string> = {
   gray: 'tw:bg-utility-gray-50 tw:border-utility-gray-200 tw:text-utility-gray-700',

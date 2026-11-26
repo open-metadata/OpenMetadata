@@ -69,6 +69,7 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
           conjunction={conjunction}
           context={context}
           groupField={drilledLevel}
+          negated={Boolean(group.properties?.not)}
           path={path}
         />
       </div>
@@ -108,7 +109,7 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
 
         {!readonly && (
           <Button
-            className="tw:self-start tw:*:data-icon:size-4"
+            className="tw:self-start"
             color="link-color"
             data-testid={preset.testIds.addRule}
             iconLeading={Plus}

@@ -67,6 +67,12 @@
       }
     },
     {
+      "type": "gateway",
+      "subType": "parallelGateway",
+      "name": "FirstSyncGateway",
+      "displayName": "First Sync Gateway"
+    },
+    {
       "type": "automatedTask",
       "subType": "createAndRunIngestionPipelineTask",
       "name": "RunUsageIngestion",
@@ -166,7 +172,7 @@
     },
     {
       "from": "RunDataInsightsApplication",
-      "to": "SyncGateway"
+      "to": "FirstSyncGateway"
     },
     {
       "from": "FirstGateway",
@@ -174,10 +180,10 @@
     },
     {
       "from": "RunLineageIngestion",
-      "to": "SyncGateway"
+      "to": "FirstSyncGateway"
     },
     {
-      "from": "FirstGateway",
+      "from": "FirstSyncGateway",
       "to": "RunUsageIngestion"
     },
     {

@@ -130,6 +130,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
+  ConfirmPopover: () => null,
 }));
 
 import {

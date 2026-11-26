@@ -113,6 +113,45 @@ describe('TierCard', () => {
     expect(screen.queryByTestId('Tier.Tier1-expand')).not.toBeInTheDocument();
   });
 
+  it('reads an editor-HTML description as text, not markup', async () => {
+    mockGetTags.mockResolvedValueOnce({
+      data: [
+        {
+          ...mockTierData[1],
+          description: '<p>Critical data</p><ul><li><p>Revenue</p></li></ul>',
+        },
+      ],
+    });
+    render(<TierCard {...mockProps} />);
+
+    const row = await screen.findByTestId('Tier.Tier2');
+
+    expect(within(row).getByText('Critical data')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('Tier.Tier2-expand'));
+
+    expect(screen.getByTestId('Tier.Tier2-details')).toHaveTextContent(
+      'Revenue'
+    );
+  });
+
+  it('ignores empty editor paragraphs around the summary', async () => {
+    mockGetTags.mockResolvedValueOnce({
+      data: [
+        {
+          ...mockTierData[1],
+          description: '<p></p><p>Critical data</p><p></p>',
+        },
+      ],
+    });
+    render(<TierCard {...mockProps} />);
+
+    const row = await screen.findByTestId('Tier.Tier2');
+
+    expect(within(row).getByText('Critical data')).toBeInTheDocument();
+    expect(screen.queryByTestId('Tier.Tier2-expand')).not.toBeInTheDocument();
+  });
+
   it('shows a current tier missing from the list by name, not FQN', async () => {
     render(<TierCard {...mockProps} currentTier="Tier.Tier9" />);
 

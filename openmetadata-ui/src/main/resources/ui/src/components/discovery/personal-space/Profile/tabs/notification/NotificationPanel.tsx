@@ -37,6 +37,10 @@ import {
   NotificationSectionContribution,
 } from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import {
+  settingsHashOptions,
+  SettingsNavigateOptions,
+} from '../../../../../../utils/SettingsHistory.utils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
@@ -73,9 +77,13 @@ const NotificationSectionPlaceholder: FC<{
     return <Loader />;
   }
 
+  const EmptyStatePlaceholder = isDenied
+    ? PermissionPlaceholder
+    : NoDataPlaceholder;
+
   return (
     <Box className="tw:relative tw:min-h-60">
-      <NoDataPlaceholder
+      <EmptyStatePlaceholder
         icon={isDenied ? <Lock /> : undefined}
         title={t(isDenied ? 'label.access-denied' : 'label.no-data')}
       />
@@ -96,10 +104,15 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   );
 
   const onNavigate = useCallback(
-    (nextView: NotificationView) => {
-      setHash('notification', viewToSubPath(nextView));
+    (nextView: NotificationView, options?: SettingsNavigateOptions) => {
+      setHash(
+        'notification',
+        viewToSubPath(nextView),
+        undefined,
+        settingsHashOptions(view, nextView, options)
+      );
     },
-    [setHash]
+    [setHash, view]
   );
 
   // Actions injected by detail panels (e.g. edit/delete buttons).
@@ -206,7 +219,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     return {
       Component: card ? contribution?.component : undefined,
       isDenied: Boolean(contribution) && !card,
-      label: card?.title ?? t('label.notification'),
+      label: card?.title ?? t('label.alerts-and-notifications'),
       description: card?.description,
       icon: card?.icon,
     };
@@ -280,7 +293,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
     }
 
     const settingsLabel = t('label.setting-plural');
-    const notificationLabel = t('label.notification');
+    const notificationLabel = t('label.alerts-and-notifications');
     const alertsLabel = t('label.alert-plural');
     const addAlertLabel = t('label.add-entity', { entity: t('label.alert') });
     const editAlertLabel = t('label.edit-entity', {
@@ -518,7 +531,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   })();
 
   return (
-    <Box className="tw:flex-1 tw:overflow-hidden" direction="col">
+    <Box className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto" direction="col">
       {view.type === 'section' ? sectionContent : content}
     </Box>
   );

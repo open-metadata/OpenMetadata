@@ -119,7 +119,7 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
               </button>
             </Tooltip>
           ) : (
-            <Search className="tw:size-4 tw:text-text-tertiary" />
+            <Search className="tw:text-text-tertiary" size={20} />
           )}
         </div>
         <Input

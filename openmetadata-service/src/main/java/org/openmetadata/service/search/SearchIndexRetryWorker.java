@@ -178,6 +178,14 @@ public class SearchIndexRetryWorker implements Managed {
 
   private void processRecord(SearchIndexRetryRecord record) {
     try {
+      final var type = normalize(record.getEntityType());
+      final var id = normalize(record.getEntityId());
+      if (OntologyTermSearch.isTerm(type) && !id.isEmpty()) {
+        searchRepository.reindexOntologyTerm(
+            new EntityReference().withType(type).withId(UUID.fromString(id)));
+        completeClaim(record);
+        return;
+      }
       EntityReference root = resolveEntityReference(record);
       if (root != null) {
         EntityInterface<?> rootEntity = reindexEntityCascade(root);
@@ -655,6 +663,10 @@ public class SearchIndexRetryWorker implements Managed {
       return;
     }
     String entityType = entity.getEntityReference().getType();
+    if (OntologyTermSearch.isTerm(entityType)) {
+      searchRepository.reindexOntologyTerm(entity.getEntityReference());
+      return;
+    }
     IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
     if (indexMapping == null) {
       return;

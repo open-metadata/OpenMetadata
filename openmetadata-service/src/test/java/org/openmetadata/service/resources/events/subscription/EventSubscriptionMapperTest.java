@@ -21,6 +21,7 @@ import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.service.events.consumer.Consumers;
 
@@ -32,7 +33,7 @@ class EventSubscriptionMapperTest {
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName("alert")
-            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withAlertType(AlertType.NOTIFICATION)
             .withResources(List.of("table"));
 
     EventSubscription alert = new EventSubscriptionMapper().createToEntity(request, "admin");
@@ -65,7 +66,7 @@ class EventSubscriptionMapperTest {
   private static CreateEventSubscription request() {
     return new CreateEventSubscription()
         .withName("alert")
-        .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+        .withAlertType(AlertType.NOTIFICATION)
         .withResources(List.of("table"));
   }
 

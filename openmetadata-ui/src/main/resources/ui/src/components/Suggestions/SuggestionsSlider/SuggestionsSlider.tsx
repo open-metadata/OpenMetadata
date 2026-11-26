@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  Check,
+  LogOut01,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ExitIcon } from '../../../assets/svg/ic-exit.svg';
 import { SuggestionAction } from '../../../enums/Suggestion.enum';
 import { SuggestionType } from '../../../types/taskSuggestion';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
@@ -67,7 +70,11 @@ const SuggestionsSlider = () => {
   }, [dataSuggestionType, t]);
 
   return (
-    <Box align="center" className="m-r-md" gap={2}>
+    <Box
+      align="center"
+      className="m-r-md"
+      data-testid="suggestions-slider"
+      gap={2}>
       <Typography className="right-panel-label">{suggestionLabel}</Typography>
       <AvatarCarousel />
       {suggestionPendingCount > 0 && (
@@ -119,7 +126,7 @@ const SuggestionsSlider = () => {
             className="text-xs font-medium close-suggestion-btn"
             color="secondary-brand"
             data-testid="close-suggestion"
-            iconLeading={<ExitIcon />}
+            iconLeading={LogOut01}
             size="xs"
             onPress={() => onUpdateActiveUser()}>
             {t('label.close')}

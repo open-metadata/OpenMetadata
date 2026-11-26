@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
 import { RefreshCw01 } from '@openmetadata/ui-core-components/icons';
 import { FC, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -79,12 +79,12 @@ const MetricListHealth: FC<MetricListHealthProps> = ({ metricId }) => {
       {error ? (
         <Box align="center" gap={2}>
           <MetricHealthPill health={Health.Unknown} />
-          <Button
-            aria-label={t('label.try-again')}
-            color="link-gray"
+          <ButtonUtility
             data-testid={`retry-metric-health-${metricId}`}
-            iconLeading={RefreshCw01}
-            onPress={() => refetch()}
+            icon={RefreshCw01}
+            size="sm"
+            tooltip={t('label.try-again')}
+            onClick={() => refetch()}
           />
         </Box>
       ) : (

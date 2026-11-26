@@ -64,7 +64,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  PlusCircle: () => <span data-testid="icon-plus-circle" />,
+  Plus: () => <span data-testid="icon-plus-circle" />,
   XCircle: () => <span data-testid="icon-x-circle" />,
 }));
 

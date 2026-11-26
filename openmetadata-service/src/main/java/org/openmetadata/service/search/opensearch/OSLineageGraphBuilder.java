@@ -564,14 +564,8 @@ public class OSLineageGraphBuilder
   private void addRootEntityWithPagingCounts(
       SearchLineageRequest lineageRequest, SearchLineageResult result, boolean isDirectionBased)
       throws IOException {
-    Map<String, Object> rootEntityMap =
-        OsUtils.searchEntityByKey(
-            esClient,
-            null,
-            GLOBAL_SEARCH_ALIAS,
-            FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
-            Pair.of(FullyQualifiedName.buildHash(lineageRequest.getFqn()), lineageRequest.getFqn()),
-            SOURCE_FIELDS_TO_EXCLUDE);
+    final Map<String, Object> rootEntityMap =
+        loadRootEntity(lineageRequest.getFqn(), this::fetchRootEntity);
 
     if (!rootEntityMap.isEmpty()) {
       String rootFqn = rootEntityMap.get(FQN_FIELD).toString();
@@ -594,6 +588,16 @@ public class OSLineageGraphBuilder
 
       result.getNodes().put(rootFqn, rootNode);
     }
+  }
+
+  private Map<String, Object> fetchRootEntity(final String fqn) throws IOException {
+    return OsUtils.searchEntityByKey(
+        esClient,
+        null,
+        GLOBAL_SEARCH_ALIAS,
+        FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
+        Pair.of(FullyQualifiedName.buildHash(fqn), fqn),
+        SOURCE_FIELDS_TO_EXCLUDE);
   }
 
   private int countDownstreamEntities(String fqn, SearchLineageRequest lineageRequest)
@@ -1022,7 +1026,11 @@ public class OSLineageGraphBuilder
         request.getUpstreamDepth() != null ? request.getUpstreamDepth() : 0,
         request.getDownstreamDepth() != null ? request.getDownstreamDepth() : 0,
         request.getStartTime(),
-        request.getEndTime());
+        request.getEndTime(),
+        0,
+        0,
+        request.getIncludeDeleted(),
+        request.getIncludeSourceFields() != null ? request.getIncludeSourceFields() : Set.of());
   }
 
   private Map<Integer, Integer> getDepthWiseEntityCounts(
@@ -1390,6 +1398,8 @@ public class OSLineageGraphBuilder
             new ArrayList<>(allEntitiesUpToDepth.values()),
             entityData -> entityData.depth,
             entityData -> entityData.fqn);
+    allEntitiesUpToDepthList.removeIf(
+        entityData -> entityData.depth == 0 && entityData.fqn.equals(request.getFqn()));
     List<EntityData> paginatedEntities =
         paginateList(allEntitiesUpToDepthList, request.getFrom(), request.getSize());
 
@@ -1418,6 +1428,19 @@ public class OSLineageGraphBuilder
       result.getNodes().put(entityData.fqn, getNodeInformation(document, null, null, entityDepth));
 
       addLineageEdges(result, document, request, allCollectedFqns);
+    }
+
+    // The root is excluded from the page window above, but its document still
+    // holds the lineage edges connecting it to its neighbours (e.g. upstream
+    // parents → root for UPSTREAM). Process those edges so the graph stays
+    // connected on every page, not just the first. Use the full root document
+    // from result.getNodes() rather than allEntitiesUpToDepth: for UPSTREAM the
+    // depth-0 walk overwrites that entry with a slim LINEAGE_WALK_FIELDS document
+    // that lacks id/entityType, which would make addLineageEdges throw inside
+    // getRelationshipRef.
+    NodeInformation rootNode = result.getNodes().get(request.getFqn());
+    if (rootNode != null && rootNode.getEntity() != null) {
+      addLineageEdges(result, JsonUtils.getMap(rootNode.getEntity()), request, allCollectedFqns);
     }
 
     Map<Integer, Integer> depthCounts = new LinkedHashMap<>();

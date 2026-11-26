@@ -96,6 +96,9 @@
   },
   "mappings": {
     "properties": {
+      "policyTags": {
+        "type": "keyword"
+      },
       "changeDescription": {
         "enabled": false
       },

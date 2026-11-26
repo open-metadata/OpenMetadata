@@ -23,18 +23,28 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Hint } from '@openmetadata/ui-core-components/icons';
 import { IChangeEvent } from '@rjsf/core';
-import { FieldProps, FieldTemplateProps, RJSFSchema } from '@rjsf/utils';
-import { FC, useMemo } from 'react';
+import {
+  FieldProps,
+  FieldTemplateProps,
+  getDefaultFormState,
+  RJSFSchema,
+  UiSchema,
+} from '@rjsf/utils';
+import validator from '@rjsf/validator-ajv8';
+import { isEqual } from 'lodash';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { App } from '../../../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { EntityReference } from '../../../../../../generated/entity/type';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import { formatFormDataForSubmit } from '../../../../../../utils/JSONSchemaFormUtils';
 import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
 import { getFormDisplayLabel } from '../../../../../common/FormBuilderV1/formBuilderV1LabelUtils';
 import { CoreFieldTemplate } from '../../../../../common/FormBuilderV1/templates/CoreFieldTemplate';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
-import { useFormFieldDocs } from '../platform-settings/useFormFieldDocs';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { AppFooter } from './AppFooter';
 
 export interface AppConfigFormProps {
@@ -46,6 +56,8 @@ export interface AppConfigFormProps {
   cancelLabel?: string;
   /** Render the form without edit controls (user lacks edit permission). */
   isReadOnly?: boolean;
+  /** Overrides the default app UI schema, e.g. to lock fields managed elsewhere. */
+  uiSchema?: UiSchema;
   onCancel?: () => void;
   onSave: (data: {
     formData: Record<string, unknown>;
@@ -96,7 +108,10 @@ export const AppToggleCardField = ({
   const label = schema.title ?? getFormDisplayLabel(name);
 
   return (
-    <Card data-testid={`toggle-card-${getFieldName(idSchema.$id)}`} size="sm">
+    <Card
+      data-testid={`toggle-card-${getFieldName(idSchema.$id)}`}
+      size="sm"
+      variant="muted">
       <Card.Content>
         <Box align="center" direction="row" gap={4} justify="between">
           <Box className="tw:min-w-0" direction="col">
@@ -153,6 +168,7 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
   submitLabel,
   cancelLabel,
   isReadOnly = false,
+  uiSchema = applicationsClassBase.getJSONUISchema(),
   onCancel,
   onSave,
 }) => {
@@ -166,6 +182,33 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
   const formData = useMemo(
     () => appData.appConfiguration ?? {},
     [appData.appConfiguration]
+  );
+
+  // The form fills schema defaults in, so compare edits against the data with
+  // those defaults applied, or an untouched form would read as changed.
+  const savedFormData = useMemo(
+    () => getDefaultFormState(validator, jsonSchema, formData),
+    [jsonSchema, formData]
+  );
+  // Derived, not a flag: when a save updates the app, the baseline moves and
+  // the form reads as clean again.
+  const [currentFormData, setCurrentFormData] = useState<unknown>();
+  // RJSF prunes schema-unknown keys on submit (`omitExtraData`) but not on
+  // `onChange` (no `liveOmit`), so a save that drops a legacy key moves the
+  // baseline without re-firing `onChange`. Reset the stale live-form snapshot
+  // when the stored config changes (a save), so the form reads clean after it.
+  // Keyed on the stored config, not the schema: a schema that loads late (MCP
+  // tool names) must not drop an in-progress edit.
+  useEffect(() => {
+    setCurrentFormData(undefined);
+  }, [formData]);
+  const isDirty = useMemo(
+    () =>
+      currentFormData !== undefined && !isEqual(currentFormData, savedFormData),
+    [currentFormData, savedFormData]
+  );
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    !isReadOnly && isDirty
   );
 
   const handleSubmit = (event: IChangeEvent) =>
@@ -182,7 +225,8 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
         readonly={isReadOnly}
         schema={jsonSchema}
         templates={APP_FORM_TEMPLATES}
-        uiSchema={applicationsClassBase.getJSONUISchema()}
+        uiSchema={uiSchema}
+        onChange={(event) => setCurrentFormData(event.formData)}
         onSubmit={handleSubmit}
       />
       {!isReadOnly && (
@@ -192,10 +236,11 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
               color="tertiary"
               data-testid="cancel-button"
               isDisabled={isSaving}
-              onPress={onCancel}>
+              onPress={() => runGuarded(onCancel)}>
               {cancelLabel ?? t('label.cancel')}
             </Button>
           )}
+          <UnsavedChangesPrompt {...promptProps} />
           <Button
             color="primary"
             data-testid="save-button"
@@ -206,8 +251,14 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
           </Button>
         </AppFooter>
       )}
-      {/* Full-width fields leave no room beside them, so the hint opens above. */}
-      <FieldDocPopover placement="top end" />
+      {/* Full-width fields leave no room beside them, so the hint opens below
+          the field. Never flipped above, where the first field's hint covered
+          the modal header; short of room below, the card shrinks and scrolls. */}
+      <FieldDocPopover
+        placement="bottom end"
+        shouldFlip={false}
+        variant="muted"
+      />
     </FieldDocProvider>
   );
 };

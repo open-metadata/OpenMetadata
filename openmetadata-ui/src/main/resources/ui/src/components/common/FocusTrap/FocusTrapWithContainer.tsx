@@ -56,6 +56,8 @@ export function useMultiContainerFocusTrap({
     } else {
       deactivateTrap();
     }
+
+    return undefined;
   }, [active, activateTrap, deactivateTrap]);
 
   return {

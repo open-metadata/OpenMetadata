@@ -11,18 +11,15 @@
  *  limitations under the License.
  */
 
-import type { FieldProp } from '@openmetadata/ui-core-components';
 import {
   Box,
-  FieldTypes,
   FormField,
   FormItemLabel,
-  getField,
   HintText,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { useEffect, useMemo, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useCallback, useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { HEX_COLOR_CODE_REGEX } from '../../../../../../constants/regex.constants';
 import {
@@ -30,25 +27,25 @@ import {
   SettingType,
 } from '../../../../../../generated/settings/settings';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import { updateSettingsConfig } from '../../../../../../rest/settingConfigAPI';
 import { generatePalette } from '../../../../../../styles/colorPallet';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import BrandImage from '../../../../../common/BrandImage/BrandImage';
 import HexColorField from './HexColorField';
+import LogoUrlField from './LogoUrlField';
 import type { PlatformSettingsFormProps } from './PlatformSettings.types';
 import SettingsFormLayout, { SettingsFormSection } from './SettingsFormLayout';
 import {
-  isValidUrl,
+  LogoUrlKey,
   LOGO_URL_FIELDS,
   ThemeFormValues,
   THEME_COLOR_FIELDS,
   toThemeConfig,
   toThemeFormValues,
 } from './ThemeSettings.utils';
-import { useFormFieldDocs } from './useFormFieldDocs';
 
 // Shades of the primary palette the classic page derives hover/selected from.
 const HOVER_SHADE = 2;
@@ -65,31 +62,21 @@ const ThemeSettingsForm = ({
   const form = useForm<ThemeFormValues>({
     defaultValues: toThemeFormValues(applicationConfig),
   });
-  const logoUrls = useWatch({
-    control: form.control,
-    name: LOGO_URL_FIELDS.map(({ name }) => name),
-  });
+  // Logo URLs still being checked or that failed to load; saving waits on them.
+  const [blockingLogos, setBlockingLogos] = useState<LogoUrlKey[]>([]);
 
   useEffect(() => {
     form.reset(toThemeFormValues(applicationConfig));
   }, [applicationConfig, form]);
 
-  const logoFields: FieldProp[] = useMemo(
-    () =>
-      LOGO_URL_FIELDS.map(({ name, labelKey }) => ({
-        name,
-        label: t(labelKey),
-        type: FieldTypes.TEXT,
-        doc: docs[name],
-        props: { 'data-testid': name },
-        rules: {
-          validate: (value: string) =>
-            !value ||
-            isValidUrl(value) ||
-            t('message.entity-is-not-valid-url', { entity: t(labelKey) }),
-        },
-      })),
-    [docs, t]
+  const handleBlockingChange = useCallback(
+    (name: LogoUrlKey, isBlocking: boolean) =>
+      setBlockingLogos((current) => {
+        const rest = current.filter((key) => key !== name);
+
+        return isBlocking ? [...rest, name] : rest;
+      }),
+    []
   );
 
   // Picking a primary colour re-derives hover and selected, as the classic page does.
@@ -129,35 +116,25 @@ const ThemeSettingsForm = ({
 
   return (
     <SettingsFormLayout
+      centered
       form={form}
+      isSaveDisabled={blockingLogos.length > 0}
       isSaving={isSaving}
       showHint={showHint}
       testId="theme-form"
       onCancel={backToView}
       onSubmit={handleSubmit}>
       <SettingsFormSection title={t('label.custom-logo')}>
-        {logoFields.map((field, index) => {
-          const { isMonogram } = LOGO_URL_FIELDS[index];
-
-          return (
-            <Box
-              align="end"
-              className="tw:md:col-span-2"
-              direction="row"
-              gap={6}
-              key={field.name}>
-              <div className="tw:flex-1">{getField(field)}</div>
-              <BrandImage
-                className="tw:rounded-md tw:border tw:border-secondary tw:object-contain tw:p-1"
-                dataTestId={`${field.name}-preview`}
-                height={40}
-                isMonoGram={isMonogram}
-                src={logoUrls[index] || undefined}
-                width={isMonogram ? 40 : 100}
-              />
-            </Box>
-          );
-        })}
+        {LOGO_URL_FIELDS.map((config) => (
+          <div className="tw:md:col-span-2" key={config.name}>
+            <LogoUrlField
+              config={config}
+              docs={docs}
+              form={form}
+              onBlockingChange={handleBlockingChange}
+            />
+          </div>
+        ))}
       </SettingsFormSection>
 
       <SettingsFormSection title={t('label.custom-theme')}>

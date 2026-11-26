@@ -57,6 +57,13 @@ public class CacheInvalidationPubSub {
    */
   public static final String TYPE_SETTINGS = "settings";
 
+  /**
+   * Non-entity signal: a credential changed, with the principal name in {@code fqn}. Peers re-read
+   * that principal's credentials on their next sweep step instead of at their next sweep. The
+   * database stays the source of truth, so a lost message only delays the change.
+   */
+  public static final String TYPE_CREDENTIAL = "credential";
+
   private final CacheConfig.Redis redisConfig;
   @Getter private final String instanceId;
   private final AtomicBoolean running = new AtomicBoolean(false);

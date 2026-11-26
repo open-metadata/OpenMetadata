@@ -32,12 +32,13 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.data.PipelineStatus;
-import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.AlertType;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.schema.entity.events.PrefixCondition;
 import org.openmetadata.schema.entity.feed.Conversation;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -133,7 +134,7 @@ public final class AlertMatching {
 
     StringBuilder builder = new StringBuilder();
     builder.append("(");
-    if (rule.getEffect() == ArgumentsInput.Effect.INCLUDE) {
+    if (rule.getEffect() == Effect.INCLUDE) {
       builder.append(rule.getCondition());
     } else {
       builder.append("!");
@@ -143,10 +144,10 @@ public final class AlertMatching {
     return String.format("%s%s", prefixCondition, builder);
   }
 
-  private static String getRawCondition(ArgumentsInput.PrefixCondition prefixCondition) {
-    if (prefixCondition.equals(ArgumentsInput.PrefixCondition.AND)) {
+  private static String getRawCondition(PrefixCondition prefixCondition) {
+    if (prefixCondition.equals(PrefixCondition.AND)) {
       return " && ";
-    } else if (prefixCondition.equals(ArgumentsInput.PrefixCondition.OR)) {
+    } else if (prefixCondition.equals(PrefixCondition.OR)) {
       return " || ";
     } else {
       return "";
@@ -281,10 +282,8 @@ public final class AlertMatching {
    */
   public static Long alertingWatermark(
       EventSubscription eventSubscription, Long startingTimestamp) {
-    CreateEventSubscription.AlertType alertType = eventSubscription.getAlertType();
-    boolean alerting =
-        alertType == CreateEventSubscription.AlertType.NOTIFICATION
-            || alertType == CreateEventSubscription.AlertType.OBSERVABILITY;
+    AlertType alertType = eventSubscription.getAlertType();
+    boolean alerting = alertType == AlertType.NOTIFICATION || alertType == AlertType.OBSERVABILITY;
     return alerting ? startingTimestamp : null;
   }
 

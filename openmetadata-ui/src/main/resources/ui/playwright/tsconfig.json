@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "incremental": true,
-    "target": "ES5",
+    "target": "ES2020",
     "module": "esnext",
     "lib": ["dom", "dom.iterable", "ES2020.Promise", "es2021"],
     "allowJs": true,
@@ -13,14 +13,13 @@
     "removeComments": false,
     "noEmit": true,
     "importHelpers": true,
-    "downlevelIteration": true,
     "isolatedModules": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
@@ -28,6 +27,7 @@
     "allowUnreachableCode": false,
     "skipLibCheck": true,
     "noImplicitAny": true,
-    "types": ["node"]
+    "types": ["node"],
+    "rootDir": ".."
   }
 }

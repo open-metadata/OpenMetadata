@@ -1,6 +1,6 @@
 ---
 name: ui-core-components
-description: Use when writing or editing React/TSX in `openmetadata-ui/src/main/resources/ui/src/` or `openmetadata-ui-core-components/`, before reaching for a raw `<div>` + Tailwind utility classes to build layout (flex rows/columns, grids, bordered panels with header/body/footer, separators), and before writing any Tailwind color class (`tw:bg-*`, `tw:text-*`, `tw:border-*`) or hex color value. Applies whenever the change adds or restructures a layout container or touches color/dark-mode styling, not to every div.
+description: Use when writing or editing React/TSX in `openmetadata-ui/src/main/resources/ui/src/` or `openmetadata-ui-core-components/`, before creating any new UI component (it lists every core component by job), before reaching for a raw `<div>` + Tailwind utility classes to build layout (flex rows/columns, grids, bordered panels with header/body/footer, separators), and before writing any Tailwind color class (`tw:bg-*`, `tw:text-*`, `tw:border-*`) or hex color value. Applies whenever the change adds or restructures a layout container or touches color/dark-mode styling, not to every div.
 user-invocable: true
 argument-hint: "[component name to look up, e.g. Box, Grid, Card, Divider]"
 allowed-tools:
@@ -40,6 +40,71 @@ Import from the package root:
 ```tsx
 import { Box, Card, Divider, Grid } from '@openmetadata/ui-core-components';
 ```
+
+## Components by job — check here before creating any component
+
+Everything below is exported from `@openmetadata/ui-core-components`; the full list is
+`openmetadata-ui-core-components/src/main/resources/ui/src/components/index.ts` and each has a
+story under `src/stories/`. If one fits, use it with its own props. If it almost fits, add the
+prop in core (own PR) — never a feature-local copy or a wrapper that only forwards props.
+
+**Layout and text**
+- `Box` — flex row/column (`direction`, `align`, `justify`, `gap`, `wrap`); layout only.
+- `Grid` + `Grid.Item` — grid (`gap`/`rowGap`/`colGap`, `span`, `start`); layout only.
+- `Card` (`.Header` `title`/`extra`, `.Content`, `.Footer`) — any bordered or coloured panel; inside a
+  `bg-surface` panel, modal or drawer use `variant="muted"`/`"tile"` (ADR:2026-11-05-nested-cards-sit-one-step-off-their-panel).
+- `Typography` — all text; `as="h1"…"h6"|"p"` for semantics, `size`, `weight`, `color`, `ellipsis`.
+- `Divider` — separator line. `ScrollShadow` — horizontal scroller with edge shadows.
+- `PageLayout` (`.Header`, `.PageHeader`, `.Content`, side panels) — every page's shell;
+  `PageLayout.PageHeader` is the page title + breadcrumb + actions. `Breadcrumbs` — trail.
+- `FeaturedIcon` — icon in a coloured circle/square. `Dot` — small status dot.
+
+**Actions**
+- `Button` — every text button and link button (`color`, `size`, `iconLeading`, `isLoading`, `href`).
+- `ButtonUtility` — icon-only action (carries its tooltip). `CloseButton` — the X.
+- `ButtonGroup` + `ButtonGroupItem` — segmented choice between a few options.
+- `Dropdown` (`.Root`, `.Popover`, `.Menu`, `.Item`, `.Section`, `.DotsButton`) — action / ⋯ menus.
+- `ConfirmPopover` — inline "are you sure?" anchored to its trigger.
+- `FileTrigger` — opens the file picker from any pressable.
+
+**Inputs and forms**
+- `Input`, `TextArea`, `NumberInput`, `PasswordInput` — text entry with `label`, `hint`, `tooltip`,
+  validation; `InputGroup` adds prefix/suffix add-ons; `Label`/`HintText` for custom fields.
+- Choosing: `Select` (one; `Select.ComboBox` when the list needs search), `MultiSelect` (several,
+  as tags), `Autocomplete` (type-ahead that inserts items), `TagSelect` (options as tags),
+  `TreeSelect` (hierarchy), `NativeSelect` (native `<select>`, e.g. short fixed lists).
+- `Checkbox`, `RadioGroup` + `RadioButton`, `Toggle` (on/off; `label`, `hint`, `isReadOnly`), `Slider`.
+- `DatePicker`, `DateRangePicker` (with presets), `TimePicker`.
+- `Form` (react-aria validation), `HookForm` + `FormField` (react-hook-form), `FormFields`/`Field`
+  (render `FieldProp` definitions); `FieldDocPanel`/`FieldDocPopover` show a field's docs;
+  `CredentialFileInput`, `FileUploadDropZone` for files.
+
+**Overlays**
+- `Dialog` (`.Header`, `.Content`, `.Footer`; `dividers="scroll"`) inside `Modal`/`ModalOverlay`,
+  opened by `DialogTrigger` — any modal. `SimpleModal` — title + body + OK/Cancel only.
+- `SlideoutMenu` (`.Header`, `.Content`, `.Footer`) — side drawer.
+- `Popover` — floating panel on a trigger. `HoverCard` — rich preview on hover.
+- `Tooltip` — hover/focus hint on anything (never a raw `title=`).
+- `showToast` / `toast` + one `ToastProvider` — notifications.
+
+**Data display and navigation**
+- `Tabs` (`.List`, `.Item`, `.Panel`). `Table` (`.Header`, `.Head`, `.Body`, `.Row`, `.Cell`); `TableCard`.
+- `Tree` — hierarchy with expand, drag and load-more. `Accordion` — expandable sections.
+- `Pagination*` variants — page navigation. `ProgressSteps` — multi-step flow.
+- `FilterBar` (`.Root`, `.FilterRow`, `.Content`, `.Actions`) + `FilterSelect` — filter toolbars.
+
+**Status and feedback**
+- `Alert` — inline info/warning/error/success banner.
+- `Badge` (`type`, `color`, `size`), `BadgeWithDot`, `BadgeWithIcon`, `BadgeGroup` — status/label chips.
+- `Tag`/`TagGroup` — removable or selectable tags. Entity chips: `ClassificationTag`, `GlossaryTag`,
+  `DomainTag`, `DataProductTag`, `MetricTag`, `AutoClassificationTag`.
+- `Avatar`, `AvatarStack`, `AvatarLabelGroup`; `Owner`, `OwnerChip`, `OwnerAvatarStack` — people/owners.
+- `Skeleton`/`SkeletonParagraph` — loading that keeps layout. `ProgressBar`, `ProgressBarCircle`,
+  `RunHistoryBar` — progress and run status.
+- `EmptyPlaceholder` — empty/error/no-access state; in `openmetadata-ui` use the
+  `src/components/common/EmptyPlaceholder/` wrappers.
+
+Adding a component to core? Add its line here in the same PR.
 
 ## Box
 
@@ -149,7 +214,7 @@ the text overflows instead of wrapping.
 
 ```tsx
 <div className="tw:relative tw:min-h-60">
-  <NoDataPlaceholder description={t('message.no-data-available')} />
+  <NoDataPlaceholder title={t('message.no-data-available')} />
 </div>
 ```
 
@@ -169,15 +234,22 @@ borders, foreground/icon, utility/badge colors) plus a `dark-gray-red-green`
 
 | Raw pattern | Use instead |
 |---|---|
-| `tw:bg-white` / `tw:bg-gray-50` | `tw:bg-primary` / `tw:bg-secondary` |
-| `tw:text-gray-900` / `tw:text-gray-500` | `tw:text-primary` / `tw:text-quaternary` |
+| `tw:bg-white` on a card/panel on the page | `<Card>` or `tw:bg-surface` — never `tw:bg-primary`, the page colour in dark mode (the card disappears) |
+| `tw:bg-white` on a card inside a `bg-surface` panel, modal or drawer | `<Card variant="muted">`/`"tile"` — a default card is the same colour as its container in dark (ADR:2026-11-05-nested-cards-sit-one-step-off-their-panel) |
+| `tw:bg-white` on the page / a modal or drawer / a popover or menu | `tw:bg-page` / `tw:bg-overlay-surface` / `tw:bg-floating` |
+| `tw:bg-gray-50` (subtle fill) | `tw:bg-secondary` |
+| `tw:text-gray-900` / `tw:text-gray-500` | `tw:text-primary` / `tw:text-tertiary` (`quaternary` only for de-emphasised text) |
 | `tw:border-gray-300` | `tw:border-primary` |
 | `tw:text-red-600` / `tw:border-red-500` | `tw:text-error-primary` / `tw:border-error` |
 | `tw:bg-green-50 tw:text-green-700` (badge) | `tw:bg-utility-success-50 tw:text-utility-success-700` |
 | `style={{ color: '#1570ef' }}` | `tw:text-fg-brand-primary` |
 
 Icons use `tw:text-fg-*` tokens, not `tw:text-*` — foreground tokens are
-tuned for icon contrast, text tokens aren't.
+tuned for icon contrast, text tokens aren't. Text colour on `Typography` is its
+`color` prop, not a class: `color="secondary"` renders `tw:text-tertiary`, and
+`quaternary`/`success`/`warning`/`danger`/`brand` map the same way. `Box` and
+`Grid` are layout only — never give them a background or border. The surface
+rules are in `.claude/rules/frontend-styling.md` (Dark mode section).
 
 ## Verify
 

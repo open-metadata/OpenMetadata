@@ -6,10 +6,6 @@ echo "=== Stopping RDF Services ==="
 
 # Stop Fuseki
 echo "Stopping Apache Jena Fuseki..."
-# Try to stop all possible Fuseki configurations
-docker compose -f docker-compose-fuseki-rosetta.yml down 2>/dev/null || true
-docker compose -f docker-compose-fuseki-multiarch.yml down 2>/dev/null || true
-docker compose -f docker-compose-fuseki-arm64.yml down 2>/dev/null || true
 docker compose -f docker-compose-fuseki-standalone.yml down 2>/dev/null || true
 
 # Stop OpenSearch

@@ -24,7 +24,10 @@ import {
 import { capitalize, isEmpty, toString } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { STATUS_ICON } from '../../../../constants/constants';
+import {
+  STATUS_ICON,
+  STATUS_ICON_CLASS,
+} from '../../../../constants/constants';
 import { StepStats } from '../../../../generated/entity/applications/appRunRecord';
 import {
   formatLatencyAverage,
@@ -165,7 +168,16 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
                   {showStatus && (
                     <>
                       <StatItem label={t('label.status')}>
-                        {StatusIcon && <StatusIcon height={14} width={14} />}
+                        {StatusIcon && (
+                          <StatusIcon
+                            className={
+                              STATUS_ICON_CLASS[
+                                status as keyof typeof STATUS_ICON
+                              ]
+                            }
+                            size={14}
+                          />
+                        )}
                         <Typography size="text-sm">
                           {capitalize(status)}
                         </Typography>
@@ -429,6 +441,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
           pagination={false}
           rowKey="name"
           size="small"
+          variant="muted"
         />
       );
     },
@@ -593,6 +606,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
           pagination={false}
           rowKey="name"
           size="small"
+          variant="muted"
         />
       </Card>
     );

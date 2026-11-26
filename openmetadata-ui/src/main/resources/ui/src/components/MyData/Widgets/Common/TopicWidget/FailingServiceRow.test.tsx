@@ -106,4 +106,21 @@ describe('FailingServiceRow', () => {
       expect.objectContaining({ id: 'svc-1' })
     );
   });
+
+  // Power BI's logo was redrawn to read on dark, so it renders as authored.
+  it('renders the Power BI logo without the dark-mode invert', () => {
+    renderRow({ serviceType: 'PowerBI' });
+
+    expect(
+      screen.getByTestId('failing-service-svc-1').querySelector('img')
+    ).not.toHaveClass('tw:dark:invert');
+  });
+
+  it('keeps a branded logo in its own colours', () => {
+    renderRow();
+
+    expect(
+      screen.getByTestId('failing-service-svc-1').querySelector('img')
+    ).not.toHaveClass('tw:dark:invert');
+  });
 });

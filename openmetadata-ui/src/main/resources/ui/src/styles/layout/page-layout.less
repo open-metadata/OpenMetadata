@@ -12,7 +12,6 @@
  */
 
 @import (reference) '../variables.less';
-@import (reference) 'antd/dist/antd.less';
 
 .page-layout-v1-vertical-scroll {
   height: var(--om-page-height);
@@ -44,16 +43,14 @@
     overflow: hidden;
   }
 
-  > .page-layout-v1-center > :is(.ant-row, .layout-row) {
+  > .page-layout-v1-center > .layout-row {
     display: flex;
     flex: 1;
     flex-direction: column;
     min-height: 0;
   }
 
-  > .page-layout-v1-center
-    > :is(.ant-row, .layout-row)
-    > :is(.ant-col, .layout-column) {
+  > .page-layout-v1-center > .layout-row > .layout-column {
     display: flex;
     flex: 1;
     flex-direction: column;

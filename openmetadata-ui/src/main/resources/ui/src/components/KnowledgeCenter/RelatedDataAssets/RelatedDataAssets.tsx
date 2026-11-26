@@ -13,18 +13,16 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../../components/common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { EntityReference } from '../../../generated/entity/type';
@@ -173,17 +171,19 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
     }
 
     return isEmpty(filteredRelatedDataAssets) ? (
-      <WidgetPlusButton
+      <ButtonUtility
         data-testid="add-data-assets-container"
-        title={t('label.add-entity', {
+        icon={Plus}
+        tooltip={t('label.add-entity', {
           entity: t('label.data-asset-plural'),
         })}
         onClick={() => setIsEdit(true)}
       />
     ) : (
-      <WidgetEditButton
+      <ButtonUtility
         data-testid="edit-data-assets"
-        title={t('label.edit-entity', {
+        icon={Edit01}
+        tooltip={t('label.edit-entity', {
           entity: t('label.data-asset-plural'),
         })}
         onClick={() => setIsEdit(true)}

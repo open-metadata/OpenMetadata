@@ -234,6 +234,28 @@ class OpenSearchRBACConditionEvaluatorTest {
   }
 
   @Test
+  void testMatchAnyDomain() {
+    setupMockPolicies("matchAnyDomain('Domain.Finance', 'Domain.Procurement')", "ALLOW");
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
+    String generatedQuery = openSearchQuery.toJsonString();
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertTrue(
+        generatedQuery.contains("domains.fullyQualifiedName"),
+        "The query should contain 'domains.fullyQualifiedName'.");
+    assertFieldExists(
+        jsonContext,
+        "$..bool.should[?(@.term['domains.fullyQualifiedName'].value=='Domain.Finance')]",
+        "Domain.Finance should be in a should (OR) clause");
+    assertFieldExists(
+        jsonContext,
+        "$..bool.should[?(@.term['domains.fullyQualifiedName'].value=='Domain.Procurement')]",
+        "Domain.Procurement should be in a should (OR) clause");
+  }
+
+  @Test
   void testHasDomainWithMultipleDomains() {
     setupMockPolicies("hasDomain()", "ALLOW");
 
@@ -315,6 +337,50 @@ class OpenSearchRBACConditionEvaluatorTest {
             + "')]",
         "owner.id");
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none should not exist");
+  }
+
+  /** A {@code false} literal must match no document, as it does when evaluated in memory. */
+  @Test
+  void falseLiteralMakesAnAllowRuleMatchNothing() {
+    setupMockPolicies("isOwner() && false", "ALLOW");
+    when(mockUser.getId()).thenReturn(UUID.randomUUID());
+
+    DocumentContext jsonContext = compiledQuery();
+
+    assertFieldExists(jsonContext, "$.bool.must_not[?(@.match_all)]", "rule should match nothing");
+    assertFieldDoesNotExist(
+        jsonContext, "$..nested.query.term['owners.id']", "owner clause should not survive");
+  }
+
+  @Test
+  void falseLiteralDropsOutOfAnOr() {
+    setupMockPolicies("false || isOwner()", "ALLOW");
+    when(mockUser.getId()).thenReturn(UUID.randomUUID());
+
+    DocumentContext jsonContext = compiledQuery();
+
+    assertFieldExists(
+        jsonContext,
+        "$..nested.query.term['owners.id']",
+        "owner clause should be the whole Allow rule");
+    assertFieldDoesNotExist(jsonContext, "$..match_all", "false must not read as match_all");
+  }
+
+  @Test
+  void negatedFalseLiteralMatchesEverything() {
+    setupMockPolicies("!false", "ALLOW");
+
+    DocumentContext jsonContext = compiledQuery();
+
+    assertFieldExists(jsonContext, "$..match_all", "rule should match everything");
+    assertFieldDoesNotExist(jsonContext, "$..must_not", "nothing should be excluded");
+  }
+
+  private DocumentContext compiledQuery() {
+    return JsonPath.parse(
+        ((OpenSearchQueryBuilder) evaluator.evaluateConditions(mockSubjectContext))
+            .build()
+            .toJsonString());
   }
 
   @Test
@@ -496,5 +562,55 @@ class OpenSearchRBACConditionEvaluatorTest {
     assertTrue(
         json.contains("\"ignore_unmapped\":true"),
         "must set ignore_unmapped so query works on indexes without this nested field");
+  }
+
+  /**
+   * Regression for the empty-condition ALLOW leak: {@code matchAnyDomain()} with zero arguments used
+   * to emit an empty bool query, which OpenSearch evaluates as match_all, so an ALLOW rule granted
+   * access to every searchable resource. The generated query must fail closed (match_none) and must
+   * not contain an empty must/should clause.
+   */
+  @Test
+  void testMatchAnyCertificationWithNoArgumentsDoesNotGrantAccess() {
+    setupMockPolicies("matchAnyCertification()", "ALLOW");
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
+    String generatedQuery = openSearchQuery.toJsonString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must_not[?(@.match_all)]",
+        "an ALLOW rule with an empty matchAnyCertification() must fail closed to a never-matching query");
+    assertFalse(
+        generatedQuery.contains("\"should\":[]"),
+        "no empty bool clause may be emitted, it is treated as match_all by OpenSearch");
+  }
+
+  @Test
+  void testMatchAnyDomainWithNoArgumentsDoesNotGrantAccess() {
+    setupMockPolicies("matchAnyDomain()", "ALLOW");
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
+    String generatedQuery = openSearchQuery.toJsonString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+    // RBACConditionEvaluator fails closed by returning ConditionCollector's match_none query, which
+    // serializes as {"bool":{"must_not":[{"match_all":{}}]}} — a query that can never match.
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must_not[?(@.match_all)]",
+        "an ALLOW rule with an empty matchAnyDomain() must fail closed to a never-matching query");
+    assertFalse(
+        generatedQuery.contains("domains.fullyQualifiedName"),
+        "no domain clause should be emitted for an empty argument list");
+    assertFalse(
+        generatedQuery.contains("\"should\":[]"),
+        "no empty bool clause may be emitted, it is treated as match_all by OpenSearch");
+    // Safe against PathNotFoundException: a match_none query omits `must` entirely.
+    assertFieldDoesNotExist(
+        jsonContext, "$.bool.must", "must (an empty bool is treated as match_all by OpenSearch)");
   }
 }

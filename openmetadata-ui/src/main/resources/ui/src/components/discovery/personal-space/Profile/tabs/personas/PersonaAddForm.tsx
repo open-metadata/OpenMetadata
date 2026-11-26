@@ -25,6 +25,7 @@ import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import {
   getPersonaUserRefs,
   PersonaUserOption,
@@ -38,6 +39,7 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 
 interface FormValues {
   name: string;
@@ -58,6 +60,12 @@ const PersonaAddForm = ({ onCancel, onCreated }: PersonaAddFormProps) => {
   const form = useForm<FormValues>({
     defaultValues: { name: '', displayName: '', users: [] },
   });
+  // The description editor holds its value outside the form, so it counts
+  // as an edit too.
+  const [hasDescription, setHasDescription] = useState(false);
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    form.formState.isDirty || hasDescription
+  );
   const { handleSubmit } = form;
 
   const usersField = usePersonaUsersField('persona-users-select');
@@ -118,7 +126,7 @@ const PersonaAddForm = ({ onCancel, onCreated }: PersonaAddFormProps) => {
     <Box className="tw:h-full tw:min-h-0" direction="col" justify="between">
       <HookForm form={form}>
         <Box
-          className="tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pt-0 tw:pb-6 tw:max-w-[640px] tw:w-full"
+          className="tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pt-0 tw:pb-6 tw:max-w-[50%] tw:w-full tw:mx-auto"
           data-testid="add-persona-container"
           direction="col"
           gap={5}>
@@ -136,6 +144,7 @@ const PersonaAddForm = ({ onCancel, onCreated }: PersonaAddFormProps) => {
               data-testid="persona-description-input"
               placeHolder={t('message.write-your-description')}
               ref={descEditorRef}
+              onTextChange={(value) => setHasDescription(Boolean(value.trim()))}
             />
           </Box>
 
@@ -153,9 +162,10 @@ const PersonaAddForm = ({ onCancel, onCreated }: PersonaAddFormProps) => {
           color="tertiary"
           data-testid="cancel-btn"
           isDisabled={isSaving}
-          onPress={onCancel}>
+          onPress={() => runGuarded(onCancel)}>
           {t('label.cancel')}
         </Button>
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="submit-btn"

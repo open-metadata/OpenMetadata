@@ -11,12 +11,20 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { selectOptionWithRetry } from '../utils/common';
+import { pickSelectOption } from '../utils/common';
+
+// The constraint modal's option lists can open at a provisional position and jump into place a few
+// frames later, so a pointer pick can press one option and release on the page or on another option.
+// These helpers pick with the keyboard (`pickSelectOption`), which does not depend on where the list is drawn.
 
 const selectConstraintType = async (page: Page, type: RegExp) => {
-  await selectOptionWithRetry(
-    page.getByTestId('constraint-type-select').getByRole('button'),
-    page.getByRole('option', { name: type })
+  const trigger = page
+    .getByTestId('constraint-type-select')
+    .getByRole('button');
+  await pickSelectOption(
+    trigger,
+    page.getByRole('option', { name: type }),
+    trigger.filter({ hasText: type })
   );
 };
 
@@ -32,22 +40,40 @@ export const clickOnDistKeySelector = (page: Page) =>
 export const clickOnSortKeySelector = (page: Page) =>
   selectConstraintType(page, /^sort key$/i);
 
-/** Adds each column as a chip to a key-constraint multi-select. */
+/**
+ * Adds each column as a chip to a key-constraint multi-select: types the column so it is the only
+ * suggestion, then picks it with ArrowDown + Enter. A picked column leaves the suggestions, so a
+ * repeat can never unselect it.
+ */
 export const addKeyColumns = async (
   page: Page,
   testId: string,
   columns: string[]
 ) => {
-  const input = page.getByTestId(testId).getByRole('combobox');
+  const field = page.getByTestId(testId);
+  const input = field.getByRole('combobox');
+  // react-aria's en-US label for a ComboBox's listbox.
+  const suggestions = page.getByRole('listbox', { name: 'Suggestions' });
   for (const column of columns) {
-    await input.fill(column);
-    await page.getByRole('option', { name: column, exact: true }).click();
+    const chip = field
+      .getByTestId('autocomplete-selected-item')
+      .filter({ hasText: column });
+    await expect(async () => {
+      if ((await chip.count()) === 0) {
+        await input.fill(column, { timeout: 5_000 });
+        await expect(
+          suggestions.getByRole('option', { name: column, exact: true })
+        ).toBeVisible({ timeout: 5_000 });
+        await expect(suggestions.getByRole('option')).toHaveCount(1, {
+          timeout: 2_000,
+        });
+        await input.press('ArrowDown', { timeout: 2_000 });
+        await input.press('Enter', { timeout: 2_000 });
+      }
+      await expect(chip).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
   }
   await page.keyboard.press('Escape');
-
-  for (const column of columns) {
-    await expect(page.getByTestId(testId)).toContainText(column);
-  }
 };
 
 /** Removes each column's chip from a key-constraint multi-select. */

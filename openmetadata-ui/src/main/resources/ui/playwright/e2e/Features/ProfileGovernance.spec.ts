@@ -177,6 +177,9 @@ test.describe(
       await fillInput(page, 'name-input', relationName);
 
       await page.getByTestId('glossary-form-cancel').click();
+      // The typed name makes the form dirty, so Cancel asks before discarding.
+      await expect(page.getByTestId('unsaved-changes-popover')).toBeVisible();
+      await page.getByTestId('unsaved-changes-popover-confirm').click();
 
       await expect(page.getByTestId('relation-types-table')).toBeVisible();
       await expect(
@@ -275,7 +278,9 @@ test.describe(
             200
           );
           await page.getByTestId(`delete-${relationName}-btn`).click();
-          await page.getByTestId('confirm-delete-btn').click();
+          await page
+            .getByTestId('delete-relation-type-popover-confirm')
+            .click();
           await deleteResponse;
         });
 
@@ -616,16 +621,16 @@ test.describe(
         timeout: ACTION_TIMEOUT,
       });
 
-      await test.step('Delete via the confirm dialog', async () => {
+      await test.step('Delete via the confirm popover', async () => {
         const deleteResponse = page.waitForResponse(
           (r) =>
             r.url().includes(INTAKE_FORMS_API + '/') &&
             r.request().method() === 'DELETE'
         );
         await page.getByTestId(`delete-${DP_ENTITY_TYPE}`).click();
-        const dialog = page.getByTestId('intake-form-delete-confirm');
-        await expect(dialog).toBeVisible();
-        await dialog.getByRole('button', { name: 'Delete' }).click();
+        const popover = page.getByTestId('intake-form-delete-popover');
+        await expect(popover).toBeVisible();
+        await popover.getByTestId('intake-form-delete-popover-confirm').click();
         const response = await deleteResponse;
         expect([200, 204]).toContain(response.status());
       });
@@ -666,11 +671,11 @@ test.describe(
       await expect(deleteButton).toBeVisible({ timeout: ACTION_TIMEOUT });
       await deleteButton.click();
 
-      const dialog = page.getByTestId('intake-form-delete-confirm');
-      await expect(dialog).toBeVisible();
-      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      const popover = page.getByTestId('intake-form-delete-popover');
+      await expect(popover).toBeVisible();
+      await popover.getByTestId('intake-form-delete-popover-cancel').click();
 
-      await expect(dialog).not.toBeVisible();
+      await expect(popover).not.toBeVisible();
       // Row and its toggle are still there
       await expect(page.getByTestId(`delete-${DP_ENTITY_TYPE}`)).toBeVisible();
       await expect(

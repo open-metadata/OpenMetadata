@@ -16,6 +16,8 @@ import { ReactNode } from 'react';
 export interface ConfirmationModalProps {
   className?: string;
   isLoading?: boolean;
+  /** Styles the confirm button as destructive. A "Delete" confirm is always destructive. */
+  isDestructive?: boolean;
   cancelText: string | ReactNode;
   confirmText: string | ReactNode;
   bodyText: string | ReactNode;

@@ -15,13 +15,13 @@ import type { Key } from '@openmetadata/ui-core-components';
 import {
   Box,
   Button,
+  ButtonUtility,
   Card,
   Toggle,
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  DotsGrid,
   RefreshCw01,
   Save,
   XClose,
@@ -299,11 +299,9 @@ const CustomizeAppModeSidebarPage = () => {
             className="tw:w-full tw:justify-between"
             direction="row">
             <Box align="center" direction="row" gap={2}>
-              <DotsGrid
-                aria-hidden
-                className="tw:shrink-0 tw:cursor-grab tw:text-fg-quaternary"
+              <Tree.DragButton
+                aria-label={t('label.move')}
                 data-testid="ask-sidebar-drag-handle"
-                size={16}
               />
               {Icon && (
                 <Icon className="tw:text-fg-tertiary" height={20} width={20} />
@@ -369,9 +367,7 @@ const CustomizeAppModeSidebarPage = () => {
                   <Button
                     color="secondary"
                     data-testid="reset-button"
-                    iconLeading={
-                      <RefreshCw01 className="tw:shrink-0" size={14} />
-                    }
+                    iconLeading={RefreshCw01}
                     isDisabled={isSaving}
                     onPress={handleReset}>
                     {t('label.reset')}
@@ -379,19 +375,19 @@ const CustomizeAppModeSidebarPage = () => {
                   <Button
                     color="primary"
                     data-testid="save-button"
-                    iconLeading={<Save className="tw:shrink-0" size={14} />}
+                    iconLeading={Save}
                     isDisabled={disableSave}
                     isLoading={isSaving}
                     onPress={handleSave}>
                     {t('label.save')}
                   </Button>
-                  <Button
-                    aria-label={t('label.cancel')}
-                    color="secondary"
+                  <ButtonUtility
                     data-testid="cancel-button"
-                    iconLeading={<XClose className="tw:shrink-0" size={14} />}
+                    icon={XClose}
                     isDisabled={isSaving}
-                    onPress={handleCancel}
+                    size="lg"
+                    tooltip={t('label.cancel')}
+                    onClick={handleCancel}
                   />
                 </Box>
               </Box>

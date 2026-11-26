@@ -19,6 +19,8 @@ import { createUserWithPut } from '../../../../../../rest/userAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import BotAddForm from './BotAddForm';
 
+// The unsaved-changes guard is covered by SettingsFormLayout.test.tsx and the
+// Playwright specs; here Cancel simply leaves.
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -55,6 +57,14 @@ jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () =>
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  // The unsaved-changes popover only opens on a dirty exit.
+  ConfirmPopover: () => null,
+  Alert: ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
+    <div {...props}>{children}</div>
+  ),
   Box: ({
     children,
     ...props
@@ -136,6 +146,9 @@ describe('BotAddForm', () => {
     renderForm();
 
     expect(screen.getByTestId('allow-impersonation')).toBeInTheDocument();
+    expect(screen.getByTestId('impersonation-warning')).toHaveTextContent(
+      'message.allow-impersonation-help'
+    );
   });
 
   it('should hide the impersonation field for non-admins', () => {
@@ -143,6 +156,9 @@ describe('BotAddForm', () => {
     renderForm();
 
     expect(screen.queryByTestId('allow-impersonation')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('impersonation-warning')
+    ).not.toBeInTheDocument();
   });
 
   it('should create the bot user then the bot entity and navigate on submit', async () => {

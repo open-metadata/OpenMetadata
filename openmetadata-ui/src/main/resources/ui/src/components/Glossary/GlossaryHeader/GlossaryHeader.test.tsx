@@ -20,13 +20,14 @@ import {
   ProviderType,
 } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { refreshGlossaryProposals } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
   mockedGlossaryTerms,
   MOCK_GLOSSARY,
 } from '../../../mocks/Glossary.mock';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
+import { Task } from '../../../rest/tasksAPI';
+import { GlossaryProposal } from '../../../utils/GlossaryReview/GlossaryReview.types';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import GlossaryHeader from './GlossaryHeader.component';
 
@@ -49,12 +50,14 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     glossaryFqn: 'glossaryFqn',
     action: 'action',
   }),
-  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   Link: ({
     children,
     to,
@@ -70,7 +73,6 @@ jest.mock('react-router-dom', () => ({
   ),
 }));
 
-const mockProposalCounts = { all: 0, ai: 0, person: 0 };
 const mockDerivation = {
   entity: { id: 'term-id', type: 'glossaryTerm' },
   memory: {
@@ -86,13 +88,12 @@ const mockDerivation = {
   },
 };
 
+const mockDecide = jest.fn();
+const mockLoadedProposal: { current?: GlossaryProposal } = {};
+
 jest.mock('../../../hooks/governance/glossary/useGlossaryProposals', () => ({
-  refreshGlossaryProposals: jest.fn(),
-  useGlossaryProposalCounts: jest.fn(() => ({
-    counts: mockProposalCounts,
-    isLoading: false,
-  })),
-  useTermDerivation: jest.fn(() => mockDerivation),
+  useDecideProposal: jest.fn(() => mockDecide),
+  useGlossaryProposal: jest.fn(() => mockLoadedProposal.current),
 }));
 
 jest.mock(
@@ -114,10 +115,6 @@ jest.mock(
 jest.mock('../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description</div>);
 });
-
-jest.mock('../../Entity/EntityHeaderTitle/EntityHeaderTitle.component', () =>
-  jest.fn().mockReturnValue(<div data-testid="entity-header">EntityHeader</div>)
-);
 
 jest.mock(
   '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component',
@@ -179,7 +176,7 @@ jest.mock('../../../hooks/useAppMode', () => ({
 }));
 
 jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue('glossary.test1'),
+  useFqn: jest.fn().mockReturnValue({ fqn: 'glossary.test1' }),
 }));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -233,7 +230,9 @@ describe('GlossaryHeader component', () => {
       />
     );
 
-    expect(screen.getByText('EntityHeader')).toBeInTheDocument();
+    expect(screen.getByTestId('entity-header-display-name')).toHaveTextContent(
+      'glossaryTest'
+    );
   });
 
   it.each([
@@ -273,12 +272,9 @@ describe('GlossaryHeader component', () => {
     }
   );
 
-  it.each([
-    [true, true],
-    [false, false],
-  ])(
-    'should render the gradient header background only in AI mode (AI mode: %s)',
-    (isAiMode, hasGradient) => {
+  it.each([true, false])(
+    'should render a flat header without the gradient background (AI mode: %s)',
+    (isAiMode) => {
       mockIsAiMode.mockReturnValue(isAiMode);
 
       render(
@@ -289,17 +285,15 @@ describe('GlossaryHeader component', () => {
         />
       );
 
-      expect(
-        screen
-          .getByTestId('glossary-header')
-          .className.includes('linear-gradient')
-      ).toBe(hasGradient);
+      expect(screen.getByTestId('glossary-header').className).not.toContain(
+        'linear-gradient'
+      );
 
       mockIsAiMode.mockReturnValue(false);
     }
   );
 
-  it('should render import and export dropdown menu items only for glossary', async () => {
+  it('should render export, import and import ontology dropdown menu items for glossary', async () => {
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
@@ -389,8 +383,9 @@ describe('GlossaryHeader component', () => {
     expect(screen.getByText('label.style')).toBeInTheDocument();
     expect(screen.getByText('label.change-parent-entity')).toBeInTheDocument();
 
-    expect(screen.queryByText('label.import')).not.toBeInTheDocument();
+    expect(screen.getByText('label.import')).toBeInTheDocument();
     expect(screen.queryByText('label.export')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.import-ontology')).not.toBeInTheDocument();
   });
 
   it('should not render ChangeParentHierarchy component when it is close', () => {
@@ -583,6 +578,76 @@ describe('GlossaryHeader component', () => {
     });
   });
 
+  describe('CSV import entry', () => {
+    beforeEach(() => {
+      mockNavigate.mockClear();
+      mockGlossaryTermPermission.All = false;
+      mockGlossaryTermPermission[Operation.EditAll] = false;
+    });
+
+    afterEach(() => {
+      mockContext.permissions = DEFAULT_ENTITY_PERMISSION;
+      mockContext.type = EntityType.GLOSSARY;
+      mockGlossaryTermPermission.All = true;
+      mockGlossaryTermPermission[Operation.EditAll] = true;
+    });
+
+    it.each([
+      [EntityType.GLOSSARY, '/bulk/import/glossary/glossary.test1'],
+      [EntityType.GLOSSARY_TERM, '/bulk/import/glossaryTerm/glossary.test1'],
+    ])(
+      'opens the %s import page from its manage menu',
+      async (entityType, importPath) => {
+        mockContext.type = entityType;
+        mockContext.permissions = {
+          ...DEFAULT_ENTITY_PERMISSION,
+          EditAll: true,
+        };
+
+        render(
+          <GlossaryHeader
+            updateVote={mockOnUpdateVote}
+            onAddGlossaryTerm={mockOnDelete}
+            onDelete={mockOnDelete}
+          />
+        );
+
+        await act(async () => {
+          fireEvent.click(screen.getByTestId('manage-button'));
+        });
+
+        await act(async () => {
+          fireEvent.click(screen.getByText('label.import'));
+        });
+
+        expect(mockNavigate).toHaveBeenCalledWith(importPath);
+      }
+    );
+
+    it('hides the glossary term import entry without edit permission', async () => {
+      mockContext.type = EntityType.GLOSSARY_TERM;
+      mockContext.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        EditDisplayName: true,
+      };
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('manage-button'));
+      });
+
+      expect(screen.getByText('label.rename')).toBeInTheDocument();
+      expect(screen.queryByText('label.import')).not.toBeInTheDocument();
+    });
+  });
+
   describe('AI-generated drafts', () => {
     const aiDraft = {
       id: 'term-id',
@@ -595,21 +660,37 @@ describe('GlossaryHeader component', () => {
       updatedAt: Date.now(),
     } as GlossaryTerm;
 
+    const inReview = { ...aiDraft, entityStatus: EntityStatus.InReview };
+    const approvalRequest = {
+      id: 'task-id',
+      about: { fullyQualifiedName: 'Customers.churn', type: 'glossaryTerm' },
+      assignees: [{ id: mockUserData.id, name: 'admin', type: 'user' }],
+    } as unknown as Task;
+
     beforeEach(() => {
-      Object.assign(mockProposalCounts, { all: 0, ai: 0, person: 0 });
       mockContext.type = EntityType.GLOSSARY_TERM;
       mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
       mockContext.onUpdate = jest.fn().mockResolvedValue(undefined);
+      mockDecide.mockReset().mockResolvedValue(true);
+      mockLoadedProposal.current = undefined;
     });
 
-    it('approves an AI draft from its card', async () => {
-      mockContext.data = aiDraft;
+    it('approves an AI proposal through its approval request from its card', async () => {
+      const onProposalDecided = jest.fn();
+      mockContext.data = inReview;
+      mockLoadedProposal.current = {
+        approvalTask: approvalRequest,
+        derivation: mockDerivation,
+        source: 'ai',
+        term: { ...inReview, fullyQualifiedName: 'Customers.churn' },
+      };
 
       render(
         <GlossaryHeader
           updateVote={mockOnUpdateVote}
           onAddGlossaryTerm={mockOnDelete}
           onDelete={mockOnDelete}
+          onProposalDecided={onProposalDecided}
         />
       );
 
@@ -627,16 +708,38 @@ describe('GlossaryHeader component', () => {
         fireEvent.click(screen.getByTestId('approve-proposal'));
       });
 
-      expect(mockContext.onUpdate).toHaveBeenCalledWith({
-        ...aiDraft,
-        entityStatus: EntityStatus.Approved,
-      });
-      expect(refreshGlossaryProposals).toHaveBeenCalled();
+      expect(mockDecide).toHaveBeenCalledWith(
+        mockLoadedProposal.current,
+        EntityStatus.Approved,
+        undefined
+      );
+      expect(mockContext.onUpdate).not.toHaveBeenCalled();
+      expect(onProposalDecided).toHaveBeenCalled();
     });
 
-    it('shows no card once the term is approved, in review or a person-made draft', () => {
-      mockContext.data = { ...aiDraft, entityStatus: EntityStatus.Approved };
-      const { rerender } = render(
+    it('waits for the approval request before anyone decides an AI draft', () => {
+      mockContext.data = aiDraft;
+      mockLoadedProposal.current = { source: 'ai', term: aiDraft };
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(screen.getByTestId('ai-generated-term-card')).toBeInTheDocument();
+      expect(screen.queryByTestId('approve-proposal')).not.toBeInTheDocument();
+      expect(
+        screen.getByText('message.waiting-for-approval-request')
+      ).toBeInTheDocument();
+    });
+
+    it('shows no card until the proposal and its approval request load', () => {
+      mockContext.data = aiDraft;
+
+      render(
         <GlossaryHeader
           updateVote={mockOnUpdateVote}
           onAddGlossaryTerm={mockOnDelete}
@@ -647,9 +750,11 @@ describe('GlossaryHeader component', () => {
       expect(
         screen.queryByTestId('ai-generated-term-card')
       ).not.toBeInTheDocument();
+    });
 
-      mockContext.data = { ...aiDraft, entityStatus: EntityStatus.InReview };
-      rerender(
+    it('shows no card once the term is approved or a person-made draft', () => {
+      mockContext.data = { ...aiDraft, entityStatus: EntityStatus.Approved };
+      const { rerender } = render(
         <GlossaryHeader
           updateVote={mockOnUpdateVote}
           onAddGlossaryTerm={mockOnDelete}
@@ -673,27 +778,6 @@ describe('GlossaryHeader component', () => {
       expect(
         screen.queryByTestId('ai-generated-term-card')
       ).not.toBeInTheDocument();
-    });
-
-    it('counts the proposals under the page that await review', () => {
-      mockContext.data = { ...aiDraft, entityStatus: EntityStatus.Approved };
-      mockProposalCounts.all = 3;
-      mockProposalCounts.ai = 2;
-      mockProposalCounts.person = 1;
-
-      render(
-        <GlossaryHeader
-          updateVote={mockOnUpdateVote}
-          onAddGlossaryTerm={mockOnDelete}
-          onDelete={mockOnDelete}
-        />
-      );
-
-      const summary = screen.getByTestId('pending-review-summary');
-
-      expect(summary).toHaveTextContent('label.count-from-ai');
-      expect(summary).toHaveTextContent('label.count-from-people');
-      expect(summary).toHaveTextContent('message.awaiting-review');
     });
   });
 });

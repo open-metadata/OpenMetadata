@@ -95,6 +95,14 @@
     "state": {
       "$ref": "#/definitions/state"
     },
+    "requiresConceptIris": {
+      "description": "IRIs of concepts that an import expects to create in the same change set. Applying the operation without an UPSERT_CONCEPT operation for each of them is refused.",
+      "type": "array",
+      "items": {
+        "$ref": "ontologyIri.json"
+      },
+      "existingJavaType": "java.util.List<java.net.URI>"
+    },
     "concept": {
       "$ref": "../entity/data/ontologyConcept.json"
     },

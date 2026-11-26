@@ -575,9 +575,11 @@ class TestMemoryLimit(unittest.TestCase):
                 chunk = bytearray(1024 * 1024)  # 1MB per query element
                 data.append(chunk)
                 if i % 5 == 0:
-                    time.sleep(0.1)  # Simulate parsing work
+                    # Kept short: MemoryLimitExceeded is raised only once the function returns, so this
+                    # whole body runs inside the 3s timeout even in the memory scenario.
+                    time.sleep(0.01)  # Simulate parsing work
 
-            # Simulate additional parsing time
+            # Simulate additional parsing time; the memory monitor samples the peak during this sleep
             time.sleep(parse_time)
             return len(data)
 

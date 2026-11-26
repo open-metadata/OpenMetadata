@@ -114,12 +114,15 @@ final class LineageSceneLoader {
   SearchLineageResult fetchLineage() throws IOException {
     if (!request.hasFocus()) {
       if (request.requiresEntityAuthorization()) {
+        // No subject context here: the domain prune drops edges whose upstream end is not
+        // hydrated yet, which loses services reached only as upstream. The participant query
+        // is already domain-scoped and the resolver prunes again after hydration.
         SearchLineageResult lineage =
             repository.searchPlatformLineage(
                 DATA_ASSET_SEARCH_ALIAS,
                 rootLineageParticipantQuery(request),
                 request.includeDeleted(),
-                request.subjectContext());
+                null);
         hydrateMissingRootLineageAssets(lineage);
         return lineage;
       }

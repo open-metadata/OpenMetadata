@@ -169,9 +169,6 @@ export const openEntitySummaryPanel = async ({
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
     await cardByFqn.waitFor({ state: 'visible' });
     await clickOutside(page);
-    await expect(
-      page.locator('.ant-popover:not(.ant-popover-hidden)')
-    ).toHaveCount(0);
 
     // Since the directly clicking on the card can sometimes click on title element which is link,
     // we need to click on description container to open the summary panel.
@@ -506,35 +503,6 @@ export const removeTierFromPanel = async (page: Page) => {
   await clearButton.click();
   await patchPromise;
 };
-
-/**
- * Maps entity types to their corresponding left panel asset type titles
- */
-function getAssetTypeFromEntityType(entityType: string): string {
-  const entityTypeToAssetType: Record<string, string> = {
-    Table: 'Databases',
-    Database: 'Databases',
-    'Database Schema': 'Databases',
-    'Store Procedure': 'Databases',
-    Dashboard: 'Dashboards',
-    DashboardDataModel: 'Dashboards',
-    Chart: 'Dashboards',
-    Pipeline: 'Pipelines',
-    Topic: 'Topics',
-    MlModel: 'ML Models',
-    Container: 'Containers',
-    SearchIndex: 'Search Indexes',
-    ApiEndpoint: 'APIs',
-    'Api Collection': 'APIs',
-    File: 'Drives',
-    Directory: 'Drives',
-    Spreadsheet: 'Drives',
-    Worksheet: 'Drives',
-    Metric: 'Metrics',
-  };
-
-  return entityTypeToAssetType[entityType] || 'Databases';
-}
 
 export const editDisplayNameFromPanel = async (
   page: Page,

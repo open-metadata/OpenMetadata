@@ -383,13 +383,7 @@ describe('flat credential auth synthesis', () => {
     );
     expect(synthesized.properties).toHaveProperty('authType');
     expect(synthesized.required).toEqual(['username', 'authType']);
-    expect(
-      (
-        synthesized.properties.authType as {
-          oneOf: Array<{ title: string; required?: string[] }>;
-        }
-      ).oneOf
-    ).toEqual([
+    expect(synthesized).toHaveProperty('properties.authType.oneOf', [
       expect.objectContaining({
         title: 'label.password',
         required: ['password'],

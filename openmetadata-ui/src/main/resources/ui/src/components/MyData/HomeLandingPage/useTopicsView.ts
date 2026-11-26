@@ -132,6 +132,14 @@ export const useTopicsView = (layout: WidgetConfig[]): TopicsView => {
       .map((widget, index) => ({ ...widget, w: 1, x: 0, y: index }));
   }, [layout, collapsedKeys, viewMode]);
 
+  // react-grid-layout's own sizing, so a deferred widget reserves exactly the
+  // space the grid is about to give it. Stable, so the page's memoized widget
+  // list can depend on it.
+  const widgetHeight = useCallback(
+    (h: number) => h * (rowHeight + margin) - margin,
+    [rowHeight, margin]
+  );
+
   return {
     collapseValue,
     columns:
@@ -141,9 +149,7 @@ export const useTopicsView = (layout: WidgetConfig[]): TopicsView => {
     displayLayout,
     isEveryWidgetCollapsed,
     rowHeight,
-    // react-grid-layout's own sizing, so a deferred widget reserves exactly the
-    // space the grid is about to give it.
-    widgetHeight: (h) => h * (rowHeight + margin) - margin,
+    widgetHeight,
     setViewMode,
     toggleAll,
     viewMode,

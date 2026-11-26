@@ -67,6 +67,7 @@ import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -85,6 +86,10 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.util.TestDatabaseImages;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.TriggerKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -94,7 +99,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.k3s.K3sContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -130,21 +134,19 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       IndexMappingLanguage.EN;
   private static final String ELASTIC_SEARCH_CLUSTER_ALIAS = "openmetadata";
 
-  // Default images (can be overridden by system properties)
-  private static final String DEFAULT_POSTGRES_IMAGE = "postgres:15";
-  private static final String DEFAULT_MYSQL_IMAGE = "mysql:8.3.0";
+  // Default images (can be overridden by system properties). The database image defaults to the
+  // shipped one; -DdatabaseImage replaces it for a run.
   private static final String DEFAULT_MYSQL_MAX_ALLOWED_PACKET = "64M";
   private static final String DEFAULT_ELASTICSEARCH_IMAGE =
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
   private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
 
-  private static final String RDF_CONTAINER_IMAGE_PROPERTY = "rdfContainerImage";
   private static final String RDF_CONTAINER_TMPFS_SIZE_PROPERTY = "rdfContainerTmpfsSize";
   // Three TDB2 datasets and compaction generations exceed the old single-dataset 256 MiB cap.
   private static final String DEFAULT_FUSEKI_TMPFS_SIZE = "8g";
-  private static final int FUSEKI_PORT = 3030;
+  private static final int FUSEKI_PORT = FusekiTestImage.PORT;
   private static final String FUSEKI_DATASET = "openmetadata";
-  private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
+  private static final String FUSEKI_ADMIN_PASSWORD = FusekiTestImage.ADMIN_PASSWORD;
 
   // K3s (Kubernetes) configuration for pipeline scheduler tests (on-demand)
   private static final String K3S_IMAGE = "rancher/k3s:v1.27.4-k3s1";
@@ -162,6 +164,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static GenericContainer<?> REDIS_CONTAINER;
   private static K3sContainer K3S_CONTAINER;
   private static GenericContainer<?> OBJECT_STORAGE_CONTAINER;
+  private static final String SEARCH_INDEXING_APP = "SearchIndexingApplication";
+  // One single-node engine serves the whole parallel suite: concurrent namespace-cleanup
+  // delete-by-query calls and inherited-field update-by-query tasks each hold a scroll context per
+  // shard, and at the default limit of 500 the engine refuses new ones. A refused background
+  // propagation fails silently and its test waits for a value that never arrives.
+  private static final String MAX_OPEN_SCROLL_CONTEXTS = "5000";
   private static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   private static final List<DropwizardAppExtension<OpenMetadataApplicationConfig>> ADDITIONAL_APPS =
       java.util.Collections.synchronizedList(new ArrayList<>());
@@ -327,7 +335,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
     if ("mysql".equalsIgnoreCase(databaseType)) {
       if (image == null) {
-        image = DEFAULT_MYSQL_IMAGE;
+        image = TestDatabaseImages.mysql();
       }
       LOG.info("Starting MySQL container with image: {}", image);
       String mysqlMaxAllowedPacket =
@@ -379,7 +387,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           mysqlMaxAllowedPacket);
     } else {
       if (image == null) {
-        image = DEFAULT_POSTGRES_IMAGE;
+        image = TestDatabaseImages.postgres();
       }
       LOG.info("Starting PostgreSQL container with image: {}", image);
       PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(image);
@@ -454,6 +462,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       opensearch.withEnv("discovery.type", "single-node");
       opensearch.withEnv("DISABLE_SECURITY_PLUGIN", "true");
       opensearch.withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true");
+      opensearch.withEnv("search.max_open_scroll_context", MAX_OPEN_SCROLL_CONTEXTS);
       // The search-it suite reindexes the full shared catalog on every test (beforeEach recreate),
       // and heavy-seed tests (ReindexStopUnderLoadIT seeds 10k tables) leave thousands of entities
       // in the DB that every later recreate re-indexes. With only 1g heap / 1g tmpfs the
@@ -487,6 +496,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       elasticsearch.withPassword(ELASTIC_PASSWORD);
       elasticsearch.withEnv("discovery.type", "single-node");
       elasticsearch.withEnv("xpack.security.enabled", "false");
+      elasticsearch.withEnv("search.max_open_scroll_context", MAX_OPEN_SCROLL_CONTEXTS);
       elasticsearch.withEnv("ES_JAVA_OPTS", "-Xms1g -Xmx1g");
       elasticsearch.withStartupAttempts(3);
       elasticsearch.withTmpFs(java.util.Map.of("/usr/share/elasticsearch/data", "rw,size=1g"));
@@ -538,6 +548,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     return "redis".equalsIgnoreCase(cacheProvider);
   }
 
+  /** The Redis container of the Redis lane; null when the suite runs without Redis. */
+  public static GenericContainer<?> getRedisContainer() {
+    return REDIS_CONTAINER;
+  }
+
   public static String getRedisUrl() {
     return redisUrl;
   }
@@ -580,19 +595,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     LOG.info("Fuseki started: {}", fusekiEndpoint);
   }
 
-  /** Creates an isolated Fuseki instance with the server's assembler and write extension. */
+  /** Creates an isolated Fuseki instance configured as OpenMetadata deployments run it. */
   public static GenericContainer<?> createFusekiContainer() {
     final GenericContainer<?> container =
-        fusekiContainer()
-            .withExposedPorts(FUSEKI_PORT)
-            .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-            .withEnv("FUSEKI_ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-            .withEnv("JVM_ARGS", System.getProperty("rdfContainerJvmArgs", "-Xms512m -Xmx512m"))
-            .waitingFor(
-                Wait.forHttp("/$/ping")
-                    .forPort(FUSEKI_PORT)
-                    .forStatusCode(200)
-                    .withStartupTimeout(Duration.ofMinutes(2)))
+        FusekiTestImage.forOpenMetadata(
+                System.getProperty("rdfContainerJvmArgs", "-Xms512m -Xmx512m"))
             // Increase file descriptor limits for parallel test execution
             .withCreateContainerCmdModifier(
                 cmd ->
@@ -604,9 +611,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     if (Boolean.parseBoolean(System.getProperty("rdfContainerTmpfs", "true"))) {
       // Scale runs opt out so disk and page-cache measurements describe persistent TDB2 storage.
       container.withTmpFs(
-          Map.of(
-              "/fuseki/databases", "rw,size=" + fusekiTmpfsSize() + ",mode=1777",
-              "/fuseki-data", "rw,size=" + fusekiTmpfsSize() + ",mode=1777"));
+          Map.of(FusekiTestImage.DATABASES_PATH, "rw,size=" + fusekiTmpfsSize() + ",mode=1777"));
     }
     if (Boolean.getBoolean("rdfContainerStablePort")) {
       // Docker can allocate a different ephemeral host port on restart.
@@ -631,19 +636,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     return FUSEKI_CONTAINER;
   }
 
-  /** The isolated metadata database, for scale resource sampling. */
-  public static GenericContainer<?> getDatabaseContainer() {
+  /** The metadata database server, for scale resource sampling and scratch databases. */
+  public static JdbcDatabaseContainer<?> getDatabaseContainer() {
     return DATABASE_CONTAINER;
-  }
-
-  private static GenericContainer<?> fusekiContainer() {
-    final String image = System.getProperty(RDF_CONTAINER_IMAGE_PROPERTY);
-    if (image != null && !image.isBlank()) {
-      return new GenericContainer<>(DockerImageName.parse(image));
-    }
-    return new GenericContainer<>(
-        new ImageFromDockerfile()
-            .withFileFromPath(".", Paths.get(getProjectRoot(), "docker", "rdf-store")));
   }
 
   private void startK3s() {
@@ -735,8 +730,28 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
 
     registerMcpServerIfAvailable();
+    pauseScheduledReindex();
 
     LOG.info("OpenMetadata application started on port {}", APP.getLocalPort());
+  }
+
+  /**
+   * The seeded search indexing app runs on a wall-clock cron, every Sunday at 00:30 UTC, as a full
+   * recreate reindex: it rebuilds every index from a database snapshot and swaps the aliases,
+   * dropping every search write the suite made meanwhile. A merge-queue run that spanned it failed
+   * 31 search tests at once. Tests that need a reindex run the app on demand, through a trigger of
+   * its own that this leaves alone.
+   */
+  private static void pauseScheduledReindex() {
+    try {
+      Scheduler scheduler = AppScheduler.getInstance().getScheduler();
+      TriggerKey trigger = new TriggerKey(SEARCH_INDEXING_APP, AppScheduler.APPS_TRIGGER_GROUP);
+      scheduler.pauseTrigger(trigger);
+      LOG.info(
+          "Scheduled trigger of {} is {}", SEARCH_INDEXING_APP, scheduler.getTriggerState(trigger));
+    } catch (SchedulerException e) {
+      LOG.warn("Could not pause the scheduled {}: {}", SEARCH_INDEXING_APP, e.getMessage());
+    }
   }
 
   private void registerMcpServerIfAvailable() {
@@ -918,6 +933,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     if (appendPayloadBytes != null) {
       rdfConfig.setMaxAppendPayloadBytes(appendPayloadBytes);
     }
+    // Small enough that an ontology of a few hundred definitions takes the staged, chunked path
+    // that a production ontology takes above 16 MiB.
+    rdfConfig.setGraphReplaceChunkBytes(Integer.getInteger("rdfGraphReplaceChunkBytes", 65_536));
     final Integer appendEntityBatchSize = Integer.getInteger("rdfAppendEntityBatchSize");
     if (appendEntityBatchSize != null) {
       rdfConfig.setBulkAppendEntityBatchSize(appendEntityBatchSize);
@@ -1026,6 +1044,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     } catch (Exception e) {
       LOG.warn("Error stopping object storage container", e);
     }
+
+    try {
+      stopOnDemandContainers();
+    } catch (Exception e) {
+      LOG.warn("Error stopping on-demand containers", e);
+    }
   }
 
   // === On-demand S3 container for object-storage tests ===
@@ -1100,6 +1124,104 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         + OBJECT_STORAGE_CONTAINER.getHost()
         + ":"
         + OBJECT_STORAGE_CONTAINER.getMappedPort(9000);
+  }
+
+  // === On-demand containers for tests that need a topology or isolation the shared ones lack ===
+
+  public static final String LOCALSTACK_ACCESS_KEY = "test";
+  public static final String LOCALSTACK_SECRET_KEY = "test";
+  public static final String LOCALSTACK_REGION = "us-east-1";
+  private static final int LOCALSTACK_PORT = 4566;
+  private static final int MAX_ON_DEMAND_CONTAINERS = 8;
+  private static final Map<String, GenericContainer<?>> ON_DEMAND_CONTAINERS =
+      new java.util.LinkedHashMap<>();
+
+  private static synchronized GenericContainer<?> onDemandContainer(
+      String name, java.util.function.Supplier<GenericContainer<?>> factory) {
+    GenericContainer<?> existing = ON_DEMAND_CONTAINERS.get(name);
+    if (existing != null && existing.isRunning()) {
+      return existing;
+    }
+    if (existing == null && ON_DEMAND_CONTAINERS.size() >= MAX_ON_DEMAND_CONTAINERS) {
+      throw new IllegalStateException("Too many on-demand containers; cannot start " + name);
+    }
+    LOG.info("Starting on-demand container '{}'", name);
+    GenericContainer<?> container = factory.get();
+    container.start();
+    ON_DEMAND_CONTAINERS.put(name, container);
+    return container;
+  }
+
+  /**
+   * A Redis server of its own, started on first request and reused for the rest of the run. For
+   * tests that need a mode the shared Redis does not run in (cluster-enabled) or that pause the
+   * server, which would stall every other test using the shared one. Each {@code name} is a
+   * separate server, so tests that flush or count keys do not see each other.
+   */
+  public static GenericContainer<?> onDemandRedis(String name, String... serverArgs) {
+    return onDemandContainer(
+        "redis-" + name,
+        () -> {
+          String[] command = new String[serverArgs.length + 1];
+          command[0] = "redis-server";
+          System.arraycopy(serverArgs, 0, command, 1, serverArgs.length);
+          return new GenericContainer<>(
+                  DockerImageName.parse(System.getProperty("redisImage", DEFAULT_REDIS_IMAGE)))
+              .withExposedPorts(REDIS_PORT)
+              .withCommand(command)
+              .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(1)));
+        });
+  }
+
+  /** One LocalStack serving S3, Secrets Manager and SSM, with the {@code LOCALSTACK_*} credentials. */
+  public static GenericContainer<?> localStack() {
+    return onDemandContainer(
+        "localstack",
+        () ->
+            new GenericContainer<>(DockerImageName.parse("localstack/localstack:3.8.1"))
+                .withEnv("SERVICES", "s3,secretsmanager,ssm")
+                .withExposedPorts(LOCALSTACK_PORT)
+                .waitingFor(
+                    Wait.forLogMessage(".*Ready\\.\n", 1)
+                        .withStartupTimeout(Duration.ofMinutes(3))));
+  }
+
+  public static URI localStackEndpoint() {
+    GenericContainer<?> localStack = localStack();
+    return URI.create(
+        "http://" + localStack.getHost() + ":" + localStack.getMappedPort(LOCALSTACK_PORT));
+  }
+
+  /**
+   * An OpenSearch of its own for tests whose fixtures must occupy index and alias names the
+   * application already owns on the shared cluster (for example {@code all} or {@code
+   * di-data-assets-*}). Runs the OpenSearch image of the lane.
+   */
+  public static GenericContainer<?> dedicatedOpenSearch() {
+    return onDemandContainer(
+        "opensearch",
+        () -> {
+          String image =
+              "opensearch".equalsIgnoreCase(searchType) && System.getProperty("searchImage") != null
+                  ? System.getProperty("searchImage")
+                  : DEFAULT_OPENSEARCH_IMAGE;
+          return new GenericContainer<>(DockerImageName.parse(image))
+              .withEnv("discovery.type", "single-node")
+              .withEnv("DISABLE_SECURITY_PLUGIN", "true")
+              .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
+              .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms1g -Xmx1g")
+              .withExposedPorts(9200)
+              .waitingFor(
+                  Wait.forHttp("/")
+                      .forPort(9200)
+                      .forStatusCode(200)
+                      .withStartupTimeout(Duration.ofMinutes(3)));
+        });
+  }
+
+  private static synchronized void stopOnDemandContainers() {
+    ON_DEMAND_CONTAINERS.values().forEach(GenericContainer::stop);
+    ON_DEMAND_CONTAINERS.clear();
   }
 
   // === Static accessor methods for tests ===

@@ -1,0 +1,43 @@
+{
+  "$id": "https://open-metadata.org/schema/api/domains/domainStyles.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DomainStyles",
+  "description": "Colour and icon of every domain and data product that has a style, so a client holding only a domain or data product reference can draw its chip by id.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.domains.DomainStyles",
+  "definitions": {
+    "entityStyle": {
+      "description": "Colour and icon of one domain or data product. The cover image stays on the entity.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.domains.EntityStyle",
+      "properties": {
+        "id": {
+          "description": "Id of the domain or data product.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "type": {
+          "description": "Entity type: `domain` or `dataProduct`.",
+          "type": "string"
+        },
+        "style": {
+          "description": "Colour and icon of the domain or data product.",
+          "$ref": "../../type/basic.json#/definitions/style"
+        }
+      },
+      "required": ["id", "type", "style"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "data": {
+      "description": "Styles of the domains and data products that have a colour or an icon. Entities without either are omitted.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/entityStyle"
+      },
+      "default": []
+    }
+  },
+  "required": ["data"],
+  "additionalProperties": false
+}

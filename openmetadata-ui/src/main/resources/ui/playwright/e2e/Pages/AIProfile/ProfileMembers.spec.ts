@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { Page } from '@playwright/test';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TeamClass } from '../../../support/team/TeamClass';
@@ -26,9 +27,16 @@ import {
   openTeamTab,
   openUsersPanel,
   searchUserRow,
+  userDetailUrl,
 } from '../../../utils/aiProfile';
-import { uuid } from '../../../utils/common';
+import {
+  clickIgnoringToasts,
+  selectOptionWithRetry,
+  uuid,
+} from '../../../utils/common';
+import { waitForSearchIndexed } from '../../../utils/polling';
 import { getRowByName } from '../../../utils/scopedLocators';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { expect, test } from '../../fixtures/pages';
 
 test.describe('AI Profile Members - navigation & basics', () => {
@@ -121,6 +129,31 @@ test.describe('AI Profile Members - navigation & basics', () => {
     await expect(page.getByTestId('team-detail')).toBeVisible();
   });
 
+  test('Should ask before a breadcrumb or Cancel drops a typed team', async ({
+    page,
+  }) => {
+    await navigateToMembersPanel(page);
+    await openOrganizationTeams(page);
+    await page.getByTestId('add-team').click();
+    const nameInput = page.getByTestId('name').locator('input');
+    await nameInput.fill(`pw-unsaved-team-${uuid()}`);
+
+    const prompt = page.getByTestId('unsaved-changes-popover');
+    await page
+      .getByTestId('profile-content-header')
+      .getByRole('link', { name: 'Members' })
+      .click();
+    await expect(prompt).toBeVisible();
+    await prompt.getByTestId('unsaved-changes-popover-cancel').click();
+    await expect(prompt).toBeHidden();
+    await expect(nameInput).not.toHaveValue('');
+
+    await page.getByTestId('cancel-btn').click();
+    await expect(prompt).toBeVisible();
+    await prompt.getByTestId('unsaved-changes-popover-confirm').click();
+    await expect(page.getByTestId('team-detail')).toBeVisible();
+  });
+
   test('Should refetch online users when the time window changes', async ({
     page,
   }) => {
@@ -194,7 +227,7 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     await afterAction();
   });
 
-  test('Should open the edit user view from team detail', async ({ page }) => {
+  test('Should open the user detail from team detail', async ({ page }) => {
     await navigateToMembersPanel(page);
     await openOrganizationTeams(page);
 
@@ -204,14 +237,16 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     await openTeamByLink(page, team.responseData.name);
     await teamUsersResponse;
 
-    const userResponse = page.waitForResponse((response) =>
-      response
-        .url()
-        .includes(
+    // Exact path: a prefix match would also catch `<name>@domain` lookups.
+    const userResponse = waitForResponseWithStatus(
+      page,
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname ===
           `/api/v1/users/name/${encodeURIComponent(
             regularUser.responseData.name
-          )}`
-        )
+          )}`,
+      200
     );
     await page
       .getByTestId('team-users-table')
@@ -219,13 +254,11 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
       .click();
     await userResponse;
 
-    // The email is unique per run and shown verbatim on the user's page.
-    await expect(page.getByTestId('user-email')).toContainText(
+    // The email is unique per run and shown verbatim in the user's header.
+    await expect(page.getByTestId('profile-content-header')).toContainText(
       regularUser.responseData.email
     );
-    expect(new URL(page.url()).hash).toBe(
-      `#members/user/${encodeURIComponent(regularUser.responseData.name)}`
-    );
+    await expect(page).toHaveURL(userDetailUrl(regularUser.responseData.name));
   });
 
   test('Should navigate from team detail to a role detail', async ({
@@ -300,8 +333,9 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     const searchInput = page
       .getByTestId('users-list-container')
       .getByTestId('searchbar');
-    const roleLink = page
-      .getByTestId('users-list-table')
+    // Scoped to the searched row: the unfiltered first page already shows a
+    // seeded user's role link, which would let the click race the search.
+    const roleLink = getRowByName(page, listUser.responseData.name)
       .getByTestId('role-link')
       .getByRole('link');
     await expect(async () => {
@@ -331,5 +365,252 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     await teamResponse;
 
     await expect(page.getByTestId('team-detail')).toBeVisible();
+  });
+});
+
+test.describe('AI Profile Members - online search', () => {
+  // Built in beforeAll so a second beforeAll run in the same worker creates a new user.
+  let searchId: string;
+  let onlineUser: UserClass;
+
+  test.beforeAll(async ({ browser }) => {
+    searchId = uuid();
+    onlineUser = new UserClass({
+      firstName: `pwonline${searchId}`,
+      lastName: 'search',
+      email: `pwonline${searchId}.search@example.com`,
+      password: 'User@OMD123',
+    });
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await onlineUser.create(apiContext);
+    await waitForSearchIndexed(
+      apiContext,
+      onlineUser.responseData.fullyQualifiedName,
+      'user_search_index'
+    );
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await onlineUser.delete(apiContext).catch(() => undefined);
+    await afterAction();
+  });
+
+  test('Should find an online user by a partial name', async ({ page }) => {
+    await navigateToMembersPanel(page);
+    await openOnlineUsersPanel(page);
+
+    // A fresh user has no activity yet, so widen the window to keep it listed.
+    const allTimeResponse = waitForResponseWithStatus(
+      page,
+      (response) =>
+        response.url().includes('/api/v1/users/online') &&
+        response.url().includes('timeWindow=0'),
+      200
+    );
+    await selectOptionWithRetry(
+      page.getByTestId('time-window-select').getByRole('button'),
+      page.getByRole('option', { name: 'All time' })
+    );
+    await allTimeResponse;
+
+    const partialName = `online${searchId}`;
+    const searchResponse = waitForResponseWithStatus(
+      page,
+      (response) => {
+        const params = new URL(response.url()).searchParams;
+
+        return (
+          response.url().includes('/api/v1/search/query') &&
+          params.get('index') === 'user' &&
+          params.get('q') === `*${partialName}*`
+        );
+      },
+      200
+    );
+    await page
+      .getByTestId('online-users-panel')
+      .getByTestId('searchbar')
+      .fill(partialName);
+    await searchResponse;
+
+    await expect(
+      page
+        .getByTestId('online-users-table')
+        .getByTestId(onlineUser.responseData.name)
+    ).toBeVisible();
+  });
+});
+
+const isAdminListRequest = (url: URL) =>
+  url.pathname === '/api/v1/users' &&
+  url.searchParams.get('isAdmin') === 'true';
+
+const stubAdmin = (name: string) => ({
+  id: uuid(),
+  name,
+  displayName: name,
+  fullyQualifiedName: name,
+  email: `${name}@example.com`,
+  isAdmin: true,
+  teams: [],
+  roles: [],
+});
+
+test.describe('AI Profile Members - admin paging', () => {
+  // The admins list is stubbed: creating enough real admins to force a second
+  // page would pollute the shared server for every other spec.
+  test('Should page the Admins list with Next and Previous', async ({
+    page,
+  }) => {
+    const firstPageAdmin = `pw-stub-admin-first-${uuid()}`;
+    const secondPageAdmin = `pw-stub-admin-second-${uuid()}`;
+    await page.route(isAdminListRequest, (route) => {
+      const params = new URL(route.request().url()).searchParams;
+      const onSecondPage = params.has('after');
+
+      return route.fulfill({
+        json: {
+          data: [stubAdmin(onSecondPage ? secondPageAdmin : firstPageAdmin)],
+          paging: onSecondPage
+            ? { total: 30, before: 'pw-cursor-before' }
+            : { total: 30, after: 'pw-cursor-after' },
+        },
+      });
+    });
+
+    await navigateToMembersPanel(page);
+    await openAdminsPanel(page);
+
+    const usersList = page.getByTestId('users-list-container');
+
+    await expect(usersList.getByText(/^Page 1 of/)).toBeVisible();
+    await expect(getRowByName(page, firstPageAdmin)).toBeVisible();
+
+    const nextResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+
+      return (
+        isAdminListRequest(url) &&
+        url.searchParams.get('after') === 'pw-cursor-after'
+      );
+    });
+    await clickIgnoringToasts(usersList.getByTestId('next'));
+    await nextResponse;
+
+    await expect(usersList.getByText(/^Page 2 of/)).toBeVisible();
+    await expect(getRowByName(page, secondPageAdmin)).toBeVisible();
+
+    // Page 1 needs no cursor: it reloads the list from the start.
+    const previousResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+
+      return (
+        isAdminListRequest(url) &&
+        !url.searchParams.has('after') &&
+        !url.searchParams.has('before')
+      );
+    });
+    await clickIgnoringToasts(usersList.getByTestId('previous'));
+    await previousResponse;
+
+    await expect(usersList.getByText(/^Page 1 of/)).toBeVisible();
+    await expect(getRowByName(page, firstPageAdmin)).toBeVisible();
+  });
+});
+
+test.describe('AI Profile Members - Users pagination', () => {
+  // Enough users for three pages at the smallest page size, whatever else the
+  // tenant holds.
+  const pagedUsers: UserClass[] = [];
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    pagedUsers.length = 0;
+    pagedUsers.push(...Array.from({ length: 31 }, () => new UserClass()));
+    await Promise.all(pagedUsers.map((user) => user.create(apiContext)));
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await Promise.all(
+      pagedUsers.map((user) => user.delete(apiContext).catch(() => undefined))
+    );
+    await afterAction();
+  });
+
+  // A page size saved by another spec would change how many pages 31 users
+  // span, so each test picks the smallest one itself.
+  const openUsersAtSmallestPageSize = async (page: Page) => {
+    await navigateToMembersPanel(page);
+    await openUsersPanel(page);
+    const usersList = page.getByTestId('users-list-container');
+    await expect(usersList.getByText(/^Page 1 of/)).toBeVisible();
+    const sizePicker = usersList.getByTestId('rows-per-page-dropdown');
+    // Paging before the page-size reload lands would step from the old
+    // size's cursors; a size already at 15 starts no reload. Read the
+    // trigger, not the Select root, whose text also carries hidden content.
+    const currentSize = await sizePicker.getByRole('button').textContent();
+    if (currentSize?.trim() !== '15') {
+      const reloaded = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+
+        return (
+          url.pathname.endsWith('/api/v1/users') &&
+          url.searchParams.get('limit') === '15' &&
+          !url.searchParams.has('after')
+        );
+      });
+      await sizePicker.click();
+      await page.getByTestId('rows-per-page-option-15').click();
+      await reloaded;
+    }
+    await expect(
+      usersList.getByText(/^Page 1 of ([3-9]|\d{2,})$/)
+    ).toBeVisible();
+  };
+
+  test('Should go back a page with the before cursor of the page shown', async ({
+    page,
+  }) => {
+    await openUsersAtSmallestPageSize(page);
+    const usersList = page.getByTestId('users-list-container');
+
+    const isUsersPage = (response: { url: () => string }) => {
+      const url = new URL(response.url());
+
+      return (
+        url.pathname.endsWith('/api/v1/users') && url.searchParams.has('after')
+      );
+    };
+    // Page 2 must land first, or its response could pass for page 3's.
+    const pageTwoLoaded = page.waitForResponse(isUsersPage);
+    await usersList.getByTestId('next').click();
+    await pageTwoLoaded;
+    await expect(usersList.getByText(/^Page 2 of/)).toBeVisible();
+    const pageThreeResponse = page.waitForResponse(isUsersPage);
+    await usersList.getByTestId('next').click();
+    const pageThree = (await (await pageThreeResponse).json()) as {
+      paging: { before: string };
+    };
+    await expect(usersList.getByText(/^Page 3 of/)).toBeVisible();
+
+    const pageTwoResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+
+      return (
+        url.pathname.endsWith('/api/v1/users') &&
+        url.searchParams.get('before') === pageThree.paging.before
+      );
+    });
+    await usersList.getByTestId('previous').click();
+    const pageTwo = (await (await pageTwoResponse).json()) as {
+      data: { name: string }[];
+    };
+
+    await expect(usersList.getByText(/^Page 2 of/)).toBeVisible();
+    await expect(getRowByName(page, pageTwo.data[0].name)).toBeVisible();
   });
 });

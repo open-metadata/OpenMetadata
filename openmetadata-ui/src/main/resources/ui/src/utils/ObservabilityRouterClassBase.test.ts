@@ -168,7 +168,7 @@ describe('ObservabilityRouterClassBase', () => {
           { id: 'task-uuid', taskId: 6 } as unknown as Task,
           'table.col'
         )
-      ).toBe('/observability/test-case/table.col/issues');
+      ).toBe('/observability/test-case/table.col/issues?taskId=task-uuid');
     });
 
     it('should leave alert paths unchanged since they already live under /observability', () => {
@@ -347,7 +347,9 @@ describe('ObservabilityRouterClassBase', () => {
             fullyQualifiedName: 'db.schema.table.col.test_case',
           },
         } as unknown as Task)
-      ).toBe('/test-case/db.schema.table.col.test_case/issues');
+      ).toBe(
+        '/test-case/db.schema.table.col.test_case/issues?taskId=task-uuid'
+      );
     });
 
     it('should return the activity-feed task path for non test case tasks', () => {
@@ -375,7 +377,9 @@ describe('ObservabilityRouterClassBase', () => {
           { id: 'task-uuid', taskId: 6 } as unknown as Task,
           'db.schema.table.col.test_case'
         )
-      ).toBe('/test-case/db.schema.table.col.test_case/issues');
+      ).toBe(
+        '/test-case/db.schema.table.col.test_case/issues?taskId=task-uuid'
+      );
     });
   });
 

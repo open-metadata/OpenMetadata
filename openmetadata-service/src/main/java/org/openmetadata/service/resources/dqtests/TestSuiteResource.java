@@ -310,16 +310,19 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
 
     List<AuthRequest> authRequests = getAuthRequestsForListOps();
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
-    return repository.listFromSearchWithOffset(
-        uriInfo,
-        fields,
-        searchListFilter,
-        limit,
-        offset,
-        searchSortFilter,
-        q,
-        queryString,
-        securityContext);
+    ResultList<TestSuite> suites =
+        repository.listFromSearchWithOffset(
+            uriInfo,
+            fields,
+            searchListFilter,
+            limit,
+            offset,
+            searchSortFilter,
+            q,
+            queryString,
+            securityContext);
+    retainReadableRows(securityContext, fields, suites);
+    return suites;
   }
 
   @GET

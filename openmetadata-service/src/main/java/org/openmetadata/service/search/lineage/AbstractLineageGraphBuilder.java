@@ -25,6 +25,8 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.search.ColumnMetadataCache.EntityDocumentFetcher;
 import org.openmetadata.service.search.LineagePathPreserver;
 import org.openmetadata.service.search.QueryFilterParser;
 import org.openmetadata.service.search.lineage.LineageFilterClassifier.FilterClassification;
@@ -47,6 +49,15 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
     this.config = LineageGraphConfiguration.fromSettings();
     this.strategySelector = new LineageStrategySelector(this);
     this.cache = new GuavaLineageGraphCache(config);
+  }
+
+  protected final Map<String, Object> loadRootEntity(
+      final String fqn, final EntityDocumentFetcher fetcher) throws IOException {
+    try {
+      return fetcher.fetchEntity(fqn);
+    } catch (final MissingLineageEntityException e) {
+      throw EntityNotFoundException.byName(fqn, e);
+    }
   }
 
   /**
@@ -585,6 +596,11 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
   }
 
   protected int getTraversalDepth(Integer nodeDepth, Integer maxDepth) {
+    return traversalDepth(nodeDepth, maxDepth);
+  }
+
+  /** The depth an entity-count request walks to: its node depth, capped by its max depth. */
+  public static int traversalDepth(Integer nodeDepth, Integer maxDepth) {
     int boundedMaxDepth = maxDepth != null && maxDepth > 0 ? maxDepth : 0;
     int selectedDepth = nodeDepth != null ? Math.abs(nodeDepth) : 0;
 

@@ -12,11 +12,28 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
+import DestinationFormItem from '../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
+import ObservabilityFormFiltersItem from '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
+import ObservabilityFormTriggerItem from '../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import { AlertType } from '../../generated/events/eventSubscription';
 import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import AddObservabilityPage from './AddObservabilityPage';
+
+// The global mock returns the bare key; echo the no-access entity so the
+// tests can tell the create and edit permission messages apart.
+jest.mock('react-i18next', () => ({
+  ...jest.requireActual('react-i18next'),
+  useTranslation: () => ({
+    t: (key: string, options?: { entity?: string }) =>
+      key === 'message.no-access-placeholder'
+        ? `${key} ${options?.entity}`
+        : key,
+    i18n: { language: 'en-US', dir: () => 'ltr' },
+  }),
+}));
 
 const MOCK_DATA = [
   {
@@ -141,6 +158,18 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
+// The real editor is a tiptap instance that jsdom cannot switch between editable and read-only.
+jest.mock('../../components/common/RichTextEditor/RichTextEditor', () =>
+  jest
+    .fn()
+    .mockImplementation(({ readonly }: { readonly?: boolean }) => (
+      <div
+        data-readonly={String(Boolean(readonly))}
+        data-testid="description"
+      />
+    ))
+);
+
 jest.mock(
   '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem',
   () =>
@@ -178,6 +207,7 @@ const mockProps = {
 describe('Add ObservabilityPage Alerts Page Tests', () => {
   beforeEach(() => {
     mockFqn.fqn = '';
+    mockGetModifiedAlertDataForForm.mockReset();
     mockGlobalPermissions.permissions = { eventsubscription: { Create: true } };
     mockEntityPermissions(false);
   });
@@ -291,6 +321,83 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
 
     expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts a new alert enabled, and keeps it editable when switched off so it can still be filled in', async () => {
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const toggle = await screen.findByRole('switch', { name: 'label.enabled' });
+    const description = screen.getByTestId('alert-enabled-description');
+
+    expect(toggle).toBeChecked();
+    expect(description).toHaveTextContent('message.alert-enabled-description');
+
+    await act(async () => {
+      fireEvent.click(toggle);
+    });
+
+    expect(toggle).not.toBeChecked();
+    expect(description).toHaveTextContent('message.alert-disabled-description');
+    expect(screen.getByTestId('displayName')).not.toBeDisabled();
+    expect(screen.getByTestId('description')).toBeInTheDocument();
+    expect(AlertFormSourceItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: false }),
+      expect.anything()
+    );
+  });
+
+  it('makes every field of a saved alert read-only while it is switched off, and says why', async () => {
+    mockFqn.fqn = 'alert-test';
+    mockEntityPermissions(true);
+    mockGetModifiedAlertDataForForm.mockReturnValue(MOCK_DATA[0]);
+
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const toggle = await screen.findByRole('switch', { name: 'label.enabled' });
+    const description = screen.getByTestId('alert-enabled-description');
+
+    expect(toggle).toBeChecked();
+
+    await act(async () => {
+      fireEvent.click(toggle);
+    });
+
+    expect(toggle).not.toBeChecked();
+    expect(description).toHaveTextContent('message.alert-disabled-description');
+    expect(screen.getByTestId('displayName')).toBeDisabled();
+    expect(screen.getByTestId('description-read-only')).toBeInTheDocument();
+    expect(screen.queryByTestId('description')).not.toBeInTheDocument();
+    expect(AlertFormSourceItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: true }),
+      expect.anything()
+    );
+    expect(DestinationFormItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: true }),
+      expect.anything()
+    );
+    expect(screen.getByTestId('save-button')).not.toBeDisabled();
+    expect(screen.getByTestId('cancel-button')).not.toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(toggle);
+    });
+
+    expect(screen.getByTestId('displayName')).not.toBeDisabled();
+    expect(
+      screen.queryByTestId('description-read-only')
+    ).not.toBeInTheDocument();
+    expect(AlertFormSourceItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: false }),
+      expect.anything()
+    );
   });
 
   it('should render Add Observability Page', async () => {
@@ -463,6 +570,34 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
     expect(await screen.findByTestId('extra-button')).toHaveTextContent(
       'typed-alert'
+    );
+  });
+
+  it('should keep rules stored without selections read-only when editing', async () => {
+    mockFqn.fqn = 'alert-test';
+    mockEntityPermissions(true);
+    mockGetModifiedAlertDataForForm.mockReturnValue({
+      ...MOCK_DATA[0],
+      filteringRules: { ...MOCK_DATA[0].filteringRules, resources: [] },
+      hasRulesWithoutSelections: true,
+    });
+
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      await screen.findByText('message.alert-rules-read-only')
+    ).toBeInTheDocument();
+    expect(ObservabilityFormFiltersItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: true }),
+      expect.anything()
+    );
+    expect(ObservabilityFormTriggerItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: true }),
+      expect.anything()
     );
   });
 

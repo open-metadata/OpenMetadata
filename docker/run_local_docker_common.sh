@@ -219,6 +219,26 @@ PY
   return 1
 }
 
+disable_app_schedule() {
+  local app_name=$1
+  local response
+  local http_code
+
+  response=$(curl -s -w "\n%{http_code}" --request PATCH "http://localhost:8585/api/v1/apps/name/${app_name}" \
+    --header "Authorization: Bearer $authorizationToken" \
+    --header 'Content-Type: application/json-patch+json' \
+    --data-raw '[{"op": "replace", "path": "/appSchedule", "value": {"scheduleTimeline": "None"}}]')
+  http_code=$(echo "$response" | tail -n1)
+
+  if [ "$http_code" != "200" ]; then
+    echo "✗ Failed to disable the ${app_name} schedule (HTTP ${http_code})"
+    echo "  Response: $(echo "$response" | sed '$d')"
+    return 1
+  fi
+
+  echo "✓ ${app_name} schedule disabled"
+}
+
 wait_for_app_run_completion() {
   local app_name=$1
   local trigger_timestamp_ms=$2
@@ -398,7 +418,7 @@ run_local_docker_main() {
   if [[ $skipMaven == "false" ]]; then
     if [[ $mode == "no-ui" ]]; then
       echo "Maven Build - Skipping Tests and UI"
-      mvn -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
+      mvn -DskipTests -DonlyBackend clean package -pl openmetadata-dist -am
     else
       echo "Maven Build - Skipping Tests"
       mvn -DskipTests clean package
@@ -462,14 +482,18 @@ run_local_docker_main() {
   fi
 
   if [[ $includeIngestion == "true" ]]; then
-    # CI builds the ingestion image on its own runner and loads it here, so
-    # building it again would only repeat that work; `up` runs the loaded image.
     build_services=()
-    if [[ "${OM_INGESTION_IMAGE_PRELOADED:-false}" == "true" ]]; then
+    if [[ "${OM_INGESTION_IMAGE_PRELOADED:-false}" == "true" || "${OM_BACKEND_IMAGE_PRELOADED:-false}" == "true" ]]; then
       while IFS= read -r service; do
-        [[ "$service" == "ingestion" ]] || build_services+=("$service")
+        if [[ "$service" == "ingestion" && "${OM_INGESTION_IMAGE_PRELOADED:-false}" == "true" ]]; then
+          continue
+        fi
+        if [[ ( "$service" == "execute-migrate-all" || "$service" == "openmetadata-server" ) && "${OM_BACKEND_IMAGE_PRELOADED:-false}" == "true" ]]; then
+          continue
+        fi
+        build_services+=("$service")
       done < <(docker compose "${COMPOSE_ARGS[@]}" config --services)
-      echo "Building all services except the preloaded ingestion image"
+      echo "Building services without rebuilding preloaded images"
     else
       echo "Building all services including ingestion (dependency: ${INGESTION_DEPENDENCY:-all})"
     fi
@@ -477,7 +501,11 @@ run_local_docker_main() {
       docker compose "${COMPOSE_ARGS[@]}" up -d
   else
     echo "Building services without ingestion"
-    docker compose "${COMPOSE_ARGS[@]}" build $SEARCH_SERVICE $DB_SERVICE execute-migrate-all openmetadata-server || exit 1
+    build_services=("$SEARCH_SERVICE" "$DB_SERVICE")
+    if [[ "${OM_BACKEND_IMAGE_PRELOADED:-false}" != "true" ]]; then
+      build_services+=(execute-migrate-all openmetadata-server)
+    fi
+    docker compose "${COMPOSE_ARGS[@]}" build "${build_services[@]}" || exit 1
     if [[ -n "${OM_ADDITIONAL_UP_SERVICES:-}" ]]; then
       for extra_compose_file in $OM_ADDITIONAL_UP_SERVICES; do
         additional_up_services+=("$extra_compose_file")
@@ -501,7 +529,7 @@ run_local_docker_main() {
       local token_response
       local access_token
 
-      token_response=$(curl -s -X POST 'http://localhost:8080/auth/token' \
+      token_response=$(curl -s --max-time 10 -X POST 'http://localhost:8080/auth/token' \
         -H 'Content-Type: application/json' \
         -d '{"username": "admin", "password": "admin"}')
 
@@ -516,16 +544,35 @@ run_local_docker_main() {
       echo "$access_token"
     }
 
+    # Polling alone never ends when the ingestion container has died: a CI job then sits
+    # here until its step timeout. Stop as soon as the container is down, or after a deadline.
+    # ADR:2026-11-18-airflow-startup-restarts-the-scheduler-and-bounds-the-wait
+    airflow_wait_deadline=$((SECONDS + ${AIRFLOW_READY_TIMEOUT_SECONDS:-600}))
+    ensure_airflow_can_start() {
+      local state
+      state=$(docker inspect -f '{{.State.Status}}' openmetadata_ingestion 2>/dev/null)
+      if [ "$state" != "running" ]; then
+        echo -e "${RED}openmetadata_ingestion is ${state:-missing}, so Airflow will not come up. Its last logs:" >&2
+      elif [ $SECONDS -ge $airflow_wait_deadline ]; then
+        echo -e "${RED}Airflow was not ready after ${AIRFLOW_READY_TIMEOUT_SECONDS:-600}s. Ingestion container logs:" >&2
+      else
+        return 0
+      fi
+      docker logs --tail 200 openmetadata_ingestion >&2
+      exit 1
+    }
+
     echo "Waiting for Airflow API to be ready..."
     until AIRFLOW_ACCESS_TOKEN=$(get_airflow_token) 2>/dev/null && [ -n "$AIRFLOW_ACCESS_TOKEN" ]; do
+      ensure_airflow_can_start
       echo 'Checking if Airflow API is reachable...'
       sleep 5
     done
     echo "✓ Airflow API is ready, token obtained"
 
     echo "Checking if Sample Data DAG is available..."
-    until curl -s -f -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/dags/sample_data" >/dev/null 2>&1; do
-      IMPORT_ERRORS=$(curl -s -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/importErrors" 2>/dev/null)
+    until curl -s -f --max-time 10 -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/dags/sample_data" >/dev/null 2>&1; do
+      IMPORT_ERRORS=$(curl -s --max-time 10 -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/importErrors" 2>/dev/null)
       if [ -n "$IMPORT_ERRORS" ]; then
         echo "$IMPORT_ERRORS" | grep "airflow_sample_data.py" > /dev/null 2>&1
         if [ "$?" == "0" ]; then
@@ -534,6 +581,7 @@ run_local_docker_main() {
           exit 1
         fi
       fi
+      ensure_airflow_can_start
       echo 'Checking if Sample Data DAG is reachable...'
       sleep 5
       AIRFLOW_ACCESS_TOKEN=$(get_airflow_token) 2>/dev/null
@@ -545,6 +593,15 @@ run_local_docker_main() {
     echo 'Checking if OM Server is reachable...\n'
     sleep 5
   done
+
+  # A scheduled recreate-reindex that overlaps later writes swaps in indexes
+  # rebuilt from an earlier read, so those writes vanish from search. Reindex
+  # only through the explicit trigger below.
+  # ADR:2026-10-26-local-docker-stacks-reindex-on-demand-only
+  ensure_app_installed "SearchIndexingApplication"
+  if ! disable_app_schedule "SearchIndexingApplication"; then
+    exit 1
+  fi
 
   if [[ $includeIngestion == "true" ]]; then
     unpause_dag() {
@@ -686,7 +743,6 @@ run_local_docker_main() {
   fi
 
   echo "✔running reindexing"
-  ensure_app_installed "SearchIndexingApplication"
   if ! trigger_app_and_wait "SearchIndexingApplication" "" "$APP_RUN_WAIT_TIMEOUT_SECONDS"; then
     exit 1
   fi

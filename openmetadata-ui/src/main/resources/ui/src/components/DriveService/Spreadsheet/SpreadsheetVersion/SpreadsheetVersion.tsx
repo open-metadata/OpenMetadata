@@ -155,7 +155,7 @@ const SpreadsheetVersion = ({
           </Typography>
         ),
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<EntityReference>(),
     ],
     []
   );

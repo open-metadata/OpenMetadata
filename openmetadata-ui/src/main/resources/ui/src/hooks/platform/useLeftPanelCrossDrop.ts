@@ -12,10 +12,7 @@
  */
 import { useCallback, useRef, useState } from 'react';
 import type { ItemCallback, Layout } from 'react-grid-layout';
-import {
-  GRID_VERTICAL_MARGIN,
-  TAB_GRID_MAX_COLUMNS,
-} from '../../constants/CustomizeWidgets.constants';
+import { TAB_GRID_MAX_COLUMNS } from '../../constants/CustomizeWidgets.constants';
 import type { WidgetConfig } from '../../interface/customization.interface';
 import {
   FULL_PANEL_WIDTH,
@@ -81,8 +78,8 @@ interface UseLeftPanelCrossDropProps {
  *
  * Both directions are hit-tested with the pointer against the panel's box.
  * Rows map one to one between the grids, which share row height and margin;
- * the panel's grid starts one margin of padding below the panel's top, so a
- * drop into it takes that off and a drop out of it does not.
+ * the panel's edit grid has no container padding, so both directions map the
+ * pointer's offset from the panel's top straight to a row.
  */
 export const useLeftPanelCrossDrop = ({
   leftPanelWidget,
@@ -136,7 +133,8 @@ export const useLeftPanelCrossDrop = ({
       dropRef.current = {
         kind: 'in',
         widget,
-        row: getGridRowAt(event.clientY - panel.top - GRID_VERTICAL_MARGIN),
+        // The edit grid has no container padding, so rows start at its top.
+        row: getGridRowAt(event.clientY - panel.top),
         x: event.clientX < panel.left + panel.width / 2 ? 0 : HALF_PANEL_WIDTH,
         // A side widget keeps its square shape as half the panel; a main-area
         // widget spans it.

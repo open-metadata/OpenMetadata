@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerResponseContext;
 import jakarta.ws.rs.container.ContainerResponseFilter;
-import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.Provider;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -89,15 +88,15 @@ public class EventFilter implements ContainerResponseFilter {
       return;
     }
 
+    // Exact, matrix-parameter-safe match: a .contains() check let a write to an entity whose path
+    // embeds an excluded endpoint (via a matrix parameter or an encoded separator) skip auditing.
+    if (JwtFilter.isExcludedEndpoint(requestContext.getUriInfo())) {
+      return;
+    }
     eventHandlers.parallelStream()
         .forEach(
-            eventHandler -> {
-              UriInfo uriInfo = requestContext.getUriInfo();
-              if (JwtFilter.EXCLUDED_ENDPOINTS.stream()
-                  .noneMatch(endpoint -> uriInfo.getPath().contains(endpoint))) {
+            eventHandler ->
                 ParallelStreamUtil.runAsync(
-                    () -> eventHandler.process(requestContext, responseContext), forkJoinPool);
-              }
-            });
+                    () -> eventHandler.process(requestContext, responseContext), forkJoinPool));
   }
 }

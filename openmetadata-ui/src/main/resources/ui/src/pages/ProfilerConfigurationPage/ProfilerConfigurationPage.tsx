@@ -17,6 +17,7 @@ import {
   AccordionPanel,
   Box,
   Button,
+  ButtonUtility,
   Card,
   Divider,
   Grid,
@@ -272,14 +273,13 @@ const ProfilerConfigurationPage = () => {
                                     />
                                   )}
                                 />
-                                <Button
-                                  aria-label={t('label.remove-entity', {
+                                <ButtonUtility
+                                  data-testid={`remove-filter-${index}`}
+                                  icon={XClose}
+                                  size="lg"
+                                  tooltip={t('label.remove-entity', {
                                     entity: t('label.field'),
                                   })}
-                                  color="secondary"
-                                  data-testid={`remove-filter-${index}`}
-                                  iconLeading={XClose}
-                                  size="xs"
                                   onClick={() => remove(index)}
                                 />
                               </Box>

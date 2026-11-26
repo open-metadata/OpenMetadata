@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1562,5 +1563,96 @@ class VectorSearchQueryBuilderTest {
     JsonNode clause = memoryVisibilityClause(MAPPER.readTree(query));
     assertNotNull(clause, "the ES query path must enforce memory visibility too");
     assertTrue(clause.toString().contains(MemoryVisibility.ENTITY.value()));
+  }
+
+  private static final float[] CLAUSE_VECTOR = {0.25f, -0.5f};
+  private static final ObjectMapper CLAUSE_MAPPER = new ObjectMapper();
+
+  private static VectorSearchParameters clauseParameters(int k, double threshold) {
+    return new VectorSearchParameters(
+        null, Map.of("entityType", List.of("table")), 0, 0, k, threshold, null, null, null);
+  }
+
+  @Test
+  void openSearchClause_isTheQueryWithIgnoreUnmapped() throws Exception {
+    JsonNode radial =
+        CLAUSE_MAPPER
+            .readTree(
+                VectorSearchQueryBuilder.buildQueryClause(
+                    CLAUSE_VECTOR, clauseParameters(50, 0.625), Set.of()))
+            .path("knn")
+            .path("embedding");
+
+    assertTrue(radial.path("ignore_unmapped").asBoolean());
+    assertEquals(0.625, radial.path("min_score").asDouble(), 1e-9);
+    assertTrue(radial.path("k").isMissingNode(), "radial search takes no k");
+    assertEquals(
+        CLAUSE_MAPPER.readTree(
+            VectorSearchQueryBuilder.buildQuery(
+                CLAUSE_VECTOR, clauseParameters(50, 0.625), Set.of())),
+        removeIgnoreUnmapped(radial.deepCopy()),
+        "the clause is the existing query plus one flag");
+
+    JsonNode topK =
+        CLAUSE_MAPPER
+            .readTree(
+                VectorSearchQueryBuilder.buildQueryClause(
+                    CLAUSE_VECTOR, clauseParameters(50, 0), Set.of()))
+            .path("knn")
+            .path("embedding");
+    assertEquals(50, topK.path("k").asInt());
+    assertTrue(topK.path("min_score").isMissingNode());
+  }
+
+  private static JsonNode removeIgnoreUnmapped(JsonNode embedding) {
+    ((ObjectNode) embedding).remove("ignore_unmapped");
+    return CLAUSE_MAPPER
+        .createObjectNode()
+        .set("knn", CLAUSE_MAPPER.createObjectNode().set("embedding", embedding));
+  }
+
+  @Test
+  void elasticsearchClause_convertsTheThresholdToTheRawCosine() throws Exception {
+    JsonNode knn =
+        CLAUSE_MAPPER
+            .readTree(
+                VectorSearchQueryBuilder.buildNativeESQueryClause(
+                    CLAUSE_VECTOR, clauseParameters(500, 0.625), 2, Set.of()))
+            .path("knn");
+
+    assertEquals("embedding", knn.path("field").asText());
+    assertEquals(500, knn.path("k").asInt());
+    assertEquals(1000, knn.path("num_candidates").asInt());
+    assertEquals(0.25, knn.path("similarity").asDouble(), 1e-9);
+    JsonNode must = knn.path("filter").path("bool").path("must");
+    assertEquals(false, must.get(0).path("term").path("deleted").asBoolean(true));
+    assertEquals("table", must.findValue("entityType").asText());
+    assertFalse(knn.path("filter").path("bool").path("filter").isMissingNode(), "visibility rule");
+  }
+
+  @Test
+  void elasticsearchClause_withoutAThresholdHasNoSimilarityAndCapsK() throws Exception {
+    JsonNode knn =
+        CLAUSE_MAPPER
+            .readTree(
+                VectorSearchQueryBuilder.buildNativeESQueryClause(
+                    CLAUSE_VECTOR, clauseParameters(20_000, 0), 2, Set.of()))
+            .path("knn");
+
+    assertTrue(knn.path("similarity").isMissingNode());
+    assertEquals(10_000, knn.path("k").asInt());
+    assertEquals(10_000, knn.path("num_candidates").asInt());
+  }
+
+  @Test
+  void elasticsearchClause_numCandidatesIsAtLeastOneHundred() throws Exception {
+    JsonNode knn =
+        CLAUSE_MAPPER
+            .readTree(
+                VectorSearchQueryBuilder.buildNativeESQueryClause(
+                    CLAUSE_VECTOR, clauseParameters(10, 0), 2, Set.of()))
+            .path("knn");
+
+    assertEquals(100, knn.path("num_candidates").asInt());
   }
 }

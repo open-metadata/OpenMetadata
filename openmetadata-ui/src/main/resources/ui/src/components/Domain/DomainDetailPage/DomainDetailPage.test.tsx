@@ -17,6 +17,7 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { DOMAINS_LIST } from '../../../mocks/Domains.mock';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { getDomainByName, patchDomains } from '../../../rest/domainAPI';
+import { DOMAIN_STYLES_QUERY_KEY } from '../../../rest/queries/domainStyleQuery';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DomainDetails from '../DomainDetails/DomainDetails.component';
@@ -222,5 +223,37 @@ describe('DomainDetailPage', () => {
     );
 
     invalidateSpy.mockRestore();
+  });
+
+  // Domain chips read one cached styles list; a restyle saved here must show
+  // on them at once.
+  it('should invalidate the cached domain styles after saving the domain', async () => {
+    mockGetDomainByName.mockResolvedValue(DOMAINS_LIST[0] as Domain);
+    mockPatchDomains.mockResolvedValue({
+      ...DOMAINS_LIST[0],
+      style: { color: '#F14C75', iconURL: 'Database01' },
+    } as Domain);
+
+    const { queryClient } = renderWithQueryClient(
+      <MemoryRouter>
+        <DomainDetailPage />
+      </MemoryRouter>
+    );
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+    await waitFor(() => expect(MockDomainDetails).toHaveBeenCalled());
+
+    const onUpdateProp = MockDomainDetails.mock.calls.at(-1)?.[0]?.onUpdate;
+
+    await act(async () => {
+      await onUpdateProp?.({
+        ...DOMAINS_LIST[0],
+        style: { color: '#F14C75', iconURL: 'Database01' },
+      } as Domain);
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: DOMAIN_STYLES_QUERY_KEY,
+    });
   });
 });

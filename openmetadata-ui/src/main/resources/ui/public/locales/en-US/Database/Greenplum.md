@@ -4,9 +4,17 @@ In this section, we provide guides and references to use the Greenplum connector
 
 ## Requirements
 
+### Distribution Keys
+
+Distribution key extraction requires the Greenplum 6+ catalog layout and has been validated on Greenplum 6.27.1. Columns defined with `DISTRIBUTED BY` are ingested together as one `DIST_KEY` table constraint. Greenplum 5 skips this extraction and retains the existing metadata ingestion path.
+
+If the distribution-key lookup fails, the connector logs a warning and ingests the table without the `DIST_KEY` constraint.
+
+This feature does not establish full connector compatibility with Greenplum 7, whose partition catalogs differ from those used by the connector.
+
 ### Profiler & Data Quality
 
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/profiler-workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/quality" target="_blank">here</a>.
 
 You can find further information on the Greenplum connector in the <a href="https://docs.open-metadata.org/connectors/database/greenplum" target="_blank">docs</a>.
 

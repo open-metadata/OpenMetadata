@@ -40,6 +40,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.secrets.masker.McpServerMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -92,12 +93,13 @@ final class AIGovernanceWorkflowService {
     } else {
       authorizeViewAcrossSupportedTypes(securityContext);
     }
-    return GovernanceActivity.compute(entityType, entityId, limit);
+    return GovernanceActivity.compute(
+        new AIGovernanceAssetReader(authorizer, securityContext), entityType, entityId, limit);
   }
 
   AIGovernanceDashboardResponse getDashboard(SecurityContext securityContext) {
     authorizeViewAcrossSupportedTypes(securityContext);
-    return DashboardRollup.compute();
+    return DashboardRollup.compute(new AIGovernanceAssetReader(authorizer, securityContext));
   }
 
   AIGovernancePolicyStatusResponse getPolicyStatus(
@@ -115,7 +117,9 @@ final class AIGovernanceWorkflowService {
         new ResourceContext<>(Entity.AI_GOVERNANCE_POLICY, policyId, null));
     authorizeViewAcrossSupportedTypes(securityContext);
     return new AIGovernancePolicyViolationsResponse()
-        .withData(PolicyEvaluator.recentViolations(policyId, since, limit));
+        .withData(
+            PolicyEvaluator.recentViolations(
+                new AIGovernanceAssetReader(authorizer, securityContext), policyId, since, limit));
   }
 
   AIGovernanceBulkTriageResponse bulkTriage(
@@ -193,7 +197,8 @@ final class AIGovernanceWorkflowService {
 
     EntityRepository<? extends EntityInterface<?>> repository =
         Entity.getEntityRepository(entityType);
-    return repository.patch(null, entity.getId(), user, patch).entity();
+    final EntityInterface<?> updated = repository.patch(null, entity.getId(), user, patch).entity();
+    return updated instanceof McpServer server ? McpServerMasker.mask(server) : updated;
   }
 
   private void authorizeViewByFqn(SecurityContext securityContext, String entityType, String fqn) {
@@ -223,7 +228,12 @@ final class AIGovernanceWorkflowService {
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-        new ResourceContext<>(entityType));
+        new ResourceContext<>(entityType) {
+          @Override
+          public boolean isEntityTypeLevel() {
+            return true;
+          }
+        });
   }
 
   private void authorizePatch(

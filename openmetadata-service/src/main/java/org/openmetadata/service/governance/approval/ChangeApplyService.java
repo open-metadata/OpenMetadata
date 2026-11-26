@@ -29,11 +29,13 @@ import java.util.TreeSet;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.governance.changeRequest.ApprovalDecision;
 import org.openmetadata.schema.governance.changeRequest.ChangeApplication;
 import org.openmetadata.schema.governance.changeRequest.ChangeConflict;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
+import org.openmetadata.schema.governance.changeRequest.DecisionType;
 import org.openmetadata.schema.governance.changeRequest.LifecycleEventType;
 import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.type.Include;
@@ -187,6 +189,36 @@ public final class ChangeApplyService {
     }
     boolean waiting = current && partial && !selection.settled();
     return new Approval(request, current, eligible, waiting);
+  }
+
+  /**
+   * How reviewers settled a revision of a change request: the users on each side, and whether the
+   * settled selection dropped any change. The requester's own decisions never count.
+   */
+  public record RevisionReview(
+      List<String> approvers, List<String> rejecters, boolean droppedAny) {}
+
+  public static RevisionReview reviewOf(UUID changeRequestId, int revisionNumber) {
+    ChangeRequest request = ChangeRequestService.get(changeRequestId);
+    ChangeRevision revision = ChangeRequestService.activeRevision(request);
+    List<ApprovalDecision> decisions =
+        ApprovalDecisionService.decisions(revision.getId()).stream()
+            .filter(decision -> Objects.equals(decision.getRevisionNumber(), revisionNumber))
+            .filter(decision -> !request.getRequestedBy().equals(decision.getDecidedBy()))
+            .toList();
+    return new RevisionReview(
+        decidersOf(decisions, DecisionType.APPROVE),
+        decidersOf(decisions, DecisionType.REJECT),
+        !selection(request, revision).closed().rejected().isEmpty());
+  }
+
+  // A reviewer who approved some changes and rejected others is on both sides.
+  private static List<String> decidersOf(List<ApprovalDecision> decisions, DecisionType type) {
+    return decisions.stream()
+        .filter(decision -> ChangeSelection.givesAny(decision, type))
+        .map(ApprovalDecision::getDecidedBy)
+        .distinct()
+        .toList();
   }
 
   /**

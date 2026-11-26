@@ -51,6 +51,7 @@ public class TeamBuilder {
    * Set custom extension data.
    */
   public TeamBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

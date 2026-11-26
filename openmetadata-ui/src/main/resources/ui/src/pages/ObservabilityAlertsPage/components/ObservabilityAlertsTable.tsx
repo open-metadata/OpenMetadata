@@ -20,6 +20,7 @@ import {
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import AlertStatusBadge from '../../../components/Alerts/AlertStatusBadge/AlertStatusBadge';
 import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
@@ -101,6 +102,12 @@ function ObservabilityAlertsTable({
               {alertName}
             </Link>
           )}
+        </Table.Cell>
+        <Table.Cell
+          className={getAlertTableCellLayoutClassName(
+            ALERT_TABLE_COLUMN_IDS.STATUS
+          )}>
+          <AlertStatusBadge enabled={record.enabled} />
         </Table.Cell>
         <Table.Cell
           className={getAlertTableCellLayoutClassName(
@@ -194,7 +201,7 @@ function ObservabilityAlertsTable({
   };
 
   return (
-    <TableCard.Root className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none tw:outline-0">
+    <TableCard.Root className="tw:rounded-xl tw:shadow-none">
       {isAlertsEmpty ? (
         getEmptyOrErrorPlaceholder()
       ) : (

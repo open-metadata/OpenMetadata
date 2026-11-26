@@ -264,6 +264,21 @@ def get_gcp_impersonate_credentials(
     )
 
 
+def get_gcp_impersonate_credentials_or_none(
+    gcp_credentials: GCPCredentials | None,
+) -> impersonated_credentials.Credentials | None:
+    """Impersonated credentials when a target service account is configured, else None
+    so the client keeps resolving the base identity from ADC / the key file as before.
+    A blank target email is treated as not configured."""
+    impersonate = gcp_credentials.gcpImpersonateServiceAccount if gcp_credentials else None
+    if not impersonate:
+        return None
+    target = (impersonate.impersonateServiceAccount or "").strip()
+    if not target:
+        return None
+    return get_gcp_impersonate_credentials(impersonate_service_account=target, lifetime=impersonate.lifetime or 3600)
+
+
 def get_azure_access_token(azure_config: AzureConfigurationSource) -> str:
     """
     Get Azure access token using the provided Azure configuration.

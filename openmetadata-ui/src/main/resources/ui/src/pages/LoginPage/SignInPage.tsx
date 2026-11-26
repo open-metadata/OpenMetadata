@@ -12,6 +12,7 @@
  */
 
 import {
+  Alert,
   Button,
   Card,
   FieldProp,
@@ -30,7 +31,7 @@ import {
 } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import IconAuth0 from '../../assets/img/icon-auth0.svg';
 import IconCognito from '../../assets/img/icon-aws-cognito.png';
 import IconAzure from '../../assets/img/icon-azure.png';
@@ -46,11 +47,31 @@ import { ROUTES } from '../../constants/constants';
 import { EMAIL_REG_EX } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import {
+  getSignInErrorMessageKey,
+  shouldAutoRedirectToProvider,
+  SIGN_IN_ERROR_PARAM,
+} from './SignInPage.utils';
 
 interface LoginFormValues {
   email: string;
   password: string;
 }
+
+/** Why the last SSO sign-in failed, when the server sent the browser back here. */
+const SignInErrorAlert = ({ messageKey }: { messageKey?: string }) => {
+  const { t } = useTranslation();
+
+  if (!messageKey) {
+    return null;
+  }
+
+  return (
+    <Alert data-testid="sign-in-error" variant="error">
+      {t(messageKey)}
+    </Alert>
+  );
+};
 
 const SignInPage = () => {
   const [loading, setLoading] = useState(false);
@@ -60,6 +81,10 @@ const SignInPage = () => {
   const hasTriggeredAutoRedirect = useRef(false);
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const signInErrorKey = getSignInErrorMessageKey(
+    searchParams.get(SIGN_IN_ERROR_PARAM)
+  );
   const { authConfig, isAuthenticated } = useApplicationStore();
   const { onLoginHandler } = useAuthProvider();
   const { t } = useTranslation();
@@ -81,11 +106,13 @@ const SignInPage = () => {
     onLoginHandler && onLoginHandler();
   }, [onLoginHandler]);
 
-  const shouldAutoRedirect =
-    authConfig?.enableAutoRedirect &&
-    !isAuthProviderBasic &&
-    !isAuthenticated &&
-    Boolean(onLoginHandler);
+  const shouldAutoRedirect = shouldAutoRedirectToProvider({
+    isEnabled: authConfig?.enableAutoRedirect,
+    isAuthProviderBasic,
+    isAuthenticated,
+    hasSignInError: Boolean(signInErrorKey),
+    hasLoginHandler: Boolean(onLoginHandler),
+  });
 
   useLayoutEffect(() => {
     if (shouldAutoRedirect && !hasTriggeredAutoRedirect.current) {
@@ -253,6 +280,8 @@ const SignInPage = () => {
               weight="semibold">
               {t('label.welcome-to')} {brandName}
             </Typography>
+
+            <SignInErrorAlert messageKey={signInErrorKey} />
 
             {isAuthProviderBasic ? (
               <div className="tw:flex tw:w-full tw:flex-col tw:gap-6">

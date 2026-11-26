@@ -102,18 +102,12 @@ describe('RelatedMetricsForm', () => {
 
     fireEvent.click(screen.getByTestId('saveRelatedMetrics'));
 
-    expect(screen.getByTestId('saveRelatedMetrics')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
+    expect(screen.getByTestId('saveRelatedMetrics')).toBeDisabled();
     expect(screen.getByTestId('cancelRelatedMetrics')).toBeDisabled();
 
     resolveSubmit();
     await waitFor(() =>
-      expect(screen.getByTestId('saveRelatedMetrics')).not.toHaveAttribute(
-        'aria-disabled',
-        'true'
-      )
+      expect(screen.getByTestId('saveRelatedMetrics')).not.toBeDisabled()
     );
     fireEvent.click(screen.getByTestId('cancelRelatedMetrics'));
 
@@ -172,5 +166,31 @@ describe('RelatedMetricsForm', () => {
     expect(
       screen.queryByTestId('cancelRelatedMetrics')
     ).not.toBeInTheDocument();
+  });
+
+  it('shows the standard no-results placeholder when a search matches nothing', async () => {
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }>
+        <RelatedMetricsForm
+          defaultValue={[]}
+          initialOptions={[]}
+          metricFqn="finance.current"
+          onCancel={onCancel}
+          onSubmit={onSubmit}
+        />
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(screen.getByRole('textbox'), {
+      target: { value: 'zzz' },
+    });
+
+    expect(
+      await screen.findByTestId('related-metrics-empty')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('label.no-data')).not.toBeInTheDocument();
   });
 });

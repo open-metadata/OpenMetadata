@@ -134,6 +134,7 @@ public interface SearchIndex {
 
     // Remove Entity Specific Field
     SearchIndexUtils.removeNonIndexableFields(esDoc, getExcludedFields());
+    SearchIndexUtils.removeNonIndexableFields(esDoc, getRetiredFields());
   }
 
   Object getEntity();
@@ -145,6 +146,16 @@ public interface SearchIndex {
   String getEntityTypeName();
 
   default Set<String> getExcludedFields() {
+    return Collections.emptySet();
+  }
+
+  /**
+   * Fields earlier releases wrote to this index and it no longer writes. The document leaves them
+   * out even when the entity carries them, and a live update, which merges into the stored
+   * document, removes them, so a document an earlier release wrote does not keep them until a
+   * reindex. Safe to call on a probe instance whose entity is null.
+   */
+  default Set<String> getRetiredFields() {
     return Collections.emptySet();
   }
 
@@ -165,6 +176,20 @@ public interface SearchIndex {
       fields.add("tags");
     }
     return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  /**
+   * Fields computed on read that this index writes but that the entity reaching a live write never
+   * carries. A create, an update or a CSV import holds only what that operation loaded, so a count
+   * such as {@code childrenCount} arrives as null or as a placeholder and would be indexed as 0.
+   * {@code SearchRepository} loads these onto a copy before each such write. Each one must also be
+   * in {@link #getRequiredReindexFields()} and have a field fetcher in its repository. Safe to call
+   * on a probe instance whose entity is null.
+   *
+   * <p>ADR:2026-10-29-search-documents-load-computed-counts-on-every-write
+   */
+  default Set<String> getFieldsLoadedOnWrite() {
+    return Collections.emptySet();
   }
 
   /**

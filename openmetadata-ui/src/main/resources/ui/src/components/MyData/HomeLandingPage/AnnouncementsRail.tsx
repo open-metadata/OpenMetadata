@@ -22,6 +22,8 @@ import {
   AnnouncementEntity,
   listAnnouncements,
 } from '../../../rest/announcementsAPI';
+import { HOME_ANNOUNCEMENTS_QUERY_KEY } from '../../../rest/queries/criticalAnnouncementsQuery';
+import { isCriticalSystemAnnouncement } from '../../../utils/AnnouncementsUtils';
 import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUtils';
 import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
 import AllAnnouncementsDialog from './AllAnnouncementsDialog';
@@ -30,21 +32,20 @@ import RailSectionHeader from './RailSectionHeader';
 import { useDismissedAnnouncements } from './useDismissedAnnouncements';
 
 export const ACTIVE_ANNOUNCEMENTS_QUERY_KEY = [
-  'landingPage',
-  'announcements',
+  ...HOME_ANNOUNCEMENTS_QUERY_KEY,
   'active',
 ] as const;
 const ACTIVE_ANNOUNCEMENTS_TTL_MS = 60_000;
 const ACTIVE_ANNOUNCEMENTS_GC_TIME_MS =
   ACTIVE_ANNOUNCEMENTS_TTL_MS + 5 * 60 * 1000;
 
-// Asset announcements only: system ones reach users through the critical
-// banner above the rail, never here.
+// Asset and system announcements alike. The system criticals come back too and
+// are left out of the rail rather than the request: the API has no filter for
+// "every type but Critical", and the banner above shows those.
 const fetchActiveAnnouncements = async (): Promise<AnnouncementEntity[]> => {
   const response = await listAnnouncements({
     active: true,
     limit: 100,
-    system: false,
   });
 
   return response.data ?? [];
@@ -94,8 +95,12 @@ const AnnouncementsRail: React.FC = () => {
     void queryClient.prefetchQuery(getActiveAnnouncementsQueryOptions());
   });
 
+  // The critical banner above already shows the system criticals.
   const activeAnnouncements = useMemo(
-    () => (announcements ?? []).filter((a) => !dismissedIds.has(a.id)),
+    () =>
+      (announcements ?? []).filter(
+        (a) => !dismissedIds.has(a.id) && !isCriticalSystemAnnouncement(a)
+      ),
     [announcements, dismissedIds]
   );
   const count = activeAnnouncements.length;

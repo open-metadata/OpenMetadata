@@ -1,7 +1,8 @@
 # Reasoning inside the OpenMetadata Fuseki image
 
 Status: proposed design and phased implementation plan; phases 0 and 2 are merged, phase 1 is
-in review, and phase 3 has started. Date:
+complete except its CI items (see [phase 1](#phase-1--prove-the-reasoner-worker-in-the-fuseki-image-and-capture-a-baseline)),
+and phase 3 has started. Date:
 2026-10-07. Revised the same day after a review that checked each current-state claim against the
 code, and again to package all reasoning in the existing image without a sidecar;
 [Open decisions](#open-decisions) lists what remains.
@@ -117,8 +118,8 @@ These observations describe the code before phase 0, not the proposed system:
 | [InferenceMaterializer](../../openmetadata-service/src/main/java/org/openmetadata/service/rdf/inference/InferenceMaterializer.java) | Runs in Fuseki; each rule once by priority; each clears its own graph then inserts over the union. PII spreads one hop and reads other rules' previous-run output. `markMaterialized` clears the dirty flag unconditionally | Fixed point from asserted input only; captured-revision compare-and-set |
 | Rule-input projection | Reindex writes column lineage through `addLineageWithDetails` as FQN literals; the translator's IRI-emitting `addColumnLineage` runs only when lineage appears in entity JSON; live lineage writes entity edges only. Entity `domains` become `om:domains`, not the `om:belongsToDomain` the domain rule reads | Fix in phase 0 |
 | [OntologyExpressionRdfWriter](../../openmetadata-service/src/main/java/org/openmetadata/service/rdf/OntologyExpressionRdfWriter.java), [GlossaryOntologyExporter](../../openmetadata-service/src/main/java/org/openmetadata/service/rdf/GlossaryOntologyExporter.java) | Export is not OWL 2 DL-valid (see [Semantic projection](#semantic-projection-into-jena)). The live projection stores axioms as literals (`om:expressions` JSON) in the shared knowledge graph | DL-valid projection with per-axiom graphs |
-| [config.ttl](../../docker/rdf-store/config.ttl), [shiro.ini.template](../../docker/rdf-store/shiro.ini.template) | `tdb2:unionDefaultGraph` includes `graph/inferred/*`, so “no inference” is not asserted-only. The in-repo image allows anonymous `/sparql` and `/query`; the published image does not | Move derived data off serving datasets; run OM on the published image |
-| [OpenMetadataFusekiModule](../../docker/rdf-store/src/main/java/org/openmetadata/fuseki/OpenMetadataFusekiModule.java) | Registers only the bounded Graph Store. The same four classes live in the fork's `openmetadata/fuseki/extension/`, where the published image compiles them with `javac` against `fuseki-server.jar`; no third-party jars | Add operations in the fork; package the reasoner as a separate worker classpath |
+| The in-repo image's `config.ttl` and `shiro.ini.template` (retired in phase 1) | `tdb2:unionDefaultGraph` includes `graph/inferred/*`, so “no inference” is not asserted-only. The in-repo image allowed anonymous `/sparql` and `/query`; the published image does not | Move derived data off serving datasets; OM runs on the published image since phase 1 |
+| The in-repo image's `OpenMetadataFusekiModule` (retired in phase 1) | Registers only the bounded Graph Store. The same four classes live in the fork's `openmetadata/fuseki/extension/`, where the published image compiles them with `javac` against `fuseki-server.jar`; no third-party jars | Add operations in the fork; package the reasoner as a separate worker classpath |
 | [InferenceExplanationService](../../openmetadata-service/src/main/java/org/openmetadata/service/rdf/inference/InferenceExplanationService.java) | Finds which graphs contain a triple whose subject belongs to a glossary; cannot explain any starter-rule output | Snapshot-based explanations |
 
 The current materializer does not load the catalog into OM; the query-time paths above do.
@@ -378,8 +379,7 @@ snapshots with explicit, small store parameters.
 [TDB2 transactions](https://jena.apache.org/documentation/tdb/tdb_transactions.html)
 
 Snapshots, manifests, and provenance are not registered datasets and never enter the serving union
-graph; both the published image and [config.ttl](../../docker/rdf-store/config.ttl) enable
-`tdb2:unionDefaultGraph`. The reasoning endpoint explicitly selects the snapshot's asserted and
+graph; the published image enables `tdb2:unionDefaultGraph` server-wide. The reasoning endpoint explicitly selects the snapshot's asserted and
 derived graphs. Preserve original named graphs; expose provenance through explanation operations.
 
 A snapshot belongs to the serving generation it captured. Blue/green promotion makes it `STALE`,
@@ -501,13 +501,9 @@ authorizing results and explanation premises first; glossary permission alone is
 current path, including the agent SPARQL endpoint, filters results by asset.
 
 In the published image's `shiro.ini`, every path except `/$/ping` requires the admin role, so the
-new routes are admin-only, and OpenMetadata connects as admin. The in-repo
-[shiro.ini.template](../../docker/rdf-store/shiro.ini.template) differs in two ways:
-- It has an `openmetadata` writer account, which would need a reasoning role.
-- It allows anonymous `/sparql` and `/query`, which bypasses OM authorization.
-
-Both disappear once OpenMetadata runs on the published image (see
-[Open decisions](#open-decisions)).
+new routes are admin-only, and OpenMetadata connects as admin. The in-repo image's writer account
+and anonymous `/sparql` and `/query` went with it in phase 1
+(ADR:2026-10-14-fuseki-image-of-record).
 
 ## Explanations
 
@@ -541,18 +537,10 @@ The published image `openmetadata/fuseki` is built in the
   and `linux/arm64` as `<version>` (moving) and `<version>-<commit>` (immutable).
 
 All reasoning code and packaging below goes on the release branch, next to the existing extension,
-and is carried forward when a new release branch is cut. This repository's `docker/rdf-store/`
-is a diverged copy:
-
-| Difference | `docker/rdf-store/` | Fork |
-|---|---|---|
-| Datasets | Fixed in `config.ttl` | From `FUSEKI_DATASETS` |
-| Lucene text index | Yes | No |
-| Shiro accounts | `openmetadata` writer and anonymous `/sparql`/`/query` | Admin only |
-| Paths | `/fuseki-data` | `/jena-fuseki` and a `/fuseki` volume |
-| PID 1 | Fuseki | `tini` |
-
-Integration tests and Compose files still build and run the in-repo copy, which phase 1 resolves.
+and is carried forward when a new release branch is cut. The published image is OpenMetadata's
+image of record (ADR:2026-10-14-fuseki-image-of-record): integration tests, Compose files and the
+Kubernetes example run the pinned `openmetadata/fuseki:6.2.0-c75b095` with the environment
+OpenMetadata needs, and this repository's former `docker/rdf-store/` build is retired.
 
 ### Image layout
 
@@ -628,12 +616,12 @@ configuration: every JVM region is capped, and capped anonymous memory plus a pa
 fits under the container limit with margin. Page cache is reclaimable, so it is the only flexible
 term; TDB2 performance, not survival, depends on it.
 
-| Term | Meaning | Starting value |
+| Term | Meaning | Value (measured in phase 1; see [Starting sizes](#starting-sizes)) |
 |---|---|---|
 | `H_f` | Fuseki `-Xmx`, from the existing capacity table | 2, 4, or 8 GiB |
-| `O_f` | Fuseki off-heap: metaspace, code cache, thread stacks, GC, NIO | 1 GiB (1.5 GiB with an 8 GiB heap) until measured |
-| `H_w` | Worker heap, `OPENMETADATA_REASONER_HEAP` | 2 GiB |
-| `O_w` | Worker off-heap, capped by the launch flags | 512 MiB |
+| `O_f` | Fuseki off-heap: metaspace, code cache, thread stacks, GC, NIO | Direct-buffer limit (`-XX:MaxDirectMemorySize`, 256 MiB by default from open-metadata/jena#6; OpenMetadata's deployment files set it until the pin includes that image) + 768 MiB, or + 1.25 GiB from an 8 GiB heap: 1 GiB (1.5 GiB) by default. Measured: ≤ 291 MiB besides direct buffers, which reached 1.5 GiB on a 4 GiB heap before the cap |
+| `H_w` | Worker heap, `OPENMETADATA_REASONER_HEAP` | 2 GiB. Measured: a 50,000-individual catalog closure peaks at 0.65 GiB after collection and classifies in 1 GiB |
+| `O_w` | Worker off-heap, capped by the launch flags | 512 MiB. Measured: ≤ 200 MiB |
 | `C_min` | Serving page-cache floor, `OPENMETADATA_REASONER_PAGE_CACHE_FLOOR` | 50% of the serving dataset's size on disk |
 | `S` | Safety margin | 10% of the container limit |
 
@@ -659,8 +647,38 @@ term; TDB2 performance, not survival, depends on it.
 
 ### Starting sizes
 
-These are computed from the formula and today's capacity table. Phases 1 and 8 replace them with
-measurements: Native Memory Tracking for `O_f` and `O_w`, and conformance/scale fixtures for `H_w`.
+Phase 1 measured the budget's terms on the published `openmetadata/fuseki:6.2.0-600514c` image
+(ADR:2026-10-15-reasoning-memory-budget-defaults). **Hardware:** Apple M4 Max (16 cores, 128 GiB),
+Docker Desktop 28.1.1 (`linux/arm64` VM with 10 CPUs and 60.7 GiB), Temurin 21.0.12.1; the
+container was limited to 4 CPUs and 16 GiB, and the worker ran with two processors. The host was
+shared with other test runs. Native Memory Tracking (`-XX:NativeMemoryTracking=summary`, sampled
+with `jcmd`) gives committed memory outside the heap; the worker's own manifest gives its heap
+peaks.
+
+| Workload | `H` | Peak heap used / after collection | Outside the heap (NMT) | Elapsed |
+|---|---:|---:|---:|---:|
+| Worker: each of the 53 conformance fixtures, ELK or HermiT | 2 GiB | ≤ 145 / ≤ 13 MiB | 106–114 MiB | 0.3–0.8 s per step, ≤ 1.1 s with JVM start |
+| Worker: catalog closure, 10,000 individuals (59 k triples, 49 k axioms) | 2 GiB / 512 MiB | 0.92 / 0.16 GiB; fits 512 MiB | 191 / 130 MiB | 9–10 s |
+| Worker: catalog closure, 20,000 individuals (119 k triples, 99 k axioms) | 2 GiB / 512 MiB | 1.6 / 0.27 GiB; fits 512 MiB | 192 / 126 MiB | 16–26 s |
+| Worker: catalog closure, 50,000 individuals (297 k triples, 247 k axioms, 581 k output) | 2 GiB / 1 GiB | 1.7 / 0.65 GiB; 512 MiB runs out | 200 / 151 MiB | 46–88 s |
+| Worker: EXPLAIN, fixture subsumption / catalog 10,000 class assertion | 2 GiB | 145 / 425 MiB used | 110 / 172 MiB | 0.5 s / 2.2 s |
+| Fuseki: OpenMetadata rebuilding and querying a 20,000-table catalog (2.8 M triples) | 4 GiB | — | ≤ 291 MiB, plus direct buffers: 1.5 GiB uncapped, 254 MiB capped at 256 MiB | rebuild 76–88 s; query p95 ≤ 10 ms idle, ≤ 51 ms during a rebuild |
+
+- **Cancellation:** SIGTERM and SIGKILL end a classifying or loading worker within the sampler's
+  0.2 s resolution (exit 143 and 137), 3 s and 10 s into the step.
+- **Direct buffers:** Fuseki allocates about 5 MiB of direct buffers per HTTP request and frees
+  them at the next collection; with the JVM's default limit (the heap) an idle 2 GiB server held
+  1.2 GiB. A 256 MiB cap serves 23 MB uploads and 254 MB result sets without error. The image
+  applies it by default from open-metadata/jena#6; until OpenMetadata pins such an image, its
+  deployment files set it in `JVM_ARGS`.
+- **Admission envelope:** the 2 GiB default worker admits 300,000 closure triples, 200,000 logical
+  axioms and 50,000 individuals, about 40,000 individuals of the measured catalog shape; the
+  axiom limit stays 2.5 times below what that assertion-heavy shape needs, because no
+  terminology-heavy fixture has been measured. Before the fix in open-metadata/jena it was sized
+  from `Runtime.maxMemory()` and admitted 47,925 individuals.
+
+With these terms the formula keeps the starting sizes below. Phase 8 replaces them with
+measurements on production-shaped catalogs under concurrent serving traffic.
 
 | Live triples | Serving TDB2 | `H_f` | `H_w` | Minimum container memory | Recommended | Today, without reasoning |
 |---:|---:|---:|---:|---:|---:|---:|
@@ -732,8 +750,10 @@ Measure with concurrent serving traffic before promising latency improvements or
 
 ## Phased implementation plan
 
-Phases 0 and 2 are merged: #34963 and #34970 (phase 0) and #34975 (phase 2). Phase 1 is in review
-as open-metadata/jena#1; the HermiT build it packages, open-metadata/hermit-reasoner#1, is merged.
+Phases 0 and 2 are merged: #34963 and #34970 (phase 0) and #34975 (phase 2). Phase 1's worker,
+launcher and memory budget (open-metadata/jena#1), the job API (open-metadata/jena#2) and the
+HermiT build they package (open-metadata/hermit-reasoner#1) are merged; its remaining items are
+listed under [phase 1](#phase-1--prove-the-reasoner-worker-in-the-fuseki-image-and-capture-a-baseline).
 The phase 0 and 2 follow-ups #35199 and #35201 are in review. Phase 3 has started with a DL-valid
 glossary ontology projection (see [phase 3](#phase-3--project-dl-valid-ontology-semantics-and-asset-associations));
 phases 4 to 8 are **planned**. Each phase ends with a working, verified capability; split its
@@ -842,6 +862,20 @@ Fuseki, and that the engine may be distributed, before building integration arou
 
 If our HermiT build fails a required case, fix it (upstream first) or resolve the engine choice
 before proceeding; do not silently replace full semantics with an approximation.
+
+**Status (2026-10-15):**
+
+| Task | State |
+|---|---|
+| 1. HermiT build | Done: open-metadata/hermit-reasoner#1 builds `master` on Java 21 and OWLAPI 5.x and runs HermiT's tests and the W3C OWL 2 conformance cases in CI. **Open:** its fix for `DataIntersectionOf(rdfs:Literal rdfs:Literal)` has no upstream pull request to owlcs/hermit-reasoner yet. |
+| 2. Reasoner project and packaging | Done in open-metadata/jena#1: pinned OWLAPI, HermiT and ELK with Jena `provided`, the builder stage and `/jena-fuseki/reasoner/`, entrypoint validation, the step-file contract and EL routing. HermiT ships under LGPL (decided 2026-10-14). |
+| 3. Conformance | Done: 53 fixtures, ELK and HermiT agree on every EL fixture, and the smoke test runs them through the image's launcher. |
+| 4. OpenMetadata on the published image | Done: the RDF lane runs the pinned `openmetadata/fuseki:6.2.0-600514c` (278 tests on each of MySQL + Elasticsearch and PostgreSQL + OpenSearch), and `docker/rdf-store/`'s image build is retired (ADR:2026-10-14-fuseki-image-of-record). **Open:** the two integration-test workflows still list `docker/rdf-store/**` in their path filters, which now match only the Kubernetes example. |
+| 5. Containment and readiness | Done in open-metadata/jena#1: forced OOM, deadline and kill keep Fuseki serving; readiness refuses an undersized container. |
+| 6. Measurements | Done: see [Starting sizes](#starting-sizes) and [rdf-scale-validation.md](../rdf-scale-validation.md). They found Fuseki's uncapped direct buffers and the worker's undersized default limits; the fixes are in open-metadata/jena `openmetadata/reasoner-baselines` (ADR:2026-10-15-reasoning-memory-budget-defaults). |
+
+Exit criteria still open: the HermiT fix's upstream pull request, and publishing an image that
+contains the two jena fixes, then moving OpenMetadata's pin to it.
 
 **Checks:** the HermiT build's CI, plus the Extension, Reasoner, and Image commands below. Retain the
 fixtures for phase 6 rather than building a separate prototype framework.
@@ -1086,14 +1120,13 @@ Run prerequisites and model generation as required by each repository. A Docker 
 packaging, not behaviour, so run the smoke test and the RDF lanes too.
 
 - **Image under test:** use `openmetadata-fuseki:local` or an immutable published
-  `<version>-<commit>` tag, never a moving tag or an older stock image. Today `TestSuiteBootstrap`
-  builds `docker/rdf-store` when no image is supplied, and phase 1 changes it to understand the
-  published image's environment contract.
+  `<version>-<commit>` tag, never a moving tag or an older stock image. `TestSuiteBootstrap` runs
+  the tag pinned in `FusekiTestImage` when no image is supplied, configured through the image's
+  environment contract.
 - **Heaps:** its default Fuseki heap is 512 MB, too small for reasoning tests, hence the override
   above. Pass the worker heap as a container environment variable too.
 - **CI:** the fork's image workflow already runs the extension's tests and the smoke test on every
-  pull request; add the reasoner's tests there. This repository's `docker/rdf-store` tests run in no
-  CI job.
+  pull request; add the reasoner's tests there.
 - **Other tests:** tests outside the RDF lane, including glossary export tests, remain required when
   the affected-test procedure selects them. Follow the Java formatting skill after Java changes.
 
@@ -1163,11 +1196,10 @@ triples. These are unnecessary for the confirmed catalog-and-mapping scope.
 4. **Term statuses.** Decide which glossary-term lifecycle states contribute classes.
 5. **Direct Fuseki writers.** Keep them unsupported for freshness, or add a Fuseki-side commit
    counter.
-6. **Image of record.** Move OpenMetadata's tests, Compose files, and docs to the published
-   `openmetadata/fuseki` image and retire `docker/rdf-store/`, or keep both in sync. The published
-   image already closes anonymous `/sparql` and `/query` access, but drops the Lucene text index the
-   in-repo `config.ttl` configures. No OpenMetadata server or MCP code issues `text:query`, so only
-   hand-written queries would notice.
+6. **Image of record.** Resolved 2026-10-14: OpenMetadata's tests, Compose files and docs use the
+   published `openmetadata/fuseki` image, and `docker/rdf-store/`'s build is retired
+   (ADR:2026-10-14-fuseki-image-of-record). The Lucene text index went with it; no OpenMetadata
+   server or MCP code issued `text:query`.
 7. **Licence.** No permissively licensed complete OWL 2 DL engine exists. If legal declines LGPL
    distribution, ship ELK alone and narrow the coverage requirement: closures outside the EL
    profile report `INCOMPLETE`.

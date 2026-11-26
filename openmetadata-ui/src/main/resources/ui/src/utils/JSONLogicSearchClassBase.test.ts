@@ -10,12 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  ImmutableTree,
+  OldJsonTree,
+  Utils as QbUtils,
+} from '@react-awesome-query-builder/ui';
+import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getEntityLifecycleStages } from '../rest/metadataTypeAPI';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { JSONLogicSearchClassBase } from './JSONLogicSearchClassBase';
+import { formatQuery } from './queryBuilder/formatters';
+import { generateUUID } from './StringUtils';
 
 // Define extended widget interface for testing widget properties
 interface ExtendedWidget {
@@ -294,6 +302,94 @@ describe('JSONLogicSearchClassBase', () => {
 
       expect(textType.valueSources).toEqual(['value']);
       expect(dateType.valueSources).toEqual(['value']);
+    });
+  });
+
+  // Tier only exists on a serialized entity as a `Tier.*` entry in the `tags`
+  // list — there is no `tier` property — so a governance rule keyed on
+  // `{"var":"tier"}` resolves to null under `RuleEngine.apply` and silently never
+  // matches. The export pipeline therefore rewrites the Tier group variable to
+  // `tags` on save (the entity `tags` list the rule can actually evaluate), while
+  // the Tier field keeps its `tier` key so a saved Tags rule is still routed to
+  // the Tags field on load.
+  describe('Tier field exports a server-evaluable rule', () => {
+    const buildTierRuleTree = (
+      tierFQN: string,
+      operator = 'array_contains'
+    ): OldJsonTree => {
+      const group = generateUUID();
+      const rule = generateUUID();
+
+      return {
+        id: generateUUID(),
+        type: 'group',
+        properties: { conjunction: 'AND', not: false },
+        children1: {
+          [group]: {
+            type: 'rule_group',
+            id: group,
+            properties: {
+              conjunction: 'AND',
+              not: false,
+              mode: 'some',
+              field: EntityReferenceFields.TIER,
+              fieldSrc: 'field',
+            },
+            children1: {
+              [rule]: {
+                type: 'rule',
+                id: rule,
+                properties: {
+                  field: `${EntityReferenceFields.TIER}.tagFQN`,
+                  operator,
+                  value: [[tierFQN]],
+                  valueSrc: ['value'],
+                  valueType: ['multiselect'],
+                  fieldSrc: 'field',
+                },
+              },
+            },
+          },
+        },
+      };
+    };
+
+    const exportTierRule = (tierFQN: string) => {
+      const config = jsonLogicSearchClassBase.getQbConfigs([SearchIndex.TABLE]);
+      const tree = QbUtils.checkTree(
+        QbUtils.loadTree(buildTierRuleTree(tierFQN)),
+        config
+      );
+
+      return formatQuery(tree, config, SearchOutputType.JSONLogic).value;
+    };
+
+    it('keeps the Tier field on the `tier` key without a `tags` alias (a `fieldName` alias would hijack saved Tags rules on import)', () => {
+      const tierField = jsonLogicSearchClassBase.mapFields[
+        EntityReferenceFields.TIER
+      ] as { fieldName?: string; type: string };
+
+      expect(tierField.type).toBe('!group');
+      expect(tierField.fieldName).toBeUndefined();
+    });
+
+    it('saves a "Tier is Tier1" rule against the tags list the server can evaluate', () => {
+      expect(exportTierRule('Tier.Tier1')).toBe(
+        JSON.stringify({
+          and: [
+            {
+              some: [
+                { var: 'tags' },
+                { contains: [{ var: 'tagFQN' }, ['Tier.Tier1']] },
+              ],
+            },
+          ],
+        })
+      );
+    });
+
+    it('never saves the non-existent "tier" variable a server cannot resolve', () => {
+      expect(exportTierRule('Tier.Tier1')).not.toContain('"var":"tier"');
     });
   });
 
@@ -673,5 +769,44 @@ beforeEach(() => {
         stageWorkflows: [],
       },
     ],
+  });
+});
+
+describe('provider field for glossary terms', () => {
+  const automationProposal = {
+    and: [
+      { '==': [{ var: 'provider' }, 'automation'] },
+      { '!=': [{ var: 'entityStatus' }, 'Approved'] },
+    ],
+  };
+
+  it('offers the three providers a glossary term can have', () => {
+    const fields = new JSONLogicSearchClassBase().getQbConfigs([
+      SearchIndex.GLOSSARY_TERM,
+    ]).fields;
+
+    expect(
+      Object.keys(
+        (
+          fields[EntityReferenceFields.PROVIDER] as {
+            fieldSettings: { listValues: Record<string, string> };
+          }
+        ).fieldSettings.listValues
+      )
+    ).toEqual(['user', 'system', 'automation']);
+  });
+
+  it('keeps an automation proposal rule through a load and a save', () => {
+    const config = new JSONLogicSearchClassBase().getQbConfigs([
+      SearchIndex.GLOSSARY_TERM,
+    ]);
+    const tree = QbUtils.loadFromJsonLogic(
+      automationProposal,
+      config
+    ) as ImmutableTree;
+
+    expect(QbUtils.jsonLogicFormat(tree, config).logic).toEqual(
+      automationProposal
+    );
   });
 });

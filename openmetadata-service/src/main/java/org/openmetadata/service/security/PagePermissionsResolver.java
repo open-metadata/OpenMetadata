@@ -1,7 +1,6 @@
 package org.openmetadata.service.security;
 
 import jakarta.ws.rs.core.SecurityContext;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -12,7 +11,6 @@ import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ResourcePermission;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -86,8 +84,7 @@ public final class PagePermissionsResolver {
 
   private static <T extends EntityInterface<?>> BulkFieldHydrator tagHydrator(
       EntityRepository<T> repository, Collection<T> entities) {
-    return new BulkFieldHydrator(
-        Map.of(Entity.FIELD_TAGS, () -> repository.batchLoadTags(new ArrayList<>(entities))));
+    return BulkFieldHydrator.forTags(repository, entities);
   }
 
   private static <T extends EntityInterface<?>> ResourceContext<T> contextFor(

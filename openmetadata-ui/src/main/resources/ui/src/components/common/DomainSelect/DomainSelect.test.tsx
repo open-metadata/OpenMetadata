@@ -20,6 +20,12 @@ import {
 import DomainSelect from './DomainSelect';
 import { DomainSelectProps } from './DomainSelect.types';
 
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
 const treeSelectMock = jest.fn();
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -322,6 +328,20 @@ describe('DomainSelect', () => {
     expect(nodes).toHaveLength(1);
   });
 
+  it('should search every domain, not only the active domain filter', async () => {
+    renderSelect();
+
+    await lastProps().fetchData({ searchTerm: 'Fin' });
+
+    expect(mockSearch).toHaveBeenCalledWith(
+      expect.any(String),
+      1,
+      undefined,
+      undefined,
+      true
+    );
+  });
+
   it('should keep only the allowed (restricted) domains and their descendants', async () => {
     // restrictedDomains carries the domains a domain-restricted user may use.
     renderSelect({ restrictedDomains: [financeRef] });
@@ -397,6 +417,18 @@ describe('DomainSelect', () => {
     });
 
     expect(onUpdate).toHaveBeenCalledWith(undefined);
+  });
+
+  it('should keep the scope when the active domain is picked again', () => {
+    const { onUpdate } = renderSelect({
+      showAllDomains: true,
+      selectedDomain: financeRef,
+    });
+
+    // The core tree toggles a re-picked node off and reports null.
+    lastProps().onChange(null);
+
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 
   it('should call onUpdate with the array in multiple mode', () => {

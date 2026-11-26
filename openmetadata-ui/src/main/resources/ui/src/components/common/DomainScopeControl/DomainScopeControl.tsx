@@ -80,7 +80,9 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
   );
 
   const isActiveScope = activeDomain !== DEFAULT_DOMAIN_VALUE;
-  const showAllDomains = !isDomainRestricted;
+  // As in the navbar, a restricted user with several domains also gets "All Domains". It only
+  // removes the filter; what they can see stays with their role.
+  const showAllDomains = true;
   const isSingleDomainUser = isDomainRestricted && userDomains.length === 1;
   const restrictedDomains = isDomainRestricted ? userDomains : undefined;
 
@@ -115,8 +117,7 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
         <DomainIcon
           className="domain-icon"
           data-testid="domain-icon"
-          height={22}
-          width={22}
+          size={18}
         />
         <span className="text-sm font-medium domain-title">
           {domainDisplayName}
@@ -125,8 +126,7 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
           aria-hidden
           className="dropdown-icon"
           data-testid="dropdown-icon"
-          height={14}
-          width={14}
+          size={16}
         />
       </button>
     );

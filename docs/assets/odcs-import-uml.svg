@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1700" viewBox="0 0 1700 1700">
+<defs><marker id="arrow" markerWidth="12" markerHeight="10" refX="10" refY="5" orient="auto"><path d="M1 1 L10 5 L1 9" fill="none" stroke="#51627a" stroke-width="1.5"/></marker><marker id="tri" markerWidth="16" markerHeight="14" refX="14" refY="7" orient="auto"><path d="M1 1 L14 7 L1 13 Z" fill="white" stroke="#51627a" stroke-width="1.5"/></marker></defs>
+<rect width="1700" height="1700" fill="white"/><style>text{font-family:Arial,sans-serif;fill:#172b42}.edge{fill:none;stroke:#51627a;stroke-width:2;stroke-dasharray:7 5}.label{font-size:18px;fill:#51627a}</style>
+<text x="40" y="48" font-size="30" font-weight="bold">ODCS import — implemented UML class diagram</text>
+<text x="40" y="80" font-size="20">Direct adapter resolution • shared validation pipeline • version-family strategies</text>
+<path class="edge" d="M580 210 H490" marker-end="url(#arrow)"/>
+<text class="label" x="500" y="193">resolves</text>
+<path class="edge" d="M280 340 V395 H750 V470" marker-end="url(#arrow)"/>
+<text class="label" x="300" y="383">returns adapter directly</text>
+<path class="edge" d="M1030 180 H1140" marker-end="url(#arrow)"/>
+<text class="label" x="1040" y="160">validates</text>
+<path class="edge" d="M1030 270 H1090 V375 H1140" marker-end="url(#arrow)"/>
+<text class="label" x="1100" y="306">converts</text>
+<path class="edge" d="M1360 410 V505 H990" marker-end="url(#arrow)"/>
+<text class="label" x="1110" y="485">uses read()</text>
+<path class="edge" d="M280 710 V665 H805 V650" marker-end="url(#tri)"/>
+<path class="edge" d="M840 710 V650" marker-end="url(#tri)"/>
+<path class="edge" d="M1390 710 V665 H875 V650" marker-end="url(#tri)"/>
+<path class="edge" d="M280 920 V960 H810 V990" marker-end="url(#arrow)"/>
+<path class="edge" d="M840 920 V990" marker-end="url(#arrow)"/>
+<text class="label" x="860" y="944">reuse common rules</text>
+<path class="edge" d="M1390 920 V960 H870 V990" marker-end="url(#arrow)"/>
+<path class="edge" d="M1110 1080 H1180" marker-end="url(#arrow)"/>
+<text class="label" x="1124" y="1049">checks legacy fields</text>
+<path class="edge" d="M805 320 V470" marker-end="url(#arrow)"/>
+<text class="label" x="820" y="447">normalizes on validation failure</text>
+<rect x="50" y="140" width="440" height="209" fill="white" stroke="#51627a" stroke-width="1.5"/><rect x="51" y="141" width="438" height="54" fill="#edf3fa"/>
+<text x="270.0" y="160" text-anchor="middle" font-size="15">«registry»</text><text x="270.0" y="184" text-anchor="middle" font-size="22" font-weight="bold">ODCSProfiles</text><path d="M50 195 H490" stroke="#51627a"/>
+<text x="64" y="223" font-size="18">- ADAPTERS: Map&lt;String, Adapter&gt;</text>
+<text x="64" y="252" font-size="18">- SCHEMAS: Map&lt;String, Schema&gt;</text>
+<text x="64" y="281" font-size="18">+ resolve(source): ODCSVersionAdapter</text>
+<text x="64" y="310" font-size="18">+ adapter(version): ODCSVersionAdapter</text>
+<text x="64" y="339" font-size="18">+ validationErrors(version, document)</text>
+<rect x="580" y="140" width="450" height="180" fill="white" stroke="#51627a" stroke-width="1.5"/><rect x="581" y="141" width="448" height="54" fill="#edf3fa"/>
+<text x="805.0" y="160" text-anchor="middle" font-size="15">«orchestrator»</text><text x="805.0" y="184" text-anchor="middle" font-size="22" font-weight="bold">ODCSImportService</text><path d="M580 195 H1030" stroke="#51627a"/>
+<text x="594" y="223" font-size="18">+ read(...): Optional&lt;Document&gt;</text>
+<text x="594" y="252" font-size="18">+ readOrReject(...): Document</text>
+<text x="594" y="281" font-size="18">- prepare(source, adapter, issues)</text>
+<text x="594" y="310" font-size="18">- reportFailures(adapter, failures, issues)</text>
+<rect x="1140" y="140" width="510" height="151" fill="white" stroke="#51627a" stroke-width="1.5"/><rect x="1141" y="141" width="508" height="54" fill="#edf3fa"/>
+<text x="1395.0" y="160" text-anchor="middle" font-size="15">«schema validation»</text><text x="1395.0" y="184" text-anchor="middle" font-size="22" font-weight="bold">ODCSPublishedSchemaValidator</text><path d="M1140 195 H1650" stroke="#51627a"/>
+<text x="1154" y="223" font-size="18">+ load(schemaLocation): Schema</text>
+<text x="1154" y="252" font-size="18">+ validate(schema, document)</text>
+<text x="1154" y="281" font-size="18">+ validFragment(schema, path, value)</text>
+<rect x="1140" y="340" width="510" height="151" fill="white" stroke="#51627a" stroke-width="1.5"/><rect x="1141" y="341" width="508" height="54" fill="#edf3fa"/>
+<text x="1395.0" y="360" text-anchor="middle" font-size="15">«native projection»</text><text x="1395.0" y="384" text-anchor="middle" font-size="22" font-weight="bold">ODCSNativeContractConverter</text><path d="M1140 395 H1650" stroke="#51627a"/>
+<text x="1154" y="423" font-size="18">~ convert(...): Optional&lt;Document&gt;</text>
+<text x="1154" y="452" font-size="18">adapter.read → quality reader view</text>
+<text x="1154" y="481" font-size="18">→ ODCSLenientReader</text>
+<rect x="580" y="470" width="450" height="180" fill="white" stroke="#51627a" stroke-width="1.5"/><rect x="581" y="471" width="448" height="54" fill="#edf3fa"/>
+<text x="805.0" y="490" text-anchor="middle" font-size="15">«interface»</text><text x="805.0" y="514" text-anchor="middle" font-size="22" font-weight="bold">ODCSVersionAdapter</text><path d="M580 525 H1030" stroke="#51627a"/>
+<text x="594" y="553" font-size="18">+ version() / schemaLocation(): String</text>
+<text x="594" y="582" font-size="18">+ normalizeLegacy(): NormalizationResult</text>
+<text x="594" y="611" font-size="18">+ read(document): JsonNode</text>
+<text x="594" y="640" font-size="18">+ write(contract, rules): JsonNode</text>
+<rect x="50" y="710" width="460" height="209" fill="white" stroke="#51627a" stroke-width="1.5"/><rect x="51" y="711" width="458" height="54" fill="#edf3fa"/>
+<text x="280.0" y="730" text-anchor="middle" font-size="15">«implements ODCSVersionAdapter»</text><text x="280.0" y="754" text-anchor="middle" font-size="22" font-weight="bold">ODCSV22Mapper</text><path d="M50 765 H510" stroke="#51627a"/>
+<text x="64" y="793" font-size="18">v2.2.1 / v2.2.2</text>
+<text x="64" y="822" font-size="18">Flat columns ↔ nested native structure</text>
+<text x="64" y="851" font-size="18">Parent-first qualified-path reconstruction</text>
+<text x="64" y="880" font-size="18">Preserves STRUCT array item types</text>
+<text x="64" y="909" font-size="18">+ normalizeLegacy(source)</text>
+<rect x="610" y="710" width="460" height="180" fill="white" stroke="#51627a" stroke-width="1.5"/><rect x="611" y="711" width="458" height="54" fill="#edf3fa"/>
+<text x="840.0" y="730" text-anchor="middle" font-size="15">«implements ODCSVersionAdapter»</text><text x="840.0" y="754" text-anchor="middle" font-size="22" font-weight="bold">ODCSV30Mapper</text><path d="M610 765 H1070" stroke="#51627a"/>
+<text x="624" y="793" font-size="18">v3.0.0 / v3.0.1 / v3.0.2</text>
+<text x="624" y="822" font-size="18">Object schema + v3.0 field conventions</text>
+<text x="624" y="851" font-size="18">Family-owned legacy normalization</text>
+<text x="624" y="880" font-size="18">+ normalizeLegacy(source)</text>
+<rect x="1170" y="710" width="460" height="180" fill="white" stroke="#51627a" stroke-width="1.5"/><rect x="1171" y="711" width="458" height="54" fill="#edf3fa"/>
+<text x="1400.0" y="730" text-anchor="middle" font-size="15">«implements ODCSVersionAdapter»</text><text x="1400.0" y="754" text-anchor="middle" font-size="22" font-weight="bold">ODCSV31Mapper</text><path d="M1170 765 H1630" stroke="#51627a"/>
+<text x="1184" y="793" font-size="18">v3.1.0</text>
+<text x="1184" y="822" font-size="18">Published object schema mapping</text>
+<text x="1184" y="851" font-size="18">Family-owned legacy normalization</text>
+<text x="1184" y="880" font-size="18">+ normalizeLegacy(source)</text>
+<rect x="540" y="990" width="570" height="180" fill="white" stroke="#51627a" stroke-width="1.5"/><rect x="541" y="991" width="568" height="54" fill="#edf3fa"/>
+<text x="825.0" y="1010" text-anchor="middle" font-size="15">«shared normalization»</text><text x="825.0" y="1034" text-anchor="middle" font-size="22" font-weight="bold">ODCSImportCompatibility</text><path d="M540 1045 H1110" stroke="#51627a"/>
+<text x="554" y="1073" font-size="18">~ normalizeCommonFields(source)</text>
+<text x="554" y="1102" font-size="18">~ normalizeObjectSchema(source)</text>
+<text x="554" y="1131" font-size="18">~ projectQualityForValidation(source)</text>
+<text x="554" y="1160" font-size="18">Shared shape / legacy quality helpers</text>
+<rect x="1180" y="990" width="470" height="151" fill="white" stroke="#51627a" stroke-width="1.5"/><rect x="1181" y="991" width="468" height="54" fill="#edf3fa"/>
+<text x="1415.0" y="1010" text-anchor="middle" font-size="15">«legacy schema validation»</text><text x="1415.0" y="1034" text-anchor="middle" font-size="22" font-weight="bold">ODCSLegacyQualityValidator</text><path d="M1180 1045 H1650" stroke="#51627a"/>
+<text x="1194" y="1073" font-size="18">~ requireRootRule(source)</text>
+<text x="1194" y="1102" font-size="18">~ requireValid(source)</text>
+<text x="1194" y="1131" font-size="18">~ isValid(source)</text>
+<rect x="50" y="1220" width="1600" height="155" rx="8" fill="#f5f7fa"/>
+<text x="70" y="1253" font-size="20" font-weight="bold">Pipeline and UML notation</text>
+<text x="70" y="1284" font-size="19">Resolve declared version → validate original → normalize only on failure → revalidate → native conversion.</text>
+<text x="70" y="1314" font-size="19">NormalizationResult carries wire + canonical JSON. Invalid input produces blocking issues and Optional.empty().</text>
+<text x="70" y="1344" font-size="18">Dashed open arrow = dependency; dashed hollow triangle = interface realization. Selected members shown; no ODCSProfile wrapper.</text>
+</svg>

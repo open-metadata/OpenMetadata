@@ -71,6 +71,21 @@ describe('ErrorFallback', () => {
   });
 
   it.each([
+    ['a thrown string', 'boom', 'boom'],
+    ['a plain error object', { message: 'boom' }, 'boom'],
+    ['a thrown null', null, undefined],
+  ])('renders the fallback for %s', (_, error, message) => {
+    render(<ErrorFallback error={error} resetErrorBoundary={jest.fn()} />);
+
+    expect(screen.getByText(ERROR500)).toBeInTheDocument();
+    expect(screen.queryByTestId('upgrade-screen')).not.toBeInTheDocument();
+
+    if (message) {
+      expect(screen.getByText(message)).toBeInTheDocument();
+    }
+  });
+
+  it.each([
     ['light', false],
     ['dark', true],
   ] as const)(

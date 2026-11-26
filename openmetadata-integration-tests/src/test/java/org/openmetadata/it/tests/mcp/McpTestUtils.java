@@ -54,17 +54,12 @@ public class McpTestUtils {
     return createJsonRpcRequest("prompts/get", params);
   }
 
-  public static String createAuthorizationHeader(String token) {
-    return "Bearer " + token;
-  }
-
   public static Map<String, Object> createSearchMetadataToolCall(
       String query, int limit, String entityType) {
     Map<String, Object> arguments = new HashMap<>();
     arguments.put("query", query);
     arguments.put("limit", limit);
     arguments.put("entityType", entityType);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("search_metadata", arguments);
   }
@@ -73,7 +68,6 @@ public class McpTestUtils {
     Map<String, Object> arguments = new HashMap<>();
     arguments.put("entityType", entityType);
     arguments.put("fqn", fqn);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("get_entity_details", arguments);
   }
@@ -89,7 +83,6 @@ public class McpTestUtils {
     if (columnLimit != null) {
       arguments.put("columnLimit", columnLimit);
     }
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("get_entity_details", arguments);
   }
@@ -102,7 +95,6 @@ public class McpTestUtils {
     arguments.put("name", name);
     arguments.put("description", description);
     arguments.put("attributes", Map.of("mutuallyExclusive", false));
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("create_entity", arguments);
   }
@@ -119,7 +111,6 @@ public class McpTestUtils {
     arguments.put(
         "attributes",
         Map.of("glossary", Map.of("type", "glossary", "fullyQualifiedName", glossary)));
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("create_entity", arguments);
   }
@@ -130,7 +121,6 @@ public class McpTestUtils {
     arguments.put("entityType", entityType);
     arguments.put("fqn", fqn);
     arguments.put("patch", patch);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("patch_entity", arguments);
   }
@@ -142,7 +132,6 @@ public class McpTestUtils {
     arguments.put("fqn", fqn);
     arguments.put("upstreamDepth", upstreamDepth);
     arguments.put("downstreamDepth", downstreamDepth);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("get_entity_lineage", arguments);
   }
@@ -152,7 +141,6 @@ public class McpTestUtils {
     Map<String, Object> arguments = new HashMap<>(options);
     arguments.put("entityType", entityType);
     arguments.put("fqn", fqn);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("get_entity_lineage", arguments);
   }
@@ -165,7 +153,6 @@ public class McpTestUtils {
     arguments.put("column", column);
     arguments.put("upstreamDepth", upstreamDepth);
     arguments.put("downstreamDepth", downstreamDepth);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("get_entity_lineage", arguments);
   }
@@ -183,7 +170,6 @@ public class McpTestUtils {
     Map<String, Object> arguments = new HashMap<>();
     arguments.put("fromEntity", fromEntity);
     arguments.put("toEntity", toEntity);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("create_lineage", arguments);
   }
@@ -191,7 +177,6 @@ public class McpTestUtils {
   public static Map<String, Object> createGetTestDefinitionsToolCall(String entityType) {
     Map<String, Object> arguments = new HashMap<>();
     arguments.put("entityType", entityType);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("get_test_definitions", arguments);
   }
@@ -206,7 +191,6 @@ public class McpTestUtils {
     arguments.put("fqn", fqn);
     arguments.put("testDefinitionName", testDefinitionName);
     arguments.put("parameterValues", parameterValues);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("create_test_case", arguments);
   }
@@ -218,7 +202,6 @@ public class McpTestUtils {
     arguments.put("entityType", entityType);
     arguments.put("upstreamDepth", upstreamDepth);
     arguments.put("downstreamDepth", downstreamDepth);
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("root_cause_analysis", arguments);
   }
@@ -241,7 +224,6 @@ public class McpTestUtils {
         Map.of(
             "metricExpression",
             Map.of("language", metricExpressionLanguage, "code", metricExpressionCode)));
-    arguments.put("Authorization", createAuthorizationHeader("test-token"));
 
     return createToolCallRequest("create_entity", arguments);
   }

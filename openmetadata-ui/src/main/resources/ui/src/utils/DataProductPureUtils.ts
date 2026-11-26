@@ -31,12 +31,16 @@ export const convertEntityReferencesToDataProducts = (
 };
 
 export const getQueryFilterForDataProductPorts = (
-  dataProductFqn: string
+  dataProductFqn: string,
+  excludedIds: string[] = []
 ): QueryFilterInterface => {
   return {
     query: {
       bool: {
         must: [{ term: { 'dataProducts.fullyQualifiedName': dataProductFqn } }],
+        ...(excludedIds.length > 0 && {
+          must_not: [{ ids: { values: excludedIds } }],
+        }),
       },
     },
   };

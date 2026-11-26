@@ -64,9 +64,11 @@ import org.openmetadata.service.search.EntityBuilderConstant;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -125,6 +127,11 @@ public class DomainRepository extends EntityRepository<Domain> {
     fieldFetchers.put(FIELD_PARENT, this::fetchAndSetParents);
     fieldFetchers.put(FIELD_EXPERTS, this::fetchAndSetExperts);
     fieldFetchers.put(FIELD_CHILDREN_COUNT, this::fetchAndSetChildrenCount);
+  }
+
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    return relabeledByReference(super.getSearchPropagationDescriptors());
   }
 
   @Override
@@ -606,6 +613,22 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
+  protected void postDelete(Domain entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    // Domain delete is hard and recursive, so a condition naming this domain or a sub-domain can
+    // no longer match; leaving the name would also let a domain created later with the same name
+    // fall under the old rule. See ADR:2026-10-30-deleted-policy-condition-references-become-false.
+    if (hardDelete) {
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.removeByPrefixFromCondition(
+                  condition,
+                  entity.getFullyQualifiedName(),
+                  PolicyConditionUpdater.DOMAIN_FUNCTIONS));
+    }
+  }
+
+  @Override
   protected void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
     boolean rootDomainHardDelete = hardDelete && domainHardDeleteSubtree.get() == null;
     if (rootDomainHardDelete) {
@@ -823,6 +846,11 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(DOMAIN);
+  }
+
+  @Override
   public void setFullyQualifiedName(Domain entity) {
     // Validate parent
     if (entity.getParent() == null) { // Top level domain
@@ -958,6 +986,11 @@ public class DomainRepository extends EntityRepository<Domain> {
       updateEntityLinks(oldFqn, newFqn, updated);
       updateSearchIndexes(oldFqn, newFqn, updated);
       updateTagUsage(oldFqn, newFqn);
+      // By prefix, so conditions naming a sub-domain follow their parent's rename.
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.renamePrefixInCondition(
+                  condition, oldFqn, newFqn, PolicyConditionUpdater.DOMAIN_FUNCTIONS));
 
       // Any asset (table/dashboard/...) that carries this domain in its `domains` reference
       // now has a stale FQN embedded in its cache. Invalidate them so next read rebuilds with

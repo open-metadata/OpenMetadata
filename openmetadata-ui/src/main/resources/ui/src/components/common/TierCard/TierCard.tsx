@@ -25,6 +25,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './tier-card.style.less';
 import { TierCardProps } from './TierCard.interface';
+import { splitTierDescription } from './TierCard.utils';
 
 const TierCard = ({
   currentTier,
@@ -70,37 +71,18 @@ const TierCard = ({
     }
   }, [isOpen]);
 
-  // A tier's description is a summary line, then (after a blank line) its details.
   const options = useMemo(
     () =>
       tiers.map((tier) => {
         const name = getEntityName(tier);
-        const description = tier.description ?? '';
-        const splitAt = description.indexOf('\n\n');
-        const hasDetails = splitAt !== -1;
-        const summary = (
-          hasDetails ? description.slice(0, splitAt) : description
-        ).replace(/\*/g, '');
-        const details = hasDetails ? description.slice(splitAt).trim() : '';
+        const { summary, details } = splitTierDescription(tier.description);
 
         return {
           value: tier.fullyQualifiedName ?? '',
           textValue: name,
           icon: Tag01,
-          label: (
-            <span className="tw:flex tw:min-w-0 tw:flex-col">
-              <span
-                className="tw:truncate"
-                style={{ color: tier.style?.color }}>
-                {name}
-              </span>
-              {summary && (
-                <span className="tw:text-xs tw:whitespace-normal tw:text-tertiary">
-                  {summary}
-                </span>
-              )}
-            </span>
-          ),
+          label: <span style={{ color: tier.style?.color }}>{name}</span>,
+          description: summary || undefined,
           details: details ? (
             <RichTextEditorPreviewerV1
               className="tier-card-description"
@@ -148,6 +130,7 @@ const TierCard = ({
       isLoading={isLoadingTierData}
       isOpen={isOpen}
       label={t('label.tier')}
+      menuClassName="tw:max-h-104"
       options={options}
       // A current tier missing from the list (e.g. disabled) still reads by name.
       resolveMissingLabel={getNameFromFQN}

@@ -156,6 +156,10 @@
       },
       "default": null
     },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
     "processingStatus": {
       "description": "Status of the most recent knowledge-pill extraction run on this article's body.",
       "$ref": "#/definitions/pageProcessingStatus"
@@ -172,6 +176,11 @@
       "description": "Number of knowledge pills (context memories) extracted from this page.",
       "type": "integer",
       "default": 0
+    },
+    "neverExtracted": {
+      "description": "Whether this article has a body but its memories were never extracted, so it shows as Not processed. Computed on read and never stored.",
+      "type": "boolean",
+      "readOnly": true
     }
   },
   "required": ["name", "pageType", "page"],

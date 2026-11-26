@@ -24,6 +24,17 @@ export const isMaskedEmail = (email: string) => {
   return email === MASKED_EMAIL;
 };
 
+/** The email to show, or undefined when it is missing or PII-masked. */
+export const getVisibleEmail = (email?: string): string | undefined =>
+  email && !isMaskedEmail(email) ? email : undefined;
+
+/**
+ * The value for a user table's Email column: the email, or the login when the email is missing or
+ * PII-masked, so the column always tells users who share a display name apart.
+ */
+export const getUserIdentifier = (user: Pick<User, 'email' | 'name'>) =>
+  getVisibleEmail(user.email) ?? user.name;
+
 export const getUserCreationErrorMessage = ({
   error,
   entity,
@@ -97,3 +108,9 @@ export const getUserOnlineStatus = (userData: User, includeTooltip = false) => {
 
   return null;
 };
+
+/** "Alice" from "Alice Johnson" — used where copy addresses another user. */
+export const getUserFirstName = (user: {
+  name: string;
+  displayName?: string;
+}): string => (user.displayName?.trim() || user.name).split(/\s+/)[0];

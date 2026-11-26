@@ -14,7 +14,12 @@
  * Server-captured immutable ontology release reviewed by an existing approval workflow task.
  */
 export interface OntologyReviewTarget {
-    author: string;
+    /**
+     * Approval rule frozen when the review was requested. Reviews requested before the rule
+     * existed decide on the first approval.
+     */
+    approvalRule?: OntologyApprovalRule;
+    author:        string;
     /**
      * SHA-256 of the ontology-review-v3 sealed release identity.
      */
@@ -28,4 +33,17 @@ export interface OntologyReviewTarget {
      * Owning ontology ID used to serialize release review decisions.
      */
     ontologyId: string;
+}
+
+/**
+ * Approval rule frozen when the review was requested. Reviews requested before the rule
+ * existed decide on the first approval.
+ *
+ * How many of an ontology's reviewers must approve a release review. AnyReviewer decides on
+ * the first approval. AllReviewers waits for every reviewer entry; a reviewer team counts
+ * once and any member covers it. Frozen into the review task when a review is requested.
+ */
+export enum OntologyApprovalRule {
+    AllReviewers = "AllReviewers",
+    AnyReviewer = "AnyReviewer",
 }

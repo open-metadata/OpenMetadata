@@ -12,7 +12,6 @@
  */
 
 import { getByTestId, render, screen } from '@testing-library/react';
-import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import SearchEmptyState from './SearchEmptyState';
 
 jest.mock('react-router-dom', () => ({
@@ -36,32 +35,41 @@ jest.mock('../../../utils/i18next/LocalUtil', () => ({
   t: jest.fn().mockImplementation((key) => key),
 }));
 
-const mockErrorMessage =
-  'An exception with message [Elasticsearch exception [type=index_not_found_exception, reason=no such index [test_search_index]]] was thrown while processing request.';
-
 describe('Test Error placeholder ingestion Component', () => {
-  it('Component should render error placeholder', () => {
-    const { container } = render(
-      <SearchEmptyState type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR} />
+  it('switches to filter guidance when search clears but deleted assets remain selected', () => {
+    const { rerender } = render(
+      <SearchEmptyState query={{ search: 'missing', showDeleted: 'true' }} />
     );
 
-    expect(getByTestId(container, 'es-error')).toBeInTheDocument();
+    expect(screen.getByText('label.no-result-found')).toBeInTheDocument();
+
+    rerender(<SearchEmptyState query={{ showDeleted: 'true' }} />);
+
+    expect(
+      screen.getByText('label.no-result-for-these-filter-plural')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('message.try-adjusting-filter')
+    ).toBeInTheDocument();
   });
 
-  it('Component should render no data placeholder', () => {
-    const { container } = render(
-      <SearchEmptyState type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA} />
-    );
+  it('keeps the domain status in the headline, with separate guidance and documentation', () => {
+    const { container } = render(<SearchEmptyState />);
 
     expect(getByTestId(container, 'no-search-results')).toBeInTheDocument();
+    expect(screen.getByText('message.no-data-available-entity')).toHaveClass(
+      'tw:text-sm',
+      'tw:font-semibold'
+    );
+    expect(screen.getByText('message.add-data-asset-domain')).toHaveClass(
+      'tw:text-xs'
+    );
+    expect(screen.getByText('message.refer-to-our-doc')).toBeInTheDocument();
   });
 
   it('Component should render Filter Placeholder for query search', () => {
     const { container } = render(
-      <SearchEmptyState
-        query={{ search: 'test' }}
-        type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
-      />
+      <SearchEmptyState query={{ search: 'test' }} />
     );
     const noDataES = getByTestId(container, 'no-search-results');
     const searchFilterPlaceholder = getByTestId(
@@ -70,35 +78,5 @@ describe('Test Error placeholder ingestion Component', () => {
     );
 
     expect(searchFilterPlaceholder).toBeInTheDocument();
-  });
-
-  it('Component should render error placeholder with ES index', () => {
-    const { container } = render(
-      <SearchEmptyState
-        errorMessage={mockErrorMessage}
-        type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR}
-      />
-    );
-    const errorES = getByTestId(container, 'es-error');
-    const errMsg = getByTestId(errorES, 'error-text');
-
-    expect(errMsg.textContent).toMatch('message.unable-to-error-elasticsearch');
-  });
-
-  it('should render with correct brandName keys', () => {
-    const { container } = render(
-      <SearchEmptyState
-        errorMessage={mockErrorMessage}
-        type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR}
-      />
-    );
-    const errorES = getByTestId(container, 'es-error');
-
-    expect(errorES).toBeInTheDocument();
-
-    // Verify the translation function was called with brandName parameter
-    expect(
-      screen.getByText(/message.welcome-to-open-metadata/)
-    ).toBeInTheDocument();
   });
 });

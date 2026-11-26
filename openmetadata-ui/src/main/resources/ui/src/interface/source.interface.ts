@@ -115,6 +115,7 @@ export type SourceType = (
   tier?: string | TagLabel;
   tags?: TagLabel[];
   entityType?: string;
+  deleted?: boolean;
   service?: EntityReference;
   style?: Style;
   dataProducts?: EntityReference[];

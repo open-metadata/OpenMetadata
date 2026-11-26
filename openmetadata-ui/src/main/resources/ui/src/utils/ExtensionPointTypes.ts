@@ -75,8 +75,24 @@ export interface PluginEntityDetailsContext {
    * title, actions) without needing a separate route. Only provided by
    * ProfilePage when it maps contributed tabs; other consumers leave it absent.
    * Pass `null` to clear the override and restore the default header.
+   * The first breadcrumb is replaced by the sidebar group label
+   * (ADR:2026-11-16-settings-breadcrumb-root-is-the-sidebar-group).
+   * On a team tab's sub-page (Members) the team header keeps its own trail:
+   * only `title`, `description` and `actions` are used.
    */
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
+  /**
+   * The tab's own route below its key, when the host renders it as a panel-level
+   * sub-page (the Members team panel). Absent while the tab renders in place.
+   */
+  subPath?: string;
+  /**
+   * Opens one of this tab's sub-pages as a panel-level page, replacing the
+   * host's own chrome — or returns to the host when called with no sub-path.
+   * Only provided by hosts that support it; others leave it absent, and the tab
+   * is expected to fall back to rendering in place.
+   */
+  onNavigate?: (subPath?: string) => void;
 }
 
 // ============================================================================
@@ -330,14 +346,17 @@ export interface SlotContribution {
 }
 
 /**
- * Props for a `SERVICE_DETAILS_TEST_CONNECTION_ACTIONS` contribution: the page
- * context plus the test's raw log (the same text "Copy log" copies) and a
- * callback that closes the test connection dialog.
+ * Props for a `SERVICE_DETAILS_TEST_CONNECTION_ACTIONS` contribution: the
+ * service under test (unsaved while it is being created), the test's raw log
+ * (the same text "Copy log" copies) and a callback that closes the test
+ * connection dialog.
  */
-export type TestConnectionActionProps = PluginEntityDetailsContext & {
+export interface TestConnectionActionProps {
+  serviceType: string;
+  serviceName?: string;
   failure: string;
   onClose: () => void;
-};
+}
 
 export interface TestConnectionActionContribution {
   key: string;

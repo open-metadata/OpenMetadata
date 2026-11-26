@@ -12,14 +12,20 @@
  */
 
 import { PageLayout } from '@openmetadata/ui-core-components';
-import React, { PropsWithChildren, useEffect } from 'react';
+import React, { PropsWithChildren, useCallback, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
-import { useSettingsHash } from '../../../hooks/useSettingsHash';
+import { usePersonalSpaceStore } from '../../../hooks/usePersonalSpaceStore';
+import {
+  useSettingsHash,
+  useSettingsHashSync,
+} from '../../../hooks/useSettingsHash';
+import { useSettingsLinkInterceptor } from '../../../hooks/useSettingsLinkInterceptor';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { isFullscreenPersonaHash } from '../../discovery/personal-space/Profile/tabs/personas/Personas.utils';
 import { useAppModeBanners, useAppModeOverlays } from './appModeExtensions';
 import './AssistantLayout/assistant-layout.less';
+import GlobalSearchModal from './GlobalSearch/GlobalSearchModal';
 import Sidebar from './Sidebar/Sidebar';
 
 // Core personal-space chrome is OSS-owned, while proprietary overlays continue
@@ -53,6 +59,32 @@ export const AppShell = ({ children }: PropsWithChildren) => {
   const { pathname, search, hash } = useLocation();
   const analytics = useAnalytics();
   const { state: settingsHash } = useSettingsHash();
+  useSettingsLinkInterceptor();
+  const isPersonalSpaceOpen = usePersonalSpaceStore(
+    (state) => state.activePanel !== null
+  );
+  const openPersonalSpace = usePersonalSpaceStore((state) => state.open);
+  const closePersonalSpace = usePersonalSpaceStore((state) => state.close);
+  const suppressHashClear = usePersonalSpaceStore(
+    (state) => state.suppressHashClear
+  );
+  const clearSuppressHashClear = usePersonalSpaceStore(
+    (state) => state.clearSuppressHashClear
+  );
+  const openProfile = useCallback(
+    (panel: 'profile') => openPersonalSpace(panel),
+    [openPersonalSpace]
+  );
+  // Here, not in the lazy PersonalSpaceModal: closing pops the history entries
+  // this hook counted, and a Settings click that lands before the modal chunk
+  // loads would go uncounted, leaving settings entries behind the page.
+  useSettingsHashSync(
+    openProfile,
+    isPersonalSpaceOpen,
+    suppressHashClear,
+    clearSuppressHashClear,
+    closePersonalSpace
+  );
   // Hidden, not unmounted: the routed page keeps its state for when the
   // persona fullscreen view closes and the personal-space modal reopens on it.
   const isPersonaFullscreen = isFullscreenPersonaHash(
@@ -97,6 +129,7 @@ export const AppShell = ({ children }: PropsWithChildren) => {
       {overlays.map(({ key, component: Overlay }) => (
         <Overlay key={key} />
       ))}
+      <GlobalSearchModal />
       <PersonalSpaceModal />
       <PersonaFullscreenPortal />
     </>

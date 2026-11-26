@@ -19,16 +19,19 @@ mvn test -pl :openmetadata-integration-tests -Dtest="TableResourceIT"
 
 | Profile | Database | Search Engine |
 |---------|----------|---------------|
-| `mysql-elasticsearch` (default) | MySQL 8.3.0 | Elasticsearch 8.11.4 |
+| `mysql-elasticsearch` (default) | MySQL 8.4.13 | Elasticsearch 8.11.4 |
 | `postgres-opensearch` | PostgreSQL 15 | OpenSearch 2.19.0 |
 | `postgres-elasticsearch` | PostgreSQL 15 | Elasticsearch 8.11.4 |
-| `mysql-opensearch` | MySQL 8.3.0 | OpenSearch 2.19.0 |
+| `mysql-opensearch` | MySQL 8.4.13 | OpenSearch 2.19.0 |
 
 ## RDF Tests
 
-Tests that need the RDF store skip unless RDF is enabled. The `rdf` lane enables it, builds a
-Fuseki image from `docker/rdf-store`, and runs the classes listed in `integrationTests.rdfTests`
-in the pom. CI runs the lane on MySQL and on PostgreSQL:
+Tests that need the RDF store skip unless RDF is enabled. The `rdf` lane enables it, starts the
+published `openmetadata/fuseki` image pinned in `bootstrap/FusekiTestImage.java` with the
+environment OpenMetadata deploys it with, and runs the classes listed in `integrationTests.rdfTests`
+in the pom. Pass `-DrdfContainerImage=<image>` to test another build of that image, such as
+`openmetadata-fuseki:local` built from the [open-metadata/jena](https://github.com/open-metadata/jena)
+fork. CI runs the lane on MySQL and on PostgreSQL:
 
 ```bash
 mvn verify -pl :openmetadata-integration-tests -Pmysql-elasticsearch -DintegrationTests.lane=rdf

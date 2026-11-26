@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RJSFSchema } from '@rjsf/utils';
 import { ComponentType, SVGProps } from 'react';
 
 export type IconComponent = ComponentType<
@@ -31,18 +32,18 @@ export interface FilterCondition {
   value: string;
 }
 
-export interface FilterPatternConfig {
+export type FilterPatternConfig = {
   excludes?: string[];
   includes?: string[];
-}
+};
 
 export interface FilterSchemaProperty {
   default?: FilterPatternConfig;
   description?: string;
   javaType?: string;
-  properties?: Record<string, unknown>;
+  properties?: RJSFSchema['properties'];
   title?: string;
-  type?: string;
+  type?: RJSFSchema['type'];
 }
 
 export interface FilterSection {

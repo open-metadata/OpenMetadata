@@ -32,7 +32,6 @@ jest.mock('../personalSpace.constants', () => ({
     INBOX: '/inbox',
     INBOX_ACTIVITY: '/inbox/activity',
     INBOX_TASKS: '/inbox/tasks',
-    MY_DATA: '/my-data',
   },
 }));
 

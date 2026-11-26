@@ -35,13 +35,14 @@ public class LdapUtil {
       LdapConfiguration ldapConfiguration, LDAPConnectionOptions connectionOptions) {
     X509TrustManager x509TrustManager;
     SSLSocketVerifier sslSocketVerifier;
-    LdapConfiguration.TruststoreConfigType configType = ldapConfiguration.getTruststoreConfigType();
+    LdapConfiguration.TruststoreConfigType configType = requireTrustStore(ldapConfiguration);
     switch (configType) {
       case CUSTOM_TRUST_STORE -> {
         CustomTrustManagerConfig customTrustManagerConfig =
-            JsonUtils.convertValue(
+            trustStoreSettings(
                 ldapConfiguration.getTrustStoreConfig().getCustomTrustManagerConfig(),
-                CustomTrustManagerConfig.class);
+                CustomTrustManagerConfig.class,
+                configType);
         x509TrustManager =
             new TrustStoreTrustManager(
                 customTrustManagerConfig.getTrustStoreFilePath(),
@@ -53,30 +54,61 @@ public class LdapUtil {
       }
       case HOST_NAME -> {
         HostNameConfig hostNameConfig =
-            JsonUtils.convertValue(
-                ldapConfiguration.getTrustStoreConfig().getHostNameConfig(), HostNameConfig.class);
+            trustStoreSettings(
+                ldapConfiguration.getTrustStoreConfig().getHostNameConfig(),
+                HostNameConfig.class,
+                configType);
         x509TrustManager =
             new HostNameTrustManager(
                 hostNameConfig.getAllowWildCards(), hostNameConfig.getAcceptableHostNames());
       }
       case JVM_DEFAULT -> {
         JVMDefaultConfig jvmDefaultConfig =
-            JsonUtils.convertValue(
+            trustStoreSettings(
                 ldapConfiguration.getTrustStoreConfig().getJvmDefaultConfig(),
-                JVMDefaultConfig.class);
+                JVMDefaultConfig.class,
+                configType);
         x509TrustManager = JVMDefaultTrustManager.getInstance();
         sslSocketVerifier = hostNameVerifier(jvmDefaultConfig.getVerifyHostname());
         connectionOptions.setSSLSocketVerifier(sslSocketVerifier);
       }
       case TRUST_ALL -> {
         TrustAllConfig trustAllConfig =
-            JsonUtils.convertValue(
-                ldapConfiguration.getTrustStoreConfig().getTrustAllConfig(), TrustAllConfig.class);
+            trustStoreSettings(
+                ldapConfiguration.getTrustStoreConfig().getTrustAllConfig(),
+                TrustAllConfig.class,
+                configType);
         x509TrustManager = new TrustAllTrustManager(trustAllConfig.getExamineValidityDates());
       }
       default -> throw new IllegalArgumentException("Invalid Truststore type.");
     }
     return x509TrustManager;
+  }
+
+  /**
+   * The trust store type an SSL connection needs. Without one there is no way to trust the
+   * directory's certificate, which used to surface as a NullPointerException when the
+   * configuration was applied rather than as a reason at save.
+   */
+  private static LdapConfiguration.TruststoreConfigType requireTrustStore(
+      LdapConfiguration ldapConfiguration) {
+    LdapConfiguration.TruststoreConfigType configType = ldapConfiguration.getTruststoreConfigType();
+    if (configType == null || ldapConfiguration.getTrustStoreConfig() == null) {
+      throw new IllegalArgumentException(
+          "SSL is on but no trust store is chosen: choose a trust store type and fill in its"
+              + " settings, or turn SSL off");
+    }
+    return configType;
+  }
+
+  private static <T> T trustStoreSettings(
+      Object settings, Class<T> type, LdapConfiguration.TruststoreConfigType configType) {
+    T converted = JsonUtils.convertValue(settings, type);
+    if (converted == null) {
+      throw new IllegalArgumentException(
+          String.format("The %s trust store type needs its trust store settings", configType));
+    }
+    return converted;
   }
 
   private SSLSocketVerifier hostNameVerifier(boolean verifyHostName) {

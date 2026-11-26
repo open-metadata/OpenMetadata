@@ -8,9 +8,10 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
-import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
 
@@ -33,30 +34,19 @@ class CompiledTextTest {
   void oneSourceTextIsWhatTheBuilderHasAlwaysWritten() {
     assertEquals(
         "filterByOwnerName | include | AND | matchAnyOwnerName({'first value','second ''quoted'''})",
-        rulesOf(
-            AlertType.NOTIFICATION, "table", "filterByOwnerName", ArgumentsInput.Effect.INCLUDE));
+        rulesOf(AlertType.NOTIFICATION, "table", "filterByOwnerName", Effect.INCLUDE));
     assertEquals(
         "filterByOwnerName | exclude | AND | matchAnyOwnerName({'first value','second ''quoted'''})",
-        rulesOf(
-            AlertType.NOTIFICATION, "table", "filterByOwnerName", ArgumentsInput.Effect.EXCLUDE));
+        rulesOf(AlertType.NOTIFICATION, "table", "filterByOwnerName", Effect.EXCLUDE));
     assertEquals(
         "filterByUpdaterIsBot | include | AND | isBot()",
-        rulesOf(
-            AlertType.NOTIFICATION, "all", "filterByUpdaterIsBot", ArgumentsInput.Effect.INCLUDE));
+        rulesOf(AlertType.NOTIFICATION, "all", "filterByUpdaterIsBot", Effect.INCLUDE));
     assertEquals(
         "GetTableSchemaChanges | include | AND | matchAnyFieldChange({'columns','dataModel','joins'})",
-        actionsOf(
-            AlertType.OBSERVABILITY,
-            "table",
-            "GetTableSchemaChanges",
-            ArgumentsInput.Effect.INCLUDE));
+        actionsOf(AlertType.OBSERVABILITY, "table", "GetTableSchemaChanges", Effect.INCLUDE));
     assertEquals(
         "GetPipelineStatusUpdates | exclude | AND | matchPipelineState({'first value','second ''quoted'''})",
-        actionsOf(
-            AlertType.OBSERVABILITY,
-            "pipeline",
-            "GetPipelineStatusUpdates",
-            ArgumentsInput.Effect.EXCLUDE));
+        actionsOf(AlertType.OBSERVABILITY, "pipeline", "GetPipelineStatusUpdates", Effect.EXCLUDE));
   }
 
   // The worked example: tables and topics whose schema changed, and pipelines whose run failed.
@@ -66,11 +56,11 @@ class CompiledTextTest {
         new AlertFilteringInput()
             .withActions(
                 List.of(
-                    chosen("GetTableSchemaChanges", ArgumentsInput.Effect.INCLUDE, null, null),
-                    chosen("GetTopicSchemaChanges", ArgumentsInput.Effect.INCLUDE, null, null),
+                    chosen("GetTableSchemaChanges", Effect.INCLUDE, null, null),
+                    chosen("GetTopicSchemaChanges", Effect.INCLUDE, null, null),
                     chosen(
                         "GetPipelineStatusUpdates",
-                        ArgumentsInput.Effect.INCLUDE,
+                        Effect.INCLUDE,
                         "pipelineStateList",
                         "failed")));
 
@@ -80,7 +70,7 @@ class CompiledTextTest {
 
     assertEquals(List.of("table", "topic", "pipeline"), stored.getResources());
     assertEquals(1, stored.getActions().size(), "one rule holds every group");
-    assertEquals(ArgumentsInput.Effect.INCLUDE, stored.getActions().getFirst().getEffect());
+    assertEquals(Effect.INCLUDE, stored.getActions().getFirst().getEffect());
     assertEquals(
         "(matchAnySource({'table'}) && (matchAnyFieldChange({'columns','dataModel','joins'})))"
             + " || (matchAnySource({'topic'}) && (matchAnyFieldChange({'messageSchema'})))"
@@ -88,8 +78,7 @@ class CompiledTextTest {
         stored.getActions().getFirst().getCondition());
   }
 
-  private static ArgumentsInput chosen(
-      String name, ArgumentsInput.Effect effect, String argument, String value) {
+  private static ArgumentsInput chosen(String name, Effect effect, String argument, String value) {
     List<Argument> arguments =
         argument == null
             ? List.of()
@@ -97,15 +86,13 @@ class CompiledTextTest {
     return new ArgumentsInput().withName(name).withEffect(effect).withArguments(arguments);
   }
 
-  private static String rulesOf(
-      AlertType type, String source, String filter, ArgumentsInput.Effect effect) {
+  private static String rulesOf(AlertType type, String source, String filter, Effect effect) {
     AlertFilteringInput input =
         new AlertFilteringInput().withFilters(List.of(selection(definition(filter), effect)));
     return textOf(type, source, input).getRules();
   }
 
-  private static String actionsOf(
-      AlertType type, String source, String trigger, ArgumentsInput.Effect effect) {
+  private static String actionsOf(AlertType type, String source, String trigger, Effect effect) {
     AlertFilteringInput input =
         new AlertFilteringInput().withActions(List.of(selection(definition(trigger), effect)));
     return textOf(type, source, input).getActions();
@@ -149,7 +136,7 @@ class CompiledTextTest {
     return String.join(" ;; ", parts);
   }
 
-  private static ArgumentsInput selection(EventFilterRule rule, ArgumentsInput.Effect effect) {
+  private static ArgumentsInput selection(EventFilterRule rule, Effect effect) {
     List<Argument> arguments = new ArrayList<>();
     for (String name : listOrEmpty(rule.getArguments())) {
       arguments.add(new Argument().withName(name).withInput(FIXTURE_VALUES));

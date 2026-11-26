@@ -42,11 +42,8 @@ import {
 import {
   formatDateTimeLong,
   getCurrentMillis,
-  getEndOfDayInMillis,
-  getEpochMillisForPastDays,
   getRelativeCalendar,
   getRelativeTime,
-  getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 
@@ -342,6 +339,14 @@ export enum ActivityFilter {
   Following = 'following',
 }
 
+const ACTIVITY_FILTERS = new Set<string>(Object.values(ActivityFilter));
+
+/** A link's `?filter=` value as an Activity sub-tab; anything else is ignored. */
+export const parseActivityFilter = (
+  value?: string | null
+): ActivityFilter | undefined =>
+  value && ACTIVITY_FILTERS.has(value) ? (value as ActivityFilter) : undefined;
+
 export enum ActivityGrouping {
   Day = 'day',
   Asset = 'asset',
@@ -394,12 +399,17 @@ export const isSameLocalDay = (first?: number, second?: number): boolean =>
 export type { InboxDateRange } from '../../../../interface/inbox.interface';
 
 // The window a date preset covers: from the start of its first day to the end
-// of today. getDefaultInboxDateRange (last 30 days) seeds the page and the
-// sidebar inbox-icon count.
-export const getInboxDateRange = (days: number): InboxDateRange => ({
-  startTs: getStartOfDayInMillis(getEpochMillisForPastDays(days)),
-  endTs: getEndOfDayInMillis(getCurrentMillis()),
-});
+// of today, in the viewer's own days, which the feed's day headers use too.
+// getDefaultInboxDateRange (last 30 days) seeds the page and the sidebar
+// inbox-icon count.
+export const getInboxDateRange = (days: number): InboxDateRange => {
+  const now = DateTime.now();
+
+  return {
+    startTs: now.minus({ days }).startOf('day').toMillis(),
+    endTs: now.endOf('day').toMillis(),
+  };
+};
 
 export const DEFAULT_INBOX_DATE_PRESET = 'last30days';
 
@@ -420,12 +430,21 @@ export const ACTIVITY_LIMIT = 200;
 export const CONVERSATION_LIMIT = 100;
 
 // Presets capped to the activity API's 30-day window (drops 60-day+); titles are
-// translated by the picker's consumer.
-export const INBOX_DATE_RANGE_OPTIONS: DateFilterType = Object.fromEntries(
-  (
-    Object.entries(PROFILER_FILTER_RANGE) as [string, DateFilterType[string]][]
-  ).filter(([, value]) => value.days <= MAX_ACTIVITY_DAYS)
-);
+// translated by the picker's consumer. Every window runs to the end of today,
+// as the activity API takes no end time, so the profiler's "Yesterday" (which
+// would read as yesterday alone) is offered as "Today".
+// ADR:2026-11-16-a-capped-inbox-feed-is-cut-at-its-oldest-item
+export const INBOX_DATE_RANGE_OPTIONS: DateFilterType = {
+  today: { days: 0, title: 'label.today' },
+  ...Object.fromEntries(
+    (
+      Object.entries(PROFILER_FILTER_RANGE) as [
+        string,
+        DateFilterType[string]
+      ][]
+    ).filter(([, value]) => value.days > 1 && value.days <= MAX_ACTIVITY_DAYS)
+  ),
+};
 
 // Convert the Inbox date window to the `days` param the /activity API takes,
 // clamped to the server's 30-day cap (defaults to the cap when unset).
@@ -439,6 +458,20 @@ export const getActivityWindowDays = (dateRange?: InboxDateRange): number => {
 
   return Math.min(Math.max(days, 1), MAX_ACTIVITY_DAYS);
 };
+
+// `@Max(90)` on the `days` of `/activity/about` and `/activity/user`.
+const ACTIVITY_LOOKBACK_MAX_DAYS = 90;
+
+// The whole days from now back to the window's start, for the endpoints that
+// take only a `days` look-back (`/activity/about`, `/activity/user`). They
+// allow up to 90, so this is not held to the 30-day cap: a 30-day window
+// starts at midnight 30 days ago, which a 30-day look-back from now stops
+// short of. Whatever it reaches past the window is clipped client-side.
+export const getActivityLookbackDays = (startTs: number): number =>
+  Math.min(
+    Math.max(Math.ceil((getCurrentMillis() - startTs) / ACTIVITY_DAY_MS), 1),
+    ACTIVITY_LOOKBACK_MAX_DAYS
+  );
 
 // A list that came back a full page may hold fewer items than the window has,
 // so its length is a floor, not a total.

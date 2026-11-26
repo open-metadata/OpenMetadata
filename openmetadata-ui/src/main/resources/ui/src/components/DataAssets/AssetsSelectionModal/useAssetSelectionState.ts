@@ -17,6 +17,7 @@ import {
   UIEventHandler,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -27,6 +28,7 @@ import {
   SOCKET_EVENTS,
 } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
+import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -61,7 +63,7 @@ import {
 import { getMetricByFqn } from '../../../rest/metricsAPI';
 import { addMetricTabAssets } from '../../../rest/metricTabsAPI';
 import { domainAssetsCountQueryKey } from '../../../rest/queries/domainQuery';
-import { searchQuery } from '../../../rest/searchAPI';
+import { searchQuery, searchQueryPost } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchPureUtils';
 import { getDomainDryRunImpacts } from '../../../utils/Domain/DomainDryRunUtils';
@@ -87,6 +89,13 @@ export interface UseAssetSelectionStateProps {
   onSave?: () => void;
   onCancel?: () => void;
   queryFilter?: QueryFilterInterface;
+  /**
+   * Route the asset picker's search through `POST /v1/search/query`
+   * (searchAPI.searchQueryPost) instead of GET. Set for callers whose `queryFilter`
+   * can grow large enough to overflow the server's request-line size limit — e.g. the
+   * metric Add-Assets modal, whose `must_not` filter embeds every already-linked asset id.
+   */
+  useQueryPost?: boolean;
 }
 
 const SCROLL_BOTTOM_THRESHOLD_PX = 50;
@@ -111,6 +120,25 @@ const assetsFilterFor = (type: AssetsOfEntity) =>
     ? PORT_ASSETS_FILTER
     : undefined;
 
+// `name.keyword` is lowercased in most indices but not all; `case_insensitive`
+// makes the match behave the same for every asset type.
+const exactNameFilterFor = (name: string): QueryFilterInterface => ({
+  query: {
+    bool: {
+      must: [
+        {
+          term: {
+            [EntityFields.NAME_KEYWORD]: {
+              value: name,
+              case_insensitive: true,
+            },
+          },
+        },
+      ],
+    },
+  },
+});
+
 export const useAssetSelectionState = ({
   entityFqn,
   onCancel,
@@ -119,9 +147,11 @@ export const useAssetSelectionState = ({
   type = AssetsOfEntity.GLOSSARY,
   variant = 'modal',
   queryFilter,
+  useQueryPost = false,
 }: UseAssetSelectionStateProps) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
+  const [isExactName, setIsExactName] = useState(false);
   const [items, setItems] = useState<SearchedDataProps['data']>([]);
   const [failedStatus, setFailedStatus] = useState<BulkOperationResult>();
   const [dryRunWarnings, setDryRunWarnings] = useState<BulkResponse[]>();
@@ -131,7 +161,7 @@ export const useAssetSelectionState = ({
   const [selectedItems, setSelectedItems] =
     useState<Map<string, EntityDetailUnion>>();
   const [isLoading, setIsLoading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<SearchIndex>(
+  const [activeFilter] = useState<SearchIndex>(
     [
       AssetsOfEntity.GLOSSARY,
       AssetsOfEntity.DATA_PRODUCT_INPUT_PORT,
@@ -162,8 +192,27 @@ export const useAssetSelectionState = ({
   const [quickFilterQuery, setQuickFilterQuery] =
     useState<QueryFilterInterface>();
   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
+  const latestFetchIdRef = useRef(0);
 
   const { socket } = useWebSocketConnector();
+
+  const exactName = isExactName ? search.trim() : '';
+  // The relevance query can miss names with query syntax in them, so the filter
+  // alone decides which names match.
+  const searchText = exactName ? '' : search;
+
+  const combinedQueryFilter = useMemo(
+    () =>
+      getCombinedQueryFilterObject(
+        getCombinedQueryFilterObject(
+          queryFilter,
+          quickFilterQuery,
+          assetsFilterFor(type)
+        ),
+        exactName ? exactNameFilterFor(exactName) : undefined
+      ),
+    [queryFilter, quickFilterQuery, type, exactName]
+  );
 
   const fetchEntities = useCallback(
     async ({
@@ -177,9 +226,13 @@ export const useAssetSelectionState = ({
       index?: SearchIndex;
       updatedQueryFilter?: Record<string, unknown>;
     }) => {
+      const fetchId = ++latestFetchIdRef.current;
+      const isLatestFetch = () => fetchId === latestFetchIdRef.current;
+
       try {
         setIsLoading(true);
-        const res = await searchQuery({
+        const searchFn = useQueryPost ? searchQueryPost : searchQuery;
+        const res = await searchFn({
           pageNumber: page,
           pageSize: PAGE_SIZE_MEDIUM,
           searchIndex: index,
@@ -187,16 +240,32 @@ export const useAssetSelectionState = ({
           queryFilter: updatedQueryFilter,
           includeDeleted: false,
         });
+        // A slow loose search must not replace the exact results that followed it.
+        if (!isLatestFetch()) {
+          return;
+        }
         const hits = res.hits.hits as SearchedDataProps['data'];
         setTotalCount(res.hits.total.value ?? 0);
         setItems(page === 1 ? hits : (prevItems) => [...prevItems, ...hits]);
         setPageNumber(page);
         setAggregations(getAggregations(res?.aggregations));
+      } catch (err) {
+        if (isLatestFetch()) {
+          // The listed assets answer an earlier search, so they must not stay
+          // selectable as if they matched this one.
+          if (page === 1) {
+            setItems([]);
+            setTotalCount(0);
+          }
+          showErrorToast(err as AxiosError);
+        }
       } finally {
-        setIsLoading(false);
+        if (isLatestFetch()) {
+          setIsLoading(false);
+        }
       }
     },
-    [setActiveFilter]
+    [activeFilter, useQueryPost]
   );
 
   const fetchCurrentEntity = useCallback(async () => {
@@ -256,22 +325,17 @@ export const useAssetSelectionState = ({
 
   useEffect(() => {
     if (open) {
-      const combinedQueryFilter = getCombinedQueryFilterObject(
-        queryFilter as unknown as QueryFilterInterface,
-        quickFilterQuery as QueryFilterInterface,
-        assetsFilterFor(type)
-      );
       fetchEntities({
         index: activeFilter,
-        searchText: search,
+        searchText,
         updatedQueryFilter: combinedQueryFilter,
       });
     }
-  }, [open, activeFilter, search, type, quickFilterQuery, queryFilter]);
+  }, [open, activeFilter, searchText, combinedQueryFilter]);
 
   useEffect(() => {
     if (open) {
-      fetchCurrentEntity();
+      fetchCurrentEntity().catch((err) => showErrorToast(err as AxiosError));
     }
   }, [open, fetchCurrentEntity]);
 
@@ -363,6 +427,16 @@ export const useAssetSelectionState = ({
 
   const handleSaveError = useCallback(
     (err: unknown) => {
+      // A bulk request where every row failed comes back as a 400 carrying the
+      // per-row reasons, which the list shows against each asset.
+      const bulkResult = (err as AxiosError<BulkOperationResult>).response
+        ?.data;
+      if (bulkResult?.failedRequest?.length) {
+        setFailedStatus(bulkResult);
+
+        return;
+      }
+
       if (variant === 'drawer') {
         showErrorToast(
           err as AxiosError,
@@ -500,18 +574,12 @@ export const useAssetSelectionState = ({
         remainingScrollHeight < SCROLL_BOTTOM_THRESHOLD_PX &&
         items.length < totalCount
       ) {
-        const combinedQueryFilter = getCombinedQueryFilterObject(
-          queryFilter as unknown as QueryFilterInterface,
-          quickFilterQuery as QueryFilterInterface,
-          assetsFilterFor(type)
-        );
-
         if (isLoading) {
           return;
         }
 
         fetchEntities({
-          searchText: search,
+          searchText,
           page: pageNumber + 1,
           index: activeFilter,
           updatedQueryFilter: combinedQueryFilter,
@@ -521,16 +589,21 @@ export const useAssetSelectionState = ({
     [
       pageNumber,
       activeFilter,
-      search,
+      searchText,
       totalCount,
       items,
-      quickFilterQuery,
-      queryFilter,
+      combinedQueryFilter,
       isLoading,
       fetchEntities,
-      type,
     ]
   );
+
+  // Items picked from the other mode's results are no longer listed, so keeping
+  // them selected would save assets the user cannot see.
+  const onExactNameChange = useCallback((isSelected: boolean) => {
+    setIsExactName(isSelected);
+    setSelectedItems(undefined);
+  }, []);
 
   const onSelectAll = (selectAll: boolean) => {
     setSelectedItems((prevItems) => {
@@ -639,8 +712,11 @@ export const useAssetSelectionState = ({
 
   return {
     assetsFilter: assetsFilterFor(type),
+    activeEntity,
     search,
     setSearch,
+    isExactName,
+    onExactNameChange,
     items,
     failedStatus,
     dryRunWarnings,

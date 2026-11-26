@@ -10,12 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { render, screen } from '@testing-library/react';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory } from '../enums/service.enum';
+import {
+  MlmodelService,
+  MlModelServiceType,
+} from '../generated/entity/services/mlmodelService';
 import {
   getActiveFieldNameForAppDocs,
   getSearchIndexFromService,
 } from './ServicePureUtils';
+import { getOptionalFields, processDocMarkdown } from './ServiceUtils';
 
 describe('getSearchIndexFromService', () => {
   it.each([
@@ -57,5 +63,50 @@ describe('Service Utils', () => {
         'field1.@special.field2'
       );
     });
+  });
+});
+
+describe('MLflow service card fields', () => {
+  it.each(['*********', 'http://localhost:5001', undefined])(
+    'shows tracking without displaying the registry value %s',
+    (registryUri) => {
+      const service: MlmodelService = {
+        id: 'mlflow-service',
+        name: 'demo_mlflow',
+        serviceType: MlModelServiceType.Mlflow,
+        connection: {
+          config: { trackingUri: 'http://localhost:5000', registryUri },
+        },
+      };
+
+      render(getOptionalFields(service, ServiceCategory.ML_MODEL_SERVICES));
+
+      expect(screen.getByText('http://localhost:5000')).toBeInTheDocument();
+      expect(screen.getAllByTestId('additional-field')).toHaveLength(1);
+
+      if (registryUri) {
+        expect(screen.queryByText(registryUri)).not.toBeInTheDocument();
+      }
+    }
+  );
+});
+
+describe('processDocMarkdown', () => {
+  it('preserves documentation sections, heading anchors, and admonitions', () => {
+    const markdown =
+      '# Setup\n\n$$section\n$(id="credentials")\n## Credentials\n\n**Key**\n$$\n\n$$note\nKeep `token` private.\n$$';
+    const doc = new DOMParser().parseFromString(
+      processDocMarkdown(markdown),
+      'text/html'
+    );
+
+    expect(doc.querySelector('h1')?.id).toBe('setup');
+    expect(doc.querySelector('section[data-id="credentials"] h2')?.id).toBe(
+      'credentials'
+    );
+    expect(doc.querySelector('section strong')?.textContent).toBe('Key');
+    expect(
+      doc.querySelector('[data-admonition="note"] code')?.textContent
+    ).toBe('token');
   });
 });

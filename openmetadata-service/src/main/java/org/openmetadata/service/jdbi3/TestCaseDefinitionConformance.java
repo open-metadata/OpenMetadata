@@ -108,7 +108,10 @@ final class TestCaseDefinitionConformance {
       TestDefinition definition, Table table, EntityLink entityLink) {
     List<ColumnDataType> supported = listOrEmpty(definition.getSupportedDataTypes());
     Optional<ColumnDataType> type =
-        column(table, entityLink.getArrayFieldName()).map(Column::getDataType);
+        Optional.ofNullable(
+                ColumnUtil.resolveColumnByPath(
+                    listOrEmpty(table.getColumns()), entityLink.getArrayFieldName()))
+            .map(Column::getDataType);
     boolean unsupported =
         !supported.isEmpty() && type.isPresent() && !supported.contains(type.get());
     if (unsupported) {
@@ -117,16 +120,5 @@ final class TestCaseDefinitionConformance {
               "Test definition '%s' does not support column type %s. Supported types are: %s",
               definition.getName(), type.get(), supported));
     }
-  }
-
-  // validateColumnTestCase matches the column name case-insensitively; this must find the same one.
-  private static Optional<Column> column(Table table, String name) {
-    return Optional.ofNullable(name)
-        .flatMap(
-            columnName ->
-                listOrEmpty(table.getColumns()).stream()
-                    .filter(Objects::nonNull)
-                    .filter(candidate -> candidate.getName().equalsIgnoreCase(columnName))
-                    .findFirst());
   }
 }

@@ -54,7 +54,6 @@
       "19a7f4e3adb937a4faf420ac4debff5e45d74673e36e665e6e95ca3a023dcf2d": 1,
       "255d2a9bb0d0dbc3c475fed2fd00add30cb46241ac8265a2e07dd734c2c51d75": 1,
       "31f088851c0019be2c27f30434f4fb937ffe7c252f651fd1197a818acd2f82ff": 1,
-      "432394ce2e9104120c6042632011c6a4472515a0eea6088e5a4d4c4bbc3634af": 1,
       "45671dcdd5c1be06df3a03504e8e50ca217302a896d5c7dbd25b497b6da0aa86": 1,
       "4cafe79b776e948b95945a07d980d5e107afeefd4d07047e281407da95aa678f": 1,
       "51c0fd95d7a97e69c2a88317d6a05b497807d0c3173e5d6786f17a19d8cb8ee9": 1,
@@ -298,22 +297,17 @@
     },
     "ingestion/src/metadata/ingestion/lineage/sql_lineage.py": {
       "08a09d80f4f23dc6f6d5261b127ec9cb83da6d80bea8a29f913ce71abf09f9f7": 1,
-      "292a4a7ac9d88a37d40a40ca7856fd517a4a842a81687bf415eeb543e4c04efd": 1,
       "29aaa8bd4cce380a733f65bc4990d455f9ca27b613354009f642a0980ab3e291": 1,
       "3157c1898bbc973d966b07a02e322d69c09b2564903251c63ef79e25e2009f64": 1,
       "501ad3c2390b2de8a2f0a61eaf06e88abff6ab6c81e924499773ddb45992eeaa": 1,
       "5462b39a6828aa4465271e90ba87453e8a2fbe66b27721bc05c64705fdd8a3fd": 1,
-      "725fe99be4e626c2babfaaa99ca34fe99e2318f02cc92d19df992db817f235ec": 1,
       "8ab435a7c6cea48c4d74770da333ff40fa5106b384e3d77cfd69409480f744fd": 1,
       "8fbd47ccd1fe0e3414b4a11d98230159c9762e429ddf068403625fd43a0f8184": 1,
       "a34f3e94bf882c2139e8e2514a247342c56083e9aec6f67cc20e3cc703ded3ae": 1,
-      "a64aeca00caddab14c2ea9d7c2951ca18bc1c1df33899a6f8d84a7b7e64da98c": 1,
       "a6cd8f31b9ec9a7c9b869a21fac2787f099f5395ffcbbee47ce66e5e3818811c": 1,
       "b9690b3b4d9243f6c5083522dcf182caee4ea1861ea658367c392943b9900c32": 1,
       "bf164df069c521e49803a2c505a1cb4275efb67617d459a7ef11c255685b3231": 1,
-      "d9cece0dc9b0d0cca7f52286fff73a04ca3a9b922f9651f9b3e57f97acc973c7": 1,
-      "dd209418ef13915fc3bafcc43b079aa5dcd32678c7bbbba486e57337e99335db": 1,
-      "fcd7318c43f65967448de4ee6eb29046ea8fe9197ea3d3135695c9069a5df757": 1
+      "d9cece0dc9b0d0cca7f52286fff73a04ca3a9b922f9651f9b3e57f97acc973c7": 1
     },
     "ingestion/src/metadata/ingestion/lineage/topic_lineage.py": {
       "29a5b714eef6205c95bcc1f43724f9e3f3fc2b0a31b095beecbaae92792c7c7a": 1,
@@ -594,10 +588,8 @@
       "1b06b568777966aadf12e0f7e72caa42d4a9f58668a97ba2c3dcd1eb802e4df7": 1,
       "1d792f509ad3a6d4334b2ff0469d71e27226dc6c82bd085c9b485c79743ed60a": 1,
       "2bdad51e787b9a706a9ee6eb7d056a1ed8772a892227b9411e8b6b4bafa5df12": 1,
-      "3d6505e080766fd9858b84e41ee8890f72b8ae161f20ef68d0428418f0eb1d2f": 1,
       "4d5fe115e9cdeeb1311e7da3c8f75c677dceefd2090265a278154fb0cc7372ed": 1,
       "8199251aefa487b68821b9ec5cb699a99ec61bd4ea46eb5d1ba7ae2578df6e21": 1,
-      "8f0ce9a77b5ac3d16e5e26070bbfd47418aa710808bbcc6f0035d6f6df4dac1e": 1,
       "947b8075bd6922219d5b74538e37a1bf21cb15b562cccdb6eb8c18243c048685": 1,
       "e736d5594b512a99713c3fb001f14ebb9146648b90be54faa82e822c913bb0af": 1
     },
@@ -606,15 +598,10 @@
       "fb180810b1e39b224b965074af503a7d163c4b8d2807dcd3fb162e43029b3772": 1
     },
     "ingestion/src/metadata/ingestion/source/dashboard/hex/metadata.py": {
-      "09aea5182e0d5ac91934a5567bd5411bd3e64f2110b780585a3a5befde8ccfb9": 1,
       "0a4292774fc783942b74e3aaa37c52b9c6e7ab8cd7dd3a16bfff772aaacaaa94": 1,
-      "61f33e84d0d4457f90e8ce845cbe72bd1bb9bd86a1526cd5d712cfb2f3556b8c": 1,
       "81da475627f188577801bf7216d749ff1d4cf72d64de2961a1f5d4a76bcc3dfb": 1,
       "badf9709a3ab56079e9a320c99f999935dc36380126f31ff972ed10df4a1e337": 1,
       "c67529378a207aafa25207322e7762c75df082767652f009b85f88b39d158f8b": 1,
-      "cbc2cbb8a769c80c5683f1ea9f1cfd20f3836cc4efa6d33b36a1d226b8010dba": 1,
-      "d72b3d184fd2390d82493c653a6a398046adbeb0681b670be7ff35152ef58177": 1,
-      "d9fe088d95bd614f4e4b87c87da02312d1213a4e79937a2353a7e3efcfeb00cc": 1,
       "dcb52ea0020d6e33525ed94b2bd40143cde5111021af528a7715f8b1c2d87d77": 1,
       "e8e96b307ac73f0b598258bcf440eaa8d1182db1d93b48b1b7af31157e309ac4": 1,
       "e925368b26525a7026d5879148bda31916ff4965d038ee9070ac25d777f296c8": 1
@@ -728,20 +715,6 @@
       "b94755e656a566c28f983831039cf5092542be1f27a6be5b2e4bf164aa985f1b": 1,
       "e14af2eec8885c3a9d310970856dd3ecc4e127b43d6e6a3515855b1fe68eb39e": 1,
       "ec83cefa68f4201f198d6424263ca036f96b476ba28114ebd82fe23bd6f8ca03": 1
-    },
-    "ingestion/src/metadata/ingestion/source/dashboard/microstrategy/client.py": {
-      "06303ba5cd4041981583296ced36e8c5440c65dade3f9a0b769a928835a3f1c9": 1,
-      "192b5dd29214e52d2f12819c78c15ee1086d94890d0ba0c9cc5cecb90f4aef46": 1,
-      "413edae2dca08bf7df61753b213806fa1b15dd2850d389ef9eeb85e9be58b56f": 1,
-      "80c3132f167baf4f2f3addd0be608aea09a3737faa92d6b20f896c9d01545fd9": 1,
-      "a6547671b1a62721263892cdd659fff9ea752175d0baf87751fbb3976c8d3697": 1,
-      "e9cfefbd35040f4e1bbdace951710040d19b46d599789632485ed07c2c1f39d6": 1
-    },
-    "ingestion/src/metadata/ingestion/source/dashboard/microstrategy/metadata.py": {
-      "ad6df826e578d90034666130821b8d043c8767a62231b3d127db8b8d6617db6a": 1,
-      "af7aa55de77b5411cdf87df5b1d505b0e45e39d46c80ec70cac998debb722145": 1,
-      "c9134beb7507b13762683b550b9744cded8a888d86d2cc52713f9abe54577534": 1,
-      "e0f3e4b74ca244b264aec9f8ef05539f874b4372a7cb6af1480b4243ce9996b9": 1
     },
     "ingestion/src/metadata/ingestion/source/dashboard/mode/client.py": {
       "041120a3957a70e8ebcf634a748a36809ed7421fcdf246ea05ac939dda6f45e3": 1,
@@ -924,22 +897,16 @@
       "1b4f86101335dc42f75038e2a1317af90c9bbd953a0a810154e27d2cc7c85793": 1,
       "3a586548108db7e2a2bd5dbca9159e983bf5347c6d076da283c94a659937b120": 1,
       "95740069831f2db3d9684be0e7ca058a2e5674eac8d7b1073e66d826bb86c0e7": 1,
-      "b1d5b06a5df9c10c7cc2cac4c9467ffeaf3e2c56ef75da98298da799628baeff": 1,
       "cb3e3bf28018e7bd6aa7f3602473b0b621cf01677cefc2fbd2d94fc703031db6": 1,
-      "d64d44cd35da0a36703f2287868d2197468124474c81d7832ef4f0f74ab796ce": 1,
       "ede748d6fa228d3b2cf539e9176d23681d0a37906a8963d64229368721b9270c": 1
     },
     "ingestion/src/metadata/ingestion/source/dashboard/sigma/metadata.py": {
       "1d7a5affdc803af9c6292cee92c955e8d29b526d0d29cfe8682f2837d729e4c5": 1,
-      "2845e96f0094bc4be1846b0daa3c21c72d903594fba3657f5de2c37a24dd5f6a": 1,
       "9825be9eeade37446cbf92611cad00c44e8e383d73fbb21e4ec7d7e27d07c0f1": 1,
       "9d8abb3deb1c52e7a1591e152e33415d457a4867c3d50744adc430ccbc514da4": 1,
       "a0de09b49fdf1fda8e6f31a4c2e8cfc7263d20712602dcb911daf21c8eb87ba2": 1,
-      "a525b979c8ee4f2cc2c678b648d5a49c025d062816a71f9a6eb808562971d4fd": 1,
       "a654f493152db8f90d8ad9c8451b7736bf939475b4c564b525963f9bc73dca49": 1,
-      "c7a12c1a8285ee569ac28e877a5c7a8b684f3b9ca9ce5d6ed74722f837cead9d": 1,
-      "e07a3134b23aa8e524ce89346aa658d9933f6a8eee9f20926503af9843b899e9": 1,
-      "e343a774fa1b65e8684db6b3bc18c5ba48594a018ec27073e050f5a1f0cd37f6": 1
+      "c7a12c1a8285ee569ac28e877a5c7a8b684f3b9ca9ce5d6ed74722f837cead9d": 1
     },
     "ingestion/src/metadata/ingestion/source/dashboard/superset/api_source.py": {
       "029ccb08b0d357042d02b64e9f948397bd72e19480f2ca218026ad4cc13e9a49": 1,
@@ -1222,7 +1189,6 @@
       "200453797fd1c010e0115298d7d51cbf2bd1a559c8aadd413905b791dbd857e3": 1,
       "2e6fda8f41e67c3c900dd51f00d975fdd2ba6a9f970056d6c43ca9412b646562": 1,
       "2fa5b5cb96db9d9af718308fe462ee01a24e7393e52994b3476c89724d1ee3cc": 1,
-      "3212f6790a65d175ae862cd9b7280b9ed8800ed03f0fc84b31af239b871b6b0c": 1,
       "35a3e1a06352909e2d333da1eea0793df3e41e11cc9145d9af6f8226b19c215f": 1,
       "3603265f1d4b675ccf7b0909ac58043c8889355feab2e95f9cdb622231c68dda": 1,
       "4d947541f06c4ffabb50c43b67c0bccc8e5793c1995da3f24b9af30c4ba8c539": 1,
@@ -1231,7 +1197,6 @@
       "565e26d595b00c067cf0aa3e2a7060d9e1e48fa833a50baf6ddcc2104a58f720": 1,
       "5b2e4a976df77908b1ff290b7b10219c75eabd22159caf1012e849b20b79491a": 1,
       "5c8824a7452a84f372317387b654d0eea0d4c4dc88899240166116a0dd45a29f": 1,
-      "5edc2ff6be0e1bf0c0541d201410b5739e3debc01560dafde65f5d1fdc41b028": 1,
       "64cc903ce1a69e26f203c0af8c7506ef127ae2e6461349b1fe67b95454a8f185": 1,
       "7d3101d34124790596ab2d563aec22f492ac6e300fe7d5002a97503097b45f95": 1,
       "7f32df3f478bb2b4bf5f43a99c80dd6d61307b04cc7a95878dda15b5cea5dc41": 1,
@@ -1337,7 +1302,6 @@
     },
     "ingestion/src/metadata/ingestion/source/database/doris/metadata.py": {
       "378309d0fb6d42369f9270679fc44cf43fbd1a8ac057572af1cb21fa22efa34a": 1,
-      "7712d40bcde53591a20fb3c95bb13851d9f5e1b51fa083514b23de2badc0d5ce": 1,
       "b43f7a4651d59bcb49cd72f8f6164366b1bbef0d136b11d0b8923826b32be8b3": 1
     },
     "ingestion/src/metadata/ingestion/source/database/dynamodb/metadata.py": {
@@ -1406,7 +1370,6 @@
       "fb144ad7469c455b2a7cd1ae82804f4ac7790d6f8d6b5c71b264543965162da0": 1
     },
     "ingestion/src/metadata/ingestion/source/database/mongodb/metadata.py": {
-      "67d33e3b2b6885d114ed81efe16bc11e81a0ec91dfa281987b4a4287e69332d0": 1,
       "74729dc04d52d8389f2ad9423942672d2b201e941c333a08b4dfcc6020c56dd5": 1,
       "c4a147a8314a530f52dcb063a5eabfc6f3dfe0fb85edfc4556945745c3bfa78e": 1
     },
@@ -1417,11 +1380,6 @@
     },
     "ingestion/src/metadata/ingestion/source/database/mysql/metadata.py": {
       "928513e7aa27d5d37cff0d421a2e922fe584511d1d93de62feaae334043edf66": 1
-    },
-    "ingestion/src/metadata/ingestion/source/database/oracle/utils.py": {
-      "a0b688a553eba79b874b78b582542b972ba3784daa47530774f096c4aab2c7c4": 1,
-      "ddec48d112f126917f6d09e292a05c817a6a59e766fd20f1a35ff8d10e5b82cd": 1,
-      "e115e333945dda291258a24521ea9fd9a5580354577d3a2012951b897838fa78": 1
     },
     "ingestion/src/metadata/ingestion/source/database/postgres/lineage.py": {
       "70b0fd48c9a44a37c50e5e0908901463e649b4af9fac5a9708ad272e5aedee7c": 1,
@@ -1878,7 +1836,6 @@
       "85863acd716f7758bf3ffcf90ef5272beede12df3f98478fe9960e0b7f8e22ee": 1,
       "aa89a041fd47a8f361672858844b4f327ff7ae4e828e16482a47cde2291433c5": 1,
       "db7aab052ac118b059a0c6b082c458be43c100698e94e70d2cd332d754fb5136": 1,
-      "e4b5085187bf89b919ff29d6445b259749eb307daed42dabf23a672011e49d1e": 1,
       "e94989ac8141ec6acb01834a61afaa40efeb2a62258ca40915520bc37430f517": 1
     },
     "ingestion/src/metadata/ingestion/source/messaging/kinesis/metadata.py": {
@@ -1915,8 +1872,6 @@
       "fabeb9a2deaae9771864ab5ef5b826832a93cd08d63b53f95012e293b2ce89c8": 1
     },
     "ingestion/src/metadata/ingestion/source/metadata/alationsink/client.py": {
-      "9c4111f150ac4b239678ff070cd48dc3f60e765d21f10d68e15ccee9313eb6a4": 1,
-      "b09f393cc09de0ae58b01af647577391682c81d8555b0695cdf3ca86968db7b2": 1,
       "c9b8ca8ba4a16fbca41bb44274d8697765ab60f852c9f5ccf4800a9302367cb2": 1,
       "ed7cd6dcbf0734219f11e9dc67568ed1d768b62efe08187120f0e977001c51cc": 1
     },
@@ -2175,7 +2130,6 @@
       "d482287a25a148c67afc289fc74afc321aa474241fab16d19a6a677666cd1abc": 1,
       "dfe592eb4ed792512c0cef95907f26385720f6ba438970d12915b92a6618d46e": 1,
       "e1b455842212d6dabe80d271e90667eedecb03ec1be132620f0890a5c0571e17": 1,
-      "e5ad016c23de86de4a287db3f5ea4bb50c6d51b2a6c4c011ebf27b80a8d99884": 1,
       "f0ea5678a2cb68fdc8a47892bc66622b2fdd1e04b79b3f6d806600654534281d": 1
     },
     "ingestion/src/metadata/ingestion/source/pipeline/dbtcloud/metadata.py": {
@@ -2202,9 +2156,7 @@
       "d7a1625b01033e89fd8c34ab360f93a224ff0071e2c98642c9c7853aa7735d2d": 1
     },
     "ingestion/src/metadata/ingestion/source/pipeline/fivetran/metadata.py": {
-      "04f7a8d262860b63066205be12bb98d31964c949d78b79e4e1a0f250e14c18f4": 1,
       "1ed1b8ea06a9ea4dc40caa5dad4c350f66286b4ac4b0c5a2673ee4af7ddd1987": 1,
-      "23a985e82b37fc6e5e9b126ca41aae95c7ff57f003ccd104e16b4a6cb1a47704": 1,
       "4bf7d35e41f89974d59408690ccad187bd2aca9456b53e7d78ee0f1bfc7c97d3": 1,
       "6695bbdcb9d3a92949834dc84581ed9436aaa1647a4e9f1458dc6efcafcf4895": 1,
       "804d13f3eab308d4a17a324f3a9e1f0e71eb8113c7f444fc73b90394e5417d31": 1,
@@ -2490,11 +2442,9 @@
       "a8f2db24a1ee4da4ff98d767a305f3f9deec4e48ef46d59a0c1524f74c0f1190": 1,
       "a9b8295501132c42f3364e36d9f78efec08c576894901a971f32c8f8b9671755": 1,
       "b3ec650881391aa8d4cc4ebcda1e53ac346598656f7054cd7f8f5c04f824e3ae": 1,
-      "bacf5b06ae1de4f92def7a9b18a43d2244ab35bbda6ef1eed053e83f28a65ace": 1,
       "c392a281b4f5c036921213f892fb710a6b5bb5368ba2b1e270abccecdfa14ab6": 1,
       "d30b4b24e74e2be020d6bb10f5a99f1fe8904ea6c0bbbd0768a1aab072b304cd": 1,
       "d72f5194b7192070ffac562578f0ebb8f46afb7954d10351ef3b9e228a7ea144": 1,
-      "d924f979589d96d3fa590289dea05e9ed48e52d891523adda0884dfc29185fef": 1,
       "efefd2e9c8c95c38c478867a45c91db97bacd9ddc819ecafcdd2a192cd93091f": 1
     },
     "ingestion/src/metadata/ingestion/source/storage/storage_service.py": {
@@ -2560,7 +2510,6 @@
     "ingestion/src/metadata/pii/tag_processor.py": {
       "0468786886bc3e567e5c8f1884fe88d4d2e2fd3e6648843d2153d60d52254806": 1,
       "1fe58f1dfaa3ca7e0a214f1362b2b5f80e35a179ac2d3e6fc80713a366560ab6": 1,
-      "42340c23ddd1a250aa5bd6fc20e000a2f4c5b4578b5d148ef422076639807ad2": 1,
       "7bc71595028505ecaf341a0c09ad9889b5abf19f6baa5d4109c717b61ced7f08": 1,
       "9a367e94933b8ef2d80a2dc57b38e83b5fcf45fb9fa0018ad3a2a17b84e30b41": 1,
       "a503d1c0ae91f6033c75374294bed843cc5aa635feb40f009a9c60b382c4839d": 1,
@@ -2589,9 +2538,6 @@
       "bb5f1026972617a7cd4a938d9cfddf5f32cd652bb0161beca630ebb4f8c67bf7": 1,
       "c4b5a7e75dfb155d7619f7fc94ac8c9c13fb2f3159b679af6d9a7bc1436b0dbc": 1,
       "fb42018eae2477022bb14a8bd8e1f29ec16a8002013de7e747771b24f708832e": 1
-    },
-    "ingestion/src/metadata/profiler/interface/sqlalchemy/bigquery/profiler_interface.py": {
-      "b878cd11de1cbea18e9a2b093b47d0154ff52d46406cd7e939486a8c108f7d3a": 1
     },
     "ingestion/src/metadata/profiler/interface/sqlalchemy/databricks/profiler_interface.py": {
       "87af39e97aea93b78256c57a3f2aea02bd83a51ee0d9d6d452e54ab36acf74cd": 1,
@@ -2680,9 +2626,6 @@
     },
     "ingestion/src/metadata/profiler/metrics/static/regexp_match_count.py": {
       "b8c909a5514af189747276ab1b171a29ca9bf0f3bfd288e0f777c7897ed12144": 1
-    },
-    "ingestion/src/metadata/profiler/metrics/static/row_count.py": {
-      "12f73ce99f611d31217ce22900e33427c48470d2cfbe29714059206e4d7129be": 1
     },
     "ingestion/src/metadata/profiler/metrics/static/stddev.py": {
       "5efd5c31379b3eb87110baeaea7eeec76938c9cc283a241accf13858d59eeb69": 1,
@@ -2908,9 +2851,6 @@
       "62bdcd7e35f895d61be28df08b79d9dd521f449505007d32a7853f2e21dc936b": 1,
       "ad9b7f50a9826fa69dbb0dfc2a95e4577bd14dfd0165f24a32171f8d2f10f4c4": 1
     },
-    "ingestion/src/metadata/utils/s3_utils.py": {
-      "4fbc6a76123da226c87b62a4b9096c2afbda5a7410456860be5fd75ee97e0cf0": 1
-    },
     "ingestion/src/metadata/utils/secrets/azure_kv_secrets_manager.py": {
       "2a48db7187ecb8e8d195f7d6544a391c30790d281bc24c559a0e8af451049890": 1,
       "317ab75d5a2f313ff2b0b878d8a964fe2ad71f51d16783b873f9863acc2f58c7": 1
@@ -2991,9 +2931,6 @@
     "ingestion/src/metadata/workflow/workflow_status_mixin.py": {
       "5c58fc540d32e15f9af5030abc74b1f3269d5ce9a1181801c565e16b620f2979": 1,
       "9b3b86658c58831ba062cdab38fe8424a093792fd1411584ad84115d4891eb16": 1
-    },
-    "ingestion/tests/integration/great_expectations/test_great_expectation_integration.py": {
-      "3e6839a27270f43dd9a4839573cc9ea21b4b77bd917c68c97d6e88d4b2436f7a": 2
     },
     "ingestion/tests/load/test_resources/all_resources.py": {
       "0b161019e5e476cd0c464807cf94b7d24c333e2a02bb92fa90bd0f4d1f95a912": 1

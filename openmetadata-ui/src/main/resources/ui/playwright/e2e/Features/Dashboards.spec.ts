@@ -62,10 +62,6 @@ test.describe('Dashboards', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await page.getByRole('tab', { name: 'Dashboards' }).click();
 
-    await page.locator('.ant-spin').waitFor({
-      state: 'detached',
-    });
-
     await expect(page.getByTestId('pagination')).toBeVisible();
     await expect(page.getByTestId('previous')).toBeDisabled();
     await expect(page.getByTestId('page-indicator')).toContainText(
@@ -81,10 +77,6 @@ test.describe('Dashboards', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByText('25 / Page').click();
     await childrenResponse;
-
-    await page.locator('.ant-spin').waitFor({
-      state: 'detached',
-    });
 
     await expect(page.getByTestId('next')).toBeDisabled();
     await expect(page.getByTestId('previous')).toBeDisabled();
@@ -197,8 +189,8 @@ test.describe('Data Model', () => {
   test('expand / collapse should not appear after updating nested fields for dashboardDataModels', async ({
     page,
   }) => {
-    // ~50 rich-text column descriptions mount at once on this page; on a busy
-    // CI runner that stalls the browser long enough to outlast the default
+    // A page of rich-text column descriptions mounts at once on this page; on a
+    // busy CI runner that stalls the browser long enough to outlast the default
     // tag-picker open retry and the 60s budget for two tag round-trips.
     test.slow();
 
@@ -213,7 +205,7 @@ test.describe('Data Model', () => {
       page,
       tag: 'PersonalData.Personal',
       rowId:
-        'sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0031',
+        'sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0001',
       entityEndpoint: 'dashboard/datamodels',
       pickerTimeout: LONG_ACTION_TIMEOUT,
     });
@@ -222,7 +214,7 @@ test.describe('Data Model', () => {
     await expect(
       page
         .locator(
-          '[data-row-key="sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0031"]'
+          '[data-row-key="sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0001"]'
         )
         .getByTestId('expand-icon')
     ).not.toBeVisible();
@@ -231,7 +223,7 @@ test.describe('Data Model', () => {
       page,
       tags: ['PersonalData.Personal'],
       rowId:
-        'sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0031',
+        'sample_superset.model.big_analytics_data_model_with_nested_columns.revenue_metrics_0001',
       entityEndpoint: 'dashboard/datamodels',
       pickerTimeout: LONG_ACTION_TIMEOUT,
     });
@@ -325,10 +317,6 @@ test.describe(
       );
 
       await waitForAllLoadersToDisappear(page);
-
-      await page.locator('.ant-spin').waitFor({
-        state: 'detached',
-      });
 
       const dataModelLink = page.getByTestId(
         `data-model-${dataModelResponseData.name}`

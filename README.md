@@ -323,6 +323,8 @@ These standards make OpenMetadata a foundation for interoperable semantic metada
 
 ## Quickstart
 
+For MySQL deployments, read the [supported version and 8.0 upgrade steps](docs/mysql-deployment.md) before upgrading an existing database volume.
+
 1. **Try OpenMetadata**: [OpenMetadata Sandbox](https://sandbox.open-metadata.org)
 2. **Install OpenMetadata**: [Quickstart Guide](https://docs.open-metadata.org/latest/quick-start)
 3. **Ingest Metadata** from a warehouse, BI tool, pipeline system, data quality tool, lineage source, contract source, or memory-producing workflow.
@@ -362,7 +364,9 @@ For managed enterprise capabilities, AI agents, automation, AI Studio, enterpris
 
 We welcome contributions from the community. You can help improve metadata schemas and standards, add connectors, improve ingestion workflows, enhance MCP tools, improve semantic search, add memory workflows, add documentation, fix bugs, and improve the user experience.
 
-See the contribution guide in this repository to get started.
+See [CONTRIBUTING.md](CONTRIBUTING.md) to get started. Python contributors should follow
+the checkout's [locked local Python environment guide](DEVELOPER.md#locked-local-python-environments)
+for profile selection, installation and test commands.
 
 - [How To Contribute](https://docs.open-metadata.org/latest/developers/contribute)
 - [Development Environment Setup](https://docs.open-metadata.org/latest/developers/contribute/development-environment-setup)

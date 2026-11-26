@@ -30,8 +30,11 @@ import org.openmetadata.service.governance.workflows.flowable.builders.StartEven
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 
 public class NoOpTrigger implements TriggerInterface {
-  private static final Set<String> TASK_WORKFLOW_PASSTHROUGH_VARIABLES =
-      Set.of(
+  // Ordered: these variables are written into the BPMN in this order, and the server compares that
+  // BPMN byte for byte with its deployment on every start, so it must be the same in every JVM
+  // (ADR:2026-11-23-a-changed-workflow-is-deployed-when-the-server-starts).
+  private static final List<String> TASK_WORKFLOW_PASSTHROUGH_VARIABLES =
+      List.of(
           WorkflowStartVariables.TASK_ENTITY_ID,
           WorkflowStartVariables.TASK_WORKFLOW_MANAGED,
           WorkflowStartVariables.TASK_NAME,
@@ -48,6 +51,7 @@ public class NoOpTrigger implements TriggerInterface {
           WorkflowStartVariables.TASK_UPDATED_BY,
           WorkflowStartVariables.TASK_REVIEWERS,
           WorkflowStartVariables.TASK_ASSIGNEES,
+          WorkflowStartVariables.APPROVAL_MODE,
           WorkflowStartVariables.TASK_FORM_SCHEMA_ID,
           WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION,
           WorkflowStartVariables.WORKFLOW_DEFINITION_ID);

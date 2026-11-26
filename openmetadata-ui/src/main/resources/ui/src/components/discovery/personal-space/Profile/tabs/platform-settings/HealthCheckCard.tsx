@@ -22,7 +22,6 @@ import {
   CheckCircle,
   ChevronDown,
   ChevronUp,
-  Copy01,
   InfoCircle,
   XCircle,
 } from '@openmetadata/ui-core-components/icons';
@@ -31,7 +30,7 @@ import { startCase } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StepValidation } from '../../../../../../generated/system/validationResponse';
-import { useClipboard } from '../../../../../../hooks/useClipBoard';
+import CopyButton from '../../../../../common/CopyButton/CopyButton';
 
 const STATUS_STYLES = {
   passed: {
@@ -55,7 +54,6 @@ const STATUS_STYLES = {
 const HealthCheckLogs = ({ logs }: { logs: string }) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const { onCopyToClipBoard } = useClipboard(logs);
 
   return (
     <>
@@ -84,14 +82,12 @@ const HealthCheckLogs = ({ logs }: { logs: string }) => {
               weight="medium">
               {t('label.log-plural')}
             </Typography>
-            <Button
-              color="tertiary"
-              data-testid="copy-logs"
-              iconLeading={Copy01}
-              size="sm"
-              onPress={() => onCopyToClipBoard()}>
-              {t('label.copy')}
-            </Button>
+            <CopyButton
+              label={t('label.copy')}
+              labelColor="tertiary"
+              testId="copy-logs"
+              value={logs}
+            />
           </Box>
           <pre className="tw:m-0 tw:max-h-75 tw:overflow-auto tw:whitespace-pre-wrap tw:break-all tw:p-4 tw:font-mono tw:text-xs tw:text-white">
             {logs}
@@ -152,7 +148,7 @@ const HealthCheckCard = ({ name, validation }: HealthCheckCardProps) => {
           data-testid={status.testId}
           direction="row"
           gap={1}>
-          <StatusIcon className="tw:size-4" />
+          <StatusIcon size={16} />
           <Typography size="text-sm" weight="medium">
             {t(status.labelKey)}
           </Typography>

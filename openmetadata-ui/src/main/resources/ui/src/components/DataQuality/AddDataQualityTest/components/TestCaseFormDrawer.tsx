@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, HookForm, Typography } from '@openmetadata/ui-core-components';
-import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
 import { isEmpty, isUndefined, noop } from 'lodash';
@@ -26,10 +24,6 @@ import {
 } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import {
-  FORM_DRAWER_WIDTH_WITHOUT_HINT,
-  FORM_DRAWER_WIDTH_WITH_HINT,
-} from '../../../../constants/common/formHint.constants';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
@@ -52,16 +46,13 @@ import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQu
 import { monospaceParameterNames } from '../../../../utils/DataQuality/FormHintDocUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
-import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
 import { omitInapplicableDimensionParams } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
-import { ShowHintToggle } from '../../../common/atoms/drawer/ShowHintToggle';
+import { FormHintDoc } from '../../../common/atoms/drawer/formHint/FormHintDoc';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
-import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../common/Loader/Loader';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
 import TestCaseFormBody from './TestCaseFormBody';
 import {
@@ -88,23 +79,6 @@ const EntitySummaryPanel = withSuspenseFallback(
       import('../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
   )
 );
-
-const getResolvedDrawerWidth = (
-  width: number | string | undefined,
-  showDocPanel: boolean,
-  showHint: boolean
-): number | string => {
-  if (width !== undefined) {
-    return width;
-  }
-  if (!showDocPanel) {
-    return '52vw';
-  }
-
-  return showHint
-    ? FORM_DRAWER_WIDTH_WITH_HINT
-    : FORM_DRAWER_WIDTH_WITHOUT_HINT;
-};
 
 const getDefaultDrawerTitle = (
   isEditMode: boolean,
@@ -171,6 +145,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       testLevel: testLevel ?? TestLevel.TABLE,
       useDynamicAssertion: false,
       ...testCaseClassBase.initialFormValues(),
+      createPipeline: true,
       cron: DEFAULT_SCHEDULE_CRON_DAILY,
       enableDebugLog: false,
       raiseOnError: true,
@@ -181,7 +156,6 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [formContext, setFormContext] = useState<TestCaseFormContext>();
-  const [showHint, setShowHint] = useState<boolean>(true);
   // The selected table's summary shows only with the Select Table hint.
   const [isTableFieldActive, setIsTableFieldActive] = useState(false);
   const [editDefinition, setEditDefinition] = useState<TestDefinition>();
@@ -230,7 +204,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const createTestCasePipeline = useCallback(
     async (values: FormValues, created: TestCase) => {
       const pipelineTestSuite = created.testSuite ?? testSuite;
-      if (!formContext?.canCreatePipeline || !pipelineTestSuite) {
+      if (
+        !values.createPipeline ||
+        !formContext?.canCreatePipeline ||
+        !pipelineTestSuite
+      ) {
         return;
       }
 
@@ -400,17 +378,6 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     />
   );
 
-  // Without the hint, narrow the drawer instead of stretching the form.
-  const resolvedWidth = getResolvedDrawerWidth(width, showDocPanel, showHint);
-
-  const scrollToError = useMemo(
-    () =>
-      createScrollToErrorHandler({
-        errorSelector: '[aria-invalid="true"], [data-invalid="true"]',
-      }),
-    []
-  );
-
   // In edit mode hold the form behind a loader until the prefill (definition
   // fetch + form.reset) is done for the open test case, so it renders fully
   // populated in one paint rather than flickering values in as calls resolve.
@@ -440,72 +407,17 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     return details ? { details } : undefined;
   }, [formContext?.selectedTableData]);
 
-  const formBody = (
-    <HookForm
-      emptyFieldDoc={
-        // width="100%" is required: EmptyPlaceholder's 300px default is
-        // wider than the hint column's 260px minimum and would overflow
-        // once the column shrinks on a narrow viewport.
-        <NoDataPlaceholder
-          description={t('message.form-hint-empty-state')}
-          icon={Lightbulb05}
-          title={t('label.no-entity-selected', {
-            entity: t('label.field'),
-          })}
-          width="100%"
+  const renderFieldDoc = (markdown: string) =>
+    isTableFieldActive && selectedTableDetails ? (
+      <div className="tw:mt-3" data-testid="selected-table-summary">
+        <EntitySummaryPanel
+          entityDetails={selectedTableDetails}
+          handleClosePanel={noop}
         />
-      }
-      fieldDocDisplay="panel"
-      fieldDocHeader={
-        <Box align="center" className="tw:gap-2" direction="row">
-          <Lightbulb05 aria-hidden className="tw:size-4 tw:text-secondary" />
-          <Typography
-            className="tw:whitespace-nowrap tw:text-secondary"
-            size="text-sm"
-            weight="medium">
-            {t('label.form-hint')}
-          </Typography>
-        </Box>
-      }
-      form={form}
-      // Carries the padding zeroed on the body (see `body`); this column, not
-      // the body, scrolls, so it is the scroll-to-error target.
-      formClassName="drawer-form-content tw:px-4 tw:py-6 tw:md:px-6"
-      renderFieldDoc={(markdown) =>
-        isTableFieldActive && selectedTableDetails ? (
-          <div className="tw:mt-3" data-testid="selected-table-summary">
-            <EntitySummaryPanel
-              entityDetails={selectedTableDetails}
-              handleClosePanel={noop}
-            />
-          </div>
-        ) : (
-          // Render the full field doc without the "see more" toggle — the
-          // column scrolls, so the whole hint is reachable without it.
-          <div className="form-hint-doc">
-            <RichTextEditorPreviewerV1
-              enableSeeMoreVariant={false}
-              markdown={monospaceParameterNames(markdown)}
-            />
-          </div>
-        )
-      }
-      showFieldDocs={showDocPanel && showHint}
-      onSubmit={form.handleSubmit(
-        (data) =>
-          submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
-        () => scrollToError()
-      )}>
-      {gatedFormBody}
-    </HookForm>
-  );
-
-  // pr-10 clears the header's absolutely positioned close button.
-  const hintToggle = (
-    <Box className="tw:pr-10">
-      <ShowHintToggle isSelected={showHint} onChange={setShowHint} />
-    </Box>
-  );
+      </div>
+    ) : (
+      <FormHintDoc markdown={monospaceParameterNames(markdown)} />
+    );
 
   // Every dismissal path (cancel, X, Escape, backdrop, programmatic close)
   // funnels through the base drawer's onClose, so the parent is notified
@@ -522,38 +434,25 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const defaultTitle = getDefaultDrawerTitle(isEditMode, testCase, t);
   const resolvedTitle = title ?? defaultTitle;
 
-  const { formDrawer, openDrawer, closeDrawer, isOpen } =
-    useFormDrawerWithHook<FormValues>({
-      className: 'test-case-form-drawer',
-      title: resolvedTitle,
-      hookForm: form,
-      form: formBody,
-      headerActions: (
-        <>
-          {headerActions}
-          {showDocPanel && hintToggle}
-        </>
-      ),
-      // Columns scroll on their own: drop Content's padding, gap and stacking.
-      body: { className: 'tw:flex-row tw:gap-0 tw:px-0 tw:md:px-0' },
-      width: resolvedWidth,
-      submitLabel: isEditMode ? t('label.update') : t('label.create'),
-      submitTestId: 'create-btn',
-      submitLoading: formContext?.isCheckingPermissions ?? false,
-      onClose: handleDrawerDismiss,
-      onSubmit: (data) =>
-        submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
-    });
+  const { formDrawer, closeDrawer } = useFormDrawerWithHook<FormValues>({
+    className: 'test-case-form-drawer',
+    title: resolvedTitle,
+    hookForm: form,
+    form: gatedFormBody,
+    formHint: { enabled: showDocPanel, renderDoc: renderFieldDoc },
+    headerActions,
+    // Without the doc panel there is no hint column to size for.
+    width: width ?? (showDocPanel ? undefined : '52vw'),
+    open,
+    submitLabel: isEditMode ? t('label.update') : t('label.create'),
+    submitTestId: 'create-btn',
+    submitLoading: formContext?.isCheckingPermissions ?? false,
+    onClose: handleDrawerDismiss,
+    onSubmit: (data) =>
+      submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
+  });
 
   closeDrawerRef.current = closeDrawer;
-
-  useEffect(() => {
-    if (open) {
-      openDrawer();
-    } else if (isOpen) {
-      closeDrawer();
-    }
-  }, [open, isOpen, openDrawer, closeDrawer]);
 
   return formDrawer;
 };

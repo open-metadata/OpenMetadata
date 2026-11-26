@@ -47,7 +47,8 @@ export const useAgentLogs = (
   pipelineType: PipelineType,
   enabled: boolean,
   isActive = false,
-  runId?: string
+  runId?: string,
+  pinnedRunId?: string
 ): UseAgentLogsResult => {
   const source = useIngestionLogSource({
     enabled: Boolean(enabled && fqn),
@@ -55,6 +56,7 @@ export const useAgentLogs = (
     ingestionType: pipelineType,
     runId,
     runActive: isActive,
+    pinnedRunId,
   });
 
   const lines = useMemo(() => parseLogLines(source.logs), [source.logs]);

@@ -19,15 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { InfoCircle } from '@openmetadata/ui-core-components/icons';
-import {
-  get,
-  isArray,
-  isEmpty,
-  isNull,
-  isObject,
-  isString,
-  startCase,
-} from 'lodash';
+import { get, isArray, isEmpty, isNull, isString, startCase } from 'lodash';
 import { ReactNode } from 'react';
 import NoDataPlaceholder from '../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import { FILTER_PATTERN_BY_SERVICE_TYPE } from '../constants/ServiceConnection.constants';
@@ -58,9 +50,24 @@ export const renderConnectionDetailLabel = (
   </Box>
 );
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const getSchemaText = (
+  property: unknown,
+  key: 'description' | 'format' | 'title'
+) => {
+  if (!isRecord(property)) {
+    return undefined;
+  }
+  const value = property[key];
+
+  return typeof value === 'string' ? value : undefined;
+};
+
 const renderInputField = (
   key: string,
-  value: string,
+  value: unknown,
   description?: string,
   format?: string,
   title?: string
@@ -74,7 +81,7 @@ const renderInputField = (
           {value.map((item, index) => (
             // eslint-disable-next-line react/no-array-index-key
             <Badge color="gray" key={`${item}-${index}`} size="sm" type="color">
-              {item}
+              {String(item)}
             </Badge>
           ))}
         </Box>
@@ -95,7 +102,7 @@ const renderInputField = (
 // Renders filter pattern fields
 const renderFilterPattern = (
   key: string,
-  value: { includes: string[]; excludes: string[] },
+  value: Record<string, unknown>,
   description?: string,
   title?: string
 ) => {
@@ -116,7 +123,9 @@ const renderFilterPattern = (
                 patternKey
               )}:`}</Typography>
               <Typography weight="semibold">
-                {(patternValue as string[]).join(', ')}
+                {Array.isArray(patternValue)
+                  ? patternValue.join(', ')
+                  : String(patternValue)}
               </Typography>
             </Box>
           )
@@ -140,10 +149,10 @@ const resolveRef = (
       return current;
     }
     const resolved = get(schema, ref.slice(2).split('/'));
-    if (!isObject(resolved)) {
+    if (!isRecord(resolved)) {
       return current;
     }
-    current = resolved as Record<string, unknown>;
+    current = resolved;
   }
 
   return current;
@@ -164,13 +173,13 @@ export const getSchemaProperties = (
   schema: Record<string, unknown>,
   depth = 0
 ): Record<string, unknown> => {
-  if (!isObject(schemaProperty) || depth >= MAX_SCHEMA_RESOLUTION_DEPTH) {
+  if (!isRecord(schemaProperty) || depth >= MAX_SCHEMA_RESOLUTION_DEPTH) {
     return {};
   }
 
-  const node = resolveRef(schemaProperty as Record<string, unknown>, schema);
-  if (isObject(node.properties)) {
-    return node.properties as Record<string, unknown>;
+  const node = resolveRef(schemaProperty, schema);
+  if (isRecord(node.properties)) {
+    return node.properties;
   }
 
   const branches = node.oneOf ?? node.anyOf;
@@ -178,7 +187,43 @@ export const getSchemaProperties = (
     return {};
   }
 
-  const valueKeys = isObject(value) ? Object.keys(value) : [];
+  /**
+   * Counts the stored keys a branch declares, nested objects included.
+   *
+   * Branches often share their top-level keys -- every Datalake/PowerBI file source has a
+   * `securityConfig`, AWS in one branch and GCP in another -- so matching only the top level
+   * picks the first branch, and a secret declared in the stored branch loses its
+   * `format: password` marker one level down.
+   */
+  const getBranchMatchScore = (
+    properties: Record<string, unknown>,
+    branchValue: unknown,
+    branchDepth: number
+  ): number => {
+    if (!isRecord(branchValue) || branchDepth >= MAX_SCHEMA_RESOLUTION_DEPTH) {
+      return 0;
+    }
+
+    return Object.keys(branchValue).reduce(
+      (score, key) =>
+        key in properties
+          ? score +
+            1 +
+            getBranchMatchScore(
+              getSchemaProperties(
+                properties[key],
+                branchValue[key],
+                schema,
+                branchDepth + 1
+              ),
+              branchValue[key],
+              branchDepth + 1
+            )
+          : score,
+      0
+    );
+  };
+
   let merged: Record<string, unknown> = {};
   let bestMatch: Record<string, unknown> = {};
   let bestScore = 0;
@@ -186,7 +231,7 @@ export const getSchemaProperties = (
   branches.forEach((branch) => {
     const properties = getSchemaProperties(branch, value, schema, depth + 1);
     merged = { ...properties, ...merged };
-    const score = valueKeys.filter((key) => key in properties).length;
+    const score = getBranchMatchScore(properties, value, depth + 1);
     if (score > bestScore) {
       bestScore = score;
       bestMatch = properties;
@@ -211,10 +256,13 @@ export const getKeyValues = ({
         return null;
       }
 
-      // Handle non-object and array values
-      if (!isObject(value) || isArray(value)) {
-        const { description, format, title } = schemaPropertyObject[key] ?? {};
+      const property = schemaPropertyObject[key];
+      const description = getSchemaText(property, 'description');
+      const format = getSchemaText(property, 'format');
+      const title = getSchemaText(property, 'title');
 
+      // Handle non-object and array values
+      if (!isRecord(value)) {
         return renderInputField(key, value, description, format, title);
       }
 
@@ -230,8 +278,6 @@ export const getKeyValues = ({
           key as ServiceConnectionFilterPatternFields
         )
       ) {
-        const { description, title } = schemaPropertyObject[key] ?? {};
-
         return renderFilterPattern(key, value, description, title);
       }
 
@@ -265,16 +311,21 @@ const renderOneOfSchema = ({
 }: {
   schemaProperty: unknown;
   title: string;
-  value: unknown;
+  value: Record<string, unknown>;
   schema: Record<string, unknown>;
   serviceCategory: string;
 }): ReactNode => {
-  const subSchema = schemaProperty.oneOf.find(
-    (item: { title: string }) => item.title === title
-  )?.properties;
+  if (!isRecord(schemaProperty) || !Array.isArray(schemaProperty.oneOf)) {
+    return null;
+  }
+
+  const branch = schemaProperty.oneOf.find(
+    (item) => isRecord(item) && item.title === title
+  );
+  const subSchema = isRecord(branch) ? branch.properties : undefined;
 
   return (
-    subSchema &&
+    isRecord(subSchema) &&
     getKeyValues({
       obj: value,
       schemaPropertyObject: subSchema,
@@ -288,7 +339,7 @@ const renderOneOfSchema = ({
 const handleSpecialServiceConfig = (
   serviceType: string,
   key: string,
-  value: unknown,
+  value: Record<string, unknown>,
   schemaPropertyObject: Record<string, unknown>,
   schema: Record<string, unknown>,
   serviceCategory: string
@@ -297,7 +348,8 @@ const handleSpecialServiceConfig = (
   if (
     serviceType === EntityType.PIPELINE_SERVICE &&
     key === 'connection' &&
-    value.type?.toLowerCase() === 'airflow'
+    typeof value.type === 'string' &&
+    value.type.toLowerCase() === 'airflow'
   ) {
     return renderOneOfSchema({
       schemaProperty: schemaPropertyObject[key],
@@ -336,85 +388,7 @@ const handleSpecialServiceConfig = (
   return null;
 };
 
-// Handles database service config source
-const handleDatabaseConfigSource = (
-  key: string,
-  value: unknown,
-  schemaPropertyObject: Record<string, unknown>,
-  schema: Record<string, unknown>,
-  serviceCategory: string
-): ReactNode | null => {
-  if (!isObject(value.securityConfig)) {
-    return null;
-  }
-
-  if (value.securityConfig.gcpConfig) {
-    const gcpConfigSchema = isObject(value.securityConfig.gcpConfig)
-      ? get(
-          schema,
-          'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues.properties',
-          {}
-        )
-      : getSchemaProperties(
-          get(
-            schema,
-            'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath'
-          ),
-          value,
-          schema
-        );
-
-    return getKeyValues({
-      obj: isObject(value.securityConfig.gcpConfig)
-        ? value.securityConfig.gcpConfig
-        : value,
-      schemaPropertyObject: gcpConfigSchema,
-      schema,
-      serviceCategory,
-    });
-  }
-
-  const internalRef = '$ref';
-  const oneOf = 'oneOf';
-
-  if (
-    Object.keys(schemaPropertyObject[key]).includes(oneOf) &&
-    (value.securityConfig?.awsAccessKeyId ||
-      value.securityConfig?.awsSecretAccessKey)
-  ) {
-    return getKeyValues({
-      obj: value.securityConfig,
-      schemaPropertyObject: get(
-        schema,
-        'definitions.S3Config.properties.securityConfig.properties',
-        {}
-      ),
-      schema,
-      serviceCategory,
-    });
-  }
-
-  if (Object.keys(schemaPropertyObject[key]).includes(internalRef)) {
-    const definition = schemaPropertyObject[key][internalRef]
-      .split('/')
-      .splice(2);
-
-    return getKeyValues({
-      obj: value,
-      schemaPropertyObject: getSchemaProperties(
-        get(schema, ['definitions', String(definition)]),
-        value,
-        schema
-      ),
-      schema,
-      serviceCategory,
-    });
-  }
-
-  return null;
-};
-
-// Resolves special, database, or default object configurations for a key
+// Resolves special or default object configurations for a key
 const getNestedConfigValue = ({
   serviceType,
   key,
@@ -425,7 +399,7 @@ const getNestedConfigValue = ({
 }: {
   serviceType: string;
   key: string;
-  value: unknown;
+  value: Record<string, unknown>;
   schemaPropertyObject: Record<string, unknown>;
   schema: Record<string, unknown>;
   serviceCategory: string;
@@ -440,19 +414,6 @@ const getNestedConfigValue = ({
   );
   if (specialConfig !== null) {
     return specialConfig;
-  }
-
-  if (serviceType === EntityType.DATABASE_SERVICE && key === 'configSource') {
-    const configSource = handleDatabaseConfigSource(
-      key,
-      value,
-      schemaPropertyObject,
-      schema,
-      serviceCategory
-    );
-    if (configSource !== null) {
-      return configSource;
-    }
   }
 
   return getKeyValues({

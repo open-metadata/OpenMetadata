@@ -1,0 +1,3 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+<https://example.org/broken> a sh:NodeShape ;
+not-a-turtle-token!

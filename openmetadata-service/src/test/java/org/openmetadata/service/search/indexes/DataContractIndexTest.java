@@ -33,6 +33,7 @@ class DataContractIndexTest {
           "qualityExpectations",
           "odcsQualityRules",
           "odcsElementExtensions",
+          "odcsPreservedFields",
           "contractUpdates",
           "sla",
           "security",
@@ -99,6 +100,11 @@ class DataContractIndexTest {
   void buildDoc_excludesFreeFormBlocks() {
     DataContract heavy =
         contract()
+            .withOdcsPreservedFields(
+                new ObjectMapper()
+                    .createObjectNode()
+                    .putObject("arbitraryFutureFields")
+                    .put("vendorKey", true))
             .withSla(new ContractSLA())
             .withSecurity(new ContractSecurity())
             .withTermsOfUse(new TermsOfUse().withContent("terms"));

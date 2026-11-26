@@ -14,46 +14,32 @@ import { expect, Page, test } from '@playwright/test';
 import { buildSync } from 'esbuild';
 import { resolve } from 'path';
 import { SidebarItem } from '../constant/sidebar';
-import { clickSidebarLink, sidebarClick } from '../utils/sidebar';
+import { sidebarClick } from '../utils/sidebar';
 
 const bundle = buildSync({
   stdin: {
     contents: `import React, { useState } from 'react';
       import { createRoot } from 'react-dom/client';
       import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
-      import { Layout, Menu } from 'antd';
       import LeftSidebarItem from './src/components/MyData/LeftSidebar/LeftSidebarItem.component';
       function App() {
-        const [openKeys, setOpenKeys] = useState([]);
-        const [opacityAtClick, setOpacityAtClick] = useState('');
+        const [governanceOpen, setGovernanceOpen] = useState(false);
         const location = useLocation();
         const navigate = useNavigate();
         const [glossaryRedirect] = useState(() => new URLSearchParams(location.search).get('glossaryRedirect'));
-        const collapsed = new URLSearchParams(location.search).get('collapsed') === 'true';
         return <>
-          <Layout.Sider collapsed={collapsed} collapsedWidth={72} data-testid="left-sidebar">
-            <Menu mode="inline" inlineCollapsed={collapsed} openKeys={openKeys} onOpenChange={setOpenKeys}
-              items={[
-                {key:'explore',icon:<span>E</span>,label:<LeftSidebarItem data={{key:'explore',title:'Explore',redirect_url:'/explore',dataTestId:'app-bar-item-explore'}}/>},
-                {key:'governance',icon:<span>G</span>,label:<span data-testid="governance">Governance</span>,children:[
-                  {key:'glossary',label:<LeftSidebarItem data={{key:'glossary',title:'Glossary',redirect_url:'/glossary',dataTestId:'app-bar-item-glossary',onClick:(event)=>{
-                    if (glossaryRedirect) {
-                      event.preventDefault();
-                      navigate(glossaryRedirect, { replace: true });
-                    }
-                  }}}/>}
-                ]},
-                {key:'observability',icon:<span>O</span>,label:<span data-testid="observability">Observability</span>,children:[
-                {key:'quality',label:'Data Quality'},
-                {key:'alerts',label:<LeftSidebarItem data={{key:'alerts',title:'Alerts',redirect_url:'/observability/alerts',dataTestId:'app-bar-item-observability-alert',onClick:()=>{
-                  const link = document.querySelector('[data-testid="app-bar-item-observability-alert"]');
-                  const popup = link.closest('.ant-menu-submenu-popup');
-                  setOpacityAtClick(popup ? getComputedStyle(popup).opacity : '1');
-                }}}/>}
-              ]}]}/>
-          </Layout.Sider>
+          <aside data-testid="left-sidebar">
+            <button data-testid="governance" type="button" onClick={() => setGovernanceOpen(true)}>Governance</button>
+            {governanceOpen && (
+              <LeftSidebarItem data={{key:'glossary',title:'Glossary',redirect_url:'/glossary',dataTestId:'app-bar-item-glossary',onClick:(event)=>{
+                if (glossaryRedirect) {
+                  event.preventDefault();
+                  navigate(glossaryRedirect, { replace: true });
+                }
+              }}}/>
+            )}
+          </aside>
           <output data-testid="route">{location.pathname}</output>
-          <output data-testid="click-opacity">{opacityAtClick}</output>
         </>;
       }
       createRoot(document.getElementById('root')).render(<BrowserRouter><App /></BrowserRouter>);`,
@@ -85,63 +71,21 @@ const mountSidebar = async (page: Page, params: Record<string, string>) => {
       waitUntil: 'domcontentloaded',
     }
   );
-  await page.addStyleTag({ path: 'node_modules/antd/dist/antd.css' });
-  // Keep the real zoom motion in its invisible, stable start phase longer.
-  await page.addStyleTag({
-    content:
-      '.ant-zoom-big-appear, .ant-zoom-big-enter { animation-delay: 400ms !important; }',
-  });
   await page.addScriptTag({ content: bundle });
 };
 
-for (const collapsed of [true, false]) {
-  test(`sidebar navigation waits for its submenu (collapsed=${collapsed})`, async ({
-    page,
-  }) => {
-    await mountSidebar(page, { collapsed: String(collapsed) });
-    await sidebarClick(page, SidebarItem.OBSERVABILITY_ALERT);
-    await expect(page.getByTestId('route')).toHaveText('/observability/alerts');
-    await expect(page.getByTestId('click-opacity')).toHaveText('1');
-  });
+test('sidebar navigation accepts a glossary redirect', async ({ page }) => {
+  await mountSidebar(page, { glossaryRedirect: '/glossary/FirstGlossary' });
 
-  test(`sidebar navigation accepts a glossary redirect (collapsed=${collapsed})`, async ({
-    page,
-  }) => {
-    await mountSidebar(page, {
-      collapsed: String(collapsed),
-      glossaryRedirect: '/glossary/FirstGlossary',
-    });
+  await sidebarClick(page, SidebarItem.GLOSSARY);
 
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-
-    await expect(page.getByTestId('route')).toHaveText(
-      '/glossary/FirstGlossary'
-    );
-  });
-}
-
-test('sidebar navigation targets the menu link when its tooltip duplicates it', async ({
-  page,
-}) => {
-  await mountSidebar(page, { collapsed: 'true' });
-  await page
-    .getByTestId('left-sidebar')
-    .getByTestId('app-bar-item-explore')
-    .hover();
-  await expect(page.getByRole('tooltip', { name: 'Explore' })).toBeVisible();
-
-  await clickSidebarLink(page, 'app-bar-item-explore');
-
-  await expect(page.getByTestId('route')).toHaveText('/explore');
+  await expect(page.getByTestId('route')).toHaveText('/glossary/FirstGlossary');
 });
 
 test('sidebar navigation rejects a different route with the same prefix', async ({
   page,
 }) => {
-  await mountSidebar(page, {
-    collapsed: 'false',
-    glossaryRedirect: '/glossary-unrelated',
-  });
+  await mountSidebar(page, { glossaryRedirect: '/glossary-unrelated' });
 
   const failure = await sidebarClick(page, SidebarItem.GLOSSARY).then(
     () => '',

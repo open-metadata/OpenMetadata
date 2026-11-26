@@ -23,6 +23,9 @@ from metadata.ingestion.models.entity_interface import EntityInterface
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
+from metadata.utils.logger import utils_logger
+
+logger = utils_logger()
 
 T = TypeVar("T", bound=EntityInterface)
 
@@ -51,6 +54,7 @@ class EntityResolutionPlan(Generic[T]):
     fields: tuple[str, ...] = ()
     include: str | None = None
     max_candidates_per_lookup: int = 10
+    warn_on_partial: bool = False
 
     def __post_init__(self):
         object.__setattr__(self, "fields", tuple(sorted(set(self.fields))))
@@ -125,9 +129,11 @@ class EntityResolver:
             names = found.fqns
 
         result = []
+        matched = 0
         for name in dict.fromkeys(names):
             if not _matches(candidate, name):
                 continue
+            matched += 1
             entity = self._metadata.get_by_name(
                 entity=plan.entity_type, fqn=name, fields=list(plan.fields), include=plan.include
             )
@@ -139,6 +145,13 @@ class EntityResolver:
             if (plan.include in (None, "non-deleted") and deleted) or (plan.include == "deleted" and not deleted):
                 continue
             result.append(entity)
+        if plan.warn_on_partial and candidate.mode != FqnLookupMode.EXACT and len(result) < matched:
+            logger.warning(
+                "Resolved %d of %d candidates for %s; wildcard results are incomplete",
+                len(result),
+                matched,
+                candidate.value,
+            )
         return result
 
     def close(self) -> None:
@@ -146,6 +159,10 @@ class EntityResolver:
         with self._lock:
             self._closed = True
             self._cache.clear()
+
+    @property
+    def metadata(self) -> OpenMetadata:
+        return self._metadata
 
     def _ensure_open(self) -> None:
         if self._closed:

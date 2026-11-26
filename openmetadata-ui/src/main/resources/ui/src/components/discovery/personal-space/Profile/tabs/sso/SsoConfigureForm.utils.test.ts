@@ -89,6 +89,7 @@ describe('toCoreUiSchema', () => {
     }).authenticationConfiguration;
     const rows = section['ui:options'].rows as {
       className: string;
+      title?: string;
       columns: { name: string }[];
     }[];
     const names = rows.map((row) => row.columns.map((c) => c.name));
@@ -101,11 +102,18 @@ describe('toCoreUiSchema', () => {
       ['customSetting'],
       ['provider', 'clientId'],
     ]);
+    expect(rows.map((row) => row.title)).toEqual([
+      'label.basic-configuration',
+      'label.entity-configuration',
+      'label.authority',
+      'label.advanced-configuration',
+      undefined,
+    ]);
     expect(rows[0].className).toContain('tw:border');
     expect(rows[rows.length - 1].className).toBe('tw:hidden');
   });
 
-  it('keeps the schema order inside a card, not the order the group lists', () => {
+  it('orders a card by its group, not by the schema', () => {
     const authorizerSchema: RJSFSchema = {
       type: 'object',
       properties: {
@@ -128,12 +136,12 @@ describe('toCoreUiSchema', () => {
     expect(rows[0].columns.map((c) => c.name)).toEqual([
       'adminPrincipals',
       'principalDomain',
-      'allowedDomains',
       'enforcePrincipalDomain',
+      'allowedDomains',
     ]);
   });
 
-  it('swaps the classic-only renderers for FormBuilderV1 ones', () => {
+  it('keeps the classic LDAP renderers', () => {
     const ldapSchema: RJSFSchema = {
       type: 'object',
       properties: {
@@ -158,10 +166,10 @@ describe('toCoreUiSchema', () => {
     });
 
     expect(uiSchema.ldapConfiguration.authRolesMapping['ui:widget']).toBe(
-      'textarea'
+      'LdapRoleMappingWidget'
     );
-    expect(uiSchema.ldapConfiguration.authReassignRoles).not.toHaveProperty(
-      'ui:field'
+    expect(uiSchema.ldapConfiguration.authReassignRoles['ui:field']).toBe(
+      'RolesSelectField'
     );
     expect(uiSchema.ldapConfiguration.authReassignRoles['ui:placeholder']).toBe(
       'Select roles'

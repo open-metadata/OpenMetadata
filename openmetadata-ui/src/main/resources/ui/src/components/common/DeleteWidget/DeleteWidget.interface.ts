@@ -38,6 +38,8 @@ export interface DeleteWidgetModalProps {
   successMessage?: string;
   deleteOptions?: DeleteOption[];
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
+  /** Called when an async delete job reports failure, to undo optimistic UI. */
+  onDeleteFailure?: () => void;
   onDelete?: (data: DeleteWidgetFormFields) => void;
   isDeleting?: boolean;
 }

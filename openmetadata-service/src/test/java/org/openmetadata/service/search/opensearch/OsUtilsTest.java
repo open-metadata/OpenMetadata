@@ -17,6 +17,8 @@ import static org.openmetadata.service.search.SearchUtils.getLineageDirectionAgg
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.nimbusds.jose.util.Pair;
+import java.io.IOException;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +34,7 @@ import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.lineage.MissingLineageEntityException;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
@@ -527,6 +530,56 @@ class OsUtilsTest {
 
       assertEquals(1, result.size());
       assertEquals("upstream", ((Map<?, ?>) result.get("sample.orders")).get("direction"));
+    }
+  }
+
+  @Test
+  void testSearchEntityByKeyKeepsMissingNodesAsSearchFailures() throws Exception {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.getIndexOrAliasName("lineage_search")).thenReturn("resolved.lineage");
+      when(client.search(any(SearchRequest.class), eq(JsonData.class))).thenReturn(searchResponse);
+      when(searchResponse.hits()).thenReturn(hitsMetadata);
+      when(hitsMetadata.hits()).thenReturn(List.of());
+
+      SearchException error =
+          assertThrows(
+              SearchException.class,
+              () ->
+                  OsUtils.searchEntityByKey(
+                      client,
+                      null,
+                      "lineage_search",
+                      FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
+                      Pair.of("missing-hash", "sample.missing_dashboard"),
+                      List.of()));
+
+      assertEquals(500, error.getResponse().getStatus());
+      assertInstanceOf(MissingLineageEntityException.class, error);
+      assertTrue(error.getMessage().contains("sample.missing_dashboard"));
+    }
+  }
+
+  @Test
+  void testSearchEntityByKeyPreservesSearchFailure() throws Exception {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.getIndexOrAliasName("lineage_search")).thenReturn("resolved.lineage");
+      IOException failure = new IOException("Search backend unavailable");
+      when(client.search(any(SearchRequest.class), eq(JsonData.class))).thenThrow(failure);
+
+      assertSame(
+          failure,
+          assertThrows(
+              IOException.class,
+              () ->
+                  OsUtils.searchEntityByKey(
+                      client,
+                      null,
+                      "lineage_search",
+                      FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
+                      Pair.of("missing-hash", "sample.missing_dashboard"),
+                      List.of())));
     }
   }
 

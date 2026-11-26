@@ -94,7 +94,7 @@ public class DriveServiceResource
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
+    return super.getEntitySpecificOperations();
   }
 
   public DriveServiceResource(Authorizer authorizer, Limits limits) {
@@ -302,7 +302,7 @@ public class DriveServiceResource
       @Context SecurityContext securityContext,
       @Valid CreateDriveService create) {
     DriveService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityContext, service));
     decryptOrNullify(securityContext, (DriveService) response.getEntity());
     return response;
   }
