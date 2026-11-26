@@ -14,6 +14,8 @@ package org.openmetadata.service.search.vector;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Page;
@@ -22,6 +24,7 @@ import org.openmetadata.schema.entity.data.QuickLink;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
 import org.openmetadata.service.search.vector.VectorDocBuilder.BodyTextExtractor;
+import org.openmetadata.service.search.vector.utils.TextChunkManager;
 
 /**
  * Body text contributor for {@link Page}. The default description-only extractor would miss the
@@ -34,7 +37,35 @@ public final class PageBodyTextContributor implements VectorBodyTextContributor 
 
   public static final PageBodyTextContributor INSTANCE = new PageBodyTextContributor();
 
+  private static final Pattern CHUNK_FOOTER =
+      Pattern.compile(" \\| chunk ([1-9][0-9]*)/[1-9][0-9]*\\z");
+
   private PageBodyTextContributor() {}
+
+  /** Extract the article text from an indexed context, or null when its metadata no longer matches. */
+  public static String descriptionPassage(Page page, String context) {
+    String header = VectorDocBuilder.buildMetaLightText(page, INSTANCE.entityType());
+    if (context == null || !context.startsWith(header)) {
+      return null;
+    }
+    Matcher footer = CHUNK_FOOTER.matcher(context);
+    if (!footer.find() || footer.start() < header.length()) {
+      return null;
+    }
+    String body = context.substring(header.length(), footer.start());
+    List<String> labels = new ArrayList<>();
+    appendIfPresent(labels, "title", titleOf(page));
+    labels.add("description:");
+    List<String> labelChunks = TextChunkManager.chunk(String.join("; ", labels));
+    int ordinal = Integer.parseInt(footer.group(1));
+    if (ordinal > labelChunks.size()) {
+      return body;
+    }
+    String prefix = labelChunks.getLast();
+    return ordinal == labelChunks.size() && body.startsWith(prefix)
+        ? body.substring(prefix.length()).stripLeading()
+        : null;
+  }
 
   @Override
   public String entityType() {

@@ -21,7 +21,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
@@ -32,12 +35,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.AIContext;
@@ -52,6 +59,7 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -74,6 +82,10 @@ import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.PageBodyTextContributor;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -241,6 +253,76 @@ class AIContextBuilderTest {
         AIContextBuilder.canViewKnowledge(
             authorizer, null, Entity.TABLE, "svc.db.sch.upstream", MetadataOperation.VIEW_TESTS),
         "server-internal callers (no security context) are not filtered");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void applyKnowledgeBudget_cleansArticlePassageBeforeCuttingExcerpt(boolean imageOnly) {
+    String lead = "Revenue recognition rules.";
+    String image = "<p><img src=\"data:image/png;base64," + "A".repeat(260) + "\"></p>";
+    String sql = "WHERE a &lt; 1 AND b = &#39;x&#39; | chunk 1/1";
+    Page page =
+        spy(
+            new Page()
+                .withId(UUID.randomUUID())
+                .withFullyQualifiedName("kb.Revenue")
+                .withName("Revenue")
+                .withDisplayName("Revenue | Rules")
+                .withExtension(Map.of("note", "metadata | not article text"))
+                .withDescription(
+                    lead
+                        + "\n\n"
+                        + "details ".repeat(372)
+                        + "\n\n"
+                        + image.repeat(4)
+                        + (imageOnly ? "" : "<p>" + sql + "</p>")));
+    EntityReference reference = new EntityReference().withId(page.getId()).withType(Entity.PAGE);
+    when(page.getEntityReference()).thenReturn(reference);
+    KnowledgeItem article = knowledgeItem("Revenue", AIContextBuilder.fullContentOf(page));
+    PageBodyTextContributor.INSTANCE.register();
+    // The title, labels, and lead fill the first 380-word chunk. The query selects the second.
+    List<Map<String, Object>> chunks =
+        VectorDocBuilder.fromEntityReusingEmbeddings(
+            page, Map.of(0, new float[] {1}, 1, new float[] {1}));
+    assertEquals(2, chunks.size());
+    String passage = (String) chunks.get(1).get("textToLLMContext");
+    KnowledgeItem following = knowledgeItem("Tax", "B".repeat(650));
+    SearchRepository search = mock(SearchRepository.class);
+    when(search.isVectorEmbeddingEnabled()).thenReturn(true);
+    OpenSearchVectorService vectors = mock(OpenSearchVectorService.class);
+    when(vectors.searchChunksByParent(page.getId().toString(), "revenue", 1, null))
+        .thenReturn(List.of(passage));
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<OpenSearchVectorService> service = mockStatic(OpenSearchVectorService.class)) {
+      service.when(OpenSearchVectorService::getInstance).thenReturn(vectors);
+      entities.when(Entity::getSearchRepository).thenReturn(search);
+      entities
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      Entity.PAGE, article.getFullyQualifiedName(), Include.NON_DELETED))
+          .thenReturn(reference);
+      entities
+          .when(
+              () ->
+                  Entity.getEntity(reference, "owners,tags,domains,extension", Include.NON_DELETED))
+          .thenReturn(page);
+      new AIContextBuilder("table", "svc.db.sch.orders")
+          .withQuery("revenue")
+          .withKnowledgeBudget(AIContextBuilder.EXCERPT_CHARS)
+          .applyKnowledgeBudget(new AIContext().withArticles(List.of(article, following)));
+    }
+
+    assertTrue(article.getContentTruncated());
+    if (imageOnly) {
+      assertEquals(lead, article.getContent());
+    } else {
+      assertTrue(article.getContent().contains("WHERE a < 1 AND b = 'x' | chunk 1/1"));
+      assertFalse(article.getContent().contains("base64"));
+      assertFalse(article.getContent().contains("customProperties:"));
+    }
+    assertEquals("B".repeat(650), following.getContent());
   }
 
   @Test
@@ -985,5 +1067,61 @@ class AIContextBuilderTest {
     assertEquals(List.of(9, "value-9"), bounded.getRows().get(9));
     rows.get(0).set(1, "mutated");
     assertEquals("value-0", bounded.getRows().get(0).get(1));
+  }
+
+  @Test
+  void fullContentOf_stripsImagesFromArticleAndKeepsMetricExpressionVerbatim() {
+    String payload = "A".repeat(5_000);
+    Page article =
+        new Page()
+            .withName("architecture")
+            .withDescription(
+                "<p class=\"om-p\">Overview: x &gt;&#61; 1 and &#39;a&#39;</p>"
+                    + "<p><img src=\"data:image/png;base64,"
+                    + payload
+                    + "\"></p>"
+                    + "<p>References <a data-entitytype=\"table\" data-fqn=\"svc.db.sch.orders\""
+                    + " class=\"om-mention\">Orders</a>.</p>");
+
+    String pageContent = AIContextBuilder.fullContentOf(article);
+
+    assertFalse(pageContent.contains("base64"));
+    assertFalse(pageContent.contains("<img"));
+    assertFalse(pageContent.contains("class="));
+    assertTrue(pageContent.contains("Overview: x >= 1 and 'a'"), pageContent);
+    assertTrue(pageContent.contains("data-fqn=\"svc.db.sch.orders\""));
+
+    Metric metric =
+        new Metric()
+            .withName("net_revenue")
+            .withDescription(
+                "<p>Net revenue</p><img src=\"data:image/png;base64," + payload + "\">")
+            .withMetricExpression(
+                new MetricExpression()
+                    .withCode("SELECT SUM(amount) FROM orders WHERE amount > 0 AND amount < 1000"));
+
+    String metricContent = AIContextBuilder.fullContentOf(metric);
+
+    assertFalse(metricContent.contains("base64"));
+    assertTrue(metricContent.contains("Net revenue"));
+    assertTrue(
+        metricContent.contains("SELECT SUM(amount) FROM orders WHERE amount > 0 AND amount < 1000"),
+        "SQL comparison operators must not be HTML-escaped by PromptText");
+
+    Metric imageOnlyMetric =
+        new Metric()
+            .withName("image_only")
+            .withDescription("<img src=\"data:image/png;base64," + payload + "\">")
+            .withMetricExpression(new MetricExpression().withCode("COUNT(*)"));
+    assertEquals("COUNT(*)", AIContextBuilder.fullContentOf(imageOnlyMetric));
+
+    ContextMemory memory =
+        new ContextMemory()
+            .withName("memo")
+            .withAnswer(
+                "<p>Keep active accounts.</p><img src=\"data:image/png;base64," + payload + "\">");
+    String memoryContent = AIContextBuilder.fullContentOf(memory);
+    assertFalse(memoryContent.contains("base64"));
+    assertTrue(memoryContent.contains("Keep active accounts."));
   }
 }
