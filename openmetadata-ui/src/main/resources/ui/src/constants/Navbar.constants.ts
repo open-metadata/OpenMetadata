@@ -40,7 +40,7 @@ export interface SupportItem {
   handleSupportItemClick?: () => void;
 }
 
-export const HELP_ITEMS = [
+export const HELP_ITEMS: SupportItem[] = [
   {
     key: HELP_ITEMS_ENUM.TOUR,
     label: 'label.tour',

@@ -509,7 +509,14 @@ export const APPLICATION_JSON_CONTENT_TYPE_HEADER = {
   headers: { 'Content-type': 'application/json' },
 };
 
-export const STATUS_ICON = {
+type StatusIconComponent = React.ComponentType<
+  React.SVGProps<SVGSVGElement> & { size?: number }
+>;
+
+export const STATUS_ICON: Record<
+  'success' | 'failed' | 'completed',
+  StatusIconComponent
+> = {
   success: CheckCircle02,
   failed: XCircle,
   completed: SuccessfulTests,

@@ -26,7 +26,12 @@ import { EntityType } from '../../enums/entity.enum';
 import { NodeData } from '../../interface/lineage.interface';
 import i18n from '../i18next/LocalUtil';
 
-export const LINEAGE_IMPACT_OPTIONS = [
+export const LINEAGE_IMPACT_OPTIONS: Array<{
+  label: string;
+  key: EImpactLevel;
+  icon: SvgComponent;
+  entityType: EntityType;
+}> = [
   {
     label: i18n.t('label.asset-level'),
     key: EImpactLevel.TableLevel,
