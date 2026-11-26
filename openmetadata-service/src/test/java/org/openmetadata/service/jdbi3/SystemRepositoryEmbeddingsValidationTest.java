@@ -191,8 +191,8 @@ class SystemRepositoryEmbeddingsValidationTest {
     assertTrue(message.contains("Semantic search needs a rebuild of 1 search index"), message);
     assertTrue(message.contains("model-b (2 dimensions)"), message);
     assertTrue(message.contains("holds vectors of model model-a"), message);
-    assertTrue(message.contains("Recreate Indexes"), message);
-    assertTrue(message.contains("reindex --force"), message);
+    assertTrue(message.contains("Search Indexing for all entities"), message);
+    assertTrue(message.contains("openmetadata-ops.sh reindex"), message);
   }
 
   @Test

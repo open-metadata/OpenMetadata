@@ -4,9 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
@@ -20,9 +23,11 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -42,7 +47,10 @@ import org.openmetadata.service.search.LiveEmbeddingField;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.VectorFieldHealth;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingModel;
+import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.opensearch.testcontainers.OpensearchContainer;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.utility.DockerImageName;
@@ -331,6 +339,53 @@ class OpenSearchVectorMappingUpdateIT {
     assertEquals(indexName + " was created without vector support", live.describe(MODEL));
   }
 
+  @Test
+  void migrateCreatesAnIndexWithKnnForAModelNotLoadedYetAndTheServerDeclaresItsField()
+      throws Exception {
+    String indexName = "model_not_loaded_table_search_index";
+
+    withModelNotLoadedYet(() -> client.createIndex(indexName, FIRST_RELEASE_MAPPING));
+
+    assertTrue(knnEnabled(indexName), "index.knn is fixed at creation, so it must be set now");
+    assertFalse(liveMappings(indexName).path("properties").has("embedding"));
+    LiveEmbeddingField live = client.readEmbeddingField(indexName);
+    assertEquals(EmbeddingFieldUpdate.DECLARE, EmbeddingFieldUpdate.updateFor(live, MODEL));
+    client.declareEmbeddingField(indexName, MODEL);
+    JsonNode embedding = liveMappings(indexName).path("properties").path("embedding");
+    assertEquals("knn_vector", embedding.path("type").asText());
+    assertEquals(DIMENSION, embedding.path("dimension").asInt());
+    assertEquals(MODEL.id(), recordedModel(indexName));
+  }
+
+  @Test
+  void anOntologySearchBeforeItsChunkIndexExistsFindsNothingWhileAnotherIndexNeedsARebuild() {
+    health.recordCannotHold(
+        "table_search_index",
+        Set.of("table_search_index"),
+        "table_search_index has knn_vector of 768 dimensions");
+    EmbeddingClient embeddings = mock(EmbeddingClient.class);
+    OpenSearchVectorService vectorService =
+        new OpenSearchVectorService(client.getNewClient(), embeddings);
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.getVectorFieldHealth()).thenReturn(health);
+    List<VectorSearchResponse> responses = new ArrayList<>();
+
+    withSearchRepository(
+        searchRepository,
+        () ->
+            responses.add(
+                vectorService.search(
+                    "churn",
+                    Map.of("entityType", List.of(Entity.ONTOLOGY_CONCEPT)),
+                    3,
+                    0,
+                    10,
+                    0.0)));
+
+    assertTrue(responses.getFirst().hits.isEmpty());
+    verify(embeddings, never()).embedQuery(any(String.class));
+  }
+
   private static EmbeddingModel model(int dimension) {
     return new EmbeddingModel("vector-mapping-update-" + dimension, dimension);
   }
@@ -363,7 +418,20 @@ class OpenSearchVectorMappingUpdateIT {
    */
   private void withModel(EmbeddingModel model, Runnable action) {
     SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.buildsVectorIndexes()).thenReturn(true);
     when(searchRepository.getEmbeddingModel()).thenReturn(Optional.of(model));
+    when(searchRepository.getVectorFieldHealth()).thenReturn(health);
+    withSearchRepository(searchRepository, action);
+  }
+
+  /**
+   * Runs the action with semantic search on for a model whose dimension is known only once it is
+   * loaded, a DJL model, as {@code migrate} sees it.
+   */
+  private void withModelNotLoadedYet(Runnable action) {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.buildsVectorIndexes()).thenReturn(true);
+    when(searchRepository.getEmbeddingModel()).thenReturn(Optional.empty());
     when(searchRepository.getVectorFieldHealth()).thenReturn(health);
     withSearchRepository(searchRepository, action);
   }
@@ -443,7 +511,7 @@ class OpenSearchVectorMappingUpdateIT {
     assertTrue(mismatches.getFirst().reason().contains(reason), mismatches.toString());
     String report = health.report(MODEL).orElseThrow();
     assertTrue(report.contains(indexName), report);
-    assertTrue(report.contains("reindex --force"), report);
+    assertTrue(report.contains("openmetadata-ops.sh reindex"), report);
     assertTrue(errors().isEmpty(), "nothing is logged per index: " + errors());
   }
 }

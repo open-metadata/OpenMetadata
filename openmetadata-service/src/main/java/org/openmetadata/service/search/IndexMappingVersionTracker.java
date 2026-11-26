@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -42,16 +44,39 @@ public class IndexMappingVersionTracker {
   private final String updatedBy;
   private final String version;
   private final CollectionDAO daoCollection;
+  private final Supplier<Set<String>> cannotHoldVectors;
 
   public IndexMappingVersionTracker(CollectionDAO daoCollection, String version, String updatedBy) {
+    this(daoCollection, version, updatedBy, Set::of);
+  }
+
+  /**
+   * @param cannotHoldVectors the entity types whose live index cannot hold the vectors of the
+   *     configured embedding model, read when the drift is computed: a mapping hash cannot tell,
+   *     and only a rebuild gives such an index a field for the model
+   *     (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model)
+   */
+  public IndexMappingVersionTracker(
+      CollectionDAO daoCollection,
+      String version,
+      String updatedBy,
+      Supplier<Set<String>> cannotHoldVectors) {
     this.daoCollection = daoCollection;
     this.indexMappingVersionDAO = daoCollection.indexMappingVersionDAO();
     this.version = version;
     this.updatedBy = updatedBy;
+    this.cannotHoldVectors = cannotHoldVectors;
   }
 
   public static IndexMappingVersionTracker create(CollectionDAO daoCollection) {
     return new IndexMappingVersionTracker(daoCollection, SERVER_VERSION, SYSTEM_UPDATED_BY);
+  }
+
+  /** As {@link #create(CollectionDAO)}, also reporting the indexes that cannot hold vectors. */
+  public static IndexMappingVersionTracker create(
+      CollectionDAO daoCollection, Supplier<Set<String>> cannotHoldVectors) {
+    return new IndexMappingVersionTracker(
+        daoCollection, SERVER_VERSION, SYSTEM_UPDATED_BY, cannotHoldVectors);
   }
 
   private static String currentServerVersion() {
@@ -61,22 +86,21 @@ public class IndexMappingVersionTracker {
   public enum MappingDriftState {
     CURRENT,
     STALE,
-    UNTRACKED
+    UNTRACKED,
+    /** The live index cannot hold the vectors of the configured embedding model. */
+    CANNOT_HOLD_VECTORS
   }
 
+  /**
+   * The entity types whose index the smart reindex rebuilds: its mapping changed or is not tracked
+   * yet, or it cannot hold the vectors of the configured embedding model.
+   */
   public List<String> getChangedMappings() throws IOException {
     List<String> changedMappings = new ArrayList<>();
-    Map<String, String> storedHashes = getStoredMappingHashes();
-    Map<String, MappingEntry> currentMappings = computeCurrentMappings();
-
-    for (Map.Entry<String, MappingEntry> entry : currentMappings.entrySet()) {
-      String entityType = entry.getKey();
-      String currentHash = entry.getValue().hash();
-      String storedHash = storedHashes.get(entityType);
-
-      if (storedHash == null || !storedHash.equals(currentHash)) {
-        changedMappings.add(entityType);
-        LOG.info("Index mapping changed for entity: {}", entityType);
+    for (Map.Entry<String, MappingDriftState> entry : computeDrift().entrySet()) {
+      if (entry.getValue() != MappingDriftState.CURRENT) {
+        changedMappings.add(entry.getKey());
+        logReindexReason(entry.getKey(), entry.getValue());
       }
     }
 
@@ -89,13 +113,31 @@ public class IndexMappingVersionTracker {
     return changedMappings;
   }
 
+  private static void logReindexReason(String entityType, MappingDriftState state) {
+    if (state == MappingDriftState.CANNOT_HOLD_VECTORS) {
+      LOG.info("Index of entity {} cannot hold the embedding model's vectors", entityType);
+    } else {
+      LOG.info("Index mapping changed for entity: {}", entityType);
+    }
+  }
+
+  /**
+   * Each entity type's state: {@link MappingDriftState#CANNOT_HOLD_VECTORS} when its live index
+   * cannot hold the vectors of the configured embedding model, and otherwise whether its index was
+   * built from the current mapping.
+   */
   public Map<String, MappingDriftState> computeDrift() throws IOException {
     Map<String, String> storedHashes = getStoredMappingHashes();
     Map<String, MappingEntry> currentMappings = computeCurrentMappings();
+    Set<String> withoutVectorSupport = cannotHoldVectors.get();
     Map<String, MappingDriftState> drift = new HashMap<>();
     for (Map.Entry<String, MappingEntry> entry : currentMappings.entrySet()) {
       String storedHash = storedHashes.get(entry.getKey());
-      drift.put(entry.getKey(), classifyState(storedHash, entry.getValue().hash()));
+      drift.put(
+          entry.getKey(),
+          withoutVectorSupport.contains(entry.getKey())
+              ? MappingDriftState.CANNOT_HOLD_VECTORS
+              : classifyState(storedHash, entry.getValue().hash()));
     }
     return Collections.unmodifiableMap(drift);
   }

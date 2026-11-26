@@ -17,6 +17,7 @@ import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -489,6 +490,54 @@ class IndexMappingVersionTrackerTest {
       assertEquals(IndexMappingVersionTracker.MappingDriftState.CURRENT, drift.get("table"));
       assertEquals(IndexMappingVersionTracker.MappingDriftState.STALE, drift.get("glossaryTerm"));
       assertEquals(IndexMappingVersionTracker.MappingDriftState.UNTRACKED, drift.get("domain"));
+    }
+  }
+
+  @Test
+  void anIndexThatCannotHoldTheModelsVectorsIsRebuiltThoughItsMappingIsCurrent()
+      throws IOException {
+    Map<String, IndexMapping> mappings =
+        buildMappingsFromPairs(
+            "table", "/elasticsearch/%s/table_index_mapping.json",
+            "domain", "/elasticsearch/%s/domain_index_mapping.json");
+    try (var loaderMock = mockStatic(IndexMappingLoader.class)) {
+      loaderMock.when(IndexMappingLoader::getInstance).thenReturn(indexMappingLoader);
+      when(indexMappingLoader.getIndexMapping()).thenReturn(mappings);
+      IndexMappingVersionTracker stamping =
+          new IndexMappingVersionTracker(collectionDAO, "1.2.3", "tester");
+      stamping.updateMappingVersions();
+      verify(indexMappingVersionDAO, times(2))
+          .upsertIndexMappingVersion(
+              entityTypeCaptor.capture(),
+              hashCaptor.capture(),
+              anyString(),
+              anyString(),
+              anyLong(),
+              anyString());
+      List<IndexMappingVersionDAO.IndexMappingVersion> current = new ArrayList<>();
+      for (int i = 0; i < entityTypeCaptor.getAllValues().size(); i++) {
+        current.add(
+            new IndexMappingVersionDAO.IndexMappingVersion(
+                entityTypeCaptor.getAllValues().get(i), hashCaptor.getAllValues().get(i)));
+      }
+      when(indexMappingVersionDAO.getAllMappingVersions()).thenReturn(current);
+      Set<String> cannotHoldVectors = new HashSet<>(Set.of("table"));
+      IndexMappingVersionTracker tracker =
+          new IndexMappingVersionTracker(
+              collectionDAO, "1.2.3", "tester", () -> Set.copyOf(cannotHoldVectors));
+
+      assertEquals(
+          IndexMappingVersionTracker.MappingDriftState.CANNOT_HOLD_VECTORS,
+          tracker.computeDrift().get("table"));
+      assertEquals(
+          IndexMappingVersionTracker.MappingDriftState.CURRENT,
+          tracker.computeDrift().get("domain"));
+      assertEquals(List.of("table"), tracker.getChangedMappings());
+      assertTrue(
+          stamping.getChangedMappings().isEmpty(), "the mapping hashes alone see nothing to do");
+
+      cannotHoldVectors.clear();
+      assertTrue(tracker.getChangedMappings().isEmpty(), "rebuilt, it reads current");
     }
   }
 

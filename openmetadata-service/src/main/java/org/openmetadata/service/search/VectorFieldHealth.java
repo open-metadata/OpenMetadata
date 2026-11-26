@@ -29,8 +29,8 @@ public final class VectorFieldHealth {
   static final Duration RECHECK_AFTER = Duration.ofMinutes(1);
 
   static final String WAY_OUT =
-      "Rebuild them with this model: run Search Indexing for all entities with Recreate Indexes "
-          + "on, or ./bootstrap/openmetadata-ops.sh reindex --force, or configure the previous "
+      "Rebuild them with this model: run ./bootstrap/openmetadata-ops.sh reindex, which rebuilds "
+          + "exactly these, or Search Indexing for all entities, or configure the previous "
           + "embedding model again.";
 
   /**

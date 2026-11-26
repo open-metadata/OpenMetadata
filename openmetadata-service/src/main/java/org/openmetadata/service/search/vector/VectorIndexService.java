@@ -37,6 +37,12 @@ public interface VectorIndexService {
   }
 
   /**
+   * The data-asset chunk index: an alias over the generation that a recreate of every data-asset
+   * type replaces.
+   */
+  String getChunkIndexName();
+
+  /**
    * The engine's kNN clause over the embedding field, for use inside a {@code bool} or {@code
    * function_score} query. Carries the structured filters, the query filter and the context memory
    * visibility rule of {@code parameters}. {@code parameters.threshold()} is on the cosine score

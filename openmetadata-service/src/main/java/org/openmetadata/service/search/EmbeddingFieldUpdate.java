@@ -63,18 +63,37 @@ public enum EmbeddingFieldUpdate {
   }
 
   /**
+   * Whether new vector indexes are built to hold vectors, also before the model's dimension is
+   * known ({@link SearchRepository#buildsVectorIndexes}).
+   */
+  public static boolean buildsVectorIndexes() {
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    return searchRepository != null && searchRepository.buildsVectorIndexes();
+  }
+
+  /**
+   * Records {@code model} in the {@code _meta} of {@code mappings}, keeping its other entries, and
+   * returns that {@code _meta}. It is the one place that writes which model an index's vectors are
+   * built with, for a new index as for a {@code PUT _mapping} on an existing one; a {@code PUT
+   * _mapping} replaces the whole live {@code _meta}, so its body starts from the live one.
+   */
+  public static ObjectNode recordModel(ObjectNode mappings, EmbeddingModel model) {
+    ObjectNode meta =
+        mappings.get(LiveEmbeddingField.META) instanceof ObjectNode existing
+            ? existing
+            : mappings.putObject(LiveEmbeddingField.META);
+    return meta.put(LiveEmbeddingField.META_EMBEDDING_MODEL, model.id())
+        .put(LiveEmbeddingField.META_EMBEDDING_DIMENSION, model.dimension());
+  }
+
+  /**
    * Records {@code model} in the {@code _meta} of {@code mappings} when the field is declared, and
    * drops the model entries otherwise. A {@code PUT _mapping} replaces the whole {@code _meta} and
    * keeps the live one when the body has none, so an emptied {@code _meta} is dropped as well.
    */
   public void applyModelMeta(ObjectNode mappings, EmbeddingModel model) {
     if (this == DECLARE) {
-      ObjectNode meta =
-          mappings.get(LiveEmbeddingField.META) instanceof ObjectNode existing
-              ? existing
-              : mappings.putObject(LiveEmbeddingField.META);
-      meta.put(LiveEmbeddingField.META_EMBEDDING_MODEL, model.id())
-          .put(LiveEmbeddingField.META_EMBEDDING_DIMENSION, model.dimension());
+      recordModel(mappings, model);
     } else if (mappings.get(LiveEmbeddingField.META) instanceof ObjectNode meta) {
       meta.remove(
           List.of(

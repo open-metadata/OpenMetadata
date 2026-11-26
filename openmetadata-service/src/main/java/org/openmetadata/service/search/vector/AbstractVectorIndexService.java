@@ -33,6 +33,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.search.EmbeddingFieldUpdate;
 import org.openmetadata.service.search.LiveEmbeddingField;
 import org.openmetadata.service.search.OntologyChunkIndex;
 import org.openmetadata.service.search.OntologyTermSearch;
@@ -224,6 +225,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * {@code dataAssetEmbeddings} alias is attached to it so the vector read path sees chunk docs
    * together with legacy entity-doc embeddings during migration.
    */
+  @Override
   public String getChunkIndexName() {
     String clusterAlias = null;
     try {
@@ -1427,11 +1429,11 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   /** The {@code _meta} of a new chunk index: its document version and the embedding model. */
   private ObjectNode chunkMeta() {
-    return MAPPER
-        .createObjectNode()
-        .put(CHUNK_DOC_VERSION, VectorDocBuilder.CHUNK_DOC_VERSION)
-        .put(LiveEmbeddingField.META_EMBEDDING_MODEL, embeddingClient.getModelId())
-        .put(LiveEmbeddingField.META_EMBEDDING_DIMENSION, embeddingClient.getDimension());
+    ObjectNode mappings = MAPPER.createObjectNode();
+    mappings
+        .putObject(LiveEmbeddingField.META)
+        .put(CHUNK_DOC_VERSION, VectorDocBuilder.CHUNK_DOC_VERSION);
+    return EmbeddingFieldUpdate.recordModel(mappings, EmbeddingModel.of(embeddingClient));
   }
 
   private ObjectNode buildChunkProperties() {
@@ -2065,75 +2067,13 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   @Override
   @SuppressWarnings("unchecked")
   public VectorSearchResponse search(VectorSearchParameters parameters) {
-    String query = parameters.query();
-    int size = parameters.size();
-    int from = parameters.from();
-    int k = parameters.k();
-    double threshold = parameters.threshold();
     long start = System.currentTimeMillis();
     try {
-      float[] queryVector = embeddingClient.embedQuery(query);
-      LinkedHashMap<String, List<Map<String, Object>>> byParent = new LinkedHashMap<>();
-      int rawOffset = 0;
-      long totalHits = -1L;
-      boolean exhausted = false;
-      int requestedParents = from + size + 1; // Fetch one extra parent so hasMore is accurate.
-      int overFetchSize = Math.max(requestedParents * OVER_FETCH_MULTIPLIER, OVER_FETCH_MULTIPLIER);
-      if (knnReturnsAtMostK(threshold)) {
-        overFetchSize = Math.min(overFetchSize, k);
-      }
-
       String target = vectorSearchTarget(parameters.filters());
-      String aliasName = usableSearchTarget(target);
-      Set<String> readableAnchorIds = readableAnchors.apply(parameters);
-      while (!exhausted && byParent.size() < requestedParents) {
-        String queryJson =
-            buildKnnSearch(
-                queryVector,
-                parameters.withPagination(overFetchSize, rawOffset),
-                readableAnchorIds);
-        String endpoint =
-            SearchUtils.appendPreferenceParam(
-                "/" + aliasName + "/_search", parameters.preference());
-        if (target.contains(OntologyChunkIndex.name())) {
-          // The ontology chunk index is created only by the first ontology embedding write.
-          endpoint += (endpoint.contains("?") ? "&" : "?") + "ignore_unavailable=true";
-        }
-        String responseBody = executeGenericRequest("POST", endpoint, queryJson);
-
-        JsonNode root = MAPPER.readTree(responseBody);
-        JsonNode hitsNode = root.path("hits").path("hits");
-        totalHits = extractTotalHits(root);
-
-        int pageHitCount = collectSearchHits(hitsNode, threshold, byParent);
-        if (pageHitCount == 0) {
-          exhausted = true;
-          break;
-        }
-
-        rawOffset += pageHitCount;
-        exhausted = totalHits >= 0 ? rawOffset >= totalHits : pageHitCount < overFetchSize;
-      }
-
-      List<Map<String, Object>> results = new ArrayList<>();
-      int parentCount = 0;
-      int skipped = 0;
-      for (List<Map<String, Object>> chunks : byParent.values()) {
-        if (skipped < from) {
-          skipped++;
-          continue;
-        }
-        if (parentCount >= size) {
-          break;
-        }
-        results.addAll(chunks);
-        parentCount++;
-      }
-
-      boolean hasMore = byParent.size() > (from + parentCount);
-      long tookMillis = System.currentTimeMillis() - start;
-      return new VectorSearchResponse(
-          tookMillis, results, totalHits >= 0 ? totalHits : null, hasMore);
+      Optional<String> searchable = searchableIndexes(target);
+      return searchable.isPresent()
+          ? searchIn(target, searchable.get(), parameters, start)
+          : new VectorSearchResponse(System.currentTimeMillis() - start, List.of(), 0L, false);
     } catch (VectorSearchUnavailableException e) {
       throw e;
     } catch (Exception e) {
@@ -2142,35 +2082,106 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     }
   }
 
-  /**
-   * {@code target}, or when an index behind it cannot hold the embedding model's vectors, the
-   * indexes behind it that can: a kNN on such an index fails, and fails the whole search, and an
-   * index behind an alias cannot be left out with a {@code -name} exclusion on either engine.
-   *
-   * @throws VectorSearchUnavailableException when no index behind it can
-   */
-  private String usableSearchTarget(String target) throws IOException {
-    Set<String> unusable =
-        vectorFieldHealth().map(VectorFieldHealth::unusableIndexes).orElse(Set.of());
-    return unusable.isEmpty() ? target : usableIndexesBehind(target);
+  /** The kNN over {@code aliasName}, the indexes behind {@code target} the search may read. */
+  private VectorSearchResponse searchIn(
+      String target, String aliasName, VectorSearchParameters parameters, long start)
+      throws IOException {
+    int size = parameters.size();
+    int from = parameters.from();
+    int k = parameters.k();
+    double threshold = parameters.threshold();
+    float[] queryVector = embeddingClient.embedQuery(parameters.query());
+    LinkedHashMap<String, List<Map<String, Object>>> byParent = new LinkedHashMap<>();
+    int rawOffset = 0;
+    long totalHits = -1L;
+    boolean exhausted = false;
+    int requestedParents = from + size + 1; // Fetch one extra parent so hasMore is accurate.
+    int overFetchSize = Math.max(requestedParents * OVER_FETCH_MULTIPLIER, OVER_FETCH_MULTIPLIER);
+    if (knnReturnsAtMostK(threshold)) {
+      overFetchSize = Math.min(overFetchSize, k);
+    }
+
+    Set<String> readableAnchorIds = readableAnchors.apply(parameters);
+    while (!exhausted && byParent.size() < requestedParents) {
+      String queryJson =
+          buildKnnSearch(
+              queryVector, parameters.withPagination(overFetchSize, rawOffset), readableAnchorIds);
+      String endpoint =
+          SearchUtils.appendPreferenceParam("/" + aliasName + "/_search", parameters.preference());
+      if (target.contains(OntologyChunkIndex.name())) {
+        // The ontology chunk index is created only by the first ontology embedding write.
+        endpoint += (endpoint.contains("?") ? "&" : "?") + "ignore_unavailable=true";
+      }
+      String responseBody = executeGenericRequest("POST", endpoint, queryJson);
+
+      JsonNode root = MAPPER.readTree(responseBody);
+      JsonNode hitsNode = root.path("hits").path("hits");
+      totalHits = extractTotalHits(root);
+
+      int pageHitCount = collectSearchHits(hitsNode, threshold, byParent);
+      if (pageHitCount == 0) {
+        exhausted = true;
+        break;
+      }
+
+      rawOffset += pageHitCount;
+      exhausted = totalHits >= 0 ? rawOffset >= totalHits : pageHitCount < overFetchSize;
+    }
+
+    List<Map<String, Object>> results = new ArrayList<>();
+    int parentCount = 0;
+    int skipped = 0;
+    for (List<Map<String, Object>> chunks : byParent.values()) {
+      if (skipped < from) {
+        skipped++;
+        continue;
+      }
+      if (parentCount >= size) {
+        break;
+      }
+      results.addAll(chunks);
+      parentCount++;
+    }
+
+    boolean hasMore = byParent.size() > (from + parentCount);
+    long tookMillis = System.currentTimeMillis() - start;
+    return new VectorSearchResponse(
+        tookMillis, results, totalHits >= 0 ? totalHits : null, hasMore);
   }
 
-  private String usableIndexesBehind(String target) throws IOException {
+  /**
+   * What a vector search over {@code target} reads, decided before the query is embedded: {@code
+   * target} itself while every vector index can hold the embedding model's vectors, and otherwise
+   * the indexes behind it that can, since a kNN on one that cannot fails the whole search and an
+   * index behind an alias cannot be left out with a {@code -name} exclusion on either engine. Empty
+   * when no index exists behind it, as for ontology terms before their chunk index is created.
+   *
+   * @throws VectorSearchUnavailableException when indexes exist behind it but none can hold them
+   */
+  private Optional<String> searchableIndexes(String target) throws IOException {
+    Set<String> unusable =
+        vectorFieldHealth().map(VectorFieldHealth::unusableIndexes).orElse(Set.of());
+    return unusable.isEmpty() ? Optional.of(target) : usableIndexesBehind(target);
+  }
+
+  private Optional<String> usableIndexesBehind(String target) throws IOException {
+    List<String> behind = indexesBehind(target);
+    List<String> usable =
+        behind.stream().filter(AbstractVectorIndexService::canHoldVectors).sorted().toList();
+    if (usable.isEmpty() && !behind.isEmpty()) {
+      throw new VectorSearchUnavailableException(unavailableReason());
+    }
+    return usable.isEmpty() ? Optional.empty() : Optional.of(String.join(",", usable));
+  }
+
+  private List<String> indexesBehind(String target) throws IOException {
     String endpoint = "/" + target + "/_alias?ignore_unavailable=true";
-    List<String> usable = new ArrayList<>();
+    List<String> indexes = new ArrayList<>();
     MAPPER
         .readTree(executeGenericRequest("GET", endpoint, null))
         .fieldNames()
-        .forEachRemaining(
-            index -> {
-              if (canHoldVectors(index)) {
-                usable.add(index);
-              }
-            });
-    if (usable.isEmpty()) {
-      throw new VectorSearchUnavailableException(unavailableReason());
-    }
-    return usable.stream().sorted().collect(Collectors.joining(","));
+        .forEachRemaining(indexes::add);
+    return indexes;
   }
 
   private String unavailableReason() {

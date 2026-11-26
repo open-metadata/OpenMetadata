@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.function.FailableRunnable;
 import org.apache.hc.core5.http.HttpEntity;
@@ -60,6 +61,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.OntologyTermSearch;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.VectorFieldHealth;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
 import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
@@ -894,6 +897,61 @@ class ElasticSearchVectorServiceTest {
     promoteEveryEntityIndex(staged);
 
     assertEquals(0, sentCount("POST", "/_aliases"), "the live chunks stay");
+  }
+
+  // --- The chunk indexes VectorFieldHealth reads again around a rebuild ---
+
+  private final List<String> readAgain = new ArrayList<>();
+
+  /** A node that recorded the live chunk index as unable to hold the model's vectors. */
+  private MockedStatic<Entity> withChunkIndexThatCannotHoldTheModel(VectorFieldHealth health) {
+    health.recordCannotHold(
+        vectorService.getChunkIndexName(),
+        Set.of("data_asset_embeddings_chunks_g1"),
+        "data_asset_embeddings_chunks_g1 has dense_vector of 384 dimensions");
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.getVectorFieldHealth()).thenReturn(health);
+    MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS);
+    entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+    return entity;
+  }
+
+  @Test
+  void aPromotedChunkGenerationIsReadAgainSoItsVectorsAreLetBackIn() throws Exception {
+    String base = vectorService.getChunkIndexName();
+    AtomicReference<VectorFieldHealth> self = new AtomicReference<>();
+    VectorFieldHealth health =
+        new VectorFieldHealth(
+            name -> {
+              readAgain.add(name);
+              self.get().forget(name);
+            });
+    self.set(health);
+    answerByEndpointContaining(freshInstallRules());
+
+    try (MockedStatic<Entity> ignored = withChunkIndexThatCannotHoldTheModel(health)) {
+      String staged = vectorService.beginStagedChunkRecreate();
+      assertFalse(health.canHold(base), "flagged until the rebuild goes live");
+
+      promoteEveryEntityIndex(staged);
+    }
+
+    assertEquals(1, sentCount("POST", "/_aliases"), "the generation goes live");
+    assertEquals(List.of(base), readAgain, "the promoted chunk index is read again at once");
+    assertTrue(health.canHold(base));
+  }
+
+  @Test
+  void aLatchedStagedGenerationIsCheckedAgainstTheModelBeforeAnyWrite() {
+    VectorFieldHealth health = new VectorFieldHealth(readAgain::add);
+    String staged = vectorService.getChunkIndexName() + "_g2";
+
+    try (MockedStatic<Entity> ignored = withChunkIndexThatCannotHoldTheModel(health)) {
+      vectorService.latchParticipantStagedTarget(staged);
+      vectorService.latchParticipantStagedTarget(null);
+    }
+
+    assertEquals(List.of(staged), readAgain, "a participant reads the field of its run's target");
   }
 
   private static final String LIVE_DOC = "/data_asset_embeddings_chunks/_doc/";

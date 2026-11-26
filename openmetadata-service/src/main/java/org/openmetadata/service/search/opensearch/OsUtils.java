@@ -782,21 +782,32 @@ public class OsUtils {
     addKnnVectorSettings(rootNode, model -> EmbeddingFieldUpdate.DECLARE);
   }
 
+  /**
+   * A vector index gets {@code index.knn} whenever it is built to hold vectors, since OpenSearch
+   * takes that setting only at creation, and the field and the model in {@code _meta} once the
+   * model is known. A DJL model is known only once loaded, so an index {@code migrate} creates for
+   * it gets its field when the server starts.
+   */
   private static void addKnnVectorSettings(
       JsonNode rootNode, Function<EmbeddingModel, EmbeddingFieldUpdate> decide) {
     JsonNode properties = rootNode.path("mappings").path("properties");
     boolean vectorIndex = !properties.isMissingNode() && properties.has("fingerprint");
-    EmbeddingModel model = EmbeddingFieldUpdate.activeEmbeddingModel().orElse(null);
-    if (vectorIndex && model != null) {
-      logDeclaredDimensionMismatch(rootNode, model.dimension());
+    if (vectorIndex && EmbeddingFieldUpdate.buildsVectorIndexes()) {
       addKnnIndexSettings(rootNode);
-      EmbeddingFieldUpdate update = decide.apply(model);
-      ((ObjectNode) properties).remove(LiveEmbeddingField.FIELD);
-      if (update == EmbeddingFieldUpdate.DECLARE) {
-        ((ObjectNode) properties).set(LiveEmbeddingField.FIELD, knnVectorField(model.dimension()));
-      }
-      update.applyModelMeta((ObjectNode) rootNode.path("mappings"), model);
+      EmbeddingFieldUpdate.activeEmbeddingModel()
+          .ifPresent(model -> addKnnVectorField(rootNode, model, decide.apply(model)));
     }
+  }
+
+  private static void addKnnVectorField(
+      JsonNode rootNode, EmbeddingModel model, EmbeddingFieldUpdate update) {
+    ObjectNode properties = (ObjectNode) rootNode.path("mappings").path("properties");
+    logDeclaredDimensionMismatch(rootNode, model.dimension());
+    properties.remove(LiveEmbeddingField.FIELD);
+    if (update == EmbeddingFieldUpdate.DECLARE) {
+      properties.set(LiveEmbeddingField.FIELD, knnVectorField(model.dimension()));
+    }
+    update.applyModelMeta((ObjectNode) rootNode.path("mappings"), model);
   }
 
   /**

@@ -1208,6 +1208,42 @@ class OpenSearchVectorServiceTest {
   }
 
   @Test
+  void aSearchNoIndexCanServeNeverEmbedsTheQuery() throws IOException {
+    tableIndexHoldsAnotherModel();
+    when(mockEmbeddingClient.getModelId()).thenReturn("model-b");
+    when(mockEmbeddingClient.getDimension()).thenReturn(768);
+    mockOpenSearchResponses(
+        "{\"table_search_index_rebuild_1\": {\"aliases\": {\"dataAssetEmbeddings\": {}}}}");
+
+    try (MockedStatic<Entity> ignored = withVectorFieldHealth()) {
+      assertThrows(
+          VectorSearchUnavailableException.class,
+          () -> vectorService.search("churn", Map.of(), 3, 0, 10, 0.0));
+    }
+
+    verify(mockEmbeddingClient, never()).embedQuery(any(String.class));
+  }
+
+  @Test
+  void anOntologySearchBeforeTheOntologyChunkIndexExistsFindsNothing() throws IOException {
+    tableIndexHoldsAnotherModel();
+    mockOpenSearchResponses("{}");
+
+    try (MockedStatic<Entity> ignored = withVectorFieldHealth()) {
+      DTOs.VectorSearchResponse results =
+          vectorService.search(
+              "churn", Map.of("entityType", List.of(Entity.ONTOLOGY_CONCEPT)), 3, 0, 10, 0.0);
+      assertTrue(results.hits.isEmpty());
+    }
+
+    assertEquals(
+        List.of("/ontology_embeddings_chunks/_alias?ignore_unavailable=true"),
+        requestedEndpoints(),
+        "nothing to search, so no kNN is sent");
+    verify(mockEmbeddingClient, never()).embedQuery(any(String.class));
+  }
+
+  @Test
   void vectorSearchTargetsTheAliasWhileEveryIndexCanHoldTheModel() throws IOException {
     mockOpenSearchResponses("{\"hits\": {\"total\": {\"value\": 0}, \"hits\": []}}");
 

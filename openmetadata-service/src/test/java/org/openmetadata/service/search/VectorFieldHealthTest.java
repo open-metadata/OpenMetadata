@@ -119,8 +119,8 @@ class VectorFieldHealthTest {
                 + "(table_search_index_rebuild_1 has dense_vector of 384 dimensions)."),
         report);
     assertTrue(report.contains("Vector writes and vector search leave them out until then."));
-    assertTrue(report.contains("Search Indexing for all entities with Recreate Indexes on"));
-    assertTrue(report.contains("./bootstrap/openmetadata-ops.sh reindex --force"));
+    assertTrue(report.contains("./bootstrap/openmetadata-ops.sh reindex, which rebuilds"));
+    assertTrue(report.contains("Search Indexing for all entities"));
     assertTrue(report.contains("configure the previous embedding model again"));
   }
 
