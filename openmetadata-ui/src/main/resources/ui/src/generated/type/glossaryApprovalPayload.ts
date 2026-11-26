@@ -37,6 +37,11 @@ export interface GlossaryApprovalPayload {
      */
     proposedChanges?: { [key: string]: any };
     /**
+     * The entity version the approval cycle began from; proposedChanges lists the entity's
+     * changes since it. Set by the approval workflow.
+     */
+    proposedChangesBaseVersion?: number;
+    /**
      * Proposed state of the term after changes.
      */
     proposedState?: string;
