@@ -140,6 +140,21 @@ describe('useCustomLocation', () => {
     });
   });
 
+  it('should keep a route that only starts with the base path text', () => {
+    window.BASE_PATH = '/data/';
+    (useLocation as jest.Mock).mockReturnValue({
+      pathname: '/data-insights',
+      search: '',
+      hash: '',
+      state: null,
+      key: 'testKey',
+    });
+
+    const { result } = renderHook(() => useCustomLocation());
+
+    expect(result.current.pathname).toBe('/data-insights');
+  });
+
   it('should return the updated pathname on second render', () => {
     // Mock the environment variable
     window.BASE_PATH = '/app/';

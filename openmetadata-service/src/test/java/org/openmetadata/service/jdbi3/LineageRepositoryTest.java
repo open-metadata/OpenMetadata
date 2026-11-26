@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -1551,5 +1552,334 @@ class LineageRepositoryTest {
 
   private static List<UUID> nodeIds(EntityLineage lineage) {
     return lineage.getNodes().stream().map(EntityReference::getId).toList();
+  }
+
+  // --- Bug fix: OpenLineage no-facet events must not wipe stored column-level lineage ---
+
+  /**
+   * OpenLineage events without a columnLineage facet map to LineageDetails with columnsLineage ==
+   * null. preserveAssetEdges must restore the stored column lineage, mirroring its existing role
+   * for assetEdges, so the next no-facet addLineage does not silently wipe column-level lineage
+   * already stored on the edge.
+   */
+  @Test
+  void testPreserveAssetEdges_IncomingColumnsLineageNull_PreservesStoredColumnsLineage() {
+    ColumnLineage stored =
+        new ColumnLineage().withFromColumns(List.of("db.s.from.col")).withToColumn("db.s.to.col");
+    LineageDetails prior = new LineageDetails().withColumnsLineage(List.of(stored));
+    LineageDetails incoming = new LineageDetails().withColumnsLineage(null);
+
+    LineageRepository.preserveAssetEdges(incoming, prior);
+
+    assertNotNull(incoming.getColumnsLineage());
+    assertEquals(1, incoming.getColumnsLineage().size());
+    assertEquals(stored, incoming.getColumnsLineage().get(0));
+  }
+
+  /**
+   * An explicit empty list is the UI's clear-all signal (the column-lineage editor sends {@code
+   * columnsLineage: []} when the last column mapping is removed). Restoring the stored entries on
+   * an empty list would silently re-instate the removed mappings on refresh, so an empty list must
+   * pass through unchanged. Only {@code null} (the OpenLineage no-facet signal) is restored.
+   */
+  @Test
+  void testPreserveAssetEdges_IncomingColumnsLineageEmpty_KeepsEmptyClearsStored() {
+    ColumnLineage stored =
+        new ColumnLineage().withFromColumns(List.of("db.s.from.col")).withToColumn("db.s.to.col");
+    LineageDetails prior = new LineageDetails().withColumnsLineage(List.of(stored));
+    LineageDetails incoming = new LineageDetails().withColumnsLineage(new ArrayList<>());
+
+    LineageRepository.preserveAssetEdges(incoming, prior);
+
+    assertNotNull(incoming.getColumnsLineage());
+    assertTrue(incoming.getColumnsLineage().isEmpty(), "empty list must not be restored");
+  }
+
+  /**
+   * The restored list is a deep copy: mutating the incoming entries through {@code
+   * validateLineageDetails} (which filters invalid fromColumns in place) must not reach the prior
+   * edge's {@link ColumnLineage} objects, or {@code payloadChanged} would compare two already-mutated
+   * references and miss a real change.
+   */
+  @Test
+  void testPreserveAssetEdges_RestoredColumnsLineageIsDeepCopyOfPrior() {
+    ColumnLineage stored =
+        new ColumnLineage()
+            .withFromColumns(new ArrayList<>(List.of("db.s.from.col")))
+            .withToColumn("db.s.to.col")
+            .withFunction("coalesce(a, b)");
+    LineageDetails prior = new LineageDetails().withColumnsLineage(List.of(stored));
+    LineageDetails incoming = new LineageDetails().withColumnsLineage(null);
+
+    LineageRepository.preserveAssetEdges(incoming, prior);
+
+    assertNotSame(stored, incoming.getColumnsLineage().get(0), "entry must be a copy, not shared");
+    assertNotSame(
+        prior.getColumnsLineage(), incoming.getColumnsLineage(), "list must be a copy, not shared");
+    assertEquals("coalesce(a, b)", incoming.getColumnsLineage().get(0).getFunction());
+    // Mutating the restored entry must not bleed into the prior edge.
+    incoming.getColumnsLineage().get(0).getFromColumns().add("db.s.from.extra");
+    assertEquals(
+        List.of("db.s.from.col"), stored.getFromColumns(), "prior entry must be untouched");
+  }
+
+  /**
+   * Replace semantics: a write that DOES carry a columnLineage facet overrides the stored entries.
+   * The fix must not turn every addLineage into a union-merge; explicit rewrites still overwrite.
+   */
+  @Test
+  void testPreserveAssetEdges_IncomingColumnsLineageNonEmpty_KeepsIncomingColumnsLineage() {
+    ColumnLineage priorEntry =
+        new ColumnLineage()
+            .withFromColumns(List.of("db.s.from.prior"))
+            .withToColumn("db.s.to.prior");
+    ColumnLineage incomingEntry =
+        new ColumnLineage()
+            .withFromColumns(List.of("db.s.from.fresh"))
+            .withToColumn("db.s.to.fresh");
+    LineageDetails prior = new LineageDetails().withColumnsLineage(List.of(priorEntry));
+    LineageDetails incoming = new LineageDetails().withColumnsLineage(List.of(incomingEntry));
+
+    LineageRepository.preserveAssetEdges(incoming, prior);
+
+    assertEquals(1, incoming.getColumnsLineage().size());
+    assertEquals(incomingEntry, incoming.getColumnsLineage().get(0));
+  }
+
+  /** On a new edge (prior == null), nothing is restored and the helper is a no-op. */
+  @Test
+  void testPreserveAssetEdges_PriorIsNull_DoesNotTouchColumnsLineage() {
+    LineageDetails incoming = new LineageDetails().withColumnsLineage(null);
+
+    LineageRepository.preserveAssetEdges(incoming, null);
+
+    assertNull(incoming.getColumnsLineage());
+  }
+
+  /**
+   * End-to-end bug fix: a second addLineage carrying columnsLineage == null (i.e. an OpenLineage
+   * run event without a columnLineage facet) must preserve the column-level lineage already stored
+   * on the from->to edge, both in the re-inserted edge json (the high-frequency wipe surface) and
+   * must not emit a spurious ENTITY_LINEAGE_UPDATED change event for the unchanged columns.
+   */
+  @Test
+  void testAddLineage_RepeatedWriteWithNullColumnsLineage_PreservesStoredColumnLineage() {
+    ColumnLineage storedColumnLineage =
+        new ColumnLineage()
+            .withFromColumns(List.of("database.schema.fromTable.amount"))
+            .withToColumn("database.schema.toTable.amount");
+    LineageDetails prior =
+        new LineageDetails()
+            .withSource(LineageDetails.Source.OPEN_LINEAGE)
+            .withColumnsLineage(List.of(storedColumnLineage));
+    LineageDetails incoming = new LineageDetails().withSource(LineageDetails.Source.OPEN_LINEAGE);
+    // Mirrors OpenLineageMapper.withColumnsLineage(columnLineage.isEmpty() ? null : columnLineage)
+    incoming.setColumnsLineage(null);
+
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relDAO);
+    when(dao.changeEventDAO()).thenReturn(changeEventDAO);
+    when(relDAO.getRecord(fromEntityId, toEntityId, Relationship.UPSTREAM.ordinal()))
+        .thenReturn(
+            CollectionDAO.EntityRelationshipObject.builder()
+                .json(JsonUtils.pojoToJson(prior))
+                .build());
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(dao);
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq("table"), eq(fromEntityId), any()))
+        .thenReturn(fromEntity);
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq("table"), eq(toEntityId), any()))
+        .thenReturn(toEntity);
+    mockTableForLineage(fromEntity, "amount");
+    mockTableForLineage(toEntity, "amount");
+
+    ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+    new LineageRepository()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(fromEntity)
+                        .withToEntity(toEntity)
+                        .withLineageDetails(incoming)),
+            "user");
+
+    verify(relDAO)
+        .insert(
+            eq(fromEntityId),
+            eq(toEntityId),
+            any(),
+            any(),
+            eq(Relationship.UPSTREAM.ordinal()),
+            jsonCaptor.capture());
+    LineageDetails persisted = JsonUtils.readValue(jsonCaptor.getValue(), LineageDetails.class);
+    assertNotNull(
+        persisted.getColumnsLineage(), "stored column lineage must survive a no-facet write");
+    assertEquals(1, persisted.getColumnsLineage().size());
+    assertEquals(
+        "database.schema.toTable.amount", persisted.getColumnsLineage().get(0).getToColumn());
+    assertEquals(
+        List.of("database.schema.fromTable.amount"),
+        persisted.getColumnsLineage().get(0).getFromColumns());
+
+    // After preservation the (re-validated) incoming columns match the prior edge, so a
+    // spurious ENTITY_LINEAGE_UPDATED event would fire without the fix; pin its absence.
+    verify(changeEventDAO, never()).insert(any());
+  }
+
+  /**
+   * A write that DOES carry column-level lineage overrides the stored entries (replace, not
+   * merge), so updating column lineage through addLineage still works after the fix.
+   */
+  @Test
+  void testAddLineage_WriteWithNonNullColumnsLineage_ReplacesStoredColumnLineage() {
+    ColumnLineage priorEntry =
+        new ColumnLineage()
+            .withFromColumns(List.of("database.schema.fromTable.prior"))
+            .withToColumn("database.schema.toTable.prior");
+    LineageDetails prior =
+        new LineageDetails()
+            .withSource(LineageDetails.Source.OPEN_LINEAGE)
+            .withColumnsLineage(List.of(priorEntry));
+    ColumnLineage freshEntry =
+        new ColumnLineage()
+            .withFromColumns(List.of("database.schema.fromTable.amount"))
+            .withToColumn("database.schema.toTable.amount");
+    LineageDetails incoming =
+        new LineageDetails()
+            .withSource(LineageDetails.Source.OPEN_LINEAGE)
+            .withColumnsLineage(List.of(freshEntry));
+
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relDAO);
+    when(dao.changeEventDAO()).thenReturn(changeEventDAO);
+    when(relDAO.getRecord(fromEntityId, toEntityId, Relationship.UPSTREAM.ordinal()))
+        .thenReturn(
+            CollectionDAO.EntityRelationshipObject.builder()
+                .json(JsonUtils.pojoToJson(prior))
+                .build());
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(dao);
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq("table"), eq(fromEntityId), any()))
+        .thenReturn(fromEntity);
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq("table"), eq(toEntityId), any()))
+        .thenReturn(toEntity);
+    mockTableForLineage(fromEntity, "amount");
+    mockTableForLineage(toEntity, "amount");
+
+    ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+    new LineageRepository()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(fromEntity)
+                        .withToEntity(toEntity)
+                        .withLineageDetails(incoming)),
+            "user");
+
+    verify(relDAO)
+        .insert(
+            eq(fromEntityId),
+            eq(toEntityId),
+            any(),
+            any(),
+            eq(Relationship.UPSTREAM.ordinal()),
+            jsonCaptor.capture());
+    LineageDetails persisted = JsonUtils.readValue(jsonCaptor.getValue(), LineageDetails.class);
+    // Replace semantics: the incoming entry overwrites the prior entry, not merges with it.
+    assertEquals(1, persisted.getColumnsLineage().size());
+    assertEquals(
+        "database.schema.toTable.amount", persisted.getColumnsLineage().get(0).getToColumn());
+    assertEquals(
+        List.of("database.schema.fromTable.amount"),
+        persisted.getColumnsLineage().get(0).getFromColumns());
+  }
+
+  /**
+   * After preserveAssetEdges restores the stored column lineage into the incoming details, the
+   * column lineage matches the prior edge, so decideEventType must not signal a change event.
+   * Before the fix, a null incoming columnsLineage diffed against a non-null prior was reported as
+   * a change, emitting a spurious ENTITY_LINEAGE_UPDATED event per routine no-facet event.
+   */
+  @Test
+  void testDecideEventType_AfterPreservationOfNullColumnsLineage_NoSpuriousUpdateEvent()
+      throws Exception {
+    ColumnLineage stored =
+        new ColumnLineage().withFromColumns(List.of("db.s.from.col")).withToColumn("db.s.to.col");
+    LineageDetails prior =
+        new LineageDetails()
+            .withSource(LineageDetails.Source.OPEN_LINEAGE)
+            .withColumnsLineage(List.of(stored));
+    LineageDetails incoming = new LineageDetails().withSource(LineageDetails.Source.OPEN_LINEAGE);
+    incoming.setColumnsLineage(null);
+    // A real addLineage runs preserveAssetEdges before decideEventType; mirror that here so the
+    // assertion reflects the post-fix end-to-end behaviour, not the unfiltered payload.
+    LineageRepository.preserveAssetEdges(incoming, prior);
+
+    Method decideEventType =
+        LineageRepository.class.getDeclaredMethod(
+            "decideEventType", LineageDetails.class, LineageDetails.class);
+    decideEventType.setAccessible(true);
+
+    @SuppressWarnings("unchecked")
+    Optional<EventType> result =
+        (Optional<EventType>) decideEventType.invoke(null, prior, incoming);
+
+    assertTrue(result.isEmpty(), "no ENTITY_LINEAGE_UPDATED event for preserved column lineage");
+  }
+
+  /**
+   * Without preservation the diff between a null incoming columnsLineage and a non-null prior is
+   * reported as a change. Pins the gap the fix closes so the rationale stays explicit: it is the
+   * preservation (not an unrelated change-event suppression) that eliminates the spurious update.
+   */
+  @Test
+  void testPayloadChanged_NullIncomingColumnsLineageVsNonNullPrior_ReportsChanged()
+      throws Exception {
+    ColumnLineage stored =
+        new ColumnLineage().withFromColumns(List.of("db.s.from.col")).withToColumn("db.s.to.col");
+    LineageDetails prior =
+        new LineageDetails()
+            .withSource(LineageDetails.Source.OPEN_LINEAGE)
+            .withColumnsLineage(List.of(stored));
+    LineageDetails incoming = new LineageDetails().withSource(LineageDetails.Source.OPEN_LINEAGE);
+    incoming.setColumnsLineage(null);
+
+    Method payloadChanged =
+        LineageRepository.class.getDeclaredMethod(
+            "payloadChanged", LineageDetails.class, LineageDetails.class);
+    payloadChanged.setAccessible(true);
+
+    assertTrue((boolean) payloadChanged.invoke(null, prior, incoming));
+  }
+
+  /**
+   * Stubs {@link Entity#getEntity} for the given table with a column-bearing {@link Table} entity
+   * serving both getChildrenNames (fields=columns + Include.NON_DELETED) and buildExtendedLineage
+   * (fields="" + Include.ALL), so addLineage can complete without touching real repositories.
+   */
+  private static void mockTableForLineage(EntityReference tableRef, String columnName) {
+    String fqn = tableRef.getFullyQualifiedName();
+    Table table =
+        new Table()
+            .withId(tableRef.getId())
+            .withName("t")
+            .withFullyQualifiedName(fqn)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(columnName)
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withFullyQualifiedName(fqn + "." + columnName)));
+    mockedEntity
+        .when(() -> Entity.getEntity(eq(Entity.TABLE), eq(tableRef.getId()), any(), any()))
+        .thenReturn(table);
   }
 }

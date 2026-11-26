@@ -32,7 +32,7 @@ class Jetty12WebSocketHandlerTest {
 
   private final Jetty12WebSocketHandler handler =
       new Jetty12WebSocketHandler(
-          mock(EngineIoServer.class), new HandshakeIdentity("user-uuid", "session-id"));
+          mock(EngineIoServer.class), new HandshakeIdentity("user-uuid", "session-id", "google"));
   private final Logger handlerLogger =
       (Logger) LoggerFactory.getLogger(Jetty12WebSocketHandler.class);
   private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
@@ -67,7 +67,8 @@ class Jetty12WebSocketHandlerTest {
   void validatedIdentityIsStampedIntoConnectionHeadersOnOpen() {
     EngineIoServer server = mock(EngineIoServer.class);
     Jetty12WebSocketHandler stamped =
-        new Jetty12WebSocketHandler(server, new HandshakeIdentity("user-uuid", "session-id"));
+        new Jetty12WebSocketHandler(
+            server, new HandshakeIdentity("user-uuid", "session-id", "google"));
     org.eclipse.jetty.websocket.api.Session session =
         mock(org.eclipse.jetty.websocket.api.Session.class);
     org.eclipse.jetty.websocket.api.UpgradeRequest upgradeRequest =
@@ -80,6 +81,7 @@ class Jetty12WebSocketHandlerTest {
 
     assertEquals("user-uuid", stamped.getConnectionHeaders().get("UserId").get(0));
     assertEquals("session-id", stamped.getConnectionHeaders().get("SessionId").get(0));
+    assertEquals("google", stamped.getConnectionHeaders().get("AuthProvider").get(0));
     assertEquals(Map.of("userId", "user-uuid"), stamped.getQuery());
     verify(server).handleWebSocket(stamped);
   }
@@ -92,11 +94,12 @@ class Jetty12WebSocketHandlerTest {
   void clientIdentityHeadersAreDroppedBeforeStamping() {
     Jetty12WebSocketHandler stamped =
         new Jetty12WebSocketHandler(
-            mock(EngineIoServer.class), new HandshakeIdentity("user-uuid", null));
+            mock(EngineIoServer.class), new HandshakeIdentity("user-uuid", null, null));
     Map<String, List<String>> forged = new HashMap<>();
     forged.put("userid", List.of("victim-uuid", "other-uuid"));
     forged.put("SESSIONID", List.of("victim-session"));
     forged.put("SessionId", List.of("victim-session-2"));
+    forged.put("authprovider", List.of("google"));
     forged.put("Cookie", List.of("OM_SESSION=abc"));
 
     stamped.onOpen(upgradeSession(Map.of(), forged));

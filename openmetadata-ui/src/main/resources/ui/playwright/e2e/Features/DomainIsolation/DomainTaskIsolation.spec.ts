@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
-import { migratedTo } from '../../../constant/migration';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test as base } from '../../../support/fixtures/base';
@@ -166,32 +165,6 @@ test.describe('Domain isolation - tasks @domain-isolation', () => {
       await afterAction();
     }
   });
-
-  test(
-    'userA sees only their own-domain task',
-    migratedTo.javaIT(
-      'TaskResourceIT#testDomainOnlyUserCanOnlyListTasksFromAllowedDomains'
-    ),
-    async ({ userAPage }) => {
-      expect(await tasksAboutTable(userAPage, tableA)).toContain(fqnOf(tableA));
-      expect(await tasksAboutTable(userAPage, tableB)).not.toContain(
-        fqnOf(tableB)
-      );
-    }
-  );
-
-  test(
-    'userB sees only their own-domain task',
-    migratedTo.javaIT(
-      'TaskResourceIT#testDomainOnlyUserCanOnlyListTasksFromAllowedDomains'
-    ),
-    async ({ userBPage }) => {
-      expect(await tasksAboutTable(userBPage, tableB)).toContain(fqnOf(tableB));
-      expect(await tasksAboutTable(userBPage, tableA)).not.toContain(
-        fqnOf(tableA)
-      );
-    }
-  );
 
   test('admin sees tasks from both domains', async ({ adminPage }) => {
     expect(await tasksAboutTable(adminPage, tableA)).toContain(fqnOf(tableA));

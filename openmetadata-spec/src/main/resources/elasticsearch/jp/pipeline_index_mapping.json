@@ -750,6 +750,14 @@
       "lineageSqlQueries": {
         "type": "object",
         "enabled": false
+      },
+      "pipelineStatus": {
+        "properties": {
+          "parameters": {
+            "type": "object",
+            "enabled": false
+          }
+        }
       }
     }
   }

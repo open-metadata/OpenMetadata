@@ -42,7 +42,7 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 
 /**
  * Utility for updating SpEL condition strings in policy rules when referenced entities (tags,
- * roles, teams, services) are renamed or deleted.
+ * roles, teams, services, domains) are renamed or deleted.
  *
  * <p>Conditions are rewritten through the SpEL AST, so an entity name is always handled as one
  * string literal whatever characters it contains. Only calls whose arguments are all string
@@ -63,6 +63,7 @@ public final class PolicyConditionUpdater {
   public static final Set<String> ROLE_FUNCTIONS = Set.of("hasAnyRole");
   public static final Set<String> TEAM_FUNCTIONS = Set.of("inAnyTeam");
   public static final Set<String> SERVICE_FUNCTIONS = Set.of("matchAnyServiceName");
+  public static final Set<String> DOMAIN_FUNCTIONS = Set.of("matchAnyDomain");
 
   /** What a call evaluates to once the entities it needs to match are gone. */
   private static final String NEVER_MATCHES = "false";

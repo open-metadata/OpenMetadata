@@ -1,6 +1,6 @@
 # Browser tests run by impact on pull requests and in full in the merge queue
 
-- **Status:** Proposed
+- **Status:** Superseded by ADR:2026-11-25-browser-tests-are-selected-before-main-and-run-in-full-on-main
 - **Revisions:** v1 2026-11-23 (initial)
 - **Deciders:** Chirag Madlani
 - **Guard:** `scripts/select-browser-tests.test.mjs` (selection rules); `ui-browser-tests.yml` (the merge

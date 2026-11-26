@@ -199,10 +199,14 @@ jest.mock('react-i18next', () => ({
 }));
 
 const mockMarkInboxActivitySeen = jest.fn();
+let mockInboxActivitySeenTs: number | null = 500;
 
 jest.mock('../../../../../hooks/usePersonalSpaceStore', () => ({
   usePersonalSpaceStore: (selector: (s: unknown) => unknown) =>
-    selector({ markInboxActivitySeen: mockMarkInboxActivitySeen }),
+    selector({
+      markInboxActivitySeen: mockMarkInboxActivitySeen,
+      inboxActivitySeenTs: mockInboxActivitySeenTs,
+    }),
 }));
 
 import { User } from '../../../../../generated/entity/teams/user';
@@ -218,6 +222,7 @@ const alice = {
 describe('ActivityTab', () => {
   beforeEach(() => {
     mockMentionsCutAt = undefined;
+    mockInboxActivitySeenTs = 500;
     jest.clearAllMocks();
     activityState = {
       items: [],
@@ -367,7 +372,7 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'all',
       defaultWindow,
-      undefined
+      { type: 'inbox' }
     );
 
     fireEvent.click(screen.getByText('following'));
@@ -375,7 +380,7 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'following',
       defaultWindow,
-      undefined
+      { type: 'inbox' }
     );
   });
 
@@ -385,7 +390,7 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'my-assets',
       expect.objectContaining({ key: 'last30days' }),
-      undefined
+      { type: 'inbox' }
     );
   });
 
@@ -397,7 +402,7 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'all',
       { ...getInboxDateRange(7), key: 'last7days' },
-      undefined
+      { type: 'inbox' }
     );
     expect(screen.getByTestId('toolbar')).toHaveAttribute(
       'data-preset',
@@ -420,11 +425,9 @@ describe('ActivityTab', () => {
     fireEvent.click(screen.getByText('last-7-days'));
 
     expect(onDatePresetChange).toHaveBeenCalledWith('last7days');
-    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
-      'all',
-      dateRange,
-      undefined
-    );
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith('all', dateRange, {
+      type: 'inbox',
+    });
     expect(
       screen.getByText('label.activity-feed-starts-here')
     ).toBeInTheDocument();
@@ -436,7 +439,7 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'all',
       expect.anything(),
-      'alice-id'
+      { type: 'inbox', userId: 'alice-id' }
     );
   });
 
@@ -792,6 +795,20 @@ describe('ActivityTab', () => {
       expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
     });
 
+    it('does not stamp the seen-mark when the feed is cut after the last visit', () => {
+      activityState = {
+        items: [],
+        total: 0,
+        isLoading: false,
+        isCapped: true,
+        cutAt: 1000,
+        taskMentionsReadAt: 2000,
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
     // The bug: the mark fired on mount regardless of feed state. A feed that
     // starts loading and then resolves must stamp the mark only after the
     // transition to loaded.
@@ -822,6 +839,35 @@ describe('ActivityTab', () => {
       rerender(<ActivityTab />);
 
       expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+    });
+
+    it('stamps the seen-mark when the feed is cut before the last visit', () => {
+      activityState = {
+        items: [],
+        total: 0,
+        isLoading: false,
+        isCapped: true,
+        cutAt: 500,
+        taskMentionsReadAt: 2000,
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalledWith(2000);
+    });
+
+    it('stamps the seen-mark on the first visit even when the feed is capped', () => {
+      mockInboxActivitySeenTs = null;
+      activityState = {
+        items: [],
+        total: 0,
+        isLoading: false,
+        isCapped: true,
+        cutAt: 1000,
+        taskMentionsReadAt: 2000,
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalledWith(2000);
     });
   });
 });

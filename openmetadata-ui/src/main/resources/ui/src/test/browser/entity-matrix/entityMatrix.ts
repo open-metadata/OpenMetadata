@@ -681,7 +681,7 @@ const isSelected = (option: Locator) => {
  * page would then save without it. Reading the option's own state (tree
  * `data-selected`, menu `aria-checked`) makes each pick confirm itself.
  */
-const setSelected = (option: Locator, selected: boolean) =>
+export const setSelected = (option: Locator, selected: boolean) =>
   expect
     .poll(
       async () => {
