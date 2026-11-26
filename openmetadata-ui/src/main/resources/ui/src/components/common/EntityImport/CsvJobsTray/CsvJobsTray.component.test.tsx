@@ -271,8 +271,8 @@ describe('CsvJobsTray', () => {
   // slow older fetch resolving after a newer one must not overwrite the fresher
   // state and flip a completed job back to running.
   it('ignores a stale fetch that resolves after a newer one', async () => {
-    let resolveSlow: (jobs: CsvAsyncJob[]) => void = () => undefined;
-    let resolveFast: (jobs: CsvAsyncJob[]) => void = () => undefined;
+    let resolveSlow: (jobs: CsvAsyncJob[]) => void = (_value) => undefined;
+    let resolveFast: (jobs: CsvAsyncJob[]) => void = (_value) => undefined;
 
     mockGetCsvAsyncJobs
       .mockResolvedValueOnce([
@@ -305,13 +305,11 @@ describe('CsvJobsTray', () => {
     });
 
     await act(async () => {
-      // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
       resolveFast([createJob({ jobId: 'job-1', status: 'COMPLETED' })]);
     });
 
     // Older fetch resolves later with the stale RUNNING snapshot — ignored.
     await act(async () => {
-      // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
       resolveSlow([
         createJob({
           jobId: 'job-1',

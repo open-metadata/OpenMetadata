@@ -14,7 +14,6 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import GlossaryVersion from './GlossaryVersion.component';
 
-/* eslint-disable max-len */
 const MOCK_VERSIONS_LIST = {
   entityType: 'glossary',
   versions: [

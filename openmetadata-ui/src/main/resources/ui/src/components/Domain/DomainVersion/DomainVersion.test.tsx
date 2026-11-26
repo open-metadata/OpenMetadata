@@ -15,7 +15,6 @@ import { MemoryRouter } from 'react-router-dom';
 import { MOCK_DOMAIN } from '../../../mocks/Domains.mock';
 import DomainVersion from './DomainVersion.component';
 
-/* eslint-disable max-len */
 const MOCK_VERSIONS_LIST = {
   entityType: 'domain',
   versions: [
