@@ -37,8 +37,8 @@ import org.openmetadata.service.migration.utils.IdBatches;
  * followed CSV imports. A rollup row ({@code ChildAssets}) gets its count, is inserted when missing
  * and is deleted when no asset edge connects the products. An edge drawn between the products keeps
  * its details and only carries the count
- * (ADR:2026-11-26-data-product-lineage-rollups-are-recounted-and-drawn-edges-stay). The lineage
- * views read search, which the reindex command rebuilds.
+ * (ADR:2026-11-26-data-product-lineage-rollups-move-by-exact-deltas-and-drawn-edges-stay). The
+ * lineage views read search, which the reindex command rebuilds.
  */
 @Slf4j
 public final class DataProductLineageRebuild {

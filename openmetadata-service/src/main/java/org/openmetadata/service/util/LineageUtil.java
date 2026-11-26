@@ -326,8 +326,9 @@ public class LineageUtil {
   }
 
   /**
-   * Recounts each pair of two different data products from the stored asset edges. A pair no asset
-   * edge connects any more loses its rollup, but an edge drawn between the products stays.
+   * Recounts each pair of two different data products from the stored asset edges, for a batch that
+   * rewrites many assets' data products at once. A pair no asset edge connects any more loses its
+   * rollup, but an edge drawn between the products stays.
    */
   public static void recountDataProductsLineage(Set<Pair<UUID, UUID>> pairs) {
     for (Pair<UUID, UUID> pair : pairs) {
@@ -339,24 +340,88 @@ public class LineageUtil {
     }
   }
 
+  private static void recountDataProductLineage(EntityReference from, EntityReference to) {
+    int count =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .countDataProductsChildAssets(from.getId(), to.getId());
+    storeDataProductCount(from, to, storedLineage(from, to), count);
+  }
+
+  /**
+   * Applies the asset edges an entity's data product change adds or removes: each product it gains
+   * or loses changes its pair with a neighbour's product by the entity's own edges to that
+   * neighbour's assets. The neighbours' products do not change here, so the delta is exact.
+   */
+  public static void adjustDataProductsLineage(
+      UUID entityId, String entityType, Collection<UUID> gained, Collection<UUID> lost) {
+    if (!gained.isEmpty() || !lost.isEmpty()) {
+      CollectionDAO.EntityRelationshipDAO dao = Entity.getCollectionDAO().relationshipDAO();
+      Map<UUID, Long> downstream =
+          edgesPerDataProduct(dao.findDownstreamDataProducts(entityId, entityType));
+      Map<UUID, Long> upstream =
+          edgesPerDataProduct(dao.findUpstreamDataProducts(entityId, entityType));
+      gained.forEach(product -> adjustAgainstNeighbours(product, downstream, upstream, 1));
+      lost.forEach(product -> adjustAgainstNeighbours(product, downstream, upstream, -1));
+    }
+  }
+
+  private static Map<UUID, Long> edgesPerDataProduct(
+      List<CollectionDAO.EntityRelationshipObject> has) {
+    return has.stream()
+        .collect(
+            Collectors.groupingBy(row -> UUID.fromString(row.getFromId()), Collectors.counting()));
+  }
+
+  private static void adjustAgainstNeighbours(
+      UUID product, Map<UUID, Long> downstream, Map<UUID, Long> upstream, int sign) {
+    downstream.forEach(
+        (neighbour, edges) ->
+            adjustDataProductLineage(product, neighbour, sign * Math.toIntExact(edges)));
+    upstream.forEach(
+        (neighbour, edges) ->
+            adjustDataProductLineage(neighbour, product, sign * Math.toIntExact(edges)));
+  }
+
+  /** Adds {@code delta} asset edges to a pair's rollup. A pair of one product is never written. */
+  public static void adjustDataProductLineage(UUID fromId, UUID toId, int delta) {
+    if (delta != 0 && !fromId.equals(toId)) {
+      EntityReference from =
+          Entity.getEntityReferenceById(Entity.DATA_PRODUCT, fromId, Include.ALL);
+      EntityReference to = Entity.getEntityReferenceById(Entity.DATA_PRODUCT, toId, Include.ALL);
+      LineageDetails stored = storedLineage(from, to);
+      int current = stored == null ? 0 : nullOrDefault(stored.getAssetEdges(), 0);
+      storeDataProductCount(from, to, stored, current + delta);
+    }
+  }
+
+  private static LineageDetails storedLineage(EntityReference from, EntityReference to) {
+    CollectionDAO.EntityRelationshipObject row =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
+    return row == null ? null : JsonUtils.readValue(row.getJson(), LineageDetails.class);
+  }
+
   /**
    * A stored edge whose source is not {@code ChildAssets} was drawn between the products. It keeps
    * its details and only carries the count, as {@code LineageRepository} does when an asset edge is
-   * added under it, so no recount replaces or deletes it
-   * (ADR:2026-11-26-data-product-lineage-rollups-are-recounted-and-drawn-edges-stay).
+   * added under it, so no count replaces or deletes it
+   * (ADR:2026-11-26-data-product-lineage-rollups-move-by-exact-deltas-and-drawn-edges-stay).
    */
-  private static void recountDataProductLineage(EntityReference from, EntityReference to) {
-    CollectionDAO.EntityRelationshipDAO dao = Entity.getCollectionDAO().relationshipDAO();
-    int count = dao.countDataProductsChildAssets(from.getId(), to.getId());
-    CollectionDAO.EntityRelationshipObject row =
-        dao.getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
-    LineageDetails stored =
-        row == null ? null : JsonUtils.readValue(row.getJson(), LineageDetails.class);
+  private static void storeDataProductCount(
+      EntityReference from, EntityReference to, LineageDetails stored, int count) {
     if (stored == null) {
       insertLineage(count, from, to);
-    } else if (count == 0 && stored.getSource() == LineageDetails.Source.CHILD_ASSETS) {
-      dao.delete(
-          from.getId(), from.getType(), to.getId(), to.getType(), Relationship.UPSTREAM.ordinal());
+    } else if (count <= 0 && stored.getSource() == LineageDetails.Source.CHILD_ASSETS) {
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .delete(
+              from.getId(),
+              from.getType(),
+              to.getId(),
+              to.getType(),
+              Relationship.UPSTREAM.ordinal());
       deleteLineageFromSearch(from, to, stored);
     } else {
       recountStoredLineage(from, to, stored, count);

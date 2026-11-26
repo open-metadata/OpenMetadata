@@ -85,6 +85,7 @@ import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.EntityUtil.validateCustomPropertyEntityReference;
 import static org.openmetadata.service.util.EntityUtil.validateCustomPropertyEntityReferenceList;
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
+import static org.openmetadata.service.util.LineageUtil.adjustDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.dataProductPairs;
 import static org.openmetadata.service.util.LineageUtil.recountDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
@@ -4746,6 +4747,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     Set<Pair<UUID, UUID>> pairs = new HashSet<>(pairsBefore);
     pairs.addAll(importDataProductPairs(originals, updates));
     recountDataProductsLineage(pairs);
+  }
+
+  private static Set<UUID> missingFrom(Set<UUID> ids, Set<UUID> others) {
+    Set<UUID> missing = new HashSet<>(ids);
+    missing.removeAll(others);
+    return missing;
   }
 
   // A product the entity keeps changes no pair of its own: a changed neighbour's entry covers it.
@@ -12640,11 +12647,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // The rollups follow the persisted entity; consolidation replays this diff against reverted
       // baselines they never saw.
       if (isIndexBaselinePass()) {
-        recountDataProductsLineage(
-            dataProductPairs(
-                original.getId(),
-                entityType,
-                movedDataProducts(origDataProducts, updatedDataProducts)));
+        Set<UUID> before = referenceIds(origDataProducts);
+        Set<UUID> after = referenceIds(updatedDataProducts);
+        adjustDataProductsLineage(
+            original.getId(), entityType, missingFrom(after, before), missingFrom(before, after));
       }
     }
 

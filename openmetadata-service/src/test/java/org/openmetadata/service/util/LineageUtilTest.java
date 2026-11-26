@@ -311,6 +311,168 @@ class LineageUtilTest {
     }
   }
 
+  @Test
+  void adjustSubtractsFromARollupAndKeepsItsCreation() {
+    DataProductPair pair = new DataProductPair(0, rollup(3).withCreatedAt(7L));
+
+    try (MockedStatic<Entity> mockedEntity = pair.mockEntity()) {
+      pair.adjust(-1);
+
+      LineageDetails written = pair.writtenDetails();
+      assertEquals(2, written.getAssetEdges());
+      assertEquals(7L, written.getCreatedAt());
+      verify(pair.relationshipDAO, never()).countDataProductsChildAssets(any(), any());
+    }
+  }
+
+  @Test
+  void adjustDeletesTheRollupWhenItsLastAssetEdgeGoes() {
+    DataProductPair pair = new DataProductPair(0, rollup(1));
+
+    try (MockedStatic<Entity> mockedEntity = pair.mockEntity()) {
+      pair.adjust(-1);
+
+      verify(pair.relationshipDAO)
+          .delete(
+              pair.from.getId(),
+              Entity.DATA_PRODUCT,
+              pair.to.getId(),
+              Entity.DATA_PRODUCT,
+              Relationship.UPSTREAM.ordinal());
+    }
+  }
+
+  @Test
+  void adjustKeepsADrawnEdgeWhenItsLastAssetEdgeGoes() {
+    DataProductPair pair = new DataProductPair(0, drawn().withAssetEdges(1));
+
+    try (MockedStatic<Entity> mockedEntity = pair.mockEntity()) {
+      pair.adjust(-1);
+
+      LineageDetails written = pair.writtenDetails();
+      assertNull(written.getAssetEdges());
+      assertEquals("drawn", written.getDescription());
+      verify(pair.relationshipDAO, never())
+          .delete(any(UUID.class), any(), any(UUID.class), any(), any(Integer.class));
+    }
+  }
+
+  @Test
+  void adjustCountsAssetEdgesOnADrawnEdge() {
+    DataProductPair pair = new DataProductPair(0, drawn());
+
+    try (MockedStatic<Entity> mockedEntity = pair.mockEntity()) {
+      pair.adjust(2);
+
+      LineageDetails written = pair.writtenDetails();
+      assertEquals(2, written.getAssetEdges());
+      assertEquals(LineageDetails.Source.MANUAL, written.getSource());
+    }
+  }
+
+  @Test
+  void adjustWritesARollupForAPairWithNoEdge() {
+    DataProductPair pair = new DataProductPair(0, null);
+
+    try (MockedStatic<Entity> mockedEntity = pair.mockEntity()) {
+      pair.adjust(1);
+
+      LineageDetails written = pair.writtenDetails();
+      assertEquals(LineageDetails.Source.CHILD_ASSETS, written.getSource());
+      assertEquals(1, written.getAssetEdges());
+    }
+  }
+
+  @Test
+  void adjustWritesNothingWhenItRemovesFromAPairWithNoEdge() {
+    DataProductPair pair = new DataProductPair(0, null);
+
+    try (MockedStatic<Entity> mockedEntity = pair.mockEntity()) {
+      pair.adjust(-1);
+
+      verify(pair.relationshipDAO, never())
+          .insert(any(), any(), any(), any(), any(Integer.class), any(String.class));
+      verify(pair.relationshipDAO, never())
+          .delete(any(UUID.class), any(), any(UUID.class), any(), any(Integer.class));
+    }
+  }
+
+  @Test
+  void adjustSkipsAPairOfOneProductAndAZeroDelta() {
+    UUID id = UUID.randomUUID();
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      LineageUtil.adjustDataProductLineage(id, id, 1);
+      LineageUtil.adjustDataProductLineage(id, UUID.randomUUID(), 0);
+
+      mockedEntity.verifyNoInteractions();
+    }
+  }
+
+  @Test
+  void adjustDataProductsLineageAddsTheEntitysOwnEdgesPerNeighbourProduct() {
+    UUID entityId = UUID.randomUUID();
+    EntityReference gained = entityRef(Entity.DATA_PRODUCT, UUID.randomUUID(), "dp.gained");
+    EntityReference downstream = entityRef(Entity.DATA_PRODUCT, UUID.randomUUID(), "dp.down");
+    EntityReference upstream = entityRef(Entity.DATA_PRODUCT, UUID.randomUUID(), "dp.up");
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    when(searchRepository.getSearchClient()).thenReturn(mock(SearchClient.class));
+    when(searchRepository.getIndexMapping(Entity.DATA_PRODUCT))
+        .thenReturn(IndexMapping.builder().indexName("data_product_search").build());
+    when(relationshipDAO.findDownstreamDataProducts(entityId, Entity.TABLE))
+        .thenReturn(List.of(relationshipObject(downstream), relationshipObject(downstream)));
+    when(relationshipDAO.findUpstreamDataProducts(entityId, Entity.TABLE))
+        .thenReturn(List.of(relationshipObject(upstream)));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      mockedEntity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      for (EntityReference ref : List.of(gained, downstream, upstream)) {
+        mockedEntity
+            .when(
+                () -> Entity.getEntityReferenceById(Entity.DATA_PRODUCT, ref.getId(), Include.ALL))
+            .thenReturn(ref);
+      }
+
+      LineageUtil.adjustDataProductsLineage(
+          entityId, Entity.TABLE, List.of(gained.getId()), List.of());
+
+      assertEquals(2, written(relationshipDAO, gained, downstream).getAssetEdges());
+      assertEquals(1, written(relationshipDAO, upstream, gained).getAssetEdges());
+      verify(relationshipDAO, never()).countDataProductsChildAssets(any(), any());
+    }
+  }
+
+  private static LineageDetails written(
+      CollectionDAO.EntityRelationshipDAO relationshipDAO,
+      EntityReference from,
+      EntityReference to) {
+    ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
+    verify(relationshipDAO)
+        .insert(
+            eq(from.getId()),
+            eq(to.getId()),
+            eq(Entity.DATA_PRODUCT),
+            eq(Entity.DATA_PRODUCT),
+            eq(Relationship.UPSTREAM.ordinal()),
+            json.capture());
+    return JsonUtils.readValue(json.getValue(), LineageDetails.class);
+  }
+
+  private static LineageDetails rollup(int assetEdges) {
+    return new LineageDetails()
+        .withSource(LineageDetails.Source.CHILD_ASSETS)
+        .withAssetEdges(assetEdges);
+  }
+
+  private static LineageDetails drawn() {
+    return new LineageDetails().withSource(LineageDetails.Source.MANUAL).withDescription("drawn");
+  }
+
   /** Two data products with a stored edge between them, or none, and the asset edges they count. */
   private static final class DataProductPair {
     private final EntityReference from =
@@ -340,6 +502,10 @@ class LineageUtilTest {
       when(searchRepository.getWriteIndexName(any(IndexMapping.class)))
           .thenAnswer(
               invocation -> invocation.getArgument(0, IndexMapping.class).getIndexName("cluster"));
+    }
+
+    private void adjust(int delta) {
+      LineageUtil.adjustDataProductLineage(from.getId(), to.getId(), delta);
     }
 
     private Pair<UUID, UUID> ids() {

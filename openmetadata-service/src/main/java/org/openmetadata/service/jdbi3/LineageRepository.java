@@ -1528,14 +1528,14 @@ public class LineageRepository {
         hasField(fromEntity.getEntityReference(), field)
             && hasField(toEntity.getEntityReference(), field);
     if (hasField) {
-      // The asset edge is already deleted, so a recount releases it and keeps an edge drawn
-      // between the products
-      // (ADR:2026-11-26-data-product-lineage-rollups-are-recounted-and-drawn-edges-stay).
+      // The deleted edge counted once in each pair of its ends' products; drawn edges stay.
+      // ADR:2026-11-26-data-product-lineage-rollups-move-by-exact-deltas-and-drawn-edges-stay
       List<EntityReference> fromRefs = listOrEmpty(getter.apply(fromEntity));
       List<EntityReference> toRefs = listOrEmpty(getter.apply(toEntity));
-      Set<Pair<UUID, UUID>> pairs = new HashSet<>();
-      fromRefs.forEach(from -> toRefs.forEach(to -> pairs.add(Pair.of(from.getId(), to.getId()))));
-      LineageUtil.recountDataProductsLineage(pairs);
+      fromRefs.forEach(
+          from ->
+              toRefs.forEach(
+                  to -> LineageUtil.adjustDataProductLineage(from.getId(), to.getId(), -1)));
       fromRefs.forEach(from -> toRefs.forEach(to -> invalidateLineageCacheForEdge(from, to)));
     }
   }
