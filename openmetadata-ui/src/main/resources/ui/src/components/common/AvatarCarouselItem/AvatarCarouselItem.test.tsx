@@ -31,8 +31,8 @@ const suggestions = [
 ];
 
 const suggByUser = new Map([
-  ['Avatar 1', [suggestions[0]]],
-  ['Avatar 2', [suggestions[1]]],
+  ['1', { combinedData: [suggestions[0]] }],
+  ['2', { combinedData: [suggestions[1]] }],
 ]);
 
 jest.mock('../../Suggestions/SuggestionsProvider/SuggestionsProvider', () => ({
@@ -83,6 +83,20 @@ describe('AvatarCarouselItem', () => {
     expect(
       getByTestId(`avatar-carousel-item-${avatar.id}`)
     ).toBeInTheDocument();
+  });
+
+  it('shows the suggestion count looked up by user id, not name', () => {
+    const { getByText } = render(
+      <AvatarCarouselItem
+        avatar={avatar}
+        avatarBtnRefs={avatarBtnRefs}
+        index={index}
+        isActive={isActive}
+        onAvatarClick={onAvatarClick}
+      />
+    );
+
+    expect(getByText('1')).toBeInTheDocument();
   });
 
   it('calls onAvatarClick function when clicked', () => {

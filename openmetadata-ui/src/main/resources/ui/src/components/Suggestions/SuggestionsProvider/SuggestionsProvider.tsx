@@ -12,7 +12,7 @@
  */
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { isEmpty, isEqual, uniqWith } from 'lodash';
+import { isEmpty } from 'lodash';
 
 import {
   createContext,
@@ -41,6 +41,7 @@ import { Suggestion, SuggestionType } from '../../../types/taskSuggestion';
 import {
   getSuggestionByType,
   getSuggestionTypeBasedOnData,
+  getSuggestionUserKey,
   getUniqueSuggestions,
 } from '../../../utils/Suggestion/SuggestionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -82,7 +83,7 @@ const SuggestionsProvider = ({
       getSuggestionByType(suggestions);
 
     return {
-      allSuggestionsUsers: uniqWith(allUsersList, isEqual),
+      allSuggestionsUsers: allUsersList,
       suggestionsByUser: groupedSuggestions,
     };
   }, [suggestions]);
@@ -189,7 +190,7 @@ const SuggestionsProvider = ({
 
   const selectedUserSuggestions = useMemo(() => {
     return (
-      suggestionsByUser.get(activeUser?.name ?? '') ?? {
+      suggestionsByUser.get(getSuggestionUserKey(activeUser)) ?? {
         tags: [],
         description: [],
         combinedData: [],
