@@ -392,6 +392,14 @@ OAuth components initialized in `McpServer`:
 5. SSO callback servlet and Basic Auth login servlet registration
 6. OAuthTokenCleanupJob scheduled (10-minute intervals)
 
+### Public OIDC provider setup
+
+Register `<external MCP base URL>/mcp/callback` at the identity provider for a
+server-side authorization-code exchange with PKCE. Keep the browser application's
+redirect registered separately. For an internal provider, configure its authority
+and endpoints with a DNS hostname that the OpenMetadata server can resolve.
+The outbound URL policy rejects private and loopback IP literals.
+
 ### Environment Variables
 
 **SSO Provider Configuration** (varies by provider):

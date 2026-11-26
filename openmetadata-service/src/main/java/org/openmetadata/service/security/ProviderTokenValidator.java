@@ -38,10 +38,9 @@ public final class ProviderTokenValidator {
   private static final Pattern TENANT_GUID =
       Pattern.compile(
           "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
-  private static final Pattern SHARED_ENTRA_KEY_SET =
+  private static final Pattern SHARED_ENTRA_V2_KEY_SET =
       Pattern.compile(
-          "(?:.*/)?(?:common|organizations)/discovery/(?:v2\\.0/)?keys/?",
-          Pattern.CASE_INSENSITIVE);
+          "(?:.*/)?(?:common|organizations)/discovery/v2\\.0/keys/?", Pattern.CASE_INSENSITIVE);
   private static final String TENANT_ID_CLAIM = "tid";
   private static final String GOOGLE_ISSUER = "https://accounts.google.com";
   private static final String GOOGLE_SCHEMELESS_ISSUER = "accounts.google.com";
@@ -135,7 +134,9 @@ public final class ProviderTokenValidator {
         allowed = attributes.get("issuer") instanceof String scope && isIssuedBy(scope, token);
       } else {
         final String keySetPath = URI.create(publishedKey.keySetUrl()).normalize().getPath();
-        allowed = !templated && !SHARED_ENTRA_KEY_SET.matcher(keySetPath).matches();
+        // The legacy /common/discovery/keys omits per-key issuers. A concrete authority
+        // still pins the token issuer; tenant-independent v2 keys must declare their scope.
+        allowed = !templated && !SHARED_ENTRA_V2_KEY_SET.matcher(keySetPath).matches();
       }
     }
     return allowed;

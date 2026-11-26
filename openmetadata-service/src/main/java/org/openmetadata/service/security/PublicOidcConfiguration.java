@@ -16,6 +16,7 @@ import java.net.URLStreamHandler;
 import java.time.Duration;
 import java.util.function.LongSupplier;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.util.OutboundUrlBlockedException;
 import org.openmetadata.service.util.OutboundUrlPolicy;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.oidc.config.OidcConfiguration;
@@ -24,7 +25,7 @@ import org.pac4j.oidc.metadata.OidcOpMetadataResolver;
 
 /** The public MCP flow contacts provider endpoints learned from a public-client authority. */
 final class PublicOidcConfiguration extends OidcConfiguration {
-  private static final long DISCOVERY_INTERVAL_NANOS = Duration.ofMinutes(1).toNanos();
+  static final long DISCOVERY_INTERVAL_NANOS = Duration.ofMinutes(1).toNanos();
   private final AuthProvider provider;
   private final LongSupplier nanoTime;
 
@@ -114,7 +115,12 @@ final class PublicOidcConfiguration extends OidcConfiguration {
           new URLStreamHandler() {
             @Override
             protected URLConnection openConnection(URL url) throws IOException {
-              OutboundUrlPolicy.getInstance().checkForConnect(uri);
+              try {
+                OutboundUrlPolicy.getInstance().checkForConnect(uri);
+              } catch (OutboundUrlBlockedException denied) {
+                // Auth0 reports IO failures per key set, allowing lookup to try the next source.
+                throw new IOException("Key-set URL was denied by the outbound policy", denied);
+              }
               final HttpURLConnection connection = (HttpURLConnection) configured.openConnection();
               connection.setInstanceFollowRedirects(false);
               return connection;

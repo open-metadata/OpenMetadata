@@ -193,7 +193,33 @@ public class IdTokenValidatorTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"/common/discovery/keys", "/organizations/discovery/v2.0/keys"})
+  @ValueSource(booleans = {false, true})
+  void concreteEntraAuthorityAcceptsLegacyKeysWithoutAnIssuer(boolean publicClient)
+      throws Exception {
+    final String legacyKeys = publishKeySet("/common/discovery/keys", keyId);
+    final IdTokenValidator entra =
+        new IdTokenValidator(
+            new McpTokenVerification(
+                List.of(legacyKeys),
+                TENANT_ISSUER,
+                expectedAudience,
+                publicClient,
+                AuthProvider.AZURE));
+
+    assertThat(entra.validateAndDecode(tenantToken(TENANT_ISSUER, TENANT_ID)).getIssuer())
+        .isEqualTo(TENANT_ISSUER);
+    final String otherTenant = "00000000-0000-0000-0000-000000000001";
+    assertThatThrownBy(
+            () ->
+                entra.validateAndDecode(
+                    tenantToken(
+                        "https://login.microsoftonline.com/" + otherTenant + "/v2.0", otherTenant)))
+        .isInstanceOf(IdTokenValidationException.class)
+        .hasMessageContaining("issuer mismatch");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"/common/discovery/v2.0/keys", "/organizations/discovery/v2.0/keys"})
   void concreteEntraAuthorityChecksTheSetThatSuppliedTheKey(String sharedPath) throws Exception {
     final String tenantKeys = publishKeySet("/" + TENANT_ID + "/discovery/v2.0/keys", "tenant-key");
     final String sharedKeys = publishKeySet(sharedPath, "shared-key");
@@ -218,7 +244,12 @@ public class IdTokenValidatorTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"/common/discovery/v2.0/keys", "/tenant/discovery/v2.0/keys"})
+  @ValueSource(
+      strings = {
+        "/common/discovery/keys",
+        "/common/discovery/v2.0/keys",
+        "/tenant/discovery/v2.0/keys"
+      })
   void concreteEntraAuthorityHonorsAnExplicitKeyScope(String keySetPath) {
     signingKeyIssuer =
         "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000001/v2.0";

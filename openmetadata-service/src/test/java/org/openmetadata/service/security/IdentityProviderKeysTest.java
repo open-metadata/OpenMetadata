@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 
 import com.auth0.jwk.JwkException;
 import com.auth0.jwk.SigningKeyNotFoundException;
@@ -20,6 +23,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.openmetadata.service.util.OutboundUrlBlockedException;
+import org.openmetadata.service.util.OutboundUrlPolicy;
 
 class IdentityProviderKeysTest {
   private static final Duration ONE_DAY = Duration.ofDays(1);
@@ -29,6 +34,28 @@ class IdentityProviderKeysTest {
           Duration.ofSeconds(1), Duration.ofSeconds(1), 10, Duration.ofSeconds(6));
   private static final KeySetFetchPolicy BURST_OF_TWO =
       new KeySetFetchPolicy(Duration.ofSeconds(1), Duration.ofSeconds(1), 2, Duration.ofHours(1));
+
+  @Test
+  void publicMcpSkipsADeniedKeySetAndReturnsTheNextSourcesKey() throws Exception {
+    try (KeySetServer denied = KeySetServer.publishing("provider-key");
+        KeySetServer permitted = KeySetServer.publishing("provider-key");
+        var policies = mockStatic(OutboundUrlPolicy.class)) {
+      final var policy = mock(OutboundUrlPolicy.class);
+      policies.when(OutboundUrlPolicy::getInstance).thenReturn(policy);
+      doThrow(new OutboundUrlBlockedException("Key source denied by test policy"))
+          .when(policy)
+          .checkForConnect(denied.url().toURI());
+      final var keys =
+          IdentityProviderKeys.forPublicMcp(List.of(denied.url(), permitted.url()), ONE_DAY);
+
+      final var found = keys.getWithSource("provider-key");
+
+      assertEquals("provider-key", found.key().getId());
+      assertEquals(permitted.url().toExternalForm(), found.keySetUrl());
+      assertEquals(0, denied.requests());
+      assertEquals(1, permitted.requests());
+    }
+  }
 
   @Test
   void tokenWithoutAKeyIdNamesNoKey() {

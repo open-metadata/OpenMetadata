@@ -34,7 +34,8 @@ For a public OIDC client, MCP uses the top-level client ID and discovers the pro
 The public flow derives its own settings independently of the confidential `oidcConfiguration`.
 The MCP base URL comes from the MCP settings, falling back to the system OpenMetadata URL.
 
-After the first successful discovery, the public MCP handler checks for endpoint changes on demand,
+If initial discovery fails, the public MCP handler waits one minute before trying again for the
+same configuration. After the first success, the handler checks for endpoint changes on demand,
 at most once per minute. If a refresh fails, sign-ins that need discovery receive that failure until
 the next attempt. This bounds traffic during an outage. The issuer must match the initial document.
 A provider can rotate endpoints while keeping that issuer. To switch issuers, reload the provider
