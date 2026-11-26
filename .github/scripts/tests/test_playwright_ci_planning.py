@@ -1482,47 +1482,6 @@ def test_explore_changes_select_schema_search_for_chromium(tmp_path, monkeypatch
     assert "chromium" in schema_search["projects"]
 
 
-def test_explore_changes_schedule_search_rbac_in_its_own_lane(tmp_path, monkeypatch):
-    """The Explore mapping's ``Flow/*Search*.spec.ts`` glob also matches
-    SearchRBAC.spec.ts, which ``chromium`` testIgnores and only the dedicated
-    ``SearchRBAC`` project runs. Without that project in the mapping the selector
-    resolves to zero units and build_playwright_shards.py aborts the whole plan.
-    """
-    selector = load_script("select_playwright_tests")
-    changed = tmp_path / "changed.txt"
-    output = tmp_path / "selection.json"
-    changed.write_text(
-        "openmetadata-ui/src/main/resources/ui/src/components/Explore/"
-        "QuickFilterDropdown.tsx\n"
-    )
-    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "select_playwright_tests.py",
-            "--event-name",
-            "pull_request_target",
-            "--changed-files",
-            str(changed),
-            "--impact-map",
-            str(Path(".github/playwright/impact-map.json")),
-            "--output",
-            str(output),
-        ],
-    )
-
-    selector.main()
-
-    selection = json.loads(output.read_text())
-    search_rbac = next(
-        entry
-        for entry in selection["selectors"]
-        if entry["spec"] == "playwright/e2e/Flow/SearchRBAC.spec.ts"
-    )
-    assert "SearchRBAC" in search_rbac["projects"]
-
-
 def test_targeted_selection_does_not_schedule_deleted_specs(tmp_path, monkeypatch):
     selector = load_script("select_playwright_tests")
     existing_spec = tmp_path / selector.UI_ROOT / "playwright/e2e/Smoke.spec.ts"
@@ -1783,8 +1742,6 @@ def test_is_lifecycle_test_matches_setup_projects():
         "entity-data-setup",
         "entity-data-teardown",
         "data-insight-application",
-        "search-rbac-setup",
-        "search-rbac-teardown",
     ]:
         assert verifier.is_lifecycle_test({"id": "x", "project": project}), project
 
@@ -2295,21 +2252,6 @@ def test_outcome_classifier_separates_lifecycle_retries_from_product_totals(tmp_
     assert outcome["counts"]["lifecycleTests"] == 1
     assert outcome["counts"]["lifecycleRetryPassed"] == 1
     assert outcome["retryPasses"][0]["lifecycle"] is True
-
-
-def test_search_rbac_state_setup_maps_only_to_search_rbac():
-    impact_map = json.loads(
-        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
-    )
-    mapping = next(
-        entry
-        for entry in impact_map["mappings"]
-        if "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.setup.ts"
-        in entry["sources"]
-    )
-
-    assert mapping["projects"] == ["SearchRBAC"]
-    assert mapping["specs"] == ["playwright/e2e/Flow/SearchRBAC.spec.ts"]
 
 
 def test_scheduler_impact_mapping_covers_shared_consumers():

@@ -1,7 +1,7 @@
 # Agents' glossary-term proposals are decided through the approval workflow
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-22 (initial) · v2 2026-10-23 (a proposal branch after the start; lifecycles ask for an approval) · v3 2026-11-26 (a bot a workflow lists also starts it)
+- **Revisions:** v1 2026-10-22 (initial) · v2 2026-10-23 (a proposal branch after the start; lifecycles ask for an approval) · v3 2026-11-25 (a sole editor no longer keeps their own approval) · v4 2026-11-26 (a bot a workflow lists also starts it)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `GlossaryTermAutomationDraftIT`, `JSONLogicSearchClassBase.test.ts`, Collate `LifecycleWorkflow.behavior.test.ts`, `WorkflowEventConsumerTest`, `GlossaryApprovalWorkflowReviewTest`, `GlossaryAutomationReviewMigrationTest`, `GlossaryTermRepositoryStageDecisionTest`, `AutomationProposalsTest`, `ContextMemoryDerivationIT`, `useGlossaryProposals.test.tsx`, `ProposalCard.test.tsx`, `GlossaryAiGeneratedTerm.spec.ts`
 - **Related:** ADR:2026-10-19-memories-become-draft-glossary-terms-through-the-ai-provider
@@ -92,7 +92,15 @@ A reviewer's own edit still approves a proposal, as it approves any term: the br
   consequence for reviewers that are teams without members, is withdrawn), and the migration no
   longer touches them.
 
-## Amendment (v3, 2026-11-26)
+## Amendment (v3, 2026-11-25)
+
+- **A sole reviewer or owner who made the edit no longer keeps it.** v1's "a sole one keeps it" is
+  withdrawn: the editor is left off the assignees even when nobody else remains, and the step's
+  empty-assignee strategy decides, as it does when no approver resolves at all. A task kept by its
+  editor was filed by them and could not be resolved by them. See
+  ADR:2026-11-25-an-approval-never-goes-to-its-requester.
+
+## Amendment (v4, 2026-11-26)
 
 - **"Every other bot change stays outside them" now has one more exception:** a bot that a workflow
   lists in `triggeringBots` starts that workflow, per

@@ -10,35 +10,45 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { GraphEdge, GraphFilterOptions } from '../types/knowledgeGraph.types';
+import type {
+  EntityGraph,
+  GraphNode as EntityGraphNode,
+} from '../generated/api/rdf/entityGraph';
+import type { GraphEdge } from '../types/knowledgeGraph.types';
 
-export interface GraphNode {
-  id: string;
-  label: string;
-  type: string;
+export interface GraphNode
+  extends Pick<
+    EntityGraphNode,
+    | 'id'
+    | 'type'
+    | 'description'
+    | 'label'
+    | 'name'
+    | 'fullyQualifiedName'
+    | 'tags'
+  > {
+  entityId?: EntityGraphNode['entityId'];
   // Human label of the parent glossary (set by the RDF endpoint so the UI
   // hierarchy view can show a group name even when the parent Glossary is
   // not in the caller's accessible glossary list).
-  group?: string;
+  group?: EntityGraphNode['group'];
   // UUID of the parent glossary; supplied by the RDF endpoint when the
   // term-to-glossary membership triple is available.
   glossaryId?: string;
   title?: string;
-  fullyQualifiedName?: string;
-  description?: string;
   isolated?: boolean;
 }
 
-export interface GraphData {
+export interface GraphData
+  extends Partial<
+    Pick<
+      EntityGraph,
+      'filterOptions' | 'totalNodes' | 'totalEdges' | 'truncated'
+    >
+  > {
   nodes: GraphNode[];
   edges: GraphEdge[];
-  filterOptions?: GraphFilterOptions;
-  totalNodes?: number;
-  totalEdges?: number;
-  // Set by the server when the BFS traversal hit its per-level row cap or
-  // wall-clock budget, i.e. the returned graph is a partial subset.
-  truncated?: boolean;
-  source?: string;
+  source?: `${EntityGraph['source']}` | 'database';
   error?: string;
 }
 

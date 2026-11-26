@@ -23,7 +23,7 @@ import org.openmetadata.service.search.vector.StoredEmbeddingReuse;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
-import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 
 /**
  * The embedding step of a reindex bulk sink, the same on Elasticsearch and OpenSearch: it splices
@@ -59,7 +59,7 @@ final class EmbeddingEnricher {
   boolean isEnabledFor(String entityType) {
     return searchRepository.isVectorEmbeddingEnabled()
         && searchRepository.getVectorIndexService() != null
-        && AvailableEntityTypes.isVectorIndexable(entityType)
+        && EmbeddedEntityTypes.isEmbedded(entityType)
         && searchRepository.getIndexMapping(entityType) != null;
   }
 

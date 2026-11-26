@@ -126,7 +126,8 @@ public class AuditReportResource extends EntityResource<AuditReport, AuditReport
     AuditReport inFlight = AuditPackGenerator.findActiveDuplicate(report);
     if (inFlight != null) {
       AuditReport existing =
-          repository.get(uriInfo, inFlight.getId(), repository.getFields(FIELDS));
+          getInternal(
+              uriInfo, securityContext, inFlight.getId(), FIELDS, Include.NON_DELETED, null);
       return Response.ok(existing).build();
     }
 

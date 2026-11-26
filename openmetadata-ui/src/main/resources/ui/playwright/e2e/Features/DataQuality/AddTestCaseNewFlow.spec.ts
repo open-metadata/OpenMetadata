@@ -21,6 +21,7 @@ import {
   expectFormHint,
   ObservabilityFeature,
   selectAddObservabilityFeature,
+  selectTestType,
 } from '../../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -116,11 +117,7 @@ test.describe(
       await page.click('[id="root\\/testType"]');
       await expectFormHint(page, 'Select Test Type');
 
-      await page
-        .getByRole('option')
-        .filter({ hasText: testType })
-        .first()
-        .click();
+      await selectTestType(page, testType);
 
       if (paramsValue) {
         await page.fill('#testCaseFormV1_params_value', paramsValue);

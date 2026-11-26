@@ -99,6 +99,7 @@ import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -1806,31 +1807,32 @@ public class AppResource extends EntityResource<App, AppRepository> {
         .executeDatabaseTask(
             DatabaseOperation.APP_OPERATION,
             jobId,
-            () -> {
-              try {
-                ApplicationHandler.getInstance()
-                    .performCleanup(app, Entity.getCollectionDAO(), searchRepository, userName);
+            ImpersonationContext.propagate(
+                () -> {
+                  try {
+                    ApplicationHandler.getInstance()
+                        .performCleanup(app, Entity.getCollectionDAO(), searchRepository, userName);
 
-                // Remove from Pipeline Service
-                deleteApp(securityContext, app);
+                    // Remove from Pipeline Service
+                    deleteApp(securityContext, app);
 
-                // Remove from repository
-                RestUtil.DeleteResponse<App> deleteResponse =
-                    repository.delete(userName, id, recursive, hardDelete);
+                    // Remove from repository
+                    RestUtil.DeleteResponse<App> deleteResponse =
+                        repository.delete(userName, id, recursive, hardDelete);
 
-                if (hardDelete) {
-                  limits.invalidateCache(entityType);
-                }
+                    if (hardDelete) {
+                      limits.invalidateCache(entityType);
+                    }
 
-                repository.storeChangeEventForAsyncOperation(
-                    deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
-                WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
-                    jobId, securityContext, deleteResponse.entity());
-              } catch (Exception e) {
-                WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                    jobId, securityContext, app, e.getMessage());
-              }
-            });
+                    repository.storeChangeEventForAsyncOperation(
+                        deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
+                    WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                        jobId, securityContext, deleteResponse.entity());
+                  } catch (Exception e) {
+                    WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                        jobId, securityContext, app, e.getMessage());
+                  }
+                }));
 
     response =
         Response.accepted()

@@ -7,6 +7,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.ChangeEvents;
+import org.openmetadata.service.security.ImpersonationContext;
 
 @Slf4j
 public final class McpChangeEventUtil {
@@ -22,6 +23,9 @@ public final class McpChangeEventUtil {
           ChangeEvents.createChangeEventForEntity(
               userName, changeType, McpResponseUtils.maskSecrets(entity));
       changeEvent.setUserName(userName);
+      // The tool call's bot, as a REST write's event names its request's: the entity can still
+      // name an earlier writer when the write undoes an edit within its session.
+      changeEvent.setImpersonatedBy(ImpersonationContext.getImpersonatedBy());
 
       if (changeEvent.getEntity() != null) {
         Object rawEntity = changeEvent.getEntity();
