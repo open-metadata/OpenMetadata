@@ -53,6 +53,7 @@ import org.openmetadata.schema.api.data.RdfEntityDiff;
 import org.openmetadata.schema.api.rdf.AgentSparqlError;
 import org.openmetadata.schema.api.rdf.AgentSparqlQuery;
 import org.openmetadata.schema.api.rdf.AgentSparqlResponse;
+import org.openmetadata.schema.api.rdf.EntityGraph;
 import org.openmetadata.schema.api.rdf.RdfInferenceStatus;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.api.rdf.RdfStatus;
@@ -1056,7 +1057,10 @@ public class RdfResource {
         @ApiResponse(
             responseCode = "200",
             description = "Graph data with nodes and edges",
-            content = @Content(mediaType = MediaType.APPLICATION_JSON)),
+            content =
+                @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(implementation = EntityGraph.class))),
         @ApiResponse(responseCode = "404", description = "Entity not found"),
         @ApiResponse(responseCode = "503", description = "RDF service not enabled")
       })
