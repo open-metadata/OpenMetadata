@@ -42,6 +42,7 @@ import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggrega
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.AuditReportSearchVisibility;
 import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.PrivateSearchFields;
@@ -52,6 +53,8 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class ElasticSearchAggregationManager implements AggregationManagementClient {
   private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
       new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory());
+  private static final AuditReportSearchVisibility REPORT_VISIBILITY =
+      new AuditReportSearchVisibility(new ElasticQueryBuilderFactory());
   private static final String MATCH_ALL_TEXT = "*";
 
   private final ElasticsearchClient client;
@@ -82,6 +85,11 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       SubjectContext subjectContext,
       ElasticSearchRequestBuilder requestBuilder,
       String queryFilter) {
+    requestBuilder
+        .filter(
+            ((ElasticQueryBuilder) REPORT_VISIBILITY.buildVisibilityFilter(subjectContext))
+                .buildV2())
+        .auditReportVisibilityResolved();
     OMQueryBuilder visibilityBuilder =
         MEMORY_VISIBILITY.buildVisibilityFilter(
             subjectContext,

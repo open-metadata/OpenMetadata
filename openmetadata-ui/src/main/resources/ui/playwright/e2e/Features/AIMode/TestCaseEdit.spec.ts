@@ -13,6 +13,7 @@
 import { expect, Page, Response, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { getApiContext, uuid } from '../../../utils/common';
+import { selectTestType } from '../../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { enableAiAppMode, redirectToAiModeHomePage } from '../../Utils/appMode';
 
@@ -237,15 +238,7 @@ test.describe('AI Observability - test case edit drawer', () => {
       .locator('input')
       .fill(testCaseName);
 
-    // Searchable test-type dropdown: type to filter, then pick the option.
-    await page.click('[id="root\\/testType"]');
-    await page.fill('[id="root\\/testType"]', 'Table Row Count To Be Between');
-    // eslint-disable-next-line om-playwright/no-positional-locator -- already narrowed by name; .first() guards against sibling definitions sharing this prefix
-    await page
-      .getByRole('option')
-      .filter({ hasText: 'Table Row Count To Be Between' })
-      .first()
-      .click();
+    await selectTestType(page, 'Table Row Count To Be Between');
 
     await page.fill('#testCaseFormV1_params_minValue', '5');
     await page.fill('#testCaseFormV1_params_maxValue', '50');

@@ -77,7 +77,9 @@ outside the commit.
    > (`git diff origin/main...<reviewed SHA>`)
    > against `REVIEW.md` at the repository root, as the reviewer that file describes. Follow its
    > "How to review" section. Return the test map (one line per changed source file:
-   > `file → test`, or `file → none`), then the findings in its format, 🔴 first. Do not edit files.
+   > `file → test`, or `file → none`), then the findings in its format, 🔴 first, then the three
+   > lines of its "The review summary" section (Placement, Trade-off, Recommendation). Do not edit
+   > files.
 
    With no subagent, run the same pass yourself: read `REVIEW.md`, then read the diff file by file
    as if someone else had written it.
@@ -86,8 +88,8 @@ outside the commit.
 3. **Commit fixes and repeat after any change**, until the committed diff returns no unanswered 🔴.
    Any change to the intended files requires a new commit and pass; the final recorded SHA must
    match the content reviewed.
-4. **Record it** for Step 6: the SHA you reviewed, what you fixed, and what you answered instead and
-   why.
+4. **Record it** for Step 6: the SHA you reviewed, what you fixed, what you answered instead and
+   why, and the review's Placement, Trade-off and Recommendation lines.
 
 ### Step 2 — Confirm the linked issue
 
