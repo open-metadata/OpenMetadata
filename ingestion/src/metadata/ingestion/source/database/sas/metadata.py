@@ -636,9 +636,15 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
 
                 # update the custom properties
                 logger.debug(f"Updating custom properties for {table_entity.id.root} with {extension_attributes}")
-                self.metadata.patch_custom_properties(
+                if not self.metadata.patch_custom_properties(
                     entity=Table, entity_id=table_entity.id, custom_properties=extension_attributes
-                )
+                ):
+                    yield Either(
+                        left=StackTraceError(
+                            name=table_name,
+                            error=f"Failed to update custom properties for table [{table_name}]",
+                        )
+                    )
 
                 # quit updating table profile if table doesn't exist
                 if table_description and "This table does not exist in the file path" in table_description:

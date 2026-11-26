@@ -335,7 +335,8 @@ class TestCustomPropertiesSetOutsideSas:
     """A re-run must update the SAS-sourced custom properties without
     deleting the ones set in the UI, by another connector or through the API."""
 
-    def test_custom_property_set_outside_sas_survives_a_run(self, sas_source):
+    @staticmethod
+    def _run_against_stored_table(sas_source, patch_side_effect=None):
         stored = Table(
             id=uuid.uuid4(),
             name="LAS_TRAIN",
@@ -348,7 +349,12 @@ class TestCustomPropertiesSetOutsideSas:
         sas_source.sas_client.get_information_catalog_link.return_value = "http://sas/catalog/LAS_TRAIN"
         sas_source.metadata = MagicMock()
         sas_source.metadata.get_by_name.return_value = stored
-        sas_source.metadata.get_by_id.return_value = stored
+        # Like the server, return the extension only when it is asked for
+        sas_source.metadata.get_by_id.side_effect = lambda entity, entity_id, fields=None: (
+            stored if fields and "extension" in fields else stored.model_copy(update={"extension": None})
+        )
+        sas_source.metadata.client.patch.return_value = stored.model_dump(mode="json")
+        sas_source.metadata.client.patch.side_effect = patch_side_effect
         sas_source.metadata.patch_custom_properties = partial(
             OMetaPatchMixin.patch_custom_properties, sas_source.metadata
         )
@@ -366,7 +372,10 @@ class TestCustomPropertiesSetOutsideSas:
             ),
             patch.object(SasSource, "create_lineage_table_source", return_value=iter([])),
         ):
-            results = list(sas_source.create_table_entity(LAS_TRAIN_SEARCH_HIT))
+            return list(sas_source.create_table_entity(LAS_TRAIN_SEARCH_HIT))
+
+    def test_custom_property_set_outside_sas_survives_a_run(self, sas_source):
+        results = self._run_against_stored_table(sas_source)
 
         assert not [r for r in results if r.left is not None]
         extension_ops = [
@@ -378,6 +387,13 @@ class TestCustomPropertiesSetOutsideSas:
         assert len(extension_ops) == 1
         assert extension_ops[0]["value"]["Department"] == ["Finance"]
         assert extension_ops[0]["value"]["CASLIB"] == "PUBLIC"
+
+    def test_failed_custom_property_update_is_reported(self, sas_source):
+        results = self._run_against_stored_table(sas_source, patch_side_effect=[{}, HTTPError("500")])
+
+        errors = [r.left.error for r in results if r.left is not None]
+        assert errors == ["Failed to update custom properties for table [LAS_TRAIN]"]
+        sas_source.metadata.client.put.assert_called_once()
 
 
 class TestExceptionHandlerSafety:
