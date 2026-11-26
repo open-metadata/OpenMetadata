@@ -1066,6 +1066,92 @@ describe('TaskTabNew Component', () => {
     ).toBeInTheDocument();
   });
 
+  it('warns that the proposed changes are incomplete when the task says so', async () => {
+    const {
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: {
+              proposedChanges: {
+                synonyms: { added: ['Alias'], removed: [] },
+              },
+              proposedChangesIncomplete: true,
+            },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(screen.getByTestId('proposed-changes-incomplete')).toHaveTextContent(
+      'message.proposed-changes-incomplete'
+    );
+    expect(screen.getByText('Alias')).toBeInTheDocument();
+  });
+
+  it('shows the incomplete warning even when no listed change remains', async () => {
+    const {
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: { proposedChangesIncomplete: true },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(
+      screen.getByText('label.proposed-change-plural')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('proposed-changes-incomplete')
+    ).toBeInTheDocument();
+  });
+
+  it('shows no incomplete warning for a preview that covers the whole cycle', async () => {
+    const {
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: {
+              proposedChanges: {
+                synonyms: { added: ['Alias'], removed: [] },
+              },
+            },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(screen.getByText('Alias')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('proposed-changes-incomplete')
+    ).not.toBeInTheDocument();
+  });
+
   it('renders schema-driven payload details for custom tasks', async () => {
     const {
       getResolvedTaskFormSchema,

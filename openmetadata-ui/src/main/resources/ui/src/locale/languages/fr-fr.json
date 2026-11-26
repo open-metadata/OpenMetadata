@@ -6600,6 +6600,7 @@
     "profiler-timeout-seconds-message": "Le délai d'attente en seconde est optionnel pour le profilage. Si le délai d'attente est atteint, le profilage attendra la fin de l'exécution des requêtes qui ont débuté pour terminer son exécution.",
     "property-description-placeholder": "Ce que cette propriété représente.",
     "property-name-placeholder": "par ex. Date d'échéance",
+    "proposed-changes-incomplete": "Une partie de l'historique de ce cycle d'approbation n'a pas pu être lue, des modifications antérieures peuvent donc manquer dans cette liste.",
     "put-your-data-operations-on-autopilot": "Mettez vos opérations de données en pilote automatique",
     "quality-contract-description": "Tests et assertions de qualité des données",
     "quality-rules-run-summary": "{{testCases}} règles de qualité sur {{total}} s'exécutent comme cas de test",

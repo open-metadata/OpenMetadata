@@ -6600,6 +6600,7 @@
     "profiler-timeout-seconds-message": "לפרופילר, הוסף את משך הזמן בשניות לטיימאוט (אופציונלי). הפרופילר ימתין לשאילתות ממתינות להיבצע או יפסיק אותן כשהוא מגיע לטיימאוט.",
     "property-description-placeholder": "מה המאפיין הזה מתעד.",
     "property-name-placeholder": "למשל תאריך פירעון",
+    "proposed-changes-incomplete": "לא ניתן היה לקרוא חלק מההיסטוריה של מחזור האישור הזה, ולכן ייתכן ששינויים קודמים חסרים ברשימה זו.",
     "put-your-data-operations-on-autopilot": "העבר את פעולות הנתונים שלך לטייס אוטומטי",
     "quality-contract-description": "בדיקות ואסרציות איכות נתונים",
     "quality-rules-run-summary": "{{testCases}} מתוך {{total}} כללי איכות רצים כבדיקות נתונים",

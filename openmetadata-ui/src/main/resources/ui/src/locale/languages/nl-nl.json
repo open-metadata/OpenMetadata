@@ -6600,6 +6600,7 @@
     "profiler-timeout-seconds-message": "Voeg voor de Profiler de duur in seconden toe voor time-out (optioneel). De profiler wacht op eventuele uitstaande queries die moeten worden uitgevoerd, of beëindigt ze zodra de time-out is bereikt.",
     "property-description-placeholder": "Wat deze eigenschap vastlegt.",
     "property-name-placeholder": "bijv. Vervaldatum",
+    "proposed-changes-incomplete": "Een deel van de geschiedenis van deze goedkeuringscyclus kon niet worden gelezen, waardoor eerdere wijzigingen mogelijk ontbreken in deze lijst.",
     "put-your-data-operations-on-autopilot": "Zet uw dataverwerking op de automatische piloot",
     "quality-contract-description": "Datakwaliteitstests en -bevestigingen",
     "quality-rules-run-summary": "{{testCases}} van {{total}} kwaliteitsregels worden als testcases uitgevoerd",

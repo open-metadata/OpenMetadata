@@ -6600,6 +6600,7 @@
     "profiler-timeout-seconds-message": "For the Profiler, add the duration in seconds for timeout (optional). The profiler will wait for any pending queries to be executed, or will terminate them once it reaches the timeout.",
     "property-description-placeholder": "What this property captures.",
     "property-name-placeholder": "e.g. Maturity date",
+    "proposed-changes-incomplete": "Part of this approval cycle's history could not be read, so earlier changes may be missing from this list.",
     "put-your-data-operations-on-autopilot": "Put your data operations on autopilot",
     "quality-contract-description": "Data Quality Tests and Assertions",
     "quality-rules-run-summary": "{{testCases}} of {{total}} quality rules run as test cases",

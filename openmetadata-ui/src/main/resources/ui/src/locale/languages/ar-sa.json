@@ -6600,6 +6600,7 @@
     "profiler-timeout-seconds-message": "بالنسبة للمُحلل (Profiler)، أضف المدة بالثواني للمهلة (اختياري). سينتظر المُحلل تنفيذ أي استعلامات معلقة، أو سيقوم بإنهاءها بمجرد الوصول إلى المهلة.",
     "property-description-placeholder": "ما الذي تمثله هذه الخاصية.",
     "property-name-placeholder": "مثل تاريخ الاستحقاق",
+    "proposed-changes-incomplete": "تعذّرت قراءة جزء من سجل دورة الموافقة هذه، لذا قد تكون التغييرات السابقة مفقودة من هذه القائمة.",
     "put-your-data-operations-on-autopilot": "ضع عمليات بياناتك على الطيار الآلي",
     "quality-contract-description": "اختبارات وضمانات جودة البيانات",
     "quality-rules-run-summary": "يتم تشغيل {{testCases}} من أصل {{total}} من قواعد الجودة كحالات اختبار",

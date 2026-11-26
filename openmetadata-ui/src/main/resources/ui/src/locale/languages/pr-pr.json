@@ -6600,6 +6600,7 @@
     "profiler-timeout-seconds-message": "برای پروفایلر، مدت زمان به ثانیه برای زمان قطع (اختیاری) را اضافه کنید. پروفایلر منتظر اجرای هر پرسش معوق خواهد بود، یا پس از رسیدن به زمان قطع آن‌ها را خاتمه می‌دهد.",
     "property-description-placeholder": "آنچه این ویژگی ثبت می‌کند.",
     "property-name-placeholder": "مانند تاریخ سررسید",
+    "proposed-changes-incomplete": "بخشی از تاریخچه این چرخه تأیید خوانده نشد، بنابراین ممکن است تغییرات قبلی در این فهرست نباشد.",
     "put-your-data-operations-on-autopilot": "عملیات داده‌های خود را روی خلبان خودکار بگذارید",
     "quality-contract-description": "تست‌های کیفیت داده و تأییدها",
     "quality-rules-run-summary": "{{testCases}} از {{total}} قانون کیفیت به‌عنوان مورد تست اجرا می‌شوند",

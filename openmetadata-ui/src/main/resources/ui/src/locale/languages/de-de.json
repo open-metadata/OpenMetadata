@@ -6600,6 +6600,7 @@
     "profiler-timeout-seconds-message": "Für den Profiler füge optional die Dauer in Sekunden für den Timeout hinzu. Der Profiler wartet auf ausstehende Abfragen oder bricht sie ab, sobald der Timeout erreicht ist.",
     "property-description-placeholder": "Was diese Eigenschaft erfasst.",
     "property-name-placeholder": "z. B. Fälligkeitsdatum",
+    "proposed-changes-incomplete": "Ein Teil des Verlaufs dieses Genehmigungszyklus konnte nicht gelesen werden, daher fehlen in dieser Liste möglicherweise frühere Änderungen.",
     "put-your-data-operations-on-autopilot": "Bringen Sie Ihre Datenprozesse auf Autopilot",
     "quality-contract-description": "Datenqualitätstests und -überprüfungen",
     "quality-rules-run-summary": "{{testCases}} von {{total}} Qualitätsregeln laufen als Testfälle",

@@ -6600,6 +6600,7 @@
     "profiler-timeout-seconds-message": "可选配置, 设置分析器的超时时间数值(以秒为单位)。如果达到超时时间, 分析器将等待任何未处理的查询终止其执行。",
     "property-description-placeholder": "此属性所记录的内容。",
     "property-name-placeholder": "例如：到期日",
+    "proposed-changes-incomplete": "无法读取此审批周期的部分历史记录，因此此列表中可能缺少较早的更改。",
     "put-your-data-operations-on-autopilot": "让您的数据操作实现自动化",
     "quality-contract-description": "数据质量测试和断言",
     "quality-rules-run-summary": "{{total}} 条质量规则中有 {{testCases}} 条作为测试用例运行",
