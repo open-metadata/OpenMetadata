@@ -57,4 +57,35 @@ public class LoginAttemptCacheTest {
     assertEquals(3, cache.getUserFailedLoginCount("alice@example.com"));
     assertTrue(cache.isLoginBlocked("Alice@example.com"));
   }
+
+  /**
+   * Failed logins for unknown identities must not evict a real account's counter: a flood of
+   * made-up emails would otherwise reset the account's lockout and allow unlimited guessing.
+   */
+  @Test
+  void unknownIdentitiesCannotEvictARealAccountsCounter() {
+    LoginAttemptCache cache = new LoginAttemptCache(3, 600);
+    cache.recordFailedLogin("real@example.com");
+    cache.recordFailedLogin("real@example.com");
+
+    for (int i = 0; i < 2000; i++) {
+      cache.recordFailedUnknownLogin("made-up-" + i + "@example.com");
+    }
+
+    assertEquals(2, cache.getUserFailedLoginCount("real@example.com"));
+    cache.recordFailedLogin("real@example.com");
+    assertTrue(cache.isLoginBlocked("real@example.com"));
+  }
+
+  @Test
+  void anUnknownIdentityLocksOutAfterTheSameNumberOfAttempts() {
+    LoginAttemptCache cache = new LoginAttemptCache(3, 600);
+    cache.recordFailedUnknownLogin("nobody@example.com");
+    cache.recordFailedUnknownLogin("nobody@example.com");
+    assertFalse(cache.isLoginBlocked("nobody@example.com"));
+
+    cache.recordFailedUnknownLogin("NOBODY@example.com");
+
+    assertTrue(cache.isLoginBlocked("nobody@example.com"));
+  }
 }

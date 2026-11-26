@@ -925,7 +925,7 @@ public class ElasticSearchSourceBuilderFactory
             }
           });
 
-      String fuzziness = getFuzziness(query);
+      String fuzziness = getFuzziness(query, fields.keySet());
       int maxExpansions = getMaxExpansions(query);
 
       Query fuzzyQuery =
