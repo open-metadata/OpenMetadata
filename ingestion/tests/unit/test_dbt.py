@@ -5989,6 +5989,34 @@ class TestDbtSourceIdentifiers:
             assert freshness[DbtCommonEnum.UPSTREAM.value] == [physical_fqn]
         else:
             assert freshness is None
+        lineage = list(source.create_dbt_lineage(links[self.MODEL_FQN]))
+        assert [edge.right.lineage_request.edge.fromEntity.id.root for edge in lineage] == (
+            [links[physical_fqn].table_entity.id.root] if literal_exists else []
+        )
+
+    def test_wildcard_source_is_kept_for_lineage_where_the_engine_has_wildcard_tables(self, monkeypatch):
+        # Engines without wildcard tables keep the identifier literal (the parametrized test above)
+        from metadata.ingestion.source.database.dbt import metadata as dbt_metadata
+
+        resolve = dbt_metadata.get_table_binding_resolution
+
+        def with_wildcard_tables(metadata, service_name):
+            resolution = resolve(metadata, service_name)
+            resolution.supports_wildcard_tables = True
+            return resolution
+
+        monkeypatch.setattr(dbt_metadata, "get_table_binding_resolution", with_wildcard_tables)
+        source = self._source(self.MODEL_FQN)
+        payload = self._payload()
+        payload["sources"][self.SOURCE_KEY]["identifier"] = "raw_orders_*"
+        # A previous run's expansion must not answer for tables ingested since
+        source.wildcard_expansions.put("trino_svc.RAW_DB.RAW.raw_orders_*", None)
+
+        links = self._links(source, self._objects(source, payload))
+
+        assert links[self.MODEL_FQN].datamodel.upstream == ["trino_svc.RAW_DB.RAW.raw_orders_*"]
+        assert "trino_svc.RAW_DB.RAW.raw_orders_*" not in source.wildcard_expansions
+        assert source.context.get().dbt_tests.get(self.SOURCE_KEY + "_freshness") is None
 
     @pytest.mark.parametrize("missing_location", ["database", "schema"])
     def test_source_with_unspecified_location_still_resolves_literal_identifier(self, missing_location):
