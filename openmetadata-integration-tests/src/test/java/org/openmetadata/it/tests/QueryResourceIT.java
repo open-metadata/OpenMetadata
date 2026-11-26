@@ -21,6 +21,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDatabase;
@@ -29,19 +31,25 @@ import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -512,6 +520,153 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     String name = "query_curator_" + UUID.randomUUID().toString().substring(0, 8);
     CreateUser createUser = new CreateUser().withName(name).withEmail(name + "@test.om.org");
     return ns.trackRoot(Entity.USER, SdkClients.adminClient().users().create(createUser));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = HttpMethod.class,
+      names = {"POST", "PUT"})
+  void queryCreationAllowsTableOwners(HttpMethod method, TestNamespace ns) {
+    final User curator = createOwnerRestrictedCurator(ns);
+    final Table owned = createTableOwnedBy(ns, "create_owned", curator);
+    final CreateQuery request = curatedQuery(ns, "owned_create", curator, owned).withOwners(null);
+    final Query created =
+        curatorClient(curator).getHttpClient().execute(method, "/v1/queries", request, Query.class);
+
+    assertEquals(request.getName(), created.getName());
+    assertUsedIn(created, owned);
+  }
+
+  @Test
+  void bulkQueryCreationAllowsTableOwners(TestNamespace ns) {
+    final User curator = createOwnerRestrictedCurator(ns);
+    final Table owned = createTableOwnedBy(ns, "bulk_owned", curator);
+    final CreateQuery request = curatedQuery(ns, "owned_bulk", curator, owned).withOwners(null);
+    final BulkOperationResult result =
+        curatorClient(curator).queries().bulkCreateOrUpdate(List.of(request));
+
+    assertEquals(0, result.getNumberOfRowsFailed(), String.valueOf(result.getFailedRequest()));
+    assertEquals(1, result.getNumberOfRowsProcessed());
+    final Query created =
+        SdkClients.adminClient()
+            .queries()
+            .getByName(
+                getOrCreateDatabaseService(ns).getFullyQualifiedName() + "." + request.getName());
+    assertUsedIn(created, owned);
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = HttpMethod.class,
+      names = {"POST", "PUT"})
+  void queryCreationRejectsSelfAssignedOwners(HttpMethod method, TestNamespace ns) {
+    final User curator = createOwnerRestrictedCurator(ns);
+    final Table foreign = createTableOwnedBy(ns, "create_foreign", null);
+    final CreateQuery request = curatedQuery(ns, "foreign_create", curator, foreign);
+    final OpenMetadataException denied =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                curatorClient(curator)
+                    .getHttpClient()
+                    .execute(method, "/v1/queries", request, Query.class));
+
+    assertEquals(403, denied.getStatusCode(), denied.getMessage());
+    assertTrue(denied.getMessage().contains("Create"), denied.getMessage());
+  }
+
+  @Test
+  void queryCreationStillRequiresEditQueriesOnEveryTarget(TestNamespace ns) {
+    final User curator = createOwnerRestrictedCurator(ns);
+    final Table owned = createTableOwnedBy(ns, "create_allowed", curator);
+    final Table foreign = createTableOwnedBy(ns, "create_denied", null);
+    final CreateQuery request =
+        usedIn(curatedQuery(ns, "mixed_create", curator, owned), owned, foreign).withOwners(null);
+
+    assertDeniedEditQueries(() -> curatorClient(curator).queries().create(request));
+  }
+
+  @Test
+  void queryCreationAllowsInheritedTableOwners(TestNamespace ns) {
+    final User curator = createOwnerRestrictedCurator(ns);
+    final Table table = createTableOwnedBy(ns, "inherited_owner", null);
+    final DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .get(table.getDatabaseSchema().getId().toString(), "owners");
+    schema.setOwners(List.of(curator.getEntityReference()));
+    SdkClients.adminClient().databaseSchemas().update(schema.getId(), schema);
+    final Query created =
+        curatorClient(curator)
+            .queries()
+            .create(curatedQuery(ns, "inherited_create", curator, table).withOwners(null));
+
+    assertUsedIn(created, table);
+  }
+
+  @Test
+  void queryCreationAllowsServiceOwnersWithoutTableTargets(TestNamespace ns) {
+    final User curator = createOwnerRestrictedCurator(ns);
+    final DatabaseService service = getOrCreateDatabaseService(ns);
+    service.setOwners(List.of(curator.getEntityReference()));
+    SdkClients.adminClient().databaseServices().update(service.getId(), service);
+    final CreateQuery request =
+        new CreateQuery()
+            .withName(ns.prefix("service_owned_query"))
+            .withQuery("SELECT 1")
+            .withService(service.getFullyQualifiedName());
+    final Query created = curatorClient(curator).queries().create(request);
+
+    assertEquals(request.getName(), created.getName());
+  }
+
+  private User createOwnerRestrictedCurator(TestNamespace ns) {
+    ns.trackRoot(Entity.DATABASE_SERVICE, getOrCreateDatabaseService(ns));
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final Policy policy =
+        ns.trackRoot(
+            Entity.POLICY,
+            admin
+                .policies()
+                .create(
+                    new CreatePolicy()
+                        .withName(ns.shortPrefix("query_owner_policy"))
+                        .withRules(
+                            List.of(
+                                queryCreateRule(Rule.Effect.ALLOW, "isOwner()"),
+                                queryCreateRule(Rule.Effect.DENY, "!isOwner()")))));
+    final Role role =
+        ns.trackRoot(
+            Entity.ROLE,
+            admin
+                .roles()
+                .create(
+                    new CreateRole()
+                        .withName(ns.shortPrefix("query_owner_role"))
+                        .withPolicies(List.of(policy.getFullyQualifiedName()))));
+    final String name = ns.shortPrefix("query_owner");
+    return ns.trackRoot(
+        Entity.USER,
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(name)
+                    .withEmail(name + "@test.om.org")
+                    .withRoles(List.of(role.getId()))));
+  }
+
+  private static Rule queryCreateRule(Rule.Effect effect, String condition) {
+    return new Rule()
+        .withName("queryCreate" + effect)
+        .withEffect(effect)
+        .withResources(List.of(Entity.QUERY))
+        .withOperations(List.of(MetadataOperation.CREATE))
+        .withCondition(condition);
+  }
+
+  private static OpenMetadataClient curatorClient(User curator) {
+    return SdkClients.createClient(curator.getName(), curator.getEmail(), new String[] {});
   }
 
   private Table createTableOwnedBy(TestNamespace ns, String suffix, User owner) {

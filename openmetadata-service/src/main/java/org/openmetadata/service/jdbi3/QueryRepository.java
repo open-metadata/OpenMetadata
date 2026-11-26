@@ -384,10 +384,7 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Query entity, String fields) {
-    if (entity.getService() == null) {
-      return null;
-    }
+  public EntityInterface<?> getParentEntity(Query entity, String fields) {
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 

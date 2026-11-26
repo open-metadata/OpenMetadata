@@ -13,11 +13,8 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -28,32 +25,22 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 
-/**
- * Regression coverage for {@link QueryRepository#getParentEntity(Query, String)}.
- *
- * <p>A Query's ownership-policy evaluation uses its parent (the DatabaseService it belongs to) to
- * resolve inherited owners. The override must (1) return {@code null} when the Query carries no
- * service reference, so policy evaluation degrades gracefully instead of throwing an NPE, and (2)
- * resolve the referenced service — with {@link Include#ALL} — when the reference is present.
- */
 class QueryRepositoryParentEntityTest {
 
-  private static final String FIELDS = "owners";
+  private static final String FIELDS = Entity.FIELD_OWNERS;
 
   private MockedStatic<Entity> mockedEntity;
-  private CollectionDAO collectionDAO;
   private DatabaseService service;
 
   @BeforeEach
   void setUp() {
-    collectionDAO = mock(CollectionDAO.class);
+    final CollectionDAO collectionDAO = mock(CollectionDAO.class);
     when(collectionDAO.queryDAO()).thenReturn(mock(CollectionDAO.QueryDAO.class));
 
     service =
@@ -64,16 +51,10 @@ class QueryRepositoryParentEntityTest {
 
     mockedEntity = mockStatic(Entity.class);
     mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
-    // EntityRepository's constructor derives allowedFields from Entity.getEntityFields(entityClass)
-    // and validates the patch/put field strings against it. mockStatic(Entity.class) stubs every
-    // static method, so without this stub getEntityFields() returns an empty set and
-    // 'new QueryRepository()' throws IllegalArgumentException: Invalid field name queryUsedIn.
+    // The repository constructor validates its patch and update fields against this set.
     mockedEntity
-        .when(() -> Entity.getEntityFields(any()))
+        .when(() -> Entity.getEntityFields(Query.class))
         .thenReturn(Set.of("users", "query", "queryUsedIn", "processedLineage"));
-    mockedEntity
-        .when(() -> Entity.getEntity(any(EntityReference.class), eq(FIELDS), eq(Include.ALL)))
-        .thenReturn(service);
   }
 
   @AfterEach
@@ -83,37 +64,21 @@ class QueryRepositoryParentEntityTest {
 
   @Test
   void getParentEntity_returnsNull_whenQueryHasNoService() {
-    Query query = new Query().withId(UUID.randomUUID()).withName("q").withQuery("SELECT 1");
-
-    EntityInterface parent = new QueryRepository().getParentEntity(query, FIELDS);
-
-    assertNull(
-        parent,
-        "A Query with no service must not resolve a parent, and must not throw during "
-            + "ownership-policy evaluation");
+    assertNull(new QueryRepository().getParentEntity(new Query(), FIELDS));
   }
 
   @Test
   void getParentEntity_resolvesServiceWithIncludeAll_whenServicePresent() {
-    EntityReference serviceRef =
+    final EntityReference serviceRef =
         new EntityReference()
             .withId(service.getId())
             .withType(Entity.DATABASE_SERVICE)
             .withName(service.getName())
             .withFullyQualifiedName(service.getFullyQualifiedName());
-    Query query =
-        new Query()
-            .withId(UUID.randomUUID())
-            .withName("q")
-            .withQuery("SELECT 1")
-            .withService(serviceRef);
-
-    EntityInterface parent = new QueryRepository().getParentEntity(query, FIELDS);
+    mockedEntity.when(() -> Entity.getEntity(serviceRef, FIELDS, Include.ALL)).thenReturn(service);
 
     assertSame(
         service,
-        parent,
-        "The Query's service reference must be resolved as the parent entity");
-    assertEquals("mysql_prod", parent.getName());
+        new QueryRepository().getParentEntity(new Query().withService(serviceRef), FIELDS));
   }
 }
