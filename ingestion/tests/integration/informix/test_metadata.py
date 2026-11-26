@@ -18,7 +18,7 @@ up once a real workflow has written a real entity.
 
 import pytest
 
-from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure, StoredProcedureType
 from metadata.generated.schema.entity.data.table import (
     Constraint,
     ConstraintType,
@@ -159,25 +159,39 @@ class TestViewsAndRoutines:
         assert metadata.get_by_name(entity=Table, fqn=fqn) is None
 
     def test_user_routines_are_ingested(self, ingested_procedures):
-        assert {"add_two", "triple", "tagged_probe_out"} <= ingested_procedures
+        assert {"add_two", "noop_probe", "triple", "tagged_probe_out"} <= ingested_procedures
 
     def test_builtin_routines_are_not_ingested(self, ingested_procedures):
         """A stock database has ~560 of them; they would bury the user's own."""
-        assert len(ingested_procedures) == 5, sorted(ingested_procedures)
+        assert len(ingested_procedures) == 6, sorted(ingested_procedures)
 
     def test_overloads_are_ingested_separately(self, ingested_procedures):
-        """Informix allows overloading; sharing one FQN, they would overwrite each other."""
-        assert {"scale(integer)", "scale(integer,integer)"} <= ingested_procedures
-        assert "scale" not in ingested_procedures
+        """Informix allows overloading; sharing one FQN, they would overwrite each other.
+        The first overload keeps the bare name the routine had before it was overloaded."""
+        assert {"scale", "scale(integer,integer)"} <= ingested_procedures
+        assert "scale(integer)" not in ingested_procedures
 
     @pytest.mark.parametrize(
-        ("name", "body"), [("scale(integer)", "RETURN a * 2"), ("scale(integer,integer)", "RETURN a * factor")]
+        ("name", "body"), [("scale", "RETURN a * 2"), ("scale(integer,integer)", "RETURN a * factor")]
     )
     def test_each_overload_carries_its_own_code(self, metadata, db_service, ingested_procedures, name, body):
         fqn = f"{db_service.fullyQualifiedName.root}.itest.informix.{name}"
         procedure = metadata.get_by_name(entity=StoredProcedure, fqn=fqn)
         assert procedure is not None, f"{fqn} was not ingested"
         assert body in model_str(procedure.storedProcedureCode.code)
+
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [
+            ("noop_probe", StoredProcedureType.StoredProcedure),
+            # sysprocedures.isproc is 'f' for a CREATE PROCEDURE with a RETURNING clause.
+            ("add_two", StoredProcedureType.Function),
+            ("scale", StoredProcedureType.Function),
+        ],
+    )
+    def test_routine_carries_its_type(self, metadata, db_service, ingested_procedures, name, expected):
+        fqn = f"{db_service.fullyQualifiedName.root}.itest.informix.{name}"
+        assert metadata.get_by_name(entity=StoredProcedure, fqn=fqn).storedProcedureType == expected
 
     def test_routine_carries_its_code(self, metadata, db_service):
         fqn = f"{db_service.fullyQualifiedName.root}.itest.informix.add_two"

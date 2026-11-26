@@ -35,20 +35,22 @@ table is profiled as usual.
 
 ### Lineage & Usage
 
-This connector does not support lineage or usage extraction, so those ingestion
-pipelines are not offered for an Informix service.
+Usage and lineage are read from the server's SQL trace, `sysmaster:syssqltrace`.
+Tracing is off by default and is turned on per server by a DBA, from the
+`sysadmin` database:
 
-Informix can produce the necessary query history -- `sysmaster:syssqltrace`
-records statement text, and at `medium` tracing also the database and table list
--- but SQL tracing is disabled by default and has to be turned on per server by a
-DBA (`task("set sql tracing on", ...)` from the `sysadmin` database). It is also a
-fixed-size ring buffer that a busy server overwrites quickly, and statement text
-is truncated to the configured trace size, which breaks SQL parsing for longer
-queries.
+```sql
+-- Trace every user's statements, keeping up to 2000 of them of up to 4 KB each
+EXECUTE FUNCTION task("set sql tracing on", 2000, "4k", "medium", "global");
+```
 
-Rather than offer pipelines that fail on any server without that configuration,
-the capability is left undeclared. It can be enabled later if a lineage source is
-implemented.
+`sysmaster:syssqltrace` is readable by `public`, so no further grant is needed.
+
+The trace is a fixed-size ring buffer: a busy server overwrites older statements,
+so schedule the usage and lineage pipelines often enough to read them before they
+are replaced, and size the buffer for the traffic between runs. Statement text is
+cut at the configured size, and a truncated statement cannot be parsed, so pick a
+size that holds your longest queries.
 
 ## Connection Details
 
@@ -112,9 +114,9 @@ $$section
 SSL Mode to connect to Informix.
 
 - `disable` — no encryption.
-- `allow` and `prefer` — the Informix JDBC driver has no opportunistic negotiation, so these connect without encryption and log a warning.
 - `require` — encrypted, without verifying the server certificate.
-- `verify-ca` and `verify-full` — not supported by this connector. It refuses to connect rather than silently downgrading to an unverified session, which would leave you believing the certificate had been checked.
+- `allow` and `prefer` — the Informix JDBC driver has no opportunistic negotiation, so these behave like `require`.
+- `verify-ca` and `verify-full` — encrypted, and the server certificate is verified against the CA certificate in **SSL Config**. Without one it is verified against the Java runtime's default truststore. The driver does not match the server host name, so `verify-full` checks the same as `verify-ca`.
 $$
 
 $$section

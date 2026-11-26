@@ -10,29 +10,6 @@
 #  limitations under the License.
 """
 Informix source module.
-
-Why there is no lineage.py or usage.py here
--------------------------------------------
-Both capabilities are deliberately left undeclared in informixConnection.json,
-which is what stops the UI offering those pipeline types (getSupportedPipelineTypes
-keys straight off the supports* fields, so an undeclared one is simply absent).
-
-The raw material does exist: sysmaster:syssqltrace records sql_statement, and at
-"medium" tracing also sql_database and sql_tablelist, which is more than most
-engines hand you. Measured against 14.10.FC9W1DE, three things make it a project
-rather than a file:
-
-  - Tracing is off by default and is enabled per server by a DBA, from the
-    sysadmin database -- not something an ingestion user can turn on.
-  - It is a fixed-size ring buffer, so an OLTP server overwrites the window a
-    usage workflow wants to read.
-  - Statement text is truncated to the configured trace size, and truncated SQL
-    does not parse.
-
-So a lineage source would work only on servers explicitly configured for it.
-Declaring the capability would offer pipelines that fail everywhere else, which
-is worse than not offering them. Re-declare the two fields in the schema when a
-source lands.
 """
 
 import traceback
@@ -49,7 +26,9 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import (
     Language,
+    StoredProcedure,
     StoredProcedureCode,
+    StoredProcedureType,
 )
 from metadata.generated.schema.entity.services.connections.database.informixConnection import (
     InformixConnection,
@@ -58,6 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import EntityName
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -70,7 +50,7 @@ from metadata.ingestion.source.database.informix.queries import (
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database
+from metadata.utils.filters import filter_by_database, filter_by_stored_procedure
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -285,13 +265,50 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
         schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
         with self.engine.connect() as conn:
             rows = conn.execute(text(INFORMIX_GET_STORED_PROCEDURES), {"owner": schema_name}).fetchall()
-        # Only overloads get the signature, so a routine's FQN changes only if its name is shared.
-        name_counts = Counter(row[0] for row in rows)
+        # Informix allows overloading, so procname alone can collide. The first
+        # overload (lowest procid, so the oldest) keeps the bare name -- the FQN the
+        # routine had before any overload existed, which its descriptions, tags and
+        # owners hang off -- and only the later ones carry their signature.
+        # ADR:2026-11-26-informix-overloads-keep-the-oldest-bare-name-and-ssl-modes-map-to-one-driver-switch
+        overloaded = {name for name, count in Counter(row[0] for row in rows).items() if count > 1}
+        # Named before filtering, so excluding one overload never renames another.
+        first_overload = {}
+        for name, _, proc_id, _ in rows:
+            first_overload.setdefault(name, proc_id)
         for name, is_proc, proc_id, param_types in rows:
-            published_name = f"{name}({param_types or ''})" if name_counts[name] > 1 else name
-            if self.is_stored_procedure_filtered(published_name):
+            signature = f"{name}({param_types or ''})"
+            if self._is_routine_filtered(name, *([signature] if name in overloaded else [])):
                 continue
+            published_name = name if first_overload[name] == proc_id else signature
             yield InformixStoredProcedure(name=published_name, proc_id=proc_id, is_function=is_proc != "t")
+
+    def _is_routine_filtered(self, *names: str) -> bool:
+        """Whether storedProcedureFilterPattern drops a routine known by any of names.
+
+        An overload answers to its bare name and to its signature, so a pattern can
+        name the routine or one overload of it: the routine is kept if an include
+        matches either name and dropped if an exclude matches either.
+        """
+        pattern = self.source_config.storedProcedureFilterPattern  # pyright: ignore[reportAttributeAccessIssue]
+        if not pattern:
+            return False
+        keys = [self._filter_key(name) for name in names]
+        includes, excludes = FilterPattern(includes=pattern.includes), FilterPattern(excludes=pattern.excludes)
+        return all(filter_by_stored_procedure(includes, key) for key in keys) or any(
+            filter_by_stored_procedure(excludes, key) for key in keys
+        )
+
+    def _filter_key(self, procedure_name: str) -> str:
+        if not self.source_config.useFqnForFiltering:  # pyright: ignore[reportAttributeAccessIssue]
+            return procedure_name
+        return fqn.build(
+            self.metadata,
+            entity_type=StoredProcedure,
+            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+            database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+            schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+            procedure_name=procedure_name,
+        )
 
     def _stored_procedure_code(self, proc_id: int) -> str | None:
         """Reassemble a routine's text, which sysprocbody stores in fragments."""
@@ -314,6 +331,11 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
                 storedProcedureCode=StoredProcedureCode(
                     language=Language.SQL,
                     code=self._stored_procedure_code(stored_procedure.proc_id),
+                ),
+                storedProcedureType=(
+                    StoredProcedureType.Function
+                    if stored_procedure.is_function
+                    else StoredProcedureType.StoredProcedure
                 ),
                 databaseSchema=fqn.build(  # pyright: ignore[reportArgumentType]
                     metadata=self.metadata,

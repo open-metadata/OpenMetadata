@@ -40,11 +40,13 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-# Imported for the side effect: the module body calls
-# sqlalchemy.dialects.registry.register("informix", ...). Without this import
-# nothing maps the "informix" URL scheme to our dialect and create_engine()
-# raises NoSuchModuleError.
-from metadata.ingestion.source.database.informix import dialect  # noqa: F401
+# Importing the dialect also registers it: the module body calls
+# sqlalchemy.dialects.registry.register("informix", ...), without which nothing
+# maps the "informix" URL scheme and create_engine() raises NoSuchModuleError.
+from metadata.ingestion.source.database.informix.dialect import (
+    TRUSTSTORE_PASSWORD,
+    build_truststore,
+)
 from metadata.ingestion.source.database.informix.queries import (
     INFORMIX_TEST_GET_STORED_PROCEDURES,
 )
@@ -53,14 +55,43 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-# "verify-ca"/"verify-full" promise certificate verification. The driver reads a
-# Java truststore (SSL_TRUSTSTORE), not the PEM this schema collects, so honouring
-# them would take a PEM->JKS conversion we have not built. Refuse rather than
-# silently downgrade to an unverified channel.
+# The driver has one SSL switch and verifies the server against a Java truststore.
+# How each sslMode maps onto it: ADR:2026-11-26-informix-overloads-keep-the-oldest-bare-name-and-ssl-modes-map-to-one-driver-switch
+# Without a CA certificate it verifies against the JVM's default one.
 _SSL_VERIFY_MODES = {SslMode.verify_ca, SslMode.verify_full}
-# The driver negotiates SSL or it does not; it has no opportunistic mode, so
-# "allow" and "prefer" -- which both permit plaintext -- connect in plaintext.
-_SSL_OPPORTUNISTIC_MODES = {SslMode.allow, SslMode.prefer}
+# Encrypted without verifying the certificate. The driver has no opportunistic
+# negotiation, so "allow" and "prefer" encrypt as well rather than fall back to
+# plaintext.
+_SSL_UNVERIFIED_MODES = {SslMode.require, SslMode.allow, SslMode.prefer}
+
+
+def _ssl_params(connection: InformixConnectionConfig) -> dict[str, str]:
+    """The driver's SSL properties for the configured sslMode.
+
+    verify-full checks the certificate chain against the CA like verify-ca; the
+    driver does not match the server's host name.
+    """
+    if connection.sslMode not in _SSL_VERIFY_MODES | _SSL_UNVERIFIED_MODES:
+        return {}
+    params = {"SSLCONNECTION": "true"}
+    if connection.sslMode == SslMode.verify_full:
+        logger.warning(
+            "Informix sslMode 'verify-full' verifies the certificate chain like 'verify-ca': "
+            "the JDBC driver does not match the server host name."
+        )
+    ca_certificate = connection.sslConfig.root.caCertificate if connection.sslConfig else None
+    if connection.sslMode in _SSL_VERIFY_MODES and ca_certificate:
+        params["SSL_TRUSTSTORE"] = build_truststore(ca_certificate.get_secret_value())
+        params["SSL_TRUSTSTORE_PASSWORD"] = TRUSTSTORE_PASSWORD
+    return params
+
+
+def get_connection_args(connection: InformixConnectionConfig) -> dict:
+    """Connection arguments, plus the dialect's flag for an unverified SSL session."""
+    args = dict(get_connection_args_common(connection))
+    if connection.sslMode in _SSL_UNVERIFIED_MODES:
+        args["trust_server_certificate"] = True
+    return args
 
 
 def get_connection_url(connection: InformixConnectionConfig) -> str:
@@ -82,25 +113,7 @@ def get_connection_url(connection: InformixConnectionConfig) -> str:
     url += connection.hostPort
     url += f"/{connection.database}"
 
-    params = {"INFORMIXSERVER": connection.serverName}
-
-    ssl_mode = connection.sslMode
-    if ssl_mode in _SSL_VERIFY_MODES:
-        raise NotImplementedError(
-            f"Informix sslMode '{ssl_mode.value}' is not supported yet: the IBM Informix "
-            "JDBC driver validates against a Java truststore rather than the PEM CA "
-            "certificate this connection collects. Use 'require' for an encrypted "
-            "connection without certificate verification, or 'disable' for plaintext."
-        )
-    if ssl_mode == SslMode.require:
-        params["SSLCONNECTION"] = "true"
-    elif ssl_mode in _SSL_OPPORTUNISTIC_MODES:
-        logger.warning(
-            "Informix sslMode '%s' connects in plaintext: the JDBC driver has no "
-            "opportunistic SSL mode. Use 'require' to force an encrypted connection.",
-            ssl_mode.value,
-        )
-
+    params = {"INFORMIXSERVER": connection.serverName, **_ssl_params(connection)}
     params.update(get_connection_options_dict(connection) or {})
     url += "?" + "&".join(f"{key}={quote_plus(str(value))}" for key, value in params.items() if value)
     return url
@@ -130,7 +143,7 @@ class InformixConnection(BaseConnection[InformixConnectionConfig, Engine]):
         engine = create_generic_db_connection(
             connection=self.service_connection,
             get_connection_url_fn=get_connection_url,
-            get_connection_args_fn=get_connection_args_common,
+            get_connection_args_fn=get_connection_args,
         )
         _use_committed_read(engine)
         return engine

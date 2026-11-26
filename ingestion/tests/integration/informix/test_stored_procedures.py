@@ -56,7 +56,8 @@ class TestStoredProcedureFilter:
         assert not procedure.deleted
 
     def test_a_filter_can_target_one_overload(self, routine):
-        excluded = routine("scale(integer)")
+        """The pattern names the overload by signature even though it is published under the bare name."""
+        excluded = routine("scale")
         assert excluded is not None, "scale(integer) was never ingested by the first run"
         assert excluded.deleted
         kept = routine("scale(integer,integer)")

@@ -66,9 +66,11 @@ export interface InformixConnection {
      */
     storedProcedureFilterPattern?: FilterPattern;
     supportsDatabase?:             boolean;
+    supportsLineageExtraction?:    boolean;
     supportsMetadataExtraction?:   boolean;
     supportsProfiler?:             boolean;
     supportsQueryComment?:         boolean;
+    supportsUsageExtraction?:      boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */

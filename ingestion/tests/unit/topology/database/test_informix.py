@@ -5,7 +5,9 @@ catalogue lookup that restores Informix's large-object types.
 """
 
 import json
+import os
 from collections import OrderedDict
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -13,32 +15,49 @@ from unittest.mock import MagicMock, patch
 import pytest
 from sqlalchemy import VARCHAR, cast, select
 from sqlalchemy import column as sa_column
+from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.engine.url import make_url
 
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureType
 from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType, TableData
 from metadata.generated.schema.entity.services.connections.database.informixConnection import (
     InformixConnection as InformixConnectionConfig,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.security.ssl.verifySSLConfig import SslMode
+from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.informix.connection import (
     InformixConnection,
+    get_connection_args,
     get_connection_url,
 )
-from metadata.ingestion.source.database.informix.dialect import InformixDialect
+from metadata.ingestion.source.database.informix.dialect import (
+    _SSL_CONTEXT_LOCK,
+    INFORMIX_JDBC_JARS_ENV,
+    TRUSTSTORE_PASSWORD,
+    InformixDialect,
+)
+from metadata.ingestion.source.database.informix.lineage import InformixLineageSource
 from metadata.ingestion.source.database.informix.metadata import (
     MAX_CACHED_SCHEMAS,
     InformixSource,
+    InformixStoredProcedure,
     interval_display,
 )
 from metadata.ingestion.source.database.informix.queries import (
     INFORMIX_DRIVER_CONVERTIBLE_EXTENDED_TYPES,
     INFORMIX_GET_DRIVER_UNFRIENDLY_COLUMNS,
 )
+from metadata.ingestion.source.database.informix.usage import InformixUsageSource
+from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
+from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.profiler.interface.sqlalchemy.informix.profiler_interface import (
     InformixProfilerInterface,
 )
@@ -131,25 +150,54 @@ class TestConnectionUrl:
         assert "DELIMIDENT=y" in get_connection_url(config(connectionOptions={"DELIMIDENT": "y"}))
 
 
-class TestSslPolicy:
-    def test_require_enables_ssl(self):
-        assert "SSLCONNECTION=true" in get_connection_url(config(sslMode=SslMode.require))
+CA_PEM = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----"
+UNVERIFIED_MODES = [SslMode.require, SslMode.allow, SslMode.prefer]
+VERIFY_MODES = [SslMode.verify_ca, SslMode.verify_full]
 
+
+def url_params(connection: InformixConnectionConfig) -> dict[str, str]:
+    with patch(
+        "metadata.ingestion.source.database.informix.connection.build_truststore", return_value="/tmp/ca.jks"
+    ) as build:
+        query = make_url(get_connection_url(connection)).query
+    return {**query, "_built_from": build.call_args.args[0] if build.called else None}
+
+
+class TestSslPolicy:
     @pytest.mark.parametrize("mode", [None, SslMode.disable])
     def test_disable_and_unset_are_plaintext(self, mode):
-        assert "SSLCONNECTION" not in get_connection_url(config(sslMode=mode))
+        assert "SSLCONNECTION" not in url_params(config(sslMode=mode))
+        assert "trust_server_certificate" not in get_connection_args(config(sslMode=mode))
 
-    @pytest.mark.parametrize("mode", [SslMode.allow, SslMode.prefer])
-    def test_opportunistic_modes_are_plaintext(self, mode):
-        """The driver has no opportunistic mode; allow/prefer permit plaintext."""
-        assert "SSLCONNECTION" not in get_connection_url(config(sslMode=mode))
+    @pytest.mark.parametrize("mode", UNVERIFIED_MODES)
+    def test_unverified_modes_encrypt_without_checking_the_certificate(self, mode):
+        """The driver has no opportunistic negotiation, so allow/prefer encrypt like require."""
+        params = url_params(config(sslMode=mode))
+        assert params["SSLCONNECTION"] == "true"
+        assert "SSL_TRUSTSTORE" not in params
+        assert get_connection_args(config(sslMode=mode))["trust_server_certificate"] is True
 
-    @pytest.mark.parametrize("mode", [SslMode.verify_ca, SslMode.verify_full])
-    def test_verify_modes_refuse_rather_than_downgrade(self, mode):
-        """A verifying mode must never quietly become an unverified channel."""
-        verifying = config(sslMode=mode)
-        with pytest.raises(NotImplementedError):
-            get_connection_url(verifying)
+    @pytest.mark.parametrize("mode", VERIFY_MODES)
+    def test_verify_modes_check_against_the_given_ca(self, mode):
+        params = url_params(config(sslMode=mode, sslConfig={"caCertificate": CA_PEM}))
+        assert params["SSLCONNECTION"] == "true"
+        assert params["SSL_TRUSTSTORE"] == "/tmp/ca.jks"
+        assert params["SSL_TRUSTSTORE_PASSWORD"] == TRUSTSTORE_PASSWORD
+        assert params["_built_from"] == CA_PEM
+        assert "trust_server_certificate" not in get_connection_args(config(sslMode=mode))
+
+    @pytest.mark.parametrize("mode", VERIFY_MODES)
+    def test_verify_modes_without_a_ca_use_the_jvm_truststore(self, mode):
+        """Never trust-any: a verifying mode must not quietly become an unverified channel."""
+        params = url_params(config(sslMode=mode))
+        assert params["SSLCONNECTION"] == "true"
+        assert "SSL_TRUSTSTORE" not in params
+        assert "trust_server_certificate" not in get_connection_args(config(sslMode=mode))
+
+    def test_connection_arguments_are_kept_and_not_mutated(self):
+        connection = config(sslMode=SslMode.require, connectionArguments={"IFX_LOCK_MODE_WAIT": "10"})
+        assert get_connection_args(connection) == {"IFX_LOCK_MODE_WAIT": "10", "trust_server_certificate": True}
+        assert connection.connectionArguments.root == {"IFX_LOCK_MODE_WAIT": "10"}
 
 
 class TestTestConnection:
@@ -184,6 +232,14 @@ class TestServiceSpec:
             spec.profiler_class
             == "metadata.profiler.interface.sqlalchemy.informix.profiler_interface.InformixProfilerInterface"
         )
+        assert spec.lineage_source_class == "metadata.ingestion.source.database.informix.lineage.InformixLineageSource"
+        assert spec.usage_source_class == "metadata.ingestion.source.database.informix.usage.InformixUsageSource"
+
+    def test_schema_declares_lineage_and_usage(self):
+        """The UI offers a pipeline type only when the connection declares it."""
+        declared = config()
+        assert declared.supportsLineageExtraction
+        assert declared.supportsUsageExtraction
 
     def test_rejects_foreign_connection_config(self):
         cockroach = {
@@ -219,6 +275,190 @@ class TestClasspath:
 
         assert [c.args[0] for c in get_path.call_args_list] == ["informix", "informix_bson"]
         assert kwargs["jars"] == ["/cache/informix.jar", "/cache/informix_bson.jar"]
+
+    def test_jar_override_replaces_the_pinned_driver(self, monkeypatch):
+        """A deployment shipping its own driver names it instead of the image's copy."""
+        monkeypatch.setenv(INFORMIX_JDBC_JARS_ENV, os.pathsep.join(["/drivers/jdbc.jar", "/drivers/bson.jar", ""]))
+        with patch("metadata.ingestion.source.database.informix.dialect.get_driver_path") as get_path:
+            _, kwargs = InformixDialect().create_connect_args(make_url("informix://u:p@h:9088/db"))
+
+        get_path.assert_not_called()
+        assert kwargs["jars"] == ["/drivers/jdbc.jar", "/drivers/bson.jar"]
+
+
+class TestTrustServerCertificate:
+    """The flag travels as a connection argument and must not reach the driver."""
+
+    @staticmethod
+    def connect(**cparams):
+        with (
+            patch("metadata.ingestion.source.database.informix.dialect._trusting_any_server_certificate") as trusting,
+            patch.object(DefaultDialect, "connect", return_value="conn") as base_connect,
+        ):
+            assert InformixDialect().connect(url="jdbc:x", **cparams) == "conn"
+        return trusting, base_connect
+
+    def test_the_handshake_trusts_any_certificate_when_asked(self):
+        trusting, base_connect = self.connect(trust_server_certificate=True)
+        trusting.assert_called_once()
+        assert base_connect.call_args.kwargs == {"url": "jdbc:x"}
+
+    def test_otherwise_the_jvm_default_context_is_left_alone(self):
+        trusting, base_connect = self.connect()
+        trusting.assert_not_called()
+        assert base_connect.call_args.kwargs == {"url": "jdbc:x"}
+
+    def test_a_verifying_handshake_waits_for_a_trusting_one(self):
+        """A trusting connect swaps the JVM default; a verifying one inside that window would trust anything."""
+        with patch.object(DefaultDialect, "connect", side_effect=lambda *_, **__: _SSL_CONTEXT_LOCK.locked()):
+            assert InformixDialect().connect(url="jdbc:informix-sqli://h:1/db:SSLCONNECTION=true") is True
+            assert InformixDialect().connect(url="jdbc:informix-sqli://h:1/db:INFORMIXSERVER=x") is False
+
+
+ROUTINE_ROWS = [
+    # (name, isproc, procid, paramtypes) as INFORMIX_GET_STORED_PROCEDURES returns them.
+    ("add_two", "t", 300, "integer"),
+    ("scale", "f", 301, "integer"),
+    ("scale", "f", 302, "integer,integer"),
+]
+
+
+def list_routines(rows=ROUTINE_ROWS, **filter_pattern):
+    source = InformixSource.__new__(InformixSource)
+    source.source_config = SimpleNamespace(
+        includeStoredProcedures=True,
+        useFqnForFiltering=False,
+        storedProcedureFilterPattern=FilterPattern(**filter_pattern) if filter_pattern else None,
+    )
+    source.context = MagicMock()
+    engine = MagicMock()
+    engine.connect.return_value.__enter__.return_value.execute.return_value.fetchall.return_value = rows
+    source.engine = engine
+    return {routine.name: routine for routine in source.get_stored_procedures()}
+
+
+class TestStoredProcedures:
+    def test_the_first_overload_keeps_the_bare_name(self):
+        """The bare name is the FQN the routine had before it was overloaded, which
+        its description, tags and owners hang off; only later overloads take a signature."""
+        assert list(list_routines()) == ["add_two", "scale", "scale(integer,integer)"]
+        assert list_routines()["scale"].proc_id == 301
+
+    def test_routine_type_is_kept(self):
+        routines = list_routines()
+        assert not routines["add_two"].is_function
+        assert routines["scale"].is_function
+
+    @pytest.mark.parametrize(
+        ("filter_pattern", "expected"),
+        [
+            ({"excludes": ["^scale$"]}, ["add_two"]),
+            ({"excludes": [r"^scale\(integer\)$"]}, ["add_two", "scale(integer,integer)"]),
+            ({"includes": ["^scale$"]}, ["scale", "scale(integer,integer)"]),
+            ({"includes": [r"^scale\(integer,integer\)$"]}, ["scale(integer,integer)"]),
+            ({"includes": ["^add_two$"]}, ["add_two"]),
+        ],
+    )
+    def test_a_filter_names_the_routine_or_one_overload(self, filter_pattern, expected):
+        """Excluding one overload leaves the others' names as they were."""
+        assert list(list_routines(**filter_pattern)) == expected
+
+    def test_request_carries_the_routine_type(self):
+        source = InformixSource.__new__(InformixSource)
+        source.context = MagicMock()
+        source.metadata = MagicMock()
+        with (
+            patch.object(InformixSource, "_stored_procedure_code", return_value="RETURN a * 2"),
+            patch.object(InformixSource, "register_record_stored_proc_request"),
+            patch("metadata.ingestion.source.database.informix.metadata.fqn.build", return_value="svc.db.informix"),
+        ):
+            function, procedure = (
+                next(iter(source.yield_stored_procedure(routine))).right
+                for routine in (
+                    InformixStoredProcedure(name="scale", proc_id=301, is_function=True),
+                    InformixStoredProcedure(name="add_two", proc_id=300, is_function=False),
+                )
+            )
+        assert function.storedProcedureType == StoredProcedureType.Function
+        assert procedure.storedProcedureType == StoredProcedureType.StoredProcedure
+
+
+def query_parser(source_class, **source_config):
+    source = source_class.__new__(source_class)
+    source.source_config = SimpleNamespace(resultLimit=1000, filterCondition=None, **source_config)
+    return source
+
+
+class TestQueryHistory:
+    def test_statement_reads_syssqltrace_for_the_window(self):
+        sql = query_parser(InformixUsageSource).get_sql_statement(
+            datetime(2026, 11, 1, 0, 0, 0, 123456), datetime(2026, 11, 2)
+        )
+        assert "FROM sysmaster:syssqltrace" in sql
+        assert "SELECT FIRST 1000" in sql
+        assert """'/* {"app": "OpenMetadata", %} */%'""" in sql
+        # A tick counter, not a time: it reads as a date in 1970.
+        assert "sql_begintxtime" not in sql
+
+    def test_window_is_compared_as_utc_epochs(self):
+        """sql_finishtime is a UTC epoch; DBINFO('utc_to_datetime') would answer in the
+        server's time zone and shift the window by its offset."""
+        source = query_parser(InformixUsageSource)
+        naive = source.get_sql_statement(datetime(2026, 11, 1), datetime(2026, 11, 2))
+        aware = source.get_sql_statement(
+            datetime(2026, 11, 1, 1, tzinfo=timezone(timedelta(hours=1))),
+            datetime(2026, 11, 2, tzinfo=timezone.utc),
+        )
+        assert "sql_finishtime >= 1793491200" in naive
+        assert "sql_finishtime < 1793577600" in naive
+        assert aware == naive
+        assert "utc_to_datetime" not in naive.lower()
+
+    def test_filter_condition_is_appended(self):
+        source = query_parser(InformixLineageSource)
+        source.source_config.filterCondition = "sql_database = 'stores'"
+        sql = source.get_sql_statement(datetime(2026, 11, 1), datetime(2026, 11, 2))
+        assert "LIKE '%insert%into%select%'" in sql
+        assert "AND (sql_database = 'stores')" in sql
+
+    def test_usage_rewrites_the_database_qualifier(self):
+        """database:owner.table is Informix-only; written database.owner.table the parser
+        resolves it, database included."""
+        source = query_parser(InformixUsageSource)
+        with patch.object(UsageSource, "format_query", side_effect=lambda query: query):
+            assert (
+                source.format_query("SELECT * FROM stores:informix.customer JOIN informix.orders ON 1=1")
+                == "SELECT * FROM stores.informix.customer JOIN informix.orders ON 1=1"
+            )
+
+    def test_lineage_rewrites_the_database_qualifier(self):
+        source = query_parser(InformixLineageSource)
+        traced = TableQuery(
+            query="INSERT INTO stores:informix.target SELECT * FROM other:informix.source", serviceName="svc"
+        )
+        with patch.object(LineageSource, "yield_table_query", return_value=iter([traced])):
+            (table_query,) = source.yield_table_query()
+        parser = LineageParser(table_query.query, Dialect.ANSI)
+        assert [str(table) for table in parser.source_tables] == ["other.informix.source"]
+        assert [str(table) for table in parser.target_tables] == ["stores.informix.target"]
+
+    def test_sources_reject_foreign_connection_config(self):
+        cockroach = {
+            "type": "cockroach-usage",
+            "serviceName": "x",
+            "serviceConnection": {
+                "config": {
+                    "type": "Cockroach",
+                    "username": "u",
+                    "authType": {"password": "p"},
+                    "hostPort": "localhost:26257",
+                    "database": "c",
+                }
+            },
+            "sourceConfig": {"config": {"type": "DatabaseUsage"}},
+        }
+        with pytest.raises(InvalidSourceException):
+            InformixUsageSource.create(cockroach, OpenMetadata.__new__(OpenMetadata))
 
 
 def build_source(rows):

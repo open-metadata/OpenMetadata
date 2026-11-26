@@ -28,8 +28,17 @@ layout -- on 14.10 the same table carries tblspace flags 902 against 15.0.1's
 ones. See the note on the pin below for why the failure is easy to miss.
 """
 
+import atexit
+import os
+import tempfile
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
+from functools import lru_cache
+from pathlib import Path
 from typing import ClassVar
 
+import jpype
 from sqlalchemy import Interval, text
 from sqlalchemy.dialects import registry
 from sqlalchemy.engine.default import DefaultDialect
@@ -44,6 +53,7 @@ from sqlalchemy_jdbcapi.jdbc.driver_manager import (
     JDBCDriver,
     get_driver_path,
 )
+from sqlalchemy_jdbcapi.jdbc.jvm import start_jvm
 
 from metadata.ingestion.source.database.informix.queries import (
     INFORMIX_GET_VIEW_DEFINITION,
@@ -53,6 +63,11 @@ from metadata.ingestion.source.database.informix.queries import (
 INFORMIX_JDBC_VERSION = "15.0.0.1.1"
 BSON_VERSION = "4.11.1"
 DEFAULT_INFORMIX_SERVER = "informix"
+# Names the jars explicitly, separated by os.pathsep, for a deployment that ships
+# its own copy rather than the one baked into the image.
+INFORMIX_JDBC_JARS_ENV = "INFORMIX_JDBC_JARS"
+# Guards a truststore this process writes to a private temp file; it is not a secret.
+TRUSTSTORE_PASSWORD = "changeit"
 
 # The JDBC driver generation must match the server generation. Driver 4.50
 # cannot open a table whose tblspace uses "large rowids" -- the layout an
@@ -91,7 +106,98 @@ def _informix_jars() -> list[str]:
     The JVM takes the classpath of whichever connector starts it first and keeps
     it for the life of the process, so this only holds when Informix connects first.
     """
+    override = os.environ.get(INFORMIX_JDBC_JARS_ENV)
+    if override:
+        return [jar for jar in override.split(os.pathsep) if jar]
     return [str(get_driver_path("informix")), str(get_driver_path("informix_bson"))]
+
+
+def _start_jvm() -> None:
+    """Start the JVM the way a connection would, for work that needs it first."""
+    start_jvm(classpath=[Path(jar) for jar in _informix_jars()])
+
+
+def build_truststore(ca_pem: str) -> str:
+    """Write the PEM CA certificate(s) to a JKS truststore and return its path.
+
+    The driver verifies the server against SSL_TRUSTSTORE, a Java keystore,
+    while the connection collects PEM. A PKCS12 file written outside Java does
+    not carry the attribute that marks a certificate as trusted, so the JVM
+    builds the keystore itself.
+    """
+    _start_jvm()
+
+    # Block scalars in YAML keep their indentation, which CertificateFactory rejects.
+    pem = "\n".join(line.strip() for line in ca_pem.splitlines() if line.strip()) + "\n"
+    certificates = list(
+        jpype.JClass("java.security.cert.CertificateFactory")
+        .getInstance("X.509")
+        .generateCertificates(jpype.JClass("java.io.ByteArrayInputStream")(pem.encode()))
+    )
+    if not certificates:
+        raise ValueError("The Informix sslConfig CA certificate holds no PEM certificate")
+
+    keystore = jpype.JClass("java.security.KeyStore").getInstance("JKS")
+    keystore.load(None, None)
+    for index, certificate in enumerate(certificates):
+        keystore.setCertificateEntry(f"informix-ca-{index}", certificate)
+
+    descriptor, path = tempfile.mkstemp(prefix="informix_trust_", suffix=".jks")
+    os.close(descriptor)
+    atexit.register(os.unlink, path)
+    stream = jpype.JClass("java.io.FileOutputStream")(path)
+    try:
+        keystore.store(stream, jpype.JString(TRUSTSTORE_PASSWORD).toCharArray())
+    finally:
+        stream.close()
+    return path
+
+
+_SSL_CONTEXT_LOCK = threading.Lock()
+
+
+@lru_cache(maxsize=1)
+def _trust_any_certificate_context():
+    @jpype.JImplements("javax.net.ssl.X509TrustManager")
+    class TrustAnyCertificate:
+        @jpype.JOverride
+        def checkClientTrusted(self, chain, auth_type):  # noqa: N802
+            pass
+
+        @jpype.JOverride
+        def checkServerTrusted(self, chain, auth_type):  # noqa: N802
+            pass
+
+        @jpype.JOverride
+        def getAcceptedIssuers(self):  # noqa: N802
+            return jpype.JArray(jpype.JClass("java.security.cert.X509Certificate"))(0)
+
+    context = jpype.JClass("javax.net.ssl.SSLContext").getInstance("TLS")
+    context.init(None, jpype.JArray(jpype.JClass("javax.net.ssl.TrustManager"))([TrustAnyCertificate()]), None)
+    return context
+
+
+@contextmanager
+def _trusting_any_server_certificate() -> Iterator[None]:
+    """Let one connection handshake without verifying the server certificate.
+
+    sslMode require means encrypted but unverified. The driver has no switch for
+    that and verifies against the JVM default SSLContext, so it is swapped for
+    one that trusts any certificate for the duration of the connect and put back
+    after. Every Informix SSL connect takes the same lock, so a verifying one
+    never handshakes inside that window; a TLS client of another library in the
+    same JVM is not covered by it.
+    """
+    _start_jvm()
+
+    ssl_context = jpype.JClass("javax.net.ssl.SSLContext")
+    with _SSL_CONTEXT_LOCK:
+        previous = ssl_context.getDefault()
+        ssl_context.setDefault(_trust_any_certificate_context())
+        try:
+            yield
+        finally:
+            ssl_context.setDefault(previous)
 
 
 class InformixSQLCompiler(SQLCompiler):
@@ -312,6 +418,17 @@ class InformixDialect(  # pyright: ignore[reportIncompatibleMethodOverride, repo
         exist.
         """
         return {"text": None}
+
+    def connect(self, *cargs, trust_server_certificate: bool = False, **cparams):
+        """trust_server_certificate comes from the connection arguments of an
+        sslMode that encrypts without verifying; see connection.py."""
+        if trust_server_certificate:
+            with _trusting_any_server_certificate():
+                return super().connect(*cargs, **cparams)
+        if "SSLCONNECTION=TRUE" in str(cparams.get("url", "")).upper():
+            with _SSL_CONTEXT_LOCK:
+                return super().connect(*cargs, **cparams)
+        return super().connect(*cargs, **cparams)
 
     def create_connect_args(self, url: URL) -> tuple[list, dict]:
         """Informix separates URL properties with ':' and then ';', not '?' and
