@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_BOT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_EVENT_TYPE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_VERSION_VARIABLE;
@@ -24,6 +25,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ChangeRequestRun;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.TriggeringChange;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
@@ -89,6 +91,8 @@ public class FilterEntityImpl implements JavaDelegate {
       // include/exclude/filter; only that workflow runs it and every other hook workflow on the
       // entity type ignores it.
       passesFilter = mainWorkflowName(execution).equals(changeRequest.workflowName());
+    } else if (!acceptsTriggeringBot(varHandler, execution)) {
+      passesFilter = false;
     } else {
       passesFilter =
           passesExcludedFilter(
@@ -144,6 +148,22 @@ public class FilterEntityImpl implements JavaDelegate {
     }
 
     return feedback.getTagFQN().equals(entityLink.getEntityFQN());
+  }
+
+  /**
+   * A change by a bot that some workflow on the entity type lists in triggeringBots reaches every
+   * workflow on that type; only the workflows that list the bot run it. A person's change carries no
+   * triggering bot.
+   */
+  private boolean acceptsTriggeringBot(
+      WorkflowVariableHandler varHandler, DelegateExecution execution) {
+    // Flowable returns process variables as untyped Object; the consumer stores the bot user's name
+    // as a String.
+    Object triggeringBot =
+        varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_BOT_VARIABLE);
+    return !(triggeringBot instanceof String botUser)
+        || GovernanceApprovalRegistry.isTriggeringBotOfWorkflow(
+            mainWorkflowName(execution), botUser);
   }
 
   private String mainWorkflowName(DelegateExecution execution) {

@@ -187,6 +187,49 @@ describe('WorkflowValidationService.buildWorkflowForSave', () => {
     expect(await partialFlagFor('Default')).toBeUndefined();
   });
 
+  it('keeps the triggering bots when the start node is untouched', async () => {
+    const { config } = await savedConfig(
+      [startNode({})],
+      savedWorkflow({ triggeringBots: ['scraper-bot'] })
+    );
+
+    expect(config.triggeringBots).toEqual(['scraper-bot']);
+  });
+
+  it('saves the triggering bots chosen on the start node', async () => {
+    const { config } = await savedConfig(
+      [
+        startNode({
+          userModified: true,
+          triggerType: WorkflowType.EVENT_BASED,
+          dataAssets: ['glossary'],
+          eventType: ['Updated'],
+          triggeringBots: ['scraper-bot', 'sync-bot'],
+        }),
+      ],
+      savedWorkflow({ triggeringBots: ['scraper-bot'] })
+    );
+
+    expect(config.triggeringBots).toEqual(['scraper-bot', 'sync-bot']);
+  });
+
+  it('drops the triggering bots the user cleared instead of keeping the saved ones', async () => {
+    const { config } = await savedConfig(
+      [
+        startNode({
+          userModified: true,
+          triggerType: WorkflowType.EVENT_BASED,
+          dataAssets: ['glossary'],
+          eventType: ['Updated'],
+          triggeringBots: [],
+        }),
+      ],
+      savedWorkflow({ triggeringBots: ['scraper-bot'] })
+    );
+
+    expect(config).not.toHaveProperty('triggeringBots');
+  });
+
   it('writes no approval mode when none was saved', async () => {
     const { config } = await savedConfig([startNode({})], savedWorkflow({}));
 

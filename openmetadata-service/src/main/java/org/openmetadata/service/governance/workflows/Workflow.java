@@ -21,6 +21,9 @@ public class Workflow {
   public static final String TRIGGERING_VERSION_VARIABLE = "triggeringVersion";
   // The type of the change event that started the run. Only a create may carry no change to judge.
   public static final String TRIGGERING_EVENT_TYPE_VARIABLE = "triggeringEventType";
+  // The user of a bot that a workflow lists in triggeringBots, set only when such a bot made the
+  // change. Each workflow's trigger filter starts the run only if that workflow lists the bot.
+  public static final String TRIGGERING_BOT_VARIABLE = "triggeringBot";
   public static final String ENTITY_LIST_VARIABLE = "entityList";
   public static final String BATCH_SINK_PROCESSED_VARIABLE = "batchSinkProcessed";
   public static final String TRIGGERING_OBJECT_ID_VARIABLE = "triggeringObjectId";

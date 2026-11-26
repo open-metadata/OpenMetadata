@@ -372,7 +372,7 @@ class GovernanceApprovalRegistryTest {
     }
 
     private GatingRule rule(UUID workflowId, List<String> include, List<String> exclude) {
-      return new GatingRule(workflowId, "wf-" + workflowId, include, exclude, null);
+      return new GatingRule(workflowId, "wf-" + workflowId, include, exclude, null, Set.of());
     }
 
     private Optional<StagedChange> admit(

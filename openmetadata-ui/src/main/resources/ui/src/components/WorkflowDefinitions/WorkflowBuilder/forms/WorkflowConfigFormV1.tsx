@@ -24,6 +24,7 @@ import { DataAssetFormSection } from './DataAssetFormSection';
 import { EventTriggerFilterSection } from './EventTriggerFilterSection';
 import { MetadataFormSection } from './MetadataFormSection';
 import { TriggerConfigSection } from './TriggerConfigSection';
+import { TriggeringBotsSection } from './TriggeringBotsSection';
 
 interface WorkflowConfigFormV1Props {
   config: NodeConfig;
@@ -186,13 +187,22 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
       )}
 
       {config.triggerType === WorkflowType.EVENT_BASED && (
-        <ApprovalModeSection
-          approvalMode={config.approvalMode}
-          lockFields={lockFilterSections}
-          onApprovalModeChange={(approvalMode) =>
-            updateConfig('approvalMode', approvalMode)
-          }
-        />
+        <>
+          <ApprovalModeSection
+            approvalMode={config.approvalMode}
+            lockFields={lockFilterSections}
+            onApprovalModeChange={(approvalMode) =>
+              updateConfig('approvalMode', approvalMode)
+            }
+          />
+          <TriggeringBotsSection
+            lockFields={lockFilterSections}
+            triggeringBots={config.triggeringBots}
+            onTriggeringBotsChange={(triggeringBots) =>
+              updateConfig('triggeringBots', triggeringBots)
+            }
+          />
+        </>
       )}
 
       {ownerAssignmentToggle}

@@ -44,6 +44,7 @@ import org.openmetadata.service.governance.workflows.SinkEntityTypeRule;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowTriggeringBots;
 import org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
 import org.openmetadata.service.secrets.WorkflowSinkSecrets;
@@ -215,6 +216,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     updated.setSuspended(original.getSuspended());
     WorkflowDefinitionMasker.restoreMaskedSecrets(original, updated);
     if (operation != Operation.SOFT_DELETE) {
+      requireNewTriggeringBotsAllowed(original, updated);
       WorkflowDefinitionSecretGuards.requireNoMaskedSecrets(updated);
       WorkflowDefinitionSecretGuards.requireStoredEncryptedSecrets(original, updated);
     }
@@ -226,6 +228,28 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       validateRecognizerFeedbackInputNamespaceMap(updated);
     }
     return new WorkflowDefinitionRepository.WorkflowDefinitionUpdater(original, updated, operation);
+  }
+
+  /**
+   * Only a bot an admin created can trigger a workflow. Only bots newly listed are checked, so a
+   * listed bot deleted later never blocks another edit of the workflow; it simply starts nothing.
+   */
+  private static void requireNewTriggeringBotsAllowed(
+      WorkflowDefinition original, WorkflowDefinition updated) {
+    List<String> added = triggeringBotsOf(updated);
+    added.removeAll(triggeringBotsOf(original));
+    WorkflowTriggeringBots.requireAdminCreatedBots(updated.getName(), added);
+  }
+
+  private static List<String> triggeringBotsOf(WorkflowDefinition workflowDefinition) {
+    List<String> bots = new ArrayList<>();
+    if (workflowDefinition != null) {
+      JsonUtils.valueToTree(workflowDefinition.getTrigger())
+          .path("config")
+          .path("triggeringBots")
+          .forEach(bot -> bots.add(bot.asText()));
+    }
+    return bots;
   }
 
   /** PATCH is the one write that can read a stored secret, through a copy or move operation. */
@@ -321,6 +345,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   private static void prepareForCreate(WorkflowDefinition entity) {
+    requireNewTriggeringBotsAllowed(null, entity);
     validateBatchAndSinkRules(entity);
     validateRecognizerFeedbackInputNamespaceMap(entity);
     WorkflowDefinitionSecretGuards.requireNoMaskedSecrets(entity);

@@ -19,14 +19,14 @@ import {
   SelectItemType,
   Typography,
 } from '@openmetadata/ui-core-components';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useListData } from 'react-stately';
 import {
   SchedularOptions,
   WorkflowType,
 } from '../../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
+import { useSyncedListData } from '../../../../hooks/useSyncedListData';
 import { TriggerConfigSectionProps } from '../../../../interface/workflow-builder-components.interface';
 import {
   EXTENSION_FIELD_PREFIX,
@@ -45,31 +45,6 @@ const getScheduleTypeDisabled = (
   (lockScheduleTypeField ??
     lockPeriodicBatchFields ??
     lockNonIncludeExcludeFields);
-
-/** Sync a useListData instance with an external string[] value. Replaces list content to avoid duplicates. */
-const useSyncedListData = (
-  values: string[],
-  getLabel?: (v: string) => string
-) => {
-  const listData = useListData<SelectItemType>({ initialItems: [] });
-  const prevRef = useRef<string[]>([]);
-
-  useEffect(() => {
-    const prev = prevRef.current;
-    const same =
-      prev.length === values.length && values.every((v, i) => v === prev[i]);
-    if (!same) {
-      const currentIds = listData.items.map((item) => item.id);
-      currentIds.forEach((id) => listData.remove(id));
-      values.forEach((v) =>
-        listData.append({ id: v, label: getLabel ? getLabel(v) : v })
-      );
-      prevRef.current = values;
-    }
-  }, [values, getLabel]);
-
-  return listData;
-};
 
 export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
   triggerType,
