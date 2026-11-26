@@ -222,7 +222,7 @@ class OMetaLineageMixin(Generic[T]):
                 if column.get("toColumn") and column.get("fromColumns"):
                     original_result[(*column.get("fromColumns", []), column.get("toColumn"))] = column.get("function")
             merged_result.update(original_result)
-            labelled_pairs: set[tuple[str, str]] = set()
+            labelled_pairs: set[tuple] = set()
             for column in updated or []:
                 data = column.model_dump() if isinstance(column, ColumnLineage) else column
                 if data.get("toColumn") and data.get("fromColumns"):
