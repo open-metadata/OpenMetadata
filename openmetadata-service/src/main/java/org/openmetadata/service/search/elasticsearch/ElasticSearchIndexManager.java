@@ -36,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.search.EmbeddingFieldUpdate;
 import org.openmetadata.service.search.IndexManagementClient;
 import org.openmetadata.service.search.LiveEmbeddingField;
 import org.openmetadata.service.search.vector.client.EmbeddingModel;
@@ -49,6 +50,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String RECORDED_MODEL_FILTER =
       "*.mappings." + LiveEmbeddingField.META + "." + LiveEmbeddingField.META_EMBEDDING_MODEL;
+  private static final String META_FILTER = "*.mappings." + LiveEmbeddingField.META;
   private final ElasticsearchClient client;
   private final String clusterAlias;
   private final boolean isClientAvailable;
@@ -154,6 +156,23 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
         name,
         model.id(),
         model.dimension());
+  }
+
+  @Override
+  public void recordEmbeddingModel(String index, EmbeddingModel model) throws IOException {
+    Request liveMeta = new Request("GET", "/" + index + "/_mapping");
+    liveMeta.addParameter("filter_path", META_FILTER);
+    try {
+      putMapping(
+          index, EmbeddingFieldUpdate.modelRecordedOn(index, getJson(liveMeta), model).toString());
+    } catch (ParseException e) {
+      throw new IOException("Could not read the _meta of index " + index, e);
+    }
+    LOG.info(
+        "Recorded the embedding model {} ({} dimensions) in the _meta of index {}",
+        model.id(),
+        model.dimension(),
+        index);
   }
 
   private void putMapping(String indexName, String mappingsJson) throws IOException {

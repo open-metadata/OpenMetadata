@@ -151,6 +151,18 @@ public record LiveEmbeddingField(
     return withoutVectorSupport.isEmpty();
   }
 
+  /**
+   * Whether every index behind the name maps the field as a vector of the model's dimension,
+   * whatever model it records: what {@code reembed} needs to replace its vectors in place.
+   */
+  public boolean takesVectorsOf(EmbeddingModel model) {
+    return readable()
+        && !indexes.isEmpty()
+        && indexes.stream()
+            .allMatch(
+                index -> byIndex.containsKey(index) && byIndex.get(index).holds(model.dimension()));
+  }
+
   /** The indexes behind the name that cannot hold the model's vectors. */
   public Set<String> indexesThatCannotHold(EmbeddingModel model) {
     Set<String> blocking = new TreeSet<>(withoutVectorSupport);

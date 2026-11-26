@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.search.EmbeddingFieldUpdate;
 import org.openmetadata.service.search.IndexManagementClient;
 import org.openmetadata.service.search.LiveEmbeddingField;
 import org.openmetadata.service.search.vector.client.EmbeddingModel;
@@ -49,6 +50,7 @@ import os.org.opensearch.client.transport.endpoints.BooleanResponse;
 public class OpenSearchIndexManager implements IndexManagementClient {
   private static final String RECORDED_MODEL_FILTER =
       "*.mappings." + LiveEmbeddingField.META + "." + LiveEmbeddingField.META_EMBEDDING_MODEL;
+  private static final String META_FILTER = "*.mappings." + LiveEmbeddingField.META;
   private final OpenSearchClient client;
   private final String clusterAlias;
   private final boolean isClientAvailable;
@@ -140,6 +142,19 @@ public class OpenSearchIndexManager implements IndexManagementClient {
         name,
         model.id(),
         model.dimension());
+  }
+
+  @Override
+  public void recordEmbeddingModel(String index, EmbeddingModel model) throws IOException {
+    JsonNode liveMeta = getJson("/" + index + "/_mapping", Map.of("filter_path", META_FILTER));
+    putMapping(
+        index,
+        "{\"mappings\":" + EmbeddingFieldUpdate.modelRecordedOn(index, liveMeta, model) + "}");
+    LOG.info(
+        "Recorded the embedding model {} ({} dimensions) in the _meta of index {}",
+        model.id(),
+        model.dimension(),
+        index);
   }
 
   /**

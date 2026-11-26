@@ -1,8 +1,10 @@
 package org.openmetadata.service.search;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import java.util.Optional;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.client.EmbeddingModel;
 
@@ -84,6 +86,21 @@ public enum EmbeddingFieldUpdate {
             : mappings.putObject(LiveEmbeddingField.META);
     return meta.put(LiveEmbeddingField.META_EMBEDDING_MODEL, model.id())
         .put(LiveEmbeddingField.META_EMBEDDING_DIMENSION, model.dimension());
+  }
+
+  /**
+   * The {@code PUT _mapping} body that records {@code model} in the {@code _meta} of {@code index}:
+   * its live {@code _meta}, from {@code reply} to {@code GET <index>/_mapping?filter_path=
+   * *.mappings._meta}, with the model recorded in it.
+   */
+  public static ObjectNode modelRecordedOn(String index, JsonNode reply, EmbeddingModel model) {
+    ObjectNode mappings = JsonUtils.getObjectNode();
+    if (reply.path(index).path("mappings").path(LiveEmbeddingField.META)
+        instanceof ObjectNode live) {
+      mappings.set(LiveEmbeddingField.META, live.deepCopy());
+    }
+    recordModel(mappings, model);
+    return mappings;
   }
 
   /**

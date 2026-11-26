@@ -384,6 +384,11 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void recordEmbeddingModel(String index, EmbeddingModel model) throws IOException {
+    indexManager.recordEmbeddingModel(index, model);
+  }
+
+  @Override
   public void deleteIndex(IndexMapping indexMapping) {
     indexManager.deleteIndex(indexMapping);
   }

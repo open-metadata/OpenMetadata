@@ -53,6 +53,13 @@ public interface IndexManagementClient {
   void declareEmbeddingField(String name, EmbeddingModel model) throws IOException;
 
   /**
+   * Records {@code model} in the {@code _meta} of {@code index}, one concrete index whose field
+   * already holds vectors of the model's dimension, keeping its other {@code _meta} entries.
+   * Changes nothing else.
+   */
+  void recordEmbeddingModel(String index, EmbeddingModel model) throws IOException;
+
+  /**
    * Delete an index.
    *
    * @param indexMapping the index mapping configuration

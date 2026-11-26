@@ -427,8 +427,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * Embeds the entity again whatever its stored embeddings say, as {@code reembed} promises: a
    * stored vector may be one of another model that no fingerprint can tell apart. Both writes are
    * tried even when the other fails, so an unwritable chunk index never costs the entity document
-   * its embedding. Ontology terms are refused, as by {@link #updateEntityEmbeddings}, and so is an
-   * entity whose indexes cannot hold the model's vectors, before any provider call is paid for.
+   * its embedding. Ontology terms are refused, as by {@link #updateEntityEmbeddings}. An index that
+   * records another model is exactly what this replaces, so {@link VectorFieldHealth} is not asked;
+   * the caller leaves out an index whose field cannot take the model's vectors at all.
    */
   @Override
   public boolean reembedEntity(EntityInterface<?> entity, String entityIndexName) {
@@ -438,8 +439,6 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
           "Not re-embedding ontology term {}; rebuild term embeddings via the release-aware "
               + "reindex path",
           entity.getId());
-    } else if (!canHoldVectors(entityIndexName) || !canHoldVectors(getChunkIndexName())) {
-      LOG.debug("An index cannot hold the model's vectors; not re-embedding {}", entity.getId());
     } else {
       written = writeFreshEmbeddings(entity, entityIndexName);
     }

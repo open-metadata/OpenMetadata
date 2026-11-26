@@ -1228,6 +1228,75 @@ public class SearchRepository {
     }
   }
 
+  /**
+   * Whether {@code reembed} can replace the vectors of {@code name} in place: every index behind it
+   * maps the field as a vector of the embedding model's dimension, whatever model it records, or no
+   * index exists yet. Only a rebuild gives any other index a field for the model.
+   */
+  public boolean takesVectorsInPlace(String name) {
+    return !nameExists(name)
+        || getEmbeddingModel()
+            .filter(model -> takesVectorsOf(searchClient.readEmbeddingField(name), model))
+            .isPresent();
+  }
+
+  /**
+   * Records the embedding model in the {@code _meta} of every index behind {@code name}, once a
+   * {@code reembed} run has replaced every vector written there, and reads its field again, so it
+   * no longer counts as holding another model's vectors. An index whose field has other dimensions
+   * holds none of the model's vectors whatever the run wrote, so nothing is recorded on it.
+   *
+   * @return whether {@code name} now records the model, or does not exist
+   */
+  public boolean recordReembeddedModel(String name) {
+    boolean recorded =
+        !nameExists(name)
+            || getEmbeddingModel()
+                .filter(model -> recordModelOnEveryIndex(name, model))
+                .isPresent();
+    vectorFieldHealth.refresh(name);
+    return recorded;
+  }
+
+  private boolean recordModelOnEveryIndex(String name, EmbeddingModel model) {
+    LiveEmbeddingField live = searchClient.readEmbeddingField(name);
+    return takesVectorsOf(live, model)
+        && live.indexes().stream()
+            .map(index -> recordModelOn(index, model))
+            .reduce(true, Boolean::logicalAnd);
+  }
+
+  private boolean recordModelOn(String index, EmbeddingModel model) {
+    boolean recorded;
+    try {
+      searchClient.recordEmbeddingModel(index, model);
+      recorded = true;
+    } catch (IOException | RuntimeException e) {
+      LOG.error("Could not record the embedding model {} on index {}", model.id(), index, e);
+      recorded = false;
+    }
+    return recorded;
+  }
+
+  private static boolean takesVectorsOf(LiveEmbeddingField live, EmbeddingModel model) {
+    boolean takes = live.takesVectorsOf(model);
+    if (!takes) {
+      LOG.error(
+          "Index {} cannot take vectors of the embedding model {} ({} dimensions): {}. {}",
+          live.name(),
+          model.id(),
+          model.dimension(),
+          whyItCannotTake(live, model),
+          VectorFieldHealth.WAY_OUT);
+    }
+    return takes;
+  }
+
+  private static String whyItCannotTake(LiveEmbeddingField live, EmbeddingModel model) {
+    String reason = live.readable() ? live.describe(model) : live.readFailure();
+    return reason.isEmpty() ? "an index behind it maps no embedding field" : reason;
+  }
+
   /** Whether the index mapping marks the index as a vector index, by its {@code fingerprint}. */
   private boolean declaresEmbeddings(IndexMapping indexMapping) {
     String mapping = getHardenedResourceMapping(indexMapping);

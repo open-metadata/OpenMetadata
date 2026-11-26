@@ -241,6 +241,37 @@ class ElasticsearchVectorMappingUpdateIT {
     assertNeedsARebuild(indexName, "holds vectors of model " + MODEL.id());
   }
 
+  /**
+   * After {@code reembed} replaced every vector of a chunk index built for another model of the
+   * same dimension, the index records the model and keeps the rest of its {@code _meta}.
+   */
+  @Test
+  void recordingTheModelOnALiveIndexKeepsItsOtherMetaAndClearsTheOtherModel() throws Exception {
+    String indexName = "reembedded_embeddings_chunks_g1";
+    createRaw(
+        indexName,
+        "{\"mappings\":{\"_meta\":{\"chunkDocVersion\":9,\"embedding_model\":\"another-model\","
+            + "\"embedding_dimension\":"
+            + DIMENSION
+            + "},\"properties\":{\"embedding\":{\"type\":\"dense_vector\",\"dims\":"
+            + DIMENSION
+            + "}}}}");
+    assertEquals(
+        EmbeddingFieldUpdate.LEAVE_OUT,
+        EmbeddingFieldUpdate.updateFor(indexManager.readEmbeddingField(indexName), MODEL));
+
+    indexManager.recordEmbeddingModel(indexName, MODEL);
+
+    JsonNode live = liveMappings(indexName);
+    assertEquals(9, live.path("_meta").path("chunkDocVersion").asInt());
+    assertEquals(MODEL.id(), live.path("_meta").path("embedding_model").asText());
+    assertEquals(DIMENSION, live.path("_meta").path("embedding_dimension").asInt());
+    assertEquals(DIMENSION, live.path("properties").path("embedding").path("dims").asInt());
+    assertEquals(
+        EmbeddingFieldUpdate.KEEP,
+        EmbeddingFieldUpdate.updateFor(indexManager.readEmbeddingField(indexName), MODEL));
+  }
+
   @Test
   void anEmbeddingMappedAsAnotherTypeNeedsARebuildAndIsLeftAlone() throws Exception {
     String indexName = "float_embedding_table_search_index";
