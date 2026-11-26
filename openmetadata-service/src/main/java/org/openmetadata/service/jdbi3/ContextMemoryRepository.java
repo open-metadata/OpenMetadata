@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -38,16 +39,20 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.ArchivedWithSources;
 import org.openmetadata.service.context.center.MemoryGlossaryDerivationQueue;
+import org.openmetadata.service.context.center.MemoryRelinking;
+import org.openmetadata.service.context.center.MemorySourceDisclosure;
+import org.openmetadata.service.context.center.MemorySourceLifecycle;
 import org.openmetadata.service.context.review.MemoryConflictReviewTasks;
 import org.openmetadata.service.context.review.MemoryEvidenceHolds;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.resources.context.ContextMemoryWriteAccess;
-import org.openmetadata.service.resources.drive.ContextFileVisibility;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -56,6 +61,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 /**
  * Every memory is written to the search index regardless of its {@code shareConfig.visibility}, and
@@ -82,6 +88,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   public static final String FIELD_SOURCE_ENTITY = "sourceEntity";
   public static final String FIELD_ROOT_MEMORY = "rootMemory";
   public static final String FIELD_PARENT_MEMORY = "parentMemory";
+  public static final String SOURCE_LINK_FIELDS =
+      FIELD_SOURCE_ENTITY + "," + FIELD_PRIMARY_ENTITY + "," + FIELD_RELATED_ENTITIES;
   private static final String PATCH_FIELDS =
       FIELD_PRIMARY_ENTITY
           + ","
@@ -185,10 +193,13 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         reviewRequired ? ContextMemoryStatus.UNPROCESSED : ContextMemoryStatus.APPROVED;
   }
 
+  /** A copy restates a memory for another document's readers, so it derives no term of its own. */
   @Override
   protected void postCreate(ContextMemory memory) {
     super.postCreate(memory);
-    glossaryDerivationQueue().enqueue(memory, memory.getUpdatedBy());
+    if (!MemoryRelinking.isRelinking(memory.getId())) {
+      glossaryDerivationQueue().enqueue(memory, memory.getUpdatedBy());
+    }
     MemoryConflictReviewTasks.afterWrite(null, memory);
   }
 
@@ -218,12 +229,14 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   protected void postDelete(ContextMemory memory, boolean hardDelete) {
     super.postDelete(memory, hardDelete);
     MemoryConflictReviewTasks.afterDelete(memory, hardDelete);
+    new ArchivedWithSources(daoCollection.entityExtensionDAO()).clear(memory.getId());
   }
 
   @Override
   protected void postRestore(ContextMemory memory) {
     super.postRestore(memory);
     MemoryConflictReviewTasks.afterWrite(null, memory);
+    new ArchivedWithSources(daoCollection.entityExtensionDAO()).clear(memory.getId());
   }
 
   /** Whether the memory row exists, soft-deleted or not; provenance may point at either. */
@@ -477,11 +490,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
                 derivedById.getOrDefault(memory.getId(), Collections.emptyList())));
   }
 
-  /** The single Context Center source (file or page) a memory was extracted from, via MENTIONED_IN. */
+  /**
+   * The source a memory shows among the documents linked to it (MENTIONED_IN), as {@link
+   * MemorySourceDisclosure} chooses; the anchor is read only when there is a choice to make.
+   */
   private EntityReference getSourceEntity(ContextMemory entity) {
-    List<EntityReference> refs =
+    List<EntityReference> sources =
         findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null);
-    return nullOrEmpty(refs) ? null : refs.getFirst();
+    EntityReference anchor = sources.size() < 2 ? null : getPrimaryEntity(entity);
+    return MemorySourceDisclosure.shownSource(anchor, sources);
   }
 
   /** Back-compat view: the deprecated sourceFile is the source only when it is a ContextFile. */
@@ -505,8 +522,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
   }
 
+  /** Each memory's shown source, chosen as the single read path chooses it. */
   private Map<UUID, EntityReference> batchFetchSources(List<ContextMemory> entities) {
-    Map<UUID, List<EntityReference>> sourcesById = new HashMap<>();
     List<CollectionDAO.EntityRelationshipObject> records =
         daoCollection
             .relationshipDAO()
@@ -514,22 +531,28 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
                 entityListToStrings(entities),
                 Relationship.MENTIONED_IN.ordinal(),
                 Include.NON_DELETED);
-    Map<String, EntityReference> refById = resolveReferencesByType(records);
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      EntityReference ref = refById.get(record.getFromId());
-      if (ref != null) {
-        sourcesById
-            .computeIfAbsent(UUID.fromString(record.getToId()), id -> new ArrayList<>())
-            .add(ref);
-      }
-    }
+    Map<UUID, List<EntityReference>> sourcesById = new HashMap<>();
+    groupByMemory(records, resolveReferencesByType(records), sourcesById);
+    sourcesById.values().forEach(refs -> refs.sort(EntityUtil.compareEntityReference));
+    Map<UUID, EntityReference> anchors = anchorsOfSharedMemories(entities, sourcesById);
     Map<UUID, EntityReference> sourceById = new HashMap<>();
     sourcesById.forEach(
-        (id, refs) -> {
-          refs.sort(EntityUtil.compareEntityReference);
-          sourceById.put(id, refs.getFirst());
-        });
+        (id, refs) ->
+            sourceById.put(id, MemorySourceDisclosure.shownSource(anchors.get(id), refs)));
     return sourceById;
+  }
+
+  /** The anchors of the memories with several sources to choose from, as getPrimaryEntity reads. */
+  private Map<UUID, EntityReference> anchorsOfSharedMemories(
+      List<ContextMemory> entities, Map<UUID, List<EntityReference>> sourcesById) {
+    List<ContextMemory> shared =
+        entities.stream()
+            .filter(memory -> sourcesById.getOrDefault(memory.getId(), List.of()).size() > 1)
+            .toList();
+    Map<UUID, EntityReference> anchors =
+        shared.isEmpty() ? new HashMap<>() : new HashMap<>(batchFetchPrimaryEntities(shared));
+    shared.forEach(memory -> anchors.putIfAbsent(memory.getId(), memory.getPrimaryEntity()));
+    return anchors;
   }
 
   @Override
@@ -544,6 +567,10 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     // characters, matching the convention in every other top-level entity repository.
     entity.setFullyQualifiedName(FullyQualifiedName.build(entity.getName()));
   }
+
+  /** The Context Center entities a knowledge pill is extracted from. */
+  private static final Set<String> EXTRACTION_SOURCE_TYPES =
+      Set.of(Entity.CONTEXT_FILE, Entity.PAGE);
 
   private static final Set<String> ALLOWED_SHARED_PRINCIPAL_TYPES =
       Set.of(Entity.USER, Entity.TEAM, Entity.DOMAIN);
@@ -926,6 +953,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      MemoryRelinking.withholdRestrictedNames(original, updated);
       requireOwnersChangedByPrivilegedWriter();
       requireSourceTypeChangedByPrivilegedWriter();
       flipToManualOnUserEdit();
@@ -1128,7 +1156,13 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         || !Objects.equals(before.getMemoryType(), after.getMemoryType())
         || !Objects.equals(before.getMemoryScope(), after.getMemoryScope())
         || !Objects.equals(before.getMachineRepresentation(), after.getMachineRepresentation())
-        || !sameAnchor(before.getPrimaryEntity(), after.getPrimaryEntity());
+        || anchorMovedAsContent(before, after);
+  }
+
+  /** A source-lifecycle anchor move changes who may read the memory, not what it says. */
+  private static boolean anchorMovedAsContent(ContextMemory before, ContextMemory after) {
+    return !sameAnchor(before.getPrimaryEntity(), after.getPrimaryEntity())
+        && !MemoryRelinking.isRelinking(after.getId());
   }
 
   private static boolean extractionManagedFieldChanged(
@@ -1152,44 +1186,64 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     // primaryEntity and the source link on update.
     List<UUID> ids = refs.stream().map(EntityReference::getId).toList();
     List<ContextMemory> memories = find(ids, Include.NON_DELETED);
-    setFieldsInBulk(getFields("primaryEntity,sourceEntity"), memories);
+    setFieldsInBulk(getFields("owners,primaryEntity,sourceEntity"), memories);
     return memories;
   }
 
+  /** Whether {@code reference} is a document memories are extracted from: a file or a page. */
+  public static boolean isExtractionSource(EntityReference reference) {
+    return reference != null && EXTRACTION_SOURCE_TYPES.contains(reference.getType());
+  }
+
+  /** The ids of every source linked to the memory (MENTIONED_IN), read without resolving them. */
+  public Set<UUID> linkedSourceIds(UUID memoryId) {
+    return findFromRecords(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null)
+        .stream()
+        .map(CollectionDAO.EntityRelationshipRecord::getId)
+        .collect(Collectors.toSet());
+  }
+
+  /** The live Context Center sources (files and pages) each knowledge pill is linked to. */
+  public Map<UUID, List<EntityReference>> listExtractedSources(List<UUID> memoryIds) {
+    Map<UUID, List<EntityReference>> sources = new HashMap<>();
+    if (!nullOrEmpty(memoryIds)) {
+      List<CollectionDAO.EntityRelationshipObject> records =
+          daoCollection
+              .relationshipDAO()
+              .findFromBatch(
+                  memoryIds.stream().map(UUID::toString).toList(),
+                  Relationship.MENTIONED_IN.ordinal(),
+                  Include.NON_DELETED)
+              .stream()
+              .filter(record -> EXTRACTION_SOURCE_TYPES.contains(record.getFromEntity()))
+              .toList();
+      groupByMemory(records, resolveReferencesByType(records), sources);
+    }
+    return sources;
+  }
+
+  private static void groupByMemory(
+      List<CollectionDAO.EntityRelationshipObject> records,
+      Map<String, EntityReference> live,
+      Map<UUID, List<EntityReference>> sources) {
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference source = live.get(record.getFromId());
+      if (source != null) {
+        sources
+            .computeIfAbsent(UUID.fromString(record.getToId()), id -> new ArrayList<>())
+            .add(source);
+      }
+    }
+  }
+
+  /** Links a memory to another source that states it, as {@link MemorySourceLifecycle} does. */
   public void linkExtractedMemory(UUID memoryId, EntityReference source) {
-    boolean alreadyLinked =
-        findFrom(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, source.getType())
-            .stream()
-            .anyMatch(existing -> source.getId().equals(existing.getId()));
-    if (alreadyLinked) {
-      return;
-    }
-    ContextMemory current =
-        get(
-            null,
-            memoryId,
-            getFields("sourceEntity,primaryEntity,relatedEntities"),
-            Include.NON_DELETED,
-            false);
-    boolean isPrimary =
-        current.getPrimaryEntity() != null
-            && source.getId().equals(current.getPrimaryEntity().getId());
-    boolean isRelated =
-        listOrEmpty(current.getRelatedEntities()).stream()
-            .anyMatch(related -> source.getId().equals(related.getId()));
-    if (!isPrimary && !isRelated) {
-      ContextMemory updated = JsonUtils.deepCopy(current, ContextMemory.class);
-      List<EntityReference> related = new ArrayList<>(listOrEmpty(current.getRelatedEntities()));
-      related.add(source);
-      updated.setRelatedEntities(related);
-      update(null, current, updated, Entity.ADMIN_USER_NAME);
-    }
-    addRelationship(
-        source.getId(),
-        memoryId,
-        source.getType(),
-        Entity.CONTEXT_MEMORY,
-        Relationship.MENTIONED_IN);
+    new MemorySourceLifecycle(this).linkExtractedMemory(memoryId, source);
+  }
+
+  /** Whether everyone may read the document, as {@link MemorySourceDisclosure} decides it. */
+  public boolean isReadableByEveryone(EntityReference document) {
+    return MemorySourceDisclosure.everyoneMayRead(document);
   }
 
   /**
@@ -1199,7 +1253,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   public boolean hasOrgWideAnchor(ContextMemory memory) {
     EntityReference anchor = getPrimaryEntity(memory);
     return anchor == null
-        || (Entity.CONTEXT_FILE.equals(anchor.getType()) && isOrgWideFile(anchor));
+        || (Entity.CONTEXT_FILE.equals(anchor.getType())
+            && MemorySourceDisclosure.everyoneMayRead(anchor));
   }
 
   /**
@@ -1210,135 +1265,58 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
    */
   public boolean isAnchoredForPublication(ContextMemory memory) {
     EntityReference anchor = getPrimaryEntity(memory);
-    return anchor == null
-        || (Entity.PAGE.equals(anchor.getType()) && isLive(anchor))
-        || (Entity.CONTEXT_FILE.equals(anchor.getType()) && isOrgWideFile(anchor));
+    return anchor == null || MemorySourceDisclosure.everyoneMayRead(anchor);
   }
 
-  private static boolean isLive(EntityReference anchor) {
-    return Entity.getEntityOrNull(anchor, "", Include.NON_DELETED) != null;
-  }
-
-  private static boolean isOrgWideFile(EntityReference file) {
-    boolean orgWide;
-    try {
-      orgWide = ContextFileVisibility.isOrgWide(Entity.getEntity(file, "", Include.NON_DELETED));
-    } catch (EntityNotFoundException e) {
-      orgWide = false;
-    }
-    return orgWide;
-  }
-
+  /** Whether another source, archived ones included, still states the memory. */
   public boolean hasOtherSources(UUID memoryId, EntityReference source) {
-    return findFrom(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null).stream()
-        .anyMatch(
-            other ->
-                !other.getId().equals(source.getId()) || !other.getType().equals(source.getType()));
-  }
-
-  public void releaseExtractedMemory(UUID memoryId, EntityReference source) {
-    List<EntityReference> otherSources =
-        findFrom(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null).stream()
-            .filter(
-                other ->
-                    !other.getId().equals(source.getId())
-                        || !other.getType().equals(source.getType()))
-            .toList();
-    if (otherSources.isEmpty()) {
-      delete(Entity.ADMIN_USER_NAME, memoryId, false, true);
-      return;
-    }
-
-    boolean wasPrimary = hasSourceRelationship(memoryId, source, Relationship.APPLIED_TO);
-    boolean wasRelated = hasSourceRelationship(memoryId, source, Relationship.RELATED_TO);
-    reparentSharedMemory(memoryId, source, otherSources.getFirst(), wasPrimary, wasRelated);
-    deleteRelationship(
-        source.getId(),
-        source.getType(),
-        memoryId,
-        Entity.CONTEXT_MEMORY,
-        Relationship.MENTIONED_IN);
-    if (wasPrimary) {
-      deleteRelationship(
-          source.getId(),
-          source.getType(),
-          memoryId,
-          Entity.CONTEXT_MEMORY,
-          Relationship.APPLIED_TO);
-    }
-    if (wasRelated) {
-      deleteRelationship(
-          source.getId(),
-          source.getType(),
-          memoryId,
-          Entity.CONTEXT_MEMORY,
-          Relationship.RELATED_TO);
-    }
-  }
-
-  private boolean hasSourceRelationship(
-      UUID memoryId, EntityReference source, Relationship relationship) {
-    return findFrom(memoryId, Entity.CONTEXT_MEMORY, relationship, source.getType(), Include.ALL)
-        .stream()
-        .anyMatch(reference -> reference.getId().equals(source.getId()));
-  }
-
-  private void reparentSharedMemory(
-      UUID memoryId,
-      EntityReference source,
-      EntityReference replacement,
-      boolean wasPrimary,
-      boolean wasRelated) {
-    ContextMemory current =
-        get(
-            null,
-            memoryId,
-            getFields("sourceEntity,primaryEntity,relatedEntities"),
-            Include.NON_DELETED,
-            false);
-    boolean sourceEntityMatches =
-        current.getSourceEntity() != null
-            && current.getSourceEntity().getId().equals(source.getId());
-    boolean replacementIsRelated =
-        wasPrimary
-            && listOrEmpty(current.getRelatedEntities()).stream()
-                .anyMatch(related -> related.getId().equals(replacement.getId()));
-    if (!sourceEntityMatches && !wasPrimary && !wasRelated && !replacementIsRelated) {
-      return;
-    }
-    ContextMemory updated = JsonUtils.deepCopy(current, ContextMemory.class);
-    if (sourceEntityMatches) {
-      updated.setSourceEntity(replacement);
-    }
-    if (wasPrimary) {
-      updated.setPrimaryEntity(replacement);
-    }
-    if (wasRelated || replacementIsRelated) {
-      updated.setRelatedEntities(
-          listOrEmpty(current.getRelatedEntities()).stream()
-              .filter(
-                  related ->
-                      !related.getId().equals(source.getId())
-                          && (!wasPrimary || !related.getId().equals(replacement.getId())))
-              .toList());
-    }
-    update(null, current, updated, Entity.ADMIN_USER_NAME);
+    return new MemorySourceLifecycle(this).hasOtherSources(memoryId, source);
   }
 
   /**
-   * Releases every knowledge pill linked to a Context Center source. A pill still linked to another
-   * source remains active; a pill whose last source is removed is hard-deleted.
-   *
-   * <p>The lookup uses {@link Include#ALL} because a hard delete runs the soft-delete pass first:
-   * by the time the hard pass reaches here the pills this method already soft-deleted are invisible
-   * to a NON_DELETED lookup, which used to leave them stranded as permanent tombstones.
+   * Releases {@code source}'s link to a memory, as {@link MemorySourceLifecycle} decides. Throws
+   * when a decision overtook the release (the memory a person decided is no longer the engine's to
+   * release), so the reconciler's release logs and leaves the link, as its other conditional
+   * writes do.
    */
-  public void deleteExtractedMemories(UUID sourceId, String sourceType) {
-    List<EntityReference> refs =
-        findTo(sourceId, sourceType, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY, Include.ALL);
-    EntityReference source = new EntityReference().withId(sourceId).withType(sourceType);
-    for (EntityReference ref : refs) {
-      releaseExtractedMemory(ref.getId(), source);
+  public void releaseExtractedMemory(UUID memoryId, EntityReference source) {
+    if (!new MemorySourceLifecycle(this).releaseExtractedMemory(memoryId, source)) {
+      throw new PreconditionFailedException(
+          "Memory " + memoryId + " changed while its source was re-extracted; link left");
     }
+  }
+
+  /** A memory hierarchy does not make another document's live claims children of its archive. */
+  @Override
+  protected void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
+    if (hardDelete || !MemoryRelinking.isRelinking(id)) {
+      super.deleteChildren(id, recursive, hardDelete, updatedBy);
+    }
+  }
+
+  @Override
+  protected void restoreChildren(UUID id, String updatedBy) {
+    if (!MemoryRelinking.isRelinking(id)) {
+      super.restoreChildren(id, updatedBy);
+    }
+  }
+
+  /**
+   * Reindexes the memory from the database after the write commits. A source-link change can leave
+   * the stored memory unchanged, and an unchanged update never rewrites the search document. Only
+   * for a live memory: the reindex reads it as non-deleted.
+   */
+  public void refreshSearchDocument(UUID memoryId) {
+    EntityLifecycleEventDispatcher.getInstance()
+        .onEntityUpdated(
+            new EntityReference().withId(memoryId).withType(Entity.CONTEXT_MEMORY), null);
+  }
+
+  /** Refreshes an archived dependent after sharing commits, preserving its deleted state. */
+  public void refreshSearchDocument(UUID memoryId, Include include) {
+    EntityReference reference =
+        new EntityReference().withId(memoryId).withType(Entity.CONTEXT_MEMORY);
+    PostCommitActionQueue.runOrDefer(
+        () -> Entity.getSearchRepository().updateEntity(reference, include));
   }
 }

@@ -22,6 +22,7 @@ import {
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { twMerge } from 'tailwind-merge';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   hasCustomPropertiesTab,
@@ -139,12 +140,14 @@ const EntityRightPanelVerticalNav: React.FC<
 
   return (
     <div
-      className={classNames(
-        'entity-right-panel-vertical-nav tw:flex tw:w-20 tw:flex-col tw:items-center tw:rounded-lg tw:border tw:border-secondary tw:bg-surface',
-        verticalNavConatinerclassName,
-        isSideDrawer
-          ? 'tw:mr-2 tw:h-screen tw:max-h-[calc(100vh-70px)]'
-          : 'tw:h-full'
+      className={twMerge(
+        classNames(
+          'entity-right-panel-vertical-nav tw:flex tw:w-20 tw:flex-col tw:items-center tw:rounded-lg tw:border tw:border-secondary tw:bg-surface',
+          isSideDrawer
+            ? 'tw:mr-2 tw:h-screen tw:max-h-[calc(100vh-70px)]'
+            : 'tw:h-full'
+        ),
+        verticalNavConatinerclassName
       )}>
       <Tabs
         className="tw:w-full"

@@ -25,26 +25,40 @@ interface MockItem {
 interface MockInboxItem {
   activity?: MockItem;
   feed?: MockItem;
+  taskMention?: { comment: { id: string; createdAt: number } };
 }
 
 let activityState: {
   items: MockInboxItem[];
   total: number;
   isLoading: boolean;
+  isCapped?: boolean;
+  cutAt?: number;
   error?: unknown;
+  taskMentionsLoaded?: boolean;
+  taskMentionsReadAt?: number;
 };
 const mockRefetch = jest.fn();
 const mockUseInboxActivity = jest.fn();
 // What the Mentions feed returns, read separately to mark mentioned cards.
 let mockMentionItems: MockInboxItem[] = [];
+let mockMentionsCutAt: number | undefined;
 
 jest.mock('../useInboxActivity', () => ({
   getInboxItemId: (item: MockInboxItem) =>
-    String(item.activity?.id ?? item.feed?.id ?? ''),
-  getInboxItemTimestamp: (item: MockInboxItem) => item.activity?.timestamp ?? 0,
+    String(
+      item.activity?.id ?? item.feed?.id ?? item.taskMention?.comment.id ?? ''
+    ),
+  getInboxItemTimestamp: (item: MockInboxItem) =>
+    item.activity?.timestamp ?? item.taskMention?.comment.createdAt ?? 0,
   useInboxActivity: (filter: string, ...args: unknown[]) => {
     if (filter === 'mentions') {
-      return { items: mockMentionItems, total: 0, isLoading: false };
+      return {
+        items: mockMentionItems,
+        total: mockMentionItems.length,
+        isLoading: false,
+        cutAt: mockMentionsCutAt,
+      };
     }
     mockUseInboxActivity(filter, ...args);
 
@@ -52,11 +66,19 @@ jest.mock('../useInboxActivity', () => ({
       items: activityState.items,
       total: activityState.total,
       isLoading: activityState.isLoading,
+      isCapped: activityState.isCapped ?? false,
+      cutAt: activityState.cutAt,
       error: activityState.error ?? null,
+      taskMentionsLoaded: activityState.taskMentionsLoaded ?? filter === 'all',
+      taskMentionsReadAt: activityState.taskMentionsReadAt ?? 1000,
       refetch: mockRefetch,
     };
   },
   useInboxActivityCounts: () => ({}),
+}));
+
+jest.mock('../../../../NotificationBox/TaskMentionCard', () => ({
+  TaskMentionCard: () => <span>Task mention</span>,
 }));
 
 // Exercised by its own suite; here it only drives the tab's state.
@@ -176,6 +198,17 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+const mockMarkInboxActivitySeen = jest.fn();
+let mockInboxActivitySeenTs: number | null = 500;
+
+jest.mock('../../../../../hooks/usePersonalSpaceStore', () => ({
+  usePersonalSpaceStore: (selector: (s: unknown) => unknown) =>
+    selector({
+      markInboxActivitySeen: mockMarkInboxActivitySeen,
+      inboxActivitySeenTs: mockInboxActivitySeenTs,
+    }),
+}));
+
 import { User } from '../../../../../generated/entity/teams/user';
 import { ActivityFilter, getInboxDateRange } from '../inbox.utils';
 import ActivityTab from './ActivityTab';
@@ -188,6 +221,8 @@ const alice = {
 
 describe('ActivityTab', () => {
   beforeEach(() => {
+    mockMentionsCutAt = undefined;
+    mockInboxActivitySeenTs = 500;
     jest.clearAllMocks();
     activityState = {
       items: [],
@@ -337,7 +372,7 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'all',
       defaultWindow,
-      undefined
+      { type: 'inbox' }
     );
 
     fireEvent.click(screen.getByText('following'));
@@ -345,7 +380,7 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'following',
       defaultWindow,
-      undefined
+      { type: 'inbox' }
     );
   });
 
@@ -355,7 +390,7 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'my-assets',
       expect.objectContaining({ key: 'last30days' }),
-      undefined
+      { type: 'inbox' }
     );
   });
 
@@ -367,7 +402,7 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'all',
       { ...getInboxDateRange(7), key: 'last7days' },
-      undefined
+      { type: 'inbox' }
     );
     expect(screen.getByTestId('toolbar')).toHaveAttribute(
       'data-preset',
@@ -390,11 +425,9 @@ describe('ActivityTab', () => {
     fireEvent.click(screen.getByText('last-7-days'));
 
     expect(onDatePresetChange).toHaveBeenCalledWith('last7days');
-    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
-      'all',
-      dateRange,
-      undefined
-    );
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith('all', dateRange, {
+      type: 'inbox',
+    });
     expect(
       screen.getByText('label.activity-feed-starts-here')
     ).toBeInTheDocument();
@@ -406,7 +439,7 @@ describe('ActivityTab', () => {
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'all',
       expect.anything(),
-      'alice-id'
+      { type: 'inbox', userId: 'alice-id' }
     );
   });
 
@@ -483,6 +516,125 @@ describe('ActivityTab', () => {
     expect(screen.getByTestId('activity-group')).toHaveTextContent(
       'label.number-update-plural:45'
     );
+  });
+
+  // A capped feed is cut inside its oldest day: only that count is a floor,
+  // and the end of the list says older updates are not shown.
+  it('marks the cut day as a floor and says the feed is capped', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    activityState = {
+      items: [
+        { activity: { id: 'today', timestamp: 3 * DAY } },
+        { activity: { id: 'earlier', timestamp: DAY } },
+      ],
+      total: 2,
+      isLoading: false,
+      isCapped: true,
+      cutAt: DAY,
+    };
+
+    render(<ActivityTab />);
+
+    const [newest, oldest] = screen.getAllByTestId('activity-group');
+
+    expect(newest).toHaveTextContent('label.one-update');
+    expect(oldest).toHaveTextContent('label.number-update-plural:1+');
+    expect(
+      screen.getByText('message.inbox-activity-capped')
+    ).toBeInTheDocument();
+  });
+
+  it('marks older days with task mentions as incomplete in All', () => {
+    const day = 24 * 60 * 60 * 1000;
+    activityState = {
+      items: [
+        { activity: { id: 'newest', timestamp: 3 * day } },
+        { activity: { id: 'cut', timestamp: 2 * day } },
+        { taskMention: { comment: { id: 'mention', createdAt: day } } },
+      ],
+      total: 3,
+      isLoading: false,
+      isCapped: true,
+      cutAt: 2 * day,
+    };
+
+    render(<ActivityTab />);
+
+    const [newest, cutoff, older] = screen.getAllByTestId('activity-group');
+
+    expect(newest).toHaveTextContent('label.one-update');
+    expect(cutoff).toHaveTextContent('label.number-update-plural:1+');
+    expect(older).toHaveTextContent('Task mention');
+    expect(older).toHaveTextContent('label.number-update-plural:1+');
+  });
+
+  // The cut is the whole feed's: a type filter that empties the cut day must
+  // not move the floor onto a complete one.
+  it('keeps the floor on the cut day when a type filter empties it', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    activityState = {
+      items: [
+        {
+          activity: {
+            id: 'tags',
+            eventType: 'TagsUpdated',
+            timestamp: 3 * DAY,
+          },
+        },
+        {
+          activity: {
+            id: 'created',
+            eventType: 'EntityCreated',
+            timestamp: DAY,
+          },
+        },
+      ],
+      total: 2,
+      isLoading: false,
+      isCapped: true,
+      cutAt: DAY,
+    };
+
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('tags-only'));
+
+    expect(screen.getByTestId('activity-group')).toHaveTextContent(
+      'label.one-update'
+    );
+  });
+
+  // A Mentions feed keeps an old event mentioned today, so its last card can
+  // sit past the cut; the floor goes on the day the feed was cut.
+  it('marks the day the feed was cut, not the day of its last card', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    mockMentionItems = [
+      { activity: { id: 'today', timestamp: 3 * DAY } },
+      { activity: { id: 'old-mentioned-today', timestamp: DAY } },
+    ];
+    mockMentionsCutAt = 3 * DAY;
+
+    render(<ActivityTab initialFilter={ActivityFilter.Mentions} />);
+
+    const [cutDay, olderDay] = screen.getAllByTestId('activity-group');
+
+    expect(cutDay).toHaveTextContent('label.number-update-plural:1+');
+    expect(olderDay).toHaveTextContent('label.one-update');
+
+    mockMentionItems = [];
+  });
+
+  it('says nothing about a cap when the feed is complete', () => {
+    activityState = {
+      items: [{ activity: { id: 'a1', timestamp: 1 } }],
+      total: 1,
+      isLoading: false,
+    };
+
+    render(<ActivityTab />);
+
+    expect(
+      screen.queryByText('message.inbox-activity-capped')
+    ).not.toBeInTheDocument();
   });
 
   // A batch revealed later would grow a group above the viewport, so Asset and
@@ -565,5 +717,157 @@ describe('ActivityTab', () => {
 
     expect(screen.getByTestId('activity-group')).toHaveTextContent('orders');
     expect(screen.getByTestId('group-icon-table')).toBeInTheDocument();
+  });
+
+  // The seen-mark drives the sidebar's unread badge and is the only state
+  // persisted to localStorage, so stamping it at the wrong time permanently
+  // loses unread mentions. The mark must only fire once the viewer's own feed
+  // has loaded successfully — not while loading, not on error, and not for
+  // another user's feed.
+  describe('seen-mark timing', () => {
+    it('keeps mentions unread when the task source fails', () => {
+      activityState = { ...activityState, taskMentionsLoaded: false };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it('keeps mentions unread when the selected view excludes them', () => {
+      render(<ActivityTab initialFilter={ActivityFilter.Following} />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it('stamps the seen-mark once the feed has loaded', () => {
+      activityState = { items: [], total: 0, isLoading: false };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+    });
+
+    it('marks only through the loaded result when the cached feed is opened later', () => {
+      activityState = {
+        items: [],
+        total: 0,
+        isLoading: false,
+        taskMentionsReadAt: 1000,
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalledWith(1000);
+    });
+
+    it('does not stamp the seen-mark while the feed is loading', () => {
+      activityState = { ...activityState, isLoading: true };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it('does not stamp the seen-mark when the feed errors', () => {
+      activityState = {
+        ...activityState,
+        error: { response: { status: 500 } },
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it('does not stamp the seen-mark when the feed is forbidden', () => {
+      activityState = {
+        ...activityState,
+        error: { response: { status: 403 } },
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it("does not stamp the seen-mark for another user's feed", () => {
+      activityState = {
+        items: [{ feed: { id: 't1' } }],
+        total: 1,
+        isLoading: false,
+      };
+      render(<ActivityTab user={alice} />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it('does not stamp the seen-mark when the feed is cut after the last visit', () => {
+      activityState = {
+        items: [],
+        total: 0,
+        isLoading: false,
+        isCapped: true,
+        cutAt: 1000,
+        taskMentionsReadAt: 2000,
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    // The bug: the mark fired on mount regardless of feed state. A feed that
+    // starts loading and then resolves must stamp the mark only after the
+    // transition to loaded.
+    it('stamps the seen-mark after the feed finishes loading', () => {
+      activityState = { ...activityState, isLoading: true };
+      const { rerender } = render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+
+      activityState = { items: [], total: 0, isLoading: false };
+      rerender(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+    });
+
+    // A failed visit must leave the unread state intact; retrying successfully
+    // is what stamps the mark.
+    it('stamps the seen-mark after a failed feed succeeds on retry', () => {
+      activityState = {
+        ...activityState,
+        error: { response: { status: 500 } },
+      };
+      const { rerender } = render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+
+      activityState = { items: [], total: 0, isLoading: false };
+      rerender(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+    });
+
+    it('stamps the seen-mark when the feed is cut before the last visit', () => {
+      activityState = {
+        items: [],
+        total: 0,
+        isLoading: false,
+        isCapped: true,
+        cutAt: 500,
+        taskMentionsReadAt: 2000,
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalledWith(2000);
+    });
+
+    it('stamps the seen-mark on the first visit even when the feed is capped', () => {
+      mockInboxActivitySeenTs = null;
+      activityState = {
+        items: [],
+        total: 0,
+        isLoading: false,
+        isCapped: true,
+        cutAt: 1000,
+        taskMentionsReadAt: 2000,
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalledWith(2000);
+    });
   });
 });

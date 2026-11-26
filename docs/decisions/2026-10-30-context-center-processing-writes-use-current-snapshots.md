@@ -1,7 +1,8 @@
 # Context Center processing writes use current snapshots
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-09 (every write that records a run the queue
+  refused gets three budgets to be recorded Failed)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextProcessingRepositoryTest`, `ContextProcessingConditionalWriteSqlTest`,
   `ContextFileProcessingServiceTest`, `ContextProcessingUpdatesTest`,
@@ -40,3 +41,16 @@ Processing records its own result against current metadata. Retries require fres
 and audit timestamps can move slightly ahead of the wall clock after same-millisecond writes.
 Exhausted contention can repeat extraction in a later job. The stored entity shape and job arguments
 are unchanged, so no schema migration is required.
+
+## Amendment
+
+v2 (2026-11-09): when the queue refuses a run, no job is left to record its failure. Every write
+that records a run the queue refused, whether requested or queued by the pipeline, gets up to three
+full budgets of ten conditional attempts (`ExtractionRequests.FAILURE_RECORD_ROUNDS`) before it is
+given up and logged. That covers a requested file or article (`ContextFileProcessingService`'s
+`requireQueuedText` and `requireQueuedMemories`, `PageContextProcessingEngine.requireScheduled`),
+and the pipeline's `ContextFileProcessingService.submit` (upload and startup recovery),
+`requeueAfterConditionalUpdateContention`, `submitMemoryExtraction` and
+`PageContextProcessingEngine.submit` (an article's create or body edit). Every other processing
+write keeps the ten-attempt budget. See
+ADR:2026-11-09-a-documents-owner-or-an-admin-starts-or-retries-its-extraction.

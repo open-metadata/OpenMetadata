@@ -1,0 +1,105 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Publishes the pre-baked Maven repository cache image (`ghcr.io/<owner>/ci-m2-cache:main`)
+# and enforces tight GHCR version retention on both `ci-m2-cache` and `ci-playwright-ingestion`
+# so dangling or superseded manifests never accumulate storage
+# (ADR:2026-11-24-ci-caches-live-in-ghcr-with-actions-cache-fallback).
+#
+# Never runs on pull_request (requires packages: write).
+name: Publish CI Cache Image & Prune GHCR
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "**/pom.xml"
+      - "docker/ci/Dockerfile.m2-cache"
+      - ".github/scripts/prune_ghcr_package.py"
+      - ".github/workflows/ci-builder-images.yml"
+  schedule:
+    # Daily refresh + GHCR retention sweep (catches expired 2h grace versions).
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ci-builder-images-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-prune:
+    name: Build ci-m2-cache & Prune GHCR CI Caches
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Compute image metadata
+        id: meta
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          owner=$(printf '%s' "$REPO_OWNER" | tr '[:upper:]' '[:lower:]')
+          echo "owner=$owner" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Keep only `:main` (no per-hash tags or `:buildcache` layers) and disable
+      # provenance/SBOM attestations so `:main` is a single manifest rather than
+      # an OCI index with untagged child manifests that `--delete-untagged` would break.
+      - name: Build and push ci-m2-cache:main
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/ci/Dockerfile.m2-cache
+          target: m2-cache
+          push: true
+          provenance: false
+          sbom: false
+          tags: ghcr.io/${{ steps.meta.outputs.owner }}/ci-m2-cache:main
+
+      # Immediately delete the overwritten untagged manifest on ci-m2-cache and sweep
+      # any dangling or >2h-old ci-playwright-ingestion tags.
+      - name: Prune superseded GHCR CI cache versions
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_OWNER: ${{ steps.meta.outputs.owner }}
+        run: |
+          python3 .github/scripts/prune_ghcr_package.py \
+            --owner "$REPO_OWNER" \
+            --package ci-m2-cache \
+            --keep-tags main \
+            --keep-newest-tagged 1 \
+            --grace-hours 0 \
+            --delete-untagged
+          python3 .github/scripts/prune_ghcr_package.py \
+            --owner "$REPO_OWNER" \
+            --package ci-playwright-ingestion \
+            --keep-newest-tagged 1 \
+            --grace-hours 2 \
+            --delete-untagged

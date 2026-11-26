@@ -15,6 +15,7 @@ import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSe
 import { ROUTES } from '../../../constants/constants';
 import {
   CONTEXT_FILE_ENTITY_TYPE,
+  MEMORY_STATUSES_AWAITING_DECISION,
   MEMORY_TYPE_OPTIONS,
 } from '../../../constants/ContextCenter.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -27,6 +28,7 @@ import {
 import { queryClient } from '../../../queryClient';
 import {
   createContextMemory,
+  getContextMemoryById,
   updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -91,6 +93,22 @@ export const getLinkedAssetPath = (
       )
     : undefined;
 };
+
+/**
+ * An admin decides a memory they view while it awaits approval, unless it is held for disputes: its
+ * conflict review decides it, and approving here would leave both contradicting memories Approved.
+ */
+export const canDecideMemoryStatus = (
+  memory: ContextMemory | undefined,
+  isAdminUser: boolean,
+  isViewOnly: boolean
+): boolean =>
+  isAdminUser &&
+  isViewOnly &&
+  !memory?.disputes?.length &&
+  MEMORY_STATUSES_AWAITING_DECISION.some(
+    (status) => status === memory?.entityStatus
+  );
 
 export const getAssetKey = (asset: DataAssetOption): string =>
   asset.reference?.fullyQualifiedName ?? String(asset.value ?? '');
@@ -302,4 +320,20 @@ export const buildMemoryFormState = (
   ];
 
   return { formValues, tags: memoryToEdit.tags ?? [], assets };
+};
+
+/**
+ * Whether the stored memory moved on from the copy the panel read, which the decision's updatedAt
+ * test refuses. Read again rather than parsed from the error, whose message is the patch library's.
+ */
+export const hasMemoryChangedSince = async (
+  memory: ContextMemory
+): Promise<boolean> => {
+  try {
+    const stored = await getContextMemoryById(memory.id);
+
+    return stored.updatedAt !== memory.updatedAt;
+  } catch {
+    return false;
+  }
 };

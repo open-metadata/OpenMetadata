@@ -31,6 +31,7 @@ import { t } from './i18next/LocalUtil';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 import { getSettingsLink } from './SettingsModalLinkUtils';
+import { getUserIdentifier } from './UsersPureUtils';
 
 export const userCellRenderer = (user: EntityReference | User) => {
   return user.name ? (
@@ -46,9 +47,9 @@ export const commonUserDetailColumns = (
   isLoading?: boolean
 ): ColumnsType<User> => [
   {
-    title: t('label.username'),
-    dataIndex: 'username',
-    key: 'username',
+    title: t('label.name'),
+    dataIndex: 'name',
+    key: 'name',
     ellipsis: { showTitle: false },
     render: (_, record) => (
       <Box
@@ -76,11 +77,11 @@ export const commonUserDetailColumns = (
     ),
   },
   {
-    title: t('label.name'),
-    dataIndex: 'name',
-    key: 'name',
+    title: t('label.email'),
+    dataIndex: 'email',
+    key: 'email',
     ellipsis: { showTitle: false },
-    render: (_, record) => getEntityName(record),
+    render: (_, record) => getUserIdentifier(record),
   },
   {
     title: t('label.team-plural'),

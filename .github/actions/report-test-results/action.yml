@@ -1,0 +1,60 @@
+name: Report test results
+description: Classify test outcomes and upload reports, with logs for unsuccessful test runs.
+inputs:
+  step-outcome:
+    description: Outcome of the test execution step
+    required: true
+  exit-code-file:
+    description: File containing the raw test process exit code, when available
+    required: true
+  test-profile:
+    description: Test profile recorded in the outcome
+    required: true
+  artifact-name:
+    description: Name of the uploaded result artifact and reported lane
+    required: true
+  working-directory:
+    description: Directory containing JUnit reports, test logs, and exit codes
+    default: ingestion
+runs:
+  using: composite
+  steps:
+    - name: Classify test outcome
+      if: ${{ always() }}
+      env:
+        TEST_LANE: ${{ inputs.artifact-name }}
+        TEST_PROFILE: ${{ inputs.test-profile }}
+        TEST_STEP_OUTCOME: ${{ job.status == 'cancelled' && 'cancelled' || inputs.step-outcome }}
+        EXIT_CODE_FILE: ${{ inputs.exit-code-file }}
+        TEST_DIRECTORY: ${{ inputs.working-directory }}
+      run: |
+        test_directory="${TEST_DIRECTORY:-ingestion}"
+        test_exit_code=""
+        if [[ -s "$EXIT_CODE_FILE" ]]; then
+          read -r test_exit_code < "$EXIT_CODE_FILE"
+        fi
+        diagnostic_glob=""
+        if [[ "$TEST_STEP_OUTCOME" != 'success' ]]; then
+          diagnostic_glob="$test_directory/*-test-run.log"
+        fi
+        python3 .github/scripts/classify_test_outcome.py \
+          --step-outcome "$TEST_STEP_OUTCOME" --exit-code "$test_exit_code" \
+          --report-glob "$test_directory/junit/test-results-*.xml" \
+          --diagnostic-glob "$diagnostic_glob" \
+          --output "$test_directory/ci-diagnostics/outcome.json"
+      shell: bash
+    - name: Upload test results
+      if: ${{ always() }}
+      continue-on-error: true
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          ${{ inputs.working-directory }}/junit/
+          ${{ inputs.working-directory }}/ci-diagnostics/outcome.json
+          ${{ inputs.working-directory }}/ci-coverage.xml
+          ${{ inputs.step-outcome != 'success' && format('{0}/*-test-run.log', inputs.working-directory) || '' }}
+          ${{ inputs.working-directory }}/*-test-exit-code.txt
+        if-no-files-found: warn
+        retention-days: 14
+        compression-level: 1

@@ -55,7 +55,6 @@ public class GtHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{gt }}")
-                    .withExample(
-                        "{{#if (gt entity.summary.total 0)}}Total: {{entity.summary.total}}{{/if}}")));
+                    .withExample("{{#if (gt (length entity.owners) 1)}}Several owners{{/if}}")));
   }
 }

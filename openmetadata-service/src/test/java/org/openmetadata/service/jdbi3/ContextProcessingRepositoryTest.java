@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -13,14 +14,23 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.openmetadata.schema.api.context.ExtractionAvailability;
+import org.openmetadata.schema.entity.data.Article;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageProcessingStatus;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.AiProvider;
+import org.openmetadata.service.context.center.AiProviderHolder;
+import org.openmetadata.service.context.center.LlmAiProvider;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.EntityRepository.Operation;
+import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.llm.NoopCompletionClient;
 
 @Isolated
 class ContextProcessingRepositoryTest {
@@ -43,6 +53,8 @@ class ContextProcessingRepositoryTest {
   @AfterEach
   void tearDown() {
     Entity.cleanup();
+    AiProviderHolder.reset();
+    LLMClientHolder.setForTesting(null);
   }
 
   @ParameterizedTest
@@ -86,6 +98,37 @@ class ContextProcessingRepositoryTest {
         () -> repository.storeEntityWithVersion(updated, true, 0.2, 100L));
 
     assertEquals(folder, updated.getFolder());
+  }
+
+  /** The Queued stamp asks the scheduler's gate, so no article is left Queued without a job. */
+  @Test
+  void aNewArticleIsQueuedOnlyWhileTheProviderCanExtract() {
+    LLMClientHolder.setForTesting(new NoopCompletionClient());
+    AiProvider unavailable = mock(AiProvider.class);
+    when(unavailable.extractionAvailability())
+        .thenReturn(
+            new ExtractionAvailability()
+                .withAvailable(false)
+                .withReason(ExtractionAvailability.Reason.ProviderUnavailable));
+    AiProviderHolder.setForTesting(unavailable);
+    Page whileUnavailable = articleWithBody();
+    pageRepository.prepare(whileUnavailable, false);
+
+    AiProviderHolder.setForTesting(new LlmAiProvider());
+    Page whileAvailable = articleWithBody();
+    pageRepository.prepare(whileAvailable, false);
+
+    assertNull(whileUnavailable.getProcessingStatus());
+    assertEquals(PageProcessingStatus.Queued, whileAvailable.getProcessingStatus());
+  }
+
+  private static Page articleWithBody() {
+    return new Page()
+        .withId(UUID.randomUUID())
+        .withName("runbook")
+        .withPageType(PageType.ARTICLE)
+        .withPage(new Article())
+        .withDescription("Restart the ingestion worker before the nightly run.");
   }
 
   private ContextFile file() {

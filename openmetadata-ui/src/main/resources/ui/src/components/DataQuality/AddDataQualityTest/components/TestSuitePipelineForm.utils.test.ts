@@ -61,6 +61,65 @@ describe('toTestSuiteIngestionData', () => {
     ).toBeUndefined();
     expect(toTestSuiteIngestionData({}).testCases).toBeUndefined();
   });
+
+  it('treats a picker select-all payload as "run all"', () => {
+    const result = toTestSuiteIngestionData({
+      selectAllTestCases: false,
+      testCases: {
+        selectAll: true,
+        includeIds: [],
+        excludeIds: [],
+        testCases: [],
+      } as unknown as string[],
+    });
+
+    expect(result.testCases).toBeUndefined();
+    expect(result.selectAllTestCases).toBe(true);
+  });
+
+  it('does not treat a select-all with exclusions as "run all"', () => {
+    const result = toTestSuiteIngestionData({
+      selectAllTestCases: false,
+      testCases: {
+        selectAll: true,
+        includeIds: [],
+        excludeIds: ['tc-excluded'],
+        testCases: [],
+      } as unknown as string[],
+    });
+
+    // The pipeline config has no field for excludeIds, so a select-all with
+    // exclusions must not collapse to "run all" (it would run the excluded
+    // rows). Validation rejects this payload before submit; this test guards
+    // the submit side against silently widening it.
+    expect(result.testCases).toBeUndefined();
+    expect(result.selectAllTestCases).toBe(false);
+  });
+
+  it('preserves selectAllTestCases when already true', () => {
+    const result = toTestSuiteIngestionData({
+      selectAllTestCases: true,
+      testCases: undefined,
+    });
+
+    expect(result.testCases).toBeUndefined();
+    expect(result.selectAllTestCases).toBe(true);
+  });
+
+  it('keeps specific test cases when selectAll is false in the payload', () => {
+    const result = toTestSuiteIngestionData({
+      selectAllTestCases: false,
+      testCases: {
+        selectAll: false,
+        includeIds: ['id-1'],
+        excludeIds: [],
+        testCases: [{ id: 'id-1', name: 'tc_a' }],
+      } as unknown as string[],
+    });
+
+    expect(result.testCases).toEqual(['tc_a']);
+    expect(result.selectAllTestCases).toBe(false);
+  });
 });
 
 describe('getTestSuitePipelineScope', () => {

@@ -42,7 +42,10 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
+import {
+  LIST_PAGE_SIZE_OPTIONS,
+  NO_DATA_PLACEHOLDER,
+} from '../../../../../../constants/constants';
 import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
@@ -131,7 +134,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
     () => [
       { id: 'name', label: t('label.name'), className: 'tw:w-70' },
       { id: 'description', label: t('label.description') },
-      { id: 'actions', label: t('label.action-plural'), className: 'tw:w-20' },
+      { id: 'actions', label: t('label.action-plural'), className: 'tw:w-28' },
     ],
     [t]
   );
@@ -448,7 +451,9 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
         return bot.description ? (
           <RichTextEditorPreviewerV1 markdown={bot.description} />
         ) : (
-          <Typography className="tw:text-tertiary">--</Typography>
+          <Typography className="tw:text-tertiary">
+            {NO_DATA_PLACEHOLDER}
+          </Typography>
         );
       }
 

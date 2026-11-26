@@ -279,7 +279,7 @@ public class AttachmentResource {
       }
       assetRepository.delete(asset.getId());
     } else {
-      assetRepository.markDeleted(asset.getEntityLink());
+      assetRepository.markDeleted(asset);
     }
     return Response.ok().build();
   }

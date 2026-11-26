@@ -12,6 +12,7 @@
  */
 import {
   keepPreviousData,
+  QueryClient,
   useMutation,
   useQuery,
   useQueryClient,
@@ -37,6 +38,7 @@ import {
   listAnnouncements,
   patchAnnouncement,
 } from '../../rest/announcementsAPI';
+import { HOME_ANNOUNCEMENTS_QUERY_KEY } from '../../rest/queries/criticalAnnouncementsQuery';
 import { searchSystemAnnouncements } from '../../utils/platform/systemAnnouncements.utils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { usePageSizeState } from '../paging/usePageSizeState';
@@ -190,6 +192,18 @@ interface SaveVariables {
   request: Omit<CreateAnnouncementRequest, 'entityLink'>;
 }
 
+// Home shows system announcements too, so a save or delete refreshes its
+// queries along with the Settings list; otherwise Home keeps the old set until
+// its 60-second TTL runs out.
+const invalidateSystemAnnouncementQueries = (queryClient: QueryClient) => {
+  void queryClient.invalidateQueries({
+    queryKey: SYSTEM_ANNOUNCEMENTS_QUERY_KEY,
+  });
+  void queryClient.invalidateQueries({
+    queryKey: HOME_ANNOUNCEMENTS_QUERY_KEY,
+  });
+};
+
 /** Create, or patch an existing announcement, then refresh every list. */
 export const useSaveSystemAnnouncement = (
   onSaved: (announcement: AnnouncementEntity) => void
@@ -206,9 +220,7 @@ export const useSaveSystemAnnouncement = (
           )
         : createAnnouncement(request),
     onSuccess: (announcement, { original }) => {
-      void queryClient.invalidateQueries({
-        queryKey: SYSTEM_ANNOUNCEMENTS_QUERY_KEY,
-      });
+      invalidateSystemAnnouncementQueries(queryClient);
       showSuccessToast(
         t(
           original
@@ -231,9 +243,7 @@ export const useDeleteSystemAnnouncement = (onDeleted: () => void) => {
   return useMutation({
     mutationFn: (id: string) => deleteAnnouncement(id, true),
     onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: SYSTEM_ANNOUNCEMENTS_QUERY_KEY,
-      });
+      invalidateSystemAnnouncementQueries(queryClient);
       showSuccessToast(
         t('server.entity-deleted-success', {
           entity: t('label.announcement'),

@@ -247,6 +247,11 @@ export interface CollateAIAppConfig {
      */
     resources?: Resource;
     /**
+     * App-level token (xapp-*) required for Socket Mode. Generate from Slack app settings under
+     * App-Level Tokens with connections:write scope.
+     */
+    appToken?: string;
+    /**
      * Bot Token
      */
     botToken?: string;
@@ -258,6 +263,13 @@ export interface CollateAIAppConfig {
      * Client Secret of the Application.
      */
     clientSecret?: string;
+    /**
+     * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+     * for production) receives events on a public HTTP endpoint and scales horizontally behind
+     * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+     * deployments that cannot expose a public endpoint (on-prem/firewalled).
+     */
+    connectionMode?: ConnectionMode;
     /**
      * Signing Secret of the Application. Confirm that each request comes from Slack by
      * verifying its unique signature.
@@ -1301,6 +1313,17 @@ export enum TranslogDurability {
 }
 
 /**
+ * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+ * for production) receives events on a public HTTP endpoint and scales horizontally behind
+ * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+ * deployments that cannot expose a public endpoint (on-prem/firewalled).
+ */
+export enum ConnectionMode {
+    SocketMode = "SocketMode",
+    Webhook = "Webhook",
+}
+
+/**
  * Settings applied to staged indexes before alias swap (live serving values). Tune for read
  * freshness and HA. Defaults: refresh=1s (near-real-time, required if users/agents
  * read-after-write), replicas=1, shards=1, durability=request.
@@ -1452,6 +1475,11 @@ export interface AppScheduleClass {
      */
     cronExpression?:  string;
     scheduleTimeline: ScheduleTimeline;
+    /**
+     * IANA timezone the schedule runs in, for example Europe/Berlin. When unset the server
+     * timezone applies, which is UTC in the official images.
+     */
+    timezone?: string;
 }
 
 /**

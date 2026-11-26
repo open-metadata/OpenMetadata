@@ -14,6 +14,7 @@ public class AuthEnrichedMcpContextExtractor
     implements McpTransportContextExtractor<HttpServletRequest> {
   public static final String AUTHORIZATION_HEADER = "Authorization";
   public static final String ACTIVE_PERSONA_HEADER = JwtFilter.ACTIVE_PERSONA_HEADER;
+  public static final String IMPERSONATE_USER_HEADER = JwtFilter.IMPERSONATE_USER_HEADER;
 
   /**
    * Context key carrying the resolved client name (Claude Desktop / Cursor / VS Code / etc.)
@@ -71,6 +72,11 @@ public class AuthEnrichedMcpContextExtractor
     values.put(AUTHORIZATION_HEADER, token != null ? token : "");
     if (activePersona != null && !activePersona.isBlank()) {
       values.put(ACTIVE_PERSONA_HEADER, activePersona);
+    }
+    // Kept as sent, as REST reads it: a blank target is refused there, not ignored.
+    String impersonateUser = request.getHeader(IMPERSONATE_USER_HEADER);
+    if (impersonateUser != null && !impersonateUser.isEmpty()) {
+      values.put(IMPERSONATE_USER_HEADER, impersonateUser);
     }
     if (clientName != null) {
       values.put(CLIENT_NAME, clientName);

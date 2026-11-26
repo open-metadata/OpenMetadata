@@ -19,6 +19,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -27,6 +28,7 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
@@ -198,6 +200,57 @@ class TagLabelUtilTest {
       assertEquals("Sensitive Data", label.getDisplayName());
       assertEquals("Contains sensitive information", label.getDescription());
     }
+  }
+
+  @Test
+  void appliedGlossaryTermsLeaveOutClassificationTagsAndDerivedLabels() {
+    TagLabel term = glossaryLabel("Glossary.Customer");
+    TagLabel inherited =
+        glossaryLabel("Glossary.Account").withLabelType(TagLabel.LabelType.DERIVED);
+    TagLabel classification = new TagLabel().withTagFQN("PII.Sensitive");
+
+    assertEquals(
+        Set.of("Glossary.Customer"),
+        TagLabelUtil.appliedGlossaryTermFqns(List.of(term, inherited, classification)));
+  }
+
+  @Test
+  void onlyTermsThatAreNotApprovedOrUnstagedAreUnapproved() {
+    GlossaryTerm approved = term("Glossary.Approved", EntityStatus.APPROVED);
+    GlossaryTerm unstaged = term("Glossary.Legacy", null);
+    GlossaryTerm inReview = term("Glossary.Pending", EntityStatus.IN_REVIEW);
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntityByNames(
+                      eq(Entity.GLOSSARY_TERM), anyList(), eq(""), eq(Include.NON_DELETED)))
+          .thenReturn(List.of(approved, unstaged, inReview));
+
+      assertEquals(
+          List.of(inReview),
+          TagLabelUtil.unapprovedGlossaryTerms(
+              Set.of("Glossary.Approved", "Glossary.Legacy", "Glossary.Pending")));
+    }
+  }
+
+  @Test
+  void noGlossaryTermsSkipsTheLookup() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityByNames(any(), anyList(), any(), any()))
+          .thenThrow(new AssertionError("No terms to check, so none may be looked up"));
+
+      assertEquals(List.of(), TagLabelUtil.unapprovedGlossaryTerms(Set.of()));
+    }
+  }
+
+  private static TagLabel glossaryLabel(String fqn) {
+    return new TagLabel().withTagFQN(fqn).withSource(TagSource.GLOSSARY);
+  }
+
+  private static GlossaryTerm term(String fqn, EntityStatus status) {
+    return new GlossaryTerm().withFullyQualifiedName(fqn).withEntityStatus(status);
   }
 
   @Test

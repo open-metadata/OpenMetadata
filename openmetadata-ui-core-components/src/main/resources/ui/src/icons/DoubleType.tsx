@@ -24,15 +24,15 @@ export const DoubleType: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g clipPath="url(#a)">
+    <g clipPath="url(#double-type_a)">
       <circle cx={10} cy={10} r={8} stroke="currentColor" strokeWidth={1.3} />
       <path
         d="M10.81 6.667v6.667a.667.667 0 1 1-1.333 0V8.277l-.491.491a.666.666 0 1 1-.943-.943l1.63-1.629a.667.667 0 0 1 1.138.471"
@@ -40,7 +40,7 @@ export const DoubleType: FC<Props> = ({
       />
     </g>
     <defs>
-      <clipPath id="a">
+      <clipPath id="double-type_a">
         <path d="M0 0h20v20H0z" fill="#fff" />
       </clipPath>
     </defs>

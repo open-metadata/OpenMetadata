@@ -41,6 +41,11 @@ export interface SavedSparqlQuery {
      */
     name: string;
     /**
+     * Ontology the query was saved in. Ontology Studio lists a query only in its own ontology;
+     * absent for a query saved outside one.
+     */
+    ontologyId?: string;
+    /**
      * SPARQL query body.
      */
     query: string;

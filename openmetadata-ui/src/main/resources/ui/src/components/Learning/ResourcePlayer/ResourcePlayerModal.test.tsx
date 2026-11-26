@@ -21,6 +21,7 @@ import {
   ResourcePlayer,
   ResourcePlayerModal,
 } from './ResourcePlayerModal.component';
+import { StorylaneTour } from './StorylaneTour.component';
 
 // The modal tests pass the list row, so a failed refetch falls back to it.
 jest.mock('../../../rest/learningResourceAPI', () => ({
@@ -111,6 +112,24 @@ describe('ResourcePlayerModal', () => {
     );
 
     expect(screen.getByTestId('storylane-tour')).toBeInTheDocument();
+    expect(StorylaneTour).toHaveBeenCalledWith(
+      { title: 'Test Resource', url: 'https://example.com/resource' },
+      {}
+    );
+  });
+
+  it('should title a Storylane tour by its name when it has no display name', () => {
+    const resource = createMockResource('Storylane', {
+      displayName: undefined,
+    });
+    render(
+      <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
+    );
+
+    expect(StorylaneTour).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'test-resource' }),
+      {}
+    );
   });
 
   it('should render PdfViewer for PDF resource type', () => {
