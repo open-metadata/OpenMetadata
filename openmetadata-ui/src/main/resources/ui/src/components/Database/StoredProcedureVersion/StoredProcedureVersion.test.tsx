@@ -12,7 +12,8 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useParams } from 'react-router-dom';
+import { EntityTabs } from '../../../enums/entity.enum';
 import {
   mockStoredProcedureCode,
   storedProcedureVersionMockProps,
@@ -165,9 +166,42 @@ describe('StoredProcedureVersion tests', () => {
       '/storedProcedure/sample_data.ecommerce_db.shopify.update_dim_address_table/versions/0.3/custom_properties'
     );
   });
+
+  it('Should follow the tab route param when it changes without a remount', () => {
+    (useParams as jest.Mock).mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    const { rerender } = render(
+      <StoredProcedureVersion {...storedProcedureVersionMockProps} />
+    );
+
+    expect(
+      screen.getByRole('tab', { name: 'label.custom-property-plural' })
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('CustomPropertyTable')).toBeInTheDocument();
+
+    (useParams as jest.Mock).mockReturnValue({ tab: 'tables' });
+    rerender(<StoredProcedureVersion {...storedProcedureVersionMockProps} />);
+
+    expect(screen.getByRole('tab', { name: 'label.code' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.queryByText('CustomPropertyTable')).not.toBeInTheDocument();
+  });
 });
 
 describe('StoredProcedureVersion ViewCustomFields permission', () => {
+  beforeEach(() => {
+    (useParams as jest.Mock).mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+  });
+
+  afterEach(() => {
+    (useParams as jest.Mock).mockReturnValue({ tab: 'tables' });
+  });
+
   const mockCustomPropertyTable = jest.requireMock(
     '../../common/CustomPropertyTable/CustomPropertyTable'
   ).CustomPropertyTable;
@@ -183,8 +217,6 @@ describe('StoredProcedureVersion ViewCustomFields permission', () => {
       />,
       { wrapper: MemoryRouter }
     );
-
-    fireEvent.click(screen.getByText('label.custom-property-plural'));
   };
 
   beforeEach(() => {

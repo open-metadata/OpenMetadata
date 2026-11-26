@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
+import { useParams } from 'react-router-dom';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityTabs } from '../../enums/entity.enum';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import DatabaseSchemaVersionPage from './DatabaseSchemaVersionPage';
 import {
@@ -203,6 +205,22 @@ describe('DatabaseSchemaVersionPage', () => {
     expect(screen.getByText(SCHEMA_TABLE_TAB)).toBeInTheDocument();
     expect(screen.getByText(DATA_PRODUCT_CONTAINER)).toBeInTheDocument();
     expect(screen.getAllByText(TAGS_CONTAINER_V2)).toHaveLength(2);
+  });
+
+  it('should follow the tab route param when it changes without a remount', async () => {
+    (useParams as jest.Mock).mockReturnValue({
+      ...MOCK_PARAMS,
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    const { rerender } = render(<DatabaseSchemaVersionPage />);
+
+    expect(await screen.findByText(CUSTOM_PROPERTY_TABLE)).toBeInTheDocument();
+
+    (useParams as jest.Mock).mockReturnValue(MOCK_PARAMS);
+    rerender(<DatabaseSchemaVersionPage />);
+
+    expect(await screen.findByText(SCHEMA_TABLE_TAB)).toBeInTheDocument();
+    expect(screen.queryByText(CUSTOM_PROPERTY_TABLE)).not.toBeInTheDocument();
   });
 
   it('should show ErrorPlaceHolder if not have view permission', async () => {

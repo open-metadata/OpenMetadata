@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useParams } from 'react-router-dom';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../enums/entity.enum';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
@@ -202,7 +202,9 @@ describe('DatabaseVersionPage', () => {
       })
     );
 
-    expect(screen.getByText(CUSTOM_PROPERTY_TABLE)).toBeInTheDocument();
+    expect(mockNavigate).toHaveBeenLastCalledWith(
+      expect.stringMatching(/\/custom_properties$/)
+    );
 
     // for back handler
     fireEvent.click(
@@ -219,6 +221,33 @@ describe('DatabaseVersionPage', () => {
     );
 
     expect(mockNavigate).toHaveBeenCalledTimes(3);
+  });
+
+  it('should follow the tab route param when it changes without a remount', async () => {
+    (useParams as jest.Mock).mockReturnValue({
+      version: '1.2',
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    const { rerender } = render(
+      <MemoryRouter>
+        <DatabaseVersionPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(CUSTOM_PROPERTY_TABLE)).toBeInTheDocument();
+
+    (useParams as jest.Mock).mockReturnValue({
+      version: '1.2',
+      tab: EntityTabs.SCHEMA,
+    });
+    rerender(
+      <MemoryRouter>
+        <DatabaseVersionPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(DATABASE_SCHEMA_TABLE)).toBeInTheDocument();
+    expect(screen.queryByText(CUSTOM_PROPERTY_TABLE)).not.toBeInTheDocument();
   });
 
   it('should show ErrorPlaceHolder if not have view permission', async () => {

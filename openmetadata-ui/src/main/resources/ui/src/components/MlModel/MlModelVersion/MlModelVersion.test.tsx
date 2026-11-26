@@ -12,7 +12,8 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useParams } from 'react-router-dom';
+import { EntityTabs } from '../../../enums/entity.enum';
 import {
   mlModelVersionMockProps,
   mockMlModelDetails,
@@ -165,9 +166,41 @@ describe('MlModelVersion tests', () => {
       '/mlmodel/mlflow_svc.eta_predictions/versions/0.3/custom_properties'
     );
   });
+
+  it('Should follow the tab route param when it changes without a remount', () => {
+    (useParams as jest.Mock).mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    const { rerender } = render(
+      <MlModelVersion {...mlModelVersionMockProps} />
+    );
+
+    expect(
+      screen.getByRole('tab', { name: 'label.custom-property-plural' })
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('CustomPropertyTable')).toBeInTheDocument();
+
+    (useParams as jest.Mock).mockReturnValue({ tab: 'container' });
+    rerender(<MlModelVersion {...mlModelVersionMockProps} />);
+
+    expect(
+      screen.getByRole('tab', { name: 'label.feature-plural' })
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByText('CustomPropertyTable')).not.toBeInTheDocument();
+  });
 });
 
 describe('MlModelVersion ViewCustomFields permission', () => {
+  beforeEach(() => {
+    (useParams as jest.Mock).mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+  });
+
+  afterEach(() => {
+    (useParams as jest.Mock).mockReturnValue({ tab: 'container' });
+  });
+
   const mockCustomPropertyTable = jest.requireMock(
     '../../common/CustomPropertyTable/CustomPropertyTable'
   ).CustomPropertyTable;
@@ -183,8 +216,6 @@ describe('MlModelVersion ViewCustomFields permission', () => {
       />,
       { wrapper: MemoryRouter }
     );
-
-    fireEvent.click(screen.getByText('label.custom-property-plural'));
   };
 
   beforeEach(() => {

@@ -12,6 +12,8 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { useParams } from 'react-router-dom';
+import { EntityTabs } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/table';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import {
@@ -222,7 +224,38 @@ describe('TableVersion tests', () => {
     expect(receivedColumns.some((col) => col.name === 'shop_id')).toBe(false);
   });
 
+  it('Should follow the tab route param when it changes without a remount', () => {
+    (useParams as jest.Mock).mockReturnValue({
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    const { rerender } = render(<TableVersion {...tableVersionMockProps} />);
+
+    expect(
+      screen.getByRole('tab', { name: 'label.custom-property-plural' })
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('CustomPropertyTable')).toBeInTheDocument();
+
+    (useParams as jest.Mock).mockReturnValue({ tab: 'tables' });
+    rerender(<TableVersion {...tableVersionMockProps} />);
+
+    expect(screen.getByRole('tab', { name: 'label.schema' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.queryByText('CustomPropertyTable')).not.toBeInTheDocument();
+  });
+
   describe('ViewCustomFields Permission Tests', () => {
+    beforeEach(() => {
+      (useParams as jest.Mock).mockReturnValue({
+        tab: EntityTabs.CUSTOM_PROPERTIES,
+      });
+    });
+
+    afterEach(() => {
+      (useParams as jest.Mock).mockReturnValue({ tab: 'tables' });
+    });
+
     it('should render custom properties tab when ViewCustomFields is true', async () => {
       await act(async () => {
         render(
@@ -241,8 +274,6 @@ describe('TableVersion tests', () => {
       );
 
       expect(customPropertyTabLabel).toBeInTheDocument();
-
-      fireEvent.click(customPropertyTabLabel);
 
       expect(screen.getByText('CustomPropertyTable')).toBeInTheDocument();
     });
@@ -265,8 +296,6 @@ describe('TableVersion tests', () => {
       );
 
       expect(customPropertyTabLabel).toBeInTheDocument();
-
-      fireEvent.click(customPropertyTabLabel);
 
       expect(screen.getByText('CustomPropertyTable')).toBeInTheDocument();
     });
