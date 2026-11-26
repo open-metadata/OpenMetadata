@@ -20,8 +20,7 @@ java-unit:
   - '.github/scripts/summarize_surefire.py'
   - 'openmetadata-service/**'
   - 'openmetadata-spec/**'
-  - 'openmetadata-clients/**'
-  - 'openmetadata-sdk/**'
+  - 'openmetadata-shaded-deps/**'
   - 'common/**'
   - 'pom.xml'
   - 'Makefile'
@@ -29,6 +28,7 @@ java-unit:
 java-operator:
   - '.github/actions/java-k8s-operator-tests/**'
   - 'openmetadata-k8s-operator/**'
+  - 'pom.xml'
 # Everything that ends up inside the server image or decides how it
 # is launched. Not 'openmetadata-service/**': the smoke test asserts
 # image properties, not application behaviour, so a Java-only change
@@ -39,7 +39,9 @@ docker-smoke:
   - '.github/actions/java-docker-smoke/**'
   - 'docker/openmetadata-start.sh'
   - 'docker/development/Dockerfile'
+  - 'docker/development/Dockerfile.dockerignore'
   - 'docker/docker-compose-quickstart/Dockerfile'
+  - 'docker/docker-compose-quickstart/Dockerfile.dockerignore'
   - 'scripts/docker_smoke_test.sh'
   - 'openmetadata-dist/**'
   - 'conf/**'
@@ -48,6 +50,7 @@ java-integration:
   - 'openmetadata-service/**'
   - 'openmetadata-integration-tests/**'
   - 'openmetadata-spec/pom.xml'
+  - 'openmetadata-spec/scripts/prepare_model_schemas.py'
   - 'openmetadata-spec/src/**'
   - 'openmetadata-sdk/**'
   - 'openmetadata-shaded-deps/**'
@@ -65,7 +68,6 @@ java-integration:
   - '.github/workflows/reusable-ci-plan.yml'
   - '.github/ci/paths.yml'
   - 'scripts/ci_plan.py'
-  - '.github/actions/java-backend-report/**'
   - '.github/workflows/reusable-java-integration-lanes.yml'
   - '.github/actions/java-integration-build/**'
 rdf:
@@ -109,7 +111,14 @@ python:
   - .github/scripts/classify_test_outcome.py
   - Makefile
 python-backend:
-  - '**/pom.xml'
+  # Keep in sync with the backend-only distribution reactor.
+  - pom.xml
+  - common/pom.xml
+  - openmetadata-spec/pom.xml
+  - openmetadata-shaded-deps/**/pom.xml
+  - openmetadata-service/pom.xml
+  - openmetadata-mcp/pom.xml
+  - openmetadata-dist/pom.xml
   - bin/openmetadata.sh
   - bin/openmetadata-server-start.sh
   - bootstrap/openmetadata-ops.sh
@@ -121,6 +130,8 @@ python-backend:
   - conf/private_key.der
   - docker/run_local_docker.sh
   - docker/run_local_docker_common.sh
+  - docker/development/Dockerfile
+  - docker/development/Dockerfile.dockerignore
   - docker/development/docker-compose.yml
   - docker/development/docker-compose-postgres.yml
   - openmetadata-service/src/main/java/org/openmetadata/service/resources/**
@@ -147,6 +158,9 @@ dar:
   - 'openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TaskRepository.java'
   - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/feeds/FeedResource.java'
   - 'openmetadata-service/src/main/java/org/openmetadata/service/governance/workflows/**'
+  - 'openmetadata-spec/src/main/resources/json/schema/governance/workflows/**'
+  - 'openmetadata-spec/src/main/resources/json/schema/api/governance/createWorkflowDefinition.json'
+  - 'openmetadata-spec/src/main/resources/json/schema/api/governance/createWorkflowInstanceState.json'
   - 'openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/**'
   - 'openmetadata-ui/src/main/resources/ui/src/pages/WorkflowDefinitions/**'
   - 'openmetadata-ui/src/main/resources/ui/src/constants/WorkflowBuilder.constants.ts'
@@ -175,6 +189,5 @@ json-yaml:
   - "openmetadata-integration-tests/pom.xml"
 
 quickstart-compose:
-  - 'docker/docker-compose-quickstart/**'
-  - '.github/workflows/ci-pr.yml'
+  - 'docker/docker-compose-quickstart/docker-compose.yml'
   - '.github/actions/validate-omd-docker-compose/**'
