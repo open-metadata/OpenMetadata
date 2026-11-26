@@ -1002,8 +1002,6 @@ public class SearchRepository {
       vectorServiceInitialized = true;
       this.vectorServiceInitError = null;
 
-      ensureHybridSearchPipeline();
-
       LOG.info(
           "Vector search service initialized with provider={}, dimension={}",
           resolveEmbeddingProvider(llmConfig),
@@ -1022,40 +1020,6 @@ public class SearchRepository {
       return nlCfg.getKnnNumCandidatesMultiplier();
     }
     return VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER;
-  }
-
-  public void ensureHybridSearchPipeline() {
-    if (!isVectorEmbeddingEnabled() || !vectorServiceInitialized) {
-      return;
-    }
-    // Hybrid search pipeline is an OpenSearch-specific feature (RRF via _search/pipeline).
-    // Skip silently for Elasticsearch instead of logging a misleading warning every restart.
-    if (!(vectorIndexService instanceof OpenSearchVectorService)) {
-      return;
-    }
-    double[] weights = resolveHybridWeights();
-    updateHybridSearchPipeline(weights[0], weights[1]);
-  }
-
-  /**
-   * The RRF pipeline body for the effective hybrid weights, ready to inline into a search
-   * request's {@code search_pipeline} field. Empty unless semantic search is on and the backend is
-   * OpenSearch.
-   *
-   * <p>Resolved per call rather than baked into a stored pipeline: the weights live in search
-   * settings, so inlining is what makes an admin's weight change take effect on the next query
-   * instead of waiting for a reindex to re-PUT a cluster-global object that a prefix-scoped search
-   * role is not allowed to write anyway.
-   */
-  public Optional<String> getHybridRrfPipelineDefinition() {
-    if (!isVectorEmbeddingEnabled()
-        || !vectorServiceInitialized
-        || !(vectorIndexService instanceof OpenSearchVectorService)) {
-      return Optional.empty();
-    }
-    double[] weights = resolveHybridWeights();
-    return Optional.of(
-        OpenSearchVectorService.buildHybridRrfPipelineDefinition(weights[0], weights[1]));
   }
 
   /** The weights of the keyword and the semantic leg of hybrid search. */
@@ -1093,35 +1057,6 @@ public class SearchRepository {
       LOG.warn("Failed to load hybrid weights from Settings, using config defaults", e);
     }
     return global;
-  }
-
-  private double[] resolveHybridWeights() {
-    HybridWeights weights = getHybridWeights();
-    return new double[] {weights.keyword(), weights.semantic()};
-  }
-
-  /**
-   * True when the vector index service is OpenSearch's, the only engine with the hybrid RRF search
-   * pipeline. Elsewhere the embeddings status has no pipeline to report on.
-   */
-  public boolean usesHybridSearchPipeline() {
-    return vectorIndexService instanceof OpenSearchVectorService;
-  }
-
-  public void updateHybridSearchPipeline(double keywordWeight, double semanticWeight) {
-    if (vectorIndexService instanceof OpenSearchVectorService openSearchVectorService) {
-      openSearchVectorService.ensureHybridSearchPipeline(keywordWeight, semanticWeight);
-    } else {
-      LOG.warn("Hybrid search pipeline update is only supported with OpenSearch");
-    }
-  }
-
-  public Optional<String> checkHybridSearchPipeline() {
-    if (vectorIndexService instanceof OpenSearchVectorService openSearchVectorService) {
-      double[] weights = resolveHybridWeights();
-      return openSearchVectorService.checkHybridSearchPipeline(weights[0], weights[1]);
-    }
-    return Optional.empty();
   }
 
   public IndexMapping getIndexMapping(String entityType) {

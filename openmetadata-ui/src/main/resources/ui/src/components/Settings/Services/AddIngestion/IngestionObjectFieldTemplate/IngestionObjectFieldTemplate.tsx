@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   ButtonUtility,
   Card,
   Divider,
@@ -19,10 +20,12 @@ import {
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
 import {
+  ErrorSchema,
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
 import classNames from 'classnames';
+import { isEmpty } from 'lodash';
 import { FocusEvent, FunctionComponent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SERVICE_FILTER_PATTERN_FIELDS } from '../../../../../constants/ServiceConnection.constants';
@@ -131,20 +134,11 @@ const groupProperties = (
     }
   );
 
-const HiddenFields = ({
-  properties,
-}: {
-  properties: ObjectFieldTemplatePropertyType[];
-}) =>
-  properties.length > 0 ? (
-    <>
-      {properties.map((element) => (
-        <div className="property-wrapper tw:hidden" key={element.name}>
-          {element.content}
-        </div>
-      ))}
-    </>
-  ) : null;
+const hasFieldErrors = (errorSchema?: ErrorSchema): boolean =>
+  !isEmpty(errorSchema?.__errors) ||
+  Object.entries(errorSchema ?? {}).some(
+    ([key, child]) => key !== '__errors' && hasFieldErrors(child as ErrorSchema)
+  );
 
 const SectionHeader = ({
   collapsible,
@@ -221,8 +215,8 @@ const SectionFields = ({
     (p) => schemaProperties[p.name]?.type !== 'boolean'
   );
 
-  const orderedFieldGroups = nonBooleanProperties.reduce<FieldGroup[]>(
-    (groups, element) => {
+  const orderedFieldGroups = nonBooleanProperties
+    .reduce<FieldGroup[]>((groups, element) => {
       if (isWide(element.name, schemaProperties)) {
         groups.push({ property: element, type: 'wide' });
 
@@ -238,9 +232,12 @@ const SectionFields = ({
       }
 
       return groups;
-    },
-    []
-  );
+    }, [])
+    .map<FieldGroup>((group) =>
+      group.type === 'grid' && group.properties.length === 1
+        ? { property: group.properties[0], type: 'wide' }
+        : group
+    );
 
   const renderProperty = (
     element: ObjectFieldTemplatePropertyType,
@@ -286,16 +283,29 @@ const SectionFields = ({
 };
 
 const SectionCard = ({
+  failedSubmitCount,
+  hasErrors,
   isCompact,
   section,
 }: {
+  failedSubmitCount: number;
+  hasErrors: boolean;
   isCompact?: boolean;
   section: IngestionSectionConfig;
 }) => {
   const [open, setOpen] = useState(section.defaultOpen);
   const [active, setActive] = useState(false);
+  const [seenFailedSubmitCount, setSeenFailedSubmitCount] =
+    useState(failedSubmitCount);
+
+  if (failedSubmitCount !== seenFailedSubmitCount) {
+    setSeenFailedSubmitCount(failedSubmitCount);
+    if (hasErrors) {
+      setOpen(true);
+    }
+  }
+
   const showBody = !section.collapsible || open;
-  const hasVisibleFields = section.properties.some((p) => !p.hidden);
 
   const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
     const nextFocusedElement = event.relatedTarget as Node | null;
@@ -307,10 +317,6 @@ const SectionCard = ({
       setActive(false);
     }
   };
-
-  if (section.collapsible && !hasVisibleFields) {
-    return <HiddenFields properties={section.properties} />;
-  }
 
   return (
     <Card
@@ -328,18 +334,14 @@ const SectionCard = ({
         title={section.title}
         onToggle={() => setOpen((prev) => !prev)}
       />
-      {showBody ? (
-        <>
-          <Divider className="tw:my-3" />
-          <SectionFields
-            isCompact={isCompact}
-            properties={section.properties}
-            schemaProperties={section.schemaProperties}
-          />
-        </>
-      ) : (
-        <HiddenFields properties={section.properties.filter((p) => p.hidden)} />
-      )}
+      <Box className={classNames(!showBody && 'tw:hidden')} direction="col">
+        <Divider className="tw:my-3" />
+        <SectionFields
+          isCompact={isCompact}
+          properties={section.properties}
+          schemaProperties={section.schemaProperties}
+        />
+      </Box>
     </Card>
   );
 };
@@ -364,9 +366,11 @@ const getCompactAdvancedSection = (
 export const IngestionObjectFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
 > = ({
+  errorSchema,
   idSchema,
   onAddClick,
   properties,
+  registry,
   schema,
   uiSchema,
 }: ObjectFieldTemplateProps) => {
@@ -509,6 +513,10 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
     <div className="tw:flex tw:flex-col tw:gap-3">
       {sections.map((section) => (
         <SectionCard
+          failedSubmitCount={registry.formContext?.failedSubmitCount ?? 0}
+          hasErrors={section.properties.some((p) =>
+            hasFieldErrors(errorSchema?.[p.name])
+          )}
           isCompact={compactAdvancedSection && section.key === 'advanced'}
           key={section.key}
           section={section}
