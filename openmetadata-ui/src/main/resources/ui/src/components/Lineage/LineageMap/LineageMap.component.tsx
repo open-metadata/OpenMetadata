@@ -142,6 +142,7 @@ import {
   getSceneRequestFromSearch,
   getSceneSearch,
   getSemanticZoomDirection,
+  getZoomGesturePoint,
   isContainerSceneNode,
   isSceneEmpty,
   isSceneNodeDrillable,
@@ -1671,11 +1672,9 @@ const LineageMapCanvas = ({
       const isDrillable = (node: Node<SceneFlowNodeData>) =>
         isSceneNodeDrillable(node.data.sceneNode);
 
-      if (event && 'clientX' in event) {
-        const point = reactFlowInstance.screenToFlowPosition({
-          x: event.clientX,
-          y: event.clientY,
-        });
+      const gesturePoint = getZoomGesturePoint(event);
+      if (gesturePoint) {
+        const point = reactFlowInstance.screenToFlowPosition(gesturePoint);
         const underPointer = reactFlowInstance.getIntersectingNodes({
           ...point,
           width: 1,
