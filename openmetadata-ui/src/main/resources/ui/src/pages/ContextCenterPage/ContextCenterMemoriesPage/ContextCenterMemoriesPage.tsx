@@ -983,7 +983,6 @@ const ContextCenterMemoriesPage: FC = () => {
                           }
                         )}
                         size={14}
-                        strokeWidth={2}
                       />
                       <Box align="center" className="tw:mb-1" gap={2}>
                         {icon}
@@ -1157,7 +1156,6 @@ const ContextCenterMemoriesPage: FC = () => {
                                 <Check
                                   className="tw:shrink-0 tw:text-fg-brand-secondary"
                                   size={14}
-                                  strokeWidth={2.5}
                                 />
                               )}
                             </Box>
