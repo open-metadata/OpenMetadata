@@ -56,8 +56,9 @@ in the PR template for you. You will check the CI and bot items below on the PR 
 3. **Get the PR checks green.** Which checks run depends on the paths you touched:
    - **Backend:** `backend-checks` (spotless formatting and the Java unit tests).
    - **Python:** `py-checkstyle` (ruff) and `py-tests-status` (unit tests and static checks).
-   - **UI:** `ui-tests-status`, which needs `ui checkstyle` (ESLint, Prettier, organize-imports and
-     the other UI checks) and, once checkstyle passes, `ui unit tests` (Jest) and `ui browser tests`.
+   - **UI:** `ui-tests-status`. Its stages also show as `ui-lint` (ESLint, Prettier, organize-imports
+     and the other UI checks), then `ui-unit` (Jest on the tests your change affects) and
+     `ui-browser` (the browser tests it affects); a failed stage skips the ones after it.
    - **Other:** `validate-json-yaml`, `generate-types` (regenerate after any schema change), and
      `docker-image-smoke-test`.
 

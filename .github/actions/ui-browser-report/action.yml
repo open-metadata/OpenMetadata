@@ -1,0 +1,33 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: UI browser tests report
+description: >-
+  Merges the shard blob reports in .vitest-reports with coverage and, on a pull
+  request, writes what ran and the changed code it executed to the job summary.
+runs:
+  using: composite
+  steps:
+    - name: Merge shard reports
+      working-directory: openmetadata-ui/src/main/resources/ui
+      run: |
+        npx vitest --config vitest.browser.config.ts --merge-reports --coverage \
+          --reporter=default --reporter=junit \
+          --outputFile.junit=src/test/browser/junit.xml
+      shell: bash
+    - name: Write the report
+      if: always() && github.event_name == 'pull_request'
+      working-directory: openmetadata-ui/src/main/resources/ui
+      run: |
+        node scripts/browser-tests-report.mjs --base HEAD^1 --selection selection.json \
+          --junit src/test/browser/junit.xml \
+          --coverage src/test/browser/coverage/coverage-final.json >> "$GITHUB_STEP_SUMMARY"
+      shell: bash

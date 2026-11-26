@@ -193,36 +193,123 @@ jobs:
           '
         shell: bash
 
-  # UI: checkstyle first; Jest and browser tests start only once it passes, so
-  # a lint failure does not spend the test runners. Each is a reusable workflow
-  # shared with ci-merge-queue.yml.
-  ui-lint:
-    name: ui checkstyle
+  # UI checks share one runner, like the python job: checkstyle, then Jest on the
+  # tests related to the change, then the browser tests it selects. A failed
+  # stage skips the rest. Each stage is also published as its own check run.
+  ui:
+    name: ui
     needs: plan
     if: ${{ needs.plan.outputs.ui == 'true' }}
-    uses: ./.github/workflows/ui-checkstyle.yml
-
-  ui-unit:
-    name: ui unit tests
-    needs: [plan, ui-lint]
-    if: ${{ needs.plan.outputs.ui-unit == 'true' && needs.ui-lint.result == 'success' }}
-    uses: ./.github/workflows/ui-unit-tests.yml
-
-  ui-browser:
-    name: ui browser tests
-    needs: [plan, ui-lint]
-    if: ${{ needs.plan.outputs.ui == 'true' && needs.ui-lint.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
     permissions:
       contents: read
-      # Downloads the impact map from earlier runs.
+      pull-requests: read
+      # Downloads the browser-test impact map from earlier runs.
       actions: read
-    uses: ./.github/workflows/ui-browser-tests.yml
+      checks: write
+    outputs:
+      gate: ${{ steps.gate.outcome }}
+    env:
+      # Fork PRs get a read-only token and cannot create check runs; ui-tests-status covers them.
+      CAN_REPORT_CHECKS: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      # The merge commit, so HEAD^1 is the base every changed-file check diffs against.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          filter: blob:none
+      - uses: ./.github/actions/ui-browser-setup
+      - name: Run UI checkstyle
+        id: checkstyle
+        uses: ./.github/actions/ui-checkstyle
+      - name: Run UI unit tests
+        id: unit
+        if: ${{ needs.plan.outputs.ui-unit == 'true' }}
+        uses: ./.github/actions/ui-unit
+        with:
+          base: ${{ github.event_name == 'pull_request' && 'HEAD^1' || '' }}
+      - name: Select browser tests
+        id: browser-select
+        uses: ./.github/actions/ui-browser-select
+      - name: Run core components tests
+        id: core
+        if: ${{ steps.browser-select.outputs.core == 'true' }}
+        uses: ./.github/actions/ui-core-components
+      - name: Run browser tests
+        id: browser
+        if: ${{ steps.browser-select.outputs.mode != 'none' }}
+        uses: ./.github/actions/ui-browser-run
+        with:
+          mode: ${{ steps.browser-select.outputs.mode }}
+      - name: Report browser tests
+        id: browser-report
+        if: ${{ !cancelled() && (steps.browser.outcome == 'success' || steps.browser.outcome == 'failure') }}
+        uses: ./.github/actions/ui-browser-report
+      # The step result feeds ui-tests-status; a failed stage already fails the job.
+      - name: Verify selected UI stages
+        id: gate
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: ./.github/actions/ci-status-gate
+        with:
+          needs: |
+            {
+              "ui-lint": {"result": "${{ steps.checkstyle.outcome }}"},
+              "ui-unit": {"result": "${{ steps.unit.outcome }}"},
+              "ui-browser-select": {"result": "${{ steps.browser-select.outcome }}"},
+              "ui-core": {"result": "${{ steps.core.outcome }}"},
+              "ui-browser": {"result": "${{ steps.browser.outcome }}"},
+              "ui-browser-report": {"result": "${{ steps.browser-report.outcome }}"}
+            }
+          expected: |
+            {
+              "ui-lint": "success",
+              "ui-unit": "${{ needs.plan.outputs.ui-unit == 'true' && 'success' || 'skipped' }}",
+              "ui-browser-select": "success",
+              "ui-core": "${{ steps.browser-select.outputs.core == 'true' && 'success' || 'skipped' }}",
+              "ui-browser": "${{ steps.browser-select.outputs.mode != 'none' && 'success' || 'skipped' }}",
+              "ui-browser-report": "${{ steps.browser-select.outputs.mode != 'none' && 'success' || 'skipped' }}"
+            }
+      - name: Report ui-lint
+        if: ${{ always() && env.CAN_REPORT_CHECKS == 'true' }}
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
+        with:
+          token: ${{ github.token }}
+          sha: ${{ github.event.pull_request.head.sha || github.sha }}
+          name: ui-lint
+          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || steps.checkstyle.outcome || 'skipped' }}
+          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      - name: Report ui-unit
+        if: ${{ always() && env.CAN_REPORT_CHECKS == 'true' }}
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
+        with:
+          token: ${{ github.token }}
+          sha: ${{ github.event.pull_request.head.sha || github.sha }}
+          name: ui-unit
+          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || steps.unit.outcome || 'skipped' }}
+          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      - name: Report ui-browser
+        if: ${{ always() && env.CAN_REPORT_CHECKS == 'true' }}
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
+        with:
+          token: ${{ github.token }}
+          sha: ${{ github.event.pull_request.head.sha || github.sha }}
+          name: ui-browser
+          conclusion: >-
+            ${{ job.status == 'cancelled' && 'cancelled'
+            || (steps.browser-select.outcome == 'failure' || steps.core.outcome == 'failure' || steps.browser.outcome == 'failure' || steps.browser-report.outcome == 'failure') && 'failure'
+            || steps.browser-select.outcome == 'success' && 'success'
+            || 'skipped' }}
+          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-  # Required check for the UI. Like py-tests-status it must run on every
-  # non-draft PR: a job skipped by `if` reports success.
+  # Required check for the UI, published as a job so fork PRs report it too. Like
+  # py-tests-status it must run on every non-draft PR: a job skipped by `if`
+  # reports success.
   ui-tests-status:
     name: ui-tests-status
-    needs: [plan, ui-lint, ui-unit, ui-browser]
+    needs: [plan, ui]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-slim
     timeout-minutes: 2
@@ -233,13 +320,17 @@ jobs:
           sparse-checkout: .github/actions/ci-status-gate
       - uses: ./.github/actions/ci-status-gate
         with:
-          needs: ${{ toJSON(needs) }}
+          needs: |
+            {
+              "plan": {"result": "${{ needs.plan.result }}"},
+              "ui": {"result": "${{ needs.ui.result }}"},
+              "ui-gate": {"result": "${{ needs.ui.outputs.gate || 'skipped' }}"}
+            }
           expected: |
             {
               "plan": "success",
-              "ui-lint": "${{ needs.plan.outputs.ui == 'true' && 'success' || 'skipped' }}",
-              "ui-unit": "${{ needs.plan.outputs.ui-unit == 'true' && 'success' || 'skipped' }}",
-              "ui-browser": "${{ needs.plan.outputs.ui == 'true' && 'success' || 'skipped' }}"
+              "ui": "${{ needs.plan.outputs.ui == 'true' && 'success' || 'skipped' }}",
+              "ui-gate": "${{ needs.plan.outputs.ui == 'true' && 'success' || 'skipped' }}"
             }
 
   # TEMPORARY: the merge-rules ruleset still requires these two names. Remove

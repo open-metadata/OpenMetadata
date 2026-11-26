@@ -166,12 +166,31 @@ def test_gate_rejects_unexpected_results_and_dependencies(gate):
     assert gate({"a": {"result": "success"}, "omitted-job": {"result": "failure"}}, {"a": "success"}).returncode != 0
 
 
+def gate_inputs(step):
+    def parse(text):
+        return json.loads(re.sub(r"\$\{\{.*?\}\}", "success", text, flags=re.S))
+
+    needs = step["with"]["needs"]
+    return needs, parse(step["with"]["expected"]), (None if "toJSON(needs)" in needs else parse(needs))
+
+
 @pytest.mark.parametrize("name", ["ci-pr.yml", "ci-merge-queue.yml"])
 def test_ui_status_expects_a_result_for_every_dependency(name):
     job = workflow(name)["jobs"]["ui-tests-status"]
-    gate_step = next(step for step in job["steps"] if step.get("uses") == "./.github/actions/ci-status-gate")
-    expected = re.sub(r"\$\{\{.*?\}\}", "success", gate_step["with"]["expected"])
-    assert set(json.loads(expected)) == set(job["needs"])
+    step = next(step for step in job["steps"] if step.get("uses") == "./.github/actions/ci-status-gate")
+    _, expected, reported = gate_inputs(step)
+    reported = set(job["needs"]) if reported is None else set(reported)
+    assert set(expected) == reported
+    assert set(job["needs"]) <= reported
+
+
+def test_pr_ui_gate_covers_every_stage():
+    steps = workflow("ci-pr.yml")["jobs"]["ui"]["steps"]
+    gate = next(step for step in steps if step.get("id") == "gate")
+    raw_needs, expected, reported = gate_inputs(gate)
+    stages = {step["id"] for step in steps if step.get("uses", "").startswith("./.github/actions/ui-") and "id" in step}
+    assert set(re.findall(r"steps\.([\w-]+)\.outcome", raw_needs)) == stages
+    assert set(reported) == set(expected)
 
 
 def test_nightly_gate_requires_every_dependency_to_succeed():

@@ -12,10 +12,10 @@ allowed-tools:
 
 # UI Checkstyle / ESLint + Prettier + organize-imports
 
-The `UI Checkstyle` reusable workflow (`.github/workflows/ui-checkstyle.yml`,
-called by `ci-pr.yml` and `ci-merge-queue.yml` when the UI changed) runs
-a **single `checkstyle` job** whose
-steps gate **six** checks, each on only the files the PR changed:
+The `ui-checkstyle` composite action (`.github/actions/ui-checkstyle/action.yml`,
+run by the `ui` job of `ci-pr.yml` and the `ui-lint` job of `ci-merge-queue.yml`
+when the UI changed) runs steps that gate, among others, these **six** checks,
+each on only the files the PR changed:
 
 1. ESLint + Prettier + organize-imports on **src**
    (`openmetadata-ui/src/main/resources/ui/src/...`)

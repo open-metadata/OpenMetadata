@@ -1,0 +1,68 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: UI browser tests run
+description: >-
+  Runs one shard of the selected browser tests with coverage and a blob report
+  in .vitest-reports, which ./.github/actions/ui-browser-report merges. Expects
+  ./.github/actions/ui-browser-setup and selection.json in the UI directory.
+inputs:
+  mode:
+    description: Selection mode, all or selected.
+    required: true
+  shard:
+    description: This shard's number.
+    required: false
+    default: '1'
+  shard-count:
+    description: Number of shards.
+    required: false
+    default: '1'
+runs:
+  using: composite
+  steps:
+    - name: Run browser tests with coverage
+      id: tests
+      working-directory: openmetadata-ui/src/main/resources/ui
+      continue-on-error: true
+      env:
+        # Runs on code that reaches main record what each test file executes;
+        # a passing one writes (full run) or updates (queue entry) the map.
+        # Pull requests skip it: their map is never used.
+        BROWSER_IMPACT_DIR: ${{ github.event_name != 'pull_request' && format('{0}/openmetadata-ui/src/main/resources/ui/.impact', github.workspace) || '' }}
+      # The blob report carries this shard's results and coverage for the
+      # merge in browser-tests-report.
+      run: |
+        files=()
+        if [ "${{ inputs.mode }}" = "selected" ]; then
+          mapfile -t files < <(jq -r '.tests[]' selection.json)
+        fi
+        yarn test:ui:coverage --shard=${{ inputs.shard }}/${{ inputs.shard-count }} \
+          --passWithNoTests --reporter=default --reporter=blob "${files[@]}"
+      shell: bash
+    - name: Upload failure screenshots
+      if: always() && steps.tests.outcome == 'failure'
+      uses: actions/upload-artifact@v7
+      with:
+        name: ui-browser-failures-${{ inputs.shard }}
+        path: |
+          openmetadata-ui/src/main/resources/ui/src/**/__screenshots__/**
+          openmetadata-ui/src/main/resources/ui/.vitest-attachments/**
+        if-no-files-found: ignore
+    - name: Fail if tests failed
+      if: always() && steps.tests.outcome == 'failure'
+      run: exit 1
+
+# Merges the shards into one result. A pull request gets one report in the
+# job summary (PR jobs post no comments, ADR:2026-11-10-pr-jobs-never-receive-credentials):
+# what ran and why, the result, and the changed code the tests executed. A passing run publishes
+# the impact map.
+      shell: bash

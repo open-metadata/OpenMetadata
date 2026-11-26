@@ -7,11 +7,10 @@ ui:
   - openmetadata-spec/src/main/resources/json/schema/**
   - .github/ui-ci/**
   - .github/actions/ci-status-gate/**
-  - .github/actions/ui-browser-setup/**
+  - .github/actions/setup-ui/**
+  - .github/actions/ui-*/**
   - .github/workflows/ci-pr.yml
   - .github/workflows/ci-merge-queue.yml
-  - .github/workflows/ui-checkstyle.yml
-  - .github/workflows/ui-unit-tests.yml
   - .github/workflows/ui-browser-tests.yml
 ui-unit:
   - openmetadata-ui/src/main/resources/ui/src/**
@@ -29,4 +28,5 @@ ui-unit:
   - .github/ui-ci/**
   - .github/workflows/ci-pr.yml
   - .github/workflows/ci-merge-queue.yml
-  - .github/workflows/ui-unit-tests.yml
+  - .github/actions/setup-ui/**
+  - .github/actions/ui-unit/**
