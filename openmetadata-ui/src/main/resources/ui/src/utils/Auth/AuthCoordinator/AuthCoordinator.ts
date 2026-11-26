@@ -371,6 +371,26 @@ export class AuthCoordinator {
           if (signedOut()) {
             throw new SignedOutDuringRefreshError();
           }
+          // The renewer contract is to return a not-yet-expired ID token
+          // or throw. A result with a missing/empty `idToken` or an
+          // `expiresAt` already in the past (beyond the pre-expiry leeway
+          // `isRenewResult` allows) would otherwise be persisted under the
+          // lock and re-arm the proactive timer with the past expiry
+          // (delay clamps to 0 → a self-sustaining renew loop → circuit
+          // breaker sign-out). Reject it here so the symptom collapses to
+          // a single `refresh-failed` exactly like a renewer that threw,
+          // and no dead token reaches storage or sibling tabs. Symmetric
+          // to the follower's `isRenewResult` guard on the `done` payload.
+          if (!this.isRenewResult(result)) {
+            throw new Error(
+              `Renewer returned an invalid or already-expired token (idToken present=${Boolean(
+                (result as { idToken?: unknown } | null | undefined)?.idToken
+              )}, expiresAt=${
+                (result as { expiresAt?: unknown } | null | undefined)
+                  ?.expiresAt ?? 'n/a'
+              })`
+            );
+          }
           renewedResult = result;
 
           return result;
@@ -566,9 +586,22 @@ export class AuthCoordinator {
       expiresAt: result.expiresAt,
       idToken: result.idToken,
     });
-    this.timer.schedule(result.expiresAt, () => {
-      this.ensureFreshToken().catch(() => undefined);
-    });
+    // `isRenewResult` accepts a result whose `expiresAt` is up to
+    // `EXPIRY_THRESHOLD_MILLES` in the past (clock skew / processing
+    // delay). ProactiveTimer clamps a non-positive delay to 0, so
+    // scheduling such a result would fire the timer immediately,
+    // re-enter `ensureFreshToken`, and — if the renewer kept returning
+    // that same cached boundary token (the Auth0 v2 fast-path
+    // regression this PR guards against) — renew, write, and broadcast
+    // in a tight loop that never reaches the 401 circuit breaker. Only
+    // arm the timer when the remaining lifetime clears the pre-expiry
+    // buffer; otherwise the next real 401 still drives a refresh via
+    // the axios interceptor (Greptile P1 review on this PR).
+    if (result.expiresAt > Date.now() + EXPIRY_THRESHOLD_MILLES) {
+      this.timer.schedule(result.expiresAt, () => {
+        this.ensureFreshToken().catch(() => undefined);
+      });
+    }
 
     return result.idToken;
   }

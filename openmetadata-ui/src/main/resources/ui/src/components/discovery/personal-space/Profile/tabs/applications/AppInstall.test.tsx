@@ -176,6 +176,7 @@ describe('AppInstall', () => {
         appSchedule: {
           scheduleTimeline: ScheduleTimeline.Custom,
           cronExpression: '0 0 * * *',
+          timezone: expect.any(String),
         },
       })
     );

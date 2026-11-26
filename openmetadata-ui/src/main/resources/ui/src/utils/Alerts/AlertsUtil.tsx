@@ -27,6 +27,7 @@ import { uniq, uniqBy } from 'lodash';
 import { Fragment } from 'react';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
+import AlertPendingEvents from '../../components/Alerts/AlertPendingEvents/AlertPendingEvents';
 import { InlineAlertType } from '../../components/common/InlineAlert/InlineAlert.interface';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { UUID_REGEX } from '../../constants/regex.constants';
@@ -332,10 +333,7 @@ export const getAlertExtraInfo = (
         label={t('label.pending-entity', {
           entity: t('label.event-plural'),
         })}
-        value={formatEventCount(
-          alertEventCounts?.pendingEventsCount,
-          alertEventCounts?.countsAreLowerBound
-        )}
+        value={<AlertPendingEvents counts={alertEventCounts} />}
       />
       <ExtraInfoLabel
         inlineLayout

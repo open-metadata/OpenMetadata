@@ -21,6 +21,7 @@ from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 from testcontainers.postgres import PostgresContainer
 
+from _openmetadata_testutils.helpers.database_images import postgres_source_image
 from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
@@ -33,7 +34,7 @@ from ..prefect.conftest import prefect_server  # noqa: F401, TID252
 
 @pytest.fixture(scope="module")
 def tagged_postgres():
-    with PostgresContainer("postgres:16", dbname="demo_db") as container:
+    with PostgresContainer(postgres_source_image(), dbname="demo_db") as container:
         engine = create_engine(container.get_connection_url())
         try:
             with engine.begin() as connection:
