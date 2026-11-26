@@ -152,6 +152,11 @@ export interface EmbeddingsGoogle {
 }
 
 export interface EmbeddingsOpenai {
+    /**
+     * Azure OpenAI deployment for embeddings. When unset, uses the deploymentName from
+     * llmConfiguration.openai.
+     */
+    deploymentName?:     string;
     embeddingDimension?: number;
     embeddingModelId?:   string;
 }

@@ -132,6 +132,7 @@ import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftSt
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
@@ -1554,10 +1555,10 @@ public class SystemRepository implements DeploymentSettingPreparer {
           openaiCreds == null || nullOrEmpty(openaiCreds.getEndpoint())
               ? "api.openai.com"
               : openaiCreds.getEndpoint();
+      String deploymentName =
+          OpenAIEmbeddingClient.azureDeploymentName(openaiCreds, embeddings.getOpenai());
       String deploymentInfo =
-          openaiCreds == null || nullOrEmpty(openaiCreds.getDeploymentName())
-              ? ""
-              : String.format(", deploymentName: %s", openaiCreds.getDeploymentName());
+          deploymentName == null ? "" : String.format(", deploymentName: %s", deploymentName);
       message =
           String.format(
               "OpenAI configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s%s",

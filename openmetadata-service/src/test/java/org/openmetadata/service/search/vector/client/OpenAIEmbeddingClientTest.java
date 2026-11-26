@@ -6,11 +6,16 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -23,10 +28,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.net.ssl.SSLSession;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.configuration.LLMOpenAIConfig;
 import org.openmetadata.schema.configuration.LLMOpenAIEmbeddingConfig;
+import org.openmetadata.service.llm.OpenAICompletionClient;
 import org.openmetadata.service.search.vector.client.EmbeddingClient.EmbeddingUsage;
 
 class OpenAIEmbeddingClientTest {
@@ -183,26 +191,58 @@ class OpenAIEmbeddingClientTest {
     assertEquals("text-embedding-ada-002", client.getModelId());
   }
 
-  @Test
-  void testAzureEndpointResolution() {
-    LLMConfiguration config =
-        new LLMConfiguration()
-            .withOpenai(
-                new LLMOpenAIConfig()
-                    .withApiKey("test-key")
-                    .withEndpoint("https://my-resource.openai.azure.com")
-                    .withDeploymentName("my-deployment")
-                    .withApiVersion("2024-02-01"))
-            .withEmbeddings(
-                new LLMEmbeddingsConfig()
-                    .withProvider(LLMEmbeddingsConfig.Provider.OPENAI)
-                    .withOpenai(
-                        new LLMOpenAIEmbeddingConfig()
-                            .withEmbeddingModelId("text-embedding-3-small")
-                            .withEmbeddingDimension(1536)));
+  @ParameterizedTest
+  @CsvSource({
+    "chat, vectors, /openai/deployments/chat/chat/completions, /openai/deployments/vectors/embeddings",
+    "shared, , /openai/deployments/shared/chat/completions, /openai/deployments/shared/embeddings",
+    "shared, ' ', /openai/deployments/shared/chat/completions, /openai/deployments/shared/embeddings",
+    ", vectors, /chat/completions, /openai/deployments/vectors/embeddings",
+    ", , /chat/completions, /embeddings"
+  })
+  void routesChatAndEmbeddings(
+      String chatDeployment, String embeddingDeployment, String chatPath, String embeddingPath)
+      throws IOException {
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        chatPath,
+        exchange ->
+            serveProviderResponse(
+                exchange, chatPath, "{\"choices\":[{\"message\":{\"content\":\"ok\"}}]}"));
+    server.createContext(
+        embeddingPath,
+        exchange ->
+            serveProviderResponse(exchange, embeddingPath, "{\"data\":[{\"embedding\":[0.5]}]}"));
+    server.start();
+    try {
+      LLMConfiguration config = buildConfig("test-key", "text-embedding-3-small", 1);
+      config
+          .getOpenai()
+          .withEndpoint("http://127.0.0.1:" + server.getAddress().getPort() + "/")
+          .withDeploymentName(chatDeployment)
+          .withApiVersion("2024-02-01");
+      config.getEmbeddings().getOpenai().setDeploymentName(embeddingDeployment);
 
-    OpenAIEmbeddingClient client = new OpenAIEmbeddingClient(config);
-    assertNotNull(client);
+      assertEquals("ok", new OpenAICompletionClient(config).complete("system", "prompt").text());
+      assertEquals(0.5f, new OpenAIEmbeddingClient(config).embed("input")[0]);
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  private static void serveProviderResponse(HttpExchange exchange, String path, String response)
+      throws IOException {
+    try (exchange) {
+      boolean azure = path.startsWith("/openai/deployments/");
+      String uri = azure ? path + "?api-version=2024-02-01" : path;
+      String credential =
+          exchange.getRequestHeaders().getFirst(azure ? "api-key" : "Authorization");
+      boolean accepted =
+          exchange.getRequestURI().toString().equals(uri)
+              && (azure ? "test-key" : "Bearer test-key").equals(credential);
+      byte[] body = response.getBytes(StandardCharsets.UTF_8);
+      exchange.sendResponseHeaders(accepted ? 200 : 400, body.length);
+      exchange.getResponseBody().write(body);
+    }
   }
 
   @Test

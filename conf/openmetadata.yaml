@@ -706,8 +706,8 @@ llmConfiguration:
     baseUrl: ${LLM_ANTHROPIC_BASE_URL:-"https://api.anthropic.com"}
     maxTokens: ${LLM_ANTHROPIC_MAX_TOKENS:-4096}
   # Vector embeddings for semantic search. Credentials reuse the provider blocks above
-  # (bedrock.awsConfig, openai.apiKey/endpoint, google.apiKey); this section only selects the
-  # embedding provider + model. The embedding provider may differ from the chat provider above.
+  # (bedrock.awsConfig, openai.apiKey/endpoint, google.apiKey). The embedding provider may differ
+  # from the chat provider above.
   embeddings:
     provider: ${EMBEDDING_PROVIDER:-bedrock}  # bedrock | openai | google | djl
     maxConcurrentRequests: ${MAX_CONCURRENT_EMBEDDING_REQUESTS:-10}
@@ -715,6 +715,7 @@ llmConfiguration:
       embeddingModelId: ${AWS_BEDROCK_EMBED_MODEL_ID:-"amazon.titan-embed-text-v2:0"}
       embeddingDimension: ${AWS_BEDROCK_EMBEDDING_DIMENSION:-512}
     openai:
+      deploymentName: ${OPENAI_EMBEDDING_DEPLOYMENT:-""}  # Azure: defaults to LLM_OPENAI_DEPLOYMENT
       embeddingModelId: ${OPENAI_EMBEDDING_MODEL_ID:-"text-embedding-3-small"}
       embeddingDimension: ${OPENAI_EMBEDDING_DIMENSION:-1536}
     google:

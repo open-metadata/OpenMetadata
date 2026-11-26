@@ -11,6 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMOpenAIConfig;
 import org.openmetadata.schema.configuration.LLMOpenAIEmbeddingConfig;
@@ -52,19 +53,22 @@ public final class OpenAIEmbeddingClient extends EmbeddingClient {
     this.dimension = embeddingCfg.getEmbeddingDimension();
 
     String endpoint = openaiCfg.getEndpoint();
-    String deploymentName = openaiCfg.getDeploymentName();
-    boolean hasEndpoint = endpoint != null && !endpoint.isBlank();
-    boolean hasDeployment = deploymentName != null && !deploymentName.isBlank();
-
-    this.isAzure = hasEndpoint && hasDeployment;
-
-    if (this.isAzure
-        && (openaiCfg.getApiVersion() == null || openaiCfg.getApiVersion().isBlank())) {
+    String deploymentName = azureDeploymentName(openaiCfg, embeddingCfg);
+    this.isAzure = deploymentName != null;
+    if (isAzure && StringUtils.isBlank(openaiCfg.getApiVersion())) {
       throw new IllegalArgumentException(
           "Azure API version is required for Azure OpenAI deployments");
     }
 
-    this.endpoint = resolveEndpoint(openaiCfg);
+    String base =
+        StringUtils.stripEnd(
+            StringUtils.defaultIfBlank(endpoint, "https://api.openai.com/v1"), "/");
+    this.endpoint =
+        isAzure
+            ? String.format(
+                "%s/openai/deployments/%s/embeddings?api-version=%s",
+                base, deploymentName, openaiCfg.getApiVersion())
+            : base + "/embeddings";
     this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
 
     LOG.info(
@@ -103,23 +107,12 @@ public final class OpenAIEmbeddingClient extends EmbeddingClient {
     this.isAzure = isAzure;
   }
 
-  private String resolveEndpoint(LLMOpenAIConfig config) {
-    String endpoint = config.getEndpoint();
-    String deploymentName = config.getDeploymentName();
-    boolean hasEndpoint = endpoint != null && !endpoint.isBlank();
-    boolean hasDeployment = deploymentName != null && !deploymentName.isBlank();
-
-    if (hasEndpoint && hasDeployment) {
-      String base = endpoint.replaceAll("/+$", "");
-      return String.format(
-          "%s/openai/deployments/%s/embeddings?api-version=%s",
-          base, deploymentName, config.getApiVersion());
-    }
-    if (hasEndpoint) {
-      String base = endpoint.replaceAll("/+$", "");
-      return base + "/embeddings";
-    }
-    return "https://api.openai.com/v1/embeddings";
+  /** The deployment used by embedding requests and reported by setup validation. */
+  public static String azureDeploymentName(
+      LLMOpenAIConfig openai, LLMOpenAIEmbeddingConfig embeddings) {
+    return openai != null && embeddings != null && StringUtils.isNotBlank(openai.getEndpoint())
+        ? StringUtils.firstNonBlank(embeddings.getDeploymentName(), openai.getDeploymentName())
+        : null;
   }
 
   @Override

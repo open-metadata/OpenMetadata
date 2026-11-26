@@ -132,6 +132,10 @@
           "type": "object",
           "javaType": "org.openmetadata.schema.configuration.LLMOpenAIEmbeddingConfig",
           "properties": {
+            "deploymentName": {
+              "type": "string",
+              "description": "Azure OpenAI deployment for embeddings. When unset, uses the deploymentName from llmConfiguration.openai."
+            },
             "embeddingModelId": { "type": "string", "default": "text-embedding-3-small" },
             "embeddingDimension": { "type": "integer", "default": 1536 }
           },
