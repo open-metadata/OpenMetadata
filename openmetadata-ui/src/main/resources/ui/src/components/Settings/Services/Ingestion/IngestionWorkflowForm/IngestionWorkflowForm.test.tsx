@@ -28,6 +28,10 @@ import {
 import profilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import IngestionWorkflowForm from './IngestionWorkflowForm';
 
+beforeEach(() => {
+  globalThis.HTMLElement.prototype.scrollIntoView = jest.fn();
+});
+
 const DBT_WORKFLOW_DATA = {
   name: 'dbt_agent',
   type: 'DBT',
@@ -551,4 +555,111 @@ describe('metadata sharding visibility and omitted defaults', () => {
       }
     }
   );
+});
+
+describe('IngestionWorkflowForm collapsed section validation', () => {
+  const renderAutoClassificationForm = (onSubmit = jest.fn()) =>
+    render(
+      <IngestionWorkflowForm
+        okText="Submit"
+        pipeLineType={PipelineType.AutoClassification}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        workflowData={
+          {
+            name: 'classification-agent',
+            type: 'AutoClassification',
+            confidence: 150,
+          } as unknown as IngestionWorkflowData
+        }
+        onCancel={jest.fn()}
+        onFocus={jest.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+  it('blocks submit and opens the section when a collapsed field is out of range', async () => {
+    const onSubmit = jest.fn();
+    const { container } = renderAutoClassificationForm(onSubmit);
+
+    await screen.findByTestId('submit-btn');
+
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    const error = await screen.findByText(
+      'message.value-must-be-less-than-or-equal'
+    );
+
+    expect(error.closest('.tw\\:hidden')).toBeNull();
+    expect(
+      container
+        .querySelector('[data-field-name="databaseFilterPattern"]')
+        ?.closest('.tw\\:hidden')
+    ).not.toBeNull();
+    expect(document.activeElement?.id).toBe('root/confidence');
+    expect(
+      jest.mocked(HTMLElement.prototype.scrollIntoView).mock.contexts[0]
+    ).toBe(document.activeElement);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('reopens the section on a later submit after the user collapses it again', async () => {
+    const onSubmit = jest.fn();
+    const { container } = renderAutoClassificationForm(onSubmit);
+    const form = container.querySelector('form') as HTMLFormElement;
+
+    await screen.findByTestId('submit-btn');
+    await act(async () => {
+      fireEvent.submit(form);
+    });
+    const error = await screen.findByText(
+      'message.value-must-be-less-than-or-equal'
+    );
+
+    fireEvent.click(screen.getByTestId('ingestion-section-advanced-toggle'));
+
+    expect(error.closest('.tw\\:hidden')).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.submit(form);
+    });
+
+    expect(
+      screen
+        .getByText('message.value-must-be-less-than-or-equal')
+        .closest('.tw\\:hidden')
+    ).toBeNull();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+describe('IngestionWorkflowForm field layout', () => {
+  it('renders a field that is alone in its row at full width', async () => {
+    const { container } = render(
+      <IngestionWorkflowForm
+        okText="Submit"
+        pipeLineType={PipelineType.AutoClassification}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        workflowData={
+          {
+            name: 'classification-agent',
+            type: 'AutoClassification',
+          } as unknown as IngestionWorkflowData
+        }
+        onCancel={jest.fn()}
+        onFocus={jest.fn()}
+        onSubmit={jest.fn()}
+      />
+    );
+
+    await screen.findByTestId('submit-btn');
+
+    const field = container.querySelector(
+      '[data-field-name="classificationLanguage"]'
+    );
+
+    expect(field).toHaveClass('tw:w-full');
+    expect(field?.parentElement).not.toHaveClass('tw:grid');
+  });
 });
