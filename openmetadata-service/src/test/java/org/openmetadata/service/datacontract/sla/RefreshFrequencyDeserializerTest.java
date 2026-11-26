@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import jakarta.json.Json;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -33,6 +34,8 @@ import org.openmetadata.schema.utils.RefreshFrequencyDeserializer;
 import org.openmetadata.service.JsonPatchProvider;
 
 class RefreshFrequencyDeserializerTest {
+  private static final List<String> UNITS = List.of("minute", "hour", "day");
+
   private final ObjectMapper json = new JsonPatchProvider().getContext(CreateDataContract.class);
   private final ObjectMapper yaml =
       new YAMLMapper().registerModule(RefreshFrequencyDeserializer.module());
@@ -40,6 +43,7 @@ class RefreshFrequencyDeserializerTest {
   @ParameterizedTest
   @ValueSource(
       strings = {
+        "0.25",
         "15.5",
         "15.000000000000000001",
         "2147483648",
@@ -49,31 +53,35 @@ class RefreshFrequencyDeserializerTest {
         "Infinity",
         "-Infinity"
       })
-  void nativeReadersRejectLossyMinuteIntervals(String interval) {
-    String request =
-        "{\"sla\":{\"refreshFrequency\":{\"unit\":\"minute\",\"interval\":%s}}}"
-            .formatted(interval);
-    assertThrows(
-        JsonMappingException.class, () -> json.readValue(request, CreateDataContract.class));
+  void nativeReadersRejectLossyIntervalsAcrossUnits(String interval) {
+    for (String unit : UNITS) {
+      String request =
+          "{\"sla\":{\"refreshFrequency\":{\"unit\":\"%s\",\"interval\":%s}}}"
+              .formatted(unit, interval);
+      assertThrows(
+          JsonMappingException.class, () -> json.readValue(request, CreateDataContract.class));
 
-    String yamlRequest =
-        "sla:\n  refreshFrequency: {interval: %s, unit: minute}".formatted(interval);
-    assertThrows(
-        JsonMappingException.class, () -> yaml.readValue(yamlRequest, CreateDataContract.class));
+      String yamlRequest =
+          "sla:\n  refreshFrequency: {interval: %s, unit: %s}".formatted(interval, unit);
+      assertThrows(
+          JsonMappingException.class, () -> yaml.readValue(yamlRequest, CreateDataContract.class));
+    }
   }
 
   @ParameterizedTest
   @ValueSource(ints = {Integer.MIN_VALUE, -1, 0, 15, Integer.MAX_VALUE})
-  void nativeMinuteIntervalsKeepTheSignedIntegerRange(int interval) throws Exception {
-    String input = "{\"interval\":%d.0,\"unit\":\"minute\"}".formatted(interval);
-    RefreshFrequency frequency = json.readValue(input, RefreshFrequency.class);
+  void nativeIntervalsKeepTheSignedIntegerRangeAcrossUnits(int interval) throws Exception {
+    for (String unit : UNITS) {
+      String input = "{\"interval\":%d.0,\"unit\":\"%s\"}".formatted(interval, unit);
+      RefreshFrequency frequency = json.readValue(input, RefreshFrequency.class);
 
-    assertEquals(interval, frequency.getInterval());
-    assertEquals(RefreshFrequency.Unit.MINUTE, frequency.getUnit());
+      assertEquals(interval, frequency.getInterval());
+      assertEquals(RefreshFrequency.Unit.fromValue(unit), frequency.getUnit());
+    }
   }
 
   @Test
-  void patchValidatesTheFinalUnitBeforeIntegerCoercion() {
+  void patchRejectsFractionalIntervalsForMinuteAndOtherUnits() {
     DataContract stored =
         new DataContract()
             .withSla(
@@ -82,22 +90,29 @@ class RefreshFrequencyDeserializerTest {
                         new RefreshFrequency()
                             .withUnit(RefreshFrequency.Unit.HOUR)
                             .withInterval(1)));
-    var patch =
+    var minutePatch =
         Json.createPatchBuilder()
             .replace("/sla/refreshFrequency/interval", Json.createValue(15.5))
             .replace("/sla/refreshFrequency/unit", "minute")
             .build();
+    var hourPatch =
+        Json.createPatchBuilder()
+            .replace("/sla/refreshFrequency/interval", Json.createValue(0.25))
+            .build();
 
     assertThrows(
         IllegalArgumentException.class,
-        () -> JsonUtils.applyPatch(stored, patch, DataContract.class));
+        () -> JsonUtils.applyPatch(stored, minutePatch, DataContract.class));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> JsonUtils.applyPatch(stored, hourPatch, DataContract.class));
   }
 
   @Test
-  void existingHourCoercionAndAdditionalPropertiesArePreserved() throws Exception {
+  void wholeHourIntervalPreservesAdditionalProperties() throws Exception {
     String input =
         """
-        {"interval": 15.5, "unit": "hour", "extension": {"key": "value"}}
+        {"interval": 15, "unit": "hour", "extension": {"key": "value"}}
         """;
     RefreshFrequency frequency = json.readValue(input, RefreshFrequency.class);
 

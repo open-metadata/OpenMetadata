@@ -3084,34 +3084,36 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"15.5", "15.000000000000000001", "2147483648", "null"})
-  void testInvalidMinuteIntervalIsRejectedByNativeRequests(String interval, TestNamespace ns) {
+  @ValueSource(strings = {"0.25", "15.5", "15.000000000000000001", "2147483648", "null"})
+  void testInvalidRefreshIntervalIsRejectedByNativeRequests(String interval, TestNamespace ns) {
     Table table = createTestTable(ns);
     OpenMetadataClient client = SdkClients.adminClient();
-    String name = ns.prefix("invalid_minute");
-    String request =
-        """
-        {
-          "name": "%s",
-          "entity": {"id": "%s", "type": "table"},
-          "sla": {"refreshFrequency": {"unit": "minute", "interval": %s}}
-        }
-        """
-            .formatted(name, table.getId(), interval);
-    assertInvalidMinuteRequest(
-        client, HttpMethod.POST, "/v1/dataContracts", request, "application/json");
-    String yaml =
-        """
-        name: %s
-        entity: {id: %s, type: table}
-        sla:
-          refreshFrequency:
-            interval: %s
-            unit: minute
-        """
-            .formatted(name, table.getId(), interval);
-    assertInvalidMinuteRequest(
-        client, HttpMethod.PUT, "/v1/dataContracts", yaml, "application/yaml");
+    String name = ns.prefix("invalid_refresh");
+    for (String unit : List.of("minute", "hour")) {
+      String request =
+          """
+          {
+            "name": "%s",
+            "entity": {"id": "%s", "type": "table"},
+            "sla": {"refreshFrequency": {"unit": "%s", "interval": %s}}
+          }
+          """
+              .formatted(name, table.getId(), unit, interval);
+      assertInvalidMinuteRequest(
+          client, HttpMethod.POST, "/v1/dataContracts", request, "application/json");
+      String yaml =
+          """
+          name: %s
+          entity: {id: %s, type: table}
+          sla:
+            refreshFrequency:
+              interval: %s
+              unit: %s
+          """
+              .formatted(name, table.getId(), interval, unit);
+      assertInvalidMinuteRequest(
+          client, HttpMethod.PUT, "/v1/dataContracts", yaml, "application/yaml");
+    }
 
     DataContract contract =
         createEntity(
@@ -3120,13 +3122,23 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                 .withEntity(table.getEntityReference())
                 .withSla(new ContractSLA().withRefreshFrequency(minuteFrequency(15))));
     String path = "/v1/dataContracts/" + contract.getId();
-    String patch =
+    String minutePatch =
         """
         [{"op": "replace", "path": "/sla/refreshFrequency/interval", "value": %s}]
         """
             .formatted(interval);
     assertInvalidMinuteRequest(
-        client, HttpMethod.PATCH, path, patch, "application/json-patch+json");
+        client, HttpMethod.PATCH, path, minutePatch, "application/json-patch+json");
+    String hourPatch =
+        """
+        [
+          {"op": "replace", "path": "/sla/refreshFrequency/unit", "value": "hour"},
+          {"op": "replace", "path": "/sla/refreshFrequency/interval", "value": %s}
+        ]
+        """
+            .formatted(interval);
+    assertInvalidMinuteRequest(
+        client, HttpMethod.PATCH, path, hourPatch, "application/json-patch+json");
 
     assertEquals(
         minuteFrequency(15),

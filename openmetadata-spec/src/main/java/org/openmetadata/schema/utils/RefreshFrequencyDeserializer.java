@@ -26,10 +26,9 @@ import com.fasterxml.jackson.databind.util.TokenBuffer;
 import java.io.IOException;
 import org.openmetadata.schema.api.data.RefreshFrequency;
 
-/** Keeps minute intervals exact at Jackson's input boundary before integer coercion. */
+/** Keeps refresh frequency intervals exact at Jackson's input boundary before integer coercion. */
 public final class RefreshFrequencyDeserializer extends DelegatingDeserializer {
   private static final String INTERVAL = "interval";
-  private static final String UNIT = "unit";
 
   private RefreshFrequencyDeserializer(JsonDeserializer<?> delegate) {
     super(delegate);
@@ -58,51 +57,52 @@ public final class RefreshFrequencyDeserializer extends DelegatingDeserializer {
 
   @Override
   public Object deserialize(JsonParser parser, DeserializationContext context) throws IOException {
+    Object result;
     if (!parser.isExpectedStartObjectToken()) {
-      return super.deserialize(parser, context);
-    }
-    try (TokenBuffer buffer = context.bufferForInputBuffering(parser)) {
-      readAndValidate(parser, context, buffer);
-      try (JsonParser replay = buffer.asParserOnFirstToken()) {
-        return super.deserialize(replay, context);
+      result = super.deserialize(parser, context);
+    } else {
+      try (TokenBuffer buffer = context.bufferForInputBuffering(parser)) {
+        readAndValidate(parser, context, buffer);
+        try (JsonParser replay = buffer.asParserOnFirstToken()) {
+          result = super.deserialize(replay, context);
+        }
       }
     }
+    return result;
   }
 
   private static void readAndValidate(
       JsonParser parser, DeserializationContext context, TokenBuffer buffer) throws IOException {
-    boolean isMinute = false;
     boolean hasExactInterval = false;
     buffer.copyCurrentEvent(parser);
     while (parser.nextToken() == JsonToken.FIELD_NAME) {
       String field = parser.currentName();
       buffer.copyCurrentEvent(parser);
       parser.nextToken();
-      if (UNIT.equals(field)) {
-        isMinute = RefreshFrequency.Unit.MINUTE.value().equals(parser.getValueAsString());
-      } else if (INTERVAL.equals(field)) {
+      if (INTERVAL.equals(field)) {
         hasExactInterval = isExactInteger(parser);
       }
       buffer.copyCurrentStructure(parser);
     }
     buffer.copyCurrentEvent(parser);
-    if (isMinute && !hasExactInterval) {
+    if (!hasExactInterval) {
       context.reportInputMismatch(
           RefreshFrequency.class,
-          "The minute refresh frequency interval must be a whole number in the 32-bit integer range.");
+          "The refresh frequency interval must be a whole number in the 32-bit integer range.");
     }
   }
 
   private static boolean isExactInteger(JsonParser parser) throws IOException {
     JsonToken token = parser.currentToken();
-    if (token == null || !token.isNumeric() || parser.isNaN()) {
-      return false;
+    boolean exact = false;
+    if (token != null && token.isNumeric() && !parser.isNaN()) {
+      try {
+        parser.getDecimalValue().intValueExact();
+        exact = true;
+      } catch (ArithmeticException e) {
+        exact = false;
+      }
     }
-    try {
-      parser.getDecimalValue().intValueExact();
-      return true;
-    } catch (ArithmeticException e) {
-      return false;
-    }
+    return exact;
   }
 }

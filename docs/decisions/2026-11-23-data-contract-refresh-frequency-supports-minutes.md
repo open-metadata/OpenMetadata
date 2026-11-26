@@ -14,10 +14,11 @@ native models and must round-trip through the UI and the supported ODCS profiles
 ## Decision
 
 Extend the native refresh frequency unit enum with the singular string `minute`. Each native
-minute interval is an exact signed 32-bit integer, matching the existing native integer range.
-The UI keeps zero available and requires a non-negative value. The ODCS freshness metric keeps
-its existing positive interval requirement and follows the native enum for units. Declared ODCS
-freshness retains precedence over freshness inferred from a quality rule.
+refresh frequency interval is an exact signed 32-bit integer, matching the existing native
+integer range across all units so fractional numbers are rejected rather than truncated.
+The UI requires a positive whole number (minimum 1) for every refresh frequency unit. The ODCS
+freshness metric keeps its existing positive interval requirement and follows the native enum for
+units. Declared ODCS freshness retains precedence over freshness inferred from a quality rule.
 
 The evaluator measures elapsed minutes from the last observed refresh to the existing validation
 time. An observation exactly at the cutoff meets the requirement. Validation scheduling is

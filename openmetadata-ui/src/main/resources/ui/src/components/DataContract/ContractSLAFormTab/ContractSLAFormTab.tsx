@@ -38,7 +38,6 @@ import {
 import {
   ContractSLA,
   DataContract,
-  RefreshFrequencyUnit,
   Timezone,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
@@ -93,17 +92,18 @@ const findColumnItem = (
 const toNumberString = (value?: number) =>
   value === undefined ? '' : String(value);
 
-const MAX_MINUTE_INTERVAL = 2_147_483_647;
-const NON_NEGATIVE_WHOLE_NUMBER = /^[0-9]+(?:\.0+)?$/;
-const DECIMAL_NUMBER =
-  /^-?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/;
+const MIN_REFRESH_INTERVAL = 1;
+const MAX_REFRESH_INTERVAL = 2_147_483_647;
+const WHOLE_NUMBER = /^[0-9]+$/;
 
-const isMinuteInterval = (interval: string) =>
-  NON_NEGATIVE_WHOLE_NUMBER.test(interval) &&
-  Number(interval) <= MAX_MINUTE_INTERVAL;
+const isRefreshInterval = (interval: string) => {
+  if (!WHOLE_NUMBER.test(interval)) {
+    return false;
+  }
+  const value = Number(interval);
 
-const isDecimalNumber = (interval: string) =>
-  DECIMAL_NUMBER.test(interval) && Number.isFinite(Number(interval));
+  return value >= MIN_REFRESH_INTERVAL && value <= MAX_REFRESH_INTERVAL;
+};
 
 const getRefreshFrequencyError = (
   values: Partial<ContractSLAFormValues>,
@@ -115,27 +115,20 @@ const getRefreshFrequencyError = (
   if (!interval && !unit) {
     return undefined;
   }
-  if (!interval || !unit) {
-    const missingField = interval ? 'label.unit' : 'label.interval';
-
-    return t('message.field-text-is-required', { fieldText: t(missingField) });
+  if (!interval) {
+    return t('message.field-text-is-required', {
+      fieldText: t('label.interval'),
+    });
   }
-  if (unit === RefreshFrequencyUnit.Minute) {
-    return isMinuteInterval(interval)
-      ? undefined
-      : t('message.integer-value-out-of-range', {
-          min: 0,
-          max: MAX_MINUTE_INTERVAL,
-        });
+  if (!isRefreshInterval(interval)) {
+    return t('message.integer-value-out-of-range', {
+      min: MIN_REFRESH_INTERVAL,
+      max: MAX_REFRESH_INTERVAL,
+    });
   }
-  if (!isDecimalNumber(interval)) {
-    return t('label.invalid');
-  }
-
-  if (Number(interval) < 0) {
-    return t('message.entity-size-less-than', {
-      entity: t('label.interval'),
-      min: 0,
+  if (!unit) {
+    return t('message.field-text-is-required', {
+      fieldText: t('label.unit'),
     });
   }
 
@@ -148,10 +141,17 @@ const synchronizeRefreshFields = (
 ) => {
   if (field === 'refresh_frequency_interval' && form.getValues(field) === '') {
     form.setValue('refresh_frequency_unit', null);
+    void form.trigger('refresh_frequency_interval');
   }
   if (field === 'refresh_frequency_unit') {
     void form.trigger('refresh_frequency_interval');
   }
+};
+
+const toRefreshInterval = (value?: string) => {
+  const trimmed = value?.trim();
+
+  return trimmed && isRefreshInterval(trimmed) ? Number(trimmed) : undefined;
 };
 
 const toNonNegative = (value?: string) =>
@@ -206,7 +206,7 @@ const SLA_FIELD_GROUP: Partial<
 const toModelledSLA = (
   values: Partial<ContractSLAFormValues>
 ): Pick<ContractSLA, ModelledSLAKey> => {
-  const refreshInterval = toNonNegative(values.refresh_frequency_interval);
+  const refreshInterval = toRefreshInterval(values.refresh_frequency_interval);
   const maxLatency = toNonNegative(values.max_latency_value);
   const retention = toNonNegative(values.retention_period);
 
@@ -500,7 +500,7 @@ export const ContractSLAFormTab: React.FC<{
                     aria-label={t('label.interval')}
                     data-testid="refresh-frequency-interval-input"
                     hint={fieldState.error?.message}
-                    inputMode="decimal"
+                    inputMode="numeric"
                     isInvalid={fieldState.invalid}
                     name={field.name}
                     placeholder={t('label.enter-entity', {

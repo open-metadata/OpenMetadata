@@ -1949,9 +1949,33 @@ test.describe('Data Contracts', () => {
       await clickEditContractButton(page);
       await slaTab.click();
       await expect(interval).toHaveValue('15');
+      await interval.fill('0');
+      await expect(
+        editor.getByText(/enter a whole number between 1 and/i)
+      ).toBeVisible();
+      await expect(saveButton).toBeDisabled();
+
+      await selectDropdownOption({
+        page,
+        testId: 'refresh-frequency-unit-select',
+        optionName: 'Hour',
+      });
+      await interval.fill('0.25');
+      await expect(
+        editor.getByText(/enter a whole number between 1 and/i)
+      ).toBeVisible();
+      await expect(saveButton).toBeDisabled();
+
+      await selectDropdownOption({
+        page,
+        testId: 'refresh-frequency-unit-select',
+        optionName: 'Minute',
+      });
       await interval.fill('15e');
       await expect(interval).toHaveValue('15e');
-      await expect(editor.getByText(/enter a whole number/i)).toBeVisible();
+      await expect(
+        editor.getByText(/enter a whole number between 1 and/i)
+      ).toBeVisible();
       await editor.getByRole('tab', { name: 'Contract Details' }).click();
       await fillContractName(page, 'Updated minute freshness');
       await expect(saveButton).toBeDisabled();
