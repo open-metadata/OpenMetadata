@@ -30,3 +30,6 @@ ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec did.
   `templates/component.cjs`) regenerates every icon file; revisit if call sites reappear.
 - Raw `<svg>`/`<path>` elements, chart and lineage edge styles keep their `strokeWidth` — they are
   not core icons.
+- The core `Icon` component (`foundations/icon/icon.tsx`) keeps its public `strokeWidth` prop and
+  still forwards it (default 1.5) as a root style, where it has the same no-op effect. Removing it
+  changes that component's API, so it is left for a follow-up.
