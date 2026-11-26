@@ -1117,6 +1117,27 @@ describe('ServiceDocPanel Component', () => {
       ).toBeUndefined();
     });
 
+    it('should highlight without scrolling while a field listbox is open', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        '<section data-id="host"></section><section data-id="name"></section>'
+      );
+
+      const { container } = render(
+        <>
+          <button aria-expanded="true" aria-haspopup="listbox" type="button">
+            Language
+          </button>
+          <ServiceDocPanel {...defaultProps} activeField="root/database/name" />
+        </>
+      );
+
+      await waitFor(() => {
+        expect(getSection(container, 'name')?.dataset.highlighted).toBe('true');
+      });
+
+      expect(mockScrollIntoView).not.toHaveBeenCalled();
+    });
+
     it('should align the selected entity summary to the top of the panel', async () => {
       const { container } = render(
         <ServiceDocPanel
