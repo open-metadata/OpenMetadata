@@ -271,6 +271,37 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
   }
 
   @Test
+  void patch_defaultRoleAllowDelete_rejected(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Role role = client.roles().getByName(DEFAULT_ROLE);
+    JsonNode allowDeleteToTrue =
+        new ObjectMapper()
+            .readTree(
+                "[{\"op\":\"replace\",\"path\":\"/allowDelete\",\"value\":true},"
+                    + "{\"op\":\"replace\",\"path\":\"/description\",\"value\":\""
+                    + ns.prefix("lifted")
+                    + "\"}]");
+
+    InvalidRequestException patchError =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PATCH,
+                        "/v1/roles/" + role.getId(),
+                        allowDeleteToTrue,
+                        Role.class));
+    assertEquals(400, patchError.getStatusCode());
+    assertEquals(Boolean.FALSE, client.roles().getByName(DEFAULT_ROLE).getAllowDelete());
+    String roleId = role.getId().toString();
+    InvalidRequestException deleteError =
+        assertThrows(InvalidRequestException.class, () -> deleteEntity(roleId));
+    assertEquals(400, deleteError.getStatusCode());
+  }
+
+  @Test
   void test_roleNamedAdminIsRejected(TestNamespace ns) {
     for (String reservedName : List.of("Admin", "admin")) {
       CreateRole request = createRequest(reservedName, ns);

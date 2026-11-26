@@ -11357,6 +11357,24 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       providerSetter.accept(original.getProvider());
     }
 
+    /**
+     * Keeps an entity that may not be deleted undeletable. No create request carries allowDelete, so
+     * a PUT keeps the stored value; a PATCH that lifts a stored false is rejected with a 400.
+     */
+    protected final void restrictAllowDeleteChange(
+        Boolean originalAllowDelete,
+        Boolean updatedAllowDelete,
+        Consumer<Boolean> allowDeleteSetter) {
+      boolean liftsDeleteProtection =
+          Boolean.FALSE.equals(originalAllowDelete) && !Boolean.FALSE.equals(updatedAllowDelete);
+      if (operation.isPut()) {
+        allowDeleteSetter.accept(originalAllowDelete);
+      } else if (operation.isPatch() && liftsDeleteProtection) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.systemEntityModifyNotAllowed(original.getName(), entityType));
+      }
+    }
+
     protected final void compareAndUpdate(String fieldName, Runnable updater) {
       if (shouldCompare(fieldName)) {
         updater.run();

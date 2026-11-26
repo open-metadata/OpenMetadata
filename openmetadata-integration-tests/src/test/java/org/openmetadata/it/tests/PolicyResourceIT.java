@@ -418,6 +418,37 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
   }
 
   @Test
+  void patch_defaultPolicyAllowDelete_rejected(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Policy policy = client.policies().getByName(DEFAULT_POLICY);
+    JsonNode allowDeleteToTrue =
+        new ObjectMapper()
+            .readTree(
+                "[{\"op\":\"replace\",\"path\":\"/allowDelete\",\"value\":true},"
+                    + "{\"op\":\"replace\",\"path\":\"/description\",\"value\":\""
+                    + ns.prefix("lifted")
+                    + "\"}]");
+
+    InvalidRequestException patchError =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PATCH,
+                        "/v1/policies/" + policy.getId(),
+                        allowDeleteToTrue,
+                        Policy.class));
+    assertEquals(400, patchError.getStatusCode());
+    assertEquals(Boolean.FALSE, client.policies().getByName(DEFAULT_POLICY).getAllowDelete());
+    String policyId = policy.getId().toString();
+    InvalidRequestException deleteError =
+        assertThrows(InvalidRequestException.class, () -> deleteEntity(policyId));
+    assertEquals(400, deleteError.getStatusCode());
+  }
+
+  @Test
   void test_updatePolicyDescription(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 

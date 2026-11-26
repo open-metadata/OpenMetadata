@@ -250,17 +250,11 @@ public class PolicyRepository extends EntityRepository<Policy> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       restrictSystemProviderChange(updated::setProvider);
-      keepAllowDeleteOnPut();
+      restrictAllowDeleteChange(
+          original.getAllowDelete(), updated.getAllowDelete(), updated::setAllowDelete);
       compareAndUpdate(
           ENABLED, () -> recordChange(ENABLED, original.getEnabled(), updated.getEnabled()));
       compareAndUpdate("rules", () -> updateRules(original.getRules(), updated.getRules()));
-    }
-
-    /** No create request carries allowDelete, so a PUT that omits it must not clear it. */
-    private void keepAllowDeleteOnPut() {
-      if (operation.isPut()) {
-        updated.setAllowDelete(original.getAllowDelete());
-      }
     }
 
     private void updateRules(List<Rule> origRules, List<Rule> updatedRules) {
