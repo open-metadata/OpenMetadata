@@ -28,6 +28,7 @@ import {
   buildDesignerSchema,
   buildStageMappings,
   buildTransitionForms,
+  createEmptyDesignerField,
   getDesignerPreviewPayload,
   parseSchemaToDesignerFields,
   parseStageMappings,
@@ -35,6 +36,34 @@ import {
 } from './TaskFormDesignerUtils';
 
 describe('TaskFormDesignerUtils', () => {
+  it.each([
+    ['a new field', createEmptyDesignerField()],
+    [
+      'a reloaded text field',
+      parseSchemaToDesignerFields({
+        type: 'object',
+        properties: { payload: { type: 'string' } },
+      })[0],
+    ],
+  ])(
+    'saves %s switched to JSON as an object and reloads it as JSON',
+    (_, field) => {
+      const { formSchema, uiSchema } = buildDesignerSchema([
+        { ...field, name: 'payload', type: 'json' },
+      ]);
+
+      expect(formSchema.properties).toEqual({
+        payload: expect.objectContaining({
+          type: 'object',
+          additionalProperties: true,
+        }),
+      });
+      expect(parseSchemaToDesignerFields(formSchema, uiSchema)[0].type).toBe(
+        'json'
+      );
+    }
+  );
+
   it('builds schemas from designer fields while preserving ui metadata', () => {
     const { formSchema, uiSchema } = buildDesignerSchema(
       [

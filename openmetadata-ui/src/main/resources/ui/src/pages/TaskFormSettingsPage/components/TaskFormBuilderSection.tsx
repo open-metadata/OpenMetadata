@@ -45,6 +45,7 @@ import {
   createEmptyDesignerField,
   getDesignerPreviewPayload,
   TaskFormDesignerField,
+  toJsonSchemaType,
 } from '../../../utils/TaskFormDesignerUtils';
 import TaskPayloadSchemaFields from '../../TasksPage/shared/TaskPayloadSchemaFields';
 
@@ -55,7 +56,8 @@ const withFieldType = (
 ): TaskFormDesignerField => ({
   ...field,
   type,
-  schemaType: type === 'json' ? field.schemaType ?? 'object' : field.schemaType,
+  schemaType:
+    type === 'json' ? toJsonSchemaType(field.schemaType) : field.schemaType,
   options:
     type === 'singleSelect' || type === 'multiSelect' ? field.options : [],
 });

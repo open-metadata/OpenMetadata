@@ -147,6 +147,10 @@ type FieldPropertyBuilder = (
   field: TaskFormDesignerField
 ) => void;
 
+/** A JSON field is only ever an object or an array; anything else (e.g. a text field's 'string') defaults to object. */
+export const toJsonSchemaType = (schemaType: unknown): 'object' | 'array' =>
+  schemaType === 'array' ? 'array' : 'object';
+
 const applyStringProperty: FieldPropertyBuilder = (property) => {
   property.type = 'string';
   delete property.enum;
@@ -182,7 +186,7 @@ const FIELD_PROPERTY_BUILDERS: Partial<
     delete property.enum;
   },
   json: (property, field) => {
-    property.type = field.schemaType ?? property.type ?? 'object';
+    property.type = toJsonSchemaType(field.schemaType ?? property.type);
     delete property.enum;
 
     if (property.type === 'array') {
