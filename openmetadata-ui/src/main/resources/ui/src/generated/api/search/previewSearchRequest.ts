@@ -482,14 +482,14 @@ export interface GlobalSettings {
      */
     highlightFields?: string[];
     /**
-     * Weight for BM25 keyword search in hybrid RRF pipeline (0.0-1.0)
+     * Weight for BM25 keyword search in hybrid search (0.0-1.0)
      */
     keywordWeight?:     number;
     maxAggregateSize?:  number;
     maxAnalyzedOffset?: number;
     maxResultHits?:     number;
     /**
-     * Weight for semantic vector search in hybrid RRF pipeline (0.0-1.0)
+     * Weight for semantic vector search in hybrid search (0.0-1.0)
      */
     semanticWeight?: number;
     /**

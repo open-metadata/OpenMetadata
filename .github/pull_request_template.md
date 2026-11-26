@@ -138,7 +138,7 @@ Standalone fixes, refactors, styling, localization, docs, tests and backend-only
 #
 ### Checklist:
 <!-- add an x in [] if done, don't mark items that you didn't do !-->
-- [x] I have read the [**CONTRIBUTING**](https://docs.open-metadata.org/developers/contribute) document.
+- [x] I have read [**CONTRIBUTING.md**](https://github.com/open-metadata/OpenMetadata/blob/main/CONTRIBUTING.md) (the pre-review gate) and the [contributor docs](https://docs.open-metadata.org/developers/contribute).
 - [ ] My PR title is `Fixes <issue-number>: <short explanation>`
 - [ ] My PR is linked to a GitHub issue via `Fixes #<issue-number>` above.
 - [ ] I have commented on my code, particularly in hard-to-understand areas.

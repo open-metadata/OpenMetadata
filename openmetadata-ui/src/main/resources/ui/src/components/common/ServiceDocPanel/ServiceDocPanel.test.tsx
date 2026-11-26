@@ -68,7 +68,6 @@ jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () =>
     ({ markdown, className }: { markdown: string; className?: string }) => (
       <div
         className={className ?? 'service-doc-content'}
-        // eslint-disable-next-line react/no-danger -- test mock rendering controlled markdown fixture
         dangerouslySetInnerHTML={{ __html: markdown }}
       />
     )
@@ -1115,6 +1114,27 @@ describe('ServiceDocPanel Component', () => {
       expect(
         getSection(container, 'host')?.dataset.highlighted
       ).toBeUndefined();
+    });
+
+    it('should highlight without scrolling while a field listbox is open', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        '<section data-id="host"></section><section data-id="name"></section>'
+      );
+
+      const { container } = render(
+        <>
+          <button aria-expanded="true" aria-haspopup="listbox" type="button">
+            Language
+          </button>
+          <ServiceDocPanel {...defaultProps} activeField="root/database/name" />
+        </>
+      );
+
+      await waitFor(() => {
+        expect(getSection(container, 'name')?.dataset.highlighted).toBe('true');
+      });
+
+      expect(mockScrollIntoView).not.toHaveBeenCalled();
     });
 
     it('should align the selected entity summary to the top of the panel', async () => {

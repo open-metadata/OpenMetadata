@@ -431,22 +431,25 @@ const getResolutionRows = (task: Task, t: Translate): TaskDetailRow[] => {
 
   // Who resolved it reads in the line under the title ("Rejected by … on …"),
   // so the rows keep only when and why.
-  return [
-    ...textRow(
-      'resolvedOn',
-      'calendar',
-      t('label.resolved-on'),
-      resolution.resolvedOn
-    ),
-    ...(resolution.hasResolution
-      ? textRow(
-          'resolutionComment',
-          'type',
-          t(resolution.commentLabelKey),
-          resolution.comment
-        )
-      : []),
-  ];
+  const rows = textRow(
+    'resolvedOn',
+    'calendar',
+    t('label.resolved-on'),
+    resolution.resolvedOn
+  );
+  if (resolution.hasResolution) {
+    rows.push({
+      key: 'resolutionComment',
+      icon: 'type',
+      label: t(resolution.commentLabelKey),
+      value: {
+        kind: resolution.comment === NO_DATA_PLACEHOLDER ? 'text' : 'richText',
+        text: resolution.comment,
+      },
+    });
+  }
+
+  return rows;
 };
 
 const describeIncident = (
@@ -841,14 +844,19 @@ export const deriveTaskAboutEntity = (
   const typed = (entity ?? {}) as EntityWithContext;
   const columns = typed.columns;
   const tags = typed.tags ?? [];
+  const isPiiSensitive = (tagList: TagLabel[] = []) =>
+    tagList.some((tag) => tag.tagFQN === PII_SENSITIVE_TAG);
+  const isEntityPii = isPiiSensitive(tags);
+  const piiColumnCount = isEntityPii
+    ? columns?.length
+    : columns?.filter((column) => isPiiSensitive(column.tags)).length;
 
   return {
     entity,
     tier: tags.find((tag) => tag.tagFQN?.startsWith(TIER_TAG_PREFIX)),
     columnCount: columns?.length,
-    piiColumnCount: columns?.filter((column) =>
-      (column.tags ?? []).some((tag) => tag.tagFQN === PII_SENSITIVE_TAG)
-    ).length,
+    piiColumnCount,
+    isPii: isEntityPii || Boolean(piiColumnCount),
     downstreamCount,
     weeklyQueryCount: typed.usageSummary?.weeklyStats?.count,
     ownerCount: typed.owners?.length,

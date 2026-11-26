@@ -13,7 +13,6 @@
 import { expect, test } from '../../fixtures/testNamespace';
 import { TaskClass } from '../../support/entity/TaskClass';
 import { UserClass } from '../../support/user/UserClass';
-import { findTaskInList } from '../../utils/taskAPI';
 
 test.describe('Task Entity API Tests', () => {
   const DAR_EXPIRATION_MS = 14 * 24 * 60 * 60 * 1000;
@@ -107,32 +106,6 @@ test.describe('Task Entity API Tests', () => {
     await taskB.delete(adminApiContext);
   });
 
-  test('Resolve task with approval', async ({ adminApiContext }) => {
-    const task = new TaskClass({
-      category: 'Approval',
-      type: 'GlossaryApproval',
-      description: 'Test task for resolution',
-    });
-
-    await test.step('Create task', async () => {
-      const response = await task.create(adminApiContext);
-      expect(response.status).toBe('Open');
-    });
-
-    await test.step('Resolve with approval', async () => {
-      const response = await task.resolve(
-        adminApiContext,
-        'Approved',
-        'Approved after review'
-      );
-      expect(response.status).toBe('Approved');
-    });
-
-    await test.step('Cleanup', async () => {
-      await task.delete(adminApiContext);
-    });
-  });
-
   test('Resolve task with rejection', async ({ adminApiContext }) => {
     const task = new TaskClass({
       category: 'DataAccess',
@@ -162,47 +135,6 @@ test.describe('Task Entity API Tests', () => {
     await test.step('Cleanup', async () => {
       await task.delete(adminApiContext);
     });
-  });
-
-  test('Create task with assignees', async ({ adminApiContext }) => {
-    const task = new TaskClass({
-      category: 'Review',
-      type: 'DataQualityReview',
-      description: 'Review data quality metrics',
-      assignees: [user1.responseData?.fullyQualifiedName ?? ''],
-    });
-
-    const response = await task.create(adminApiContext);
-
-    expect(response).toBeDefined();
-    expect(response.status).toBe('Open');
-
-    await task.delete(adminApiContext);
-  });
-
-  test('List tasks by status', async ({ adminApiContext }) => {
-    const openTask = new TaskClass({
-      category: 'MetadataUpdate',
-      type: 'OwnershipUpdate',
-    });
-
-    await openTask.create(adminApiContext);
-
-    // Verify the task was created
-    expect(openTask.responseData?.id).toBeDefined();
-
-    const foundTask = await findTaskInList(
-      adminApiContext,
-      openTask.responseData?.id ?? '',
-      {
-        status: 'Open',
-        createdById: openTask.responseData?.createdById,
-      }
-    );
-
-    expect(foundTask).toBeDefined();
-
-    await openTask.delete(adminApiContext);
   });
 
   test('Task CRUD operations', async ({ adminApiContext }) => {

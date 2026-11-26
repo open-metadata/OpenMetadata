@@ -54,7 +54,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <div data-testid={dataTestId}>
         {label && (
           <>
-            {/* eslint-disable-next-line jsx-a11y/label-has-for -- test mock; input below is named via aria-label */}
             <label>{label}</label>
             {isRequired && <span> *</span>}
           </>
@@ -95,7 +94,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
     return (
       <div>
-        {/* eslint-disable-next-line jsx-a11y/label-has-for -- test mock; select below is named via aria-label */}
         {label != null && <label>{label}</label>}
         <select
           aria-label={label}

@@ -37,6 +37,8 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -44,6 +46,7 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.policies.accessControl.Rule.Effect;
@@ -1238,6 +1241,81 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
 
     Policy fetched = getEntity(policyId);
     assertEquals("false", fetched.getRules().get(0).getCondition());
+  }
+
+  @Test
+  void test_renamedDomainIsUpdatedInPolicyCondition(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain parent = createDomain(client, ns.prefix("RenameDomain"), null);
+    Domain child =
+        createDomain(client, ns.prefix("RenameSubDomain"), parent.getFullyQualifiedName());
+    String policyId =
+        createDomainConditionPolicy(
+                ns.prefix("renameDomainPolicy"),
+                "matchAnyDomain('"
+                    + parent.getFullyQualifiedName()
+                    + "', '"
+                    + child.getFullyQualifiedName()
+                    + "')")
+            .getId()
+            .toString();
+
+    parent.setName(ns.prefix("RenamedDomain"));
+    Domain renamedParent = client.domains().update(parent.getId().toString(), parent);
+    String renamedChildFqn = client.domains().get(child.getId().toString()).getFullyQualifiedName();
+
+    // The sub-domain FQN changes with its parent's name, so both arguments must follow.
+    assertEquals(
+        "matchAnyDomain('%s', '%s')"
+            .formatted(renamedParent.getFullyQualifiedName(), renamedChildFqn),
+        getEntity(policyId).getRules().get(0).getCondition());
+  }
+
+  @Test
+  void test_deletedDomainMakesItsPolicyConditionMatchNothing(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain parent = createDomain(client, ns.prefix("DeleteDomain"), null);
+    Domain child =
+        createDomain(client, ns.prefix("DeleteSubDomain"), parent.getFullyQualifiedName());
+    String policyId =
+        createDomainConditionPolicy(
+                ns.prefix("deleteDomainPolicy"),
+                "matchAnyDomain('" + child.getFullyQualifiedName() + "')")
+            .getId()
+            .toString();
+
+    client
+        .domains()
+        .delete(parent.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    // A domain created later with the same name must not fall under the old rule.
+    assertEquals("false", getEntity(policyId).getRules().get(0).getCondition());
+  }
+
+  private static Domain createDomain(OpenMetadataClient client, String name, String parentFqn) {
+    return client
+        .domains()
+        .create(
+            new CreateDomain()
+                .withName(name)
+                .withDomainType(DomainType.AGGREGATE)
+                .withDescription("Domain named in a policy condition")
+                .withParent(parentFqn));
+  }
+
+  private Policy createDomainConditionPolicy(String name, String condition) {
+    Rule rule =
+        new Rule()
+            .withName("domainConditionRule")
+            .withResources(List.of(ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Effect.DENY)
+            .withCondition(condition);
+    return createEntity(
+        new CreatePolicy()
+            .withName(name)
+            .withRules(List.of(rule))
+            .withDescription("Policy naming a domain"));
   }
 
   /**

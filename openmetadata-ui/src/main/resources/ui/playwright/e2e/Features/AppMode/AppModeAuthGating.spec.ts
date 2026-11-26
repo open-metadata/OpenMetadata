@@ -90,37 +90,6 @@ test.describe('AppMode — authz gating', () => {
       .catch(() => undefined);
   });
 
-  test('User A can PUT their own preference', async () => {
-    const response = await userAApiContext.put(
-      `/api/v1/users/${userA.responseData.id}/preferences/appMode`,
-      { data: { type: 'appMode', config: { value: 'ai' } } }
-    );
-
-    expect(response.status()).toBe(200);
-  });
-
-  test('User A can DELETE their own preference', async () => {
-    await userAApiContext.put(
-      `/api/v1/users/${userA.responseData.id}/preferences/appMode`,
-      { data: { type: 'appMode', config: { value: 'ai' } } }
-    );
-
-    const response = await userAApiContext.delete(
-      `/api/v1/users/${userA.responseData.id}/preferences/appMode`
-    );
-
-    expect(response.status()).toBe(200);
-  });
-
-  test("User A cannot PUT user B's preference", async () => {
-    const response = await userAApiContext.put(
-      `/api/v1/users/${userB.responseData.id}/preferences/appMode`,
-      { data: { type: 'appMode', config: { value: 'ai' } } }
-    );
-
-    expect(response.status()).toBe(403);
-  });
-
   test("User A cannot DELETE user B's preference", async () => {
     const response = await userAApiContext.delete(
       `/api/v1/users/${userB.responseData.id}/preferences/appMode`

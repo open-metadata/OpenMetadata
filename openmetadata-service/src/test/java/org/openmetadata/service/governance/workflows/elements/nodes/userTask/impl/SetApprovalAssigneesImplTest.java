@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -50,6 +51,8 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -121,6 +124,92 @@ class SetApprovalAssigneesImplTest {
     assertEquals("[\"<#E::user::steward>\"]", capturedVars.get("ApprovalTask_assignees"));
     assertEquals(true, capturedVars.get("hasAssignees"));
   }
+
+  @Test
+  void cascadeAssignsServiceOwnersWhenTheAssetHasNone() {
+    givenUnownedTable(List.of(user("svc_owner")), List.of(user("steward")));
+    givenAdmins("root");
+    when(assigneesExpr.getValue(execution)).thenReturn(CASCADE);
+    delegate.execute(execution);
+    assertEquals("[\"<#E::user::svc_owner>\"]", capturedVars.get("ApprovalTask_assignees"));
+  }
+
+  @Test
+  void cascadeFallsBackToDomainOwnersWhenTheServiceTeamHasNoMembers() {
+    givenUnownedTable(
+        List.of(new EntityReference().withType(Entity.TEAM).withFullyQualifiedName("empty_team")),
+        List.of(user("steward")));
+    mockedEntity
+        .when(
+            () ->
+                Entity.getEntity(
+                    any(MessageParser.EntityLink.class), eq("users"), any(Include.class)))
+        .thenReturn(new Team().withUsers(List.of()));
+    givenAdmins("root");
+    when(assigneesExpr.getValue(execution)).thenReturn(CASCADE);
+    delegate.execute(execution);
+    assertEquals("[\"<#E::user::steward>\"]", capturedVars.get("ApprovalTask_assignees"));
+  }
+
+  @Test
+  void cascadeLeavesAnOwnedAssetToItsOwners() {
+    givenUnownedTable(List.of(user("svc_owner")), List.of(user("steward")));
+    when(mockEntity.getOwners()).thenReturn(List.of(user("table_owner")));
+    when(assigneesExpr.getValue(execution)).thenReturn(CASCADE);
+    delegate.execute(execution);
+    assertEquals("[\"<#E::user::table_owner>\"]", capturedVars.get("ApprovalTask_assignees"));
+  }
+
+  @Test
+  void cascadeIsSkippedWhenOwnerAutoAssignmentIsOff() {
+    givenUnownedTable(List.of(user("svc_owner")), List.of(user("steward")));
+    when(execution.getVariable("autoAssignOwners")).thenReturn(false);
+    givenAdmins("root");
+    when(assigneesExpr.getValue(execution)).thenReturn(CASCADE);
+    delegate.execute(execution);
+    assertEquals("[\"<#E::user::root>\"]", capturedVars.get("ApprovalTask_assignees"));
+  }
+
+  @Test
+  void withoutCascadeOwnersTheServiceAndDomainAreNeverAsked() {
+    givenUnownedTable(List.of(user("svc_owner")), List.of(user("steward")));
+    givenAdmins("root");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"emptyAssigneeStrategy\":\"assignAdmins\"}");
+    delegate.execute(execution);
+    assertEquals("[\"<#E::user::root>\"]", capturedVars.get("ApprovalTask_assignees"));
+  }
+
+  @Test
+  void cascadeLooksPastOwnersWhoAreTheRequester() {
+    givenUnownedTable(List.of(user("dana")), List.of(user("steward")));
+    when(mockEntity.getOwners()).thenReturn(List.of(user("dana")));
+    when(execution.getVariable("global_updatedBy")).thenReturn("dana");
+    givenAdmins("root");
+    when(assigneesExpr.getValue(execution)).thenReturn(CASCADE);
+    delegate.execute(execution);
+    assertEquals("[\"<#E::user::steward>\"]", capturedVars.get("ApprovalTask_assignees"));
+  }
+
+  @Test
+  void cascadeOnATypeWithoutDomainsStillAssignsItsOwners() {
+    when(execution.getVariable("global_relatedEntity"))
+        .thenReturn("<#E::dataContract::orders_contract>");
+    when(mockRepository.isSupportsReviewers()).thenReturn(false);
+    when(mockEntity.getOwners()).thenReturn(List.of(user("contract_owner")));
+    mockedEntity
+        .when(
+            () ->
+                Entity.getEntity(
+                    any(MessageParser.EntityLink.class), eq("owners,domains"), any(Include.class)))
+        .thenThrow(new IllegalArgumentException("Invalid field name domains"));
+    when(assigneesExpr.getValue(execution)).thenReturn(CASCADE);
+    delegate.execute(execution);
+    assertEquals("[\"<#E::user::contract_owner>\"]", capturedVars.get("ApprovalTask_assignees"));
+  }
+
+  private static final String CASCADE =
+      "{\"addReviewers\":true,\"cascadeOwners\":true,\"emptyAssigneeStrategy\":\"assignAdmins\"}";
 
   @Mock private DelegateExecution execution;
   @Mock private Expression assigneesExpr;
@@ -354,9 +443,9 @@ class SetApprovalAssigneesImplTest {
   }
 
   @Test
-  void testSelfApprovalPrevention_eventDrivenSoleRequester_keptWhenNoOneElse() {
-    // Event-driven approval (not workflow-managed, not a change request): the only reviewer is the
-    // requester, who is kept so the task stays actionable.
+  void testSelfApprovalPrevention_eventDrivenSoleRequester_neverAssignedAndAutoApproved() {
+    // Event-driven approval whose only reviewer is the requester: the requester is never their own
+    // approver (as filer they could not resolve it), so under "none" the node approves.
     EntityReference creatorRef =
         new EntityReference().withType("user").withFullyQualifiedName("alice");
 
@@ -367,9 +456,27 @@ class SetApprovalAssigneesImplTest {
 
     delegate.execute(execution);
 
+    assertEquals("[]", capturedVars.get("ApprovalTask_assignees"));
+    assertFalse((Boolean) capturedVars.get("hasAssignees"));
+  }
+
+  @Test
+  void testSelfApprovalPrevention_eventDrivenSoleRequester_routedToOtherAdmins() {
+    EntityReference creatorRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+    when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    givenAdmins("alice", "platform_admin");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn(
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
+
+    delegate.execute(execution);
+
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
-    assertNotNull(assigneesJson);
-    assertTrue(assigneesJson.contains("alice"), "sole requester is kept outside change requests");
+    assertTrue(assigneesJson.contains("platform_admin"), assigneesJson);
+    assertFalse(assigneesJson.contains("<#E::user::alice>"), assigneesJson);
+    assertTrue((Boolean) capturedVars.get("hasAssignees"));
   }
 
   @Test
@@ -464,6 +571,30 @@ class SetApprovalAssigneesImplTest {
     when(execution.getVariable("global_updatedBy")).thenReturn(requester);
     when(execution.getVariable("global_changeRequestId")).thenReturn(UUID.randomUUID().toString());
     when(execution.getVariable("global_changeRequestRevision")).thenReturn(1);
+  }
+
+  private static EntityReference user(String name) {
+    return new EntityReference().withType(Entity.USER).withFullyQualifiedName(name);
+  }
+
+  private void givenUnownedTable(
+      List<EntityReference> serviceOwners, List<EntityReference> domainOwners) {
+    EntityReference service =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DATABASE_SERVICE);
+    UUID domainId = UUID.randomUUID();
+    when(execution.getVariable("global_relatedEntity"))
+        .thenReturn("<#E::table::svc.db.sch.orders>");
+    when(mockRepository.isSupportsReviewers()).thenReturn(false);
+    when(mockRepository.isSupportsDomains()).thenReturn(true);
+    when(mockEntity.getService()).thenReturn(service);
+    when(mockEntity.getDomains())
+        .thenReturn(List.of(new EntityReference().withId(domainId).withType(Entity.DOMAIN)));
+    mockedEntity
+        .when(() -> Entity.getEntity(service, "owners", Include.ALL))
+        .thenReturn(new DatabaseService().withOwners(serviceOwners));
+    mockedEntity
+        .when(() -> Entity.getEntity(Entity.DOMAIN, domainId, "owners", Include.NON_DELETED))
+        .thenReturn(new Domain().withOwners(domainOwners));
   }
 
   private void givenAdmins(String... names) {

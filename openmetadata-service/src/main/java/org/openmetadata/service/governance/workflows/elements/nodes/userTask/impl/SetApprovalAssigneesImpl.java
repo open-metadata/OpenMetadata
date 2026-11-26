@@ -27,7 +27,6 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -38,7 +37,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -54,6 +52,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class SetApprovalAssigneesImpl implements JavaDelegate {
   private static final int ADMIN_PAGE_SIZE = 50;
+  private static final String CASCADE_OWNERS = "cascadeOwners";
   private Expression assigneesExpr;
   private Expression assigneesVarNameExpr;
   private Expression inputNamespaceMapExpr;
@@ -86,7 +85,9 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       String relationshipFields =
           getRelationshipFieldsForAssigneeResolution(
               entityLink.getEntityType(), entitySupportsReviewers);
-      if (Boolean.TRUE.equals(assigneesConfig.get("addDomainOwners"))
+      if ((Boolean.TRUE.equals(assigneesConfig.get("addDomainOwners"))
+              || cascadesOwners(assigneesConfig))
+          && entityRepository.isSupportsDomains()
           && !Entity.DOMAIN.equals(entityLink.getEntityType())) {
         relationshipFields += ",domains";
       }
@@ -107,6 +108,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           taskAssignees);
       assignees.addAll(taskReviewers);
       assignees.addAll(taskAssignees);
+      Set<String> requesterEntityLinks = resolveRequesterEntityLinks(varHandler, execution);
 
       if (!hasExplicitTaskAssignees) {
         assignees.addAll(
@@ -152,7 +154,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
         if (Boolean.TRUE.equals(assigneesConfig.get("addDomainOwners"))) {
           assignees.addAll(
               getEntityLinkStringFromEntityReferenceWithTeamExpansion(
-                  resolveDomainOwners(entityLink.getEntityType(), entity)));
+                  OwnerCascade.domainOwners(entityLink.getEntityType(), entity)));
         }
 
         // Process users array
@@ -182,6 +184,19 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
             }
           }
         }
+        // A step that resolves only the requester counts as empty: they are removed below.
+        if (requesterEntityLinks.containsAll(assignees)
+            && ownersAssignable
+            && cascadesOwners(assigneesConfig)) {
+          assignees.addAll(
+              OwnerCascade.resolve(
+                  entity,
+                  entityLink.getEntityType(),
+                  owners ->
+                      getEntityLinkStringFromEntityReferenceWithTeamExpansion(owners).stream()
+                          .filter(owner -> !requesterEntityLinks.contains(owner))
+                          .toList()));
+        }
       }
 
       boolean workflowManagedTask =
@@ -193,11 +208,11 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       // (DAR, GlossaryApproval, RequestApproval) publish the requester as `taskUpdatedBy`; entity
       // workflows (glossary term / tag approval, certification changes, …) publish it as the
       // global `updatedBy`. Both are checked because each variable is authoritative for its own
-      // workflow family — reading only one silently leaves the other's requester on the list. A
-      // non-workflow-managed task under the "none" strategy keeps the requester when no one else is
-      // available, so the task stays actionable; "assignAdmins" and "wait" have a fallback of their
-      // own below, and workflow-managed tasks rely on it too. A change request is never given back
-      // to its requester.
+      // workflow family — reading only one silently leaves the other's requester on the list. The
+      // requester is never given back their own approval, even when no one else is left: the task
+      // would be filed by them, and TaskAuthorPolicy denies a filer ResolveTask, so only an admin
+      // could act on it. An emptied list goes to the empty-assignee strategy below instead.
+      // ADR:2026-11-25-an-approval-never-goes-to-its-requester
       // A stored definition may carry the key with a null value; it means the default, none.
       final EmptyAssigneeStrategy emptyAssigneeStrategy =
           Optional.ofNullable(assigneesConfig.get("emptyAssigneeStrategy"))
@@ -205,17 +220,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
               .map(EmptyAssigneeStrategy::fromValue)
               .orElse(NONE);
       final boolean assignAdmins = emptyAssigneeStrategy == ASSIGN_ADMINS;
-      Set<String> requesterEntityLinks = resolveRequesterEntityLinks(varHandler, execution);
-      List<String> preRemovalAssignees = new ArrayList<>(assigneeList);
-      boolean removedRequester = assigneeList.removeAll(requesterEntityLinks);
-      boolean reviewsChangeRequest = ChangeRequestRun.from(varHandler).isPresent();
-      if (removedRequester
-          && assigneeList.isEmpty()
-          && !workflowManagedTask
-          && !reviewsChangeRequest
-          && emptyAssigneeStrategy == NONE) {
-        assigneeList.addAll(preRemovalAssignees);
-      }
+      assigneeList.removeAll(requesterEntityLinks);
 
       // Empty-assignee strategy: when nothing resolved (no reviewers/owners, or the only
       // assignee was the requester and was stripped above), apply the node's configured
@@ -260,26 +265,13 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
     }
   }
 
+  private static boolean cascadesOwners(final Map<String, Object> assigneesConfig) {
+    return Boolean.TRUE.equals(assigneesConfig.get(CASCADE_OWNERS));
+  }
+
   // Unset means on: only a workflow that explicitly turned owner auto-assignment off skips owners.
   private static boolean isOwnerAutoAssignmentEnabled(DelegateExecution execution) {
     return !Boolean.FALSE.equals(execution.getVariable(WorkflowStartVariables.AUTO_ASSIGN_OWNERS));
-  }
-
-  private List<EntityReference> resolveDomainOwners(
-      final String entityType, final EntityInterface<?> entity) {
-    if (Entity.DOMAIN.equals(entityType)) {
-      return entity.getOwners() == null ? List.of() : entity.getOwners();
-    }
-    return entity.getDomains() == null
-        ? List.of()
-        : entity.getDomains().stream()
-            .map(
-                reference ->
-                    Entity.<Domain>getEntity(
-                        Entity.DOMAIN, reference.getId(), "owners", Include.NON_DELETED))
-            .filter(domain -> domain.getOwners() != null)
-            .flatMap(domain -> domain.getOwners().stream())
-            .toList();
   }
 
   private List<EntityReference> resolveCandidateIds(final Object value) {

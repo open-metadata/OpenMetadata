@@ -13,7 +13,6 @@
 
 import { Button, Typography } from '@openmetadata/ui-core-components';
 import { FilterLines, Sort } from '@openmetadata/ui-core-components/icons';
-import { Config } from '@react-awesome-query-builder/ui';
 import type { TFunction } from 'i18next';
 import React, { lazy, useCallback, useMemo, useState } from 'react';
 import { Layout } from 'react-grid-layout';
@@ -37,10 +36,7 @@ import {
 } from '../../../../utils/curatedRule';
 import { getExplorePath } from '../../../../utils/RouterUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
-import {
-  AdvanceSearchProvider,
-  useAdvanceSearch,
-} from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import {
   TopicEmptyStateConfig,
@@ -64,18 +60,18 @@ export type CuratedAssetsSummaryWidgetProps = WidgetCommonProps;
 
 /**
  * Explore opened on the same rule the card counts, so "View all matches" lands
- * on those matches rather than on the unfiltered estate. A saved filter goes
- * through the advanced-search tree the persona editor built it with — the link
- * the previous Curated Assets widget gave; the chip rule is plain term clauses,
- * which Explore takes directly as a quick filter.
+ * on those matches rather than on the unfiltered estate. A saved filter opens
+ * as Explore's advanced search — the link the previous Curated Assets widget
+ * gave; the chip rule is plain term clauses, which Explore takes directly as a
+ * quick filter.
  */
-const getCuratedExploreURL = (
-  { queryFilter, resources, rule }: CuratedAssetsSource,
-  config: Config
-): string => {
+const getCuratedExploreURL = ({
+  queryFilter,
+  resources,
+  rule,
+}: CuratedAssetsSource): string => {
   if (queryFilter) {
     return getExploreURLForAdvancedFilter({
-      config,
       queryFilter,
       selectedResource: resources?.length ? resources : [EntityType.ALL],
     });
@@ -135,7 +131,6 @@ const CuratedAssetsSummaryWidgetContent: React.FC<
 }) => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { config: searchConfig } = useAdvanceSearch();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Read off the layout, not the `widgetConfig` prop: `getWidgetFromKey` — the
@@ -164,10 +159,7 @@ const CuratedAssetsSummaryWidgetContent: React.FC<
   const { assets, totalCount, isError, isLoading, refetch } =
     useCuratedAssets(source);
 
-  const exploreURL = useMemo(
-    () => getCuratedExploreURL(source, searchConfig),
-    [source, searchConfig]
-  );
+  const exploreURL = useMemo(() => getCuratedExploreURL(source), [source]);
 
   // Writing the config back onto this widget's layout entry is the only way it
   // is persisted -- the rule lives on the persona's page layout, not on an

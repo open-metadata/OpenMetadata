@@ -1243,7 +1243,7 @@ describe('Test Connection Component', () => {
   it('Should ignore a superseded run whose poll resolves after a newer run started', async () => {
     jest.useFakeTimers();
 
-    let resolveStalePoll: (value: unknown) => void = () => undefined;
+    let resolveStalePoll: (value: unknown) => void = (_value) => undefined;
     const stalePoll = new Promise((resolve) => {
       resolveStalePoll = resolve;
     });
@@ -1288,7 +1288,6 @@ describe('Test Connection Component', () => {
       .length;
 
     await act(async () => {
-      // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
       resolveStalePoll({
         ...WORKFLOW_DETAILS,
         status: 'Failed',
@@ -1313,7 +1312,7 @@ describe('Test Connection Component', () => {
   it('Should ignore a superseded run whose poll rejects after a newer run started', async () => {
     jest.useFakeTimers();
 
-    let rejectStalePoll: (reason?: unknown) => void = () => undefined;
+    let rejectStalePoll: (reason?: unknown) => void = (_value) => undefined;
     const stalePoll = new Promise((_resolve, reject) => {
       rejectStalePoll = reject;
     });
@@ -1367,7 +1366,6 @@ describe('Test Connection Component', () => {
       onTestConnectionStatusChange.mock.calls.length;
 
     await act(async () => {
-      // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
       rejectStalePoll(new Error('stale run failed'));
     });
 

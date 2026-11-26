@@ -74,14 +74,17 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * ContextMemoryVisibility#isPending})
  * (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
  *
- * <p>General search cannot evaluate an anchor's policy per document. An anchored {@code Entity} memory is
- * therefore searchable only by its owners and admins, unless the query pins its anchor: a caller
+ * <p>A search over several indexes cannot evaluate an anchor's policy per document. An anchored
+ * {@code Entity} memory is therefore searchable there only by its owners and admins, unless the
+ * query pins its anchor: a caller
  * that names the anchors it asks about ({@link ContextMemoryAnchorPins}) has each of them evaluated
  * once by the REST rule, and the {@code Entity} memories of the readable ones are admitted too
  * (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). An explicit unanchored marker is
  * required: old documents without the marker stay hidden from non-owners until reindexed.
- * Context Center listings evaluate their matching anchors before pagination through
- * {@link #buildListingVisibilityFilter}, so their text search needs no explicit asset filter.
+ * Context Center listings, and any search of the memory index alone ({@link #isMemoryOnlySearch}),
+ * evaluate their matching anchors before pagination through {@link #buildListingVisibilityFilter},
+ * so their text search needs no explicit asset filter
+ * (ADR:2026-11-12-context-center-authorizes-memory-anchors-before-paging).
  */
 public class ContextMemorySearchVisibility {
 
@@ -89,10 +92,22 @@ public class ContextMemorySearchVisibility {
   private static final int MAX_ANCHOR_IDS_PER_TERMS_QUERY = 1024;
   public static final int LISTING_ANCHOR_PAGE_SIZE = 100;
 
-  /** listWithOffset receives the canonical index name, optionally prefixed by the cluster alias. */
+  /** Whether {@code index} is the canonical memory index name, optionally cluster-alias prefixed. */
   public static boolean isMemoryListingIndex(String index) {
     return MEMORY_INDEX_NAME.equals(index)
         || index.endsWith(IndexMapping.INDEX_NAME_SEPARATOR + MEMORY_INDEX_NAME);
+  }
+
+  /**
+   * Whether a search or count asks for the memory index alone, however the caller named it: the
+   * entity type, the index name, with or without the cluster alias. A list of indexes never does.
+   */
+  public static boolean isMemoryOnlySearch(String index) {
+    final String resolved =
+        nullOrEmpty(index) || index.contains(",")
+            ? null
+            : Entity.getSearchRepository().getIndexOrAliasName(index);
+    return resolved != null && isMemoryListingIndex(resolved);
   }
 
   public static final String FIELD_ENTITY_TYPE = "entityType";

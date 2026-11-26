@@ -96,7 +96,6 @@ jest.mock(
         return (
           <div>
             <div>ConnectionConfigForm</div>
-            {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
             <input
               data-testid="connection-field"
               type="text"

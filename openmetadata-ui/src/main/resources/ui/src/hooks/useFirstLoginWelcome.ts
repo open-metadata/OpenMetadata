@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../constants/constants';
 import { useIsRouteVisible } from '../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { updateUserDetail } from '../rest/userAPI';
@@ -31,14 +32,18 @@ const isSeenInThisBrowser = (userName: string) =>
  * (tracked on the user as `isFirstTimeUser`, so it holds across browsers),
  * and only while `isWelcomeVisible` is on. Leaving the route dismisses it: by
  * unmount on the classic home, and by the route turning hidden where
- * KeepAliveRoutes keeps the AI-mode home mounted.
+ * KeepAliveRoutes keeps the AI-mode home mounted. Navigating to the route
+ * already shown (e.g. clicking Home) dismisses it too.
  */
 export const useFirstLoginWelcome = () => {
   const { currentUser, updateCurrentUser } = useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
   const isRouteVisible = useIsRouteVisible();
 
+  const { key: locationKey } = useLocation();
+
   const [showWelcome, setShowWelcome] = useState(false);
+  const [entryLocationKey] = useState(locationKey);
 
   const markReturningUser = async () => {
     if (!currentUser?.isFirstTimeUser) {
@@ -66,10 +71,11 @@ export const useFirstLoginWelcome = () => {
   }, []);
 
   useEffect(() => {
-    if (!isRouteVisible && showWelcome) {
+    const hasNavigated = locationKey !== entryLocationKey;
+    if ((!isRouteVisible || hasNavigated) && showWelcome) {
       setShowWelcome(false);
     }
-  }, [isRouteVisible, showWelcome]);
+  }, [isRouteVisible, locationKey, entryLocationKey, showWelcome]);
 
   return { showWelcome, closeWelcome: () => setShowWelcome(false) };
 };

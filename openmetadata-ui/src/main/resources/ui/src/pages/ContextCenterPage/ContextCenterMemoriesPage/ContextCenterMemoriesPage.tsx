@@ -69,6 +69,7 @@ import {
   ContextMemory,
   ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
+import { useMemoryActionPermissions } from '../../../hooks/discovery/context-center/useMemoryActionPermissions';
 import { useMemoryConflictReviews } from '../../../hooks/discovery/context-center/useMemoryConflictReviews';
 import { usePageForSize } from '../../../hooks/paging/usePageForSize';
 import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
@@ -391,42 +392,21 @@ const ContextCenterMemoriesPage: FC = () => {
     [t]
   );
 
-  // Resource-level permission (usePermissionProvider().getResourcePermission(
-  // CONTEXT_MEMORY), itself OperationPermission-shaped) run through
-  // getDerivedPermissionFlags per the Batch 3 DatabaseSchemaTable.tsx / Batch 6
-  // MetricListPage.tsx precedent. `Create`/`Delete` are untouched raw reads (not
-  // flagged by the rule — only EditAll/ViewAll/ViewBasic are). Pure rename: no
-  // field-specific EditX key exists on this resource-level permission object, so
-  // canEditAll matches the old raw `permissions.EditAll` exactly.
-  const canEditAll = useMemo(
-    () => getDerivedPermissionFlags(permissions).canEditAll,
+  const { canCreate: hasCreatePermission } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
     [permissions]
   );
 
-  const { hasCreatePermission, hasDeletePermission, hasEditPermission } =
-    useMemo(
-      () => ({
-        hasCreatePermission: permissions.Create,
-        hasDeletePermission: permissions.Delete,
-        hasEditPermission: canEditAll,
-      }),
-      [permissions.Create, permissions.Delete, canEditAll]
-    );
-
-  const canDeleteMemory = useMemo(() => {
-    const memory = memoryToEdit ?? memoryToView;
-
-    const isOwner =
-      memory?.owners?.some((o) => o.name === currentUser?.name) ?? false;
-
-    return hasDeletePermission && (isOwner || Boolean(currentUser?.isAdmin));
-  }, [
-    hasDeletePermission,
-    memoryToEdit,
-    memoryToView,
-    currentUser?.name,
-    currentUser?.isAdmin,
-  ]);
+  const selectedMemory = memoryToEdit ?? memoryToView;
+  const actionTargets = useMemo(
+    () => [...memories, selectedMemory],
+    [memories, selectedMemory]
+  );
+  const { getMemoryActions } = useMemoryActionPermissions(
+    actionTargets,
+    permissions
+  );
+  const selectedMemoryActions = getMemoryActions(selectedMemory);
 
   const applyMemoryListResponse = useCallback(
     (
@@ -1003,7 +983,6 @@ const ContextCenterMemoriesPage: FC = () => {
                           }
                         )}
                         size={14}
-                        strokeWidth={2}
                       />
                       <Box align="center" className="tw:mb-1" gap={2}>
                         {icon}
@@ -1177,7 +1156,6 @@ const ContextCenterMemoriesPage: FC = () => {
                                 <Check
                                   className="tw:shrink-0 tw:text-fg-brand-secondary"
                                   size={14}
-                                  strokeWidth={2.5}
                                 />
                               )}
                             </Box>
@@ -1254,11 +1232,8 @@ const ContextCenterMemoriesPage: FC = () => {
                 style={{ overflow: 'unset' }}>
                 <div className={classNames({ 'tw:hidden': isReviewing })}>
                   <MemoriesView
-                    canDelete={hasDeletePermission}
-                    canEdit={hasEditPermission}
-                    currentUserName={currentUser?.name}
                     data={memories}
-                    isAdminUser={currentUser?.isAdmin}
+                    getMemoryActions={getMemoryActions}
                     isFiltered={isMemoriesFilteredOnly}
                     isLoading={isMemoriesLoading}
                     isPinningMemoryId={isPinningMemoryId}
@@ -1297,8 +1272,8 @@ const ContextCenterMemoriesPage: FC = () => {
 
       <ContextCenterMemoriesModals
         canCreate={hasCreatePermission}
-        canDelete={canDeleteMemory}
-        canEdit={hasEditPermission}
+        canDelete={selectedMemoryActions.canDelete}
+        canEdit={selectedMemoryActions.canEdit}
         currentUserName={currentUser?.name}
         isAdminUser={currentUser?.isAdmin}
         isCreateModalOpen={isCreateModalOpen}
