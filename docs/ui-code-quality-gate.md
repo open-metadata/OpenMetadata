@@ -246,13 +246,13 @@ project settings, not on the gate.
 Mark `ui-tests-status` (from `ci-pr.yml` and `ci-merge-queue.yml`) required on `main`. It passes
 only when every selected UI job passed:
 
-| Stage (check run on a PR) | Composite action | Enforces |
+| Job | Runs | Enforces |
 |---|---|---|
 | `ui-lint` | `.github/actions/ui-checkstyle` | lint (incl. SonarJS + jsx-a11y), prettier, licence, i18n, `tw-audit`, `tw-guard`, bundle budget, knip |
-| `ui-unit` | `.github/actions/ui-unit` | Jest: tests related to the change on a PR, the whole suite in four shards in the merge queue |
-| `ui-browser` | `.github/actions/ui-browser-*` | browser tests selected by impact |
+| `ui-unit` | `.github/actions/ui-unit`, four shards | Jest |
+| `ui-browser` | `ui-browser-tests.yml` | browser tests selected by impact |
 
-On a pull request the stages run in order in one `ui` job and a failed stage skips the rest. Until the ruleset switches
+On a pull request `ui-unit` and `ui-browser` start only after `ui-lint` passes. Until the ruleset switches
 to `ui-tests-status`, the entrypoints also report it under the old names `ui-checkstyle` and
 `ui-coverage`.
 

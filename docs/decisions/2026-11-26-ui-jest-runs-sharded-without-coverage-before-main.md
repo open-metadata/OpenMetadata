@@ -1,9 +1,9 @@
 # UI Jest runs sharded without coverage on pull requests and in the merge queue
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-26 (initial); v2 2026-11-26 (Jest runs from the `ui-unit` composite: related tests on PRs, four shards in the merge queue, gated by `ui-tests-status`)
+- **Revisions:** v1 2026-11-26 (initial); v2 2026-11-26 (Jest runs from the `ui-unit` composite, gated by `ui-tests-status`)
 - **Deciders:** Chirag Madlani
-- **Guard:** reviewer; `.github/actions/ui-unit` (a failed run fails its stage or shard, so `ui-tests-status` fails; see the v2 amendment)
+- **Guard:** reviewer; `.github/actions/ui-unit` (a failed shard fails its `ui-unit` job, so `ui-tests-status` fails; see the v2 amendment)
 - **Related:** ADR:2026-11-11-python-ci-selects-workloads-by-event,
   ADR:2026-11-23-browser-tests-run-by-impact-on-pull-requests-and-in-full-in-the-merge-queue,
   ADR:2026-11-25-ui-sonar-coverage-is-jest-plus-the-browser-suite-from-one-nightly-run
@@ -37,10 +37,8 @@ Report it in the job summary and fail the check; PR jobs post no comments
 next PR that touches a locale file or `yarn.lock` reports it.
 
 ## Amendment v2 (2026-11-26)
-`yarn-coverage.yml` is gone. Jest runs from the `.github/actions/ui-unit` composite under
-ADR:2026-11-26-ui-ci-runs-from-the-event-entrypoints-behind-one-required-check. On a pull request it
-runs in the single `ui` job, unsharded, on the tests related to the change (`--changedSince` the
-base), or the whole suite when Jest's setup, configuration, dependencies or core components change.
-In the merge queue it runs the whole suite in four shards. Its result feeds `ui-tests-status`
-instead of `ui-coverage`. The checkstyle steps, including the i18n rule, moved to
-`.github/actions/ui-checkstyle`. Coverage, `--silent` and the nightly are unchanged.
+`yarn-coverage.yml` is gone. The `ui-unit` jobs of `ci-pr.yml` and `ci-merge-queue.yml` run the same
+four shards through the `.github/actions/ui-unit` composite, under
+ADR:2026-11-26-ui-ci-runs-from-the-event-entrypoints-behind-one-required-check, and their result
+feeds `ui-tests-status` instead of `ui-coverage`. The checkstyle steps, including the i18n rule,
+moved to `.github/actions/ui-checkstyle`. Coverage, `--silent` and the nightly are unchanged.

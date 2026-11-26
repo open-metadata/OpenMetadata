@@ -11,62 +11,26 @@
 
 name: UI unit tests
 description: >-
-  Jest without coverage (coverage is collected nightly). Expects the caller to
-  have run ./.github/actions/setup-ui. With `base`, runs only the tests related
-  to files changed since that commit, unless the change touches Jest's setup,
-  configuration, dependencies or core components, which runs the whole suite.
+  One shard of the Jest suite, without coverage (coverage is collected
+  nightly). Expects the caller to have run ./.github/actions/setup-ui.
 inputs:
-  base:
-    description: Commit to select related tests against; empty runs every test.
-    required: false
-    default: ''
   shard:
-    description: Jest --shard value such as "2/4"; empty runs unsharded.
-    required: false
-    default: ''
+    description: Jest --shard value such as "2/4".
+    required: true
 runs:
   using: composite
   steps:
-    - name: Select Jest tests
-      id: select
-      env:
-        BASE: ${{ inputs.base }}
-      run: |
-        scope=all
-        if [ -n "$BASE" ]; then
-          scope=related
-          # Paths outside Jest's import graph that can change any test's result:
-          # setup, config and dependencies, core components (a package, not a
-          # source import), schemas the mocks require() dynamically, and the CI
-          # that selects this job.
-          if git diff --name-only "$BASE" HEAD | grep -qE '^(openmetadata-ui/src/main/resources/ui/(jest\.config\.js|babel\.config\.json|tsconfig\.json|package\.json|yarn\.lock|\.nvmrc|src/setupTests\.js|src/test/unit/|src/jsons/)|openmetadata-ui-core-components/|\.github/(actions/(setup-ui|ui-unit)/|ui-ci/|workflows/ci-(pr|merge-queue)\.yml))'; then
-            scope=all
-          fi
-        fi
-        echo "scope=$scope" >> "$GITHUB_OUTPUT"
-        echo "Jest: $scope tests" >> "$GITHUB_STEP_SUMMARY"
-      shell: bash
     - name: Run SSO dev server tests
-      if: ${{ inputs.shard == '' || startsWith(inputs.shard, '1/') }}
+      if: ${{ startsWith(inputs.shard, '1/') }}
       working-directory: openmetadata-ui/src/main/resources/ui
       run: node --test scripts/sso-dev-server.test.mjs
       shell: bash
     - name: Run unit tests
       working-directory: openmetadata-ui/src/main/resources/ui
       env:
-        BASE: ${{ inputs.base }}
-        SCOPE: ${{ steps.select.outputs.scope }}
         SHARD: ${{ inputs.shard }}
       # jest.config.js keeps '50%' for laptops; on the 4-vCPU hosted runner that
       # is only 2 workers, so CI asks for all 4. --silent plus the summary and
       # github-actions reporters keep the log to failures and a summary.
-      run: |
-        args=(--silent --reporters=summary --reporters=github-actions --maxWorkers=4 --passWithNoTests)
-        if [ "$SCOPE" = related ]; then
-          args+=("--changedSince=$BASE")
-        fi
-        if [ -n "$SHARD" ]; then
-          args+=("--shard=$SHARD")
-        fi
-        yarn jest "${args[@]}"
+      run: yarn jest --silent --reporters=summary --reporters=github-actions --maxWorkers=4 --shard="$SHARD"
       shell: bash

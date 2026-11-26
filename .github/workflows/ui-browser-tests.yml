@@ -34,6 +34,20 @@ concurrency:
 
 env:
   UI_DIR: openmetadata-ui/src/main/resources/ui
+  CORE_DIR: openmetadata-ui-core-components/src/main/resources/ui
+  # At most this many runners; with ~1,070 tests three ran past 10 min each.
+  SHARDS: 5
+  # Test files per runner when only some run (130 files over 5 runners).
+  FILES_PER_SHARD: 26
+  # What the scheduled run must see changed since the last full run to run at
+  # all. Pull requests and merge-queue entries are selected by the caller's
+  # plan job (.github/ui-ci/paths.yml).
+  UI_PATHS: >-
+    openmetadata-ui/src/main/resources/ui/
+    openmetadata-ui-core-components/src/main/resources/ui/
+    .github/workflows/ui-browser-tests.yml
+    .github/actions/ui-browser-setup/
+    .github/actions/setup-ui/
 
 jobs:
   select:
@@ -45,19 +59,152 @@ jobs:
       # Downloads the impact map from the latest passing full run.
       actions: read
     outputs:
-      mode: ${{ steps.select.outputs.mode }}
-      summary: ${{ steps.select.outputs.summary }}
-      shards: ${{ steps.select.outputs.shards }}
-      shard-count: ${{ steps.select.outputs.shard-count }}
-      core: ${{ steps.select.outputs.core }}
+      mode: ${{ steps.plan.outputs.mode }}
+      summary: ${{ steps.plan.outputs.summary }}
+      shards: ${{ steps.plan.outputs.shards }}
+      shard-count: ${{ steps.plan.outputs.shard-count }}
+      core: ${{ steps.changes.outputs.core }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
           # A pull request checks out its merge commit: HEAD^1 is the base.
           fetch-depth: 2
-      - uses: ./.github/actions/ui-browser-select
-        id: select
+      - name: Changed areas
+        id: changes
+        env:
+          BASE: ${{ github.event.merge_group.base_sha || 'HEAD^1' }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "merge_group" ]; then
+            git fetch --no-tags --depth=1 origin "$BASE"
+          fi
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            # A scheduled run compares against the last passing scheduled or
+            # manual run, and is skipped when no UI file changed since.
+            last=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ui-browser-tests.yml/runs?branch=main&status=success&per_page=30" \
+              --jq '[.workflow_runs[] | select(.event == "schedule" or .event == "workflow_dispatch")][0].head_sha // empty')
+            # Comparing the two trees needs only the two commits, not the history between.
+            if [ -n "$last" ] && git fetch --no-tags --depth=1 origin "$last"; then
+              changed=$(git diff --name-only "$last" HEAD)
+            else
+              changed="$UI_DIR/"
+            fi
+          else
+            changed=$(git diff --name-only "$BASE" HEAD)
+          fi
+          ui=false
+          for prefix in $UI_PATHS; do
+            if grep -q "^$prefix" <<< "$changed"; then ui=true; fi
+          done
+          core=false
+          if grep -q "^$CORE_DIR/" <<< "$changed"; then core=true; fi
+          { echo "ui=$ui"; echo "core=$core"; } >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v5
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        with:
+          node-version-file: ${{ env.UI_DIR }}/.nvmrc
+      # Only esbuild is needed to read the import graph; the full UI install
+      # builds core components first.
+      - name: Install esbuild
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        run: |
+          version=$(awk '/^"?esbuild@/ {found=1} found && /^  version / {gsub(/"/, "", $2); print $2; exit}' "$UI_DIR/yarn.lock")
+          mkdir -p "$RUNNER_TEMP/esbuild"
+          cd "$RUNNER_TEMP/esbuild"
+          echo '{"private": true}' > package.json
+          yarn add --silent "esbuild@$version"
+          echo "ESBUILD_PATH=$RUNNER_TEMP/esbuild/node_modules/esbuild/lib/main.js" >> "$GITHUB_ENV"
+      # The map travels as an artifact of the latest passing run on code that
+      # reached main: a scheduled or manual run on main, or a merge-queue entry.
+      # A pull request's map reflects code that may never merge (or a fork's
+      # unreviewed code) and could hide tests from every later pull request.
+      - name: Download the impact map from the latest full run
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Queried per event, so pull-request runs cannot push a good map off
+          # the list while main's full run stays red; newest first across them.
+          # Merge-queue entries run this workflow from ci-merge-queue.yml.
+          runs=$(for query in "ui-browser-tests.yml event=schedule&branch=main" "ui-browser-tests.yml event=workflow_dispatch&branch=main" "ci-merge-queue.yml event=merge_group"; do
+            read -r workflow filter <<< "$query"
+            gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs?status=success&per_page=50&$filter" \
+              --jq ".workflow_runs[] | select(.head_repository.full_name == \"$GITHUB_REPOSITORY\") | \"\\(.created_at) \\(.id)\""
+          done | sort -r | cut -d' ' -f2)
+          for run in $runs; do
+            if gh run download "$run" -R "$GITHUB_REPOSITORY" -n browser-impact-map -D "$UI_DIR" 2>/dev/null; then
+              echo "Impact map from run $run" >> "$GITHUB_STEP_SUMMARY"
+              break
+            fi
+          done
+      - name: Test the selection script
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        working-directory: ${{ env.UI_DIR }}
+        run: |
+          node --test scripts/select-browser-tests.test.mjs scripts/browser-tests-report.test.mjs
+      - name: Select tests
+        id: plan
+        working-directory: ${{ env.UI_DIR }}
+        env:
+          BASE: ${{ github.event.merge_group.base_sha || 'HEAD^1' }}
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
+            echo '{"mode": "none", "reason": "no UI change since the last full run", "tests": [], "uncovered": []}' > selection.json
+          elif [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "merge_group" ]; then
+            # A pull request's merge commit has its base at HEAD^1; a merge-queue
+            # group may batch several pull requests, so it diffs from the group's base.
+            node scripts/select-browser-tests.mjs --map impact-map.json --base "$BASE" --out selection.json \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo '{"mode": "all", "reason": "full run on ${{ github.event_name }}", "tests": [], "uncovered": []}' > selection.json
+          fi
+          mode=$(jq -r .mode selection.json)
+          count=$(jq '.tests | length' selection.json)
+          shard_count=0
+          if [ "$mode" = "all" ]; then
+            shard_count=$SHARDS
+          elif [ "$mode" = "selected" ]; then
+            shard_count=$(( (count + FILES_PER_SHARD - 1) / FILES_PER_SHARD ))
+            shard_count=$(( shard_count > SHARDS ? SHARDS : shard_count ))
+          fi
+          {
+            echo "mode=$mode"
+            echo "summary=$(jq -r .reason selection.json)"
+            echo "shard-count=$shard_count"
+            echo "shards=$(jq -cn --argjson n "$shard_count" '[range(1; $n + 1)]')"
+          } >> "$GITHUB_OUTPUT"
+      # A merge-queue entry carries its map along, to update it for the tests it ran.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: browser-selection
+          path: |
+            ${{ env.UI_DIR }}/selection.json
+            ${{ github.event_name == 'merge_group' && format('{0}/impact-map.json', env.UI_DIR) || '' }}
+          retention-days: 1
+      # When nothing runs, the report job is skipped; say why in the summary.
+      - name: Report that no browser test ran
+        if: github.event_name == 'pull_request' && steps.plan.outputs.mode == 'none'
+        working-directory: ${{ env.UI_DIR }}
+        run: |
+          {
+            echo '### UI browser tests'
+            echo
+            echo "**Ran:** none ($(jq -r .reason selection.json))"
+            uncovered=$(jq -r '.uncovered[] | "- `\(.)`"' selection.json)
+            if [ -n "$uncovered" ]; then
+              echo
+              echo '<details><summary>Changed files no browser test loads</summary>'
+              echo
+              echo "$uncovered"
+              echo
+              echo '</details>'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Core components' own tests, run whenever core changes. A core change
+  # selects no browser tests, so this is its gate.
   core-components:
     name: core components
     needs: select
@@ -71,7 +218,22 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: ${{ env.UI_DIR }}/.nvmrc
-      - uses: ./.github/actions/ui-core-components
+      - name: Install
+        working-directory: ${{ env.CORE_DIR }}
+        run: |
+          for attempt in 1 2 3; do
+            yarn install --frozen-lockfile --network-timeout 120000 && exit 0
+            echo "yarn install failed (attempt $attempt), retrying"
+            sleep 15
+          done
+          exit 1
+      - name: Test
+        working-directory: ${{ env.CORE_DIR }}
+        run: yarn test
+      - name: Build
+        working-directory: ${{ env.CORE_DIR }}
+        run: yarn build
+
   browser-tests:
     name: browser tests + coverage (shard ${{ matrix.shard }})
     needs: select
@@ -91,11 +253,24 @@ jobs:
         with:
           name: browser-selection
           path: ${{ env.UI_DIR }}
-      - uses: ./.github/actions/ui-browser-run
-        with:
-          mode: ${{ needs.select.outputs.mode }}
-          shard: ${{ matrix.shard }}
-          shard-count: ${{ needs.select.outputs.shard-count }}
+      - name: Run browser tests with coverage
+        id: tests
+        working-directory: ${{ env.UI_DIR }}
+        continue-on-error: true
+        env:
+          # Runs on code that reaches main record what each test file executes;
+          # a passing one writes (full run) or updates (queue entry) the map.
+          # Pull requests skip it: their map is never used.
+          BROWSER_IMPACT_DIR: ${{ github.event_name != 'pull_request' && format('{0}/{1}/.impact', github.workspace, env.UI_DIR) || '' }}
+        # The blob report carries this shard's results and coverage for the
+        # merge in browser-tests-report.
+        run: |
+          files=()
+          if [ "${{ needs.select.outputs.mode }}" = "selected" ]; then
+            mapfile -t files < <(jq -r '.tests[]' selection.json)
+          fi
+          yarn test:ui:coverage --shard=${{ matrix.shard }}/${{ needs.select.outputs.shard-count }} \
+            --passWithNoTests --reporter=default --reporter=blob "${files[@]}"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -111,6 +286,23 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 1
+      - name: Upload failure screenshots
+        if: always() && steps.tests.outcome == 'failure'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-browser-failures-${{ matrix.shard }}
+          path: |
+            ${{ env.UI_DIR }}/src/**/__screenshots__/**
+            ${{ env.UI_DIR }}/.vitest-attachments/**
+          if-no-files-found: ignore
+      - name: Fail if tests failed
+        if: always() && steps.tests.outcome == 'failure'
+        run: exit 1
+
+  # Merges the shards into one result. A pull request gets one report in the
+  # job summary (PR jobs post no comments, ADR:2026-11-10-pr-jobs-never-receive-credentials):
+  # what ran and why, the result, and the changed code the tests executed. A passing run publishes
+  # the impact map.
   browser-tests-report:
     name: browser tests + coverage
     needs: [select, browser-tests]
@@ -140,7 +332,19 @@ jobs:
         with:
           name: browser-selection
           path: ${{ env.UI_DIR }}
-      - uses: ./.github/actions/ui-browser-report
+      - name: Merge shard reports
+        working-directory: ${{ env.UI_DIR }}
+        run: |
+          npx vitest --config vitest.browser.config.ts --merge-reports --coverage \
+            --reporter=default --reporter=junit \
+            --outputFile.junit=src/test/browser/junit.xml
+      - name: Write the report
+        if: always() && needs.select.result == 'success' && github.event_name == 'pull_request'
+        working-directory: ${{ env.UI_DIR }}
+        run: |
+          node scripts/browser-tests-report.mjs --base HEAD^1 --selection selection.json \
+            --junit src/test/browser/junit.xml \
+            --coverage src/test/browser/coverage/coverage-final.json >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/download-artifact@v8
         if: github.event_name != 'pull_request'
         with:

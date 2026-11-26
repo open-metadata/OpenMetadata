@@ -36,8 +36,7 @@ const LOCALE = 'src/locale/languages/en-us.json';
 /** Repo-root paths whose change can affect every browser test. */
 const RUN_ALL_PREFIXES = [
   '.github/workflows/ui-browser-tests.yml',
-  // ui-browser-setup, -select, -run and -report, and the setup they share.
-  '.github/actions/ui-browser-',
+  '.github/actions/ui-browser-setup/',
   '.github/actions/setup-ui/',
   `${UI}package.json`,
   `${UI}yarn.lock`,

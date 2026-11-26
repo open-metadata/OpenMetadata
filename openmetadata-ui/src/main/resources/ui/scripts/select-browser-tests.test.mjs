@@ -93,7 +93,7 @@ it('runs everything when it cannot reason about the change', () => {
   );
   // The CI that sets up and runs the browser tests.
   for (const file of [
-    '.github/actions/ui-browser-run/action.yml',
+    '.github/actions/ui-browser-setup/action.yml',
     '.github/actions/setup-ui/action.yml',
   ]) {
     assert.equal(
