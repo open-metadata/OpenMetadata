@@ -929,3 +929,22 @@ class TestYieldTableConstraintsGrouping:
             ["a_id"],
             ["b_id"],
         ]
+
+
+@pytest.mark.parametrize(
+    "foreign_constraint, expected",
+    [
+        (Constraint.NOT_NULL_UNIQUE, RelationshipType.ONE_TO_ONE),
+        (Constraint.UNIQUE, RelationshipType.ONE_TO_ONE),
+        (Constraint.NOT_NULL, RelationshipType.MANY_TO_ONE),
+    ],
+)
+def test_non_null_unique_foreign_key_is_one_to_one(foreign_constraint, expected):
+    """A UNIQUE+NOT NULL FK remains one-to-one when the target is a primary key."""
+    from metadata.utils.constraints import get_relationship_type
+
+    fk = {"constrained_columns": ["target_id"], "referred_columns": ["id"]}
+    source_columns = [Column(name="target_id", dataType=DataType.INT, constraint=foreign_constraint)]
+    target_columns = [Column(name="id", dataType=DataType.INT, constraint=Constraint.PRIMARY_KEY)]
+
+    assert get_relationship_type(fk, target_columns, source_columns) == expected

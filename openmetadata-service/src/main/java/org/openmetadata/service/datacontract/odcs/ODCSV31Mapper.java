@@ -199,8 +199,12 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
                 column.getDataType() == null ? null : column.getDataType().toString());
     if (column.getConstraint() != null) {
       property.setPrimaryKey(column.getConstraint() == ColumnConstraint.PRIMARY_KEY);
-      property.setUnique(column.getConstraint() == ColumnConstraint.UNIQUE);
-      property.setRequired(column.getConstraint() == ColumnConstraint.NOT_NULL);
+      property.setUnique(
+          column.getConstraint() == ColumnConstraint.UNIQUE
+              || column.getConstraint() == ColumnConstraint.NOT_NULL_UNIQUE);
+      property.setRequired(
+          column.getConstraint() == ColumnConstraint.NOT_NULL
+              || column.getConstraint() == ColumnConstraint.NOT_NULL_UNIQUE);
     }
     if (property.getLogicalType() == SchemaProperty.LogicalType.STRING
         && column.getDataLength() != null

@@ -2540,6 +2540,7 @@
     "not-linked-to-any-data-asset": "Niet gekoppeld aan een data-asset",
     "not-mapped": "Niet toegewezen",
     "not-null": "Niet leeg",
+    "not-null-unique": "Niet leeg + Uniek",
     "not-processed": "Niet verwerkt",
     "not-ran": "Niet uitgevoerd",
     "not-run": "Niet uitgevoerd",

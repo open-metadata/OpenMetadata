@@ -2770,6 +2770,21 @@ describe('getConstraintIcon', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
+  it('shows a combined NOT NULL UNIQUE constraint without dropping either requirement', () => {
+    render(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'order_number',
+          columnConstraint: 'NOT_NULL_UNIQUE',
+        })}
+      </>
+    );
+
+    expect(
+      screen.getByTestId('constraint-icon-not-null-unique')
+    ).toHaveAccessibleName('label.not-null-unique');
+  });
+
   it('preserves a column constraint alongside composite membership', () => {
     render(
       <>

@@ -16,6 +16,7 @@ from metadata.data_quality.validations.runtime_param_setter.table_diff_params_se
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
+    Constraint,
     DataType,
     Table,
 )
@@ -184,6 +185,15 @@ def test_setter_gets_default_key_columns(
             key_columns=["id"],
         ),
     )
+
+
+def test_not_null_unique_column_is_a_default_table_diff_key(setter: TableDiffParamsSetter, table1: Table) -> None:
+    """Re-ingested unique and required columns must remain usable as table diff keys."""
+    table1.columns[0].constraint = Constraint.NOT_NULL_UNIQUE
+    table1.columns[1].constraint = Constraint.NULL
+    test_case = TestCase.model_construct(parameterValues=[])
+
+    assert setter.get_key_columns(test_case) == {"id"}
 
 
 def test_setter_gets_per_table_key_columns(

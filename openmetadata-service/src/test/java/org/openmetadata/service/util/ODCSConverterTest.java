@@ -1121,6 +1121,34 @@ class ODCSConverterTest {
   }
 
   @Test
+  void testNotNullUniqueConstraint_ODCSRoundTrip() {
+    DataContract contract = new DataContract();
+    contract.setId(UUID.randomUUID());
+    contract.setName("not_null_unique_roundtrip");
+    contract.setEntityStatus(EntityStatus.APPROVED);
+
+    EntityReference entity =
+        new EntityReference().withId(UUID.randomUUID()).withType("table").withName("orders");
+    contract.setEntity(entity);
+    contract.setSchema(
+        List.of(
+            new Column()
+                .withName("order_number")
+                .withDataType(ColumnDataType.STRING)
+                .withConstraint(ColumnConstraint.NOT_NULL_UNIQUE)));
+
+    ODCSDataContract exported = ODCSConverter.toODCS(contract);
+    ODCSSchemaElement exportedColumn = exported.getSchema().get(0).getProperties().get(0);
+
+    assertTrue(exportedColumn.getUnique(), "ODCS export retains UNIQUE");
+    assertTrue(exportedColumn.getRequired(), "ODCS export retains NOT NULL");
+
+    DataContract reimported = ODCSConverter.fromODCS(exported, entity);
+    assertEquals(1, reimported.getSchema().size());
+    assertEquals(ColumnConstraint.NOT_NULL_UNIQUE, reimported.getSchema().get(0).getConstraint());
+  }
+
+  @Test
   void testToODCS_DefaultsPolicyRoleAndMapsColumnClassification() {
     DataContract contract = new DataContract();
     contract.setId(UUID.randomUUID());

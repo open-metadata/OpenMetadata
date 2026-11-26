@@ -15,7 +15,7 @@ Define constraints helper methods useful for the metadata ingestion
 
 from metadata.generated.schema.entity.data.table import (
     Column,
-    ConstraintType,
+    Constraint,
     RelationshipType,
 )
 from metadata.ingestion.ometa.utils import model_str
@@ -30,8 +30,9 @@ def _is_column_unique(column: dict, columns: list[Column]) -> bool:
         for col in columns or []:
             if model_str(col.name) == constrained_column:
                 if col.constraint and col.constraint.value in {
-                    ConstraintType.UNIQUE.value,
-                    ConstraintType.PRIMARY_KEY.value,
+                    Constraint.UNIQUE.value,
+                    Constraint.NOT_NULL_UNIQUE.value,
+                    Constraint.PRIMARY_KEY.value,
                 }:
                     return True
                 break

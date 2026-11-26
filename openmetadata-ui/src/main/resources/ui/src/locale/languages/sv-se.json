@@ -2540,6 +2540,7 @@
     "not-linked-to-any-data-asset": "Inte länkad till någon datatillgång",
     "not-mapped": "Inte mappad",
     "not-null": "Inte null",
+    "not-null-unique": "Inte null + Unik",
     "not-processed": "Inte bearbetad",
     "not-ran": "Ej körd",
     "not-run": "Körs inte",

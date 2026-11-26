@@ -378,6 +378,9 @@ public class ODCSConverter {
 
     if (Boolean.TRUE.equals(element.getPrimaryKey())) {
       column.setConstraint(ColumnConstraint.PRIMARY_KEY);
+    } else if (Boolean.TRUE.equals(element.getUnique())
+        && Boolean.TRUE.equals(element.getRequired())) {
+      column.setConstraint(ColumnConstraint.NOT_NULL_UNIQUE);
     } else if (Boolean.TRUE.equals(element.getUnique())) {
       column.setConstraint(ColumnConstraint.UNIQUE);
     } else if (Boolean.TRUE.equals(element.getRequired())) {

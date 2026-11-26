@@ -116,6 +116,12 @@ const CONSTRAINT_ICON_CONFIG: Record<string, ConstraintIconConfig> = {
     deletedIcon: ConstraintNotNullRemoved,
     dataTestId: 'not-null',
   },
+  [ConstraintTypes.NOT_NULL_UNIQUE]: {
+    getTitle: () => t('label.not-null-unique'),
+    icon: ConstraintUnique,
+    deletedIcon: ConstraintUniqueRemoved,
+    dataTestId: 'not-null-unique',
+  },
   [ConstraintTypes.FOREIGN_KEY]: {
     getTitle: () => t('label.foreign-key'),
     icon: ConstraintForeignKey,
