@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.opensearch;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.stream.JsonParser;
 import java.io.IOException;
 import java.io.StringReader;
@@ -157,6 +158,23 @@ public class OpenSearchIndexManager implements IndexManagementClient {
         index);
   }
 
+  @Override
+  public long countDocuments(String name, ObjectNode body) throws IOException {
+    try (Response response =
+        client
+            .generic()
+            .execute(
+                Requests.builder()
+                    .endpoint("/" + name + "/_count")
+                    .method("POST")
+                    .json(body.toString())
+                    .build())) {
+      return JsonUtils.readTree(responseBody(response, "/" + name + "/_count"))
+          .path("count")
+          .asLong();
+    }
+  }
+
   /**
    * Sends the {@code mappings.properties} of {@code content} as a {@code PUT _mapping}, and its
    * {@code _meta} when it has one.
@@ -202,17 +220,21 @@ public class OpenSearchIndexManager implements IndexManagementClient {
         client
             .generic()
             .execute(Requests.builder().endpoint(endpoint).query(query).method("GET").build())) {
-      String body =
-          response
-              .getBody()
-              .map(content -> new String(content.bodyAsBytes(), StandardCharsets.UTF_8))
-              .orElse("");
-      if (response.getStatus() != 200) {
-        throw new IOException(
-            String.format("%s answered %d: %s", endpoint, response.getStatus(), body));
-      }
-      return JsonUtils.readTree(body);
+      return JsonUtils.readTree(responseBody(response, endpoint));
     }
+  }
+
+  private static String responseBody(Response response, String endpoint) throws IOException {
+    String body =
+        response
+            .getBody()
+            .map(content -> new String(content.bodyAsBytes(), StandardCharsets.UTF_8))
+            .orElse("");
+    if (response.getStatus() != 200) {
+      throw new IOException(
+          String.format("%s answered %d: %s", endpoint, response.getStatus(), body));
+    }
+    return body;
   }
 
   @Override

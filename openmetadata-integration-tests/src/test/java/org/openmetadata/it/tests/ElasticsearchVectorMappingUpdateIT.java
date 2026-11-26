@@ -25,6 +25,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -255,7 +256,15 @@ class ElasticsearchVectorMappingUpdateIT {
             + DIMENSION
             + "},\"properties\":{\"embedding\":{\"type\":\"dense_vector\",\"dims\":"
             + DIMENSION
-            + "}}}}");
+            + "},\"embeddingModel\":{\"type\":\"keyword\"},"
+            + "\"embeddingDimension\":{\"type\":\"integer\"}}}}");
+    putDoc(indexName, "own", vectorDoc(MODEL.id()));
+    putDoc(indexName, "other", vectorDoc("another-model"));
+    putDoc(indexName, "unrecorded", "{\"embedding\":" + vector() + "}");
+    putDoc(indexName, "no-vector", "{\"embeddingModel\":\"another-model\"}");
+    assertEquals(
+        2,
+        indexManager.countDocuments(indexName, EmbeddingFieldUpdate.vectorsOfAnotherModel(MODEL)));
     assertEquals(
         EmbeddingFieldUpdate.LEAVE_OUT,
         EmbeddingFieldUpdate.updateFor(indexManager.readEmbeddingField(indexName), MODEL));
@@ -429,6 +438,31 @@ class ElasticsearchVectorMappingUpdateIT {
 
   private String baseUrl() {
     return "http://" + container.getHost() + ":" + container.getMappedPort(9200);
+  }
+
+  private void putDoc(String indexName, String id, String document) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder(
+                URI.create(baseUrl() + "/" + indexName + "/_doc/" + id + "?refresh=true"))
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(document))
+            .build();
+    HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+    assertTrue(response.statusCode() < 300, "index " + id + ": " + response.body());
+  }
+
+  private static String vectorDoc(String modelId) {
+    return "{\"embedding\":"
+        + vector()
+        + ",\"embeddingModel\":\""
+        + modelId
+        + "\",\"embeddingDimension\":"
+        + DIMENSION
+        + "}";
+  }
+
+  private static String vector() {
+    return "[" + String.join(",", Collections.nCopies(DIMENSION, "0.5")) + "]";
   }
 
   private static IndexMapping entityIndex(String indexName) {

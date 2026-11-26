@@ -6,6 +6,7 @@ import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSL
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
@@ -386,6 +387,11 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public void recordEmbeddingModel(String index, EmbeddingModel model) throws IOException {
     indexManager.recordEmbeddingModel(index, model);
+  }
+
+  @Override
+  public long countDocuments(String name, ObjectNode body) throws IOException {
+    return indexManager.countDocuments(name, body);
   }
 
   @Override

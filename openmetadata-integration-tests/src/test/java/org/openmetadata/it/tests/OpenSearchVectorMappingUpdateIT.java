@@ -26,6 +26,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -266,7 +267,20 @@ class OpenSearchVectorMappingUpdateIT {
             + DIMENSION
             + "},\"properties\":{\"embedding\":{\"type\":\"knn_vector\",\"dimension\":"
             + DIMENSION
-            + "}}}}");
+            + "},\"embeddingModel\":{\"type\":\"keyword\"},"
+            + "\"embeddingDimension\":{\"type\":\"integer\"}}}}");
+    send("PUT", "/" + indexName + "/_doc/own?refresh=true", vectorDoc(MODEL.id()));
+    send("PUT", "/" + indexName + "/_doc/other?refresh=true", vectorDoc("another-model"));
+    send(
+        "PUT",
+        "/" + indexName + "/_doc/unrecorded?refresh=true",
+        "{\"embedding\":" + vector() + "}");
+    send(
+        "PUT",
+        "/" + indexName + "/_doc/no-vector?refresh=true",
+        "{\"embeddingModel\":\"another-model\"}");
+    assertEquals(
+        2, client.countDocuments(indexName, EmbeddingFieldUpdate.vectorsOfAnotherModel(MODEL)));
     assertEquals(
         EmbeddingFieldUpdate.LEAVE_OUT,
         EmbeddingFieldUpdate.updateFor(client.readEmbeddingField(indexName), MODEL));
@@ -694,6 +708,20 @@ class OpenSearchVectorMappingUpdateIT {
 
   private String baseUrl() {
     return "http://" + container.getHost() + ":" + container.getMappedPort(9200);
+  }
+
+  private static String vectorDoc(String modelId) {
+    return "{\"embedding\":"
+        + vector()
+        + ",\"embeddingModel\":\""
+        + modelId
+        + "\",\"embeddingDimension\":"
+        + DIMENSION
+        + "}";
+  }
+
+  private static String vector() {
+    return "[" + String.join(",", Collections.nCopies(DIMENSION, "0.5")) + "]";
   }
 
   private JsonNode get(String path) throws IOException, InterruptedException {

@@ -163,6 +163,16 @@ class EmbeddingFieldUpdateTest {
   }
 
   @Test
+  void theVectorsOfAnotherModelAreTheVectorsThatDoNotRecordThisModelAndItsDimension() {
+    assertEquals(
+        JsonUtils.readTree(
+            "{\"query\":{\"bool\":{\"filter\":[{\"exists\":{\"field\":\"embedding\"}}],"
+                + "\"must_not\":[{\"bool\":{\"filter\":[{\"term\":{\"embeddingModel\":\"model-a\"}},"
+                + "{\"term\":{\"embeddingDimension\":384}}]}}]}}}"),
+        EmbeddingFieldUpdate.vectorsOfAnotherModel(MODEL));
+  }
+
+  @Test
   void aModelRecordedOnAnIndexWithoutMetaRecordsOnlyTheModel() {
     ObjectNode body = EmbeddingFieldUpdate.modelRecordedOn(INDEX, JsonUtils.readTree("{}"), MODEL);
 

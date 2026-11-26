@@ -7,6 +7,7 @@ import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipD
 import static org.openmetadata.service.util.AwsCredentialsUtil.buildCredentialsProvider;
 import static org.openmetadata.service.util.AwsCredentialsUtil.isAwsIamAuthEnabled;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -360,6 +361,11 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void recordEmbeddingModel(String index, EmbeddingModel model) throws IOException {
     indexManager.recordEmbeddingModel(index, model);
+  }
+
+  @Override
+  public long countDocuments(String name, ObjectNode body) throws IOException {
+    return indexManager.countDocuments(name, body);
   }
 
   @Override

@@ -1,6 +1,7 @@
 package org.openmetadata.service.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import java.util.Optional;
@@ -101,6 +102,25 @@ public enum EmbeddingFieldUpdate {
     }
     recordModel(mappings, model);
     return mappings;
+  }
+
+  /**
+   * A {@code _count} body for the documents that hold a vector {@code model} did not make, as each
+   * records it: another model, or none, as on a document written before documents recorded theirs.
+   * An index may record the model only when none is left.
+   */
+  public static ObjectNode vectorsOfAnotherModel(EmbeddingModel model) {
+    ObjectNode body = JsonUtils.getObjectNode();
+    ObjectNode bool = body.putObject("query").putObject("bool");
+    bool.putArray("filter").addObject().putObject("exists").put("field", LiveEmbeddingField.FIELD);
+    ArrayNode madeByTheModel =
+        bool.putArray("must_not").addObject().putObject("bool").putArray("filter");
+    madeByTheModel.addObject().putObject("term").put(EmbeddingModel.ID_FIELD, model.id());
+    madeByTheModel
+        .addObject()
+        .putObject("term")
+        .put(EmbeddingModel.DIMENSION_FIELD, model.dimension());
+    return body;
   }
 
   /**

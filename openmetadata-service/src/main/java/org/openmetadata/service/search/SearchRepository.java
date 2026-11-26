@@ -94,6 +94,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -1241,29 +1242,69 @@ public class SearchRepository {
   }
 
   /**
-   * Records the embedding model in the {@code _meta} of every index behind {@code name}, once a
-   * {@code reembed} run has replaced every vector written there, and reads its field again, so it
-   * no longer counts as holding another model's vectors. An index whose field has other dimensions
-   * holds none of the model's vectors whatever the run wrote, so nothing is recorded on it.
+   * After a {@code reembed} run that left no entity out: records the embedding model in the {@code
+   * _meta} of every vector index whose stored vectors all record it, and reads each again, so none
+   * of them counts as holding another model's vectors any more. An index whose field has other
+   * dimensions, or that still holds another model's vectors, as ontology terms do until a reindex
+   * embeds them again, keeps its {@code _meta} and stays reported.
    *
-   * @return whether {@code name} now records the model, or does not exist
+   * @return false when an index could not be read or its {@code _meta} written
    */
-  public boolean recordReembeddedModel(String name) {
-    boolean recorded =
-        !nameExists(name)
-            || getEmbeddingModel()
-                .filter(model -> recordModelOnEveryIndex(name, model))
-                .isPresent();
-    vectorFieldHealth.refresh(name);
-    return recorded;
+  public boolean recordModelOnReembeddedIndexes() {
+    return getEmbeddingModel()
+        .map(
+            model ->
+                vectorIndexNames().stream()
+                    .filter(this::nameExists)
+                    .map(name -> recordModelIfItHoldsOnlyItsVectors(name, model))
+                    .reduce(true, Boolean::logicalAnd))
+        .orElse(false);
   }
 
-  private boolean recordModelOnEveryIndex(String name, EmbeddingModel model) {
+  private boolean recordModelIfItHoldsOnlyItsVectors(String name, EmbeddingModel model) {
     LiveEmbeddingField live = searchClient.readEmbeddingField(name);
-    return takesVectorsOf(live, model)
-        && live.indexes().stream()
-            .map(index -> recordModelOn(index, model))
-            .reduce(true, Boolean::logicalAnd);
+    boolean succeeded = live.readable();
+    if (!succeeded) {
+      LOG.error("Could not read the embedding field of {}: {}", name, live.readFailure());
+    } else if (takesVectorsOf(live, model)) {
+      succeeded = recordModelUnlessOtherVectorsRemain(live, model);
+    }
+    vectorFieldHealth.refresh(name);
+    return succeeded;
+  }
+
+  private boolean recordModelUnlessOtherVectorsRemain(
+      LiveEmbeddingField live, EmbeddingModel model) {
+    OptionalLong others = countVectorsOfAnotherModel(live.name(), model);
+    boolean succeeded = others.isPresent();
+    if (others.isPresent() && others.getAsLong() == 0) {
+      succeeded =
+          live.indexes().stream()
+              .map(index -> recordModelOn(index, model))
+              .reduce(true, Boolean::logicalAnd);
+    } else if (others.isPresent()) {
+      LOG.warn(
+          "Index {} still holds {} vectors of another embedding model than {}, so it keeps its "
+              + "model record. {}",
+          live.name(),
+          others.getAsLong(),
+          model.id(),
+          VectorFieldHealth.WAY_OUT);
+    }
+    return succeeded;
+  }
+
+  private OptionalLong countVectorsOfAnotherModel(String name, EmbeddingModel model) {
+    OptionalLong count;
+    try {
+      count =
+          OptionalLong.of(
+              searchClient.countDocuments(name, EmbeddingFieldUpdate.vectorsOfAnotherModel(model)));
+    } catch (IOException | RuntimeException e) {
+      LOG.error("Could not count the vectors of another embedding model in {}", name, e);
+      count = OptionalLong.empty();
+    }
+    return count;
   }
 
   private boolean recordModelOn(String index, EmbeddingModel model) {

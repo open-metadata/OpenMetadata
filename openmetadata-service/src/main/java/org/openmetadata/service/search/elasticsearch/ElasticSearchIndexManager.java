@@ -2,6 +2,7 @@ package org.openmetadata.service.search.elasticsearch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
@@ -173,6 +174,17 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
         model.id(),
         model.dimension(),
         index);
+  }
+
+  @Override
+  public long countDocuments(String name, ObjectNode body) throws IOException {
+    Request count = new Request("POST", "/" + name + "/_count");
+    count.setJsonEntity(body.toString());
+    try {
+      return getJson(count).path("count").asLong();
+    } catch (ParseException e) {
+      throw new IOException("Could not read the document count of " + name, e);
+    }
   }
 
   private void putMapping(String indexName, String mappingsJson) throws IOException {

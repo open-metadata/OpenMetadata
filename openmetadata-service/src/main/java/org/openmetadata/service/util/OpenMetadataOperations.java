@@ -1809,7 +1809,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
             finalQueueSize,
             batchSize);
         reembedAllTypes(vecService, run, batchSize, finalConsumerThreads);
-        exitCode = reembedExitCode(run.failedCounts(), () -> recordReembeddedModel(vecService));
+        exitCode =
+            reembedExitCode(
+                run.failedCounts(),
+                () -> Entity.getSearchRepository().recordModelOnReembeddedIndexes());
       }
     } catch (Exception e) {
       LOG.error("Failed to run full re-embedding", e);
@@ -1975,24 +1978,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
     return entityIndexName != null && repo.takesVectorsInPlace(entityIndexName);
   }
 
-  /**
-   * Records the model on every index a run re-embeds, the entity index of each type and the chunk
-   * index, so the server no longer asks to rebuild an index whose vectors the run replaced.
-   */
-  private boolean recordReembeddedModel(VectorIndexService vecService) {
-    SearchRepository repo = Entity.getSearchRepository();
-    List<String> indexes =
-        new ArrayList<>(
-            EmbeddedEntityTypes.ALL.stream()
-                .filter(OpenMetadataOperations::isReembedableEntityType)
-                .map(OpenMetadataOperations::resolveEntityIndexName)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList());
-    indexes.add(vecService.getChunkIndexName());
-    return indexes.stream().map(repo::recordReembeddedModel).reduce(true, Boolean::logicalAnd);
-  }
-
   private static void logReembedSummary(ReembedRun run) {
     for (String entityType : EmbeddedEntityTypes.ALL) {
       LOG.info(
@@ -2004,10 +1989,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   /**
-   * Success only when every entity was read and re-embedded, and then every index the run wrote
-   * records the model ({@code recordModel}); the summary above names the entities left out. A run
-   * that left any out records nothing, since an index it wrote may still hold another model's
-   * vectors.
+   * Success only when every entity was read and re-embedded, and then the indexes that hold only
+   * the model's vectors record it ({@code recordModel}); the summary above names the entities left
+   * out. A run that left any out records nothing, since an index it wrote may still hold another
+   * model's vectors.
    */
   static int reembedExitCode(Map<String, AtomicInteger> failedCounts, BooleanSupplier recordModel) {
     int failed = failedCounts.values().stream().mapToInt(AtomicInteger::get).sum();
