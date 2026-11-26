@@ -318,7 +318,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
-      - uses: ./.github/actions/validate-ci-config
+      - uses: ./.github/actions/validate-json-yaml-and-ci-rules
 
   validate-docker-compose:
     needs: plan

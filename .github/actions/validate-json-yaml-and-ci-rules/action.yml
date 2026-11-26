@@ -1,0 +1,16 @@
+name: Validate JSON/YAML and CI rules
+description: Check JSON, YAML, and workflow contracts.
+runs:
+  using: composite
+  steps:
+    - name: Set up Python 3.10
+      uses: ./.github/actions/setup-python
+      with:
+        python-version: '3.10'
+
+    - name: Validate JSON/YAML and CI rules
+      shell: bash
+      run: >-
+        "$OM_UV_EXECUTABLE" run --no-project --isolated --python "$(command -v python)"
+        --with pyyaml==6.0.3 --with pytest==9.1.1
+        bash .github/scripts/validate_ci_config.sh
