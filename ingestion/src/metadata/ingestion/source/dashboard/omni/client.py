@@ -412,6 +412,7 @@ class OmniApiClient:
                         query=OmniQuery(
                             table=query_obj.get("table"),
                             fields=query_obj.get("fields"),
+                            userEditedSQL=query_obj.get("userEditedSQL"),
                         ),
                     )
                 )

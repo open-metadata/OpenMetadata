@@ -197,6 +197,7 @@ class OmniQuery(BaseModel):
     table: str | None = None  # base view / topic the tile queries
     fields: list[str] | None = Field(default_factory=list)
     limit: int | None = None
+    userEditedSQL: str | None = None  # noqa: N815
 
 
 class QueryPresentation(BaseModel):

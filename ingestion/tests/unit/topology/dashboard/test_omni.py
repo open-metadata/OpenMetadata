@@ -11,6 +11,7 @@
 """Unit tests for the Omni dashboard connector."""
 
 import logging
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -32,9 +33,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
 from metadata.ingestion.source.dashboard.omni.metadata import (
     _DATAMODEL_LINEAGE_SENTINEL,
     OmniDashboardDetails,
@@ -896,3 +899,107 @@ def test_yield_dashboard_attaches_label_tags(omni_source, tag_metadata):
     details = OmniDashboardDetails(document=labelled, dashboard=MOCK_DASHBOARD_DOC)
     dashboard = _rights(omni_source.yield_dashboard(details))[0]
     assert [t.tagFQN.root for t in dashboard.tags] == ['OmniLabels."Shared.Tag"']
+
+
+SQL_TILE = """
+with recent as (select * from analytics.sales.orders where ordered_at >= '2026-01-01')
+select r.*, ${sales__customers.country}
+from recent r join ${Orders} o on o.id = r.id
+join FINANCE.BILLING.INVOICES i on i.order_id = r.id
+"""
+
+
+def _sql_details(*sqls):
+    return OmniDashboardDetails(
+        document=MOCK_DOCUMENT,
+        dashboard=OmniDashboardDocument(
+            identifier="doc-1",
+            queryPresentations=[
+                QueryPresentation(name=f"SQL {i}", query=OmniQuery(userEditedSQL=sql)) for i, sql in enumerate(sqls)
+            ],
+        ),
+    )
+
+
+def _table(name):
+    return Table(id=str(uuid.uuid4()), name=name, columns=[])
+
+
+def _searched_tables(omni_source):
+    searched = []
+
+    def search(entity_type, fqn_search_string, fetch_multiple_entities=False):
+        searched.append(fqn_search_string)
+        return [_table(fqn_search_string.split(".")[-1])]
+
+    omni_source.metadata.search_in_any_service = search
+    omni_source._sql_dialect = lambda _: Dialect.SNOWFLAKE
+    return searched
+
+
+def test_get_dashboard_document_reads_user_edited_sql():
+    client = OmniApiClient.__new__(OmniApiClient)
+    client.client = MagicMock()
+    client.client.get.return_value = {"queries": [{"name": "SQL", "query": {"table": "", "userEditedSQL": "select 1"}}]}
+    assert client.get_dashboard_document("doc-1").queryPresentations[0].query.userEditedSQL == "select 1"
+
+
+def test_tile_topics_reads_view_references_in_sql(omni_source):
+    customers = OmniTopic(model_id="m1", model_name="sales", name="customers", base_schema="SALES")
+    orders = OmniTopic(model_id="m1", model_name="sales", name="Orders")
+    for topic in (customers, orders):
+        for key in omni_source._topic_name_keys(topic):
+            omni_source._topic_name_index[key].append(topic)
+    tile = QueryPresentation(name="SQL", query=OmniQuery(userEditedSQL=SQL_TILE))
+    assert {topic.name for topic in omni_source._tile_topics(tile)} == {"customers", "Orders"}
+
+
+def test_sql_tile_tables_resolves_warehouse_tables_only(omni_source):
+    searched = _searched_tables(omni_source)
+    tables = list(omni_source._sql_tile_tables(_sql_details(SQL_TILE, "select 1", ""), "Warehouse"))
+    assert sorted(searched) == ["Warehouse.analytics.sales.orders", "Warehouse.finance.billing.invoices"]
+    assert len(tables) == 2
+
+
+def test_sql_tile_tables_applies_the_db_service_prefix(omni_source):
+    searched = _searched_tables(omni_source)
+    list(omni_source._sql_tile_tables(_sql_details(SQL_TILE), "Warehouse.FINANCE.BILLING"))
+    assert searched == ["Warehouse.FINANCE.BILLING.invoices"]
+
+
+def test_sql_tile_tables_dedupes_and_skips_unparsable_sql(omni_source):
+    same = _table("ORDERS")
+    omni_source.metadata.search_in_any_service = lambda **_: [same]
+    omni_source._sql_dialect = lambda _: Dialect.SNOWFLAKE
+    details = _sql_details("select * from a.b.orders", "select * from a.b.orders", "selec ((( from")
+    assert list(omni_source._sql_tile_tables(details, None)) == [same]
+
+
+def test_tile_topics_ignores_view_references_in_sql_comments(omni_source):
+    orders = OmniTopic(model_id="m1", model_name="sales", name="Orders")
+    for key in omni_source._topic_name_keys(orders):
+        omni_source._topic_name_index[key].append(orders)
+    sql = "select 1 -- from ${Orders}\n/* join ${Orders}\n on true */"
+    tile = QueryPresentation(name="SQL", query=OmniQuery(userEditedSQL=sql))
+    assert list(omni_source._tile_topics(tile)) == []
+
+
+def test_sql_tile_tables_skips_a_table_found_in_several_services(omni_source):
+    omni_source.metadata.search_in_any_service = lambda **_: [_table("ORDERS"), _table("ORDERS")]
+    omni_source._sql_dialect = lambda _: Dialect.SNOWFLAKE
+    assert list(omni_source._sql_tile_tables(_sql_details("select * from sales.orders"), None)) == []
+
+
+def test_yield_dashboard_lineage_details_links_sql_tables_to_the_dashboard(omni_source):
+    dashboard_entity = Dashboard(
+        id="550e8400-e29b-41d4-a716-446655440012",
+        name="doc-1",
+        service=EntityReference(id="550e8400-e29b-41d4-a716-446655440013", type="dashboardService"),
+    )
+    omni_source.metadata.get_by_name = MagicMock(return_value=dashboard_entity)
+    _searched_tables(omni_source)
+    details = _sql_details("select * from analytics.sales.orders")
+    edges = [
+        r for r in _rights(omni_source.yield_dashboard_lineage_details(details)) if isinstance(r, AddLineageRequest)
+    ]
+    assert {(e.edge.fromEntity.type, e.edge.toEntity.type) for e in edges} == {("table", "dashboard")}
