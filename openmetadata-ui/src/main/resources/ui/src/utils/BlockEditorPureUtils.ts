@@ -213,6 +213,20 @@ const markdownConverter = new Marked({
   },
   extensions: [
     {
+      name: 'em',
+      renderer(token) {
+        const content = this.parser.parseInline(token.tokens ?? []);
+        let html = `<em>${content}</em>`;
+        if (token.raw.startsWith('___') && token.raw.endsWith('___')) {
+          html = content;
+        } else if (token.raw.startsWith('_')) {
+          html = `_${content}_`;
+        }
+
+        return html;
+      },
+    },
+    {
       name: 'strong',
       renderer(token) {
         // Existing descriptions use double underscores for underline rather than bold.
