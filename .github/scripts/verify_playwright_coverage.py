@@ -31,8 +31,6 @@ LIFECYCLE_PROJECTS: frozenset[str] = frozenset(
         "entity-data-setup",
         "entity-data-teardown",
         "data-insight-application",
-        "search-rbac-setup",
-        "search-rbac-teardown",
     }
 )
 

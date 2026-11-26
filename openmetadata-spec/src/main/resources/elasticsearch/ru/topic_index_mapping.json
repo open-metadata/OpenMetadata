@@ -368,6 +368,10 @@
       "retentionSize": {
         "type": "long"
       },
+      "topicConfig": {
+        "type": "object",
+        "enabled": false
+      },
       "service": {
         "properties": {
           "id": {

@@ -599,27 +599,6 @@ export const goToAssetsTab = async (
   await waitForAllLoadersToDisappear(page);
 };
 
-export const verifyAssetsInDomain = async (
-  page: Page,
-  domain: Domain['data'],
-  tables: TableClass[],
-  expectedVisible: boolean
-) => {
-  await goToAssetsTab(page, domain);
-
-  for (const table of tables) {
-    const tableFqn = table.entityResponseData.fullyQualifiedName;
-    const tableCard = page.locator(
-      `[data-testid="table-data-card_${tableFqn}"]`
-    );
-    if (expectedVisible) {
-      await expect(tableCard).toBeVisible({ timeout: 10000 });
-    } else {
-      await expect(tableCard).not.toBeVisible({ timeout: 5000 });
-    }
-  }
-};
-
 /**
  * Fill the fields AddDomainForm shares between domains, subdomains and data
  * products.

@@ -693,6 +693,11 @@ public class RdfPropertyMapper {
    * owners, classification, etc. {@link LiveReferenceFilter} has already resolved every live label
    * of the entity; a label mapped on its own falls back to its href, then to a deterministic
    * synthetic URI.
+   *
+   * <p>The synthetic fallback URL-encodes the FQN path so tag names that the entity schema permits
+   * (spaces and {@code { } | ^ \}) cannot produce an IRI that violates RFC 3986. {@code
+   * RdfEntityDiffService} converts each statement IRI with {@link java.net.URI#create(String)},
+   * which throws on those characters and would otherwise abort the diff response.
    */
   private Resource resolveTagResource(
       String tagFqn, String source, JsonNode tagLabel, Model model) {
@@ -706,7 +711,11 @@ public class RdfPropertyMapper {
                 () ->
                     tryResolveUuidFromHref(tagLabel)
                         .map(id -> baseUri + "entity/" + entityType + "/" + id))
-            .orElseGet(() -> baseUri + "tag/" + tagFqn.replace(".", "/"));
+            .orElseGet(
+                () ->
+                    baseUri
+                        + "tag/"
+                        + URLEncoder.encode(tagFqn.replace(".", "/"), StandardCharsets.UTF_8));
     return model.createResource(resourceUri);
   }
 
