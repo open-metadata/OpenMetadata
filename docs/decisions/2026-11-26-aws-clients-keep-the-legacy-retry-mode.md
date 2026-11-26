@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-26 (initial)
 - **Deciders:** Ram Narayan Balaji
-- **Guard:** `AWSSecretsManagerRetryTest`, `S3AssetServiceRetryTest`, `AwsCredentialsUtilTest`
+- **Guard:** `AWSSecretsManagerRetryTest`, `S3AssetServiceRetryTest`, `S3LogStorageRetryTest`, `AwsCredentialsUtilTest`
 - **Related:** #38455 (AWS SDK 2.57 to 2.59 in the Maven group upgrade)
 
 ## Context

@@ -261,6 +261,35 @@ class AwsCredentialsUtilTest {
         () -> assertEquals(3, attemptsForThrottledCall(null)));
   }
 
+  @Test
+  @ResourceLock(Resources.SYSTEM_PROPERTIES)
+  void aThrottledAssumeRoleIsAttemptedFourTimes(@TempDir final Path home) throws Exception {
+    assumeNoRetryModeInEnvironment();
+    final String profile = emptyProfile(home);
+    try (ThrottlingAwsEndpoint endpoint = ThrottlingAwsEndpoint.forS3()) {
+      final AWSBaseConfig config =
+          new AWSBaseConfig()
+              .withRegion("us-east-1")
+              .withAccessKeyId("key")
+              .withSecretAccessKey("secret")
+              .withAssumeRoleArn("arn:aws:iam::123456789012:role/openmetadata");
+      withSystemProperty(
+          "aws.configFile",
+          profile,
+          () ->
+              withSystemProperty(
+                  "aws.endpointUrl",
+                  endpoint.uri().toString(),
+                  () ->
+                      assertThrows(
+                          SdkException.class,
+                          () ->
+                              AwsCredentialsUtil.buildCredentialsProvider(config)
+                                  .resolveCredentials())));
+      assertEquals(4, endpoint.attempts());
+    }
+  }
+
   private static int attemptsForThrottledCall(final RetryMode retryMode) {
     try (ThrottlingAwsEndpoint endpoint = new ThrottlingAwsEndpoint();
         SecretsManagerClient client =
