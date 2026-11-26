@@ -47,6 +47,7 @@ import { SearchService } from '../../../generated/entity/services/searchService'
 import { StorageService } from '../../../generated/entity/services/storageService';
 import { EntityReference } from '../../../generated/entity/type';
 import { Style } from '../../../generated/type/schema';
+import { LifecycleRequests } from '../../../hooks/useLifecycleRequests';
 import { QueryVote } from '../../../interface/entity/vote.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { ManageButtonProps } from '../../common/EntityPageInfos/ManageButton/ManageButton.interface';
@@ -159,6 +160,8 @@ export type DataAssetsHeaderProps = {
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
   onUpdateRetentionPeriod?: (value: string) => Promise<void>;
   extraDropdownContent?: ManageButtonProps['extraDropdownContent'];
+  /** Stages the user can ask the asset's lifecycle for, offered from its stage badge. */
+  lifecycleRequests?: LifecycleRequests;
   onMetricUpdate?: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
   isCustomizedView?: boolean;
   disableRunAgentsButton?: boolean;

@@ -43,11 +43,14 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.changeRequest.ReviewPolicy;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.LifecycleMove;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -868,6 +871,67 @@ class CreateTaskTest {
   @Test
   void testParseMillisFromIso8601DurationReturnsFallbackForNullFallback() {
     assertNull(CreateTask.parseMillisFromIso8601Duration("garbage", null));
+  }
+
+  // ---- decidesSameMove / withCurrentStage ----
+
+  @Test
+  void aLifecycleApprovalReplacesOnlyAnEarlierApprovalOfTheSameMove() {
+    LifecycleMove onboarding =
+        new LifecycleMove()
+            .withStage(EntityStatus.IN_REVIEW)
+            .withTargetStage(EntityStatus.APPROVED);
+    LifecycleMove deprecate =
+        new LifecycleMove()
+            .withStage(EntityStatus.IN_REVIEW)
+            .withTargetStage(EntityStatus.DEPRECATED);
+    Task priorOnboarding =
+        new Task().withPayload(Map.of(CreateTask.LIFECYCLE_MOVE_KEY, onboarding));
+
+    assertTrue(CreateTask.decidesSameMove(priorOnboarding, onboarding));
+    assertFalse(CreateTask.decidesSameMove(priorOnboarding, deprecate));
+  }
+
+  @Test
+  void anApprovalAskedFromAnEarlierStageIsReplacedByTheSameMoveFromTheStageNow() {
+    LifecycleMove fromDraft =
+        new LifecycleMove().withStage(EntityStatus.DRAFT).withTargetStage(EntityStatus.DEPRECATED);
+    LifecycleMove fromReview =
+        new LifecycleMove()
+            .withStage(EntityStatus.IN_REVIEW)
+            .withTargetStage(EntityStatus.DEPRECATED);
+    Task priorFromDraft = new Task().withPayload(Map.of(CreateTask.LIFECYCLE_MOVE_KEY, fromDraft));
+
+    assertTrue(CreateTask.decidesSameMove(priorFromDraft, fromReview));
+  }
+
+  @Test
+  void anEarlierApprovalThatGatesNoMoveIsStillReplaced() {
+    LifecycleMove deprecate =
+        new LifecycleMove()
+            .withStage(EntityStatus.IN_REVIEW)
+            .withTargetStage(EntityStatus.DEPRECATED);
+
+    assertTrue(CreateTask.decidesSameMove(new Task().withPayload(Map.of()), deprecate));
+  }
+
+  @Test
+  void anApprovalThatGatesNoMoveReplacesAnyEarlierOneAsBefore() {
+    assertTrue(CreateTask.decidesSameMove(new Task().withPayload(Map.of()), null));
+  }
+
+  @Test
+  void aMoveFromAnyStageNamesTheStageTheAssetIsIn() {
+    LifecycleMove fromAnyStage = new LifecycleMove().withTargetStage(EntityStatus.DEPRECATED);
+    Domain domain = new Domain().withEntityStatus(EntityStatus.APPROVED);
+
+    LifecycleMove resolved = CreateTask.withCurrentStage(fromAnyStage, domain);
+
+    assertEquals(EntityStatus.APPROVED, resolved.getStage());
+    assertEquals(EntityStatus.DEPRECATED, resolved.getTargetStage());
+    LifecycleMove fixed =
+        new LifecycleMove().withStage(EntityStatus.DRAFT).withTargetStage(EntityStatus.IN_REVIEW);
+    assertSame(fixed, CreateTask.withCurrentStage(fixed, domain));
   }
 
   // ---- isSupersedablePriorApprovalTask ----

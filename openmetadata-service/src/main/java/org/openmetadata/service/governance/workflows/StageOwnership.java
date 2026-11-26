@@ -16,4 +16,13 @@ public interface StageOwnership {
   default boolean playbookOwnsStageOf(String entityType, EntityInterface<?> entity) {
     return false;
   }
+
+  /**
+   * Stages a user can request for this entity from {@code currentStage}: the on-request transitions
+   * leaving it in the lifecycle that owns the entity.
+   */
+  default List<String> requestableStagesOf(
+      String entityType, EntityInterface<?> entity, String currentStage) {
+    return List.of();
+  }
 }

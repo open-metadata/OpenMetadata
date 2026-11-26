@@ -37,6 +37,18 @@ export const getEntityLifecycleStages = async (indices?: readonly string[]) => {
   return response.data;
 };
 
+/**
+ * Stages a user can request for an entity with a status update task: the on-request exits of
+ * the lifecycle that owns its stage, other than the stage it is in.
+ */
+export const getRequestableStages = async (entityType: string, id: string) => {
+  const response = await APIClient.get<string[]>(
+    `/metadata/types/lifecycleStages/${entityType}/${id}/requestableStages`
+  );
+
+  return response.data;
+};
+
 export const getTypeListByCategory = async (category: Category) => {
   const path = `/metadata/types`;
 

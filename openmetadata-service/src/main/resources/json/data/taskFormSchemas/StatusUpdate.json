@@ -1,0 +1,49 @@
+{
+  "name": "StatusUpdate",
+  "displayName": "Status Update",
+  "taskType": "StatusUpdate",
+  "taskCategory": "MetadataUpdate",
+  "formSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "newStatus",
+      "reason"
+    ],
+    "properties": {
+      "currentStatus": {
+        "type": "string",
+        "title": "Current Status"
+      },
+      "newStatus": {
+        "type": "string",
+        "title": "Requested Status"
+      },
+      "reason": {
+        "type": "string",
+        "title": "Reason"
+      }
+    }
+  },
+  "uiSchema": {
+    "ui:handler": {
+      "type": "statusUpdate",
+      "permission": "EDIT_ALL"
+    },
+    "ui:order": [
+      "newStatus",
+      "currentStatus",
+      "reason"
+    ],
+    "currentStatus": {
+      "ui:widget": "hidden"
+    },
+    "newStatus": {
+      "ui:readonly": true
+    },
+    "reason": {
+      "ui:readonly": true
+    }
+  },
+  "fullyQualifiedName": "StatusUpdate"
+}

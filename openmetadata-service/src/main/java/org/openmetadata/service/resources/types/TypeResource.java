@@ -249,6 +249,40 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   }
 
   @GET
+  @Path("/lifecycleStages/{entityType}/{id}/requestableStages")
+  @Operation(
+      operationId = "getRequestableStages",
+      summary = "Get the stages a user can request for an entity",
+      description =
+          "Get the stages a user can request for this entity with a status update task: the "
+              + "targets of the on-request transitions that leave the stage it is in, in the "
+              + "lifecycle that owns its stage. Empty when no lifecycle owns its stage or no "
+              + "on-request transition leaves that stage.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Sorted stages the entity can be requested to move to",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string")))),
+        @ApiResponse(responseCode = "404", description = "Entity not found")
+      })
+  public List<String> getRequestableStages(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Type of the entity", schema = @Schema(type = "string"))
+          @PathParam("entityType")
+          String entityType,
+      @Parameter(description = "Id of the entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(entityType, id, null));
+    return Entity.getEntityRepository(entityType).getRequestableStages(id);
+  }
+
+  @GET
   @Valid
   @Operation(
       operationId = "listTypes",

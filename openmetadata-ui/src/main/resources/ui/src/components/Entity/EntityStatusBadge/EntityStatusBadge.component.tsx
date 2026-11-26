@@ -10,29 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Divider, Tooltip } from '@openmetadata/ui-core-components';
-import { lazy } from 'react';
+import { Box, Divider } from '@openmetadata/ui-core-components';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
-import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
-import { getEntityStatusClass } from '../../../utils/EntityStatusUtils';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
-
-// The tooltip mounts these only while it is open, so the lookup and its chunk load on hover.
-const EntityStatusDecisionTitle = withSuspenseFallback(
-  lazy(() =>
-    import('./EntityStatusDecision').then((module) => ({
-      default: module.EntityStatusDecisionTitle,
-    }))
-  )
-);
-const EntityStatusDecisionDescription = withSuspenseFallback(
-  lazy(() =>
-    import('./EntityStatusDecision').then((module) => ({
-      default: module.EntityStatusDecisionDescription,
-    }))
-  )
-);
+import { EntityStageBadge } from './EntityStageBadge';
+import { PendingRequestMenu } from './PendingRequestMenu';
 
 export interface EntityStatusBadgeProps {
   status: EntityStatus;
@@ -41,6 +22,15 @@ export interface EntityStatusBadgeProps {
   entityType?: string;
   entityId?: string;
   fqn?: string;
+  /** Stage a user asked the asset's lifecycle to move it to, shown until the lifecycle decides. */
+  requestedStage?: EntityStatus;
+  /** Stages the user can ask the asset's lifecycle for, offered from the stage badge. */
+  requestStages?: EntityStatus[];
+  onRequest?: (stage: EntityStatus, reason: string) => Promise<boolean>;
+  /** The pending request's task, opened from its badge. */
+  requestTaskId?: string;
+  /** Withdraws the pending request, once confirmed; offered to the user who raised it. */
+  onWithdraw?: () => void | Promise<void>;
 }
 
 export const EntityStatusBadge = ({
@@ -49,26 +39,17 @@ export const EntityStatusBadge = ({
   entityType,
   entityId,
   fqn,
+  requestedStage,
+  requestStages = [],
+  onRequest,
+  requestTaskId,
+  onWithdraw,
 }: EntityStatusBadgeProps) => {
-  // Do not show badge for 'Unprocessed' status
-  if (status === EntityStatus.Unprocessed) {
-    return null;
-  }
+  // An Unprocessed asset shows no stage badge unless its lifecycle takes a request from it.
+  const showStage =
+    status !== EntityStatus.Unprocessed || requestStages.length > 0;
 
-  const badge = (
-    <StatusBadge label={status} status={getEntityStatusClass(status)} />
-  );
-  const decision =
-    entityType && entityId && fqn
-      ? {
-          entityType,
-          entityId,
-          entityLink: getEntityFeedLink(entityType, fqn),
-          status,
-        }
-      : undefined;
-
-  return (
+  return showStage || requestedStage ? (
     <Box
       inline
       align="center"
@@ -76,18 +57,26 @@ export const EntityStatusBadge = ({
       gap={2}
       itemClassName="layout-space-item">
       {showDivider && <Divider className="m-x-xs h-6" orientation="vertical" />}
-      {decision ? (
-        <Tooltip
-          description={<EntityStatusDecisionDescription {...decision} />}
-          placement="bottom start"
-          title={<EntityStatusDecisionTitle {...decision} />}
-          triggerClassName="tw:cursor-default tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2"
-          variant="light">
-          <span data-testid="entity-status-badge-trigger">{badge}</span>
-        </Tooltip>
-      ) : (
-        badge
+      {showStage && (
+        <EntityStageBadge
+          entityId={entityId}
+          entityType={entityType}
+          fqn={fqn}
+          requestStages={requestStages}
+          status={status}
+          onRequest={onRequest}
+        />
+      )}
+      {requestedStage && (
+        <PendingRequestMenu
+          entityType={entityType}
+          fqn={fqn}
+          requestTaskId={requestTaskId}
+          requestedStage={requestedStage}
+          status={status}
+          onWithdraw={onWithdraw}
+        />
       )}
     </Box>
-  );
+  ) : null;
 };

@@ -228,6 +228,7 @@ public final class TaskWorkflowLifecycleResolver {
       case TagUpdate -> "TagUpdateTaskWorkflow";
       case OwnershipUpdate -> "OwnershipUpdateTaskWorkflow";
       case TierUpdate -> "TierUpdateTaskWorkflow";
+      case StatusUpdate -> "StatusUpdateTaskWorkflow";
       case DomainUpdate -> "DomainUpdateTaskWorkflow";
       case GlossaryApproval -> "GlossaryApprovalTaskWorkflow";
       case RequestApproval -> "RequestApprovalTaskWorkflow";
@@ -260,6 +261,7 @@ public final class TaskWorkflowLifecycleResolver {
       case "TagUpdateTaskWorkflow" -> TaskEntityType.TagUpdate;
       case "OwnershipUpdateTaskWorkflow" -> TaskEntityType.OwnershipUpdate;
       case "TierUpdateTaskWorkflow" -> TaskEntityType.TierUpdate;
+      case "StatusUpdateTaskWorkflow" -> TaskEntityType.StatusUpdate;
       case "DomainUpdateTaskWorkflow" -> TaskEntityType.DomainUpdate;
       case "GlossaryApprovalTaskWorkflow" -> TaskEntityType.GlossaryApproval;
       case "RequestApprovalTaskWorkflow" -> TaskEntityType.RequestApproval;
@@ -289,6 +291,7 @@ public final class TaskWorkflowLifecycleResolver {
           OwnershipUpdate,
           TierUpdate,
           DomainUpdate,
+          StatusUpdate,
           Suggestion,
           MetadataCompletion -> TaskCategory.MetadataUpdate;
       case GlossaryApproval, RequestApproval -> TaskCategory.Approval;
@@ -309,6 +312,7 @@ public final class TaskWorkflowLifecycleResolver {
         "OwnershipUpdateTaskWorkflow",
         "TierUpdateTaskWorkflow",
         "DomainUpdateTaskWorkflow",
+        "StatusUpdateTaskWorkflow",
         "GlossaryApprovalTaskWorkflow",
         "RequestApprovalTaskWorkflow",
         "SuggestionTaskWorkflow",
@@ -777,6 +781,17 @@ public final class TaskWorkflowLifecycleResolver {
                   Map.of(
                       "currentTier", nullable(objectProperty()),
                       "newTier", objectProperty(),
+                      "reason", stringProperty())))
+          : null;
+      case StatusUpdate -> taskCategory == TaskCategory.MetadataUpdate
+          ? defaultSchema(
+              taskType,
+              taskCategory,
+              defaultWorkflowDefinitionRef(taskType),
+              schemaWithProperties(
+                  Map.of(
+                      "currentStatus", nullable(stringProperty()),
+                      "newStatus", stringProperty(),
                       "reason", stringProperty())))
           : null;
       case DomainUpdate -> taskCategory == TaskCategory.MetadataUpdate

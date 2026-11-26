@@ -21,6 +21,8 @@ public class Workflow {
   public static final String TRIGGERING_VERSION_VARIABLE = "triggeringVersion";
   // The type of the change event that started the run. Only a create may carry no change to judge.
   public static final String TRIGGERING_EVENT_TYPE_VARIABLE = "triggeringEventType";
+  // Set on the run a lifecycle starts after an approved status request moved its entity.
+  public static final String LIFECYCLE_RESTART_VARIABLE = "lifecycleRestart";
   public static final String ENTITY_LIST_VARIABLE = "entityList";
   public static final String BATCH_SINK_PROCESSED_VARIABLE = "batchSinkProcessed";
   public static final String TRIGGERING_OBJECT_ID_VARIABLE = "triggeringObjectId";

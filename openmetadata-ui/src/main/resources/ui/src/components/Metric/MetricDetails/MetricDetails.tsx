@@ -35,6 +35,7 @@ import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
+import { useLifecycleRequests } from '../../../hooks/useLifecycleRequests';
 import { useMetricLinkedAssets } from '../../../hooks/useMetricLinkedAssets';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMetric } from '../../../rest/metricsAPI';
@@ -267,6 +268,14 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     [metricPermissions, editAllPermission]
   );
 
+  const lifecycleRequests = useLifecycleRequests({
+    entityType: EntityType.METRIC,
+    entityId: metricDetails.id,
+    entityFqn: metricDetails.fullyQualifiedName,
+    entityStatus: metricDetails.entityStatus,
+    canRequest: editAllPermission,
+  });
+
   const openAssetModal = useCallback(() => setIsAssetModalOpen(true), []);
 
   const assetSelectionQueryFilter = useMemo(
@@ -384,6 +393,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                 </Button>
               )
             }
+            lifecycleRequests={lifecycleRequests}
             openTaskCount={feedCount.openTaskCount}
             permissions={metricPermissions}
             softDeleteMessagePostFix={` ${t(

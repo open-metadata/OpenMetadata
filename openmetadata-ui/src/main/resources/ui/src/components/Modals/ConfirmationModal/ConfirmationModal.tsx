@@ -44,6 +44,7 @@ const ConfirmationModal = ({
   bodyText,
   className,
   visible,
+  width = 520,
 }: ConfirmationModalProps) => {
   const { t } = useTranslation();
   const headerId = useId();
@@ -78,8 +79,8 @@ const ConfirmationModal = ({
           // core's `className` is the outer wrapper, so styling goes here.
           panelClassName={className}
           // Dialog defaults to 688; antd's Modal defaulted to 520. Keep the
-          // prompt the width every caller was already getting.
-          width={520}
+          // prompt the width every caller was already getting unless one asks for another.
+          width={width}
           onClose={onCancel}>
           {/* Rendered only when there is a header: the SCIM delete prompt
               passes an empty one and supplies its own heading in the body,

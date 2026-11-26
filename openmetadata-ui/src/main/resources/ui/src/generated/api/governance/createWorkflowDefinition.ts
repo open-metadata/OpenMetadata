@@ -70,7 +70,12 @@ export interface WorkflowConfiguration {
 export interface LifecycleConfiguration {
     entityType: EntityType;
     gates:      LifecycleGate[];
-    version:    number;
+    /**
+     * Moves besides the onboarding path, from the stages each one lists or from any stage, to
+     * any stage: made once the asset meets their conditions, or when a user requests them.
+     */
+    transitions?: LifecycleTransition[];
+    version:      number;
 }
 
 export enum EntityType {
@@ -128,7 +133,10 @@ export enum ValueType {
  * entityStatus property have no lifecycle. When a create request omits the stage, the
  * server assigns the entity type's initial stage.
  *
- * Stage the asset is in while the approval is pending.
+ * The stage the asset moves to.
+ *
+ * Stage the asset is in while the approval is pending. Left out for a move made from any
+ * stage, whose task names the stage the asset is in when it is asked.
  *
  * Stage the asset moves to once approved.
  *
@@ -219,6 +227,78 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * A move the lifecycle makes between two of its stages: a step of its onboarding path made
+ * on request, or a move besides that path such as In Review to Rejected, Rejected back to
+ * Draft, or any stage to Deprecated.
+ */
+export interface LifecycleTransition {
+    /**
+     * Who approves the move. An on-request transition always names approvers, and its request
+     * is a status update task assigned to them; an automatic one may name approvers, who are
+     * asked once the conditions are met.
+     */
+    approval?: Approval;
+    /**
+     * JSON Logic condition the asset must meet: an automatic transition waits for it, and a
+     * request for an on-request one is refused until it holds. Required for an automatic
+     * transition.
+     */
+    conditions?: string;
+    /**
+     * Stages the move is made from. Empty or absent means any stage other than the one it moves
+     * to.
+     */
+    from?: EntityStatus[];
+    /**
+     * This transition is a step of the onboarding path that the lifecycle makes on request
+     * instead of automatically. The path's own stage holds the asset until the request is
+     * approved.
+     */
+    onPath?: boolean;
+    /**
+     * The stage the asset moves to.
+     */
+    to: EntityStatus;
+    /**
+     * automatic moves the asset once the conditions are met, after its approvers approve when
+     * it names any; onRequest waits until a user requests the move, which its conditions must
+     * allow and its approvers approve.
+     */
+    trigger: Trigger;
+}
+
+/**
+ * Who approves the move. An on-request transition always names approvers, and its request
+ * is a status update task assigned to them; an automatic one may name approvers, who are
+ * asked once the conditions are met.
+ */
+export interface Approval {
+    /**
+     * Groups of the asset asked to approve.
+     */
+    assignees?: Assignee[];
+    /**
+     * Specific users and teams asked in addition to the groups.
+     */
+    candidates?: EntityReference[];
+}
+
+export enum Assignee {
+    Owners = "owners",
+    Reviewers = "reviewers",
+}
+
+/**
+ * automatic moves the asset once the conditions are met, after its approvers approve when
+ * it names any; onRequest waits until a user requests the move, which its conditions must
+ * allow and its approvers approve.
+ */
+export enum Trigger {
+    Automatic = "automatic",
+    OnRequest = "onRequest",
 }
 
 /**
@@ -590,9 +670,10 @@ export interface RequiredField {
  */
 export interface LifecycleMove {
     /**
-     * Stage the asset is in while the approval is pending.
+     * Stage the asset is in while the approval is pending. Left out for a move made from any
+     * stage, whose task names the stage the asset is in when it is asked.
      */
-    stage: EntityStatus;
+    stage?: EntityStatus;
     /**
      * Stage the asset moves to once approved.
      */

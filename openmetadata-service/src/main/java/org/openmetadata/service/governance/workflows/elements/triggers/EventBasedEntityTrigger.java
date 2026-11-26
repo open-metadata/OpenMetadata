@@ -38,6 +38,7 @@ import org.openmetadata.schema.governance.workflows.elements.triggers.EventBased
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.approval.ChangeRequestKeys;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
+import org.openmetadata.service.governance.workflows.LifecycleRestart;
 import org.openmetadata.service.governance.workflows.SubWorkflowFailureListener;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.FilterEntityImpl;
@@ -92,6 +93,26 @@ public class EventBasedEntityTrigger implements TriggerInterface {
       EventBasedEntityTriggerDefinition triggerDefinition,
       boolean changeRequestHook,
       Set<String> excludedEntityTypes) {
+    this(
+        mainWorkflowName,
+        triggerWorkflowId,
+        triggerDefinition,
+        changeRequestHook,
+        excludedEntityTypes,
+        false);
+  }
+
+  /**
+   * {@code lifecyclePlaybook} also starts the trigger when an approved status request moves an
+   * entity, so the lifecycle carries on from the stage the request moved it to.
+   */
+  public EventBasedEntityTrigger(
+      String mainWorkflowName,
+      String triggerWorkflowId,
+      EventBasedEntityTriggerDefinition triggerDefinition,
+      boolean changeRequestHook,
+      Set<String> excludedEntityTypes,
+      boolean lifecyclePlaybook) {
     this.triggerDefinition = triggerDefinition;
     Process process = new Process();
     process.setId(triggerWorkflowId);
@@ -103,7 +124,8 @@ public class EventBasedEntityTrigger implements TriggerInterface {
         mainWorkflowName,
         triggerDefinition,
         changeRequestHook,
-        excludedEntityTypes);
+        excludedEntityTypes,
+        lifecyclePlaybook);
 
     ServiceTask filterTask = getFilterTask(triggerWorkflowId, triggerDefinition);
     process.addFlowElement(filterTask);
@@ -165,7 +187,8 @@ public class EventBasedEntityTrigger implements TriggerInterface {
       String mainWorkflowName,
       EventBasedEntityTriggerDefinition triggerDefinition,
       boolean changeRequestHook,
-      Set<String> excludedEntityTypes) {
+      Set<String> excludedEntityTypes,
+      boolean lifecyclePlaybook) {
     List<String> entityTypes =
         getEntityTypesFromConfig(triggerDefinition.getConfig()).stream()
             .filter(entityType -> !excludedEntityTypes.contains(entityType))
@@ -174,6 +197,10 @@ public class EventBasedEntityTrigger implements TriggerInterface {
       for (String signalId :
           signalIdsFor(mainWorkflowName, entityType, triggerDefinition, changeRequestHook)) {
         addStartEvent(workflowTriggerId, entityType, signalId);
+      }
+      if (lifecyclePlaybook && !changeRequestHook) {
+        addStartEvent(
+            workflowTriggerId, entityType, LifecycleRestart.signalId(mainWorkflowName, entityType));
       }
     }
   }

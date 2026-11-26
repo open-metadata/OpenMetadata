@@ -72,6 +72,7 @@ import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.governance.approval.ChangeRequestTasks;
 import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
+import org.openmetadata.service.governance.workflows.StatusUpdateTasks;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowInstanceTerminator;
@@ -423,6 +424,7 @@ public class TaskRepository extends EntityRepository<Task> {
     // Compute aboutFqnHash for efficient querying by target entity FQN
     computeAboutFqnHash(task);
 
+    StatusUpdateTasks.prepare(task, update);
     initializeWorkflowManagedTask(task, update);
     OntologyApprovalWorkflow.prepare(task, update);
 
@@ -962,6 +964,10 @@ public class TaskRepository extends EntityRepository<Task> {
       ChangeRequestReview review) {
     TaskFieldValidator.validateResolutionPayloadAgainstFormSchema(
         task, transitionId, resolvedPayload, newValue);
+    StatusUpdateTasks.requireUnchangedRequest(task, resolvedPayload);
+    if (resolutionType == TaskResolutionType.Approved || "approve".equals(transitionId)) {
+      StatusUpdateTasks.requireStillOffered(task);
+    }
     boolean clearingIncidentAssignment =
         task.getType() == TaskEntityType.TestCaseResolution
             && (IncidentWorkflowStages.NEW_TRANSITION_ID.equals(transitionId)
@@ -1242,7 +1248,7 @@ public class TaskRepository extends EntityRepository<Task> {
     // short-circuit, workflow-managed approval tasks fail for reviewers because the task form
     // schemas declare permission: EDIT_ALL, which TaskFormExecutionResolver surfaces via
     // getOperationForTask.
-    if (!closeTask && !isApprovalTask(task)) {
+    if (!closeTask && !isApprovalTask(task) && !isStatusRequest(task)) {
       validateUnderlyingEntityPermission(authorizer, securityContext, task, input);
     }
 
@@ -1255,9 +1261,18 @@ public class TaskRepository extends EntityRepository<Task> {
 
   /** A stage move or held change that a workflow asks its assignees to decide. */
   private static boolean isWorkflowApproval(Task task) {
-    return task.getWorkflowInstanceId() != null
-        && (task.getType() == TaskEntityType.RequestApproval
-            || ChangeRequestTasks.reviewsChangeRequest(task));
+    return isStatusRequest(task)
+        || (task.getWorkflowInstanceId() != null
+            && (task.getType() == TaskEntityType.RequestApproval
+                || ChangeRequestTasks.reviewsChangeRequest(task)));
+  }
+
+  /**
+   * A requested lifecycle move, decided by the approvers its transition names; {@link
+   * StatusUpdateTasks#prepare} assigns them when the request is raised.
+   */
+  private static boolean isStatusRequest(Task task) {
+    return task.getType() == TaskEntityType.StatusUpdate;
   }
 
   /**
@@ -1472,7 +1487,7 @@ public class TaskRepository extends EntityRepository<Task> {
       case TagUpdate -> MetadataOperation.EDIT_TAGS;
       case OwnershipUpdate -> MetadataOperation.EDIT_OWNERS;
       case TierUpdate -> MetadataOperation.EDIT_TIER;
-      case DomainUpdate -> MetadataOperation.EDIT_ALL;
+      case DomainUpdate, StatusUpdate -> MetadataOperation.EDIT_ALL;
       default -> null;
     };
   }

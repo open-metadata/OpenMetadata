@@ -94,6 +94,7 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.governance.approval.ChangeRequestVisibility;
 import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
+import org.openmetadata.service.governance.workflows.StatusUpdateTasks;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -1428,6 +1429,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     rejectStatusChangeToWorkflowDecision(original, patched);
     rejectAvailableTransitionsEditByNonAdmin(original, patched, callerIsAdmin);
     rejectPayloadOrAboutEditAfterOpen(original, patched);
+    StatusUpdateTasks.requireUneditedRequest(original, patched, callerIsAdmin);
     rejectServerOpenedTaskEdit(original, patched);
     rejectWorkflowBindingEdits(original, patched);
   }
@@ -1923,6 +1925,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       limits.invalidateCache(entityType);
     }
     addHref(uriInfo, response.entity());
+    ChangeRequestVisibility.withoutUnreadableValues(
+        authorizer, securityContext, List.of(response.entity()));
     return response.toResponse();
   }
 
@@ -2113,6 +2117,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         requireEditableThroughApi(task);
         repository.checkPermissionsForOwnerOnlyAction(
             authorizer, securityContext, task, "reassignTask");
+        StatusUpdateTasks.requireReassignableBy(task, isAdmin(securityContext));
         List<EntityReference> newAssignees =
             params.getAssignees().stream().map(this::resolveUserOrTeam).toList();
         task.setAssignees(newAssignees);
