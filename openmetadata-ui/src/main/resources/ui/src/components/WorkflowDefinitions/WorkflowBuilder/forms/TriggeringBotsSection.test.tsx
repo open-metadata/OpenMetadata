@@ -22,6 +22,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { WorkflowModeProvider } from '../../../../contexts/WorkflowModeContext';
 import { ProviderType } from '../../../../generated/entity/bot';
 import { getApplicationList } from '../../../../rest/applicationAPI';
+import { getMarketPlaceApplicationList } from '../../../../rest/applicationMarketPlaceAPI';
 import { getBots } from '../../../../rest/botsAPI';
 import { TriggeringBotsSection } from './TriggeringBotsSection';
 
@@ -33,12 +34,18 @@ jest.mock('../../../../rest/applicationAPI', () => ({
   getApplicationList: jest.fn(),
 }));
 
+jest.mock('../../../../rest/applicationMarketPlaceAPI', () => ({
+  getMarketPlaceApplicationList: jest.fn(),
+}));
+
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
 const mockGetBots = getBots as jest.Mock;
 const mockGetApplicationList = getApplicationList as jest.Mock;
+const mockGetMarketPlaceApplicationList =
+  getMarketPlaceApplicationList as jest.Mock;
 
 const BOTS = [
   {
@@ -57,6 +64,12 @@ const BOTS = [
     id: 'b3',
     name: 'SearchIndexingApplicationBot',
     displayName: 'Search Indexing',
+    provider: ProviderType.User,
+  },
+  {
+    id: 'b4',
+    name: 'CacheWarmupApplicationBot',
+    displayName: 'Cache Warmup',
     provider: ProviderType.User,
   },
 ];
@@ -93,6 +106,10 @@ describe('TriggeringBotsSection', () => {
       ],
       paging: { total: 1 },
     });
+    mockGetMarketPlaceApplicationList.mockResolvedValue({
+      data: [{ name: 'CacheWarmupApplication' }],
+      paging: { total: 1 },
+    });
   });
 
   it('offers only the bots an admin created', async () => {
@@ -109,6 +126,9 @@ describe('TriggeringBotsSection', () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('option', { name: 'Search Indexing' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: 'Cache Warmup' })
     ).not.toBeInTheDocument();
   });
 
@@ -134,6 +154,16 @@ describe('TriggeringBotsSection', () => {
     fireEvent.click(await screen.findByRole('option', { name: 'Scraper' }));
 
     expect(onChange).toHaveBeenCalledWith(['scraper-bot']);
+  });
+
+  it('shows a saved bot by its display name once the bots load', async () => {
+    renderSection(['scraper-bot']);
+
+    expect(
+      await within(
+        await screen.findByTestId('autocomplete-selected-item')
+      ).findByText('Scraper')
+    ).toBeInTheDocument();
   });
 
   it('removes a bot from the list', async () => {

@@ -93,6 +93,31 @@ class WorkflowTriggeringBotsTest {
   }
 
   @Test
+  void botLeftBehindByAnUninstalledApplicationIsRefused() {
+    givenBot("CacheWarmupApplicationBot", ProviderType.USER, false);
+    entity
+        .when(
+            () ->
+                Entity.findByNameOrNull(
+                    Entity.APP_MARKET_PLACE_DEF, "CacheWarmupApplication", Include.ALL))
+        .thenReturn(new Object());
+    BadRequestException error =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                WorkflowTriggeringBots.requireAdminCreatedBots(
+                    WORKFLOW, List.of("CacheWarmupApplicationBot")));
+    assertTrue(error.getMessage().contains("is an application's bot"));
+  }
+
+  @Test
+  void adminBotWhoseNameEndsInBotButNamesNoApplicationIsAccepted() {
+    Bot bot = givenBot("ScraperBot", ProviderType.USER, false);
+    assertDoesNotThrow(
+        () -> WorkflowTriggeringBots.requireAdminCreatedBots(WORKFLOW, List.of(bot.getName())));
+  }
+
+  @Test
   void unknownBotIsRefused() {
     BadRequestException error =
         assertThrows(

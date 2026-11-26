@@ -14,25 +14,30 @@ import { SelectItemType } from '@openmetadata/ui-core-components';
 import { useEffect, useRef } from 'react';
 import { useListData } from 'react-stately';
 
-/** Sync a useListData instance with an external string[] value. Replaces list content to avoid duplicates. */
+/**
+ * Sync a useListData instance with an external string[] value. Replaces list content to avoid
+ * duplicates, and relabels it when getLabel changes, e.g. once the labels have loaded.
+ */
 export const useSyncedListData = (
   values: string[],
   getLabel?: (v: string) => string
 ) => {
   const listData = useListData<SelectItemType>({ initialItems: [] });
   const prevRef = useRef<string[]>([]);
+  const prevGetLabelRef = useRef(getLabel);
 
   useEffect(() => {
     const prev = prevRef.current;
     const same =
       prev.length === values.length && values.every((v, i) => v === prev[i]);
-    if (!same) {
+    if (!same || prevGetLabelRef.current !== getLabel) {
       const currentIds = listData.items.map((item) => item.id);
       currentIds.forEach((id) => listData.remove(id));
       values.forEach((v) =>
         listData.append({ id: v, label: getLabel ? getLabel(v) : v })
       );
       prevRef.current = values;
+      prevGetLabelRef.current = getLabel;
     }
   }, [values, getLabel]);
 

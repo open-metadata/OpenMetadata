@@ -24,6 +24,7 @@ import { Bot, ProviderType } from '../../../../generated/entity/bot';
 import { Paging } from '../../../../generated/type/paging';
 import { useSyncedListData } from '../../../../hooks/useSyncedListData';
 import { getApplicationList } from '../../../../rest/applicationAPI';
+import { getMarketPlaceApplicationList } from '../../../../rest/applicationMarketPlaceAPI';
 import { getBots } from '../../../../rest/botsAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -50,30 +51,65 @@ const fetchAllPages = async <T,>(
   return items;
 };
 
+interface ApplicationBots {
+  ids: Set<string>;
+  names: Set<string>;
+}
+
+// Every application names its bot "<application name>Bot"; a bot left behind by an uninstalled
+// application keeps that name but no installed application links to it.
+const toApplicationBotName = (applicationName: string) =>
+  `${applicationName}Bot`;
+
+const fetchNamesSafely = async (
+  fetchPage: (
+    after?: string
+  ) => Promise<{ data: { name: string }[]; paging: Paging }>
+): Promise<string[]> => {
+  try {
+    return (await fetchAllPages(fetchPage)).map((app) => app.name);
+  } catch {
+    return [];
+  }
+};
+
 // The server refuses an application's bot anyway; a user who cannot list applications still
 // gets the picker, without that filter.
-const fetchApplicationBotIds = async (): Promise<Set<string>> => {
+const fetchApplicationBots = async (): Promise<ApplicationBots> => {
+  let installed: App[] = [];
   try {
-    const apps = await fetchAllPages<App>((after) =>
+    installed = await fetchAllPages<App>((after) =>
       getApplicationList({ fields: 'bot', limit: PAGE_SIZE, after })
     );
-
-    return new Set(apps.flatMap((app) => (app.bot?.id ? [app.bot.id] : [])));
   } catch {
-    return new Set();
+    installed = [];
   }
+  const marketplaceNames = await fetchNamesSafely((after) =>
+    getMarketPlaceApplicationList({ limit: PAGE_SIZE, after })
+  );
+
+  return {
+    ids: new Set(installed.flatMap((app) => (app.bot?.id ? [app.bot.id] : []))),
+    names: new Set(
+      [...installed.map((app) => app.name), ...marketplaceNames].map(
+        toApplicationBotName
+      )
+    ),
+  };
 };
 
 /** System bots and applications' bots write in bulk on their own schedule, so they never start a workflow. */
 const fetchAdminCreatedBots = async (): Promise<Bot[]> => {
-  const [bots, applicationBotIds] = await Promise.all([
+  const [bots, applicationBots] = await Promise.all([
     fetchAllPages<Bot>((after) => getBots({ limit: PAGE_SIZE, after })),
-    fetchApplicationBotIds(),
+    fetchApplicationBots(),
   ]);
 
   return bots.filter(
     (bot) =>
-      bot.provider !== ProviderType.System && !applicationBotIds.has(bot.id)
+      bot.provider !== ProviderType.System &&
+      !applicationBots.ids.has(bot.id) &&
+      !applicationBots.names.has(bot.name)
   );
 };
 

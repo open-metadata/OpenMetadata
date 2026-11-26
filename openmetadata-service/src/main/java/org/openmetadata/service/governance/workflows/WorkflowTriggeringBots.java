@@ -35,6 +35,8 @@ import org.openmetadata.service.exception.EntityNotFoundException;
  */
 public final class WorkflowTriggeringBots {
   private static final String BOT_USER_FIELD = "botUser";
+  // AppRepository.createNewAppBot names an application's bot "<application name>Bot".
+  private static final String APPLICATION_BOT_SUFFIX = "Bot";
 
   private WorkflowTriggeringBots() {}
 
@@ -88,11 +90,29 @@ public final class WorkflowTriggeringBots {
     return bot;
   }
 
-  // An application's bot is created with provider user, so only the application's link to it
-  // tells it apart from a bot an admin created.
+  // An application's bot is created with provider user, so only the application tells it apart
+  // from a bot an admin created: the installed application links to it, and every application
+  // names its bot "<application name>Bot". A bot left behind by an uninstalled application keeps
+  // its name but loses the link, and installing the application again reuses it.
   private static boolean isApplicationBot(final Bot bot) {
+    return isLinkedToApplication(bot) || isNamedForApplication(bot.getName());
+  }
+
+  private static boolean isLinkedToApplication(final Bot bot) {
     return !Entity.getEntityRepository(Entity.BOT)
         .findFrom(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.APPLICATION, Include.ALL)
         .isEmpty();
+  }
+
+  private static boolean isNamedForApplication(final String botName) {
+    final String applicationName =
+        botName.endsWith(APPLICATION_BOT_SUFFIX)
+            ? botName.substring(0, botName.length() - APPLICATION_BOT_SUFFIX.length())
+            : null;
+    return applicationName != null
+        && !applicationName.isEmpty()
+        && (Entity.findByNameOrNull(Entity.APP_MARKET_PLACE_DEF, applicationName, Include.ALL)
+                != null
+            || Entity.findByNameOrNull(Entity.APPLICATION, applicationName, Include.ALL) != null);
   }
 }
