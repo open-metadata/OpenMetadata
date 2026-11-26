@@ -6,7 +6,7 @@ Chromium. Only the network is fake. No backend, no DB, no login.
 ```bash
 yarn test:ui           # watch mode; add --ui to watch the page render live
 yarn test:ui:run       # CI / headless
-yarn test:ui:coverage  # istanbul -> src/test/browser/coverage (CI job summary; not in Sonar yet)
+yarn test:ui:coverage  # istanbul -> src/test/browser/coverage (CI job summary; read by the nightly Sonar scan)
 HEADED=true yarn test:ui:run   # see the browser
 ```
 
@@ -47,25 +47,28 @@ ADR:2026-10-28-page-behaviour-is-tested-in-vitest-browser-mode-and-e2e-tests-lea
 
 ## Which tests run in CI
 
-A pull request runs only the test files that execute the code it changes.
+A pull request, and a merge-queue entry, runs only the test files that execute
+the code it changes.
 `scripts/select-browser-tests.mjs` reads a map of the source files each test
-file executed (recorded by `impact.ts` during the full merge-queue run, published
-as a workflow artifact). It also follows the test helpers a test imports, and the direct
+file executed (recorded by `impact.ts` and published as a workflow artifact, never
+committed: the full run on main writes it, and a passing merge-queue entry
+refreshes the entries of the tests it ran). It also follows the test helpers a test imports, and the direct
 imports of every executed file (constants, styles, assets). Changed `en-us.json`
 keys select the tests whose code names them.
 
 Everything runs when the map is missing, or when a change touches test setup,
 the Vitest/Vite config or dependencies. Changed code that no browser test
-executes is listed in the PR comment, along with how many of the changed lines
-the tests that ran executed. The merge queue runs every test file whenever the
-queued change touches this UI, so nothing a selection misses reaches main. To
+executes is listed in the job summary of the `UI Browser Tests` run, along with how many of the changed lines
+the tests that ran executed. Main runs every test file every 6 hours when the UI
+changed since the last full run (and by hand from the Actions tab), which refreshes the map and surfaces anything a
+selection missed. This is the only full run. To
 see what a branch would run:
 
 ```bash
 node scripts/select-browser-tests.mjs --map impact-map.json --base origin/main
 ```
 
-The policy is ADR:2026-11-23-browser-tests-run-by-impact-on-pull-requests-and-in-full-in-the-merge-queue.
+The policy is ADR:2026-11-25-browser-tests-are-selected-before-main-and-run-in-full-on-main.
 
 The static import graph alone cannot do this here: lazy imports tie about
 1,000 modules into one import cycle.
@@ -73,7 +76,7 @@ The static import graph alone cannot do this here: lazy imports tie about
 **Core components are treated like a library on pull requests.** A change to
 `openmetadata-ui-core-components` runs core's own tests and build (the
 `core components` job), not the browser tests: core guards its components with
-its own tests, and this suite tests the app. The merge queue still runs every
-browser test for a core change, so one that breaks the app cannot reach main. A core change that alters behaviour
+its own tests, and this suite tests the app. The scheduled full run on main
+still runs every browser test, so a core change that breaks the app is caught. A core change that alters behaviour
 the app depends on needs a core test for that behaviour. A change touching both
 core and this UI selects browser tests for the UI part only.

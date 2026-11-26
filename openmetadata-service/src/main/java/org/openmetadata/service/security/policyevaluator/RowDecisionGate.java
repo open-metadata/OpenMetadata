@@ -51,6 +51,9 @@ public final class RowDecisionGate {
     if (subject == null || subject.isAdmin()) {
       return false;
     }
+    if (Entity.AUDIT_REPORT.equals(resource)) {
+      return true;
+    }
     List<SubjectContext.PolicyContext> own = SubjectCache.getPolicies(subject.user().getName());
     return ownDenyRule(own, resource, operations)
         || teamDenyRule(resource, operations)

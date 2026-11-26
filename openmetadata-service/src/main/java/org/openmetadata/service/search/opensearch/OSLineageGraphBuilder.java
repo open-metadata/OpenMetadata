@@ -1026,7 +1026,11 @@ public class OSLineageGraphBuilder
         request.getUpstreamDepth() != null ? request.getUpstreamDepth() : 0,
         request.getDownstreamDepth() != null ? request.getDownstreamDepth() : 0,
         request.getStartTime(),
-        request.getEndTime());
+        request.getEndTime(),
+        0,
+        0,
+        request.getIncludeDeleted(),
+        request.getIncludeSourceFields() != null ? request.getIncludeSourceFields() : Set.of());
   }
 
   private Map<Integer, Integer> getDepthWiseEntityCounts(

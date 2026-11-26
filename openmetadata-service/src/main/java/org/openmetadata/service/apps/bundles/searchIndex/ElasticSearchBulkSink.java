@@ -10,7 +10,6 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isSt
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
@@ -46,7 +45,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -69,10 +67,6 @@ import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
-import org.openmetadata.service.search.vector.ElasticSearchVectorService;
-import org.openmetadata.service.search.vector.VectorDocBuilder;
-import org.openmetadata.service.search.vector.VectorIndexService;
-import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 
 /**
  * Elasticsearch implementation using new Java API client with custom bulk handler
@@ -207,9 +201,7 @@ public class ElasticSearchBulkSink implements BulkSink {
   private final ConcurrentLinkedDeque<CompletableFuture<Void>> pendingColumnFutures =
       new ConcurrentLinkedDeque<>();
 
-  // Vector embedding stats (incremented inline during addEntity)
-  private final AtomicLong vectorSuccess = new AtomicLong(0);
-  private final AtomicLong vectorFailed = new AtomicLong(0);
+  private final EmbeddingEnricher embeddingEnricher;
 
   /**
    * Process-wide upper bound on in-flight table column-index tasks. Each queued/running task retains
@@ -268,6 +260,7 @@ public class ElasticSearchBulkSink implements BulkSink {
   private ElasticSearchBulkSink(SearchRepository searchRepository, BulkSinkOptions options) {
     this.searchRepository = searchRepository;
     this.searchClient = (ElasticSearchClient) searchRepository.getSearchClient();
+    this.embeddingEnricher = new EmbeddingEnricher(searchRepository);
     this.batchSize = options.batchSize();
     this.maxConcurrentRequests = options.maxConcurrentRequests();
     this.maxPayloadSizeBytes = options.maxPayloadSizeBytes();
@@ -382,7 +375,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       } else {
         List<EntityInterface<?>> entityInterfaces = (List<EntityInterface<?>>) entities;
 
-        boolean embeddingsEnabled = isVectorEmbeddingEnabledForEntity(entityType);
+        boolean embeddingsEnabled = embeddingEnricher.isEnabledFor(entityType);
 
         // Per-entity DocBuildContext is prepared by the upstream processor stage (see
         // ReindexingUtil.populateDocBuildContext) and stuffed into contextData. The sink stays
@@ -396,17 +389,10 @@ public class ElasticSearchBulkSink implements BulkSink {
         // them into the staged doc instead of regenerating (avoids expensive embedding-provider
         // calls). The doc is always re-indexed via a full index op, so the embedding must be
         // carried on it — skipping it would strip the stored vector.
-        Map<String, JsonNode> existingEmbeddingsById = Collections.emptyMap();
-        if (embeddingsEnabled) {
-          Map<String, Supplier<String>> currentById = new HashMap<>(entityInterfaces.size());
-          for (EntityInterface<?> e : entityInterfaces) {
-            currentById.put(
-                e.getId().toString(), () -> VectorDocBuilder.computeFingerprintForEntity(e));
-          }
-          existingEmbeddingsById =
-              fetchExistingEmbeddings(entityInterfaces, currentById, indexName, reindexContext);
-        }
-        Map<String, JsonNode> finalEmbeddingsById = existingEmbeddingsById;
+        Map<String, JsonNode> existingEmbeddingsById =
+            embeddingsEnabled
+                ? embeddingEnricher.reusableEmbeddings(entityInterfaces, indexName, reindexContext)
+                : Collections.emptyMap();
 
         Map<UUID, Long> relationshipRevisions =
             (Map<UUID, Long>)
@@ -426,7 +412,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                                     reindexContext,
                                     tracker,
                                     embeddingsEnabled,
-                                    finalEmbeddingsById,
+                                    existingEmbeddingsById,
                                     docBuildContexts,
                                     scriptedPartialUpdates,
                                     relationshipRevisions),
@@ -500,7 +486,13 @@ public class ElasticSearchBulkSink implements BulkSink {
       String json = JsonUtils.pojoToJson(searchIndexDoc);
 
       if (embeddingsEnabled) {
-        json = enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker);
+        json =
+            embeddingEnricher.enrich(
+                entity,
+                json,
+                existingEmbeddingsById,
+                tracker,
+                EmbeddingTargets.of(indexName, reindexContext));
       }
 
       long rawDocSize = (long) json.getBytes(StandardCharsets.UTF_8).length;
@@ -1036,6 +1028,7 @@ public class ElasticSearchBulkSink implements BulkSink {
 
   @Override
   public void close() {
+    embeddingEnricher.logMissedChunksSummary();
     try {
       bulkProcessor.flush();
 
@@ -1144,95 +1137,14 @@ public class ElasticSearchBulkSink implements BulkSink {
     LOG.info("Concurrent requests updated to: {}", concurrentRequests);
   }
 
-  boolean isVectorEmbeddingEnabledForEntity(String entityType) {
-    return searchRepository.isVectorEmbeddingEnabled()
-        && ElasticSearchVectorService.getInstance() != null
-        && AvailableEntityTypes.isVectorIndexable(entityType)
-        && searchRepository.getIndexMapping(entityType) != null;
-  }
-
-  private String enrichWithEmbedding(
-      EntityInterface<?> entity,
-      String json,
-      Map<String, JsonNode> existingEmbeddingsById,
-      StageStatsTracker tracker) {
-    try {
-      // Per-instance gate, mirroring VectorEmbeddingHandler: the entity-type check above cannot
-      // see that an individual ContextMemory is Private/Shared, and the vector query path carries
-      // no per-document visibility filter.
-      if (!Entity.isVectorEmbeddable(entity)) {
-        return json;
-      }
-      ElasticSearchVectorService vectorService = ElasticSearchVectorService.getInstance();
-      if (vectorService == null) {
-        return json;
-      }
-      JsonNode parsed = OBJECT_MAPPER.readTree(json);
-      if (!(parsed instanceof ObjectNode doc)) {
-        LOG.warn(
-            "Skipping embedding enrichment for entity {} — index doc is not a JSON object",
-            entity.getId());
-        return json;
-      }
-      int expectedDimension =
-          vectorService.getEmbeddingClient() != null
-              ? vectorService.getEmbeddingClient().getDimension()
-              : -1;
-      JsonNode cached = existingEmbeddingsById.get(entity.getId().toString());
-      if (VectorIndexService.canReuseCachedEmbedding(cached, expectedDimension)) {
-        // Splice the cached embedding so the full index op carries the vector instead of stripping
-        // it; the service-layer pre-filter only admits entries with the current fingerprint.
-        doc.setAll((ObjectNode) cached);
-      } else {
-        Map<String, Object> embeddingFields = vectorService.generateEmbeddingFields(entity);
-        doc.setAll((ObjectNode) OBJECT_MAPPER.valueToTree(embeddingFields));
-      }
-      vectorSuccess.incrementAndGet();
-      if (tracker != null) {
-        tracker.recordVector(StatsResult.SUCCESS);
-      }
-      return OBJECT_MAPPER.writeValueAsString(doc);
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to generate embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
-      vectorFailed.incrementAndGet();
-      if (tracker != null) {
-        tracker.recordVector(StatsResult.FAILED);
-      }
-      return json;
-    }
-  }
-
-  private Map<String, JsonNode> fetchExistingEmbeddings(
-      List<EntityInterface<?>> entities,
-      Map<String, Supplier<String>> currentById,
-      String indexName,
-      ReindexContext reindexContext) {
-    try {
-      ElasticSearchVectorService vectorService = ElasticSearchVectorService.getInstance();
-      if (vectorService == null || entities.isEmpty()) {
-        return Collections.emptyMap();
-      }
-      String entityType = entities.getFirst().getEntityReference().getType();
-      // During a recreate, read from the pre-recreate live (original) index — the staged index is
-      // empty by definition. Otherwise read the canonical index passed in.
-      String sourceIndex =
-          reindexContext != null
-              ? reindexContext.getOriginalIndex(entityType).orElse(indexName)
-              : indexName;
-      return vectorService.getExistingEmbeddingsBatch(sourceIndex, currentById);
-    } catch (Exception e) {
-      LOG.warn("Failed to fetch existing embeddings (canonical index={})", indexName, e);
-      return Collections.emptyMap();
-    }
+  @Override
+  public StepStats getVectorStats() {
+    return embeddingEnricher.stats();
   }
 
   @Override
-  public StepStats getVectorStats() {
-    return new StepStats()
-        .withTotalRecords((int) (vectorSuccess.get() + vectorFailed.get()))
-        .withSuccessRecords((int) vectorSuccess.get())
-        .withFailedRecords((int) vectorFailed.get());
+  public void retryMissedChunks(StageStatsTracker partition) {
+    embeddingEnricher.retryMissedChunks(partition);
   }
 
   public static class CustomBulkProcessor {
@@ -1511,7 +1423,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                 retryScheduled = handleBulkFailure(attempt, error);
               } else if (response.errors()) {
                 circuitBreaker.recordSuccess();
-                handlePartialFailure(response, executionId, numberOfActions);
+                retryScheduled = handlePartialFailure(attempt, response);
               } else {
                 circuitBreaker.recordSuccess();
                 totalSuccess.addAndGet(numberOfActions);
@@ -1676,60 +1588,154 @@ public class ElasticSearchBulkSink implements BulkSink {
       statsUpdater.run();
     }
 
-    private void handlePartialFailure(
-        BulkResponse response, long executionId, int numberOfActions) {
+    /**
+     * Records the outcome of a bulk the cluster answered with per-item errors, and re-sends the
+     * items it only turned away for want of capacity. An indexing-pressure rejection says the
+     * cluster was momentarily full, not that the document is bad, so recording it as a failure
+     * drops a document a later send would have written. Returns true when such a re-send was
+     * scheduled, in which case the bulk keeps its processor slot until that send settles.
+     * ADR:2026-11-24-bulk-items-rejected-for-capacity-are-re-sent
+     */
+    private boolean handlePartialFailure(
+        BulkAttempt<BulkOperation> attempt, BulkResponse response) {
+      List<BulkResponseItem> items = response.items();
+      List<BulkOperation> rejected = rejectedForCapacity(attempt, items);
+      boolean retrying = canRetryCapacityRejections(attempt, rejected);
+      // Record what the cluster did settle before scheduling, so each item is counted once even
+      // when the re-send is refused and only the deferred items are then recorded as failed.
+      recordItemOutcomes(attempt, items, retrying);
+      if (retrying) {
+        scheduleCapacityRetry(attempt, rejected);
+      }
+      return retrying;
+    }
+
+    /**
+     * The operations the cluster rejected for want of capacity. The bulk API answers each operation
+     * with the item at the same position, so a response of a different length leaves nothing safe
+     * to re-send.
+     */
+    private List<BulkOperation> rejectedForCapacity(
+        BulkAttempt<BulkOperation> attempt, List<BulkResponseItem> items) {
+      List<BulkOperation> operations = attempt.operations();
+      List<BulkOperation> rejected = new ArrayList<>();
+      if (items.size() == operations.size()) {
+        for (int i = 0; i < items.size(); i++) {
+          if (isCapacityRejection(items.get(i))) {
+            rejected.add(operations.get(i));
+          }
+        }
+      }
+      return rejected;
+    }
+
+    private boolean canRetryCapacityRejections(
+        BulkAttempt<BulkOperation> attempt, List<BulkOperation> rejected) {
+      return !rejected.isEmpty()
+          && attempt.attemptNumber() < retryPolicy.maxRetries()
+          && attempt.outlasts(retryPolicy.backoffMillis(attempt.attemptNumber()));
+    }
+
+    /**
+     * Sends the rejected items again as the next attempt of this bulk. The re-send carries only
+     * those items, so a processor that has already shut down fails them alone rather than the
+     * whole bulk, whose other items the cluster wrote.
+     */
+    private void scheduleCapacityRetry(
+        BulkAttempt<BulkOperation> attempt, List<BulkOperation> rejected) {
+      long backoffMillis = retryPolicy.backoffMillis(attempt.attemptNumber());
+      BulkAttempt<BulkOperation> resend = attempt.nextWith(rejected);
+      LOG.warn(
+          "Bulk request {} had {} of {} actions rejected for indexing capacity (attempt {}), re-sending them in {}ms",
+          attempt.executionId(),
+          rejected.size(),
+          attempt.size(),
+          resend.attemptNumber(),
+          backoffMillis);
+      scheduleAttempt(() -> executeBulkWithRetry(resend), backoffMillis, resend);
+    }
+
+    private boolean isCapacityRejection(BulkResponseItem item) {
+      return item.error() != null
+          && BulkRetryPolicy.isCapacityRejection(item.status(), item.error().reason());
+    }
+
+    private void recordItemOutcomes(
+        BulkAttempt<BulkOperation> attempt,
+        List<BulkResponseItem> items,
+        boolean retryingRejected) {
       int failures = 0;
       int warnings = 0;
-      for (BulkResponseItem item : response.items()) {
-        String docId = item.id();
-        StageStatsTracker tracker = docId != null ? docIdToTracker.remove(docId) : null;
-        if (item.error() != null) {
-          String failureMessage = item.error().reason();
-          boolean staleReference = isStaleReferenceMessage(failureMessage);
+      int deferred = 0;
+      for (BulkResponseItem item : items) {
+        if (retryingRejected && isCapacityRejection(item)) {
+          deferred++;
+        } else if (item.error() != null) {
+          boolean staleReference = recordItemFailure(item);
           if (staleReference) {
             warnings++;
           } else {
             failures++;
           }
-          if (failureMessage != null && failureMessage.contains("document_missing_exception")) {
-            LOG.warn(
-                "Document missing error for {}: {} - This may occur during concurrent reindexing",
-                docId,
-                failureMessage);
-          } else {
-            LOG.warn("Failed to index document {}: {}", docId, failureMessage);
-          }
-          String entityType = docId != null ? docIdToEntityType.remove(docId) : null;
-          if (entityType == null) {
-            entityType = extractEntityTypeFromIndex(item.index());
-          }
-          if (tracker != null) {
-            tracker.recordSink(staleReference ? StatsResult.WARNING : StatsResult.FAILED);
-          }
-          if (!staleReference && failureCallback != null) {
-            failureCallback.onFailure(
-                entityType, docId, null, failureMessage, IndexingFailureRecorder.FailureStage.SINK);
-          }
         } else {
-          // Clean up on success
-          if (docId != null) {
-            docIdToEntityType.remove(docId);
-          }
-          if (tracker != null) {
-            tracker.recordSink(StatsResult.SUCCESS);
-          }
+          recordItemSuccess(item);
         }
       }
-      int successes = numberOfActions - failures - warnings;
-      totalSuccess.addAndGet(successes);
+      publishItemOutcomes(attempt, failures, warnings, deferred);
+    }
+
+    /** Records one failed item and reports whether it was only a stale reference (a warning). */
+    private boolean recordItemFailure(BulkResponseItem item) {
+      String docId = item.id();
+      String failureMessage = item.error().reason();
+      boolean staleReference = isStaleReferenceMessage(failureMessage);
+      if (failureMessage != null && failureMessage.contains("document_missing_exception")) {
+        LOG.warn(
+            "Document missing error for {}: {} - This may occur during concurrent reindexing",
+            docId,
+            failureMessage);
+      } else {
+        LOG.warn("Failed to index document {}: {}", docId, failureMessage);
+      }
+      String entityType = docId != null ? docIdToEntityType.remove(docId) : null;
+      if (entityType == null) {
+        entityType = extractEntityTypeFromIndex(item.index());
+      }
+      StageStatsTracker tracker = docId != null ? docIdToTracker.remove(docId) : null;
+      if (tracker != null) {
+        tracker.recordSink(staleReference ? StatsResult.WARNING : StatsResult.FAILED);
+      }
+      if (!staleReference && failureCallback != null) {
+        failureCallback.onFailure(
+            entityType, docId, null, failureMessage, IndexingFailureRecorder.FailureStage.SINK);
+      }
+      return staleReference;
+    }
+
+    private void recordItemSuccess(BulkResponseItem item) {
+      String docId = item.id();
+      if (docId != null) {
+        docIdToEntityType.remove(docId);
+        StageStatsTracker tracker = docIdToTracker.remove(docId);
+        if (tracker != null) {
+          tracker.recordSink(StatsResult.SUCCESS);
+        }
+      }
+    }
+
+    private void publishItemOutcomes(
+        BulkAttempt<BulkOperation> attempt, int failures, int warnings, int deferred) {
+      int numberOfActions = attempt.size();
+      totalSuccess.addAndGet(numberOfActions - failures - warnings - deferred);
       totalFailed.addAndGet(failures);
       totalWarnings.addAndGet(warnings);
 
       LOG.warn(
-          "Bulk request {} completed with {} failures and {} warnings out of {} actions",
-          executionId,
+          "Bulk request {} completed with {} failures, {} warnings and {} actions awaiting re-send out of {} actions",
+          attempt.executionId(),
           failures,
           warnings,
+          deferred,
           numberOfActions);
       statsUpdater.run();
     }

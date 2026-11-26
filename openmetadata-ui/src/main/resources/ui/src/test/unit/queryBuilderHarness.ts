@@ -31,6 +31,7 @@ import {
   getEmptyFlatJsonTree,
   getEmptyJsonTree,
   loadExploreQueryFilter,
+  sanitizeQueryBuilderTree,
 } from '../../utils/queryBuilder/tree';
 import {
   GroupMode,
@@ -235,7 +236,7 @@ export const buildTree = (
 ): ImmutableTree => {
   const isFlat = groupMode === QUERY_BUILDER_GROUP_MODE.FLAT;
   // Seeded as the builder loads its tree (`loadQueryBuilderTree`).
-  const initial = QbUtils.checkTree(
+  const initial = sanitizeQueryBuilderTree(
     QbUtils.loadTree(
       (isFlat ? getEmptyFlatJsonTree() : getEmptyJsonTree()) as JsonTree
     ),

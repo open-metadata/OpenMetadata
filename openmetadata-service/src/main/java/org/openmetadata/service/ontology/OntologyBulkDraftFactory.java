@@ -24,6 +24,7 @@ import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.service.security.ImpersonationContext;
 
 final class OntologyBulkDraftFactory {
   private final ChangeSetStore changeSetStore;
@@ -39,7 +40,7 @@ final class OntologyBulkDraftFactory {
       final List<OntologyChangeOperation> operations,
       final String user) {
     final OntologyChangeSet draft = draft(glossary, request, operations);
-    return changeSetStore.create(uriInfo, draft, user, null);
+    return changeSetStore.create(uriInfo, draft, user, ImpersonationContext.getImpersonatedBy());
   }
 
   private static OntologyChangeSet draft(
