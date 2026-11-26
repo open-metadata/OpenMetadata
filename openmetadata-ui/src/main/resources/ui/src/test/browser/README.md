@@ -6,7 +6,7 @@ Chromium. Only the network is fake. No backend, no DB, no login.
 ```bash
 yarn test:ui           # watch mode; add --ui to watch the page render live
 yarn test:ui:run       # CI / headless
-yarn test:ui:coverage  # istanbul -> src/test/browser/coverage (CI job summary; not in Sonar yet)
+yarn test:ui:coverage  # istanbul -> src/test/browser/coverage (CI job summary; read by the nightly Sonar scan)
 HEADED=true yarn test:ui:run   # see the browser
 ```
 
@@ -58,7 +58,7 @@ keys select the tests whose code names them.
 
 Everything runs when the map is missing, or when a change touches test setup,
 the Vitest/Vite config or dependencies. Changed code that no browser test
-executes is listed in the PR comment, along with how many of the changed lines
+executes is listed in the job summary of the `UI Browser Tests` run, along with how many of the changed lines
 the tests that ran executed. Main runs every test file every 6 hours when the UI
 changed since the last full run (and by hand from the Actions tab), which refreshes the map and surfaces anything a
 selection missed. This is the only full run. To
@@ -68,7 +68,7 @@ see what a branch would run:
 node scripts/select-browser-tests.mjs --map impact-map.json --base origin/main
 ```
 
-The policy is ADR:2026-11-23-browser-tests-run-by-impact-on-pull-requests-and-in-full-in-the-merge-queue.
+The policy is ADR:2026-11-25-browser-tests-are-selected-before-main-and-run-in-full-on-main.
 
 The static import graph alone cannot do this here: lazy imports tie about
 1,000 modules into one import cycle.
