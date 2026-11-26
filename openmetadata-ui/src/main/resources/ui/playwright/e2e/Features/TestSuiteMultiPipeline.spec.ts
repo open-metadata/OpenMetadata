@@ -17,6 +17,7 @@ import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
+  selectTestType,
 } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
@@ -76,12 +77,7 @@ test(
         .getByTestId('test-case-name')
         .locator('input')
         .fill(testCaseName);
-      await page.click('[id="root\\/testType"]');
-      await page
-        .getByRole('option')
-        .filter({ hasText: 'Table Column Count To Equal' })
-        .first()
-        .click();
+      await selectTestType(page, 'Table Column Count To Equal');
       await page.getByPlaceholder('Enter a Count').fill('13');
       await submitTestCaseForm(page);
 

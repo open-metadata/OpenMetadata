@@ -114,7 +114,7 @@
   },
   "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/e2e/Features/DataQuality/ColumnLevelTests.spec.ts": {
@@ -127,14 +127,9 @@
       "count": 1
     }
   },
-  "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/e2e/Features/DataQuality/TestCaseResultPermissions.spec.ts": {
@@ -332,7 +327,7 @@
   },
   "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/e2e/Features/Topic.spec.ts": {
@@ -402,7 +397,7 @@
   },
   "playwright/e2e/Pages/DataContracts.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts": {
