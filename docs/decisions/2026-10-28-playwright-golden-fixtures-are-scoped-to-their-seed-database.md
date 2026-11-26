@@ -12,7 +12,7 @@
 
 ## Context
 
-`playwright-e2e-reusable.yml` takes a `database` input, but the golden-fixture pipeline only knew
+`reusable-playwright-e2e.yml` takes a `database` input, but the golden-fixture pipeline only knew
 PostgreSQL + OpenSearch. `mysql-nightly-e2e.yml` runs it with `database: mysql`, so every release
 branch nightly failed in `prepare-playwright-fixture` with `No such object:
 openmetadata_postgresql`. The cache key did not carry the database either, so a MySQL run could

@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.withinPercentage;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
@@ -173,6 +175,40 @@ class SearchScoringIT {
     assertThat(explanation)
         .as("explain must reference the configured field-value boost field")
         .contains("weeklyStats");
+  }
+
+  /**
+   * With ranking off, n-gram fields go through the unranked fuzzy match. A short typo stays inside
+   * the fuzzy clause budget and still finds the table, while a long id-like token (the 16-char
+   * marker) is matched exactly instead of exceeding the 1024 bool-clause cap.
+   */
+  @Test
+  void unrankedSearchKeepsTypoToleranceAndAnswersLongTokens(final TestNamespace ns) {
+    final String marker = ns.uniqueShortId();
+    final String word = RelevancyFixtures.uniqueToken("").substring(0, 9);
+    final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    final String tableId =
+        RelevancyFixtures.createTable(schema, word, marker, null).getId().toString();
+    awaitIndexed(word, 1);
+
+    SearchSettings settings =
+        SearchSettingsTestHelper.copyOf(SearchSettingsTestHelper.currentSettings(server));
+    settings = SearchSettingsTestHelper.withRankingDisabled(settings, TABLE_INDEX);
+    final String typo = word.substring(0, 4) + word.substring(5);
+
+    assertThat(hitIds(typo, settings)).as("a one-letter typo must still match").contains(tableId);
+    assertThat(hitIds(marker, settings))
+        .as("a long token must be answered, not rejected for too many clauses")
+        .contains(tableId);
+  }
+
+  private static List<String> hitIds(final String query, final SearchSettings settings) {
+    final List<String> ids = new ArrayList<>();
+    SearchSettingsTestHelper.preview(server, query, TABLE_INDEX, settings, 50, false)
+        .path("hits")
+        .path("hits")
+        .forEach(hit -> ids.add(hit.path("_id").asText()));
+    return ids;
   }
 
   private static SearchSettings twoBoostSettings(

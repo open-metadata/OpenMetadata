@@ -20,6 +20,10 @@ import {
   StrengthLevel,
 } from './PasswordStrength.utils';
 
+// Passay 1.6.6 `EnglishCharacterData.Special`, also pinned in PasswordUtilTest.java.
+const SERVER_SPECIAL_CHARACTERS =
+  '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~–—―‗‘’‚‛“”„†‡•…‰′″‹›‼‾⁄⁊₠₡₢₣₤₥₦₧₨₩₪₫€₭₮₯₰₱₲₳₴₵₶₷₸₹₺₻₼₽₾¡¢£¤¥¦§¨©ª«¬\u00AD®¯°±²³´µ¶·¸¹º»¼½¾¿×÷';
+
 describe('PasswordStrength.utils', () => {
   describe('getSatisfiedPasswordRuleIds', () => {
     it('should return no rules for an empty password', () => {
@@ -63,22 +67,50 @@ describe('PasswordStrength.utils', () => {
       expect(isPasswordValid(password as string)).toBe(expected);
     });
 
-    it('should agree with the server-side password pattern', () => {
-      const passwords = [
+    it.each([
+      ['Abcdef1_', true],
+      ['Abcdef1:', true],
+      ['Abcdef1–', true],
+      ['Abcdef1é', false],
+      ['AbcdefÄ1', false],
+    ])(
+      'should match the server special-character set for %s',
+      (password, expected) => {
+        expect(isPasswordValid(password as string)).toBe(expected);
+      }
+    );
+
+    it('should treat exactly the server special characters as symbols', () => {
+      const isSymbol = (char: string) =>
+        getSatisfiedPasswordRuleIds(char).includes(PasswordRuleId.Symbol);
+
+      for (let code = 0x20; code <= 0x2fff; code++) {
+        const char = String.fromCharCode(code);
+
+        expect([char, isSymbol(char)]).toEqual([
+          char,
+          SERVER_SPECIAL_CHARACTERS.includes(char),
+        ]);
+      }
+    });
+
+    it('should agree with passwordRegex', () => {
+      [
         'Test@1234',
         'test@1234',
         'Test01234',
         'Test@1',
         'Test @1234',
+        'Abcdef1_',
+        'Abcdef1:',
+        'Abcdef1é',
+        'Abcdef1\\',
+        'Abcdef1]',
+        'Abcdef1^',
+        'Abcdef1-',
         `Ab1@${'x'.repeat(53)}`,
-      ];
-
-      passwords.forEach((password) => {
-        // A fresh instance per call — `passwordRegex` carries the `g` flag, so a
-        // shared instance would advance `lastIndex` between assertions.
-        const serverPattern = new RegExp(passwordRegex.source);
-
-        expect(isPasswordValid(password)).toBe(serverPattern.test(password));
+      ].forEach((password) => {
+        expect(isPasswordValid(password)).toBe(passwordRegex.test(password));
       });
     });
   });
