@@ -49,9 +49,11 @@ const SidebarSearchButton = () => {
         size="text-sm">
         {t('label.search')}
       </Typography>
+      {/* Browsers render <kbd> in a monospace font, where ⌘ is a tiny glyph;
+          the app font draws it at the same size as the tooltip's. */}
       <Typography
         as="kbd"
-        className="tw:rounded-md tw:bg-tertiary tw:px-1.5 tw:py-0.5"
+        className="tw:rounded-md tw:bg-tertiary tw:px-1.5 tw:py-0.5 tw:font-body"
         color="quaternary"
         size="text-xs"
         weight="medium">
