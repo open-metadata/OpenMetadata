@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.Entity;
@@ -78,6 +79,27 @@ public interface VectorIndexService {
 
   /** What one heal pass removed from {@code index}. */
   record ChunkSetsBounded(String index, int parents, int chunks) {}
+
+  /**
+   * Removes, once per chunk index, the chunks of entities that no longer exist or are soft deleted,
+   * which recursive deletes left behind before the vector handler cleaned up their descendants, and
+   * records on the index that it holds none. {@code live} says which entities exist and are not
+   * deleted. Returns what was removed, or empty when the index already carried the record or does
+   * not exist. Throws when the pass could not finish, and the record stays unset. {@link
+   * ChunkSetHealRunner} runs it at startup, after the heal, until it succeeds.
+   */
+  Optional<DeletedEntityChunksRemoved> removeChunksOfDeletedEntities(LiveEntities live)
+      throws IOException;
+
+  /** Which entities exist and are not soft deleted. */
+  @FunctionalInterface
+  interface LiveEntities {
+    /** Those of {@code ids}, entities of {@code entityType}, that exist and are not deleted. */
+    Set<String> of(String entityType, List<String> ids);
+  }
+
+  /** How many entities' chunk sets one sweep removed from {@code index}. */
+  record DeletedEntityChunksRemoved(String index, int parents) {}
 
   /**
    * Strip the embedding fields from an entity document. Entity-doc embedding writes are partial

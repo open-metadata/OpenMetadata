@@ -11,12 +11,18 @@
   recorded; by-id chunk requests retry a busy cluster; a header that cannot be read fails the write
   or delete, and a live delete the cluster refuses goes to the search retry queue; an unrecorded
   staged delete is read from any failed partition, also at the end of the job; a run waits out the
-  generation lookup's cache)
+  generation lookup's cache); v7 2026-11-26 (every entity a hard delete removes, the descendants of
+  a recursive delete included, loses its chunks through the handler's prepare hook, in batches; a
+  descendant a recursive soft delete marks deleted loses them through that update; a sweep removes
+  once the chunks earlier recursive deletes left behind)
 - **Deciders:** Search and AI context maintainers
 - **Guard:** `VectorChunkIndexIT` (each scenario on a real cluster of each engine),
   `ChunkSetBoundTest` (trims and deletes after a write that stopped part way, the requests a
   delete sends, a header that cannot be read, the request retry, racing writers, the heal and its
-  retries), `ChunkSetHealLeaseTest` (the heal's lease),
+  retries), `ChunkSetHealLeaseTest` (the heal's lease), `ChunkSetsDeleteTest` (the deletes of many
+  chunk sets), `DeletedEntityChunkSweepTest` and `ChunkSetHealRunnerTest` (the sweep, after the
+  heal), `VectorEmbeddingHandlerTest` (which deletes reach the chunks), `OrderedLaneExecutorTest`
+  (one task per lane, after the tasks queued for its entities),
   `SearchIndexRetryWorkerTest` and `VectorEmbeddingHandlerTest` (a live delete the cluster
   refused is replayed), `RecreateWithEmbeddingsTest` (the wait before the first read),
   `DistributedIndexingStrategyTest` and
@@ -26,6 +32,7 @@
   (what an entity index tells the chunk generation), `StoredEmbeddingReuseIT` (both engines);
   `reviewer` for a new caller that names an engine class
 - **Related:** ADR:2026-11-11-reindex-reuses-an-embedding-only-when-its-fingerprint-matches,
+  ADR:2026-11-09-lifecycle-handlers-prepare-a-hard-delete-before-its-rows-are-removed,
   ADR:2026-11-23-ontology-terms-have-dedicated-search-indexes,
   ADR:2026-11-11-chunk-llm-context-lists-child-fields-under-columns,
   ADR:2026-10-21-opensearch-vectors-stay-in-source
@@ -147,8 +154,27 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   made searchable go too. The header is the whole truth, so a delete sends no delete-by-query:
   every write keeps every chunk id below the count. One realtime multi-get reads the header. A
   delete costs that one read for an entity with no chunks, plus one bulk for an entity with one
-  chunk and two for more. It sends nothing to a chunk index that does not exist yet. A write that
-  began before a delete and ends after it still brings the entity's chunks back.
+  chunk and two for more, and a batch of up to 250 entities costs the same three requests at most:
+  one multi-get of every header, one bulk of the chunks past them, one of the chunk 0s. A chunk 0
+  that changed since it was read is read again and deleted over its new version, up to three times.
+  It sends nothing to a chunk index that does not exist yet. A write that began before a delete and
+  ends after it still brings the entity's chunks back.
+- **Every entity a delete removes loses its chunks, its descendants included.** A recursive delete
+  sends its descendants no delete event: the root's delete removes their entity documents by query
+  (`descendantsCoveredByAncestorCascade`), and a chunk document carries no ancestor id to match.
+  So the vector handler deletes chunks where every hard delete passes, root and descendants alike:
+  its `prepareHardDelete` hook
+  (ADR:2026-11-09-lifecycle-handlers-prepare-a-hard-delete-before-its-rows-are-removed), which
+  takes the entities of one type together. Once the delete commits, their chunks are deleted on
+  the ordered lanes, one task per lane holding the entities that lane serializes, so each runs after
+  every task already queued for its entities and an update in flight cannot write the chunks back.
+  The delete event does no chunk work. A chunk set the live index still holds after the delete
+  puts its entity on the search retry queue, as does a lane task that fails or is shed. A recursive
+  soft delete marks each descendant deleted with a bulk update and sends it no soft-delete event;
+  kNN reads only chunks marked not deleted, and a chunk keeps the flag it was written with, so the
+  handler deletes the chunks of any entity updated to deleted, as it does on a soft-delete event. A
+  restore, of one entity or of a subtree, updates each entity back, and the update writes its
+  chunks again.
 - **Chunks no header counts are removed once per chunk index.** Writes from before chunk 0 was
   conditional could leave chunks past their header or with no chunk 0 at all: a bulk that stopped
   part way, a header read taken for a missing one, two writers racing. On OpenSearch, data written
@@ -168,6 +194,18 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   that finds the row held waits and tries again, so if the holder stops, the next one takes over
   once the row expires, five minutes after its last renewal. One line reports what the pass
   removed.
+- **Chunks of deleted entities are removed once per chunk index.** Recursive deletes made before
+  the handler cleaned up descendants left those descendants' chunks behind: on OpenSearch since
+  2.0, on Elasticsearch since its chunk index. After the heal, under the same lease and retries,
+  the runner sweeps them (`removeChunksOfDeletedEntities`). It pages the parents of the live
+  data-asset chunk index through a composite aggregation on `parentId` and `entityType`, refusing a
+  partial answer as the heal does, looks the entities of each page up a type at a time in their
+  repository, soft deleted ones excluded, and deletes the chunk sets of the rest as a batch
+  delete does. A parent with no entity type, of a type the server has no repository for, or whose
+  id is not an entity id, keeps its chunks. The sweep deletes by the header's bound, so it runs
+  only after the heal. It then sets `_meta.chunksOfDeletedEntitiesRemoved` on the index; an index
+  created empty starts with it. An entity restored in the moment the sweep reads it can lose its
+  chunks until its next update or reindex.
 - **By-id chunk requests retry a busy or briefly unavailable cluster.** The header read, the
   chunk bulks and the heal's requests go through their own retry policy, `vector-chunk-request`:
   a 429, 502, 503 or 504, a request that got no response, an error for the document in a
@@ -183,9 +221,9 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   retries, the write or delete fails instead: a write would lower the bound, and a delete would
   leave behind the chunks no refresh has made searchable and report success. A failed write is a
   miss as above, and a live edit of a data asset or an ontology term still refreshes its entity
-  document. A staged delete flags its generation. A delete that misses the live index throws to
-  its handler once it has tried the staged generation, and the handler puts the entity on the
-  search retry queue: the search retry worker removes the chunks of an entity that is gone,
+  document. A staged delete flags its generation. A delete that misses the live index reports the
+  entity to its handler once it has tried the staged generation, and the handler puts the entity
+  on the search retry queue: the search retry worker removes the chunks of an entity that is gone,
   soft-deleted or no longer embeddable, with the queue's own retries and backoff.
 - **Ontology terms keep the layout their own record gives them.**
   ADR:2026-11-23-ontology-terms-have-dedicated-search-indexes keeps their chunks in
@@ -211,6 +249,15 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   aggregation request per 500 parents, in the background, and three requests for each parent it
   heals, on one server; the others try the lease again until the record is there. The deletes are
   conditional, so a pass repeated after a lost lease only repeats work.
+- **A recursive delete's chunk cleanup grows with the lanes, not with the descendants.** Each
+  hard-delete batch of the cascade (up to 500 entities of one type) costs at most three requests
+  per lane, and there are 8 to 32 lanes: a 200-table cascade sends 42 on a 14-lane server, where a
+  delete per table would send about 500. A recursive soft delete deletes per descendant, on the
+  lane task its update already has. Restoring a subtree embeds its entities again, one provider
+  call per chunk.
+- **The sweep reads the whole chunk index once.** The first start after the upgrade sends one
+  aggregation request per 500 parents and one database query per entity type in each page, and
+  three requests per 250 entities it removes.
 - **Upgrade cost on Elasticsearch.** No chunk documents exist before this change. The first
   Search Indexing run after the upgrade creates the chunk index and embeds every chunk of each
   vector-indexable entity it covers, one provider call per chunk. That includes entities whose

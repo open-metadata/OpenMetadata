@@ -46,8 +46,10 @@ import org.openmetadata.service.search.vector.AbstractVectorIndexService;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
-import org.openmetadata.service.search.vector.VectorIndexService.ChunkSetsBounded;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
+import org.openmetadata.service.search.vector.VectorIndexService.ChunkSetsBounded;
+import org.openmetadata.service.search.vector.VectorIndexService.DeletedEntityChunksRemoved;
+import org.openmetadata.service.search.vector.VectorIndexService.LiveEntities;
 import org.openmetadata.service.search.vector.VectorSearchParameters;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
@@ -367,6 +369,11 @@ class VectorChunkIndexIT {
     }
 
     @Test
+    void theSweepRemovesTheChunksOfDeletedEntitiesOnce() throws IOException {
+      assertTheSweepRemovesTheChunksOfDeletedEntitiesOnce(service);
+    }
+
+    @Test
     void aCascadeDeletesItsDescendantsChunksInAFewRequestsPerLane() {
       assertACascadeDeletesItsDescendantsChunksInAFewRequestsPerLane(
           service, countedService, requests);
@@ -475,6 +482,11 @@ class VectorChunkIndexIT {
     }
 
     @Test
+    void theSweepRemovesTheChunksOfDeletedEntitiesOnce() throws IOException {
+      assertTheSweepRemovesTheChunksOfDeletedEntitiesOnce(service);
+    }
+
+    @Test
     void aCascadeDeletesItsDescendantsChunksInAFewRequestsPerLane() {
       assertACascadeDeletesItsDescendantsChunksInAFewRequestsPerLane(
           service, countedService, requests);
@@ -568,6 +580,48 @@ class VectorChunkIndexIT {
     } finally {
       requests.clear();
       service.deleteEntitiesChunks(tables.stream().map(VectorChunkIndexIT::id).toList());
+    }
+  }
+
+  /**
+   * Recursive deletes used to leave their descendants' chunks behind. The sweep removes, once per
+   * index, the chunks of every entity the database no longer holds live, keeping the rest of the
+   * index's metadata. An index created empty records it from the start. A mapping update replaces
+   * the metadata whole, which is how the record is cleared here to stand for an index written by an
+   * earlier release.
+   */
+  private static void assertTheSweepRemovesTheChunksOfDeletedEntitiesOnce(
+      AbstractVectorIndexService service) throws IOException {
+    String live = service.getChunkIndexName();
+    Table kept = table("orders", "Orders placed online");
+    Table hardDeleted = table("ledger", "word ".repeat(940));
+    Table softDeleted = table("refunds", "Refunds issued");
+    LiveEntities database = (type, ids) -> Set.of(id(kept));
+    try {
+      List.of(kept, hardDeleted, softDeleted).forEach(table -> writeChunks(service, table, null));
+      refresh(service, live);
+      assertEquals(
+          Optional.empty(),
+          service.removeChunksOfDeletedEntities(database),
+          "an index created empty holds no chunk of a deleted entity");
+      String target = liveTarget(service);
+      int docVersion = chunkIndexMeta(service, target).path("chunkDocVersion").asInt();
+      putMeta(service, target, "{\"chunkDocVersion\":" + docVersion + "}");
+
+      Optional<DeletedEntityChunksRemoved> removed =
+          service.removeChunksOfDeletedEntities(database);
+
+      assertTrue(removed.isPresent());
+      assertTrue(removed.get().parents() >= 2, removed::toString);
+      assertEquals(1, storedChunkIds(service, live, kept).size());
+      assertEquals(Set.of(), storedChunkIds(service, live, hardDeleted));
+      assertEquals(Set.of(), storedChunkIds(service, live, softDeleted));
+      JsonNode meta = chunkIndexMeta(service, target);
+      assertTrue(meta.path("chunksOfDeletedEntitiesRemoved").asBoolean(false), meta::toString);
+      assertEquals(docVersion, meta.path("chunkDocVersion").asInt(), meta::toString);
+      assertEquals(Optional.empty(), service.removeChunksOfDeletedEntities(database), "once");
+    } finally {
+      service.deleteEntitiesChunks(List.of(id(kept), id(hardDeleted), id(softDeleted)));
     }
   }
 

@@ -184,6 +184,7 @@ import org.openmetadata.service.search.vector.ChunkSetHealLease;
 import org.openmetadata.service.search.vector.ChunkSetHealRunner;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.RepositoryLiveEntities;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
@@ -1005,7 +1006,11 @@ public class SearchRepository {
       this.vectorServiceInitError = null;
       Thread.ofVirtual()
           .name("vector-chunk-heal")
-          .start(new ChunkSetHealRunner(vectorIndexService, ChunkSetHealLease.forCluster()));
+          .start(
+              new ChunkSetHealRunner(
+                  vectorIndexService,
+                  ChunkSetHealLease.forCluster(),
+                  new RepositoryLiveEntities()));
 
       LOG.info(
           "Vector search service initialized with provider={}, dimension={}",

@@ -216,6 +216,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   // Set on a chunk index that holds no chunk its header does not count: one created empty, or one
   // removeChunksNoHeaderCounts has gone through.
   private static final String CHUNK_SETS_BOUNDED = "chunkSetsBounded";
+  // Set on a chunk index that holds no chunk of a deleted entity: one created empty, or one
+  // removeChunksOfDeletedEntities has gone through.
+  private static final String CHUNKS_OF_DELETED_ENTITIES_REMOVED = "chunksOfDeletedEntitiesRemoved";
   private volatile boolean chunkIndexEnsured = false;
   private volatile boolean ontologyChunkIndexEnsured;
 
@@ -1466,7 +1469,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private String buildChunkIndexMapping(boolean withSearchAlias) {
     var mappings = MAPPER.createObjectNode().put("dynamic", false);
     mappings.set("properties", buildChunkProperties());
-    mappings.set("_meta", chunkMeta().put(CHUNK_SETS_BOUNDED, true));
+    mappings.set(
+        "_meta",
+        chunkMeta().put(CHUNK_SETS_BOUNDED, true).put(CHUNKS_OF_DELETED_ENTITIES_REMOVED, true));
     var root = chunkIndexSettings();
     root.set("mappings", mappings);
     // Staged generations are created bare: attaching the search alias before promotion would make
@@ -1526,12 +1531,34 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     ensureChunkIndex();
     String target = resolveLiveChunkTargetStrict(getChunkIndexName());
     Optional<ChunkSetsBounded> healed = Optional.empty();
-    if (target != null
-        && !chunkIndexMappings(target).path("_meta").path(CHUNK_SETS_BOUNDED).asBoolean(false)) {
+    if (target != null && !recorded(target, CHUNK_SETS_BOUNDED)) {
       healed = Optional.of(new ChunkSetHeal(new HealRequests()).healParentsOf(target));
-      recordChunkSetsBounded(target);
+      record(target, CHUNK_SETS_BOUNDED);
     }
     return healed;
+  }
+
+  /**
+   * Removes the chunks of the entities {@code live} does not report, for chunk sets that recursive
+   * deletes left behind, then records on the index that it holds none. An index created empty starts
+   * with that record, so this runs once per index. A failure throws and leaves the record unset.
+   * See {@link DeletedEntityChunkSweep}.
+   */
+  @Override
+  public Optional<DeletedEntityChunksRemoved> removeChunksOfDeletedEntities(LiveEntities live)
+      throws IOException {
+    ensureChunkIndex();
+    String target = resolveLiveChunkTargetStrict(getChunkIndexName());
+    Optional<DeletedEntityChunksRemoved> removed = Optional.empty();
+    if (target != null && !recorded(target, CHUNKS_OF_DELETED_ENTITIES_REMOVED)) {
+      removed = Optional.of(new DeletedEntityChunkSweep(new SweepRequests()).sweep(target, live));
+      record(target, CHUNKS_OF_DELETED_ENTITIES_REMOVED);
+    }
+    return removed;
+  }
+
+  private boolean recorded(String indexName, String flag) throws IOException {
+    return chunkIndexMappings(indexName).path("_meta").path(flag).asBoolean(false);
   }
 
   private JsonNode chunkIndexMappings(String indexName) throws IOException {
@@ -1539,9 +1566,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     return MAPPER.readTree(mappingJson).path(indexName).path("mappings");
   }
 
-  private void recordChunkSetsBounded(String indexName) throws IOException {
+  private void record(String indexName, String flag) throws IOException {
     ObjectNode body = MAPPER.createObjectNode();
-    body.set("_meta", existingMeta(chunkIndexMappings(indexName)).put(CHUNK_SETS_BOUNDED, true));
+    body.set("_meta", existingMeta(chunkIndexMappings(indexName)).put(flag, true));
     executeGenericRequest("PUT", "/" + indexName + "/_mapping", body.toString());
   }
 
@@ -1549,8 +1576,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private final class HealRequests implements ChunkSetHeal.Requests {
     @Override
     public JsonNode search(String index, String body) {
-      return sendChunkRequest(
-          "/" + index + "/_search", body, response -> requireEveryShard(index, response));
+      return completeSearch(index, body);
     }
 
     @Override
@@ -1578,6 +1604,24 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
           null);
     }
     return response;
+  }
+
+  /** The sweep's requests, retried as every chunk request is. */
+  private final class SweepRequests implements DeletedEntityChunkSweep.Requests {
+    @Override
+    public JsonNode search(String index, String body) {
+      return completeSearch(index, body);
+    }
+
+    @Override
+    public Map<String, Exception> deleteChunkSets(String index, List<String> parentIds) {
+      return chunkSetsDelete.delete(index, parentIds);
+    }
+  }
+
+  private JsonNode completeSearch(String index, String body) {
+    return sendChunkRequest(
+        "/" + index + "/_search", body, response -> requireEveryShard(index, response));
   }
 
   /** The batched delete's requests, retried as every by-id chunk request is. */

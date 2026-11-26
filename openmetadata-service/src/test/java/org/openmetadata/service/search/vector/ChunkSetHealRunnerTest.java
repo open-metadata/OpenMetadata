@@ -4,7 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
@@ -17,16 +21,22 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.openmetadata.service.search.vector.VectorIndexService.ChunkSetsBounded;
+import org.openmetadata.service.search.vector.VectorIndexService.DeletedEntityChunksRemoved;
+import org.openmetadata.service.search.vector.VectorIndexService.LiveEntities;
 import org.slf4j.LoggerFactory;
 
 /** What the runner logs, and what it counts as a failed pass. */
 class ChunkSetHealRunnerTest {
-  private static final String FAILED_PASS = "Could not remove the chunks no header counts";
+  private static final String FAILED_PASS = "Could not finish the chunk index cleanup";
   private static final String FAILED_RELEASE = "Could not release the chunk heal lease";
+  private static final String INDEX = "data_asset_embeddings_chunks";
+  private static final LiveEntities LIVE = (type, ids) -> Set.copyOf(ids);
 
   private final VectorIndexService service = mock(VectorIndexService.class);
   private final List<Duration> pauses = new ArrayList<>();
@@ -55,7 +65,7 @@ class ChunkSetHealRunnerTest {
         .thenThrow(new IOException("shard failed"))
         .thenReturn(Optional.empty());
 
-    new ChunkSetHealRunner(service, leaseTaken(false, true, true, true), pauses::add).run();
+    new ChunkSetHealRunner(service, leaseTaken(false, true, true, true), LIVE, pauses::add).run();
 
     assertEquals(
         List.of(Level.WARN, Level.DEBUG), levelsOf(FAILED_PASS), "warned on the first failure");
@@ -65,7 +75,7 @@ class ChunkSetHealRunnerTest {
   void aPassStillFailingWhenTheWaitReachesItsCapWarnsOnceMore() throws IOException {
     when(service.removeChunksNoHeaderCounts()).thenThrow(failures(8)).thenReturn(Optional.empty());
 
-    new ChunkSetHealRunner(service, leaseTaken(true), pauses::add).run();
+    new ChunkSetHealRunner(service, leaseTaken(true), LIVE, pauses::add).run();
 
     assertEquals(ChunkSetHealRunner.LONGEST_RETRY, pauses.get(5), "the sixth wait is the cap");
     assertEquals(
@@ -101,7 +111,7 @@ class ChunkSetHealRunnerTest {
           }
         };
 
-    new ChunkSetHealRunner(service, lease, pauses::add).run();
+    new ChunkSetHealRunner(service, lease, LIVE, pauses::add).run();
 
     assertEquals(List.of(), pauses, "the heal is done, nothing is tried again");
     assertEquals(List.of(), levelsOf(FAILED_PASS));
@@ -130,11 +140,53 @@ class ChunkSetHealRunnerTest {
             released[0] = true;
           }
         };
-    ChunkSetHealRunner runner = new ChunkSetHealRunner(service, lease, pauses::add);
+    ChunkSetHealRunner runner = new ChunkSetHealRunner(service, lease, LIVE, pauses::add);
 
     assertSame(undeclared, assertThrows(Exception.class, runner::run));
     assertEquals(List.of(), pauses, "it is not retried as a failed pass");
     assertTrue(released[0], "the lease is still released");
+  }
+
+  /**
+   * The sweep deletes by the header's bound, so it follows the heal. A sweep that fails is tried
+   * again, under the lease, until the index records it; the heal is then already recorded.
+   */
+  @Test
+  void theSweepFollowsTheHealAndIsTriedAgainUntilItIsRecorded() throws Exception {
+    ChunkSetHealRunner.Lease lease = mock(ChunkSetHealRunner.Lease.class);
+    when(lease.tryAcquire()).thenReturn(true);
+    when(service.removeChunksNoHeaderCounts())
+        .thenReturn(Optional.of(new ChunkSetsBounded(INDEX, 1, 2)))
+        .thenReturn(Optional.empty());
+    when(service.removeChunksOfDeletedEntities(LIVE))
+        .thenThrow(new IllegalStateException("429 after retries"))
+        .thenReturn(Optional.of(new DeletedEntityChunksRemoved(INDEX, 3)));
+
+    new ChunkSetHealRunner(service, lease, LIVE, pauses::add).run();
+
+    InOrder order = inOrder(service, lease);
+    order.verify(service).removeChunksNoHeaderCounts();
+    order.verify(service).removeChunksOfDeletedEntities(LIVE);
+    order.verify(lease).release();
+    order.verify(service).removeChunksNoHeaderCounts();
+    order.verify(service).removeChunksOfDeletedEntities(LIVE);
+    order.verify(lease).release();
+    assertEquals(List.of(ChunkSetHealRunner.FIRST_RETRY), pauses);
+  }
+
+  @Test
+  void aHealThatFailsRunsNoSweep() throws Exception {
+    ChunkSetHealRunner.Lease lease = mock(ChunkSetHealRunner.Lease.class);
+    when(lease.tryAcquire()).thenReturn(true);
+    when(service.removeChunksNoHeaderCounts())
+        .thenThrow(new IllegalStateException("503 after retries"))
+        .thenReturn(Optional.empty());
+    when(service.removeChunksOfDeletedEntities(any())).thenReturn(Optional.empty());
+
+    new ChunkSetHealRunner(service, lease, LIVE, wait -> {}).run();
+
+    verify(service, times(2)).removeChunksNoHeaderCounts();
+    verify(service, times(1)).removeChunksOfDeletedEntities(LIVE);
   }
 
   private static IOException[] failures(int count) {

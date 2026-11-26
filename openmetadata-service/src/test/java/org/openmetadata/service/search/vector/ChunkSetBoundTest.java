@@ -63,6 +63,8 @@ class ChunkSetBoundTest {
   private static final String LIVE = "data_asset_embeddings_chunks";
   private static final String STAGED = LIVE + "_g1";
   private static final String ENTITY_INDEX = "table_search_index";
+  private static final VectorIndexService.LiveEntities EVERY_ENTITY_LIVE =
+      (entityType, ids) -> Set.copyOf(ids);
 
   private FakeCluster cluster;
   private AdjustableClock clock;
@@ -536,6 +538,7 @@ class ChunkSetBoundTest {
         new ChunkSetHealRunner(
             service,
             new LeaseTable().leaseOf("server"),
+            EVERY_ENTITY_LIVE,
             wait -> {
               pauses.add(wait);
               if (pauses.size() == 7) {
@@ -573,10 +576,13 @@ class ChunkSetBoundTest {
         new ChunkSetHealRunner(
             service,
             leases.leaseOf("second"),
+            EVERY_ENTITY_LIVE,
             wait -> {
               aggregationsWhileHeld.add(cluster.aggregations);
               first.release();
-              new ChunkSetHealRunner(service, first, ignored -> fail("the pass succeeds")).run();
+              new ChunkSetHealRunner(
+                      service, first, EVERY_ENTITY_LIVE, ignored -> fail("the pass succeeds"))
+                  .run();
               aggregationsOfTheFirstPass[0] = cluster.aggregations;
             });
 
