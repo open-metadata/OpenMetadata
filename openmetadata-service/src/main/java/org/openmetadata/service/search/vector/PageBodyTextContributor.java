@@ -61,6 +61,7 @@ public final class PageBodyTextContributor implements VectorBodyTextContributor 
   /**
    * Renders hits with readable article text. Match the chunk suffix against the current page so
    * pipes in the metadata or prose can't be mistaken for the start of the chunk.
+   * ADR:2026-11-26-mcp-article-passages-match-indexed-chunks
    */
   public static List<String> readableArticlePassages(Page page, List<String> passages) {
     String description = page.getDescription();
