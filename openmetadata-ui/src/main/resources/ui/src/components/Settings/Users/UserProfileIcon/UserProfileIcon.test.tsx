@@ -18,6 +18,7 @@ import { ThemeProvider } from '../../../../context/UntitledUIThemeProvider/theme
 import { User } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import navbarUtilClassBase from '../../../../utils/NavbarUtilClassBase';
 import { UserProfileIcon } from './UserProfileIcon.component';
 
 jest.mock('../../../../hooks/useApplicationStore', () => ({
@@ -27,10 +28,6 @@ jest.mock('../../../../hooks/authHooks', () => ({
   useAuthProvider: () => ({
     onLogoutHandler: jest.fn(),
   }),
-}));
-jest.mock('../../../AppModeSwitcher/AppModeSwitcher', () => ({
-  __esModule: true,
-  default: () => <span>app-mode-switcher</span>,
 }));
 jest.mock('../../../../utils/NavbarUtilClassBase', () => ({
   __esModule: true,
@@ -185,6 +182,29 @@ describe('UserProfileIcon', () => {
     await openDropdown();
 
     expect(screen.getByText('app-mode-extra-item')).toBeInTheDocument();
+  });
+
+  it('has no interface switch and no empty footer strip when there are no extra items', async () => {
+    const getExtraItems = jest.mocked(
+      navbarUtilClassBase.getUserProfileExtraItems
+    );
+    const defaultItems = getExtraItems();
+    getExtraItems.mockReturnValue([]);
+    render(
+      <MockWrapper>
+        <UserProfileIcon />
+      </MockWrapper>
+    );
+
+    await openDropdown();
+
+    expect(screen.getByTestId('dropdown-profile')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('user-profile-extra-items')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('label.user-interface')).not.toBeInTheDocument();
+
+    getExtraItems.mockReturnValue(defaultItems);
   });
 
   it('should display personas with pagination and sorting', async () => {
