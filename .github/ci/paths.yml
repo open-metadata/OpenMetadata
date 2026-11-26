@@ -161,7 +161,7 @@ json-yaml:
   - ".github/scripts/check_pr_workflow_security.py"
   - ".github/scripts/prune_ghcr_package.py"
   - ".github/scripts/summarize_surefire.py"
-  - ".github/scripts/validate_ci_config.sh"
+  - ".github/scripts/validate_json_yaml_and_ci_rules.sh"
   - ".github/scripts/tests/test_pr_workflow_security.py"
   - ".github/scripts/tests/test_prune_ghcr_package.py"
   - ".github/scripts/tests/test_summarize_surefire.py"
