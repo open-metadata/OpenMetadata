@@ -139,21 +139,6 @@ const hasFieldErrors = (errorSchema?: ErrorSchema): boolean =>
     ([key, child]) => key !== '__errors' && hasFieldErrors(child as ErrorSchema)
   );
 
-const HiddenFields = ({
-  properties,
-}: {
-  properties: ObjectFieldTemplatePropertyType[];
-}) =>
-  properties.length > 0 ? (
-    <>
-      {properties.map((element) => (
-        <div className="property-wrapper tw:hidden" key={element.name}>
-          {element.content}
-        </div>
-      ))}
-    </>
-  ) : null;
-
 const SectionHeader = ({
   collapsible,
   description,
@@ -320,7 +305,6 @@ const SectionCard = ({
   }
 
   const showBody = !section.collapsible || open;
-  const hasVisibleFields = section.properties.some((p) => !p.hidden);
 
   const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
     const nextFocusedElement = event.relatedTarget as Node | null;
@@ -332,10 +316,6 @@ const SectionCard = ({
       setActive(false);
     }
   };
-
-  if (section.collapsible && !hasVisibleFields) {
-    return <HiddenFields properties={section.properties} />;
-  }
 
   return (
     <Card
