@@ -12,6 +12,7 @@
  */
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -21,12 +22,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
@@ -55,6 +60,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 /**
@@ -351,6 +357,142 @@ public class StaleIncidentStatusIT {
                     .testCaseResolutionStatuses()
                     .patch(incident.getStateId(), MAPPER.createArrayNode()));
     assertEquals(404, error.getStatusCode(), "a stateId is not a record id, so it must 404");
+  }
+
+  @Test
+  void hardDeleteCleansUnlinkedAndHistoryPrunedIncidents(TestNamespace ns) throws Exception {
+    Table table = createTable(ns, "deleteOrphans");
+    TestCase unlinked = createTestCase(table, "unlinked_" + ns.uniqueShortId());
+    TestCase pruned = createTestCase(table, "pruned_" + ns.uniqueShortId());
+    TestCaseResolutionStatus unlinkedRecord = createIncidentRecord(unlinked);
+    UUID unlinkedState = unlinkedRecord.getStateId();
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .until(() -> indexedStatusCount(unlinkedRecord.getId()) == 1);
+    UUID prunedState = createIncident(pruned);
+    orphanResolutionStatusRows(unlinkedState);
+    orphanResolutionStatusRows(prunedState);
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                handle
+                    .createUpdate(
+                        "DELETE FROM test_case_resolution_status_time_series WHERE stateId = :id")
+                    .bind("id", prunedState.toString())
+                    .execute());
+    assertEquals(1, countIncidentRows("test_case_incident_open_interval", prunedState));
+    SdkClients.adminClient()
+        .tables()
+        .delete(table.getId().toString(), Map.of("recursive", "true", "hardDelete", "true"));
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              assertIncidentRemoved(unlinkedState);
+              assertIncidentRemoved(prunedState);
+              assertEquals(0, indexedStatusCount(unlinkedRecord.getId()));
+            });
+  }
+
+  @Test
+  void testSoftDeleteAndRestoreRetainIncidentIntervals(TestNamespace ns) throws Exception {
+    TestCase testCase =
+        createTestCase(createTable(ns, "restoreIntervals"), "restoreCase_" + ns.uniqueShortId());
+    UUID stateId = createIncident(testCase);
+    SdkClients.adminClient()
+        .testCases()
+        .delete(testCase.getId().toString(), Map.of("recursive", "true"));
+    assertEquals(1, countIncidentRows("test_case_incident", stateId));
+    assertEquals(1, countIncidentRows("test_case_incident_open_interval", stateId));
+    SdkClients.adminClient().testCases().restore(testCase.getId().toString());
+    assertEquals(1, countIncidentRows("test_case_incident_open_interval", stateId));
+    SdkClients.adminClient()
+        .testCases()
+        .delete(testCase.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> assertIncidentRemoved(stateId));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void deletionRespectsStableOwnerWithStaleIncidentFqn(boolean pruneHistory, TestNamespace ns)
+      throws Exception {
+    Table original = createTable(ns, "beforeMove");
+    Table destination = createTable(ns, "afterMove");
+    String name = "movedCase_" + ns.uniqueShortId();
+    TestCase owner = createTestCase(destination, name);
+    UUID stateId = createIncident(owner);
+    TestCase replacement = createTestCase(original, name);
+    UUID replacementState = createIncident(replacement);
+    // Reproduce legacy stale names while retaining the authoritative owner relationship.
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle -> {
+              for (String table :
+                  List.of("test_case_resolution_status_time_series", "test_case_incident")) {
+                handle
+                    .createUpdate(
+                        "UPDATE " + table + " SET entityFQNHash = :hash WHERE stateId = :id")
+                    .bind("hash", FullyQualifiedName.buildHash(replacement.getFullyQualifiedName()))
+                    .bind("id", stateId.toString())
+                    .execute();
+              }
+            });
+    if (pruneHistory) {
+      TestSuiteBootstrap.getJdbi()
+          .useHandle(
+              handle ->
+                  handle
+                      .createUpdate(
+                          "DELETE FROM test_case_resolution_status_time_series WHERE stateId = :id")
+                      .bind("id", stateId.toString())
+                      .execute());
+    }
+    SdkClients.adminClient()
+        .testCases()
+        .delete(replacement.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(() -> assertIncidentRemoved(replacementState));
+    assertEquals(1, countIncidentRows("test_case_incident", stateId));
+    assertEquals(1, countIncidentRows("test_case_incident_open_interval", stateId));
+    SdkClients.adminClient()
+        .testCases()
+        .delete(owner.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> assertIncidentRemoved(stateId));
+  }
+
+  private int indexedStatusCount(UUID recordId) throws Exception {
+    String response =
+        SdkClients.adminClient()
+            .search()
+            .query("id:" + recordId)
+            .index("test_case_resolution_status_search_index")
+            .size(1)
+            .execute();
+    JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
+    assertTrue(hits.isArray(), response);
+    return hits.size();
+  }
+
+  private void assertIncidentRemoved(UUID stateId) {
+    for (String table :
+        List.of(
+            "test_case_resolution_status_time_series",
+            "test_case_incident",
+            "test_case_incident_open_interval")) {
+      assertEquals(0, countIncidentRows(table, stateId), table);
+    }
+  }
+
+  private int countIncidentRows(String table, UUID stateId) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM " + table + " WHERE stateId = :id")
+                    .bind("id", stateId.toString())
+                    .mapTo(Integer.class)
+                    .one());
   }
 
   private JsonNode readData(String response) throws Exception {

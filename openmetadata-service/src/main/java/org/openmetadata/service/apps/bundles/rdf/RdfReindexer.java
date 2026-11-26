@@ -40,6 +40,7 @@ import org.openmetadata.service.apps.bundles.rdf.sink.RdfBulkSink;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.rdf.RdfIndexingFields;
+import org.openmetadata.service.rdf.RdfQualityEvidence;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -119,9 +120,45 @@ final class RdfReindexer {
     this.readers = readers;
   }
 
-  /** Reads the stored entities of {@code entityType} through its repository. */
+  /**
+   * Reads the stored entities of {@code entityType} through its repository, with the latest
+   * profiles and test results the live write projects too
+   * (ADR:2026-11-18-the-rdf-graph-carries-the-latest-quality-evidence).
+   */
   static EntityPages repositoryPages(final String entityType) {
-    return RepositoryPages.of(entityType);
+    return withQualityEvidence(
+        entityType, RepositoryPages.of(entityType), RdfQualityEvidence.database());
+  }
+
+  /** {@code pages}, whose loaded entities carry {@code evidence}; stored-data-only ones too. */
+  static EntityPages withQualityEvidence(
+      final String entityType, final EntityPages pages, final RdfQualityEvidence evidence) {
+    return new EvidencePages(entityType, pages, evidence);
+  }
+
+  private record EvidencePages(String entityType, EntityPages pages, RdfQualityEvidence evidence)
+      implements EntityPages {
+    @Override
+    public List<String> readPage(final KeysetCursor after, final int limit) {
+      return pages.readPage(after, limit);
+    }
+
+    @Override
+    public ResultList<? extends EntityInterface<?>> load(final List<String> rows) {
+      final ResultList<? extends EntityInterface<?>> loaded = pages.load(rows);
+      final List<EntityInterface<?>> entities = new ArrayList<>(loaded.getData());
+      listOrEmpty(loaded.getErrors()).stream()
+          .map(EntityError::getEntity)
+          .filter(EntityInterface.class::isInstance)
+          .forEach(entity -> entities.add((EntityInterface<?>) entity));
+      evidence.attach(entityType, entities);
+      return loaded;
+    }
+
+    @Override
+    public KeysetCursor cursorAfter(final List<String> rows) {
+      return pages.cursorAfter(rows);
+    }
   }
 
   /** Indexes {@code entityTypes} in order and returns once every page read has been written. */

@@ -19,9 +19,9 @@ package org.openmetadata.mcp.tools;
  * like a disabled triplestore, not a transient fault, so retrying does not help and the client is
  * told an administrator has to act. Classified by name in {@code DefaultToolContext}.
  */
-final class RdfProjectionDegradedException extends RuntimeException {
+public final class RdfProjectionDegradedException extends RuntimeException {
 
-  RdfProjectionDegradedException(final String message, final Throwable cause) {
+  public RdfProjectionDegradedException(final String message, final Throwable cause) {
     super(message, cause);
   }
 }

@@ -529,9 +529,11 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       }
     }
     if (!nullOrEmpty(dataContract.getReviewers())) {
-      for (EntityReference reviewer : dataContract.getReviewers()) {
-        Entity.getEntityReferenceById(reviewer.getType(), reviewer.getId(), Include.NON_DELETED);
-      }
+      List<EntityReference> reviewersToValidate =
+          dataContract.getReviewers().stream()
+              .map(ref -> JsonUtils.deepCopy(ref, EntityReference.class))
+              .collect(Collectors.toList());
+      EntityRepository.validateReviewers(reviewersToValidate);
     }
   }
 

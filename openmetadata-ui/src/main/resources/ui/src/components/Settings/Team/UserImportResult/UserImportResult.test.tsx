@@ -21,7 +21,6 @@ const mockCsvImportResult = {
   numberOfRowsPassed: 3,
   numberOfRowsFailed: 0,
   importResultsCsv:
-    // eslint-disable-next-line max-len
     'status,details,name*,displayName,description,email*,timezone,isAdmin,teams*,Roles\r\nsuccess,Entity updated,aaron_johnson0,Aaron Johnson,,aaron_johnson0@gmail.com,,false,Applications,DataSteward\r\nsuccess,Entity updated,aaron_singh2,Aaron Singh,,aaron_singh2@gmail.com,,false,Applications,\r\nfailure,,,,,,,,,,',
 } as CSVImportResult;
 

@@ -436,6 +436,42 @@ describe('SuggestionsProvider', () => {
     });
   });
 
+  it('treats refs with the same user id but different names as one user', async () => {
+    // getTaskCreatedBy builds a minimal ref named after task.updatedBy when the
+    // expanded createdBy is missing, so one user can arrive under two names.
+    (getSuggestionsList as jest.Mock).mockResolvedValue({
+      ...mockPagingResponse,
+      data: [
+        MOCK_SUGGESTIONS[0],
+        MOCK_SUGGESTIONS[1],
+        {
+          ...MOCK_SUGGESTIONS[2],
+          createdBy: { id: '1', name: 'ingestion-bot', type: 'user' },
+        },
+      ],
+    });
+
+    render(
+      <SuggestionsProvider>
+        <TestComponent />
+      </SuggestionsProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('3');
+    });
+
+    expect(screen.getByTestId('users-count')).toHaveTextContent('2');
+    expect(screen.getByTestId('grouped-users-count')).toHaveTextContent('2');
+
+    fireEvent.click(screen.getByText('Active User'));
+    fireEvent.click(screen.getByText('Accept All'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('1');
+    });
+  });
+
   it('handles acceptRejectAllSuggestions and refetches when suggestions become empty', async () => {
     // Mock response with only user's suggestions
     (getSuggestionsList as jest.Mock)

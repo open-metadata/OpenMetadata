@@ -208,7 +208,6 @@ function DatabaseSchemaVersionPage() {
   const tablePaginationHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        getSchemaTables({ [cursorType]: paging[cursorType] });
         handlePageChange(
           currentPage,
           { cursorType, cursorValue: paging[cursorType] },
@@ -216,7 +215,7 @@ function DatabaseSchemaVersionPage() {
         );
       }
     },
-    [paging, getSchemaTables]
+    [paging, pageSize, handlePageChange]
   );
 
   const { versionHandler, backHandler } = useMemo(

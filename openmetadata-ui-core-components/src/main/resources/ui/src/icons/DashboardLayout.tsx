@@ -33,7 +33,7 @@ export const DashboardLayout: FC<Props> = ({
     width={size}
     {...props}>
     <g
-      clipPath="url(#a)"
+      clipPath="url(#dashboard-layout_a)"
       fill="currentColor"
       stroke="currentColor"
       strokeWidth={1.3}>
@@ -53,7 +53,7 @@ export const DashboardLayout: FC<Props> = ({
       />
     </g>
     <defs>
-      <clipPath id="a">
+      <clipPath id="dashboard-layout_a">
         <path d="M0 0h20v20H0z" fill="#fff" />
       </clipPath>
     </defs>

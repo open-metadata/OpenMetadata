@@ -1,0 +1,47 @@
+name: Prepare Python environment
+description: Install Python tools, generate models, and synchronize the locked application dependencies.
+inputs:
+  python-version:
+    description: Python Version to install
+    required: true
+  profile:
+    description: Locked Python environment profile to install
+    default: test
+  prepare-models:
+    description: Prepare classification models locally instead of downloading the shared artifact
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/setup-python
+      with:
+        python-version: ${{ inputs.python-version }}
+    - uses: ./.github/actions/prepare-python-build
+      if: inputs.profile != 'style'
+    - name: Prepare classification models
+      if: inputs.profile == 'test-classification' && inputs.prepare-models == 'true'
+      uses: ./.github/actions/prepare-classification-models
+      with:
+        upload-artifact: 'false'
+    - name: Download classification model archives
+      if: inputs.profile == 'test-classification' && inputs.prepare-models != 'true'
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+      with:
+        name: classification-models
+        path: ${{ runner.temp }}/classification-models
+    - name: Import classification model caches
+      if: inputs.profile == 'test-classification'
+      run: |
+        for archive in "$RUNNER_TEMP"/classification-models/*/model.tar; do
+          python scripts/prepare_classification_models.py import --archive "$archive" --cache-dir "$(uv cache dir)"
+        done
+      shell: bash
+    - name: Install Python dependencies
+      env:
+        PYTHON_PROFILE: ${{ inputs.profile }}
+      run: make install PYTHON_PROFILE="$PYTHON_PROFILE"
+      shell: bash
+    - name: Verify classification models
+      if: inputs.profile == 'test-classification'
+      run: env/bin/python scripts/prepare_classification_models.py verify --project ingestion
+      shell: bash

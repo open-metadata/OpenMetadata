@@ -70,7 +70,6 @@ from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_STORED_PROCEDURES,
     BIGQUERY_GET_STORED_PROCEDURES_BY_REGION,
     BIGQUERY_LIFE_CYCLE_QUERY,
-    BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
 )
 from metadata.utils.lru_cache import LRUCache
 
@@ -441,15 +440,6 @@ class BigqueryUnitTest(TestCase):
             ),
             EXPECTED_URL,
         )
-
-    def test_region_life_cycle_query_selects_last_modified(self):
-        query = BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION.format(
-            database_name=MOCK_DB_NAME, schema_name=MOCK_SCHEMA_NAME, region="EU"
-        )
-
-        self.assertIn("creation_time as created_at", query)
-        self.assertIn("storage_last_modified_time as updated_at", query)
-        self.assertIn("`region-EU`.INFORMATION_SCHEMA.TABLE_STORAGE", query)
 
     def test_dataset_life_cycle_query_is_created_only(self):
         query = BIGQUERY_LIFE_CYCLE_QUERY.format(database_name=MOCK_DB_NAME, schema_name=MOCK_SCHEMA_NAME)
@@ -987,36 +977,35 @@ class TestBigqueryRegionAwareQueries:
 
         assert self.bq_source._ddl_local.ddls == {}
 
-    # --- get_life_cycle_query ---
-
-    def test_life_cycle_query_uses_region_aware_query(self):
-        """Region-scoped query (with TABLE_STORAGE) is used when the dataset has a location."""
+    def test_life_cycle_query_stays_dataset_scoped_when_region_resolves(self):
+        """Shard families run this query once per dataset; a region view would bill the whole region."""
         self._set_dataset_location("EU")
 
         query = self.bq_source.get_life_cycle_query()
 
-        assert "`region-EU`.INFORMATION_SCHEMA.TABLE_STORAGE" in query
-        assert "storage_last_modified_time as updated_at" in query
-
-    def test_life_cycle_query_falls_back_without_location(self):
-        """Dataset-scoped created-only query is used when dataset location is None."""
-        self._set_dataset_location(None)
-
-        query = self.bq_source.get_life_cycle_query()
-
+        assert f"`{MOCK_DB_NAME}`.`{MOCK_DATABASE_SCHEMA.name.root}`.INFORMATION_SCHEMA.TABLES" in query
         assert "region-" not in query
         assert "TABLE_STORAGE" not in query
-        assert "creation_time as created_at" in query
 
-    def test_life_cycle_query_falls_back_when_location_unavailable(self):
-        """When client.get_dataset raises, falls back to the dataset-scoped created-only query."""
-        self.bq_source.client.get_dataset.side_effect = Exception("permission denied")
-        self.bq_source._dataset_obj_cache.clear()
+    def test_life_cycle_comes_from_table_object_without_billed_query(self):
+        """#38207: the region-wide TABLE_STORAGE query bills the whole region per dataset."""
+        self._set_dataset_location("EU")
+        self.bq_source.service_connection.usageLocation = "US"
+        self.bq_source.engine = MagicMock()
+        self.bq_source._table_obj_cache.clear()
+        table = BQTable(f"{MOCK_DB_NAME}.{MOCK_DATABASE_SCHEMA.name.root}.orders")
+        table._properties["creationTime"] = "1735776000000"
+        table._properties["lastModifiedTime"] = "1735862400000"
+        self.bq_source.client.get_table.return_value = table
+        self.bq_source.context.get().__dict__["table"] = "orders"
 
-        query = self.bq_source.get_life_cycle_query()
+        results = list(self.bq_source.yield_life_cycle_data(None))
 
-        assert "TABLE_STORAGE" not in query
-        assert "creation_time as created_at" in query
+        assert [result.left for result in results if result.left] == []
+        [life_cycle] = [result.right.life_cycle for result in results]
+        assert life_cycle.created.timestamp.root == 1735776000000
+        assert life_cycle.updated.timestamp.root == 1735862400000
+        self.bq_source.engine.connect.assert_not_called()
 
 
 class _EvictedOnReadCache(LRUCache):

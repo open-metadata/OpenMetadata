@@ -60,10 +60,7 @@ import { getEntityIcon } from '../../../../utils/LandingPageWidgetIconUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CertificationTag from '../../../common/CertificationTag/CertificationTag';
-import {
-  AdvanceSearchProvider,
-  useAdvanceSearch,
-} from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
@@ -98,7 +95,6 @@ const CuratedAssetsWidgetContent = ({
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
     CURATED_ASSETS_SORT_BY_KEYS.LATEST
   );
-  const { config } = useAdvanceSearch();
 
   const curatedAssetsData = useMemo<WidgetConfig | null | undefined>(() => {
     return currentLayout?.find(
@@ -153,9 +149,8 @@ const CuratedAssetsWidgetContent = ({
     return getExploreURLForAdvancedFilter({
       queryFilter,
       selectedResource,
-      config,
     });
-  }, [queryFilter, config, selectedResource]);
+  }, [queryFilter, selectedResource]);
 
   // Helper function to expand 'all' selection to all individual entity types
   const getExpandedResourceList = useCallback((resources: Array<string>) => {

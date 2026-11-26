@@ -81,6 +81,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexManagementClient.IndexStats;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
@@ -276,7 +277,8 @@ public class SearchResource {
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
 
-    return filterTestCaseResponses(cachedSearch(request, subjectContext), securityContext, request);
+    return filterSearchResponses(
+        cachedSearch(request, subjectContext), securityContext, request, subjectContext);
   }
 
   @POST
@@ -334,7 +336,23 @@ public class SearchResource {
             .withSearchAfter(body.getSearchAfter())
             .withExplain(body.getExplain())
             .withIncludeAggregations(body.getIncludeAggregations());
-    return filterTestCaseResponses(cachedSearch(request, subjectContext), securityContext, request);
+    return filterSearchResponses(
+        cachedSearch(request, subjectContext), securityContext, request, subjectContext);
+  }
+
+  private Response filterSearchResponses(
+      Response response,
+      SecurityContext securityContext,
+      SearchRequest request,
+      SubjectContext subject)
+      throws IOException {
+    final var filtered = filterTestCaseResponses(response, securityContext, request);
+    return subject.isAdmin()
+            && searchRepository
+                .getEntityTypesForIndex(request.getIndex())
+                .contains(Entity.ONTOLOGY_CONCEPT)
+        ? OntologyTermSearch.withAdminBindingNames(filtered)
+        : filtered;
   }
 
   private Response filterTestCaseResponses(
@@ -776,8 +794,11 @@ public class SearchResource {
             .withSearchAfter(SearchUtils.searchAfter(searchAfter))
             .withExplain(explain);
 
-    return filterTestCaseResponses(
-        searchRepository.searchWithNLQ(request, subjectContext), securityContext, request);
+    return filterSearchResponses(
+        searchRepository.searchWithNLQ(request, subjectContext),
+        securityContext,
+        request,
+        subjectContext);
   }
 
   @GET
@@ -846,11 +867,12 @@ public class SearchResource {
           int size)
       throws IOException {
 
-    return filterTestCaseResponses(
-        searchRepository.searchByField(
-            fieldName, fieldValue, index, deleted, from, size, getSubjectContext(securityContext)),
+    final var subject = getSubjectContext(securityContext);
+    return filterSearchResponses(
+        searchRepository.searchByField(fieldName, fieldValue, index, deleted, from, size, subject),
         securityContext,
-        new SearchRequest().withIndex(index));
+        new SearchRequest().withIndex(index),
+        subject);
   }
 
   @GET
@@ -1170,6 +1192,12 @@ public class SearchResource {
                             entityId,
                             entityType);
                         skippedCount++;
+                        continue;
+                      }
+
+                      if (OntologyTermSearch.isTerm(entityType)) {
+                        searchRepository.reindexOntologyTerm(ref);
+                        successCount++;
                         continue;
                       }
 

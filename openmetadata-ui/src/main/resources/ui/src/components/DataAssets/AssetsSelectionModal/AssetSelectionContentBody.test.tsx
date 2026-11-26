@@ -39,16 +39,23 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       )}
     </div>
   ),
+  Toggle: jest.requireActual('@openmetadata/ui-core-components').Toggle,
   Checkbox: ({
+    isDisabled,
+    isSelected,
     label,
     onChange,
   }: {
+    isDisabled?: boolean;
+    isSelected?: boolean;
     label?: React.ReactNode;
     onChange?: (isSelected: boolean) => void;
   }) => (
     <>
       <input
         aria-label="select-all"
+        checked={isSelected}
+        disabled={isDisabled}
         type="checkbox"
         onChange={(e) => onChange?.(e.target.checked)}
       />
@@ -175,6 +182,7 @@ jest.mock('../DomainAssetDryRunModal/DomainAssetDryRunModal.component', () => {
 });
 
 const mockSetSearch = jest.fn();
+const mockOnExactNameChange = jest.fn();
 const mockHandleCardClick = jest.fn();
 const mockConfirmDomainAssetMove = jest.fn();
 const mockCancelDomainAssetMove = jest.fn();
@@ -196,6 +204,8 @@ const defaultProps: AssetSelectionContentBodyProps = {
   assetsFilter: undefined,
   search: '',
   setSearch: mockSetSearch,
+  isExactName: false,
+  onExactNameChange: mockOnExactNameChange,
   items: [],
   failedStatus: undefined,
   dryRunWarnings: undefined,
@@ -276,6 +286,22 @@ describe('AssetSelectionContentBody', () => {
     });
 
     expect(mockSetSearch).toHaveBeenCalledWith('new search');
+  });
+
+  it('should call onExactNameChange when the exact name toggle is switched', () => {
+    render(<AssetSelectionContentBody {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole('switch', { name: 'label.exact-name' }));
+
+    expect(mockOnExactNameChange).toHaveBeenCalledWith(true);
+  });
+
+  it('should show the exact name toggle as on when exact name is active', () => {
+    render(<AssetSelectionContentBody {...defaultProps} isExactName />);
+
+    expect(
+      screen.getByRole('switch', { name: 'label.exact-name' })
+    ).toBeChecked();
   });
 
   it('gives the quick filters the same filter as the list', () => {
@@ -415,6 +441,44 @@ describe('AssetSelectionContentBody', () => {
     fireEvent.click(screen.getByRole('checkbox'));
 
     expect(mockOnSelectAll).toHaveBeenCalledWith(true);
+  });
+
+  it('should check select-all only while every listed asset is selected', () => {
+    const items = [buildItem('1'), buildItem('2')] as never;
+    const selection = (...ids: string[]) =>
+      new Map(ids.map((id) => [id, { id }])) as never;
+
+    const { rerender } = render(
+      <AssetSelectionContentBody
+        {...defaultProps}
+        items={items}
+        selectedItems={selection('1')}
+      />
+    );
+
+    expect(screen.getByLabelText('select-all')).not.toBeChecked();
+
+    rerender(
+      <AssetSelectionContentBody
+        {...defaultProps}
+        items={items}
+        selectedItems={selection('1', '2')}
+      />
+    );
+
+    expect(screen.getByLabelText('select-all')).toBeChecked();
+  });
+
+  it('should disable select-all while the listed assets are being replaced', () => {
+    render(
+      <AssetSelectionContentBody
+        {...defaultProps}
+        isLoading
+        items={[buildItem('1')] as never}
+      />
+    );
+
+    expect(screen.getByLabelText('select-all')).toBeDisabled();
   });
 
   it('should show a per-item error message when getErrorStatusAndMessage reports an error', () => {

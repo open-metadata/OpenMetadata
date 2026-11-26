@@ -17,3 +17,13 @@ export const getBasePath = () => {
     ? basePath.replace(/\/+$/, '')
     : '';
 };
+
+/** Removes the base path only when it is the leading segment(s) of `pathname`. */
+export const stripBasePath = (pathname: string) => {
+  const basePath = getBasePath();
+  const isUnderBasePath =
+    basePath !== '' &&
+    (pathname === basePath || pathname.startsWith(`${basePath}/`));
+
+  return isUnderBasePath ? pathname.slice(basePath.length) || '/' : pathname;
+};

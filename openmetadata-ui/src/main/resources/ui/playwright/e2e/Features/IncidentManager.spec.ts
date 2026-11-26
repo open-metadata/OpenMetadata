@@ -326,7 +326,8 @@ const openIncidentResolveDialog = async (
   const resolveModal = page.locator(
     '[role="dialog"]:not([data-trigger]):visible'
   );
-  const modalTextareas = resolveModal.locator('textarea');
+  // The comment is a rich text editor (contenteditable), which is a textbox too.
+  const modalTextboxes = resolveModal.getByRole('textbox');
 
   if (await isVisible(resolveModal)) {
     return resolveModal;
@@ -418,7 +419,7 @@ const openIncidentResolveDialog = async (
   await expect(resolveModal).toBeVisible({
     timeout: 10_000,
   });
-  await expect(modalTextareas).not.toHaveCount(0, {
+  await expect(modalTextboxes).not.toHaveCount(0, {
     timeout: 10_000,
   });
 
@@ -763,22 +764,23 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
       await openIncidentTaskTab(actorPage, true);
       const resolveModal = await openIncidentResolveDialog(actorPage);
-      const resolveTextareas = resolveModal.locator('textarea');
+      // Root Cause is a select or, on the schema form, a plain textarea; the
+      // comment is a rich text editor labelled Comment or Resolution.
+      const rootCauseTextarea = resolveModal.locator('textarea');
+      const resolveComment = resolveModal.getByRole('textbox', {
+        name: /^(Comment|Resolution)$/,
+      });
       const resolveReasonSelect = resolveModal.getByRole('button', {
         name: /Root Cause/i,
       });
-      const textareaCount = await resolveTextareas.count();
 
       if (await resolveReasonSelect.isVisible().catch(() => false)) {
         await resolveReasonSelect.click();
         await actorPage.getByRole('option', { name: 'MissingData' }).click();
-        await resolveTextareas.first().fill('test');
-      } else if (textareaCount >= 2) {
-        await resolveTextareas.nth(0).fill('Missing Data');
-        await resolveTextareas.nth(1).fill('test');
-      } else {
-        await resolveTextareas.first().fill('test');
+      } else if ((await rootCauseTextarea.count()) > 0) {
+        await rootCauseTextarea.fill('Missing Data');
       }
+      await resolveComment.fill('test');
 
       const updateIncident = waitForTaskResolveResponse(actorPage);
       await resolveModal.getByRole('button', { name: /Save|Ok/i }).click();

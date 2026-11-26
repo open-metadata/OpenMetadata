@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -49,9 +50,12 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
@@ -66,6 +70,7 @@ class RdfGlossaryTermRelationTest {
   private final Model graph = dataset.getNamedModel(GRAPH);
   private final UUID from = UUID.randomUUID();
   private final UUID to = UUID.randomUUID();
+  private final List<EntityRelationshipObject> storedGlossaryRelations = new ArrayList<>();
   private RdfRepository repository;
 
   @BeforeEach
@@ -83,7 +88,16 @@ class RdfGlossaryTermRelationTest {
             new RdfConfiguration().withEnabled(true).withBaseUri(URI.create(BASE)),
             storage,
             null,
-            resolver());
+            resolver(),
+            new RdfProjectionLoaders(
+                null,
+                null,
+                (fromId, fromEntity, toId, toEntity, type) -> true,
+                (a, b) -> List.copyOf(storedGlossaryRelations),
+                null,
+                (type, ids) -> Set.copyOf(ids),
+                null,
+                tableFqn -> {}));
   }
 
   @AfterEach
@@ -103,6 +117,7 @@ class RdfGlossaryTermRelationTest {
         graph.createResource(termUri(to)));
     final Model expected = ModelFactory.createDefaultModel().add(graph);
     try {
+      storeCanonicalRelation(from, to, type);
       replay(new RdfLiveWrite.GlossaryRelationChange(from, to, type.getName(), false));
       assertEquals(expected.size() + 1, graph.size());
       final RdfLiveWrite removal = removal(type, removeFromTarget);
@@ -112,6 +127,49 @@ class RdfGlossaryTermRelationTest {
     } finally {
       expected.close();
     }
+  }
+
+  @ParameterizedTest
+  @MethodSource("deletionPerspectives")
+  void canonicalReplayProjectsWhenRowExistsAndRemovesWhenDeleted(
+      final RelationshipType type, final boolean flipOrder) {
+    final UUID first = flipOrder ? largerUuid() : smallerUuid();
+    final UUID second = flipOrder ? smallerUuid() : largerUuid();
+    storeCanonicalRelation(first, second, type);
+    final RdfLiveWrite addition =
+        new RdfLiveWrite.GlossaryRelationChange(first, second, type.getName(), false);
+
+    replay(addition);
+    assertEquals(1, graph.size());
+
+    storedGlossaryRelations.clear();
+    replay(addition);
+    assertTrue(graph.isEmpty());
+  }
+
+  private void storeCanonicalRelation(
+      final UUID source, final UUID target, final RelationshipType type) {
+    final boolean swap = source.compareTo(target) > 0;
+    final UUID storedFrom = swap ? target : source;
+    final UUID storedTo = swap ? source : target;
+    final String storedType = swap ? inverseName(type) : type.getName();
+    storedGlossaryRelations.add(
+        EntityRelationshipObject.builder()
+            .fromId(storedFrom.toString())
+            .toId(storedTo.toString())
+            .fromEntity(Entity.GLOSSARY_TERM)
+            .toEntity(Entity.GLOSSARY_TERM)
+            .relation(Relationship.RELATED_TO.ordinal())
+            .relationType(storedType)
+            .build());
+  }
+
+  private static UUID smallerUuid() {
+    return UUID.fromString("00000000-0000-0000-0000-000000000001");
+  }
+
+  private static UUID largerUuid() {
+    return UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff");
   }
 
   @ParameterizedTest

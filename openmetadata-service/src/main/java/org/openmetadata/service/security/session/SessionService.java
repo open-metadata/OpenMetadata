@@ -483,12 +483,13 @@ public class SessionService implements Managed {
     return Optional.empty();
   }
 
-  private boolean isFromAnotherProvider(UserSession session) {
-    return authConfig != null
-        && authConfig.getProvider() != null
-        && !nullOrEmpty(session.getProvider())
-        && !SessionProviders.isSameProvider(
-            session.getProvider(), authConfig.getProvider().value());
+  /**
+   * Judged against the configuration this server runs now, so a reload applies at the next check.
+   */
+  public boolean isFromAnotherProvider(UserSession session) {
+    AuthenticationConfiguration current = authConfig;
+    return current != null
+        && SessionProviders.isFromAnotherProvider(session.getProvider(), current.getProvider());
   }
 
   /**
