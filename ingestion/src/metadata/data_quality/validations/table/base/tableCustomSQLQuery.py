@@ -231,11 +231,14 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         if operator in (">", ">="):
             passed_rows = len_rows
             failed_rows = (row_count - len_rows) if row_count else 0
-        elif operator in ("<", "<=", "=="):
-            # The query returns the rows that break the rule (the failed rows sample stores the
-            # same rows), so they stay failed even when their count passes the threshold.
+        elif operator in ("<", "<="):
             passed_rows = (row_count - len_rows) if row_count else 0
             failed_rows = len_rows
+        elif operator == "==":
+            # == counts how far the result is from the expected count as failed (see
+            # _calculate_equal_failure); a pass is exactly on it, so no row failed.
+            passed_rows = row_count if row_count else len_rows
+            failed_rows = 0
         else:
             passed_rows = len_rows
             failed_rows = 0
@@ -270,16 +273,11 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         return max(0, passed_rows), max(0, failed_rows)
 
     def _calculate_equal_failure(self, threshold: int, len_rows: int, row_count: int) -> tuple[int, int]:
-        """Calculate rows for == operator failure (expected exact count)"""
-        if row_count:
-            if len_rows > threshold:
-                failed_rows = len_rows - threshold
-                passed_rows = row_count - failed_rows
-            else:
-                failed_rows = row_count - len_rows
-                passed_rows = len_rows
-        else:
-            failed_rows = abs(len_rows - threshold)
-            passed_rows = 0
+        """Calculate rows for == operator failure (expected exact count)
+
+        The rows the result is off by, above or below the expected count, are the failed rows.
+        """
+        failed_rows = abs(len_rows - threshold)
+        passed_rows = (row_count - failed_rows) if row_count else 0
 
         return max(0, passed_rows), max(0, failed_rows)
