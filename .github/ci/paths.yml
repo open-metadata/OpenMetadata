@@ -27,7 +27,7 @@ java-unit:
   - 'Makefile'
   - 'bootstrap/**'
 java-operator:
-  - '.github/actions/java-operator-tests/**'
+  - '.github/actions/java-k8s-operator-tests/**'
   - 'openmetadata-k8s-operator/**'
 # Everything that ends up inside the server image or decides how it
 # is launched. Not 'openmetadata-service/**': the smoke test asserts

@@ -246,7 +246,7 @@ jobs:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
       - name: Run Kubernetes operator unit tests
-        uses: ./.github/actions/java-operator-tests
+        uses: ./.github/actions/java-k8s-operator-tests
 
   docker-image-smoke-test:
     runs-on: ubuntu-latest

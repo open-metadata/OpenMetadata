@@ -16,7 +16,7 @@ runs:
     - name: Build k8s-operator dependencies
       shell: bash
       run: |
-        mvn -B -T 1C clean install -pl openmetadata-k8s-operator -am -DskipTests
+        mvn -B -T 1C clean install -pl openmetadata-k8s-operator -am -Dmaven.test.skip=true
 
     - name: Run k8s-operator unit tests
       id: k8s-tests
