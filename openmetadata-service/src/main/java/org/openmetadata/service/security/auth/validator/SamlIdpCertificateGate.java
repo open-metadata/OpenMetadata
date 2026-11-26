@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.security.auth.validator;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import jakarta.ws.rs.BadRequestException;
 import java.util.Optional;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
@@ -67,6 +69,8 @@ public final class SamlIdpCertificateGate {
         .map(AuthenticationConfiguration::getSamlConfiguration)
         .map(SamlSSOClientConfig::getIdp)
         .map(IdentityProviderConfig::getIdpX509Certificate)
-        .filter(value -> !value.isBlank());
+        // The same test as the save check and the startup reader: a value of only whitespace is a
+        // certificate they try to read, so it is checked here too instead of being let through.
+        .filter(value -> !nullOrEmpty(value));
   }
 }

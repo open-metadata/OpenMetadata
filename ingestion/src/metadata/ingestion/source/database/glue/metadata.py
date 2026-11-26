@@ -55,7 +55,6 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     close_on_failure,
     create_connection,
@@ -431,17 +430,26 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         self._load_string_property_type_ref()
 
     def _get_column_object(self, column: GlueColumn) -> Column:
-        if column.Type.lower().startswith("union"):
-            column.Type = column.Type.replace(" ", "")
-        parsed = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-            column.Type.lower()
-        )
-        # A union parses to a list of its member types, which has no single dataType to report.
-        parsed_string: dict[str, Any] = (
-            {"dataTypeDisplay": str(column.Type), "dataType": "UNION"}
-            if isinstance(parsed, list)
-            else cast("dict[str, Any]", parsed)
-        )
+        try:
+            if column.Type.lower().startswith("union"):
+                column.Type = column.Type.replace(" ", "")
+            parsed = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                column.Type.lower()
+            )
+            # A union parses to a list of its member types, which has no single dataType to report.
+            parsed_string: dict[str, Any] = (
+                {"dataTypeDisplay": str(column.Type), "dataType": "UNION"}
+                if isinstance(parsed, list)
+                else cast("dict[str, Any]", parsed)
+            )
+        except Exception as exc:
+            # A type outside the Hive grammar, such as the unnamed [...] group a DynamoDB-sourced
+            # table carries, would otherwise drop the whole table along with its other columns.
+            table_name = self.context.get().table_data.Name  # pyright: ignore[reportAttributeAccessIssue]
+            reason = f"Column [{column.Name}] has a type that could not be parsed, ingesting it as UNKNOWN: {exc}"
+            logger.debug(traceback.format_exc())
+            logger.warning("Table [%s]: %s", table_name, reason)
+            parsed_string = {"dataTypeDisplay": str(column.Type), "dataType": "UNKNOWN"}
         parsed_string["name"] = truncate_column_name(column.Name)
         parsed_string["displayName"] = column.Name
         # A numeric carries precision and scale instead, so defaulting a length here would
@@ -459,11 +467,12 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         StorageDescriptor.Columns as well as in PartitionKeys, and Glue lower cases column names
         on write, so a column DT declared alongside a partition key dt arrives as dt twice.
         Either way the server rejects the whole table with "Column name <name> is repeated".
+        A repeat is skipped before parsing, so an unparseable type warns once per ingested column.
         """
         table_name = self.context.get().table_data.Name  # pyright: ignore[reportAttributeAccessIssue]
         seen_column_names = set()
-        for column in self._iter_columns(column_data):
-            column_name = model_str(column.name)
+        for glue_column in self._iter_columns(column_data):
+            column_name = truncate_column_name(glue_column.Name)
             if column_name in seen_column_names:
                 logger.debug(
                     f"Table [{table_name}]: keeping the first [{column_name}]. Glue repeats a name when a "
@@ -471,9 +480,9 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
                 )
                 continue
             seen_column_names.add(column_name)
-            yield column
+            yield self._get_column_object(glue_column)
 
-    def _iter_columns(self, column_data: StorageDetails) -> Iterable[Column]:
+    def _iter_columns(self, column_data: StorageDetails) -> Iterable[GlueColumn]:
         """
         Yield the raw Glue columns, regular ones first and partition keys last.
 
@@ -490,9 +499,8 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
             if is_iceberg and not column.is_current_iceberg_field():
                 logger.debug("Table [%s]: dropping retired Iceberg column [%s].", table.Name, column.Name)
                 continue
-            yield self._get_column_object(column)
-        for column in table.PartitionKeys or []:
-            yield self._get_column_object(column)
+            yield column
+        yield from table.PartitionKeys or []
 
     @staticmethod
     def _is_delta_table(parameters: TableParameters | None) -> bool:

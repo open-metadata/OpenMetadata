@@ -79,7 +79,7 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
   let searchCriteria: Record<string, Array<string>> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     user = new UserClass();
     // Advanced search filters by service.name, so each fixture owns its service.

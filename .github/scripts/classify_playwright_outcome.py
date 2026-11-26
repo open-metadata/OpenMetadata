@@ -14,7 +14,7 @@ KNOWN_STATUSES = {"expected", "unexpected", "flaky", "skipped"}
 HANG_EXIT_CODES = {124}
 # Artifact directory names have the shape:
 #   playwright-results-json-<shardId>[-a<runAttempt>][-retry]
-# `-a<runAttempt>` is added by playwright-e2e-reusable.yml so a workflow
+# `-a<runAttempt>` is added by reusable-playwright-e2e.yml so a workflow
 # re-run gets its own artifact namespace and cannot inherit a prior
 # attempt's stale ci-status.json (see run 35650435023). `-retry` is a
 # fallback name used when the primary upload's FinalizeArtifact 403s

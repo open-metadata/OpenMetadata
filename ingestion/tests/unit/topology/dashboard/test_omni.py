@@ -948,3 +948,25 @@ def test_resolve_topic_shared_base_view_named_like_a_topic_stays_ambiguous(omni_
     omni_source.prepare()
 
     assert omni_source._resolve_topic("schema__shared__orders") is None
+
+
+MOCK_APP = OmniDocument(
+    identifier="doc-4",
+    name="Sales App",
+    hasDashboard=False,
+    hasApp=True,
+    url="https://acme.omniapp.co/apps/doc-4",
+)
+
+
+def test_get_dashboards_list_includes_apps(omni_source):
+    archived_app = MOCK_APP.model_copy(update={"identifier": "doc-5", "deleted": True})
+    omni_source.client.get_documents = lambda *_: [MOCK_DOCUMENT, MOCK_APP, archived_app, MOCK_WORKBOOK_ONLY]
+    assert [d.identifier for d in omni_source.get_dashboards_list()] == ["doc-1", "doc-4"]
+
+
+def test_documents_response_reads_has_app():
+    from metadata.ingestion.source.dashboard.omni.models import DocumentsResponse
+
+    page = {"records": [{"identifier": "doc-4", "hasDashboard": False, "hasApp": True}], "pageInfo": {}}
+    assert DocumentsResponse.model_validate(page).records[0].hasApp is True

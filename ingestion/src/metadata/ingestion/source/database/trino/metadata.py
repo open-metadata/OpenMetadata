@@ -49,7 +49,7 @@ from metadata.ingestion.source.database.trino.queries import (
     TRINO_VIEW_DEFINITION_FALLBACK,
 )
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database
+from metadata.utils.filters import filter_by_database, filter_pattern_enabled
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 
@@ -241,9 +241,10 @@ MAX_COMMENT_TABLE_NAMES = 500
 def _table_names_predicate(table_names: Iterable[str]) -> str:
     """
     `and "table_name" IN (...)` clause for TRINO_TABLE_COMMENTS. Names come from Trino's own
-    listing, but they are still embedded as SQL literals, so single quotes are doubled.
+    listing, but they are still embedded as SQL literals, so single quotes are doubled. The query
+    runs through sqlalchemy `text()`, which reads `:name` as a bind parameter, so `:` is escaped.
     """
-    literals = ", ".join("'" + name.replace("'", "''") + "'" for name in sorted(table_names))
+    literals = ", ".join("'" + name.replace("'", "''").replace(":", "\\:") + "'" for name in sorted(table_names))
     return f'    and "table_name" IN ({literals})\n'
 
 
@@ -412,7 +413,7 @@ class TrinoSource(CommonDbSourceService):
         that keep more than MAX_COMMENT_TABLE_NAMES tables, record nothing and keep the
         schema-wide query.
         """
-        if not self.source_config.tableFilterPattern:
+        if not filter_pattern_enabled(self.source_config.tableFilterPattern):
             yield from super().get_tables_name_and_type() or []
             return
         schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]

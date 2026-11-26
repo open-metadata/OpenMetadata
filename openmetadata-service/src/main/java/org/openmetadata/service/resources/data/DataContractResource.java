@@ -1889,6 +1889,9 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     if (entityRef != null && entityRef.getId() != null) {
       try {
         existing = repository.loadEntityDataContract(entityRef);
+        if (existing != null) {
+          repository.setFieldsInternal(existing, repository.getPutFields());
+        }
       } catch (JsonParsingException e) {
         LOG.debug(
             "Could not read the stored contract for entity {}: {}",

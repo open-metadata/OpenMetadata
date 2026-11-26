@@ -750,9 +750,29 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
     EntityMaskerFactory.createEntityMasker().maskIngestionPipeline(toMask);
     assertEquals(getMaskedPassword(), dbtHttpHeader(toMask));
+    dbtHttpHeaders(toMask).withAdditionalProperty("NEW-TOKEN", "new-real-token");
 
     EntityMaskerFactory.createEntityMasker().unmaskIngestionPipeline(toMask, original);
     assertEquals(GITLAB_TOKEN, dbtHttpHeader(toMask));
+    assertEquals(
+        "new-real-token", dbtHttpHeaders(toMask).getAdditionalProperties().get("NEW-TOKEN"));
+  }
+
+  @Test
+  void testIngestionPipelineMaskedSecretWithNoStoredValueIsRejected() {
+    IngestionPipeline original = dbtHttpPipeline();
+    IngestionPipeline incoming = dbtHttpPipeline();
+    dbtHttpHeaders(incoming).withAdditionalProperty("NEW-TOKEN", getMaskedPassword());
+
+    EntityMaskException thrown =
+        Assertions.assertThrows(
+            EntityMaskException.class,
+            () ->
+                EntityMaskerFactory.createEntityMasker()
+                    .unmaskIngestionPipeline(incoming, original));
+
+    assertEquals(400, thrown.getResponse().getStatus());
+    Assertions.assertTrue(thrown.getMessage().contains("NEW-TOKEN"));
   }
 
   @Test
@@ -795,10 +815,11 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   }
 
   private Object dbtHttpHeader(IngestionPipeline pipeline) {
+    return dbtHttpHeaders(pipeline).getAdditionalProperties().get("PRIVATE-TOKEN");
+  }
+
+  private DbtHttpHeaders dbtHttpHeaders(IngestionPipeline pipeline) {
     DbtPipeline config = (DbtPipeline) pipeline.getSourceConfig().getConfig();
-    return ((DbtHttpConfig) config.getDbtConfigSource())
-        .getDbtHttpHeaders()
-        .getAdditionalProperties()
-        .get("PRIVATE-TOKEN");
+    return ((DbtHttpConfig) config.getDbtConfigSource()).getDbtHttpHeaders();
   }
 }

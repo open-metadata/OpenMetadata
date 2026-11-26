@@ -116,6 +116,9 @@ jest.mock('utils/TaskFormSchemaUtils', () => ({
     payload: Record<string, unknown>
   ) => payload.newDescription,
   shouldRequireTaskResolutionValue: () => false,
+  getTaskTransitionFormSchema: () => undefined,
+  getTaskTransitionUiSchema: () => undefined,
+  hasRequiredTaskFormFields: () => false,
 }));
 
 jest.mock('hooks/useApplicationStore', () => ({

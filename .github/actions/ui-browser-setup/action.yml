@@ -29,10 +29,15 @@ runs:
       run: |
         mkdir -p ~/.cache/antlr-cli
         jar=$(mktemp)
-        curl --fail --location --silent --show-error --retry 3 --retry-all-errors \
-          --output "$jar" \
-          https://repo1.maven.org/maven2/org/antlr/antlr4/4.9.2/antlr4-4.9.2-complete.jar
-        echo "bb117b1476691dc2915a318efd36f8957c0ad93447fb1dac01107eb15fe137cd  $jar" | sha256sum --check
+        sum="bb117b1476691dc2915a318efd36f8957c0ad93447fb1dac01107eb15fe137cd  $jar"
+        # Google's Central mirror first: repo1 throttles shared CI IPs with 429s (see Makefile install_antlr_cli).
+        for base in https://maven-central.storage-download.googleapis.com/maven2 https://repo1.maven.org/maven2; do
+          curl --fail --location --silent --show-error --retry 3 --retry-all-errors \
+            --connect-timeout 15 --max-time 60 \
+            --output "$jar" "$base/org/antlr/antlr4/4.9.2/antlr4-4.9.2-complete.jar" \
+            && echo "$sum" | sha256sum --check && break
+        done
+        echo "$sum" | sha256sum --check
         { printf '%s\n' '#!/usr/bin/java -jar'; cat "$jar"; } > ~/.cache/antlr-cli/antlr4
         chmod 755 ~/.cache/antlr-cli/antlr4
     - name: Save ANTLR CLI

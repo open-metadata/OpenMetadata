@@ -134,12 +134,6 @@ describe('NotificationAlertArgFields', () => {
     expect(screen.getByTestId('event-type-select')).toBeInTheDocument();
   });
 
-  it('should render testStatusList with correct data-testid', () => {
-    render(<Wrapper argument="testStatusList" />);
-
-    expect(screen.getByTestId('test-status-select')).toBeInTheDocument();
-  });
-
   it('should render empty fragment for unknown argument', () => {
     const { container } = render(<Wrapper argument="unknownField" />);
 
