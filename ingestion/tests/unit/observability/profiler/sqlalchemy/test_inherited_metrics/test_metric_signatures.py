@@ -18,7 +18,9 @@ when the parent's fn() calls _compute_sqa_fn with arguments the child doesn't ex
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import Column, Integer, MetaData, Table
 
+from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.window.first_quartile import FirstQuartile
 from metadata.profiler.metrics.window.median import Median
 from metadata.profiler.metrics.window.third_quartile import ThirdQuartile
@@ -76,3 +78,21 @@ def test_compute_sqa_fn_accepts_parent_args(child_cls):
     col = MagicMock()
     result = instance._compute_sqa_fn(col, "test_table", 0.5, dimension_col="dim_col")
     assert result is not None
+
+
+@pytest.mark.parametrize(
+    "dimension_col,expected_over",
+    [(None, "OVER()"), ("dim_col", "OVER(PARTITION BY dim_col)")],
+)
+def test_third_quartile_fn_forwards_dimension_col(dimension_col, expected_over):
+    """ThirdQuartile.fn() must pass the optional dimension_col prop down to _compute_sqa_fn,
+    so the dimension-aware branch of database-specific overrides is reachable."""
+    table = Table("test_table", MetaData(), Column("value", Integer))
+    metric_cls = MariaDBThirdQuartile
+    if dimension_col is not None:
+        metric_cls = add_props(dimension_col=dimension_col)(MariaDBThirdQuartile)
+
+    expr = metric_cls(table.c.value).fn()
+    compiled = str(expr.compile(compile_kwargs={"literal_binds": True}))
+
+    assert f"PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY value) {expected_over}" in compiled
