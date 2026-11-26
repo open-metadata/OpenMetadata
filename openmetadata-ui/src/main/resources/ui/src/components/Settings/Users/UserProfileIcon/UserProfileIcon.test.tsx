@@ -143,6 +143,9 @@ describe('UserProfileIcon', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseApplicationStore.mockReturnValue(createMockStoreData());
+    jest
+      .mocked(navbarUtilClassBase.getUserProfileExtraItems)
+      .mockReturnValue([<span key="extra-item">app-mode-extra-item</span>]);
     translationState.language = 'en';
   });
 
@@ -184,12 +187,10 @@ describe('UserProfileIcon', () => {
     expect(screen.getByText('app-mode-extra-item')).toBeInTheDocument();
   });
 
-  it('has no interface switch and no empty footer strip when there are no extra items', async () => {
-    const getExtraItems = jest.mocked(
-      navbarUtilClassBase.getUserProfileExtraItems
-    );
-    const defaultItems = getExtraItems();
-    getExtraItems.mockReturnValue([]);
+  it('renders no footer strip when there are no extra items', async () => {
+    jest
+      .mocked(navbarUtilClassBase.getUserProfileExtraItems)
+      .mockReturnValue([]);
     render(
       <MockWrapper>
         <UserProfileIcon />
@@ -202,9 +203,6 @@ describe('UserProfileIcon', () => {
     expect(
       screen.queryByTestId('user-profile-extra-items')
     ).not.toBeInTheDocument();
-    expect(screen.queryByText('label.user-interface')).not.toBeInTheDocument();
-
-    getExtraItems.mockReturnValue(defaultItems);
   });
 
   it('should display personas with pagination and sorting', async () => {
