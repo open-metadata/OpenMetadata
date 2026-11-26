@@ -5,7 +5,8 @@
   embedding; the chunk generation goes live with the entity indexes, and only a missed delete
   blocks it; the header's count bounds every stored chunk id); v3 2026-11-23 (the Revisit clause
   is resolved by a kNN query clause hook; fusing the two legs stays out of OpenMetadata); v4
-  2026-11-24 (ontology terms keep the engine split of their own record)
+  2026-11-24 (ontology terms keep the engine split of their own record); v5 2026-11-26 (the RRF
+  search pipeline is gone)
 - **Deciders:** Search and AI context maintainers
 - **Guard:** `VectorChunkIndexIT` (each scenario on a real cluster of each engine),
   `ChunkSetBoundTest` (trims and deletes after a write that stopped part way),
@@ -165,3 +166,13 @@ semantic leg is the caller's concern and stays out of OpenMetadata
 that make the two engines' kNN legs comparable). The OpenSearch RRF search pipeline remains until
 its callers stop using it, and then leaves OpenMetadata
 (ADR:2026-11-23-the-hybrid-rrf-pipeline-leaves-openmetadata).
+
+## Amendment (v5, 2026-11-26)
+
+The "Hybrid search stays OpenSearch-only" bullet no longer holds. The RRF search pipeline has left
+OpenMetadata (ADR:2026-11-23-the-hybrid-rrf-pipeline-leaves-openmetadata), so
+`OpenSearchVectorService` and `SearchRepository` neither create nor check one, on either engine.
+OpenMetadata runs no hybrid query itself: a caller fuses its keyword leg with the clause
+`knnQueryClause` returns, as the v3 amendment says. The list of embedded entity types is
+`EmbeddedEntityTypes` (formerly `AvailableEntityTypes`), and the data-asset chunk generation expects
+`EmbeddedEntityTypes.DATA_ASSETS`.

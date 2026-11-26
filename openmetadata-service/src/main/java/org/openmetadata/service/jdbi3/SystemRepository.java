@@ -1375,8 +1375,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
         return embeddingResult;
       }
 
-      return validateHybridSearchPipeline(
-          searchRepository, embeddingResult, description, configMessage);
+      return embeddingsWorking(embeddingResult, description, configMessage);
     } catch (Exception e) {
       LOG.error("Error during embedding generation validation", e);
       return embeddingsValidation
@@ -1404,8 +1403,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
         if (Boolean.FALSE.equals(embeddingResult.getPassed())) {
           return embeddingResult;
         }
-        return validateHybridSearchPipeline(
-            searchRepository, embeddingResult, description, configMessage);
+        return embeddingsWorking(embeddingResult, description, configMessage);
       } catch (Exception e) {
         LOG.error("Error during embedding generation validation after retry", e);
         return embeddingsValidation
@@ -1439,36 +1437,12 @@ public class SystemRepository implements DeploymentSettingPreparer {
         .withPassed(false);
   }
 
-  private StepValidation validateHybridSearchPipeline(
-      SearchRepository searchRepository,
-      StepValidation embeddingsValidation,
-      String description,
-      String configMessage) {
-    boolean usesPipeline = searchRepository.usesHybridSearchPipeline();
-    Optional<String> pipelineError =
-        usesPipeline ? searchRepository.checkHybridSearchPipeline() : Optional.empty();
-    String message =
-        pipelineError
-            .map(
-                error ->
-                    "Embeddings are working but the hybrid search pipeline check failed: "
-                        + error
-                        + " "
-                        + configMessage)
-            .orElseGet(() -> workingMessage(usesPipeline, configMessage));
+  private static StepValidation embeddingsWorking(
+      StepValidation embeddingsValidation, String description, String configMessage) {
     return embeddingsValidation
         .withDescription(description)
-        .withMessage(message)
-        .withPassed(pipelineError.isEmpty());
-  }
-
-  /** An engine without the hybrid RRF pipeline has nothing to say about one. */
-  private static String workingMessage(boolean usesPipeline, String configMessage) {
-    String working =
-        usesPipeline
-            ? "Embeddings and hybrid search pipeline are working correctly. %s"
-            : "Embeddings are working correctly. %s";
-    return String.format(working, configMessage);
+        .withMessage("Embeddings are working correctly. " + configMessage)
+        .withPassed(true);
   }
 
   private StepValidation validateEmbeddingGeneration(

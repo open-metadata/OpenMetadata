@@ -4098,7 +4098,6 @@ class SearchRepositoryBehaviorTest {
     assertSame(embeddingClient, spyRepository.getEmbeddingClient());
     assertSame(vectorService, spyRepository.getVectorIndexService());
     assertNotNull(spyRepository.getVectorEmbeddingHandler());
-    verify(vectorService).ensureHybridSearchPipeline(0.6, 0.4);
   }
 
   @Test
@@ -4156,47 +4155,6 @@ class SearchRepositoryBehaviorTest {
     assertSame(embeddingClient, spyRepository.getEmbeddingClient());
     assertSame(vectorService, spyRepository.getVectorIndexService());
     assertNotNull(spyRepository.getVectorEmbeddingHandler());
-  }
-
-  @Test
-  void updateHybridSearchPipelineDelegatesOnlyForOpenSearchVectorService() throws Exception {
-    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
-    setPrivateField(repository, "vectorIndexService", vectorService);
-
-    repository.updateHybridSearchPipeline(0.7, 0.3);
-
-    verify(vectorService).ensureHybridSearchPipeline(0.7, 0.3);
-
-    setPrivateField(repository, "vectorIndexService", mock(VectorIndexService.class));
-    repository.updateHybridSearchPipeline(0.8, 0.2);
-  }
-
-  @Test
-  void checkHybridSearchPipelineChecksTheWeightsSearchWillSend() throws Exception {
-    SearchRepository openSearchRepository =
-        newRepository(
-            Map.of(Entity.TABLE, TABLE_MAPPING),
-            "cluster",
-            ElasticSearchConfiguration.SearchType.OPENSEARCH,
-            new NaturalLanguageSearchConfiguration().withSemanticSearchEnabled(true));
-    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
-    when(vectorService.checkHybridSearchPipeline(0.7, 0.7)).thenReturn(Optional.of("rejected"));
-    setPrivateField(openSearchRepository, "vectorIndexService", vectorService);
-    SearchSettings adminWeights =
-        new SearchSettings()
-            .withGlobalSettings(
-                new GlobalSettings().withKeywordWeight(0.7).withSemanticWeight(0.7));
-
-    try (MockedStatic<SettingsCache> settingsCacheMock = mockStatic(SettingsCache.class)) {
-      settingsCacheMock
-          .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
-          .thenReturn(adminWeights);
-
-      assertEquals(Optional.of("rejected"), openSearchRepository.checkHybridSearchPipeline());
-    }
-
-    setPrivateField(openSearchRepository, "vectorIndexService", mock(VectorIndexService.class));
-    assertEquals(Optional.empty(), openSearchRepository.checkHybridSearchPipeline());
   }
 
   @Test
