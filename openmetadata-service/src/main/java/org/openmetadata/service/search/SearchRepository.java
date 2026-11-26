@@ -1299,7 +1299,8 @@ public class SearchRepository {
     try {
       count =
           OptionalLong.of(
-              searchClient.countDocuments(name, EmbeddingFieldUpdate.vectorsOfAnotherModel(model)));
+              searchClient.countDocumentsAfterRefresh(
+                  name, EmbeddingFieldUpdate.vectorsOfAnotherModel(model)));
     } catch (IOException | RuntimeException e) {
       LOG.error("Could not count the vectors of another embedding model in {}", name, e);
       count = OptionalLong.empty();

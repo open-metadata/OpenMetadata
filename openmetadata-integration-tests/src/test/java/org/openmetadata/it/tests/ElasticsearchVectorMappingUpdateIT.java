@@ -251,7 +251,8 @@ class ElasticsearchVectorMappingUpdateIT {
     String indexName = "reembedded_embeddings_chunks_g1";
     createRaw(
         indexName,
-        "{\"mappings\":{\"_meta\":{\"chunkDocVersion\":9,\"embedding_model\":\"another-model\","
+        "{\"settings\":{\"index\":{\"refresh_interval\":\"-1\"}},"
+            + "\"mappings\":{\"_meta\":{\"chunkDocVersion\":9,\"embedding_model\":\"another-model\","
             + "\"embedding_dimension\":"
             + DIMENSION
             + "},\"properties\":{\"embedding\":{\"type\":\"dense_vector\",\"dims\":"
@@ -264,7 +265,8 @@ class ElasticsearchVectorMappingUpdateIT {
     putDoc(indexName, "no-vector", "{\"embeddingModel\":\"another-model\"}");
     assertEquals(
         2,
-        indexManager.countDocuments(indexName, EmbeddingFieldUpdate.vectorsOfAnotherModel(MODEL)));
+        indexManager.countDocumentsAfterRefresh(
+            indexName, EmbeddingFieldUpdate.vectorsOfAnotherModel(MODEL)));
     assertEquals(
         EmbeddingFieldUpdate.LEAVE_OUT,
         EmbeddingFieldUpdate.updateFor(indexManager.readEmbeddingField(indexName), MODEL));
@@ -442,8 +444,7 @@ class ElasticsearchVectorMappingUpdateIT {
 
   private void putDoc(String indexName, String id, String document) throws Exception {
     HttpRequest request =
-        HttpRequest.newBuilder(
-                URI.create(baseUrl() + "/" + indexName + "/_doc/" + id + "?refresh=true"))
+        HttpRequest.newBuilder(URI.create(baseUrl() + "/" + indexName + "/_doc/" + id))
             .header("Content-Type", "application/json")
             .PUT(HttpRequest.BodyPublishers.ofString(document))
             .build();

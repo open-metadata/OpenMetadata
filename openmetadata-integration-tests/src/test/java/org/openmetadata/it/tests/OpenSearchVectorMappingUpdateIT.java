@@ -261,7 +261,7 @@ class OpenSearchVectorMappingUpdateIT {
     send(
         "PUT",
         "/" + indexName,
-        "{\"settings\":{\"index\":{\"knn\":true}},\"mappings\":{\"_meta\":{"
+        "{\"settings\":{\"index\":{\"knn\":true,\"refresh_interval\":\"-1\"}},\"mappings\":{\"_meta\":{"
             + "\"chunkDocVersion\":9,\"embedding_model\":\"another-model\","
             + "\"embedding_dimension\":"
             + DIMENSION
@@ -269,18 +269,14 @@ class OpenSearchVectorMappingUpdateIT {
             + DIMENSION
             + "},\"embeddingModel\":{\"type\":\"keyword\"},"
             + "\"embeddingDimension\":{\"type\":\"integer\"}}}}");
-    send("PUT", "/" + indexName + "/_doc/own?refresh=true", vectorDoc(MODEL.id()));
-    send("PUT", "/" + indexName + "/_doc/other?refresh=true", vectorDoc("another-model"));
-    send(
-        "PUT",
-        "/" + indexName + "/_doc/unrecorded?refresh=true",
-        "{\"embedding\":" + vector() + "}");
-    send(
-        "PUT",
-        "/" + indexName + "/_doc/no-vector?refresh=true",
-        "{\"embeddingModel\":\"another-model\"}");
+    send("PUT", "/" + indexName + "/_doc/own", vectorDoc(MODEL.id()));
+    send("PUT", "/" + indexName + "/_doc/other", vectorDoc("another-model"));
+    send("PUT", "/" + indexName + "/_doc/unrecorded", "{\"embedding\":" + vector() + "}");
+    send("PUT", "/" + indexName + "/_doc/no-vector", "{\"embeddingModel\":\"another-model\"}");
     assertEquals(
-        2, client.countDocuments(indexName, EmbeddingFieldUpdate.vectorsOfAnotherModel(MODEL)));
+        2,
+        client.countDocumentsAfterRefresh(
+            indexName, EmbeddingFieldUpdate.vectorsOfAnotherModel(MODEL)));
     assertEquals(
         EmbeddingFieldUpdate.LEAVE_OUT,
         EmbeddingFieldUpdate.updateFor(client.readEmbeddingField(indexName), MODEL));

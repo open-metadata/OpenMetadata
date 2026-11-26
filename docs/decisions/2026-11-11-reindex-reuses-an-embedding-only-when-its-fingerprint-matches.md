@@ -132,12 +132,14 @@ v3 (2026-11-26): a stored vector is reused only for the model that made it.
   record of indexes that cannot hold the model's vectors plays no part in it
   (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model). It embeds no
   ontology term: a reindex rebuilds those, decision 8 of that record.
-- **A complete `reembed` records the model.** After a run that left no entity out, each index it
-  rewrote records the model in its `_meta` through `EmbeddingFieldUpdate.recordModel`, starting
-  from that index's live `_meta`, since `PUT _mapping` replaces all of it and a chunk index keeps
-  `chunkDocVersion` there. The server then no longer counts it as holding another model's vectors
-  once it reads the field again. A run that left any entity out records nothing, since an index it
-  wrote may still hold the previous model's vectors.
+- **A complete `reembed` records the model.** After a run that left no entity out, every vector
+  index of the model's dimension in which no stored vector records another model, or none, records
+  the model in its `_meta` through `EmbeddingFieldUpdate.recordModel`, starting from that index's
+  live `_meta`, since `PUT _mapping` replaces all of it and a chunk index keeps `chunkDocVersion`
+  there. The vectors themselves are the evidence, so this also clears a vector index no embedded
+  type writes, which holds none, and keeps reporting one that still holds another model's vectors,
+  such as ontology terms. The server no longer counts a recorded index as holding another model's
+  vectors once it reads the field again. A run that left any entity out records nothing.
 
 Consequences of v3:
 

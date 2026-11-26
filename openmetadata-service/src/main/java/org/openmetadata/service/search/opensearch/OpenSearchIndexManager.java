@@ -159,7 +159,14 @@ public class OpenSearchIndexManager implements IndexManagementClient {
   }
 
   @Override
-  public long countDocuments(String name, ObjectNode body) throws IOException {
+  public long countDocumentsAfterRefresh(String name, ObjectNode body) throws IOException {
+    try (Response refreshed =
+        client
+            .generic()
+            .execute(
+                Requests.builder().endpoint("/" + name + "/_refresh").method("POST").build())) {
+      responseBody(refreshed, "/" + name + "/_refresh");
+    }
     try (Response response =
         client
             .generic()

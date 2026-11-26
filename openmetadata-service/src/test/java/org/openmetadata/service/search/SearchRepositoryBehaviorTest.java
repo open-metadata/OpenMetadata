@@ -4891,7 +4891,7 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.readEmbeddingField("table_search_index"))
         .thenReturn(
             recordingModel("table_search_index", "table_search_index_rebuild_1", "model-a", 768));
-    when(searchClient.countDocuments(eq("table_search_index"), any()))
+    when(searchClient.countDocumentsAfterRefresh(eq("table_search_index"), any()))
         .thenReturn(vectorsOfAnotherModel);
     repository.startVectorSearch();
     return repository;
@@ -4934,7 +4934,7 @@ class SearchRepositoryBehaviorTest {
 
     assertTrue(repository.recordModelOnReembeddedIndexes());
 
-    verify(searchClient, never()).countDocuments(anyString(), any());
+    verify(searchClient, never()).countDocumentsAfterRefresh(anyString(), any());
     verify(searchClient, never()).recordEmbeddingModel(anyString(), any());
     assertFalse(repository.getVectorFieldHealth().canHold("table_search_index"));
     String error = errors(logs).getFirst();
@@ -4955,7 +4955,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   void vectorsThatCouldNotBeCountedFailTheRecordAndRecordNothing() throws Exception {
     SearchRepository repository = reembeddedTableIndexOf768(0);
-    when(searchClient.countDocuments(eq("table_search_index"), any()))
+    when(searchClient.countDocumentsAfterRefresh(eq("table_search_index"), any()))
         .thenThrow(new IOException("count refused"));
 
     assertFalse(repository.recordModelOnReembeddedIndexes());

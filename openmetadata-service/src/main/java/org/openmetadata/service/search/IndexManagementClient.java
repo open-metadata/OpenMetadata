@@ -60,8 +60,11 @@ public interface IndexManagementClient {
    */
   void recordEmbeddingModel(String index, EmbeddingModel model) throws IOException;
 
-  /** How many documents behind {@code name}, an existing index or alias, match {@code body}. */
-  long countDocuments(String name, ObjectNode body) throws IOException;
+  /**
+   * How many documents behind {@code name}, an existing index or alias, match {@code body}, once
+   * {@code name} is refreshed so that every write acknowledged before the call is counted.
+   */
+  long countDocumentsAfterRefresh(String name, ObjectNode body) throws IOException;
 
   /**
    * Delete an index.

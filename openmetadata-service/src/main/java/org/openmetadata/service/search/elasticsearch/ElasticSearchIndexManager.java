@@ -177,7 +177,8 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
   }
 
   @Override
-  public long countDocuments(String name, ObjectNode body) throws IOException {
+  public long countDocumentsAfterRefresh(String name, ObjectNode body) throws IOException {
+    lowLevelClient().performRequest(new Request("POST", "/" + name + "/_refresh"));
     Request count = new Request("POST", "/" + name + "/_count");
     count.setJsonEntity(body.toString());
     try {

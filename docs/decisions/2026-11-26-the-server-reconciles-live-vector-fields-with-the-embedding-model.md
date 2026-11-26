@@ -73,7 +73,7 @@ vector field, and on OpenSearch no `index.knn`, so they could never get one.
    the report. The status page's Semantic Search step fails with the same report. Such an index is
    read again on the node whose rebuild replaces it, whenever the status page is opened, and at most
    once a minute when a write or a search meets it, so a rebuild run from any node or the CLI, or a
-   complete `reembed` of an index of the model's dimension, clears it without a restart.
+   complete `reembed` that leaves it holding only the model's vectors, clears it without a restart.
 6. **A mismatch fails neither startup nor `migrate`.** The rebuild that fixes it needs the server,
    or the CLI, running with the new model, and Docker Compose starts the server only after `migrate`
    succeeds while the Helm chart runs `migrate` as an init container of every server pod.

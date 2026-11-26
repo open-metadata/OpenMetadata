@@ -390,8 +390,8 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public long countDocuments(String name, ObjectNode body) throws IOException {
-    return indexManager.countDocuments(name, body);
+  public long countDocumentsAfterRefresh(String name, ObjectNode body) throws IOException {
+    return indexManager.countDocumentsAfterRefresh(name, body);
   }
 
   @Override
