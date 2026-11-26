@@ -312,6 +312,9 @@
       "deleted": {
         "type": "boolean"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "dataProducts": {
         "properties": {
           "id": {

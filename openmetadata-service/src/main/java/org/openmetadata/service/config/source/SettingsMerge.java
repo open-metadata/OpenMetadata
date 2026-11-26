@@ -130,7 +130,7 @@ public final class SettingsMerge {
   }
 
   private void applyDeploymentChange(MergeContext context, MergeUnit unit) {
-    if (context.applyFromDeployment(unit)) {
+    if (context.applyFromDeployment(unit, true) && context.storedChangedByApply(unit)) {
       context.record(context.isDeliberate(unit) ? APPLIED : DEFAULT_CHANGED, unit);
     }
   }

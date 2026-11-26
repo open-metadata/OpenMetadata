@@ -89,6 +89,7 @@ jobs:
     permissions:
       actions: read
       contents: read
+      packages: read
       pull-requests: read
       checks: read
     with:
@@ -160,7 +161,7 @@ jobs:
       - name: Download failed merge-queue shard results
         if: ${{ failure() && github.event_name == 'merge_group' }}
         continue-on-error: true
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           # Current attempt only: artifacts belong to the run, so a re-run would
           # otherwise report tests that failed only in an earlier attempt.
@@ -259,7 +260,7 @@ jobs:
       - name: Download blob reports
         id: download-blobs
         if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           pattern: playwright-blob-*
@@ -269,7 +270,7 @@ jobs:
       - name: Download timing metrics
         id: download-timings
         if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           pattern: playwright-timings-*
@@ -279,7 +280,7 @@ jobs:
         id: download-plans
         if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: playwright-shard-plans
           path: ${{ runner.temp }}/playwright-plans
@@ -287,7 +288,7 @@ jobs:
       - name: Download all results JSON
         id: download-results
         if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           # Every attempt: a "Re-run failed jobs" attempt only re-uploads the
@@ -732,7 +733,7 @@ jobs:
 
       - name: Download all results JSON
         continue-on-error: true
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: playwright-results-json-*
           path: results
@@ -896,7 +897,7 @@ jobs:
           persist-credentials: true
 
       - name: Download timing history artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: playwright-timing-history-full-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/timing-history
