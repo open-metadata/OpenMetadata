@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
@@ -61,6 +62,7 @@ import org.openmetadata.service.Entity;
 public class LineageEdgePipelineAuthorizationIT {
 
   private static final String LINEAGE_PATH = "/v1/lineage";
+  private static final String OPEN_LINEAGE_BATCH_PATH = "/v1/openlineage/lineage/batch";
   private static final String SQL_QUERY = "select id from source_table";
   private static final RequestOptions JSON_PATCH =
       RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
@@ -156,6 +158,38 @@ public class LineageEdgePipelineAuthorizationIT {
             () -> putEdge(caller, edge, new LineageDetails().withPipeline(missing)));
     assertEquals(404, notFound.getStatusCode(), notFound.getMessage());
     assertEdgeAbsent(edge);
+  }
+
+  /**
+   * OpenLineage resolves the pipeline from the job and writes each edge on its own, so a pipeline
+   * the caller cannot view fails only the edges that would link it; the batch's other events are
+   * still written.
+   */
+  @Test
+  void openLineageBatch_hiddenPipelineFailsOnlyItsOwnEdges(TestNamespace ns) {
+    String schemaFqn = DatabaseSchemaTestFactory.createSimple(ns).getFullyQualifiedName();
+    Table source = TableTestFactory.createWithName(ns, schemaFqn, "ol_src");
+    Table hiddenTarget = TableTestFactory.createWithName(ns, schemaFqn, "ol_hidden");
+    Table openTarget = TableTestFactory.createWithName(ns, schemaFqn, "ol_open");
+    Pipeline hidden = createPipeline(ns, "ol_hidden_pipe");
+    OpenMetadataClient caller =
+        clientForPrincipalWithRules(
+            ns, "olcaller", List.of(allowEditLineageOnTables(ns), denyViewingPipelines(ns)));
+    String batch =
+        """
+        {"events": [%s, %s]}
+        """
+            .formatted(
+                runEvent(hidden.getService().getName(), hidden.getName(), source, hiddenTarget),
+                runEvent(
+                    ns.prefix("no_pipeline_ns"), ns.prefix("no_pipeline_job"), source, openTarget));
+
+    caller
+        .getHttpClient()
+        .executeForString(HttpMethod.POST, OPEN_LINEAGE_BATCH_PATH, JsonUtils.readTree(batch));
+
+    assertEdgeAbsent(new EdgeTables(source, hiddenTarget));
+    assertNull(getEdge(new EdgeTables(source, openTarget)).getPipeline());
   }
 
   @Test
@@ -278,6 +312,34 @@ public class LineageEdgePipelineAuthorizationIT {
     fixtureCleanups.push(() -> admin.users().delete(user.getId()));
 
     return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  private static String runEvent(String jobNamespace, String jobName, Table input, Table output) {
+    return """
+        {"eventType": "COMPLETE", "eventTime": "%s", "producer": "https://openmetadata.org/it",
+         "schemaURL": "https://openlineage.io/spec/2-0-2/OpenLineage.json#/$defs/RunEvent",
+         "run": {"runId": "%s"}, "job": {"namespace": "%s", "name": "%s"},
+         "inputs": [%s], "outputs": [%s]}
+        """
+        .formatted(
+            Instant.now(),
+            UUID.randomUUID(),
+            jobNamespace,
+            jobName,
+            dataset(input),
+            dataset(output));
+  }
+
+  /** A dataset names its table relative to the database service, which is its namespace. */
+  private static String dataset(Table table) {
+    return """
+        {"namespace": "%s", "name": "%s.%s.%s"}
+        """
+        .formatted(
+            table.getService().getName(),
+            table.getDatabase().getName(),
+            table.getDatabaseSchema().getName(),
+            table.getName());
   }
 
   private static String addPipelinePatch(EntityReference pipeline) {

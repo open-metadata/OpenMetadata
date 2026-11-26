@@ -55,6 +55,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
@@ -83,6 +84,8 @@ import org.openmetadata.service.lineage.LineageHydrator;
 import org.openmetadata.service.lineage.LineagePermissionFilter;
 import org.openmetadata.service.lineage.LineageSceneResolver;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.lineage.LineageEdgeAccess.LineageEnd;
+import org.openmetadata.service.resources.lineage.LineageEdgeAccess.ResolvedEdge;
 import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -109,10 +112,16 @@ public class LineageResource {
   private final LineagePermissionFilter lineagePermissionFilter;
   private final SearchLineagePermissionFilter searchLineagePermissionFilter;
   private final LineageSceneResolver sceneResolver;
+  private final LineageEdgeAccess edgeAccess;
 
   public LineageResource(Authorizer authorizer) {
+    this(authorizer, new LineageEdgeAccess(authorizer));
+  }
+
+  LineageResource(Authorizer authorizer, LineageEdgeAccess edgeAccess) {
     this.dao = Entity.getLineageRepository();
     this.authorizer = authorizer;
+    this.edgeAccess = edgeAccess;
     this.hydrator = new LineageHydrator(authorizer);
     this.lineagePermissionFilter = new LineagePermissionFilter(authorizer);
     this.searchLineagePermissionFilter = new SearchLineagePermissionFilter(authorizer);
@@ -147,28 +156,18 @@ public class LineageResource {
    * ViewBasic on it, on top of EditLineage on the ends. Only a pipeline the stored edge does not
    * already carry is checked: ingestion re-sends the stored one on every write, and it may have
    * been deleted since. Any type other than a pipeline or stored procedure is refused by the
-   * repository with a 400, so it is not authorized here.
-   */
-  private void authorizeEdgePipeline(
-      SecurityContext securityContext, UUID fromId, UUID toId, LineageDetails requested) {
-    EntityReference requestedPipeline = requested == null ? null : requested.getPipeline();
-    authorizeNewlyLinkedEdgePipeline(
-        securityContext,
-        LineageRepository.newlyLinkedEdgePipeline(
-            requestedPipeline, dao.getLineageDetails(fromId, toId)));
-  }
-
-  /**
-   * ViewBasic on a pipeline a write newly links to an edge, when there is one; the edge copies it
-   * into the downstream entity's world-readable search document. PATCH runs this from inside the
-   * repository, against the resolved pipeline it is about to persist, so a concurrent write cannot
-   * substitute a different, unviewable pipeline between the check and the insert.
+   * repository with a 400, so it is not authorized here. Every write runs this from inside the
+   * repository, against the resolved pipeline and the row it is about to replace.
    */
   private void authorizeNewlyLinkedEdgePipeline(
       SecurityContext securityContext, EntityReference pipeline) {
     if (pipeline != null) {
       authorizeLineageReference(securityContext, pipeline, MetadataOperation.VIEW_BASIC);
     }
+  }
+
+  private Consumer<EntityReference> pipelineCheck(SecurityContext securityContext) {
+    return pipeline -> authorizeNewlyLinkedEdgePipeline(securityContext, pipeline);
   }
 
   private void authorizeLineageSceneFocus(
@@ -183,12 +182,6 @@ public class LineageResource {
       EntityReference focus = getLineageReferenceByName(entityType, focusFqn, include);
       authorizeLineageReference(securityContext, focus, MetadataOperation.VIEW_BASIC);
     }
-  }
-
-  private void authorizeLineageReference(
-      SecurityContext securityContext, String entityType, String entityFQN, Include include) {
-    authorizeLineageReference(
-        securityContext, getLineageReferenceByName(entityType, entityFQN, include));
   }
 
   private EntityReference getLineageReferenceByName(
@@ -1073,12 +1066,8 @@ public class LineageResource {
     EntitiesEdge edge = addLineage.getEdge();
     authorizeLineageReference(securityContext, edge.getFromEntity());
     authorizeLineageReference(securityContext, edge.getToEntity());
-    authorizeEdgePipeline(
-        securityContext,
-        edge.getFromEntity().getId(),
-        edge.getToEntity().getId(),
-        edge.getLineageDetails());
-    dao.addLineage(addLineage, securityContext.getUserPrincipal().getName());
+    dao.addLineage(
+        addLineage, securityContext.getUserPrincipal().getName(), pipelineCheck(securityContext));
     return Response.status(Status.OK).build();
   }
 
@@ -1115,18 +1104,21 @@ public class LineageResource {
           @PathParam("toFQN")
           String toFQN,
       @Valid LineageDetails lineageDetails) {
-    EntityReference from = getLineageReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
-    EntityReference to = getLineageReferenceByName(toEntity, toFQN, Include.NON_DELETED);
-    authorizeLineageReference(securityContext, from);
-    authorizeLineageReference(securityContext, to);
-    authorizeEdgePipeline(securityContext, from.getId(), to.getId(), lineageDetails);
-    dao.addLineageByFQN(
-        fromEntity,
-        fromFQN,
-        toEntity,
-        toFQN,
-        lineageDetails,
-        securityContext.getUserPrincipal().getName());
+    ResolvedEdge edge =
+        edgeAccess.resolveAndAuthorizeEdge(
+            securityContext,
+            new LineageEnd(fromEntity, fromFQN, Include.NON_DELETED),
+            new LineageEnd(toEntity, toFQN, Include.NON_DELETED),
+            MetadataOperation.EDIT_LINEAGE);
+    dao.addLineage(
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(edge.from())
+                    .withToEntity(edge.to())
+                    .withLineageDetails(lineageDetails)),
+        securityContext.getUserPrincipal().getName(),
+        pipelineCheck(securityContext));
     return Response.status(Status.OK).build();
   }
 
@@ -1181,10 +1173,11 @@ public class LineageResource {
       @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
           @PathParam("toId")
           UUID toId) {
-    for (EntityReference end : dao.getLineageEdgeEnds(fromId, toId)) {
-      authorizeLineageReference(securityContext, end, MetadataOperation.VIEW_BASIC);
-    }
-    return dao.getLineageEdge(fromId, toId);
+    EntitiesEdge stored = dao.getStoredEdge(fromId, toId);
+    authorizeLineageReference(
+        securityContext, stored.getFromEntity(), MetadataOperation.VIEW_BASIC);
+    authorizeLineageReference(securityContext, stored.getToEntity(), MetadataOperation.VIEW_BASIC);
+    return dao.getLineageEdge(stored);
   }
 
   @GET
@@ -1221,11 +1214,13 @@ public class LineageResource {
       @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
           @PathParam("toFQN")
           String toFQN) {
-    EntityReference from = getLineageReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
-    EntityReference to = getLineageReferenceByName(toEntity, toFQN, Include.NON_DELETED);
-    authorizeLineageReference(securityContext, from, MetadataOperation.VIEW_BASIC);
-    authorizeLineageReference(securityContext, to, MetadataOperation.VIEW_BASIC);
-    return dao.getLineageEdge(from.getId(), to.getId());
+    ResolvedEdge edge =
+        edgeAccess.resolveAndAuthorizeEdge(
+            securityContext,
+            new LineageEnd(fromEntity, fromFQN, Include.NON_DELETED),
+            new LineageEnd(toEntity, toFQN, Include.NON_DELETED),
+            MetadataOperation.VIEW_BASIC);
+    return dao.getLineageEdge(edge.from().getId(), edge.to().getId());
   }
 
   @PATCH
@@ -1287,7 +1282,7 @@ public class LineageResource {
         toId,
         patch,
         securityContext.getUserPrincipal().getName(),
-        pipeline -> authorizeNewlyLinkedEdgePipeline(securityContext, pipeline));
+        pipelineCheck(securityContext));
   }
 
   @PATCH
@@ -1334,18 +1329,20 @@ public class LineageResource {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    EntityReference from = getLineageReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
-    EntityReference to = getLineageReferenceByName(toEntity, toFQN, Include.NON_DELETED);
-    authorizeLineageReference(securityContext, from);
-    authorizeLineageReference(securityContext, to);
-    return dao.patchLineageEdgeByFQN(
-        fromEntity,
-        fromFQN,
-        toEntity,
-        toFQN,
+    ResolvedEdge edge =
+        edgeAccess.resolveAndAuthorizeEdge(
+            securityContext,
+            new LineageEnd(fromEntity, fromFQN, Include.NON_DELETED),
+            new LineageEnd(toEntity, toFQN, Include.NON_DELETED),
+            MetadataOperation.EDIT_LINEAGE);
+    return dao.patchLineageEdge(
+        edge.from().getType(),
+        edge.from().getId(),
+        edge.to().getType(),
+        edge.to().getId(),
         patch,
         securityContext.getUserPrincipal().getName(),
-        pipeline -> authorizeNewlyLinkedEdgePipeline(securityContext, pipeline));
+        pipelineCheck(securityContext));
   }
 
   @DELETE
@@ -1391,15 +1388,9 @@ public class LineageResource {
         new OperationContext(toEntity, MetadataOperation.EDIT_LINEAGE),
         new ResourceContext<>(toEntity, UUID.fromString(toId), null));
 
-    boolean deleted =
+    return deletionResponse(
         dao.deleteLineage(
-            fromEntity, fromId, toEntity, toId, securityContext.getUserPrincipal().getName());
-    if (!deleted) {
-      return Response.status(NOT_FOUND)
-          .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), "Lineage edge not found"))
-          .build();
-    }
-    return Response.status(Status.OK).build();
+            fromEntity, fromId, toEntity, toId, securityContext.getUserPrincipal().getName()));
   }
 
   @DELETE
@@ -1436,17 +1427,23 @@ public class LineageResource {
       @Parameter(description = "Entity FQN", required = true, schema = @Schema(type = "string"))
           @PathParam("toFQN")
           String toFQN) {
-    authorizeLineageReference(securityContext, fromEntity, fromFQN, Include.ALL);
-    authorizeLineageReference(securityContext, toEntity, toFQN, Include.ALL);
-    boolean deleted =
-        dao.deleteLineageByFQN(
-            fromEntity, fromFQN, toEntity, toFQN, securityContext.getUserPrincipal().getName());
-    if (!deleted) {
-      return Response.status(NOT_FOUND)
-          .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), "Lineage edge not found"))
-          .build();
-    }
-    return Response.status(Status.OK).build();
+    EntityReference from =
+        edgeAccess.resolveAndAuthorize(
+            securityContext,
+            new LineageEnd(fromEntity, fromFQN, Include.ALL),
+            MetadataOperation.EDIT_LINEAGE);
+    EntityReference to =
+        edgeAccess.resolveAndAuthorize(
+            securityContext,
+            new LineageEnd(toEntity, toFQN, Include.ALL),
+            MetadataOperation.EDIT_LINEAGE);
+    return deletionResponse(
+        dao.deleteLineage(
+            from.getType(),
+            from.getId().toString(),
+            to.getType(),
+            to.getId().toString(),
+            securityContext.getUserPrincipal().getName()));
   }
 
   @DELETE
@@ -1520,10 +1517,22 @@ public class LineageResource {
               schema = @Schema(type = "string", example = "ViewLineage"))
           @PathParam("lineageSource")
           String lineageSource) {
-    authorizeLineageReference(securityContext, entityType, entityFQN, Include.ALL);
-    dao.deleteLineageBySourceByFQN(
-        entityType, entityFQN, lineageSource, securityContext.getUserPrincipal().getName());
+    EntityReference end =
+        edgeAccess.resolveAndAuthorize(
+            securityContext,
+            new LineageEnd(entityType, entityFQN, Include.ALL),
+            MetadataOperation.EDIT_LINEAGE);
+    dao.deleteLineageBySource(
+        end.getId(), end.getType(), lineageSource, securityContext.getUserPrincipal().getName());
     return Response.status(Status.OK).build();
+  }
+
+  private static Response deletionResponse(boolean deleted) {
+    return deleted
+        ? Response.status(Status.OK).build()
+        : Response.status(NOT_FOUND)
+            .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), "Lineage edge not found"))
+            .build();
   }
 
   private EntityLineage addHref(UriInfo uriInfo, EntityLineage lineage) {
