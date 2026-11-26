@@ -260,7 +260,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/ui-browser-setup
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: browser-selection
           path: ${{ env.UI_DIR }}
@@ -333,12 +333,12 @@ jobs:
           # The changed-code coverage diffs against the base (HEAD^1).
           fetch-depth: 2
       - uses: ./.github/actions/ui-browser-setup
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           pattern: browser-blob-*
           merge-multiple: true
           path: ${{ env.UI_DIR }}/.vitest-reports
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: browser-selection
           path: ${{ env.UI_DIR }}
@@ -372,7 +372,7 @@ jobs:
           name: browser-tests-comment
           path: ${{ runner.temp }}/browser-tests-comment/
           retention-days: 3
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           # One folder per shard: each names its file after its process id,
           # which can repeat across runners.

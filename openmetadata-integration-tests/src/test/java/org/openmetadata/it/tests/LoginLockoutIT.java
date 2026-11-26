@@ -12,9 +12,16 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -116,6 +123,76 @@ class LoginLockoutIT {
     assertEquals(400, response.statusCode());
     assertTrue(response.body().contains("Invalid login request"), response.body());
     assertEquals(200, login(user, password).statusCode());
+  }
+
+  /**
+   * A parallel burst of {@code maxLoginFailAttempts} wrong-password logins must trip the lockout
+   * exactly the same way a sequential run does. Without the atomic increment in
+   * {@code LoginAttemptCache.recordFailedLogin}, a concurrent burst can lose increments
+   * (200 threads were observed to count as few as 24), so the counter reaches {@code
+   * maxLoginFailAttempts} only after several-fold more actual guesses per window — defeating the
+   * brute-force lockout. See {@code LoginAttemptCacheConcurrencyTest} for the unit-level proof;
+   * this test confirms the same invariant end-to-end over HTTP against a running server.
+   */
+  @Test
+  void aParallelBurstOfWrongPasswordsTripsTheLockoutAtExactlyMaxAttempt(TestNamespace ns)
+      throws Exception {
+    String password = "Right!Passw0rd" + ns.uniqueShortId();
+    User user = createUser(ns, password);
+
+    // Fire maxLoginFailAttempts wrong-password logins simultaneously, so the read→increment→write
+    // race window overlaps across requests. The buggy non-atomic counter loses increments here.
+    int parallel = maxLoginFailAttempts();
+    ExecutorService pool = Executors.newFixedThreadPool(parallel);
+    CyclicBarrier startGun = new CyclicBarrier(parallel);
+    CountDownLatch done = new CountDownLatch(parallel);
+    List<HttpResponse<String>> responses =
+        java.util.Collections.synchronizedList(new ArrayList<>());
+    Throwable[] workerFailure = new Throwable[1];
+    try {
+      for (int i = 0; i < parallel; i++) {
+        pool.submit(
+            () -> {
+              try {
+                startGun.await();
+                responses.add(login(user, WRONG_PASSWORD));
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                captureFirst(workerFailure, e);
+              } catch (Throwable t) {
+                captureFirst(workerFailure, t);
+              } finally {
+                done.countDown();
+              }
+            });
+      }
+      assertTrue(done.await(60, TimeUnit.SECONDS), "all parallel logins must complete");
+    } finally {
+      pool.shutdownNow();
+      assertTrue(pool.awaitTermination(60, TimeUnit.SECONDS), "pool must terminate");
+    }
+    if (workerFailure[0] != null) {
+      throw new AssertionError("a parallel login worker failed", workerFailure[0]);
+    }
+
+    assertEquals(parallel, responses.size(), "every parallel request must return a response");
+    for (HttpResponse<String> response : responses) {
+      assertEquals(401, response.statusCode(), "wrong password is rejected");
+    }
+
+    // The lockout must have engaged: a subsequent login — even with the right password — is
+    // refused with MAX_FAILED_LOGIN_ATTEMPT. Before the fix, the parallel burst could count fewer
+    // than maxLoginFailAttempts increments, leaving the account unlocked and the correct password
+    // working.
+    assertLockedOut(user, password);
+  }
+
+  private static void captureFirst(Throwable[] bucket, Throwable t) {
+    synchronized (bucket) {
+      if (bucket[0] == null) {
+        bucket[0] = t;
+      }
+    }
   }
 
   private static User createUser(TestNamespace ns, String password) {
