@@ -24,7 +24,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.azuresql.queries import AZURE_SQL_GET_DATABASES
+from metadata.ingestion.source.database.azuresql.connection import list_catalog_databases
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.mssql.utils import (
     get_columns,
@@ -72,7 +72,14 @@ class AzuresqlSource(CommonDbSourceService, MultiDBSource):
         return None
 
     def get_database_names_raw(self) -> Iterable[str]:
-        yield from self._execute_database_query(AZURE_SQL_GET_DATABASES)
+        yield from list_catalog_databases(self.service_connection)
+
+    def mark_databases_as_deleted(self):
+        if not self.service_connection.ingestAllDatabases:
+            if self.source_config.markDeletedDatabases:
+                logger.info("Skipping service-wide database cleanup for single-database Azure SQL ingestion")
+            return
+        yield from super().mark_databases_as_deleted()
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]

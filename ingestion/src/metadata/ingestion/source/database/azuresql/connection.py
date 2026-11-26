@@ -15,6 +15,7 @@ Source connection handler
 
 from urllib.parse import quote_plus
 
+from sqlalchemy import text
 from sqlalchemy.engine import URL, Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -40,7 +41,10 @@ from metadata.ingestion.connections.builders import (
     get_connection_options_dict,
 )
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_db_common,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.azuresql.queries import AZURE_SQL_GET_DATABASES
 from metadata.utils.constants import THREE_MIN
@@ -91,11 +95,13 @@ def get_connection_url(connection: AzureSQLConnectionConfig | MssqlConnection) -
 
 class AzureSQLConnection(BaseConnection[AzureSQLConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
-        return create_generic_db_connection(
+        engine = create_generic_db_connection(
             connection=self.service_connection,
             get_connection_url_fn=get_connection_url,
             get_connection_args_fn=get_connection_args_common,
         )
+        self._on_close(engine.dispose)
+        return engine
 
     def get_connection_dict(self) -> dict:
         """Return the connection parameters for data-diff."""
@@ -141,6 +147,10 @@ class AzureSQLConnection(BaseConnection[AzureSQLConnectionConfig, Engine]):
         }
         return {**connection_dict, **options}
 
+    def _check_database_catalog(self) -> None:
+        if self.service_connection.ingestAllDatabases:
+            list_catalog_databases(self.service_connection)
+
     def test_connection(
         self,
         metadata: OpenMetadata,
@@ -156,12 +166,16 @@ class AzureSQLConnection(BaseConnection[AzureSQLConnectionConfig, Engine]):
             engine=self.client,
             service_connection=self.service_connection,
             automation_workflow=automation_workflow,
-            # Surface the database-listing query the metadata workflow runs in
-            # ingest-all-databases mode (and the mark-deleted post-process step
-            # uses) as a Test Connection step, so a tier or role that rejects it
-            # (e.g. Azure SQL Database error 40515 on `master.sys.databases`) is
-            # caught before the workflow runs. Non-mandatory so a role that can
-            # read the connected database but not list siblings still passes.
-            queries={"GetDatabases": AZURE_SQL_GET_DATABASES},
+            additional_checks={"GetDatabases": self._check_database_catalog},
             timeout_seconds=timeout_seconds,
         )
+
+
+def list_catalog_databases(config: AzureSQLConnectionConfig) -> list[str]:
+    # In Azure SQL Database, sys.databases lists sibling databases only in master.
+    catalog = config.model_copy(update={"database": "master"})
+    with AzureSQLConnection(catalog) as connection, connection.client.connect() as client:
+        databases = list(client.execute(text(AZURE_SQL_GET_DATABASES)).scalars())
+    if not databases:
+        raise SourceConnectionException("Azure SQL database discovery requires a connection to master")
+    return databases
