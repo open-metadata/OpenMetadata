@@ -1658,10 +1658,21 @@ class DbtSource(DbtServiceSource):
                 query = f"create table {query_fqn} as {self._map_catalogs_in_sql(data_model_link.datamodel.sql.root)}"
                 connection_type = str(self.config.serviceConnection.root.config.type.value)
                 dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
+                # catalogMapping and searchAcrossDatabases can resolve an upstream under another service, so the
+                # SQL's tables are also looked up where the upstreams were found
+                # (ADR:2026-10-14-dbt-catalog-mapping-resolves-engine-database-names)
+                service_names = list(
+                    dict.fromkeys(
+                        [
+                            source_elements[0],
+                            *(fqn.split(upstream)[0] for upstream in data_model_link.datamodel.upstream or []),
+                        ]
+                    )
+                )
                 lineages = get_lineage_by_query(
                     self.metadata,
                     query=query,
-                    service_names=source_elements[0],
+                    service_names=service_names,
                     database_name=source_elements[1],
                     schema_name=source_elements[2],
                     dialect=dialect,

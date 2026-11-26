@@ -5571,6 +5571,29 @@ class TestCatalogMapping:
             depends_on=SimpleNamespace(nodes=list(depends_on)),
         )
 
+    @staticmethod
+    def _table_with_columns(table_fqn):
+        return Table(
+            id=uuid.uuid4(),
+            name=table_fqn.split(".")[-1],
+            fullyQualifiedName=table_fqn,
+            columns=[
+                Column(name=name, dataType=DataType.INT, fullyQualifiedName=f"{table_fqn}.{name}")
+                for name in ("id", "name")
+            ],
+        )
+
+    @staticmethod
+    def _search_among(tables):
+        return lambda *_args, fqn_search_string, **_kwargs: (
+            [
+                ingested
+                for ingested in tables
+                if fnmatch.fnmatchcase(ingested.fullyQualifiedName.root.lower(), fqn_search_string.lower())
+            ]
+            or None
+        )
+
     def test_agent_config_accepts_catalog_mapping(self):
         source = self._source(catalog_mapping={"bq_catalog": "my-gcp-project"})
 
@@ -5717,27 +5740,9 @@ class TestCatalogMapping:
         ],
     )
     def test_query_lineage_links_the_columns_of_the_mapped_source(self, catalog_mapping, column_links):
-        def table(table_fqn):
-            return Table(
-                id=uuid.uuid4(),
-                name=table_fqn.split(".")[-1],
-                fullyQualifiedName=table_fqn,
-                columns=[
-                    Column(name=name, dataType=DataType.INT, fullyQualifiedName=f"{table_fqn}.{name}")
-                    for name in ("id", "name")
-                ],
-            )
-
-        tables = [table(self.BQ_SOURCE), table(self.BQ_MODEL)]
+        tables = [self._table_with_columns(self.BQ_SOURCE), self._table_with_columns(self.BQ_MODEL)]
         source = self._source(catalog_mapping=catalog_mapping)
-        source.metadata.es_search_from_fqn.side_effect = lambda *_args, fqn_search_string, **_kwargs: (
-            [
-                ingested
-                for ingested in tables
-                if fnmatch.fnmatchcase(ingested.fullyQualifiedName.root.lower(), fqn_search_string.lower())
-            ]
-            or None
-        )
+        source.metadata.es_search_from_fqn.side_effect = self._search_among(tables)
         source.metadata.get_by_name.return_value = None
         source.config = SimpleNamespace(
             serviceName="trino_svc",
@@ -5749,7 +5754,8 @@ class TestCatalogMapping:
             table_entity=tables[1],
             parse_query_lineage=True,
             datamodel=SimpleNamespace(
-                sql=SimpleNamespace(root='select id, upper(name) as name from "bq_catalog"."raw"."customers"')
+                sql=SimpleNamespace(root='select id, upper(name) as name from "bq_catalog"."raw"."customers"'),
+                upstream=[self.BQ_SOURCE] if catalog_mapping else [],
             ),
         )
 
@@ -5764,6 +5770,65 @@ class TestCatalogMapping:
             for request in requests
             for link in request.lineage_details.columnsLineage
         ] == column_links
+
+    @pytest.mark.parametrize(
+        ("source_database", "catalog_mapping", "search_across_databases"),
+        [
+            ("bq_catalog", {"bq_catalog": "my-gcp-project"}, False),
+            ("my-gcp-project", None, True),
+        ],
+    )
+    def test_query_lineage_links_the_columns_of_a_source_found_in_another_service(
+        self, source_database, catalog_mapping, search_across_databases
+    ):
+        """The model is built on trino_svc and reads a source that is ingested only under bq_svc."""
+        source_fqn = "bq_svc.my-gcp-project.raw.visits"
+        model_fqn = "trino_svc.iceberg.analytics.stg_visits"
+        source = self._source(catalog_mapping=catalog_mapping, search_across_databases=search_across_databases)
+        source.metadata.es_search_from_fqn.side_effect = self._search_among(
+            [self._table_with_columns(source_fqn), self._table_with_columns(model_fqn)]
+        )
+        source.metadata.get_by_name.return_value = None
+        source.config.serviceConnection = SimpleNamespace(
+            root=SimpleNamespace(config=SimpleNamespace(type=SimpleNamespace(value="Trino")))
+        )
+        source.context = MagicMock()
+        visits = self._manifest_node("visits", source_database, "raw", resource_type="source")
+        visits.source_name = "bq_raw"
+        model = self._manifest_node("stg_visits", "iceberg", "analytics", depends_on=["source.trino_bq.bq_raw.visits"])
+        model.compiled_code = f'select id, upper(name) as name from "{source_database}"."raw"."visits"'
+        dbt_objects = SimpleNamespace(
+            dbt_manifest=SimpleNamespace(
+                sources={"source.trino_bq.bq_raw.visits": visits},
+                nodes={"model.trino_bq.stg_visits": model},
+                exposures={},
+                metadata=SimpleNamespace(project_name="trino_bq"),
+            ),
+            dbt_catalog=None,
+            dbt_run_results=None,
+            dbt_sources=None,
+        )
+        with (
+            patch.object(DbtSource, "get_dbt_domain", return_value=None),
+            patch.object(DbtSource, "_collect_dbt_metrics"),
+        ):
+            [model_link] = [
+                either.right
+                for either in source.yield_data_models(dbt_objects)
+                if either.right is not None and model_str(either.right.table_entity.fullyQualifiedName) == model_fqn
+            ]
+
+        requests = [
+            either.right.lineage_request
+            for either in source.create_dbt_query_lineage(model_link)
+            if either.right is not None
+        ]
+
+        assert [
+            (model_str(link.fromColumns[0]), model_str(link.toColumn))
+            for request in requests
+            for link in request.lineage_details.columnsLineage
+        ] == [(f"{source_fqn}.id", f"{model_fqn}.id"), (f"{source_fqn}.name", f"{model_fqn}.name")]
 
     def test_each_catalog_is_mapped_once_when_a_database_is_also_a_mapped_catalog(self):
         source = self._source(catalog_mapping={"hive": "warehouse", "warehouse": "warehouse_prod"})

@@ -1,7 +1,7 @@
 # dbt's catalogMapping maps a manifest database to the database it is ingested under
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial); v2 2026-10-16 (query lineage)
+- **Revisions:** v1 2026-10-14 (initial); v2 2026-10-16 (query lineage); v3 2026-11-26 (query lineage searches the upstreams' services)
 - **Deciders:** Ingestion maintainers
 - **Guard:** `TestCatalogMapping` in `ingestion/tests/unit/test_dbt.py`
 - **Related:** issue #34633; PR #35020 (earlier, inference-based approach)
@@ -47,3 +47,13 @@ release and is dropped by dbt on any node that declares its own `openmetadata` b
 on schema and table name alone, which attaches dbt metadata to an unrelated table whenever the real
 one is not ingested and a namesake exists in another database. Revisit if an engine is found whose
 catalog spans several OpenMetadata databases; the mapping would then need a schema-level key.
+
+## Amendment
+
+v3 (2026-11-26): swapping the catalog for its database is not enough when that database belongs to
+another service, because the lineage parser looked tables up only in the service of the model being
+processed. Query lineage now searches the model's own service first, then the service of each of
+its upstreams, read from the FQN the upstream was recorded under. Those are the services where
+`catalogMapping` and `searchAcrossDatabases` found the parents, so column lineage follows table
+lineage without searching every service. A table the SQL reads that is not a dbt upstream is still
+looked up in the model's service only.
