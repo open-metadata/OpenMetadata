@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -61,6 +62,12 @@ public final class SearchUtils {
 
   private static final String FUZZINESS_DISABLED = "0";
   private static final String FUZZINESS_ENABLED = "1";
+  // Below the 1024 bool-clause cap with headroom for the query's other clauses; the default
+  // name/displayName n-gram fields keep "customer_orders" (620) fuzzy and drop a 16-char id (2100).
+  static final int NGRAM_FUZZY_CLAUSE_BUDGET = 640;
+  // The om_ngram analyzer's n_gram_tokenizer in the index mappings.
+  private static final int NGRAM_MIN_GRAM = 3;
+  private static final int NGRAM_MAX_GRAM = 20;
   private static final String EXACT_AGG_SUFFIX = "__exact";
   private static final String PREFIX_AGG_SUFFIX = "__prefix";
   private static final String CONTAINS_AGG_SUFFIX = "__contains";
@@ -773,6 +780,11 @@ public final class SearchUtils {
     };
   }
 
+  public static boolean isOntologyIndex(String indexName) {
+    String mapped = mapEntityTypesToIndexNames(indexName);
+    return OntologyTermSearch.ALIAS.equals(mapped) || OntologyTermSearch.isTerm(mapped);
+  }
+
   public static String mapEntityTypesToIndexNames(String indexName) {
     return switch (indexName) {
       case "topic_search_index", Entity.TOPIC -> Entity.TOPIC;
@@ -794,6 +806,9 @@ public final class SearchUtils {
       case "search_entity_search_index", Entity.SEARCH_INDEX -> Entity.SEARCH_INDEX;
       case "tag_search_index", Entity.TAG -> Entity.TAG;
       case "glossary_term_search_index", Entity.GLOSSARY_TERM -> Entity.GLOSSARY_TERM;
+      case OntologyTermSearch.ALIAS -> OntologyTermSearch.ALIAS;
+      case "ontology_concept_search_index", Entity.ONTOLOGY_CONCEPT -> Entity.ONTOLOGY_CONCEPT;
+      case "ontology_property_search_index", Entity.ONTOLOGY_PROPERTY -> Entity.ONTOLOGY_PROPERTY;
       case SearchClient.RELATIONSHIP_TYPE_SEARCH_INDEX, Entity.RELATIONSHIP_TYPE -> Entity
           .RELATIONSHIP_TYPE;
       case "glossary_search_index", Entity.GLOSSARY -> Entity.GLOSSARY;
@@ -844,6 +859,46 @@ public final class SearchUtils {
       return FUZZINESS_ENABLED;
     }
     return analyzedSubTokenCount(query) > 2 ? FUZZINESS_DISABLED : FUZZINESS_ENABLED;
+  }
+
+  /**
+   * Fuzziness for a fuzzy multi_match over {@code fields}. Every gram the {@code om_ngram} analyzer
+   * produces is fuzzy-expanded separately, so a long token over {@code *.ngram} fields can exceed
+   * the 1024 bool-clause cap (a 16-char token is 105 grams). Fuzziness stays on, keeping typo
+   * tolerance for ordinary queries, and is turned off only when the estimated clause count passes
+   * {@link #NGRAM_FUZZY_CLAUSE_BUDGET}.
+   */
+  public static String getFuzziness(String query, Collection<String> fields) {
+    String fuzziness = getFuzziness(query);
+    if (estimatedNgramFuzzyClauses(query, fields) > NGRAM_FUZZY_CLAUSE_BUDGET) {
+      fuzziness = FUZZINESS_DISABLED;
+    }
+    return fuzziness;
+  }
+
+  /**
+   * Upper bound on the clauses a fuzzy match over the {@code *.ngram} fields rewrites into: the
+   * grams {@code om_ngram} emits for the query (3–20 chars, split on non letter/digit, as its
+   * {@code n_gram_tokenizer}), times {@code max_expansions}, times the n-gram fields.
+   */
+  static long estimatedNgramFuzzyClauses(String query, Collection<String> fields) {
+    long ngramFields =
+        nullOrEmpty(fields) ? 0 : fields.stream().filter(f -> f.endsWith(".ngram")).count();
+    long grams = 0;
+    if (ngramFields > 0 && query != null) {
+      for (String token : query.split("[^\\p{L}\\p{Nd}]+")) {
+        grams += ngramCount(token.codePointCount(0, token.length()));
+      }
+    }
+    return grams * getMaxExpansions(query) * ngramFields;
+  }
+
+  private static long ngramCount(int length) {
+    long count = 0;
+    for (int size = NGRAM_MIN_GRAM; size <= Math.min(NGRAM_MAX_GRAM, length); size++) {
+      count += length - size + 1;
+    }
+    return count;
   }
 
   /**

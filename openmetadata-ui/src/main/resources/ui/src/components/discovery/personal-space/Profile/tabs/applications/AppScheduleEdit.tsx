@@ -15,7 +15,10 @@ import { Box, Button } from '@openmetadata/ui-core-components';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
-import { getAppCronExpression } from '../../../../../../utils/ApplicationUtils';
+import {
+  getAppCronExpression,
+  getAppScheduleTimezone,
+} from '../../../../../../utils/ApplicationUtils';
 import { useAppScheduleOptions } from '../../../../../Settings/Applications/AppSchedule/useAppScheduleOptions';
 import ScheduleInterval from '../../../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
@@ -34,9 +37,15 @@ const AppScheduleEdit: FC<AppScheduleEditProps> = ({
   const [scheduleValue, setScheduleValue] = useState(() =>
     getAppCronExpression(appData.appSchedule)
   );
+  // An app without a stored zone runs at the server default; it stays unset
+  // unless the user picks a zone, so saving unchanged cannot move it.
+  const [timezoneValue, setTimezoneValue] = useState<string | undefined>(() =>
+    getAppScheduleTimezone(appData.appSchedule)
+  );
   const [isScheduleValid, setIsScheduleValid] = useState(true);
   const { runGuarded, promptProps } = useUnsavedChangesPrompt(
-    scheduleValue !== getAppCronExpression(appData.appSchedule)
+    scheduleValue !== getAppCronExpression(appData.appSchedule) ||
+      timezoneValue !== getAppScheduleTimezone(appData.appSchedule)
   );
 
   return (
@@ -47,8 +56,10 @@ const AppScheduleEdit: FC<AppScheduleEditProps> = ({
       <ScheduleInterval
         defaultSchedule={defaultCron}
         includePeriodOptions={initialOptions}
+        timezone={timezoneValue}
         value={scheduleValue}
         onChange={setScheduleValue}
+        onTimezoneChange={setTimezoneValue}
         onValidityChange={setIsScheduleValid}
       />
       <AppFooter testId="app-schedule-footer">
@@ -65,7 +76,7 @@ const AppScheduleEdit: FC<AppScheduleEditProps> = ({
           data-testid="save-button"
           isDisabled={!isScheduleValid}
           isLoading={isSaving}
-          onPress={() => onSave(scheduleValue ?? '')}>
+          onPress={() => onSave(scheduleValue ?? '', timezoneValue)}>
           {t('label.save')}
         </Button>
       </AppFooter>

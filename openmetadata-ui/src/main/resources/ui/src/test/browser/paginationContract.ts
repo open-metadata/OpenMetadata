@@ -22,6 +22,7 @@ import {
 import { worker } from './msw';
 import { networkIdle, until } from './network';
 import { currentUrl, renderApp } from './renderWithApp';
+import { scaled } from './timeouts';
 
 /**
  * The paginated-list contract every list page must keep. It replaces
@@ -59,18 +60,7 @@ export interface PaginatedListSpec<T> {
   hasPageSizeSelector?: boolean;
   /** Pages with a fixed size ignore ?pageSize; the limit they send. */
   fixedPageSize?: number;
-  /**
-   * Known defects, each with a reason. The matching assertion is skipped so
-   * the rest of the contract still guards the page; remove once fixed.
-   */
-  knownIssues?: {
-    duplicateFetchOnPageChange?: string;
-    /** The whole test is expected to fail (vitest test.fails) until fixed. */
-    failing?: Partial<Record<ContractTest, string>>;
-  };
 }
-
-export type ContractTest = 'navigation' | 'reload' | 'pageSize' | 'search';
 
 const urlOf = (route: string, params: Record<string, string>) =>
   `${route}?${new URLSearchParams(params).toString()}`;
@@ -96,15 +86,6 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
         'tbody tr[data-row-key]'
       )
     );
-  // A known-broken step runs as test.fails: it stays red-to-green visible and
-  // starts failing the suite the moment the bug is fixed, prompting cleanup.
-  const it = (key: ContractTest, name: string, fn: () => Promise<void>) =>
-    spec.knownIssues?.failing?.[key]
-      ? test.fails(
-          `${name} [known issue: ${spec.knownIssues.failing[key]}]`,
-          fn
-        )
-      : test(name, fn);
 
   const pageTwo = {
     ...base,
@@ -148,190 +129,159 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
       await networkIdle();
       await (await app.screen()).unmount();
       worker.resetHandlers();
-    }, 120_000);
+    }, scaled(120_000));
 
-    it(
-      'navigation',
-      'Next / Previous follow the server cursor and keep it in the URL',
-      async () => {
-        const { list } = await mount(base);
+    test('Next / Previous follow the server cursor and keep it in the URL', async () => {
+      const { list } = await mount(base);
 
-        await expect.element(within().getByText(label(0))).toBeVisible();
-        await expect.element(previous()).toBeDisabled();
-        await expect.element(next()).toBeEnabled();
-        expect(last(list).searchParams.get('limit')).toBe(String(pageSize));
+      await expect.element(within().getByText(label(0))).toBeVisible();
+      await expect.element(previous()).toBeDisabled();
+      await expect.element(next()).toBeEnabled();
+      expect(last(list).searchParams.get('limit')).toBe(String(pageSize));
 
-        await networkIdle();
-        const beforeNext = list.length;
+      await networkIdle();
+      const beforeNext = list.length;
 
-        await userEvent.click(next());
+      await userEvent.click(next());
 
-        await expect.element(within().getByText(label(pageSize))).toBeVisible();
-        expect(within().getByText(label(0)).query()).toBeNull();
-        expect(last(list).searchParams.get('after')).toBe(
-          encodeCursor(pageSize)
-        );
-        await expect.element(previous()).toBeEnabled();
+      await expect.element(within().getByText(label(pageSize))).toBeVisible();
+      expect(within().getByText(label(0)).query()).toBeNull();
+      expect(last(list).searchParams.get('after')).toBe(encodeCursor(pageSize));
+      await expect.element(previous()).toBeEnabled();
 
-        const url = new URL(location.href);
+      const url = new URL(location.href);
 
-        expect(url.searchParams.get('currentPage')).toBe('2');
-        expect(url.searchParams.get('cursorType')).toBe('after');
-        expect(url.searchParams.get('cursorValue')).toBe(
-          encodeCursor(pageSize)
-        );
+      expect(url.searchParams.get('currentPage')).toBe('2');
+      expect(url.searchParams.get('cursorType')).toBe('after');
+      expect(url.searchParams.get('cursorValue')).toBe(encodeCursor(pageSize));
 
-        await networkIdle();
-        if (!spec.knownIssues?.duplicateFetchOnPageChange) {
-          expect(list.length - beforeNext, 'requests per page change').toBe(1);
-        }
+      await networkIdle();
 
-        await userEvent.click(previous());
+      expect(list.length - beforeNext, 'requests per page change').toBe(1);
 
-        await expect.element(within().getByText(label(0))).toBeVisible();
-        expect(last(list).searchParams.get('before')).toBe(
-          encodeCursor(pageSize)
-        );
+      await userEvent.click(previous());
 
-        await networkIdle();
-      }
-    );
+      await expect.element(within().getByText(label(0))).toBeVisible();
+      expect(last(list).searchParams.get('before')).toBe(
+        encodeCursor(pageSize)
+      );
 
-    it(
-      'reload',
-      'reload on page 2 restores the page from the URL cursor',
-      async () => {
-        const { list } = await mount(pageTwo);
+      await networkIdle();
+    });
 
-        await expect.element(within().getByText(label(pageSize))).toBeVisible();
-        expect(within().getByText(label(0)).query()).toBeNull();
-        expect(last(list).searchParams.get('after')).toBe(
-          encodeCursor(pageSize)
-        );
-        await expect.element(previous()).toBeEnabled();
-        await expect.element(indicator()).toHaveTextContent(/2\s*of\s*\d+/);
+    test('reload on page 2 restores the page from the URL cursor', async () => {
+      const { list } = await mount(pageTwo);
 
-        await networkIdle();
-      }
-    );
+      await expect.element(within().getByText(label(pageSize))).toBeVisible();
+      expect(within().getByText(label(0)).query()).toBeNull();
+      expect(last(list).searchParams.get('after')).toBe(encodeCursor(pageSize));
+      await expect.element(previous()).toBeEnabled();
+      await expect.element(indicator()).toHaveTextContent(/2\s*of\s*\d+/);
+
+      await networkIdle();
+    });
 
     if (spec.hasPageSizeSelector !== false && !spec.fixedPageSize) {
-      it(
-        'pageSize',
-        'page size change refetches with the new limit',
-        async () => {
-          const { list } = await mount(base);
-          const dropdown = within().getByTestId('page-size-selection-dropdown');
-          const pinned = spec.pinnedRowsOnFirstPage ?? 0;
+      test('page size change refetches with the new limit', async () => {
+        const { list } = await mount(base);
+        const dropdown = within().getByTestId('page-size-selection-dropdown');
+        const pinned = spec.pinnedRowsOnFirstPage ?? 0;
 
-          await expect.element(within().getByText(label(0))).toBeVisible();
-          await expect
-            .element(dropdown)
-            .toHaveTextContent(`${pageSize} / Page`);
-          expect(rows().length).toBe(pageSize + pinned);
+        await expect.element(within().getByText(label(0))).toBeVisible();
+        await expect.element(dropdown).toHaveTextContent(`${pageSize} / Page`);
+        expect(rows().length).toBe(pageSize + pinned);
 
-          await userEvent.click(dropdown);
-          await userEvent.click(
-            page.getByRole('menuitem', { name: '25 / Page' })
-          );
+        await userEvent.click(dropdown);
+        await userEvent.click(
+          page.getByRole('menuitem', { name: '25 / Page' })
+        );
 
-          await expect
-            .poll(() => last(list).searchParams.get('limit'))
-            .toBe('25');
-          await expect.element(within().getByText(label(24))).toBeVisible();
-          await expect.element(dropdown).toHaveTextContent('25 / Page');
-          expect(rows().length).toBe(25 + pinned);
+        await expect
+          .poll(() => last(list).searchParams.get('limit'))
+          .toBe('25');
+        await expect.element(within().getByText(label(24))).toBeVisible();
+        await expect.element(dropdown).toHaveTextContent('25 / Page');
+        expect(rows().length).toBe(25 + pinned);
 
-          await networkIdle();
-        }
-      );
+        await networkIdle();
+      });
     }
 
     if (spec.search) {
       const { urlParam, term } = spec.search;
 
-      it(
-        'search',
-        'search restarts at page 1, pages through hits and survives reload',
-        async () => {
-          const app = await mount(pageTwo);
+      test('search restarts at page 1, pages through hits and survives reload', async () => {
+        const app = await mount(pageTwo);
+
+        await expect.element(within().getByText(label(pageSize))).toBeVisible();
+
+        await userEvent.fill(within().getByTestId('searchbar'), term);
+
+        await expect.poll(() => app.search.length).toBeGreaterThan(0);
+
+        // Pages put the term either in q or inside query_filter.
+        const sent = last(app.search).searchParams;
+
+        expect(`${sent.get('q')} ${sent.get('query_filter')}`).toContain(term);
+        expect(last(app.search).searchParams.get('from')).toBe('0');
+        await expect
+          .poll(() => new URL(location.href).searchParams.get(urlParam))
+          .toBe(term);
+        await expect.element(indicator()).toHaveTextContent(/1\s*of\s*\d+/);
+        await expect.element(previous()).toBeDisabled();
+        await expect.element(within().getByText(hitLabel(0))).toBeVisible();
+
+        await userEvent.click(next());
+
+        await expect
+          .poll(() => last(app.search).searchParams.get('from'))
+          .toBe(String(pageSize));
+        await expect.element(indicator()).toHaveTextContent(/2\s*of\s*\d+/);
+        await expect.element(previous()).toBeEnabled();
+        await expect
+          .element(within().getByText(hitLabel(pageSize)))
+          .toBeVisible();
+
+        await networkIdle();
+
+        const beforeReload = app.search.length;
+        await app.reload();
+
+        await expect
+          .poll(() => app.search.length)
+          .toBeGreaterThan(beforeReload);
+        expect(last(app.search).searchParams.get('from')).toBe(
+          String(pageSize)
+        );
+        await expect
+          .element(within().getByTestId('searchbar'))
+          .toHaveValue(term);
+        await expect.element(indicator()).toHaveTextContent(/2\s*of\s*\d+/);
+        await expect
+          .element(within().getByText(hitLabel(pageSize)))
+          .toBeVisible();
+
+        if (spec.deletedToggleTestId) {
+          const toggle = within().getByTestId(spec.deletedToggleTestId);
+
+          await userEvent.click(toggle);
 
           await expect
-            .element(within().getByText(label(pageSize)))
-            .toBeVisible();
+            .poll(() => last(app.search).searchParams.get('deleted'))
+            .toBe('true');
 
-          await userEvent.fill(within().getByTestId('searchbar'), term);
+          await userEvent.click(toggle);
 
-          await expect.poll(() => app.search.length).toBeGreaterThan(0);
-
-          // Pages put the term either in q or inside query_filter.
-          const sent = last(app.search).searchParams;
-
-          expect(`${sent.get('q')} ${sent.get('query_filter')}`).toContain(
-            term
-          );
-          expect(last(app.search).searchParams.get('from')).toBe('0');
           await expect
-            .poll(() => new URL(location.href).searchParams.get(urlParam))
-            .toBe(term);
+            .poll(() => last(app.search).searchParams.get('deleted'))
+            .toBe('false');
+
           await expect.element(indicator()).toHaveTextContent(/1\s*of\s*\d+/);
           await expect.element(previous()).toBeDisabled();
-          await expect.element(within().getByText(hitLabel(0))).toBeVisible();
-
-          await userEvent.click(next());
-
-          await expect
-            .poll(() => last(app.search).searchParams.get('from'))
-            .toBe(String(pageSize));
-          await expect.element(indicator()).toHaveTextContent(/2\s*of\s*\d+/);
-          await expect.element(previous()).toBeEnabled();
-          await expect
-            .element(within().getByText(hitLabel(pageSize)))
-            .toBeVisible();
-
-          await networkIdle();
-
-          const beforeReload = app.search.length;
-          await app.reload();
-
-          await expect
-            .poll(() => app.search.length)
-            .toBeGreaterThan(beforeReload);
-          expect(last(app.search).searchParams.get('from')).toBe(
-            String(pageSize)
-          );
-          await expect
-            .element(within().getByTestId('searchbar'))
-            .toHaveValue(term);
-          await expect.element(indicator()).toHaveTextContent(/2\s*of\s*\d+/);
-          await expect
-            .element(within().getByText(hitLabel(pageSize)))
-            .toBeVisible();
-
-          if (spec.deletedToggleTestId) {
-            const toggle = within().getByTestId(spec.deletedToggleTestId);
-
-            await userEvent.click(toggle);
-
-            await expect
-              .poll(() => last(app.search).searchParams.get('deleted'))
-              .toBe('true');
-
-            await userEvent.click(toggle);
-
-            await expect
-              .poll(() => last(app.search).searchParams.get('deleted'))
-              .toBe('false');
-
-            await expect.element(indicator()).toHaveTextContent(/1\s*of\s*\d+/);
-            await expect.element(previous()).toBeDisabled();
-            expect(new URL(location.href).searchParams.get(urlParam)).toBe(
-              term
-            );
-          }
-          await networkIdle();
+          expect(new URL(location.href).searchParams.get(urlParam)).toBe(term);
         }
-      );
+        await networkIdle();
+      });
     }
   });
 };
@@ -373,7 +323,7 @@ export const describeClientPagedTable = (spec: ClientPagedTableSpec) => {
       await networkIdle();
       await screen.unmount();
       worker.resetHandlers();
-    }, 120_000);
+    }, scaled(120_000));
 
     test('pages 15 rows at a time, keeps the page in the URL across reload', async () => {
       spec.setup();

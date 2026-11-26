@@ -244,10 +244,8 @@ Run `python3 .github/scripts/check_pr_workflow_security.py` after workflow chang
   - Persisted workflow and job fields stay readable by the previous server version during a rolling
     upgrade.
 - **Background jobs.** A new `jobType` joins every list that enumerates its siblings: the
-  `markStaleRunningJobsFailed` reaper, the memory-job capacity check, `JobDAO` and Collate's own
-  copy of `backgroundJob.json` (a missing constant throws `NoSuchFieldError`, an `Error` that kills
-  the background-job poller). Long or LLM-bound job types get a per-type cap on
-  `GenericBackgroundWorker`.
+  `markStaleRunningJobsFailed` reaper, the memory-job capacity check and `JobDAO`. Long or LLM-bound
+  job types get a per-type cap on `GenericBackgroundWorker`.
 - **Bounded caches** (AGENTS.md), and the cap must not change behavior. If the cache is a working set
   read after it is filled (page cursors, per-schema remarks), a miss after eviction refetches
   instead of silently losing data. Bound the total retained items, not just the keys, and cache
@@ -341,7 +339,12 @@ row than on many: an `EXISTS` over `JSON_TABLE` in a MySQL `UPDATE` matched zero
   one cannot serve. The same for a copied component with a tweaked body (`FooV2`, `FooNew`): the fix
   is a prop/variant on the original, or a core-component extension. Name the existing component in
   the finding. A sanctioned migration's successor is done only when the old variant's importer count
-  is zero and the file is deleted.
+  is zero and the file is deleted. A copy that only swaps one API call or id is the same finding:
+  the fix is a callback prop on the original.
+- **No pass-through wrapper around a core component.** A local `FooHeader`/`FooToggle` that only
+  forwards props to `PageLayout.PageHeader`/`Toggle`/`ButtonGroup` is a finding: use the core
+  component at the call site. When core lacks a prop the call site needs, add it to core in
+  its own PR instead of composing a workaround.
 - **No new page scaffold.** New pages use the ui-core `PageLayout`
   (`PageLayoutV1` only when editing an existing legacy page) with `PageLayout.Header`/`.PageHeader` +
   `HeaderBreadcrumb` + ui-core `Tabs` (`.claude/rules/page-structure.md`). A new shell/header/tab
@@ -436,7 +439,7 @@ Before renaming or removing any of the following, search `openmetadata-collate` 
 - an enum constant in a schema Collate copies;
 - a dependency major.
 
-Then ship a companion Collate PR, or keep a deprecated overload or no-op. `maven-collate-ci` breaks
+Then ship a companion Collate PR, or keep a deprecated overload or no-op. `Collate CI` breaks
 whichever repo merges first, and Collate's strict `tsc` fails on the next submodule bump. Provider
 rules stay behind their SPI, not keyed on a Collate provider in OSS core. A method whose only
 callers are in Collate says so in one line, so nobody deletes it as unused.
@@ -447,7 +450,8 @@ These go red on the PR. Update them in the same change:
 
 - a new `Relationship` enum value → `EnumBackwardCompatibilityTest` (the ordinal is stored);
 - a new entity-schema field → its `om:` predicate in
-  `openmetadata-spec/src/main/resources/rdf/ontology/openmetadata.ttl` (`RdfOntologyContractTest`);
+  `openmetadata-spec/src/main/resources/rdf/ontology/openmetadata.ttl`
+  (`RdfOntologyContractTest`, `RdfOntologyDescriptionContractTest`);
 - a new v2xx data-migration step → the `mockStatic` list in `IngestionPipelineMigrationEntryPointTest`;
 - a changed Pydantic model or base-class annotation → basedpyright, where any new violation in any
   file fails.
@@ -466,7 +470,7 @@ These go red on the PR. Update them in the same change:
 | A search field, mapping or refresh change | An IT on a real engine, including documents written in the old shape |
 | A switch or mapping that gains a value | A case in the existing table-driven test |
 | A UI flow, or a fix to the classic page and its AI-mode twin | A Playwright spec for each surface, asserting the result rather than the request |
-| A component branch, hook or payload builder | Jest asserting the payload or the rendered outcome, not a mock call |
+| A component branch, hook or payload builder | Jest asserting the payload or the rendered outcome, not a mock call. A new component file with a branch gets its own `X.test.tsx` |
 | A connector or DQ boundary | pytest at the boundary, plus a value just past it |
 | A bug fix | A test that fails on `main`. Say so in the PR |
 
@@ -649,8 +653,9 @@ Anything below is enforced by CI, or authors rejected it repeatedly in this wind
 - **Java micro-style quoted from [`java.md`](.claude/rules/java.md) without a defect**: fully qualified names, `final` on
   locals, method or class length, utility classes not `final`, literals in test assertions. These
   had zero acceptances across 18 bot threads. Authors still follow `java.md` while writing; a
-  reviewer does not post a finding for it. `java.md` says to *prefer* one successful return:
-  flat validation guards and throws are fine, so "use one trailing return" is not a finding. Size
+  reviewer does not post a finding for it. The one exception is the return rule
+  (ADR:2026-11-20-a-method-returns-once): a new or changed production method with more than one
+  `return`, or a `return` that is not its last statement, is a 🟡 finding. Throws are fine. Size
   rules target production code, not tests or verbatim backports.
 - **`@Isolated` or `@Execution(SAME_THREAD)`** on an IT that touches process-global state. That is a
   supported group (74 IT files use it), not a breach of the concurrent-IT rule.

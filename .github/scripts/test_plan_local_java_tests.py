@@ -1029,7 +1029,7 @@ def test_evidence_rejects_changed_java_options(
     summary.parent.mkdir(parents=True)
     summary.write_text("result")
     PLANNER.save_evidence(tmp_path, 0)
-    monkeypatch.setenv(option, "-DdatabaseImage=mysql:8.4")
+    monkeypatch.setenv(option, "-DdatabaseType=mysql")
     with pytest.raises(SystemExit, match="changed"):
         PLANNER.load_evidence(tmp_path)
 

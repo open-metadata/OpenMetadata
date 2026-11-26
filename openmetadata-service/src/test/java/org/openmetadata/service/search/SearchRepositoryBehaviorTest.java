@@ -4200,6 +4200,48 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void getHybridWeightsReadsTheAdminWeightsOfTheSearchSettings() throws Exception {
+    SearchRepository openSearchRepository =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING),
+            "cluster",
+            ElasticSearchConfiguration.SearchType.OPENSEARCH,
+            new NaturalLanguageSearchConfiguration().withSemanticSearchEnabled(true));
+    SearchSettings adminWeights =
+        new SearchSettings()
+            .withGlobalSettings(
+                new GlobalSettings().withKeywordWeight(0.7).withSemanticWeight(0.7));
+
+    try (MockedStatic<SettingsCache> settingsCacheMock = mockStatic(SettingsCache.class)) {
+      settingsCacheMock
+          .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
+          .thenReturn(adminWeights);
+
+      assertEquals(
+          new SearchRepository.HybridWeights(0.7, 0.7), openSearchRepository.getHybridWeights());
+    }
+  }
+
+  @Test
+  void getHybridWeightsFallsBackToTheDefaultsWithoutNaturalLanguageSearchConfiguration() {
+    SearchRepository unconfiguredRepository =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING),
+            "cluster",
+            ElasticSearchConfiguration.SearchType.ELASTICSEARCH,
+            null);
+
+    try (MockedStatic<SettingsCache> settingsCacheMock = mockStatic(SettingsCache.class)) {
+      settingsCacheMock
+          .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
+          .thenReturn(null);
+
+      assertEquals(
+          new SearchRepository.HybridWeights(0.6, 0.4), unconfiguredRepository.getHybridWeights());
+    }
+  }
+
+  @Test
   void requestAndAggregationWrappersDelegateToSearchClient() throws IOException {
     SearchRequest request = new SearchRequest().withQuery("orders");
     SubjectContext subjectContext = mock(SubjectContext.class);

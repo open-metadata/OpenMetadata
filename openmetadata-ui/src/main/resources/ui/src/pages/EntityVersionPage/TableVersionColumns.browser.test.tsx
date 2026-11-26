@@ -13,7 +13,12 @@
 import { http, HttpResponse } from 'msw';
 import { expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { DataType, Table, TableType } from '../../generated/entity/data/table';
+import {
+  DatabaseServiceType,
+  DataType,
+  Table,
+  TableType,
+} from '../../generated/entity/data/table';
 import { SCHEMA } from '../../test/browser/fixtures/hierarchy';
 import { worker } from '../../test/browser/msw';
 import { describeClientPagedTable } from '../../test/browser/paginationContract';
@@ -32,7 +37,7 @@ const columns = Array.from({ length: 20 }, (_, i) => {
     tags: [],
   };
 });
-const table = {
+const table: Table = {
   id: '00000000-0000-4000-8000-0000000000e1',
   name: 'pw_version_table',
   fullyQualifiedName: TABLE_FQN,
@@ -41,14 +46,14 @@ const table = {
   databaseSchema: SCHEMA,
   database: SCHEMA.database,
   service: SCHEMA.service,
-  serviceType: 'Mysql',
+  serviceType: DatabaseServiceType.Mysql,
   owners: [],
   tags: [],
   domains: [],
   dataProducts: [],
   followers: [],
   version: 0.1,
-} as unknown as Table;
+};
 
 const serveVersions = () =>
   worker.use(
