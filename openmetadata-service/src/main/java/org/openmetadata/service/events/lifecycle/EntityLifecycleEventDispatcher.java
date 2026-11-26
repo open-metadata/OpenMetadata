@@ -16,6 +16,7 @@ package org.openmetadata.service.events.lifecycle;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -411,28 +412,53 @@ public class EntityLifecycleEventDispatcher {
 
   /**
    * Collects every applicable handler's cleanup for {@code entities} while their rows still exist,
-   * and returns one action that runs them in handler priority order. The caller runs it once the
-   * hard delete has committed. A handler that fails to prepare or to clean up is logged and never
-   * fails the delete or another handler.
+   * and returns one action that runs them in handler priority order. Each handler prepares the
+   * entities of one type together. The caller runs it once the hard delete has committed. A handler
+   * that fails to prepare or to clean up is logged and never fails the delete or another handler.
    */
   public Runnable prepareHardDelete(List<? extends EntityInterface<?>> entities) {
     List<Runnable> cleanups = new ArrayList<>();
-    Map<String, List<EntityLifecycleEventHandler>> handlersByType = new HashMap<>();
-    for (EntityInterface<?> entity : entities) {
-      String entityType = entity.getEntityReference().getType();
-      for (EntityLifecycleEventHandler handler :
-          handlersByType.computeIfAbsent(entityType, this::getApplicableHandlers)) {
-        cleanups.add(prepareHardDelete(handler, entity));
+    for (List<EntityInterface<?>> sameType : byEntityType(entities)) {
+      String entityType = sameType.getFirst().getEntityReference().getType();
+      for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
+        cleanups.add(
+            prepareHardDelete(
+                handler,
+                sameType.size() + " " + entityType,
+                () -> handler.prepareHardDelete(sameType)));
       }
     }
     return () -> cleanups.forEach(Runnable::run);
   }
 
-  private Runnable prepareHardDelete(
-      EntityLifecycleEventHandler handler, EntityInterface<?> entity) {
+  /** The default of {@link EntityLifecycleEventHandler#prepareHardDelete(List)}. */
+  static Runnable prepareEachHardDelete(
+      EntityLifecycleEventHandler handler, List<? extends EntityInterface<?>> entities) {
+    List<Runnable> cleanups = new ArrayList<>(entities.size());
+    for (EntityInterface<?> entity : entities) {
+      cleanups.add(
+          prepareHardDelete(
+              handler, String.valueOf(entity.getId()), () -> handler.prepareHardDelete(entity)));
+    }
+    return () -> cleanups.forEach(Runnable::run);
+  }
+
+  private static List<List<EntityInterface<?>>> byEntityType(
+      List<? extends EntityInterface<?>> entities) {
+    Map<String, List<EntityInterface<?>>> byType = new LinkedHashMap<>();
+    for (EntityInterface<?> entity : entities) {
+      byType
+          .computeIfAbsent(entity.getEntityReference().getType(), type -> new ArrayList<>())
+          .add(entity);
+    }
+    return List.copyOf(byType.values());
+  }
+
+  private static Runnable prepareHardDelete(
+      EntityLifecycleEventHandler handler, String deleted, Supplier<Runnable> prepare) {
     Runnable cleanup = () -> {};
     try {
-      Runnable prepared = handler.prepareHardDelete(entity);
+      Runnable prepared = prepare.get();
       if (prepared != null) {
         cleanup = () -> runInline(prepared, handler);
       }
@@ -440,10 +466,27 @@ public class EntityLifecycleEventDispatcher {
       LOG.error(
           "Entity lifecycle handler '{}' could not prepare the hard delete of {}",
           handler.getHandlerName(),
-          entity.getId(),
+          deleted,
           e);
     }
     return cleanup;
+  }
+
+  /**
+   * Runs {@code work} off the calling thread, after every task already queued for each of {@code
+   * entities}: once per ordered lane, with the entities that lane serializes. A part that throws,
+   * or that a full lane sheds, goes to the search retry queue for each of its entities.
+   */
+  public void submitInEntityOrder(
+      List<EntityReference> entities, String operation, Consumer<List<EntityReference>> work) {
+    Map<UUID, EntityReference> byId = new LinkedHashMap<>();
+    entities.forEach(entity -> byId.put(entity.getId(), entity));
+    orderedLaneExecutor.submitPerLane(
+        byId.keySet(),
+        laneIds -> {
+          List<EntityReference> lane = laneIds.stream().map(byId::get).toList();
+          return new OrderedLaneBatchTask(() -> work.accept(lane), operation, lane);
+        });
   }
 
   private List<EntityLifecycleEventHandler> getApplicableHandlers(String entityType) {
@@ -615,7 +658,7 @@ public class EntityLifecycleEventDispatcher {
         reference.getType());
   }
 
-  private void runInline(Runnable handlerExecution, EntityLifecycleEventHandler handler) {
+  private static void runInline(Runnable handlerExecution, EntityLifecycleEventHandler handler) {
     try {
       handlerExecution.run();
     } catch (Exception e) {
@@ -641,6 +684,22 @@ public class EntityLifecycleEventDispatcher {
           locatorTask.entityFqn(),
           locatorTask.entityType() == null ? "" : locatorTask.entityType(),
           SearchIndexRetryQueue.failureReason(locatorTask.operation(), failure));
+    } else if (task instanceof OrderedLaneBatchTask batch) {
+      LOG.warn(
+          "Async ordered-lane task '{}' for {} entities failed or was shed; enqueuing durable retry",
+          batch.operation(),
+          batch.entities().size(),
+          failure);
+      String reason = SearchIndexRetryQueue.failureReason(batch.operation(), failure);
+      batch
+          .entities()
+          .forEach(
+              entity ->
+                  SearchIndexRetryQueue.enqueue(
+                      String.valueOf(entity.getId()),
+                      entity.getFullyQualifiedName(),
+                      entity.getType() == null ? "" : entity.getType(),
+                      reason));
     } else {
       LOG.error("Async entity lifecycle lane task failed with no locator; cannot enqueue", failure);
     }

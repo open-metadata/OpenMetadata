@@ -104,11 +104,63 @@ class EntityLifecycleHardDeleteTest {
     assertEquals(List.of("prepare services", "cleanup services"), events);
   }
 
-  private void register(Handler handler) {
+  /** A handler that cleans up many entities in one request gets those of one type together. */
+  @Test
+  void aHandlerPreparesTheEntitiesOfOneTypeTogether() {
+    List<List<String>> batches = new ArrayList<>();
+    register(new BatchHandler(batches));
+    EntityInterface<?> orders = entity(Entity.TABLE);
+    EntityInterface<?> refunds = entity(Entity.TABLE);
+    EntityInterface<?> service = service();
+
+    dispatcher.prepareHardDelete(List.of(orders, service, refunds)).run();
+
+    assertEquals(List.of(List.of(idOf(orders), idOf(refunds)), List.of(idOf(service))), batches);
+  }
+
+  @Test
+  void anEntityThatFailsToPrepareDoesNotStopTheOthersOfItsType() {
+    EntityInterface<?> broken = entity(Entity.TABLE);
+    register(new Handler("tables", 10).failingToPrepare(broken));
+
+    dispatcher.prepareHardDelete(List.of(broken, entity(Entity.TABLE))).run();
+
+    assertEquals(List.of("prepare tables", "cleanup tables"), events);
+  }
+
+  private static String idOf(EntityInterface<?> entity) {
+    return entity.getId().toString();
+  }
+
+  private void register(EntityLifecycleEventHandler handler) {
     String name = handler.getHandlerName();
     dispatcher.unregisterHandler(name);
     dispatcher.registerHandler(handler);
     registered.add(name);
+  }
+
+  private static final class BatchHandler implements EntityLifecycleEventHandler {
+    private final List<List<String>> batches;
+
+    private BatchHandler(List<List<String>> batches) {
+      this.batches = batches;
+    }
+
+    @Override
+    public Runnable prepareHardDelete(List<? extends EntityInterface<?>> entities) {
+      List<String> ids = entities.stream().map(EntityLifecycleHardDeleteTest::idOf).toList();
+      return () -> batches.add(ids);
+    }
+
+    @Override
+    public String getHandlerName() {
+      return "HardDeleteTest-batch";
+    }
+
+    @Override
+    public boolean isAsync() {
+      return false;
+    }
   }
 
   private static EntityInterface<?> service() {
@@ -127,6 +179,7 @@ class EntityLifecycleHardDeleteTest {
     private final String label;
     private final int priority;
     private boolean failToPrepare;
+    private EntityInterface<?> failingEntity;
     private boolean failToCleanUp;
     private Set<String> types = Set.of();
 
@@ -137,6 +190,11 @@ class EntityLifecycleHardDeleteTest {
 
     private Handler failingToPrepare() {
       failToPrepare = true;
+      return this;
+    }
+
+    private Handler failingToPrepare(EntityInterface<?> entity) {
+      failingEntity = entity;
       return this;
     }
 
@@ -152,7 +210,7 @@ class EntityLifecycleHardDeleteTest {
 
     @Override
     public Runnable prepareHardDelete(EntityInterface<?> entity) {
-      if (failToPrepare) {
+      if (failToPrepare || entity == failingEntity) {
         throw new IllegalStateException("prepare failed");
       }
       events.add("prepare " + label);

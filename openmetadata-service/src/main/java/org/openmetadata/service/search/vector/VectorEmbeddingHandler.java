@@ -1,18 +1,23 @@
 package org.openmetadata.service.search.vector;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventHandler;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
+  private static final String DELETE_CHUNKS_OPERATION = "deleteEntityChunks";
   private final VectorIndexService vectorService;
 
   public VectorEmbeddingHandler(VectorIndexService vectorService) {
@@ -29,6 +34,12 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     return 200;
   }
 
+  /** A hard delete reaches this handler through {@link #prepareHardDelete(List)}. */
+  @Override
+  public boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
+    return eventType != EventType.ENTITY_DELETED;
+  }
+
   @Override
   public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
     updateEmbedding(entity);
@@ -43,7 +54,10 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
       LOG.warn("Received null entity in onEntityUpdated");
       return;
     }
-    if (entity.getDeleted() != null && entity.getDeleted()) {
+    // A recursive soft delete marks each descendant deleted with this update, and sends it no soft
+    // delete event, so the update removes its chunks.
+    if (Boolean.TRUE.equals(entity.getDeleted())) {
+      deleteChunks(entity);
       return;
     }
     if (!Entity.isVectorEmbeddable(entity)) {
@@ -55,10 +69,33 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
   }
 
   @Override
-  public void onEntityDeleted(EntityInterface<?> entity, SubjectContext subjectContext) {
-    // Entity search doc is deleted by SearchIndexHandler; chunk docs live in the dedicated
-    // chunk index and must be cleaned here or the deleted entity keeps matching KNN queries.
-    deleteChunks(entity);
+  public Runnable prepareHardDelete(EntityInterface<?> entity) {
+    return prepareHardDelete(List.of(entity));
+  }
+
+  /**
+   * Every hard delete prepares here, the descendants of a recursive delete included, which get no
+   * delete event. Their chunks are deleted after the delete, one task per ordered lane, each after
+   * the tasks already queued for its entities: an update in flight cannot write them back.
+   */
+  @Override
+  public Runnable prepareHardDelete(List<? extends EntityInterface<?>> entities) {
+    List<EntityReference> embedded =
+        entities.stream()
+            .filter(entity -> entity != null && entity.getId() != null && isSupported(entity))
+            .map(EntityInterface::getEntityReference)
+            .toList();
+    return embedded.isEmpty()
+        ? () -> {}
+        : () ->
+            EntityLifecycleEventDispatcher.getInstance()
+                .submitInEntityOrder(embedded, DELETE_CHUNKS_OPERATION, this::deleteChunksOf);
+  }
+
+  private void deleteChunksOf(List<EntityReference> entities) {
+    for (EntityReference entity : entities) {
+      deleteChunks(entity.getId().toString());
+    }
   }
 
   /** Invalidates stale stored text without making a provider call on the index-writing thread. */
@@ -114,11 +151,15 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
 
   private void deleteChunks(EntityInterface<?> entity) {
     if (entity != null && entity.getId() != null && isSupported(entity)) {
-      try {
-        vectorService.deleteEntityChunks(entity.getId().toString());
-      } catch (Exception e) {
-        LOG.error("Failed to delete chunks for entity {}: {}", entity.getId(), e.getMessage(), e);
-      }
+      deleteChunks(entity.getId().toString());
+    }
+  }
+
+  private void deleteChunks(String entityId) {
+    try {
+      vectorService.deleteEntityChunks(entityId);
+    } catch (Exception e) {
+      LOG.error("Failed to delete chunks for entity {}: {}", entityId, e.getMessage(), e);
     }
   }
 
