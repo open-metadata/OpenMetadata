@@ -113,8 +113,7 @@ def test_connectors_reject_invalid_configuration(defaults, selected):
 
 @pytest.fixture(
     params=[
-        ("ci-pr.yml", "python", "gate"),
-        ("ci-pr.yml", "py-tests-status", None),
+        ("ci-pr.yml", "py-tests-status", "gate"),
         ("ci-merge-queue.yml", "py-tests-status", None),
     ]
 )
@@ -199,7 +198,7 @@ def test_nightly_artifact_names_are_unique_across_invocations():
 
 
 def test_pr_gate_covers_every_selected_step():
-    job = workflow("ci-pr.yml")["jobs"]["python"]
+    job = workflow("ci-pr.yml")["jobs"]["py-tests-status"]
     gate = next(step for step in job["steps"] if step.get("id") == "gate")
 
     def keys(template):

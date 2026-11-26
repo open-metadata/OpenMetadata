@@ -45,122 +45,59 @@ jobs:
     with:
       ref: ${{ needs.plan.outputs.ref }}
 
-  # Static checks, unit tests and Airflow API tests share one runner. Later suites still run
-  # after an earlier one fails so a single push reports every selected failure. The job runs
-  # even when nothing is selected or planning fails, so the required checks are always reported.
-  python:
-    name: python
+  # The native check reports on fork PRs and catches planner failures and unexpected suite skips.
+  py-tests-status:
+    name: py-tests-status
     needs: plan
     if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'workflow_dispatch' || inputs.workload == 'python') }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
       contents: read
-      checks: write
-    outputs:
-      gate: ${{ steps.gate.outcome }}
-    env:
-      # Fork PRs get a read-only token and cannot create check runs; py-tests-status covers them.
-      CAN_REPORT_CHECKS: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        if: ${{ needs.plan.outputs.static == 'true' }}
+        if: ${{ needs.plan.result == 'success' && needs.plan.outputs.static == 'true' }}
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
           fetch-depth: 1
       - name: Run Python static checks
         id: static
-        if: ${{ needs.plan.outputs.static == 'true' }}
+        if: ${{ needs.plan.result == 'success' && needs.plan.outputs.static == 'true' }}
         uses: ./.github/actions/python-static-checks
         with:
           python-version: ${{ needs.plan.outputs.python-lowest }}
           check-types: ${{ needs.plan.outputs.python }}
       - name: Run Python unit tests
         id: unit
-        if: ${{ !cancelled() && needs.plan.outputs.python == 'true' }}
+        if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.python == 'true' }}
         uses: ./.github/actions/python-unit
         with:
           python-version: ${{ needs.plan.outputs.python-highest }}
           prepare-models: 'true'
       - name: Run Airflow API tests
         id: airflow
-        if: ${{ !cancelled() && needs.plan.outputs.airflow-apis == 'true' }}
+        if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.airflow-apis == 'true' }}
         uses: ./.github/actions/python-airflow-apis
         with:
           python-version: ${{ needs.plan.outputs.python-lowest }}
-      # The step result feeds py-tests-status; failing suites already fail the job.
       - name: Verify selected Python workloads
         id: gate
         if: ${{ always() }}
-        continue-on-error: true
         env:
           NEEDS_JSON: |
             {
               "plan": {"result": "${{ needs.plan.result }}"},
-              "py-checkstyle": {"result": "${{ steps.static.outcome }}"},
+              "python-static-checks": {"result": "${{ steps.static.outcome }}"},
               "python-unit": {"result": "${{ steps.unit.outcome }}"},
               "airflow-apis": {"result": "${{ steps.airflow.outcome }}"}
             }
           EXPECTED_RESULTS: |
             {
               "plan": "success",
-              "py-checkstyle": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
+              "python-static-checks": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
               "python-unit": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
               "airflow-apis": "${{ needs.plan.outputs.airflow-apis == 'true' && 'success' || 'skipped' }}"
-            }
-        run: |
-          jq -e -n --argjson needs "$NEEDS_JSON" --argjson expected "$EXPECTED_RESULTS" '
-            $expected | length > 0 and
-            (keys == ($needs | keys)) and
-            all(to_entries[]; . as $job |
-              ($job.value == "success" or $job.value == "skipped") and
-              $needs[$job.key].result == $job.value)
-          '
-        shell: bash
-      - name: Report py-checkstyle
-        if: ${{ always() && env.CAN_REPORT_CHECKS == 'true' }}
-        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        with:
-          token: ${{ github.token }}
-          sha: ${{ github.event.pull_request.head.sha || github.sha }}
-          name: py-checkstyle
-          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || steps.static.outcome || 'skipped' }}
-          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      - name: Report airflow-apis
-        if: ${{ always() && env.CAN_REPORT_CHECKS == 'true' && steps.airflow.outcome != 'skipped' && steps.airflow.outcome != '' }}
-        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        with:
-          token: ${{ github.token }}
-          sha: ${{ github.event.pull_request.head.sha || github.sha }}
-          name: airflow-apis
-          conclusion: ${{ job.status == 'cancelled' && 'cancelled' || steps.airflow.outcome }}
-          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-  # Required check, published as a job so fork PRs report it too. It must verify on every PR:
-  # a job skipped by `if` reports success and would override a failing check of the same name.
-  py-tests-status:
-    name: py-tests-status
-    needs:
-      - plan
-      - python
-    if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'workflow_dispatch' || inputs.workload == 'python') }}
-    runs-on: ubuntu-slim
-    timeout-minutes: 2
-    steps:
-      - name: Verify selected Python workloads
-        env:
-          NEEDS_JSON: |
-            {
-              "plan": {"result": "${{ needs.plan.result }}"},
-              "python": {"result": "${{ needs.python.result }}"},
-              "python-gate": {"result": "${{ needs.python.outputs.gate }}"}
-            }
-          EXPECTED_RESULTS: |
-            {
-              "plan": "success",
-              "python": "success",
-              "python-gate": "success"
             }
         run: |
           jq -e -n --argjson needs "$NEEDS_JSON" --argjson expected "$EXPECTED_RESULTS" '
@@ -299,9 +236,15 @@ jobs:
   backend-checks-status:
     name: backend-checks-status
     needs: [plan, backend-checks, k8s_operator-unit-tests, docker-image-smoke-test]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     timeout-minutes: 5
-    if: ${{ always() && github.event_name != 'workflow_dispatch' }}
+    if: >-
+      ${{ always() && github.event_name == 'pull_request' &&
+          (needs.plan.result != 'success' ||
+           needs.plan.outputs.checkstyle != 'false' ||
+           needs.plan.outputs.java-unit != 'false' ||
+           needs.plan.outputs.java-operator != 'false' ||
+           needs.plan.outputs.docker-smoke != 'false') }}
     steps:
       - name: Verify backend checks, operator tests, and Docker smoke test
         env:
