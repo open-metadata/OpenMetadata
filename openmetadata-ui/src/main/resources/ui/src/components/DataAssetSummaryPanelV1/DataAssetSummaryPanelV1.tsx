@@ -13,7 +13,7 @@
 import { Owner, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, sumBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../constants/constants';
@@ -23,14 +23,14 @@ import { OperationPermission } from '../../context/PermissionProvider/Permission
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { EntityReference } from '../../generated/entity/type';
-import { TestCaseStatus } from '../../generated/tests/testCase';
 import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { useEntityRules } from '../../hooks/useEntityRules';
 import { ChangeSummaryEntry } from '../../rest/changeSummaryAPI';
+import { fetchTestCaseSummary } from '../../rest/dataQualityDashboardAPI';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { updateTableColumn } from '../../rest/tableAPI';
-import { listTestCases } from '../../rest/testAPI';
 import { getEntityOverview } from '../../utils/DataAssetSummaryPanelUtils';
+import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQualityPureUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -44,7 +44,7 @@ import {
   getDerivedPermissionFlags,
 } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { generateEntityLink, getTierTags } from '../../utils/TablePureUtils';
+import { getTierTags } from '../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
 import DataQualitySection from '../common/DataQualitySection/DataQualitySection';
@@ -429,52 +429,37 @@ export const DataAssetSummaryPanelV1 = ({
       return;
     }
 
+    if (!flags.canViewTests) {
+      setStatusCounts({ success: 0, failed: 0, aborted: 0, ack: 0, total: 0 });
+
+      return;
+    }
+
     try {
       setIsTestCaseLoading(true);
-      const entityLink = generateEntityLink(dataAsset?.fullyQualifiedName);
-
-      const response = await listTestCases({
-        entityLink,
-        includeAllTests: true,
-        limit: 100, // Get more test cases to ensure accurate counts
-        fields: ['testCaseResult', 'incidentId'],
+      // Aggregated by status in search: tallying one fetched page capped the counts at the page
+      // size, and status-filtered list totals can be served stale from the list-count cache.
+      const { data } = await fetchTestCaseSummary({
+        entityFQN: dataAsset.fullyQualifiedName,
       });
+      const { success, failed, aborted } =
+        transformToTestCaseStatusObject(data);
 
-      // Calculate status counts
-      const counts = (response.data || []).reduce(
-        (acc, testCase) => {
-          const status = testCase.testCaseResult?.testCaseStatus;
-          if (status) {
-            switch (status) {
-              case TestCaseStatus.Success:
-                acc.success++;
-
-                break;
-              case TestCaseStatus.Failed:
-                acc.failed++;
-
-                break;
-              case TestCaseStatus.Aborted:
-                acc.aborted++;
-
-                break;
-            }
-            acc.total++;
-          }
-
-          return acc;
-        },
-        { success: 0, failed: 0, aborted: 0, ack: 0, total: 0 }
-      );
-
-      setStatusCounts(counts);
+      setStatusCounts({
+        success,
+        failed,
+        aborted,
+        ack: 0,
+        // Queued results count toward the total, as they did before.
+        total: sumBy(data, ({ document_count }) => Number(document_count)),
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
       setStatusCounts({ success: 0, failed: 0, aborted: 0, ack: 0, total: 0 });
     } finally {
       setIsTestCaseLoading(false);
     }
-  }, [dataAsset?.fullyQualifiedName, entityPermissions]);
+  }, [dataAsset?.fullyQualifiedName, entityType, flags.canViewTests]);
 
   const fetchEntityBasedDetails = () => {
     if (entityType === EntityType.TABLE) {
