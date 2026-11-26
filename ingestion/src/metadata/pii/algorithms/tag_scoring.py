@@ -169,7 +169,6 @@ class ScoreTagsForColumnService:
         self._language = language
 
     def __call__(self, column: Column, data: Sequence[Any], tags_to_analyze: list[Tag]) -> list[ScoredTag]:
-        # Scoped to one column call: holds at most that column's sample values, freed afterwards.
         nlp_artifacts_memo: dict[tuple[str, str], NlpArtifacts] = {}
         tag_analyzers = (
             TagAnalyzer(

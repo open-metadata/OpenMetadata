@@ -324,18 +324,22 @@ class TestTagScorer:
             score=IsNumeric(gt=0.5),
         )
 
-    def test_sample_values_are_parsed_once_across_tags(self, email_tag, phone_tag, column_to_analyze):
-        """spaCy parsing dominates CPU; re-parsing every value per tag made large catalogs take days."""
+    @pytest.mark.parametrize("language", [ClassificationLanguage.en, ClassificationLanguage.any])
+    def test_sample_values_are_parsed_once_across_tags(self, email_tag, phone_tag, column_to_analyze, language):
         nlp_engine = load_nlp_engine()
+        engine_class = type(nlp_engine)
         sample_data = ["john@example.com", "555-123-4567", "john@example.com", "plain text"]
 
-        with patch.object(nlp_engine, "process_text", wraps=nlp_engine.process_text) as process_text:
-            scored = ScoreTagsForColumnService(nlp_engine=nlp_engine)(
+        # Patched on the class: the "any" path loads its per-language engines itself.
+        with patch.object(
+            engine_class, "process_text", autospec=True, side_effect=engine_class.process_text
+        ) as process_text:
+            scored = ScoreTagsForColumnService(nlp_engine=nlp_engine, language=language)(
                 column_to_analyze, sample_data, [email_tag, phone_tag]
             )
 
         assert {s.tag.name.root for s in scored} == {"EmailTag", "PhoneTag"}
-        parsed_texts = sorted(call.args[0] for call in process_text.call_args_list)
+        parsed_texts = sorted(call.args[1] for call in process_text.call_args_list)
         assert parsed_texts == sorted({*sample_data, column_to_analyze.name.root})
 
 
