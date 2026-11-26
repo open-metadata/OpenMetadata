@@ -55,5 +55,7 @@ another service, because the lineage parser looked tables up only in the service
 processed. Query lineage now searches the model's own service first, then the service of each of
 its upstreams, read from the FQN the upstream was recorded under. Those are the services where
 `catalogMapping` and `searchAcrossDatabases` found the parents, so column lineage follows table
-lineage without searching every service. A table the SQL reads that is not a dbt upstream is still
-looked up in the model's service only.
+lineage without searching every service. The list applies to every table the SQL reads, so one that
+is not a dbt upstream and misses in the model's service is also looked up in the upstreams'
+services; the first service with a match wins, and a service no upstream was found in is never
+searched.
