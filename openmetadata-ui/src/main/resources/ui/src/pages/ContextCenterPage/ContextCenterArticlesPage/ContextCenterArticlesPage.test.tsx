@@ -77,6 +77,7 @@ jest.mock(
     __esModule: true,
     default: ({ permissions }: { permissions: OperationPermission }) => (
       <div data-testid="article-detail-header">
+        {permissions.ViewAll && <span data-testid="can-view-all" />}
         {permissions.EditOwners && <span data-testid="can-edit-owners" />}
         {permissions.Delete && <span data-testid="can-delete" />}
       </div>
@@ -184,8 +185,10 @@ describe('ContextCenterArticlesPage article header permissions', () => {
     renderPage();
 
     await waitFor(() => expect(mockGetResourcePermission).toHaveBeenCalled());
+    // Wait for a resolved permission to reach the header so the absence checks below
+    // can't pass against the initial DEFAULT_ENTITY_PERMISSION.
+    await screen.findByTestId('can-view-all');
 
-    expect(screen.getByTestId('article-detail-header')).toBeInTheDocument();
     expect(screen.queryByTestId('can-edit-owners')).not.toBeInTheDocument();
     expect(screen.queryByTestId('can-delete')).not.toBeInTheDocument();
   });
