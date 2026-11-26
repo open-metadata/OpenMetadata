@@ -205,7 +205,6 @@ jobs:
       actions: read
     uses: ./.github/workflows/ui-ci.yml
     with:
-      ref: ${{ needs.plan.outputs.ref }}
       unit: ${{ needs.plan.outputs.ui-unit == 'true' }}
 
   # Required check for the UI. Like py-tests-status it must run on every

@@ -207,7 +207,6 @@ jobs:
       actions: read
     uses: ./.github/workflows/ui-ci.yml
     with:
-      ref: ${{ needs.plan.outputs.ref }}
       unit: ${{ needs.plan.outputs.ui-unit == 'true' }}
 
   # Required check for the UI. It runs even when ui is skipped, so the check is
