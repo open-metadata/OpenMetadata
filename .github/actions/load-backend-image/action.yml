@@ -1,9 +1,5 @@
 name: Load backend image
-description: Download and verify the backend image built for this workflow run.
-inputs:
-  for-compose:
-    description: Tag the image for the server and migration services.
-    default: 'false'
+description: Download, verify, and tag the backend image built for this workflow run.
 runs:
   using: composite
   steps:
@@ -13,7 +9,5 @@ runs:
         name: ci-backend-image
         path: ${{ runner.temp }}
     - name: Load backend image
-      env:
-        IMAGE_OPERATION: ${{ inputs.for-compose == 'true' && 'load-for-compose' || 'load' }}
-      run: bash .github/scripts/ci_backend_image.sh "$IMAGE_OPERATION" "$RUNNER_TEMP/ci-backend.tar.zst"
+      run: bash .github/scripts/ci_backend_image.sh load "$RUNNER_TEMP/ci-backend.tar.zst"
       shell: bash

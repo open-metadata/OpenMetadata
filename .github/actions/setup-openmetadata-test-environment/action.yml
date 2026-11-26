@@ -46,8 +46,6 @@ runs:
     - name: Load backend image
       if: inputs.use-backend-image == 'true'
       uses: ./.github/actions/load-backend-image
-      with:
-        for-compose: 'true'
     - name: Setup JDK 21
       if: inputs.setup-java == 'true'
       uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
