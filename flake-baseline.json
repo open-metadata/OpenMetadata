@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-25T10:47:47Z",
+  "generatedAt": "2026-11-26T03:20:52Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "44004103039",
-      "sourceSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "recordedAt": "2026-11-17T03:24:03Z"
-    },
     {
       "runId": "44224347886",
       "sourceSha": "8a7d55493a1605c03100c4914051f4308228ef34",
@@ -53,19 +48,35 @@
       "runId": "45592637810",
       "sourceSha": "41ce2357df7cffc82dddd8ecab27530374a8f075",
       "recordedAt": "2026-11-25T10:47:47Z"
+    },
+    {
+      "runId": "45743567989",
+      "sourceSha": "aedc7281342e5da694a79aad07164b77d2134f96",
+      "recordedAt": "2026-11-26T03:20:52Z"
     }
   ],
   "entries": {
     "Basic :: Features/Markdown.spec.ts :: Markdown \u203a should render markdown": {
       "observations": [
         "44445461359",
-        "45592637810"
+        "45592637810",
+        "45743567989"
       ],
       "project": "Basic",
       "file": "Features/Markdown.spec.ts",
       "title": "Markdown \u203a should render markdown",
-      "lastSeenSha": "41ce2357df7cffc82dddd8ecab27530374a8f075",
+      "lastSeenSha": "aedc7281342e5da694a79aad07164b77d2134f96",
       "hardFailure": true
+    },
+    "Basic :: Features/TeamsDragAndDrop.spec.ts :: Teams drag and drop should work properly \u203a Add teams in hierarchy": {
+      "observations": [
+        "45743567989"
+      ],
+      "project": "Basic",
+      "file": "Features/TeamsDragAndDrop.spec.ts",
+      "title": "Teams drag and drop should work properly \u203a Add teams in hierarchy",
+      "lastSeenSha": "aedc7281342e5da694a79aad07164b77d2134f96",
+      "hardFailure": false
     },
     "Basic :: Features/TeamsHierarchy.spec.ts :: Add Nested Teams and Test TeamsSelectable \u203a Add teams in hierarchy": {
       "observations": [
@@ -76,16 +87,6 @@
       "title": "Add Nested Teams and Test TeamsSelectable \u203a Add teams in hierarchy",
       "lastSeenSha": "2cc8c5525582f44dd70ed861b2aef44ea0e0be1e",
       "hardFailure": false
-    },
-    "Basic :: Pages/Bots.spec.ts :: Bots Page should work properly \u203a Bots Page should work properly": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "Basic",
-      "file": "Pages/Bots.spec.ts",
-      "title": "Bots Page should work properly \u203a Bots Page should work properly",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
     },
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a a bot writing the field supersedes the held edit": {
       "observations": [
@@ -99,7 +100,6 @@
     },
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a accepting one of two competing edits supersedes the other": {
       "observations": [
-        "44004103039",
         "44224347886",
         "44445461359"
       ],
@@ -119,39 +119,8 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": false
     },
-    "ImportExport :: Features/DataQuality/TestCaseImportExportBasic.spec.ts :: Test Case Bulk Import/Export - Admin User \u203a should upload and validate CSV file": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "ImportExport",
-      "file": "Features/DataQuality/TestCaseImportExportBasic.spec.ts",
-      "title": "Test Case Bulk Import/Export - Admin User \u203a should upload and validate CSV file",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "ImportExport :: Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts :: Test Case Import/Export/Edit - End-to-End Flow with Admin \u203a Admin: Complete export-import-validate flow": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "ImportExport",
-      "file": "Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
-      "title": "Test Case Import/Export/Edit - End-to-End Flow with Admin \u203a Admin: Complete export-import-validate flow",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "ImportExport :: Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts :: Test Case Import/Export/Edit - End-to-End Flow with EditAll and Create on TestCase resource \u203a EditAll and Create User: Complete export-import-validate flow": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "ImportExport",
-      "file": "Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
-      "title": "Test Case Import/Export/Edit - End-to-End Flow with EditAll and Create on TestCase resource \u203a EditAll and Create User: Complete export-import-validate flow",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
     "Ingestion :: Features/DataQuality/AddTestCaseNewFlow.spec.ts :: Add TestCase New Flow \u203a Add Column Test Case": {
       "observations": [
-        "44004103039",
         "44224347886",
         "44445461359",
         "44661891093",
@@ -218,6 +187,16 @@
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
       "hardFailure": true
     },
+    "Ingestion :: Pages/DataContracts.spec.ts :: Data Contracts \u203a Create Data Contract and validate for Table": {
+      "observations": [
+        "45743567989"
+      ],
+      "project": "Ingestion",
+      "file": "Pages/DataContracts.spec.ts",
+      "title": "Data Contracts \u203a Create Data Contract and validate for Table",
+      "lastSeenSha": "aedc7281342e5da694a79aad07164b77d2134f96",
+      "hardFailure": false
+    },
     "IntakeForm :: Features/ProfileGovernance.spec.ts :: Profile Governance \u2014 Glossary Term Relations CRUD \u203a cancel on the form page returns to the list without creating": {
       "observations": [
         "44224347886"
@@ -249,14 +228,25 @@
       "lastSeenSha": "eac56d0fd889168ae450ffd5faee3c0c026972cf",
       "hardFailure": false
     },
+    "Reindex :: Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts :: Profiler settings survive a table reindex": {
+      "observations": [
+        "45743567989"
+      ],
+      "project": "Reindex",
+      "file": "Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
+      "title": "Profiler settings survive a table reindex",
+      "lastSeenSha": "aedc7281342e5da694a79aad07164b77d2134f96",
+      "hardFailure": true
+    },
     "Reindex :: Pages/SearchIndexApplication.spec.ts :: Search Index Application \u203a Search Index Application": {
       "observations": [
-        "45592637810"
+        "45592637810",
+        "45743567989"
       ],
       "project": "Reindex",
       "file": "Pages/SearchIndexApplication.spec.ts",
       "title": "Search Index Application \u203a Search Index Application",
-      "lastSeenSha": "41ce2357df7cffc82dddd8ecab27530374a8f075",
+      "lastSeenSha": "aedc7281342e5da694a79aad07164b77d2134f96",
       "hardFailure": true
     },
     "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a a test case incident resolves through the reason dialog": {
@@ -353,16 +343,6 @@
       "lastSeenSha": "2cc8c5525582f44dd70ed861b2aef44ea0e0be1e",
       "hardFailure": true
     },
-    "chromium :: Features/ContextCenterPermission.spec.ts :: Context Center Permissions \u203a Documents Permissions \u203a user with createAll permission can see upload and folder create actions but no row actions, and can create a folder": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "chromium",
-      "file": "Features/ContextCenterPermission.spec.ts",
-      "title": "Context Center Permissions \u203a Documents Permissions \u203a user with createAll permission can see upload and folder create actions but no row actions, and can create a folder",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
     "chromium :: Features/DataQuality/FailureThreshold.spec.ts :: Data Quality failure thresholds \u203a Seeded strict and relative results display their thresholds": {
       "observations": [
         "44224347886"
@@ -375,7 +355,6 @@
     },
     "chromium :: Features/McpAdministration.spec.ts :: admin controls MCP access and revokes registered clients": {
       "observations": [
-        "44004103039",
         "44224347886"
       ],
       "project": "chromium",
@@ -424,16 +403,6 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "chromium :: Features/OntologyExplorer.spec.ts :: Ontology Explorer \u203a switches between the model graph and the data layer": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyExplorer.spec.ts",
-      "title": "Ontology Explorer \u203a switches between the model graph and the data layer",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
     "chromium :: Features/ProfileSsoSettings.spec.ts :: Profile SSO Settings \u203a Test Login opens as a sub page and Back keeps the edited values": {
       "observations": [
         "44224347886"
@@ -466,13 +435,14 @@
     },
     "chromium :: Flow/AlertSeveralSources.spec.ts :: Alerts with several sources \u203a Observability alert warns about a source its trigger never reaches": {
       "observations": [
-        "45592637810"
+        "45592637810",
+        "45743567989"
       ],
       "project": "chromium",
       "file": "Flow/AlertSeveralSources.spec.ts",
       "title": "Alerts with several sources \u203a Observability alert warns about a source its trigger never reaches",
-      "lastSeenSha": "41ce2357df7cffc82dddd8ecab27530374a8f075",
-      "hardFailure": true
+      "lastSeenSha": "aedc7281342e5da694a79aad07164b77d2134f96",
+      "hardFailure": false
     },
     "chromium :: Flow/AppBasic.spec.ts :: should call installed app api and it should respond with 200": {
       "observations": [
@@ -504,16 +474,6 @@
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
       "hardFailure": true
     },
-    "chromium :: Pages/InputOutputPorts.spec.ts :: Input Output Ports \u203a Section 2: Adding Ports \u203a Add different entity types as ports": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "chromium",
-      "file": "Pages/InputOutputPorts.spec.ts",
-      "title": "Input Output Ports \u203a Section 2: Adding Ports \u203a Add different entity types as ports",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": false
-    },
     "chromium :: Pages/Lineage/DataAssetLineage.spec.ts :: Column Level Lineage \u203a Column lineage for searchIndex -> searchIndex": {
       "observations": [
         "45592637810"
@@ -532,56 +492,6 @@
       "file": "Pages/Teams.spec.ts",
       "title": "Teams Page with EditUser Permission \u203a Add and Remove User for Team",
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Classic settings light \u203a classic-settings-notifications-announcements": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Classic settings light \u203a classic-settings-notifications-announcements",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Custom property configuration dark \u203a custom-property-config-no-search-results": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Custom property configuration dark \u203a custom-property-config-no-search-results",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Custom property configuration light \u203a custom-property-config-no-search-results": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Custom property configuration light \u203a custom-property-config-no-search-results",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Customization states light \u203a classic-customize-home": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Customization states light \u203a classic-customize-home",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Customization states light \u203a customize-home": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Customization states light \u203a customize-home",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
       "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-assets": {
@@ -644,19 +554,8 @@
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-queries": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-table-queries",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-schema-definition": {
       "observations": [
-        "44004103039",
         "44224347886",
         "44445461359"
       ],
@@ -665,66 +564,6 @@
       "title": "Entity tabs light \u203a tab-table-schema-definition",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": false
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Incident states dark \u203a incident-bulk-severity-options": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Incident states dark \u203a incident-bulk-severity-options",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Incident states dark \u203a incident-bulk-status-options": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Incident states dark \u203a incident-bulk-status-options",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Incident states dark \u203a incident-selected-group": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Incident states dark \u203a incident-selected-group",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Incident states light \u203a incident-bulk-severity-options": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Incident states light \u203a incident-bulk-severity-options",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Incident states light \u203a incident-bulk-status-options": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Incident states light \u203a incident-bulk-status-options",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Incident states light \u203a incident-selected-group": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Incident states light \u203a incident-selected-group",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a shell-mode-menu": {
       "observations": [
@@ -1176,16 +1015,6 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-search-error": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/exploreInteractions.spec.ts",
-      "title": "Explore interactions dark \u203a explore-search-error",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-tools-menu": {
       "observations": [
         "44224347886"
@@ -1214,16 +1043,6 @@
       "file": "VisualRegression/exploreInteractions.spec.ts",
       "title": "Explore interactions light \u203a explore-advanced-nested-group",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-search-error": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/exploreInteractions.spec.ts",
-      "title": "Explore interactions light \u203a explore-search-error",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-tools-menu": {
@@ -1296,46 +1115,6 @@
       "file": "VisualRegression/metricList.spec.ts",
       "title": "Metric interaction definition light",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-adoption-error": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/settingsForms.spec.ts",
-      "title": "Settings form bodies dark \u203a settings-source-adoption-error",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-fully-managed": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/settingsForms.spec.ts",
-      "title": "Settings form bodies dark \u203a settings-source-fully-managed",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies light \u203a settings-source-adoption-error": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/settingsForms.spec.ts",
-      "title": "Settings form bodies light \u203a settings-source-adoption-error",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies light \u203a settings-source-fully-managed": {
-      "observations": [
-        "44004103039"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/settingsForms.spec.ts",
-      "title": "Settings form bodies light \u203a settings-source-fully-managed",
-      "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: applications matches baseline": {
@@ -1477,10 +1256,11 @@
     "Ingestion :: Features/DataQuality/DataQuality.spec.ts :: Data Quality \u203a shows every section for a scheduled failed test case run",
     "Ingestion :: Features/IncidentManager.spec.ts :: Incident Manager \u203a Complete Incident lifecycle with table owner",
     "Knowledge Graph :: Features/KnowledgeGraph.spec.ts :: Knowledge Graph \u203a hover reveals the exact predicate and clicking a canvas edge pins it",
+    "Reindex :: Pages/SearchIndexApplication.spec.ts :: Search Index Application \u203a Search Index Application",
     "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a a test case incident resolves through the reason dialog",
     "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a an incident is acknowledged, then resolved with a reason",
     "chromium :: Features/AIMode/InboxTasks.spec.ts :: Inbox \u2014 Triage \u203a rejecting a task asks for a comment and lowers the sidebar count",
-    "chromium :: Features/McpAdministration.spec.ts :: admin controls MCP access and revokes registered clients",
+    "chromium :: Flow/AlertSeveralSources.spec.ts :: Alerts with several sources \u203a Observability alert warns about a source its trigger never reaches",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-schema-definition",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets dark",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets light",
@@ -1490,10 +1270,10 @@
     "Basic :: Features/Markdown.spec.ts :: Markdown \u203a should render markdown",
     "Ingestion :: Features/DataQuality/DataQuality.spec.ts :: Data Quality \u203a shows every section for a scheduled failed test case run",
     "Ingestion :: Features/IncidentManager.spec.ts :: Incident Manager \u203a Complete Incident lifecycle with table owner",
+    "Reindex :: Pages/SearchIndexApplication.spec.ts :: Search Index Application \u203a Search Index Application",
     "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a a test case incident resolves through the reason dialog",
     "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a an incident is acknowledged, then resolved with a reason",
     "chromium :: Features/AIMode/InboxTasks.spec.ts :: Inbox \u2014 Triage \u203a rejecting a task asks for a comment and lowers the sidebar count",
-    "chromium :: Features/McpAdministration.spec.ts :: admin controls MCP access and revokes registered clients",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets dark",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets light",
     "visual-regression :: VisualRegression/staticPages.spec.ts :: teams matches baseline"
