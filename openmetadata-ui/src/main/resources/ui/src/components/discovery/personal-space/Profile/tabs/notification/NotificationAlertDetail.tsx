@@ -66,6 +66,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import AlertPendingEvents from '../../../../../Alerts/AlertPendingEvents/AlertPendingEvents';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
@@ -194,10 +195,7 @@ const DiagnosticStatsSummary: FC<{
           {`${t('label.pending-entity', { entity: t('label.event-plural') })}:`}
         </Typography>
         <Typography size="text-sm" weight="medium">
-          {formatEventCount(
-            eventsRecord.pendingEventsCount,
-            eventsRecord.countsAreLowerBound
-          )}
+          <AlertPendingEvents counts={eventsRecord} />
         </Typography>
       </Box>
       <Box align="center" direction="row" gap={1}>

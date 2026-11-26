@@ -8,6 +8,8 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
@@ -16,12 +18,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.service.events.consumer.ServerStopping;
@@ -34,11 +36,8 @@ class GenericBackgroundWorkerTest {
   }
 
   @ParameterizedTest
-  @EnumSource(
-      value = BackgroundJob.JobType.class,
-      names = {"CONTEXT_MEMORY_EXTRACTION", "MEMORY_GLOSSARY_DERIVATION"})
-  void memoryJobLeavesWorkerCapacityForOtherJobs(BackgroundJob.JobType firstType)
-      throws InterruptedException {
+  @ValueSource(strings = {"CONTEXT_MEMORY_EXTRACTION", "MEMORY_GLOSSARY_DERIVATION"})
+  void memoryJobLeavesWorkerCapacityForOtherJobs(String firstType) throws InterruptedException {
     JobDAO jobDao = mock(JobDAO.class);
     CountDownLatch firstMemoryStarted = new CountDownLatch(1);
     CountDownLatch releaseFirstMemory = new CountDownLatch(1);
@@ -48,8 +47,8 @@ class GenericBackgroundWorkerTest {
     AtomicBoolean secondOffered = new AtomicBoolean();
     AtomicBoolean exportOffered = new AtomicBoolean();
     BackgroundJob firstMemory = job(1L, firstType);
-    BackgroundJob secondMemory = job(2L, BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION);
-    BackgroundJob export = job(3L, BackgroundJob.JobType.CSV_EXPORT);
+    BackgroundJob secondMemory = job(2L, BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION);
+    BackgroundJob export = job(3L, BackgroundJobTypes.CSV_EXPORT);
 
     when(jobDao.fetchPendingJob(anyBoolean()))
         .thenAnswer(
@@ -107,12 +106,52 @@ class GenericBackgroundWorkerTest {
     }
   }
 
+  @Test
+  void runsAJobTypeOpenMetadataDoesNotDefineWithItsRegisteredHandler() throws InterruptedException {
+    JobDAO jobDao = mock(JobDAO.class);
+    BackgroundJob downstreamJob = job(4L, "DOWNSTREAM_REINDEX");
+    AtomicBoolean offered = new AtomicBoolean();
+    when(jobDao.fetchPendingJob(anyBoolean()))
+        .thenAnswer(
+            invocation ->
+                offered.compareAndSet(false, true) ? Optional.of(downstreamJob) : Optional.empty());
+    when(jobDao.claimPendingJob(anyLong())).thenReturn(1);
+    when(jobDao.fetchJobById(anyLong())).thenReturn(Optional.empty());
+    CountDownLatch ran = new CountDownLatch(1);
+    AtomicReference<String> ranType = new AtomicReference<>();
+    JobHandlerRegistry registry = new JobHandlerRegistry();
+    registry.register(
+        "test",
+        new JobHandler() {
+          @Override
+          public void runJob(BackgroundJob job) {
+            ranType.set(job.getJobType());
+            ran.countDown();
+          }
+
+          @Override
+          public boolean sendStatusToWebSocket() {
+            return false;
+          }
+        });
+
+    GenericBackgroundWorker worker = new GenericBackgroundWorker(jobDao, registry);
+    worker.start();
+    try {
+      assertTrue(ran.await(5, TimeUnit.SECONDS));
+      assertEquals("DOWNSTREAM_REINDEX", ranType.get());
+      verify(jobDao, timeout(5_000)).updateJobStatus(4L, BackgroundJob.Status.COMPLETED);
+    } finally {
+      worker.stop();
+    }
+  }
+
   /** The handler reports the stop as a job failure; any other error takes the unexpected path. */
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   void stopDuringAMemoryJobLeavesItRunningForRecovery(boolean asJobFailure)
       throws InterruptedException {
-    BackgroundJob job = job(1L, BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION);
+    BackgroundJob job = job(1L, BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION);
 
     BackgroundJob.Status status =
         statusAfterStop(
@@ -128,12 +167,19 @@ class GenericBackgroundWorkerTest {
 
   /** Nothing requeues these types, and a RUNNING Collate admin-ops job blocks new ones. */
   @ParameterizedTest
-  @EnumSource(
-      value = BackgroundJob.JobType.class,
-      names = "CONTEXT_MEMORY_EXTRACTION",
-      mode = EnumSource.Mode.EXCLUDE)
-  void stopDuringAnotherJobStillMarksItFailed(BackgroundJob.JobType type)
-      throws InterruptedException {
+  @ValueSource(
+      strings = {
+        BackgroundJobTypes.CUSTOM_PROPERTY_ENUM_CLEANUP,
+        BackgroundJobTypes.CSV_IMPORT,
+        BackgroundJobTypes.CSV_EXPORT,
+        BackgroundJobTypes.AUDIT_EXPORT,
+        BackgroundJobTypes.ONTOLOGY_BULK,
+        BackgroundJobTypes.ONTOLOGY_PACK_INSTALL,
+        BackgroundJobTypes.MEMORY_GLOSSARY_DERIVATION,
+        "DELETE_ENTITY",
+        "ADMIN_OPS_REINDEX"
+      })
+  void stopDuringAnotherJobStillMarksItFailed(String type) throws InterruptedException {
     BackgroundJob job = job(1L, type);
 
     BackgroundJob.Status status =
@@ -151,7 +197,7 @@ class GenericBackgroundWorkerTest {
     "CUSTOM_PROPERTY_ENUM_CLEANUP, false, true, false"
   })
   void onlyAMemoryJobCutShortByAStopIsLeftForRecovery(
-      BackgroundJob.JobType type, boolean interrupted, boolean serverStopping, boolean expected) {
+      String type, boolean interrupted, boolean serverStopping, boolean expected) {
     ServerStopping.set(serverStopping);
     Throwable cause =
         interrupted
@@ -166,7 +212,7 @@ class GenericBackgroundWorkerTest {
   /** Left RUNNING, a real failure would be requeued by the stale-job reaper and retried forever. */
   @Test
   void aRealLlmFailureStillMarksFailed() throws InterruptedException {
-    BackgroundJob job = job(1L, BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION);
+    BackgroundJob job = job(1L, BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION);
     JobDAO jobDao = mock(JobDAO.class);
     CountDownLatch statusWritten = new CountDownLatch(1);
     Map<Long, BackgroundJob.Status> statuses = queue(jobDao, job, statusWritten);
@@ -277,7 +323,7 @@ class GenericBackgroundWorkerTest {
     }
   }
 
-  private BackgroundJob job(long id, BackgroundJob.JobType type) {
+  private BackgroundJob job(long id, String type) {
     BackgroundJob job = new BackgroundJob();
     job.setId(id);
     job.setJobType(type);

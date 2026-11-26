@@ -1,5 +1,6 @@
 package org.openmetadata.service.rdf;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -1063,7 +1064,11 @@ class RdfPropertyMapperTest {
           model);
 
       Property tagProperty = model.createProperty(OM_NS, "hasTag");
-      Resource tagResource = model.createResource(BASE_URI + "tag/Glossary/PII");
+      // Synthetic tag IRIs are URL-encoded on the way out (URLEncoder on the FQN with dots
+      // turned into slashes) so characters the entity schema allows in tag names (spaces,
+      // { } | ^ \) cannot produce an IRI that violates RFC 3986. "Glossary/PII" percent-encodes
+      // to "Glossary%2FPII".
+      Resource tagResource = model.createResource(BASE_URI + "tag/Glossary%2FPII");
       assertTrue(model.contains(entityResource, tagProperty, tagResource));
       assertTrue(
           model.contains(tagResource, model.createProperty(OM_NS, "tagFQN"), "Glossary.PII"));
@@ -1091,6 +1096,74 @@ class RdfPropertyMapperTest {
               .listObjectsOfProperty(entityResource, model.createProperty(OM_NS, "reviewer"))
               .toList()
               .size());
+    }
+
+    @Test
+    @DisplayName("Synthetic tag IRI is URL-encoded so FQNs with spaces are RFC 3986 compliant")
+    void testResolveTagResourceUrlEncodesFqnWithSpaces() throws Exception {
+      // Tag names may contain spaces (the entityName schema permits them); the synthetic
+      // fallback must percent-encode the resulting path so RDFEntityDiffService.toRdfStatement
+      // does not 400 the whole diff response when it calls URI.create on the statement IRI.
+      ObjectNode tagLabel = objectMapper.createObjectNode();
+      tagLabel.put("tagFQN", "Classification.Personal Data");
+      tagLabel.put("name", "Personal Data");
+      tagLabel.put("source", "Classification");
+      tagLabel.put("labelType", "Manual");
+      tagLabel.put("state", "Confirmed");
+
+      invokePrivate(
+          "processFieldMapping",
+          new Class[] {String.class, JsonNode.class, Object.class, Resource.class, Model.class},
+          "tags",
+          tagLabel,
+          Map.of("@id", "om:hasTag", "@type", "@id"),
+          entityResource,
+          model);
+
+      Property tagProperty = model.createProperty(OM_NS, "hasTag");
+      Resource actualTagResource = model.getProperty(entityResource, tagProperty).getResource();
+      String tagUri = actualTagResource.getURI();
+      // URLEncoder.encode("Classification/Personal Data", UTF_8)
+      // -> "Classification%2FPersonal+Data": slash -> %2F, space -> +.
+      assertEquals(BASE_URI + "tag/Classification%2FPersonal+Data", tagUri);
+      // The emitted IRI must be a valid URI so the RDF diff endpoint does not 400.
+      assertDoesNotThrow(() -> URI.create(tagUri), "synthetic tag IRI must be RFC 3986 compliant");
+    }
+
+    @Test
+    @DisplayName(
+        "Synthetic tag IRI percent-encodes every RFC 3986 unsafe character a tag name allows")
+    void testResolveTagResourceUrlEncodesHostileFqnCharacters() throws Exception {
+      // Schema-allowed characters ({ } | ^ \) are rejected by URI.create in a path; the
+      // fallback encoder must percent-encode them all rather than emit an invalid IRI.
+      ObjectNode tagLabel = objectMapper.createObjectNode();
+      tagLabel.put("tagFQN", "Classification.Sensitive{High}|Meta^Data\\Slash");
+      tagLabel.put("name", "Sensitive{High}|Meta^Data\\Slash");
+      tagLabel.put("source", "Classification");
+      tagLabel.put("labelType", "Manual");
+      tagLabel.put("state", "Confirmed");
+
+      invokePrivate(
+          "processFieldMapping",
+          new Class[] {String.class, JsonNode.class, Object.class, Resource.class, Model.class},
+          "tags",
+          tagLabel,
+          Map.of("@id", "om:hasTag", "@type", "@id"),
+          entityResource,
+          model);
+
+      Property tagProperty = model.createProperty(OM_NS, "hasTag");
+      String tagUri = model.getProperty(entityResource, tagProperty).getResource().getURI();
+      // The exact percent-encoded form is not asserted byte-for-byte; what matters is that
+      // no unsafe character survives un-encoded, and that the result is a valid URI for
+      // RdfEntityDiffService.toRdfStatement's URI.create call.
+      assertFalse(tagUri.contains(" "), "space must be percent-encoded");
+      assertFalse(tagUri.contains("{"), "'{' must be percent-encoded");
+      assertFalse(tagUri.contains("}"), "'}' must be percent-encoded");
+      assertFalse(tagUri.contains("|"), "'|' must be percent-encoded");
+      assertFalse(tagUri.contains("^"), "'^' must be percent-encoded");
+      assertFalse(tagUri.contains("\\"), "'\\' must be percent-encoded");
+      assertDoesNotThrow(() -> URI.create(tagUri), "synthetic tag IRI must be RFC 3986 compliant");
     }
 
     @Test

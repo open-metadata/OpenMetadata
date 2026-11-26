@@ -17,6 +17,9 @@ public class LoginAttemptCache {
   private static LoginAttemptCache INSTANCE;
   private int maxAttempt = 3;
   private final LoadingCache<String, Integer> attemptsCache;
+  // Attempts for identities the provider doesn't know, kept apart so a flood of made-up names can
+  // never evict a real account's counter and reset its lockout.
+  private final LoadingCache<String, Integer> unknownAttemptsCache;
 
   private LoginAttemptCache() {
     LoginConfiguration loginConfiguration =
@@ -26,16 +29,8 @@ public class LoginAttemptCache {
       maxAttempt = loginConfiguration.getMaxLoginFailAttempts();
       accessBlockTime = loginConfiguration.getAccessBlockTime();
     }
-    attemptsCache =
-        CacheBuilder.newBuilder()
-            .maximumSize(1000)
-            .expireAfterWrite(accessBlockTime, TimeUnit.SECONDS)
-            .build(
-                new CacheLoader<>() {
-                  public @NotNull Integer load(@NonNull String username) {
-                    return 0;
-                  }
-                });
+    attemptsCache = newCounter(accessBlockTime);
+    unknownAttemptsCache = newCounter(accessBlockTime);
   }
 
   public static LoginAttemptCache getInstance() {
@@ -52,37 +47,40 @@ public class LoginAttemptCache {
   @VisibleForTesting
   public LoginAttemptCache(int maxAttempt, int blockTimeInSec) {
     this.maxAttempt = maxAttempt;
-    attemptsCache =
-        CacheBuilder.newBuilder()
-            .maximumSize(1000)
-            .expireAfterWrite(blockTimeInSec, TimeUnit.SECONDS)
-            .build(
-                new CacheLoader<>() {
-                  public @NotNull Integer load(@NonNull String username) {
-                    return 0;
-                  }
-                });
+    attemptsCache = newCounter(blockTimeInSec);
+    unknownAttemptsCache = newCounter(blockTimeInSec);
+  }
+
+  private static LoadingCache<String, Integer> newCounter(long expireAfterSeconds) {
+    return CacheBuilder.newBuilder()
+        .maximumSize(1000)
+        .expireAfterWrite(expireAfterSeconds, TimeUnit.SECONDS)
+        .build(
+            new CacheLoader<>() {
+              public @NotNull Integer load(@NonNull String username) {
+                return 0;
+              }
+            });
   }
 
   public void recordSuccessfulLogin(String username) {
     attemptsCache.invalidate(cacheKey(username));
+    unknownAttemptsCache.invalidate(cacheKey(username));
   }
 
   public void recordFailedLogin(String username) {
-    String key = cacheKey(username);
-    int attempts;
-    try {
-      attempts = attemptsCache.get(key);
-    } catch (ExecutionException e) {
-      attempts = 0;
-    }
-    attempts++;
-    attemptsCache.put(key, attempts);
+    attemptsCache.asMap().merge(cacheKey(username), 1, Integer::sum);
+  }
+
+  /** A failed login for an identity the provider doesn't know; locks it out like a real one. */
+  public void recordFailedUnknownLogin(String username) {
+    unknownAttemptsCache.asMap().merge(cacheKey(username), 1, Integer::sum);
   }
 
   public boolean isLoginBlocked(String username) {
     try {
-      return attemptsCache.get(cacheKey(username)) >= maxAttempt;
+      String key = cacheKey(username);
+      return attemptsCache.get(key) >= maxAttempt || unknownAttemptsCache.get(key) >= maxAttempt;
     } catch (ExecutionException e) {
       return false;
     }

@@ -41,6 +41,10 @@ import {
   ContextMemoryStatus,
   EntityReference,
 } from '../../../generated/entity/context/contextMemory';
+import {
+  MemoryActionPermissions,
+  NO_MEMORY_ACTIONS,
+} from '../../../hooks/discovery/context-center/useMemoryActionPermissions';
 import { useMemoryStatusReason } from '../../../hooks/discovery/context-center/useMemoryStatusReason';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getMemoryCitations } from '../../../utils/ContextCenterPureUtils';
@@ -347,12 +351,9 @@ const MemoryUsageInfo: FC<MemoryUsageInfoProps> = ({ memory }) => {
   );
 };
 
-interface MemoryRowActionsProps {
+interface MemoryRowActionsProps extends MemoryActionPermissions {
   memory: ContextMemory;
   memoryUrl: string;
-  canActOnMemory: boolean;
-  canEdit?: boolean;
-  canDelete?: boolean;
   onDeleteMemory?: (memory: ContextMemory) => void;
   onEditMemory?: (memory: ContextMemory) => void;
 }
@@ -360,7 +361,6 @@ interface MemoryRowActionsProps {
 const MemoryRowActions: FC<MemoryRowActionsProps> = ({
   memory,
   memoryUrl,
-  canActOnMemory,
   canEdit,
   canDelete,
   onDeleteMemory,
@@ -371,7 +371,7 @@ const MemoryRowActions: FC<MemoryRowActionsProps> = ({
   return (
     <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
       <CopyButton value={memoryUrl} />
-      {canActOnMemory && canEdit && onEditMemory && (
+      {canEdit && onEditMemory && (
         <ButtonUtility
           data-testid="edit-memory-btn"
           icon={Edit01}
@@ -380,7 +380,7 @@ const MemoryRowActions: FC<MemoryRowActionsProps> = ({
           onClick={() => onEditMemory(memory)}
         />
       )}
-      {canActOnMemory && canDelete && (
+      {canDelete && (
         <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />
       )}
     </Box>
@@ -388,11 +388,8 @@ const MemoryRowActions: FC<MemoryRowActionsProps> = ({
 };
 
 interface MemoryRowProps {
-  currentUserName?: string;
-  isAdminUser?: boolean;
   memory: ContextMemory;
-  canEdit?: boolean;
-  canDelete?: boolean;
+  actions: MemoryActionPermissions;
   onDeleteMemory?: (memory: ContextMemory) => void;
   onEditMemory?: (memory: ContextMemory) => void;
   onTogglePin?: (memory: ContextMemory) => void;
@@ -481,19 +478,13 @@ const useMemoryAuthors = (memory: ContextMemory) => {
 };
 
 const MemoryRow: FC<MemoryRowProps> = ({
-  currentUserName,
-  isAdminUser,
+  actions,
   memory,
-  canEdit,
-  canDelete,
   onDeleteMemory,
   onEditMemory,
   onViewMemory,
 }) => {
   const authors = useMemoryAuthors(memory);
-  const isOwner =
-    memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
-  const canActOnMemory = isOwner || Boolean(isAdminUser);
   const memoryUrl = useMemo(
     () =>
       memory.name
@@ -584,9 +575,8 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
         {/* Actions — always visible */}
         <MemoryRowActions
-          canActOnMemory={canActOnMemory}
-          canDelete={canDelete}
-          canEdit={canEdit}
+          canDelete={actions.canDelete}
+          canEdit={actions.canEdit}
           memory={memory}
           memoryUrl={memoryUrl}
           onDeleteMemory={onDeleteMemory}
@@ -598,14 +588,11 @@ const MemoryRow: FC<MemoryRowProps> = ({
 };
 
 const MemoriesView: FC<MemoriesViewProps> = ({
-  currentUserName,
   data,
-  isAdminUser,
+  getMemoryActions = () => NO_MEMORY_ACTIONS,
   isLoading,
   onDeleteMemory,
   onEditMemory,
-  canEdit,
-  canDelete,
   isPinningMemoryId,
   onTogglePin,
   onViewMemory,
@@ -667,10 +654,7 @@ const MemoriesView: FC<MemoriesViewProps> = ({
     <>
       {data.map((memory) => (
         <MemoryRow
-          canDelete={canDelete}
-          canEdit={canEdit}
-          currentUserName={currentUserName}
-          isAdminUser={isAdminUser}
+          actions={getMemoryActions(memory)}
           isPinningMemoryId={isPinningMemoryId}
           key={memory.id}
           memory={memory}

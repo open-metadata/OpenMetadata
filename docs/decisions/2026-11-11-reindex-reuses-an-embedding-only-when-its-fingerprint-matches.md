@@ -1,11 +1,12 @@
 # A reindex reuses a stored embedding only when its fingerprint matches
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-11 (initial)
+- **Revisions:** v1 2026-11-11 (initial) · v2 2026-11-20 (both engines share the reuse lookup;
+  Elasticsearch embeds every chunk)
 - **Deciders:** Search and AI context maintainers
 - **Guard:** `StoredEmbeddingReuseTest`, `reindexReusesOnlyStoredEmbeddingsWhoseFingerprintIsCurrent`
-  in `ElasticSearchVectorServiceTest` and `OpenSearchVectorServiceTest`, `StoredEmbeddingReuseIT`
-  (both engines); live/reindex parity: `VectorDocBuilderTest` (custom properties) and
+  in `OpenSearchVectorServiceTest`, `StoredEmbeddingReuseIT` (both engines); live/reindex parity:
+  `VectorDocBuilderTest` (custom properties) and
   `MetricRepositoryTest.aReindexReadKeepsEveryInputOfTheMetricEmbeddingFingerprint`
 - **Related:** open-metadata/OpenMetadata#37524, open-metadata/OpenMetadata#37522,
   open-metadata/OpenMetadata#28313
@@ -54,9 +55,10 @@ old embedding forever:
 
 - **Upgrade cost.** The first reindex after a release that changes the fingerprinted text
   re-embeds exactly the entities whose text changed. Elasticsearch makes one paid call per entity
-  (chunk 0 only). OpenSearch makes none beyond what it already made, because the chunks were
-  re-embedded anyway and chunk 0 now also reaches the entity doc. Entities with unchanged text keep
-  their embedding. Upgrade notes for such a release must say which entity types will re-embed.
+  (chunk 0 only). No longer true; see the v2 amendment. OpenSearch makes none beyond what it
+  already made, because the chunks were re-embedded anyway and chunk 0 now also reaches the entity
+  doc. Entities with unchanged text keep their embedding. Upgrade notes for such a release must
+  say which entity types will re-embed.
   #37522 is such a change: the first reindex that has both re-embeds every topic with schema
   fields, on both engines, and no other entity type because of it.
 - **The first reindex with this rule also refreshes embeddings left stale by earlier releases**:
@@ -86,3 +88,15 @@ old embedding forever:
   fingerprint itself, to be picked up.
 - **Revisit** if fingerprint computation shows up as a measurable share of reindex time. A cheaper
   key must still change when the embedding text changes.
+
+## Amendment
+
+v2 (2026-11-20): both engines run one vector index service
+(ADR:2026-11-20-elasticsearch-and-opensearch-share-one-vector-index-service).
+
+- **One reuse lookup.** `getExistingEmbeddingsBatch` has a single implementation, so its unit
+  guard is the OpenSearch test alone. `StoredEmbeddingReuseIT` still runs it on both engines.
+- **Elasticsearch embeds every chunk.** Where this record says Elasticsearch makes one call per
+  entity, or embeds chunk 0 only, it now makes one call per chunk, as OpenSearch does. The entity
+  doc takes chunk 0's embedding from that same call.
+- **`reembed` runs on Elasticsearch.**

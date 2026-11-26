@@ -26,6 +26,7 @@ import { handleNavItemClick, MainNavItem, resolveNavHref } from './navConfig';
 import NavItem from './NavItem';
 import SidebarBrand from './SidebarBrand';
 import { MainNavNode } from './sidebarCustomization';
+import SidebarSearchButton from './SidebarSearchButton';
 import { useActiveNavKey } from './useActiveNavKey';
 import UserProfileCard from './UserProfileCard';
 
@@ -73,6 +74,8 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
           />
         </div>
       </header>
+
+      <SidebarSearchButton />
 
       <nav className="ask-main-panel__nav" data-testid="ask-main-panel-nav">
         {nodes.map((node) => {

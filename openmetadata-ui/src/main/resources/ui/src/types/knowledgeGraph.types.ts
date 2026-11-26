@@ -11,21 +11,12 @@
  *  limitations under the License.
  */
 
-export interface GraphEdge {
-  from: string;
-  to: string;
-  label: string;
-  relationType?: string;
-  arrows?: string;
-}
+import type { GraphEdge as EntityGraphEdge } from '../generated/api/rdf/entityGraph';
 
-export interface GraphFilterOption {
-  id: string;
-  label: string;
-  count: number;
-}
+export type {
+  GraphFilterOption,
+  GraphFilterOptions,
+} from '../generated/api/rdf/entityGraph';
 
-export interface GraphFilterOptions {
-  entityTypes: GraphFilterOption[];
-  relationshipTypes: GraphFilterOption[];
-}
+export type GraphEdge = Pick<EntityGraphEdge, 'from' | 'to' | 'label'> &
+  Partial<Pick<EntityGraphEdge, 'relationType' | 'arrows'>>;
