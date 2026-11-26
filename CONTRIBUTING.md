@@ -2,6 +2,39 @@
 
 We ❤️ all contributions, big and small!
 
+## Ground rules for a pull request
+
+These are the things reviewers look for first, taken from [`REVIEW.md`](REVIEW.md). A PR that covers
+them usually gets a short, focused review.
+
+- **Explain why the change is needed.** Say what problem it solves and for whom, and where it came
+  from: a bug report, a failing test, a user request, or something you noticed in the code. If it
+  fixes a bug, describe what was wrong and why your fix addresses the cause, not just the symptom.
+  For a problem that hasn't happened yet ("this could break if…"), show how it can actually be
+  reached. That helps us judge how much extra complexity the change is worth.
+- **Add tests that prove the change works.** The strongest evidence is a test that fails without
+  your change and passes with it. Prefer tests that exercise the real behavior (real rows, the real
+  workflow, the real API) over mocks of the thing you're testing, which tend to hide bugs rather
+  than catch them (`REVIEW.md` → "A test that cannot fail is a finding").
+- **Share the alternatives you considered.** If you tried other approaches, or picked between a
+  few, tell us which ones and why you landed on this one. Mention the costs you weighed: extra
+  queries or latency, a migration, a new config option, more code to maintain. Then we can discuss
+  the trade-off with you instead of guessing at it.
+- **Keep it as simple as it can be.** The smallest change that solves the problem is the easiest to
+  review and to trust. A new abstraction, mode or setting is welcome when the problem needs it, so
+  say why it does.
+- **One change per PR.** Focused PRs get reviewed faster and are easier to merge. If you have
+  several unrelated improvements, separate PRs are very welcome.
+- **Fix the edge cases reviewers point out.** When a reviewer or a bot names a concrete case (a
+  swallowed error, a double count, an existing setup that would break), fixing it in the PR is
+  usually quicker than coming back to it later.
+- **Stay up to date with `main`.** Rebasing and resolving conflicts keeps the review on the current
+  code. It also shows whether something recently merged overlaps with your change.
+- **Show UI changes.** A UI feature needs a short screen recording (see "Creating a UI feature pull
+  request" below).
+
+There is no CLA or DCO to sign.
+
 ## Before you request review
 
 We want to get you useful feedback as quickly as possible. Most of the first round of feedback on a
@@ -10,24 +43,20 @@ much further on a PR where that first round is already handled. So before you as
 look, please work through the steps below. When CI is green and the bot comments are answered, a
 maintainer can go straight to the design and the logic. That is where human review helps you most.
 
-Once a maintainer picks the PR up, they review it against [`REVIEW.md`](REVIEW.md). Reading it
-yourself is a good way to see what they will look for. The `pr-checklist` skill (`/pr-checklist`)
-can run that self-review for you and fill in the PR template. You will check the CI and bot items
-below on the PR itself.
+The `pr-checklist` skill (`/pr-checklist`) can self-review your change against `REVIEW.md` and fill
+in the PR template for you. You will check the CI and bot items below on the PR itself.
 
 1. **First PR here? Your CI runs need a maintainer's "Approve and run".** GitHub holds workflow runs
    on a new contributor's first PR until a maintainer approves them. You don't need to do anything.
-   If it has been waiting a while, give us a nudge in Slack `#contributor`
-   (ADR:2026-11-10-pr-jobs-never-receive-credentials).
+   If it has been waiting a while, give us a nudge in Slack `#contributor`.
 2. **Link an issue (`Validate PR Metadata`).** Every PR is tied to a GitHub issue, so the problem
    and its context live in one place. Put `Fixes #NNNN` in the body or title; by convention the
    title reads `Fixes NNNN: <short explanation>`. The issue needs a description, and it needs to be
    in the **Shipping** GitHub Project with Status, Source, Priority, Domain and Release set (open the
    issue → right sidebar → Projects). If you can't set those fields yourself, ask in the PR and a
-   maintainer will help (`.github/workflows/pr-metadata-validation.yml`).
+   maintainer will help.
 3. **Get the PR checks green.** Which checks run depends on the paths you touched:
-   - **Backend:** `backend-checks` (the `Backend CI` workflow: spotless formatting and the Java unit
-     tests).
+   - **Backend:** `backend-checks` (spotless formatting and the Java unit tests).
    - **Python:** `py-checkstyle` (ruff) and `py-tests-status` (unit tests and static checks).
    - **UI:** `ui-checkstyle` (ESLint, Prettier, organize-imports), `browser tests + coverage`, and
      `ui-coverage` (Jest).
@@ -42,54 +71,26 @@ below on the PR itself.
    good answer. Resolving or answering each thread before you ask for a human review saves a round
    trip for both of us.
 
-**Worth a look, but not blocking:** `Compatibility checks` is the status Collate CI posts on the PR
-from the `openmetadata-collate` repository; there is no workflow for it in this repository. Red
-means the change would break Collate. Mention it in the PR and we'll help work out the fix (see
-`REVIEW.md` → "Collate builds against OpenMetadata `main`"). `harness-integrity` only warns.
-
 **Not run on the PR:** the Java integration tests and Playwright run in the **merge queue**, and
 SonarCloud runs on `main` and nightly. If your change touches them, run the impacted ones locally
 (`make java_affected_run`, `make playwright_affected_run`) and paste the results into the PR
 template. That way nothing surprises you after approval.
 
-## What maintainers usually ask about
-
-These come up again and again in first reviews. Covering them up front usually means a shorter
-review:
-
-- **Tests that exercise the real behavior.** This is the most common request. A test that seeds
-  real rows or runs the real workflow, and that fails without your change, is the strongest evidence
-  a fix works. Mocking the very thing you're testing tends to hide bugs rather than catch them
-  (`REVIEW.md` → "A test that cannot fail is a finding").
-- **The edge cases a reviewer or bot points out.** When someone names a concrete case (a swallowed
-  error, a double count, an existing setup that would break), fixing it in the PR is usually quicker
-  than coming back to it later.
-- **One change per PR, with a clear goal.** Smaller, focused PRs get reviewed faster and are easier
-  to merge. If you have several unrelated improvements, separate PRs are very welcome. A sentence on
-  what you set out to do helps the reviewer a lot.
-- **Up to date with `main`.** Rebasing and resolving conflicts keeps the review on the current code.
-  It also shows whether something recently merged overlaps with your change.
-- **The root cause in the description.** A few lines on what was wrong and why your fix addresses it
-  make the review much faster. Reviewers really appreciate a good write-up.
-- **UI changes you can see.** A UI feature needs a short screen recording (see the next section).
-  Changed UI lines are also covered by the `browser tests + coverage` check.
-
-There is no CLA or DCO to sign.
-
 ## Pre-flight checklist
 
 A quick list to run through before you ask for a review:
 
+- [ ] The description says why the change is needed and what it fixes
+- [ ] A test that fails without the change; nothing mocks the behavior under test
+- [ ] Alternatives you considered, and the trade-off you chose, are in the description
+- [ ] One change per PR, rebased on `main`
 - [ ] Linked issue with a description, in the **Shipping** project with its fields set
 - [ ] PR checks green for the paths you touched — `backend-checks`, `py-checkstyle` /
       `py-tests-status`, `ui-checkstyle`, `browser tests + coverage`, `ui-coverage`,
       `validate-json-yaml`, `generate-types`, `docker-image-smoke-test`
 - [ ] Impacted integration tests and Playwright specs run locally and recorded in the PR
 - [ ] Every Gitar / Greptile / Copilot thread resolved or answered
-- [ ] A regression test that fails before the fix; nothing mocks the boundary under test
-- [ ] One concern; the description states the root cause
 - [ ] UI recording for a UI feature (or an explicit N/A reason)
-- [ ] Self-review against [`REVIEW.md`](REVIEW.md), every 🔴 fixed or answered
 
 ## Creating a UI feature pull request
 
