@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
@@ -77,6 +78,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       "fingerprint,chunkCount,docVersion,"
           + String.join(
               ",",
+              EmbeddingModel.ID_FIELD,
+              EmbeddingModel.DIMENSION_FIELD,
               ContextMemoryIndex.FIELD_STATUS,
               ContextMemoryIndex.FIELD_ANCHOR_ID,
               ContextMemoryIndex.FIELD_MEMORY_SCOPE,
@@ -197,11 +200,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private void refreshEntityEmbedding(EntityInterface<?> entity, String entityIndexName) {
     try {
       String entityId = entity.getId().toString();
-      String existingFingerprint = getExistingFingerprint(entityIndexName, entityId);
       String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
 
-      if (currentFingerprint.equals(existingFingerprint)) {
-        LOG.debug("Skipping entity {} - fingerprint unchanged", entityId);
+      if (entityEmbeddingCurrent(entityIndexName, entityId, currentFingerprint)) {
+        LOG.debug("Skipping entity {} - fingerprint and model unchanged", entityId);
       } else {
         Map<String, Object> embeddingFields = generateEmbeddingFields(entity);
         partialUpdateEntity(entityIndexName, entityId, embeddingFields);
@@ -333,10 +335,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   /**
    * Staged-recreate variant of the sink backfill: writes the entity's chunk docs into the staged
-   * generation, reusing the live generation's stored vectors when the content fingerprint is
-   * unchanged (the sink only takes this path for unchanged entities), so a full recreate does not
-   * re-embed the whole catalog. Nothing is skipped — the staged generation starts empty, so every
-   * entity passes through exactly once ({@code stagedHeader} short-circuits retries).
+   * generation, reusing the live generation's stored vectors when the content fingerprint and the
+   * model are unchanged (the sink only takes this path for unchanged entities), so a full recreate
+   * does not re-embed the whole catalog. Nothing is skipped: the staged generation starts empty,
+   * so every entity passes through exactly once ({@code stagedHeader} short-circuits retries).
    */
   private boolean backfillStagedChunks(EntityInterface<?> entity, String staged)
       throws IOException {
@@ -344,7 +346,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     String fingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
     ChunkHeader stagedHeader = getChunkHeader(staged, parentId);
     boolean written = true;
-    if (chunkRefresh(entity, fingerprint, stagedHeader) != ChunkRefresh.NONE) {
+    if (chunkRefresh(entity, fingerprint, currentModel(), stagedHeader) != ChunkRefresh.NONE) {
       Optional<List<Map<String, Object>>> chunkDocs =
           stagedBackfillChunks(entity, parentId, fingerprint);
       if (chunkDocs.isPresent()) {
@@ -356,15 +358,15 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   }
 
   /**
-   * The entity's chunk documents, reusing the live generation's vectors when its text is
-   * unchanged, or empty when they need the embedding provider and it is unavailable.
+   * The entity's chunk documents, reusing the live generation's vectors when its text and the model
+   * are unchanged, or empty when they need the embedding provider and it is unavailable.
    */
   private Optional<List<Map<String, Object>>> stagedBackfillChunks(
       EntityInterface<?> entity, String parentId, String fingerprint) {
     String live = getChunkIndexName();
     ChunkHeader liveHeader = getChunkHeader(live, parentId);
     Optional<List<Map<String, Object>>> chunkDocs = Optional.empty();
-    if (liveHeader != null && fingerprint.equals(liveHeader.fingerprint())) {
+    if (liveHeader != null && liveHeader.holdsVectorsOf(fingerprint, currentModel())) {
       chunkDocs = Optional.of(rebuildChunksReusingEmbeddings(entity, live, parentId, liveHeader));
     } else if (embeddingClient.isAvailable()) {
       chunkDocs = Optional.of(VectorDocBuilder.fromEntity(entity, embeddingClient));
@@ -411,6 +413,52 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     }
   }
 
+  /**
+   * Embeds the entity again whatever its stored embeddings say, as {@code reembed} promises: a
+   * stored vector may be one of another model that no fingerprint can tell apart. Both writes are
+   * tried even when the other fails, so an unwritable chunk index never costs the entity document
+   * its embedding. Ontology terms are refused, as by {@link #updateEntityEmbeddings}, and so is an
+   * entity whose indexes cannot hold the model's vectors, before any provider call is paid for.
+   */
+  @Override
+  public boolean reembedEntity(EntityInterface<?> entity, String entityIndexName) {
+    boolean written = false;
+    if (OntologyTermSearch.isTerm(entity.getEntityReference().getType())) {
+      LOG.warn(
+          "Not re-embedding ontology term {}; rebuild term embeddings via the release-aware "
+              + "reindex path",
+          entity.getId());
+    } else if (!canHoldVectors(entityIndexName) || !canHoldVectors(getChunkIndexName())) {
+      LOG.debug("An index cannot hold the model's vectors; not re-embedding {}", entity.getId());
+    } else {
+      written = writeFreshEmbeddings(entity, entityIndexName);
+    }
+    return written;
+  }
+
+  private boolean writeFreshEmbeddings(EntityInterface<?> entity, String entityIndexName) {
+    boolean written;
+    try {
+      String parentId = entity.getId().toString();
+      List<Map<String, Object>> chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
+      boolean chunksWritten = writeEntityChunks(parentId, chunkDocs, null);
+      if (chunksWritten) {
+        mirrorToStagedGeneration(parentId, chunkDocs);
+      }
+      boolean entityDocWritten =
+          chunkDocs.isEmpty()
+              || writeEntityEmbedding(
+                  entityIndexName,
+                  parentId,
+                  VectorDocBuilder.legacyEmbeddingFields(chunkDocs.getFirst()));
+      written = chunksWritten && entityDocWritten;
+    } catch (RuntimeException e) {
+      LOG.warn("Could not re-embed entity {}: {}", entity.getId(), e.getMessage());
+      written = false;
+    }
+    return written;
+  }
+
   private boolean ontologyTargetsCanHoldVectors(String entityIndexName) {
     return canHoldVectors(entityIndexName)
         && (!chunksOntologyTerms() || canHoldVectors(OntologyChunkIndex.name()));
@@ -437,9 +485,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       throws IOException {
     String parentId = entity.getId().toString();
     String chunkIndexName = ontologyChunkWriteTarget();
-    boolean entityDocStale = !fingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
+    boolean entityDocStale = !entityEmbeddingCurrent(entityIndexName, parentId, fingerprint);
     ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
-    ChunkRefresh refresh = chunkRefresh(entity, fingerprint, header);
+    ChunkRefresh refresh = chunkRefresh(entity, fingerprint, currentModel(), header);
     if (entityDocStale || refresh != ChunkRefresh.NONE) {
       List<Map<String, Object>> chunkDocs =
           refresh == ChunkRefresh.RESTAMP
@@ -463,7 +511,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     String parentId = entity.getId().toString();
     String chunkIndexName = ontologyChunkWriteTarget();
     ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
-    if (chunkRefresh(entity, fingerprint, header) != ChunkRefresh.NONE) {
+    if (chunkRefresh(entity, fingerprint, currentModel(), header) != ChunkRefresh.NONE) {
       replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
     }
     if (!chunkDocs.isEmpty()) {
@@ -476,8 +524,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       EntityInterface<?> entity, String entityIndexName, String ontologyBody, String fingerprint)
       throws IOException {
     String entityId = entity.getId().toString();
-    if (fingerprint.equals(getExistingFingerprint(entityIndexName, entityId))) {
-      LOG.debug("Skipping entity {} - fingerprint unchanged", entityId);
+    if (entityEmbeddingCurrent(entityIndexName, entityId, fingerprint)) {
+      LOG.debug("Skipping entity {} - fingerprint and model unchanged", entityId);
     } else {
       Map<String, Object> embeddingFields =
           VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient, ontologyBody);
@@ -495,7 +543,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       boolean chunkIndexWritable = isChunkIndexWritable();
       boolean entityDocStale =
           canHoldVectors(entityIndexName)
-              && !currentFingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
+              && !entityEmbeddingCurrent(entityIndexName, parentId, currentFingerprint);
       if (chunkIndexWritable) {
         refreshChunksAndEntityDoc(entity, entityIndexName, currentFingerprint, entityDocStale);
       } else if (entityDocStale) {
@@ -518,7 +566,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     String parentId = entity.getId().toString();
     String chunkIndexName = getChunkIndexName();
     ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
-    ChunkRefresh refresh = chunkRefresh(entity, currentFingerprint, header);
+    ChunkRefresh refresh = chunkRefresh(entity, currentFingerprint, currentModel(), header);
     if (entityDocStale || refresh != ChunkRefresh.NONE) {
       List<Map<String, Object>> chunkDocs =
           refresh == ChunkRefresh.RESTAMP
@@ -1444,6 +1492,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
         List.of(
             "parentId",
             "fingerprint",
+            EmbeddingModel.ID_FIELD,
             "entityType",
             "fullyQualifiedName",
             "serviceType",
@@ -1464,7 +1513,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     for (String keywordWithSub : List.of("name", "displayName")) {
       properties.set(keywordWithSub, keywordWithKeywordSubfield());
     }
-    for (String integer : List.of("chunkIndex", "chunkCount", "docVersion")) {
+    for (String integer :
+        List.of("chunkIndex", "chunkCount", "docVersion", EmbeddingModel.DIMENSION_FIELD)) {
       properties.set(integer, MAPPER.createObjectNode().put("type", "integer"));
     }
     // Analyzed lexical parity fields. The dedicated chunk index defines no custom analyzers, so
@@ -1557,9 +1607,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   /**
    * Multi-chunk write path (issue #4789): index one standalone document per body chunk into the
    * dedicated chunk index, keyed {@code <parentId>_<chunkIndex>}. Skips work when the whole-body
-   * fingerprint is unchanged. Chunk ids are deterministic, so a shrinking body is handled by
-   * bulk-deleting the trailing stale ids in the same request — no delete-by-query and no forced
-   * refresh on this hot path; visibility follows the index refresh interval.
+   * fingerprint and the model are unchanged. Chunk ids are deterministic, so a shrinking body is
+   * handled by bulk-deleting the trailing stale ids in the same request, with no delete-by-query
+   * and no forced refresh on this hot path; visibility follows the index refresh interval.
    */
   public void updateEntityEmbeddingChunks(EntityInterface<?> entity, String chunkIndexName) {
     try {
@@ -1582,7 +1632,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     String parentId = entity.getId().toString();
     ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
     String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
-    ChunkRefresh refresh = chunkRefresh(entity, currentFingerprint, header);
+    ChunkRefresh refresh = chunkRefresh(entity, currentFingerprint, currentModel(), header);
     boolean written = refresh != ChunkRefresh.REEMBED || embeddingClient.isAvailable();
     if (refresh == ChunkRefresh.NONE) {
       LOG.debug("Skipping chunk embedding for {} - content and filters current", parentId);
@@ -1599,9 +1649,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   /**
    * Rebuild an entity's chunk docs for a docVersion migration by reusing the embeddings already
    * stored on those chunk docs (fingerprint unchanged ⇒ same body ⇒ same chunking ⇒ 1:1 reusable
-   * vectors), so only the denormalized fields and {@code docVersion} change and no embedding call is
-   * made. Falls back to a full re-embed if the cached vectors can't all be recovered (partial/corrupt
-   * chunk set) or the re-chunk disagrees with the cached count.
+   * vectors; and they were made by the configured model, which the caller checked), so only the
+   * denormalized fields and {@code docVersion} change and no embedding call is made. Falls back to
+   * a full re-embed if the cached vectors can't all be recovered (partial/corrupt chunk set) or
+   * the re-chunk disagrees with the cached count.
    */
   private List<Map<String, Object>> rebuildChunksReusingEmbeddings(
       EntityInterface<?> entity, String chunkIndexName, String parentId, ChunkHeader header) {
@@ -1637,7 +1688,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       String ontologyBody) {
     List<Map<String, Object>> chunkDocs;
     try {
-      chunkDocs = VectorDocBuilder.fromEntityReusingEmbeddings(entity, vectors, ontologyBody);
+      chunkDocs =
+          VectorDocBuilder.fromEntityReusingEmbeddings(
+              entity, vectors, currentModel(), ontologyBody);
     } catch (RuntimeException e) {
       LOG.info(
           "Chunk docVersion rebuild for {} fell back to re-embedding: {}",
@@ -1691,14 +1744,24 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     return out;
   }
 
-  /** Header of an entity's chunk set, read from chunk 0. */
+  /**
+   * Header of an entity's chunk set, read from chunk 0. {@code model} is null when the chunks were
+   * written before chunk docs recorded the model of their vectors.
+   */
   record ChunkHeader(
       String fingerprint,
+      EmbeddingModel model,
       int chunkCount,
       int docVersion,
       String status,
       String anchorId,
-      MemoryKind memoryKind) {}
+      MemoryKind memoryKind) {
+
+    /** Whether the stored vectors embed this text and were made by {@code currentModel}. */
+    boolean holdsVectorsOf(String currentFingerprint, EmbeddingModel currentModel) {
+      return currentFingerprint.equals(fingerprint) && currentModel.equals(model);
+    }
+  }
 
   /** The memory kind a chunk was stamped with; filters read it, the fingerprint does not see it. */
   record MemoryKind(String scope, String type, boolean pinned) {
@@ -1720,15 +1783,18 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   /** How an entity's stored chunks must be brought up to date. */
   enum ChunkRefresh {
     NONE,
-    /** Same embedded text: rewrite the metadata around the stored vectors, at no embedding cost. */
+    /**
+     * Same embedded text and model: rewrite the metadata around the stored vectors, at no
+     * embedding cost.
+     */
     RESTAMP,
     REEMBED
   }
 
   static ChunkRefresh chunkRefresh(
-      EntityInterface<?> entity, String fingerprint, ChunkHeader header) {
+      EntityInterface<?> entity, String fingerprint, EmbeddingModel model, ChunkHeader header) {
     ChunkRefresh refresh = ChunkRefresh.NONE;
-    if (header == null || !fingerprint.equals(header.fingerprint())) {
+    if (header == null || !header.holdsVectorsOf(fingerprint, model)) {
       refresh = ChunkRefresh.REEMBED;
     } else if (docVersionStale(header) || memoryFilterChanged(entity, header)) {
       refresh = ChunkRefresh.RESTAMP;
@@ -1810,6 +1876,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
         header =
             new ChunkHeader(
                 source.path("fingerprint").asText(null),
+                EmbeddingModel.recordedOn(source).orElse(null),
                 source.path("chunkCount").asInt(0),
                 source.path("docVersion").asInt(0),
                 source.path(ContextMemoryIndex.FIELD_STATUS).asText(null),
@@ -2271,27 +2338,43 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   @Override
   public String getExistingFingerprint(String indexName, String entityId) {
-    String fingerprint = null;
+    return storedEmbeddingHeader(indexName, entityId).path(FINGERPRINT_FIELD).asText(null);
+  }
+
+  /** Whether the entity doc holds an embedding of this text made by the configured model. */
+  private boolean entityEmbeddingCurrent(String indexName, String entityId, String fingerprint) {
+    return StoredEmbeddingReuse.isCurrent(
+        entityId, storedEmbeddingHeader(indexName, entityId), currentModel(), () -> fingerprint);
+  }
+
+  /**
+   * The stored fingerprint and model of an entity doc, or a missing node when it has none. A search
+   * by id rather than a get, since {@code indexName} may be an alias.
+   */
+  private JsonNode storedEmbeddingHeader(String indexName, String entityId) {
+    JsonNode header = MissingNode.getInstance();
     try {
-      String query =
-          "{\"size\":1,\"_source\":[\"fingerprint\"],"
-              + "\"query\":{\"term\":{\"_id\":\""
-              + VectorSearchQueryBuilder.escape(entityId)
-              + "\"}}}";
-      String response = executeGenericRequest("POST", "/" + indexName + "/_search", query);
-      JsonNode root = MAPPER.readTree(response);
-      JsonNode hits = root.path("hits").path("hits");
+      ObjectNode query = MAPPER.createObjectNode().put("size", 1);
+      query.set("_source", MAPPER.valueToTree(StoredEmbeddingReuse.HEADER_FIELDS));
+      query.putObject("query").putObject("term").put("_id", entityId);
+      String response =
+          executeGenericRequest("POST", "/" + indexName + "/_search", query.toString());
+      JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
       if (hits.isArray() && !hits.isEmpty()) {
-        fingerprint = hits.get(0).path("_source").path("fingerprint").asText(null);
+        header = hits.get(0).path("_source");
       }
-    } catch (Exception e) {
+    } catch (IOException | RuntimeException e) {
       LOG.debug(
-          "Failed to get fingerprint for entityId={} in index={}: {}",
+          "Failed to get the stored embedding of entityId={} in index={}: {}",
           entityId,
           indexName,
           e.getMessage());
     }
-    return fingerprint;
+    return header;
+  }
+
+  private EmbeddingModel currentModel() {
+    return EmbeddingModel.of(embeddingClient);
   }
 
   @Override
@@ -2344,8 +2427,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * Two-step batch fetch of the stored embeddings a reindex may reuse, keyed by entity id. Designed
    * to keep large vector payloads off the wire for entities that will be re-embedded anyway.
    *
-   * <p>Step 1 — {@code mget} only the stored {@code fingerprint} for every requested ID and keep
-   * the IDs whose fingerprint equals the current one (see {@link StoredEmbeddingReuse}).
+   * <p>Step 1: {@code mget} only the stored {@code fingerprint} and model for every requested ID
+   * and keep the IDs whose embedding is current: the fingerprint of the current text, made by the
+   * configured model (see {@link StoredEmbeddingReuse}).
    *
    * <p>Step 2 — issue a second {@code mget} that pulls the full embedding {@code _source} only for
    * matching IDs. Entries that don't match are dropped, and the caller can rely on every returned
@@ -2360,11 +2444,13 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     Map<String, JsonNode> reusable = Collections.emptyMap();
     if (!nullOrEmpty(currentFingerprintById)) {
       try {
-        List<String> matchingIds = idsWithCurrentFingerprint(indexName, currentFingerprintById);
+        EmbeddingModel model = currentModel();
+        List<String> matchingIds =
+            idsWithCurrentEmbedding(indexName, currentFingerprintById, model);
         if (!matchingIds.isEmpty()) {
           reusable =
               multiGetSources(indexName, matchingIds, VectorDocBuilder.EMBEDDING_SOURCE_FIELDS);
-          reusable.values().removeIf(cached -> !StoredEmbeddingReuse.isSpliceable(cached));
+          reusable.values().removeIf(cached -> !StoredEmbeddingReuse.isSpliceable(cached, model));
         }
       } catch (Exception e) {
         LOG.error("Failed to batch get embeddings in index={}", indexName, e);
@@ -2374,8 +2460,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     return reusable;
   }
 
-  private List<String> idsWithCurrentFingerprint(
-      String indexName, Map<String, Supplier<String>> currentFingerprintById) throws IOException {
+  private List<String> idsWithCurrentEmbedding(
+      String indexName, Map<String, Supplier<String>> currentFingerprintById, EmbeddingModel model)
+      throws IOException {
     List<String> entityIds = new ArrayList<>(currentFingerprintById.keySet());
     List<String> matchingIds = new ArrayList<>();
     multiGetSources(indexName, entityIds, StoredEmbeddingReuse.HEADER_FIELDS)
@@ -2383,7 +2470,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
             (id, header) -> {
               Supplier<String> currentFingerprint = currentFingerprintById.get(id);
               if (currentFingerprint != null
-                  && StoredEmbeddingReuse.fingerprintMatches(id, header, currentFingerprint)) {
+                  && StoredEmbeddingReuse.isCurrent(id, header, model, currentFingerprint)) {
                 matchingIds.add(id);
               }
             });

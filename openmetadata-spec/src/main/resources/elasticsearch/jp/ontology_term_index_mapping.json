@@ -105,6 +105,8 @@
       "deleted": {"type": "boolean"},
       "updatedAt": {"type": "date", "format": "epoch_second"},
       "fingerprint": {"type": "keyword"},
+      "embeddingModel": {"type": "keyword"},
+      "embeddingDimension": {"type": "integer"},
       "textToLLMContext": {"type": "text"},
       "textToEmbed": {"type": "text"},
       "chunkIndex": {"type": "integer"},

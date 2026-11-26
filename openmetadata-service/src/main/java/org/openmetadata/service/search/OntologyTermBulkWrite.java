@@ -20,7 +20,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.OntologyTermIndex;
 import org.openmetadata.service.search.vector.StoredEmbeddingReuse;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 import os.org.opensearch.client.opensearch._types.BuiltinScriptLanguage;
 import os.org.opensearch.client.opensearch._types.Script;
 
@@ -37,15 +39,9 @@ final class OntologyTermBulkWrite {
         }
       }
       """;
-  private static final List<String> EMBEDDING_FIELDS =
-      List.of(
-          "embedding",
-          "textToLLMContext",
-          "textToEmbed",
-          "chunkIndex",
-          "chunkCount",
-          "parentId",
-          "fingerprint");
+  // The script keeps a term's own vector across a rewrite of the same text. Whether that vector's
+  // model is current is decided by the embedding refresh that follows every write.
+  private static final List<String> EMBEDDING_FIELDS = VectorDocBuilder.EMBEDDING_SOURCE_FIELDS;
 
   private OntologyTermBulkWrite() {}
 
@@ -82,10 +78,11 @@ final class OntologyTermBulkWrite {
         (id, index) ->
             fingerprints.put(id.toString(), () -> OntologyTermSearch.embeddingFingerprint(index)));
     final var client = vectorService.getEmbeddingClient();
-    final int dimension = client == null ? -1 : client.getDimension();
-    final var cached = vectorService.getExistingEmbeddingsBatch(source, fingerprints);
+    final Map<String, JsonNode> cached =
+        client == null ? Map.of() : vectorService.getExistingEmbeddingsBatch(source, fingerprints);
     return cached.entrySet().stream()
-        .filter(entry -> StoredEmbeddingReuse.isSpliceable(entry.getValue(), dimension))
+        .filter(
+            entry -> StoredEmbeddingReuse.isSpliceable(entry.getValue(), EmbeddingModel.of(client)))
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 

@@ -55,6 +55,7 @@ import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 class ElasticSearchBulkSinkBehaviorTest {
 
@@ -181,8 +182,15 @@ class ElasticSearchBulkSinkBehaviorTest {
     VectorIndexService vectorService = mock(VectorIndexService.class);
     when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
     when(vectorService.backfillEntityChunks(any(), any())).thenReturn(true);
+    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
+    when(embeddingClient.getModelId()).thenReturn("three-dimensional");
+    when(embeddingClient.getDimension()).thenReturn(3);
+    when(vectorService.getEmbeddingClient()).thenReturn(embeddingClient);
     JsonNode storedEmbedding =
-        new ObjectMapper().readTree("{\"fingerprint\":\"fp\",\"embedding\":[0.1,0.2,0.3]}");
+        new ObjectMapper()
+            .readTree(
+                "{\"fingerprint\":\"fp\",\"embedding\":[0.1,0.2,0.3],"
+                    + "\"embeddingModel\":\"three-dimensional\",\"embeddingDimension\":3}");
     ReindexContext recreate = new ReindexContext();
     recreate.setStagedChunkIndex("data_asset_embeddings_chunks_g1");
 

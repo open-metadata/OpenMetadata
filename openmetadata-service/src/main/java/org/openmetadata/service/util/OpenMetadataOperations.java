@@ -1761,7 +1761,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   @Command(
       name = "reembed",
       description =
-          "Drop the vector index, recreate it, and fully re-embed all entities using the configured embedding provider.")
+          "Re-embed every entity with the configured embedding provider, ignoring stored embeddings.")
   public Integer reembed(
       @Option(
               names = {"-b", "--batch-size"},
@@ -1808,8 +1808,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             finalQueueSize,
             batchSize);
         reembedAllTypes(vecService, run, batchSize, finalConsumerThreads);
-        LOG.info("Re-embedding completed successfully");
-        exitCode = 0;
+        exitCode = reembedExitCode(run);
       }
     } catch (Exception e) {
       LOG.error("Failed to run full re-embedding", e);
@@ -1940,11 +1939,25 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private static void logReembedSummary(ReembedRun run) {
     for (String entityType : EmbeddedEntityTypes.ALL) {
       LOG.info(
-          "Finished re-embedding {} entities for type {} (failed reads: {})",
+          "Re-embedded {} entities of type {}; {} could not be read or re-embedded",
           run.processedCounts().getOrDefault(entityType, new AtomicInteger(0)).get(),
           entityType,
           run.failedCounts().getOrDefault(entityType, new AtomicInteger(0)).get());
     }
+  }
+
+  /** Success only when every entity was read and re-embedded; the summary above names the rest. */
+  private static int reembedExitCode(ReembedRun run) {
+    int failed = run.failedCounts().values().stream().mapToInt(AtomicInteger::get).sum();
+    if (failed == 0) {
+      LOG.info("Re-embedding completed successfully");
+    } else {
+      LOG.error(
+          "Re-embedding finished with {} entities not re-embedded; run it again once the cause "
+              + "is fixed",
+          failed);
+    }
+    return failed == 0 ? 0 : 1;
   }
 
   /** The state a re-embedding run shares between its producers and consumers. */
@@ -2009,19 +2022,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
           continue;
         }
         for (EntityInterface<?> entity : task.batch().getData()) {
-          try {
-            vecService.updateEntityEmbeddings(entity, entityIndexName);
-            processedCounts
-                .computeIfAbsent(
-                    entityType, key -> new java.util.concurrent.atomic.AtomicInteger(0))
-                .incrementAndGet();
-          } catch (Exception e) {
-            failedCounts
-                .computeIfAbsent(
-                    entityType, key -> new java.util.concurrent.atomic.AtomicInteger(0))
-                .incrementAndGet();
-            LOG.warn("Failed to embed entity {} of type {}", entity.getId(), entityType, e);
-          }
+          Map<String, java.util.concurrent.atomic.AtomicInteger> outcome =
+              vecService.reembedEntity(entity, entityIndexName) ? processedCounts : failedCounts;
+          outcome
+              .computeIfAbsent(entityType, key -> new java.util.concurrent.atomic.AtomicInteger(0))
+              .incrementAndGet();
         }
       }
     } catch (InterruptedException e) {
@@ -2108,8 +2113,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
    * Whether the {@code reembed} CLI may embed an entity type from its raw working row. Ontology
    * terms are excluded: their embeddings are rebuilt only via the release-aware reindex path,
    * which publishes terms through the gated writer that keeps drafts out of search (ADR
-   * 2026-11-23). The 2-arg {@code updateEntityEmbeddings} overload refuses terms defensively as
-   * well, so a term that reached {@code reembed} would be skipped at write time regardless.
+   * 2026-11-23). {@code reembedEntity} refuses terms defensively as well, so a term that reached
+   * {@code reembed} would be skipped at write time regardless.
    */
   static boolean isReembedableEntityType(String entityType) {
     return !org.openmetadata.service.search.OntologyTermSearch.isTerm(entityType);

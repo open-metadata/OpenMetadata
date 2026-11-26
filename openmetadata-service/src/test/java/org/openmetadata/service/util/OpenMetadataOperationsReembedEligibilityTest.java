@@ -8,9 +8,9 @@ import org.openmetadata.service.Entity;
 
 /**
  * Pins the {@code reembed} CLI's term-type exclusion. Ontology term embeddings are rebuilt only via
- * the release-aware reindex path; the {@code reembed} CLI must skip them. The 2-arg {@code
- * updateEntityEmbeddings} overload refuses terms defensively as well, so this predicate and the
- * vector-service guard are belt-and-braces.
+ * the release-aware reindex path; the {@code reembed} CLI must skip them. {@code reembedEntity}
+ * refuses terms defensively as well, so this predicate and the vector-service guard are
+ * belt-and-braces.
  */
 class OpenMetadataOperationsReembedEligibilityTest {
 
