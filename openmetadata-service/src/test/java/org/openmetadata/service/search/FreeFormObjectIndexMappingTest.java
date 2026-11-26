@@ -120,7 +120,6 @@ class FreeFormObjectIndexMappingTest {
       SearchIndex probe = INDEX_FACTORY.buildIndex(entityType, null);
       if (probe != null) {
         excluded.addAll(probe.getExcludedFields());
-        excluded.addAll(probe.getRetiredFields());
       }
     } catch (RuntimeException e) {
       // An index that cannot be probed without its entity keeps only the default exclusions, so
