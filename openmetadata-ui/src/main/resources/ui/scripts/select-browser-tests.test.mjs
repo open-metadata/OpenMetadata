@@ -91,6 +91,17 @@ it('runs everything when it cannot reason about the change', () => {
     [sidebar.mode, sidebar.uncovered],
     ['none', ['src/Sidebar/sidebar.less']]
   );
+  // The CI that sets up and runs the browser tests.
+  for (const file of [
+    '.github/actions/ui-browser-run/action.yml',
+    '.github/actions/setup-ui/action.yml',
+  ]) {
+    assert.equal(
+      selectTests({ changed: [file], tests, map, graph }).mode,
+      'all',
+      file
+    );
+  }
   assert.equal(select([], { map: undefined }).mode, 'all');
   assert.equal(select([], { graph: undefined }).mode, 'all');
 });

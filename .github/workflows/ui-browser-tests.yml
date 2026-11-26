@@ -34,19 +34,6 @@ concurrency:
 
 env:
   UI_DIR: openmetadata-ui/src/main/resources/ui
-  CORE_DIR: openmetadata-ui-core-components/src/main/resources/ui
-  # At most this many runners; with ~1,070 tests three ran past 10 min each.
-  SHARDS: 5
-  # Test files per runner when only some run (130 files over 5 runners).
-  FILES_PER_SHARD: 26
-  # What the scheduled run must see changed since the last full run to run at
-  # all. Pull requests and merge-queue entries are selected by the caller's
-  # plan job (.github/ui-ci/paths.yml).
-  UI_PATHS: >-
-    openmetadata-ui/src/main/resources/ui/
-    openmetadata-ui-core-components/src/main/resources/ui/
-    .github/workflows/ui-browser-tests.yml
-    .github/actions/ui-browser-setup/
 
 jobs:
   select:

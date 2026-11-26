@@ -60,9 +60,4 @@ runs:
     - name: Fail if tests failed
       if: always() && steps.tests.outcome == 'failure'
       run: exit 1
-
-# Merges the shards into one result. A pull request gets one report in the
-# job summary (PR jobs post no comments, ADR:2026-11-10-pr-jobs-never-receive-credentials):
-# what ran and why, the result, and the changed code the tests executed. A passing run publishes
-# the impact map.
       shell: bash

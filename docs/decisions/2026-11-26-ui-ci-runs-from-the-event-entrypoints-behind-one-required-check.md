@@ -25,7 +25,10 @@ push would cancel. Python had already moved to event-owned entrypoints (`ci-pr.y
   checkstyle, Jest on the tests related to the change (`--changedSince` the base; the whole suite
   when Jest's setup, configuration, dependencies or core components change), then the browser tests
   the change selects, unsharded. A failed stage skips the rest. Each stage is also published as a
-  check run (`ui-lint`, `ui-unit`, `ui-browser`) for same-repository PRs.
+  check run (`ui-lint`, `ui-unit`, `ui-browser`) for same-repository PRs. That needs
+  `checks: write`, the one write scope the PR-workflow check allows and the `python` job already
+  uses: fork PRs still get a read-only token and skip the reporting, and the job-based
+  `ui-tests-status` is the check that gates merging.
 - In the merge queue, checkstyle, the whole Jest suite in four shards and the browser tests
   (`ui-browser-tests.yml`, sharded) are separate jobs that run in parallel, so an entry reports
   every failure.
@@ -43,7 +46,8 @@ push would cancel. Python had already moved to event-owned entrypoints (`ci-pr.y
 A UI pull request uses one runner and pays setup once, and a lint failure stops it. Jest's import
 graph is dense: a two-file change selected 1,030 of 2,218 test files, so related-only roughly halves
 Jest on the PR rather than shrinking it to a handful. A PR that changes test setup or dependencies,
-or one whose browser selection is "all", runs the whole suite on one runner and takes longest.
+or one whose browser selection is "all", runs both whole suites on one runner: about an hour,
+against about 15 minutes when the three workflows ran in parallel.
 Browser tests and the core-components tests become merge-blocking for the first time; the ruleset
 never required them. A queue entry's impact map counts only when the whole `ci-merge-queue` run
 passed. Dispatching an entrypoint by hand runs every UI stage. Backend joins the same entrypoints

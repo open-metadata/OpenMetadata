@@ -38,6 +38,8 @@ runs:
       env:
         UI_DIR: openmetadata-ui/src/main/resources/ui
         CORE_DIR: openmetadata-ui-core-components/src/main/resources/ui
+        # What the scheduled run must see changed since the last full run to run
+        # at all. Callers select pull requests and merge-queue entries themselves.
         UI_PATHS: "openmetadata-ui/src/main/resources/ui/ openmetadata-ui-core-components/src/main/resources/ui/ .github/workflows/ui-browser-tests.yml .github/actions/ui-browser- .github/actions/setup-ui/"
         BASE: ${{ github.event.merge_group.base_sha || 'HEAD^1' }}
         GH_TOKEN: ${{ github.token }}
@@ -84,11 +86,11 @@ runs:
         echo '{"private": true}' > package.json
         yarn add --silent "esbuild@$version"
         echo "ESBUILD_PATH=$RUNNER_TEMP/esbuild/node_modules/esbuild/lib/main.js" >> "$GITHUB_ENV"
+      shell: bash
     # The map travels as an artifact of the latest passing run on code that
     # reached main: a scheduled or manual run on main, or a merge-queue entry.
     # A pull request's map reflects code that may never merge (or a fork's
     # unreviewed code) and could hide tests from every later pull request.
-      shell: bash
     - name: Download the impact map from the latest full run
       if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
       continue-on-error: true
@@ -121,7 +123,9 @@ runs:
       id: plan
       working-directory: openmetadata-ui/src/main/resources/ui
       env:
+        # At most this many runners; with ~1,070 tests three ran past 10 min each.
         SHARDS: 5
+        # Test files per runner when only some run (130 files over 5 runners).
         FILES_PER_SHARD: 26
         BASE: ${{ github.event.merge_group.base_sha || 'HEAD^1' }}
       run: |
@@ -150,8 +154,8 @@ runs:
           echo "shard-count=$shard_count"
           echo "shards=$(jq -cn --argjson n "$shard_count" '[range(1; $n + 1)]')"
         } >> "$GITHUB_OUTPUT"
-    # A merge-queue entry carries its map along, to update it for the tests it ran.
       shell: bash
+    # A merge-queue entry carries its map along, to update it for the tests it ran.
     - uses: actions/upload-artifact@v7
       with:
         name: browser-selection
@@ -178,7 +182,4 @@ runs:
             echo '</details>'
           fi
         } >> "$GITHUB_STEP_SUMMARY"
-
-# Core components' own tests, run whenever core changes. A core change
-# selects no browser tests, so this is its gate.
       shell: bash

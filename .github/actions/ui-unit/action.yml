@@ -35,8 +35,11 @@ runs:
         scope=all
         if [ -n "$BASE" ]; then
           scope=related
-          # Paths outside Jest's import graph that can change any test's result.
-          if git diff --name-only "$BASE" HEAD | grep -qE '^(openmetadata-ui/src/main/resources/ui/(jest\.config\.js|babel\.config\.json|tsconfig\.json|package\.json|yarn\.lock|\.nvmrc|src/setupTests\.js|src/test/unit/)|openmetadata-ui-core-components/|\.github/actions/(setup-ui|ui-unit)/)'; then
+          # Paths outside Jest's import graph that can change any test's result:
+          # setup, config and dependencies, core components (a package, not a
+          # source import), schemas the mocks require() dynamically, and the CI
+          # that selects this job.
+          if git diff --name-only "$BASE" HEAD | grep -qE '^(openmetadata-ui/src/main/resources/ui/(jest\.config\.js|babel\.config\.json|tsconfig\.json|package\.json|yarn\.lock|\.nvmrc|src/setupTests\.js|src/test/unit/|src/jsons/)|openmetadata-ui-core-components/|\.github/(actions/(setup-ui|ui-unit)/|ui-ci/|workflows/ci-(pr|merge-queue)\.yml))'; then
             scope=all
           fi
         fi

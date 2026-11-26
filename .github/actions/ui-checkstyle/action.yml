@@ -97,10 +97,10 @@ runs:
           git clean -fd
           exit 1
         fi
+      shell: bash
 
     # sync-i18n takes ~2 min of CPU and only reads the locale files, so an
     # unchanged locale set cannot have drifted unless the tool itself moved.
-      shell: bash
     - name: I18n Sync
       id: i18n
       if: contains(steps.changed-ui-files.outputs.all_changed_files, 'src/locale/languages/') || contains(steps.changed-ui-files.outputs.all_changed_files, 'yarn.lock')
@@ -367,13 +367,13 @@ runs:
           echo "EOF" >> "$GITHUB_OUTPUT"
           exit 1
         fi
+      shell: bash
 
     # `yarn build` no longer asserts the budget, so this is the only thing
     # enforcing it — the filter has to cover everything that can move the
     # entry bundle, not just app source. The last two breaches arrived
     # through a dependency bump (#33482, moment 2.31.0 growing vendor-antd)
     # and a core-components change, neither of which touches `src/**` here.
-      shell: bash
     - name: Get changed bundle inputs
       id: changed-bundle-inputs
       uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96
@@ -441,11 +441,11 @@ runs:
           exit 1
         fi
         cat /tmp/bundle-check.out
+      shell: bash
 
     # Loads every route chunk of the build in headless Chromium and fails on a
     # chunk that still exports `undefined` after loading: a chunking change
     # that compiles but breaks module initialisation at runtime.
-      shell: bash
     - name: Bundle Runtime Check (route chunks load)
       id: bundle_runtime
       if: steps.bundle_build.outcome == 'success'
@@ -462,11 +462,11 @@ runs:
           exit 1
         fi
         cat /tmp/bundle-runtime.out
+      shell: bash
 
     # Zero-backlog gate: unused files reachable from no entry point. The
     # backlog was cleared in #37253; this keeps it at zero. Deliberate keeps
     # (Collate compat forwards/consumers) are documented in knip.jsonc.
-      shell: bash
     - name: Unused files (knip)
       id: knip
       continue-on-error: true
@@ -501,7 +501,9 @@ runs:
 
     - name: Write checkstyle summary
       uses: actions/github-script@v9
-      if: ${{ github.event_name == 'pull_request' }}
+      # always(): a step without continue-on-error (changed-file detection, the
+      # core-components install) can fail too, and the summary should still say so.
+      if: ${{ always() && github.event_name == 'pull_request' }}
       continue-on-error: true
       with:
         script: |
@@ -650,7 +652,8 @@ runs:
            [ "${{ steps.tw_guard.outcome }}" = 'failure' ] || \
            [ "${{ steps.knip.outcome }}" = 'failure' ] || \
            [ "${{ steps.bundle_build.outcome }}" = 'failure' ] || \
-           [ "${{ steps.bundle_budget.outcome }}" = 'failure' ]; then
+           [ "${{ steps.bundle_budget.outcome }}" = 'failure' ] || \
+           [ "${{ steps.bundle_runtime.outcome }}" = 'failure' ]; then
           echo "One or more checks failed."
           exit 1
         fi
