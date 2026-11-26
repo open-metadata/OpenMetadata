@@ -123,6 +123,13 @@ class TestRDFSummary:
 
 
 class TestRDFQueries:
+    def test_class_query_resolves_rdf_type_to_the_standard_iri(self):
+        query = build_class_query(PERSON, sample_size=17, max_predicates=9, timeout_seconds=5)
+
+        prefix = re.search(r"^PREFIX rdf: <([^>]+)>", query, re.MULTILINE)
+        assert prefix is not None
+        assert prefix.group(1) + "type" == "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+
     def test_class_query_has_sample_predicate_and_timeout_limits(self):
         query = build_class_query(PERSON, sample_size=17, max_predicates=9, timeout_seconds=5)
 

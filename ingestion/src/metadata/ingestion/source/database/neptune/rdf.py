@@ -24,7 +24,7 @@ from metadata.generated.schema.entity.data.table import Column, ColumnName, Data
 from metadata.generated.schema.type.basic import Markdown
 
 RDF_CLASSES_SCHEMA = "classes"
-RDF_TYPE_IRI = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+RDF_NAMESPACE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 XSD = "http://www.w3.org/2001/XMLSchema#"
 RDF_LANG_STRING = "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString"
 SPARQL_HINTS = "http://aws.amazon.com/neptune/vocab/v01/QueryHints#"
@@ -135,7 +135,7 @@ def build_class_query(
         raise ValueError("RDF sample, predicate, and timeout limits must be positive.")
     class_ref = sparql_iri_ref(class_iri)
     sample_subjects = f"{{ SELECT DISTINCT ?subject WHERE {{ ?subject rdf:type {class_ref} . }} LIMIT {sample_size} }}"
-    return f"""PREFIX rdf: <{RDF_TYPE_IRI}>
+    return f"""PREFIX rdf: <{RDF_NAMESPACE}>
 PREFIX hint: <{SPARQL_HINTS}>
 SELECT ?predicate ?valueType (SAMPLE(?linkedClass) AS ?targetClass) WHERE {{
   hint:Query hint:queryTimeout {timeout_seconds * 1000} .
