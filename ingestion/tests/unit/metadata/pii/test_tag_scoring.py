@@ -42,7 +42,7 @@ from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import RecognizerException, Target
 from metadata.pii.algorithms import presidio_constants
 from metadata.pii.algorithms.presidio_utils import load_nlp_engine
-from metadata.pii.algorithms.tag_scoring import TagScorer
+from metadata.pii.algorithms.tag_scoring import ScoreTagsForColumnService, TagScorer
 from metadata.pii.models import ScoredTag
 from metadata.pii.tag_analyzer import TagAnalysis, TagAnalyzer
 
@@ -323,6 +323,20 @@ class TestTagScorer:
             tag=IsInstance(Tag) & HasAttributes(name=EntityName(root="EmailTag")),
             score=IsNumeric(gt=0.5),
         )
+
+    def test_sample_values_are_parsed_once_across_tags(self, email_tag, phone_tag, column_to_analyze):
+        """spaCy parsing dominates CPU; re-parsing every value per tag made large catalogs take days."""
+        nlp_engine = load_nlp_engine()
+        sample_data = ["john@example.com", "555-123-4567", "john@example.com", "plain text"]
+
+        with patch.object(nlp_engine, "process_text", wraps=nlp_engine.process_text) as process_text:
+            scored = ScoreTagsForColumnService(nlp_engine=nlp_engine)(
+                column_to_analyze, sample_data, [email_tag, phone_tag]
+            )
+
+        assert {s.tag.name.root for s in scored} == {"EmailTag", "PhoneTag"}
+        parsed_texts = sorted(call.args[0] for call in process_text.call_args_list)
+        assert parsed_texts == sorted({*sample_data, column_to_analyze.name.root})
 
 
 class TestTagAnalyzer:

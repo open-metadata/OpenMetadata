@@ -10,7 +10,7 @@ from presidio_analyzer import (
     RecognizerRegistry,
     RecognizerResult,
 )
-from presidio_analyzer.nlp_engine import NlpEngine
+from presidio_analyzer.nlp_engine import NlpArtifacts, NlpEngine
 from presidio_analyzer.predefined_recognizers import SpacyRecognizer
 from pydantic import BaseModel
 
@@ -145,11 +145,21 @@ class TagAnalyzer:
         column: Column,
         nlp_engine: NlpEngine,
         language: ClassificationLanguage = ClassificationLanguage.en,
+        nlp_artifacts_memo: dict[tuple[str, str], NlpArtifacts] | None = None,
     ):
         self.tag = tag
         self._column = column
         self._nlp_engine = nlp_engine
         self._language = language
+        # spaCy parsing dominates classification CPU and does not depend on the tag, so the
+        # analyzers of one column share a memo instead of re-parsing every sample value per tag.
+        self._nlp_artifacts_memo = {} if nlp_artifacts_memo is None else nlp_artifacts_memo
+
+    def _nlp_artifacts(self, value: str, language: str, nlp_engine: NlpEngine) -> NlpArtifacts:
+        key = (language, value)
+        if key not in self._nlp_artifacts_memo:
+            self._nlp_artifacts_memo[key] = nlp_engine.process_text(value, language)
+        return self._nlp_artifacts_memo[key]
 
     def should_skip_recognizer(self, exception_list: list[RecognizerException]):
         # Compare FQNs rather than links: splitting the column FQN on every dot to build its link broke
@@ -250,6 +260,7 @@ class TagAnalyzer:
                     language=self._language.value,
                     context=context,
                     return_decision_process=True,
+                    nlp_artifacts=self._nlp_artifacts(value, self._language.value, self._nlp_engine),
                 )
                 patched_results = result_patcher(value_results, value) if result_patcher else value_results
                 evidence.extend(_RecognitionEvidence(value=value, result=result) for result in patched_results)
@@ -276,6 +287,7 @@ class TagAnalyzer:
                     language=effective_lang,
                     context=context,
                     return_decision_process=True,
+                    nlp_artifacts=self._nlp_artifacts(value, effective_lang, effective_nlp),
                 )
                 patched_results = result_patcher(value_results, value) if result_patcher else value_results
                 evidence.extend(_RecognitionEvidence(value=value, result=result) for result in patched_results)
