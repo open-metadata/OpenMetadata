@@ -8,9 +8,9 @@ Two readers apply this file, and the bar is the same for both
   self-review of the branch diff against this file. A finding fixed there is one a maintainer never
   has to write.
 
-Before any of this, a PR must clear the pre-review gate in [`CONTRIBUTING.md`](CONTRIBUTING.md)
-("Before you request review") — green PR checks, the metadata check, and the review-bot threads
-resolved. That is what gets a maintainer to engage; this file is the bar the code is then held to.
+Before requesting review, authors work through [`CONTRIBUTING.md`](CONTRIBUTING.md) ("Before you
+request review"): green PR checks, the metadata check, and answered review-bot threads. With that
+first round handled, the maintainer's review can focus on what this file covers.
 
 The rules come from 30 days of review threads (2026-09-16 → 2026-10-16, 1,547 PRs): what
 maintainers asked for, and which gitar, Greptile and Copilot findings authors fixed and which they

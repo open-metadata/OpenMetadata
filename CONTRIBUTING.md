@@ -4,26 +4,28 @@ We ❤️ all contributions, big and small!
 
 ## Before you request review
 
-Review here is **automation-first.** Maintainers lean on CI and the AI review bots, and usually do
-not read a PR line by line until the checks are green and the bot threads are resolved — they will
-reply "check the bot reviews" and wait. The fastest path to a human review is to arrive with the
-gate below already green. Once a maintainer engages, [`REVIEW.md`](REVIEW.md) is the bar the code is
-held to. The `pr-checklist` skill (`/pr-checklist`) runs the `REVIEW.md` self-review and fills in the
-PR template; the CI and review-bot items below you check on the PR itself.
+We want to get you useful feedback as quickly as possible. Most of the first round of feedback on a
+PR comes from CI and the AI review bots, and it arrives within minutes. A maintainer's time goes
+much further on a PR where that first round is already handled. So before you ask a maintainer to
+look, please work through the steps below. When CI is green and the bot comments are answered, a
+maintainer can go straight to the design and the logic. That is where human review helps you most.
 
-These conditions come from recent review threads on contributor PRs: what the checks block on, and
-what maintainers ask for before they engage.
+Once a maintainer picks the PR up, they review it against [`REVIEW.md`](REVIEW.md). Reading it
+yourself is a good way to see what they will look for. The `pr-checklist` skill (`/pr-checklist`)
+can run that self-review for you and fill in the PR template. You will check the CI and bot items
+below on the PR itself.
 
-1. **First-time contributors: wait for "Approve and run".** GitHub holds workflow runs on a first
-   PR from a new contributor until a maintainer approves them. There is nothing for you to fix; ask
-   in Slack `#contributor` if it sits. No label is involved
+1. **First PR here? Your CI runs need a maintainer's "Approve and run".** GitHub holds workflow runs
+   on a new contributor's first PR until a maintainer approves them. You don't need to do anything.
+   If it has been waiting a while, give us a nudge in Slack `#contributor`
    (ADR:2026-11-10-pr-jobs-never-receive-credentials).
-2. **`Validate PR Metadata`** (`.github/workflows/pr-metadata-validation.yml`). A hard gate. The PR
-   links a GitHub issue (`Fixes #NNNN` in the body or title; the house title convention is
-   `Fixes NNNN: <short explanation>`), the issue has a description, and the issue is in the
-   **Shipping** GitHub Project with Status, Source, Priority, Domain and Release set (open the issue
-   → right sidebar → Projects). `skip-pr-checks` is a maintainer-only bypass.
-3. **The PR checks are green.** Drive each one green yourself:
+2. **Link an issue (`Validate PR Metadata`).** Every PR is tied to a GitHub issue, so the problem
+   and its context live in one place. Put `Fixes #NNNN` in the body or title; by convention the
+   title reads `Fixes NNNN: <short explanation>`. The issue needs a description, and it needs to be
+   in the **Shipping** GitHub Project with Status, Source, Priority, Domain and Release set (open the
+   issue → right sidebar → Projects). If you can't set those fields yourself, ask in the PR and a
+   maintainer will help (`.github/workflows/pr-metadata-validation.yml`).
+3. **Get the PR checks green.** Which checks run depends on the paths you touched:
    - **Backend:** `backend-checks` (the `Backend CI` workflow: spotless formatting and the Java unit
      tests).
    - **Python:** `py-checkstyle` (ruff) and `py-tests-status` (unit tests and static checks).
@@ -31,44 +33,52 @@ what maintainers ask for before they engage.
      `ui-coverage` (Jest).
    - **Other:** `validate-json-yaml`, `generate-types` (regenerate after any schema change), and
      `docker-image-smoke-test`.
-   - Which of these run depends on the paths the PR touches.
-4. **AI review-bot threads resolved.** Gitar reviews every PR and posts a verdict (`Approved` /
-   `Changes requested` / `Blocked`); Greptile and Copilot may also comment. Treat a `Blocked` or
-   `Changes requested` verdict as a blocker. Resolve or answer each thread before asking a
-   maintainer to look — "check the bot reviews" is the most common maintainer reply.
 
-**Advisory, not gating, but read them:** `Compatibility checks`, the status Collate CI posts on the
-PR from the `openmetadata-collate` repository (there is no workflow for it in this repository). Red
-means the change breaks Collate; see `REVIEW.md` → "Collate builds against OpenMetadata `main`".
-Also `harness-integrity`, which only warns.
+   If a failure looks unrelated to your change, say so in the PR and we'll take a look.
+4. **Go through the review bots' comments.** Gitar reviews every PR and posts a verdict (`Approved`
+   / `Changes requested` / `Blocked`); Greptile and Copilot may also comment. These bots often catch
+   real bugs, so a `Changes requested` or `Blocked` verdict is worth handling first. They are not
+   always right, though. If you disagree with a finding, a short reply explaining why is a perfectly
+   good answer. Resolving or answering each thread before you ask for a human review saves a round
+   trip for both of us.
 
-**Not run on the PR at all:** the Java integration tests and Playwright run in the **merge queue**,
-and SonarCloud runs on `main` and nightly. A green PR has not run them — run the impacted ones
-locally (`make java_affected_run`, `make playwright_affected_run`) and record the results, per the
-PR template.
+**Worth a look, but not blocking:** `Compatibility checks` is the status Collate CI posts on the PR
+from the `openmetadata-collate` repository; there is no workflow for it in this repository. Red
+means the change would break Collate. Mention it in the PR and we'll help work out the fix (see
+`REVIEW.md` → "Collate builds against OpenMetadata `main`"). `harness-integrity` only warns.
 
-## What maintainers ask for first
+**Not run on the PR:** the Java integration tests and Playwright run in the **merge queue**, and
+SonarCloud runs on `main` and nightly. If your change touches them, run the impacted ones locally
+(`make java_affected_run`, `make playwright_affected_run`) and paste the results into the PR
+template. That way nothing surprises you after approval.
 
-Even with the gate green, these are the recurring first asks on contributor PRs. Handle them before
-requesting review so the PR does not bounce:
+## What maintainers usually ask about
 
-- **Real regression tests, not mocks.** The top substantive ask. Add a test that seeds the real rows
-  or runs the real workflow and **fails before your change**. Do not mock the boundary you are
-  testing (`REVIEW.md` → "A test that cannot fail is a finding").
-- **Fix the named defects.** When a reviewer or a bot points at a concrete correctness or edge case
-  (a silently swallowed error, a double count, an existing setup you break), fix it rather than
-  deferring it with a comment.
-- **One concern per PR, clear intent.** Split unrelated changes into their own PRs and state the goal.
-  A PR whose purpose is unclear gets closed, not reviewed.
-- **Rebase and clear conflicts with `main`,** and check whether `main` already landed something the
-  change now overlaps.
-- **A description that states the root cause:** what was wrong, and why the fix is right.
-- **UI evidence.** A UI feature needs a screen recording (next section). Changed UI lines are also
-  covered by the `browser tests + coverage` check.
+These come up again and again in first reviews. Covering them up front usually means a shorter
+review:
 
-There is no CLA or DCO sign-off to complete.
+- **Tests that exercise the real behavior.** This is the most common request. A test that seeds
+  real rows or runs the real workflow, and that fails without your change, is the strongest evidence
+  a fix works. Mocking the very thing you're testing tends to hide bugs rather than catch them
+  (`REVIEW.md` → "A test that cannot fail is a finding").
+- **The edge cases a reviewer or bot points out.** When someone names a concrete case (a swallowed
+  error, a double count, an existing setup that would break), fixing it in the PR is usually quicker
+  than coming back to it later.
+- **One change per PR, with a clear goal.** Smaller, focused PRs get reviewed faster and are easier
+  to merge. If you have several unrelated improvements, separate PRs are very welcome. A sentence on
+  what you set out to do helps the reviewer a lot.
+- **Up to date with `main`.** Rebasing and resolving conflicts keeps the review on the current code.
+  It also shows whether something recently merged overlaps with your change.
+- **The root cause in the description.** A few lines on what was wrong and why your fix addresses it
+  make the review much faster. Reviewers really appreciate a good write-up.
+- **UI changes you can see.** A UI feature needs a short screen recording (see the next section).
+  Changed UI lines are also covered by the `browser tests + coverage` check.
+
+There is no CLA or DCO to sign.
 
 ## Pre-flight checklist
+
+A quick list to run through before you ask for a review:
 
 - [ ] Linked issue with a description, in the **Shipping** project with its fields set
 - [ ] PR checks green for the paths you touched — `backend-checks`, `py-checkstyle` /

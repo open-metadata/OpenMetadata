@@ -23,7 +23,7 @@ verdict cites an artifact that was checked to still exist):
 | `ARCHITECTURE.md` | System map — modules, the request/ingestion/search paths, the invariants that hold |
 | `DEVELOPER.md` | How to build, test, and add an entity or connector (end-to-end checklists) |
 | `REVIEW.md` | The review bar every PR is held to — logic defects, test gaps, and the intent/trade-off ("is the change worth it?") framing reviewers apply |
-| `CONTRIBUTING.md` | Contributor guide — the bar a PR must clear *before* a maintainer reviews it (metadata check, green CI, review-bot threads), the maintainers' recurring first asks, and setup pointers |
+| `CONTRIBUTING.md` | Contributor guide — what to check before asking for review (metadata check, green CI, review-bot threads) so feedback comes faster, what maintainers usually ask about, and setup pointers |
 
 ## Backend & platform design docs (`docs/`)
 
