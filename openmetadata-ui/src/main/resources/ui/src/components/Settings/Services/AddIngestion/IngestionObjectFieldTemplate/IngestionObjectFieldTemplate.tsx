@@ -297,20 +297,23 @@ const SectionFields = ({
 };
 
 const SectionCard = ({
+  failedSubmitCount,
   hasErrors,
   isCompact,
   section,
 }: {
+  failedSubmitCount: number;
   hasErrors: boolean;
   isCompact?: boolean;
   section: IngestionSectionConfig;
 }) => {
   const [open, setOpen] = useState(section.defaultOpen);
   const [active, setActive] = useState(false);
-  const [prevHasErrors, setPrevHasErrors] = useState(hasErrors);
+  const [seenFailedSubmitCount, setSeenFailedSubmitCount] =
+    useState(failedSubmitCount);
 
-  if (hasErrors !== prevHasErrors) {
-    setPrevHasErrors(hasErrors);
+  if (failedSubmitCount !== seenFailedSubmitCount) {
+    setSeenFailedSubmitCount(failedSubmitCount);
     if (hasErrors) {
       setOpen(true);
     }
@@ -386,6 +389,7 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
   idSchema,
   onAddClick,
   properties,
+  registry,
   schema,
   uiSchema,
 }: ObjectFieldTemplateProps) => {
@@ -528,6 +532,7 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
     <div className="tw:flex tw:flex-col tw:gap-3">
       {sections.map((section) => (
         <SectionCard
+          failedSubmitCount={registry.formContext?.failedSubmitCount ?? 0}
           hasErrors={section.properties.some((p) =>
             hasFieldErrors(errorSchema?.[p.name])
           )}

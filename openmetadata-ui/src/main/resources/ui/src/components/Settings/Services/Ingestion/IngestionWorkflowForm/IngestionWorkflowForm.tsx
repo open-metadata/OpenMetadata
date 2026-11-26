@@ -193,6 +193,10 @@ const IngestionWorkflowForm = forwardRef<
   const formRef = useRef<Form<IngestionWorkflowData>>(null);
   const [internalData, setInternalData] =
     useState<IngestionWorkflowData>(workflowData);
+  const [failedSubmit, setFailedSubmit] = useState<{
+    count: number;
+    firstError?: RJSFValidationError;
+  }>({ count: 0 });
   const { t } = useTranslation();
 
   const schema = useMemo(() => {
@@ -379,12 +383,18 @@ const IngestionWorkflowForm = forwardRef<
     [onFocus, schema]
   );
 
-  const handleError = (errors: RJSFValidationError[]) => {
-    if (errors[0]) {
-      formRef.current?.focusOnError(errors[0]);
+  const handleError = (errors: RJSFValidationError[]) =>
+    setFailedSubmit((prev) => ({
+      count: prev.count + 1,
+      firstError: errors[0],
+    }));
+
+  useEffect(() => {
+    if (failedSubmit.firstError) {
+      formRef.current?.focusOnError(failedSubmit.firstError);
       document.activeElement?.scrollIntoView({ block: 'center' });
     }
-  };
+  }, [failedSubmit]);
 
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
@@ -429,7 +439,10 @@ const IngestionWorkflowForm = forwardRef<
         className={classNames('rjsf no-header', className)}
         customValidate={validateOwnerConfigMaps}
         fields={customFields}
-        formContext={{ handleFocus: handleFieldFocus }}
+        formContext={{
+          failedSubmitCount: failedSubmit.count,
+          handleFocus: handleFieldFocus,
+        }}
         formData={internalData}
         idSeparator="/"
         ref={formRef}

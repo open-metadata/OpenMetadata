@@ -603,6 +603,35 @@ describe('IngestionWorkflowForm collapsed section validation', () => {
     ).toBe(document.activeElement);
     expect(onSubmit).not.toHaveBeenCalled();
   });
+
+  it('reopens the section on a later submit after the user collapses it again', async () => {
+    const onSubmit = jest.fn();
+    const { container } = renderAutoClassificationForm(onSubmit);
+    const form = container.querySelector('form') as HTMLFormElement;
+
+    await screen.findByTestId('submit-btn');
+    await act(async () => {
+      fireEvent.submit(form);
+    });
+    const error = await screen.findByText(
+      'message.value-must-be-less-than-or-equal'
+    );
+
+    fireEvent.click(screen.getByTestId('ingestion-section-advanced-toggle'));
+
+    expect(error.closest('.tw\\:hidden')).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.submit(form);
+    });
+
+    expect(
+      screen
+        .getByText('message.value-must-be-less-than-or-equal')
+        .closest('.tw\\:hidden')
+    ).toBeNull();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
 });
 
 describe('IngestionWorkflowForm field layout', () => {
