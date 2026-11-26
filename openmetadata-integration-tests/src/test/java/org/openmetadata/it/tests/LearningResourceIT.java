@@ -44,7 +44,6 @@ public class LearningResourceIT extends BaseEntityIT<LearningResource, CreateLea
     supportsFollowers = false;
     supportsTags = true;
     supportsDataProducts = false;
-    supportsCustomExtension = true;
     supportsSearchIndex = false;
     supportsDomains = false;
   }

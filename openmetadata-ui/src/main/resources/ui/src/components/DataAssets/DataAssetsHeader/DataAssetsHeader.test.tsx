@@ -153,14 +153,8 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   HeaderDotSeparator: jest
     .fn()
     .mockImplementation(() => <span data-testid="header-dot-separator" />),
-  ExtraInfoLabel: jest
-    .fn()
-    .mockImplementation(({ label, value, dataTestId }) => (
-      <div data-testid={dataTestId}>
-        {label && <span>{label}</span>}
-        <div>{value}</div>
-      </div>
-    )),
+  ExtraInfoLabel: jest.requireActual('../../../utils/DataAssetsHeader.utils')
+    .ExtraInfoLabel,
   ExtraInfoLink: jest.fn().mockImplementation(({ value, href, newTab }) => {
     const props = {
       href,
@@ -435,15 +429,20 @@ describe('DataAssetsHeader component', () => {
       />
     );
 
-    expect(screen.getByText('label.updated-at-source')).toBeInTheDocument();
-    expect(screen.getByTestId('source-updated-at')).toHaveTextContent(
-      '2 hours ago'
+    const metadataRow = within(
+      screen.getByTestId('data-asset-header-metadata')
     );
+    const sourceUpdated = metadataRow.getByTestId('source-updated-at');
+
+    expect(
+      metadataRow.getByText('label.updated-at-source')
+    ).toBeInTheDocument();
+    expect(sourceUpdated).toHaveTextContent('2 hours ago');
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     // react-aria opens hover tooltips only after it has seen a pointer move.
     fireEvent.mouseMove(document);
-    await user.hover(screen.getByTestId('source-updated-at'));
+    await user.hover(sourceUpdated);
 
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
       formatDateTime(twoHoursAgo)

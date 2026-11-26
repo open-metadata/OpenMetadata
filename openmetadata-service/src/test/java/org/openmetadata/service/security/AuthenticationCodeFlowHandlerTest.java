@@ -235,6 +235,19 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
+  void handleCallback_failedMcpSignIn_tellsItsCallbackWhy() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        handlerAnsweringProviderError(TEST_SERVER_URL + MCP_CALLBACK, "server_error");
+
+    handler.handleCallback(request, response);
+
+    verify(request)
+        .setAttribute(
+            AuthenticationCodeFlowHandler.SIGN_IN_FAILURE_ATTRIBUTE,
+            SignInFailure.PROVIDER_REFUSED);
+  }
+
+  @Test
   void handleCallback_refusedCodeExchange_returnsToSignInWithTheReason() throws Exception {
     try (FakeOidcProvider provider = FakeOidcProvider.start()) {
       provider.rejectTokenRequests(401, "invalid_client", "client authentication failed");

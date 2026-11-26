@@ -26,12 +26,17 @@ const HOURS_SINCE_SOURCE_UPDATE = 2;
 const table = new TableClass();
 const dashboard = new DashboardClass();
 const pipeline = new PipelineClass();
-const tableWithoutSourceUpdate = new TableClass();
 
 const assetsWithSourceUpdate = [
   { name: 'table', entity: table },
   { name: 'dashboard', entity: dashboard },
   { name: 'pipeline', entity: pipeline },
+];
+
+const assetsWithoutSourceUpdate = [
+  { name: 'table', entity: new TableClass() },
+  { name: 'dashboard', entity: new DashboardClass() },
+  { name: 'pipeline', entity: new PipelineClass() },
 ];
 
 test.describe('Asset source update time in the entity header', () => {
@@ -56,7 +61,9 @@ test.describe('Asset source update time in the entity header', () => {
         ],
       });
     }
-    await tableWithoutSourceUpdate.create(apiContext);
+    for (const { entity } of assetsWithoutSourceUpdate) {
+      await entity.create(apiContext);
+    }
     await afterAction();
   });
 
@@ -65,7 +72,9 @@ test.describe('Asset source update time in the entity header', () => {
     for (const { entity } of assetsWithSourceUpdate) {
       await entity.delete(apiContext);
     }
-    await tableWithoutSourceUpdate.delete(apiContext);
+    for (const { entity } of assetsWithoutSourceUpdate) {
+      await entity.delete(apiContext);
+    }
     await afterAction();
   });
 
@@ -79,7 +88,7 @@ test.describe('Asset source update time in the entity header', () => {
     }) => {
       await entity.visitEntityPage(page);
 
-      const header = page.getByTestId('data-assets-header');
+      const header = page.getByTestId('data-asset-header-metadata');
       const sourceUpdated = header.getByTestId('source-updated-at');
 
       await expect(header.getByText('Updated at source')).toBeVisible();
@@ -100,15 +109,17 @@ test.describe('Asset source update time in the entity header', () => {
     });
   }
 
-  test('omits the source update time when the source reported none', async ({
-    page,
-  }) => {
-    await tableWithoutSourceUpdate.visitEntityPage(page);
+  for (const { name, entity } of assetsWithoutSourceUpdate) {
+    test(`omits the source update time when the ${name} source reported none`, async ({
+      page,
+    }) => {
+      await entity.visitEntityPage(page);
 
-    const header = page.getByTestId('data-assets-header');
+      const header = page.getByTestId('data-assets-header');
 
-    await expect(header).toBeVisible();
-    await expect(header.getByTestId('source-updated-at')).toHaveCount(0);
-    await expect(header.getByText('Updated at source')).toHaveCount(0);
-  });
+      await expect(header).toBeVisible();
+      await expect(header.getByTestId('source-updated-at')).toHaveCount(0);
+      await expect(header.getByText('Updated at source')).toHaveCount(0);
+    });
+  }
 });

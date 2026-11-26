@@ -39,6 +39,12 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestResultValue;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnProfile;
@@ -63,6 +69,7 @@ class RdfOwnedResourcesTest {
   static void registerEntityTypes() {
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", "table");
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("topic", "topic");
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("testcase", "testCase");
   }
 
   @Test
@@ -102,15 +109,44 @@ class RdfOwnedResourcesTest {
             .withFullyQualifiedName("kafka.events")
             .withCleanupPolicies(List.of(CleanupPolicy.DELETE, CleanupPolicy.COMPACT));
 
-    // The extension, its two properties, four columns, one constraint and two measurements.
+    // The extension and its two properties, four columns, and one constraint with its one member.
+    // Profiles are facts on the table and its columns, not resources of their own.
     final Model projection = translator.toRdf(table);
     final String tableUri = BASE + "entity/table/" + tableId;
-    assertWalkMatchesStoreScope(tableUri, projection, 10);
+    assertWalkMatchesStoreScope(tableUri, projection, 9);
     assertFalse(
         storeScopeSubjects(tableUri, projection)
             .contains(
                 NodeFactory.createURI(RdfUtils.columnUri(BASE, "svc.db.schema.customers.id"))));
     assertWalkMatchesStoreScope(BASE + "entity/topic/" + topicId, translator.toRdf(topic), 2);
+  }
+
+  @Test
+  void aTestCaseOwnsItsLatestResultWithItsValuesAndItsOpenIncident() {
+    final UUID testCaseId = UUID.randomUUID();
+    final TestCase testCase =
+        new TestCase()
+            .withId(testCaseId)
+            .withName("id_not_null")
+            .withFullyQualifiedName("svc.db.schema.orders.id.id_not_null")
+            .withEntityLink("<#E::table::svc.db.schema.orders::columns::id>")
+            .withEntityFQN("svc.db.schema.orders.id")
+            .withTestCaseResult(
+                new TestCaseResult()
+                    .withTimestamp(1000L)
+                    .withTestCaseStatus(TestCaseStatus.Failed)
+                    .withTestResultValue(
+                        List.of(
+                            new TestResultValue().withName("nullCount").withValue("2"),
+                            new TestResultValue().withName("rowCount").withValue("9"))))
+            .withIncidentStatus(
+                new TestCaseResolutionStatus()
+                    .withTimestamp(1000L)
+                    .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New));
+
+    // The latest result, its two observed values and the open incident.
+    assertWalkMatchesStoreScope(
+        BASE + "entity/testCase/" + testCaseId, translator.toRdf(testCase), 4);
   }
 
   @Test

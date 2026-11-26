@@ -108,6 +108,23 @@ public class IdTokenValidatorTest {
   }
 
   @Test
+  void googleIssuerWithoutASchemeIsAccepted() throws Exception {
+    IdTokenValidator google =
+        new IdTokenValidator(List.of(jwksUrl), "https://accounts.google.com", expectedAudience);
+    String idToken = createValidIdToken("accounts.google.com", expectedAudience, "a@example.com");
+
+    assertThat(google.validateAndDecode(idToken).getIssuer()).isEqualTo("accounts.google.com");
+  }
+
+  @Test
+  void googleIssuerWithoutASchemeIsRefusedForAnotherProvider() {
+    String idToken = createValidIdToken("accounts.google.com", expectedAudience, "a@example.com");
+
+    assertThatThrownBy(() -> validator.validateAndDecode(idToken))
+        .hasMessageContaining("issuer mismatch");
+  }
+
+  @Test
   void testValidateAndDecode_WrongIssuer() {
     String wrongIssuerToken =
         createValidIdToken("https://wrong-issuer.com", expectedAudience, "test@example.com");

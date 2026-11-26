@@ -610,6 +610,16 @@ const BulkEditEntity = ({
           type={activeAsyncImportJob.error ? 'error' : 'success'}
         />
       )}
+      {validationData?.abortReason && !isValidating && (
+        <div data-testid="bulk-edit-abort-reason">
+          <Banner
+            className="border-radius"
+            isLoading={false}
+            message={validationData.abortReason}
+            type="error"
+          />
+        </div>
+      )}
     </div>
   );
 

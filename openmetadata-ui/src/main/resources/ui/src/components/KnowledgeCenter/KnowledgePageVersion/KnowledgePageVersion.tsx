@@ -22,7 +22,6 @@ import { toString } from 'lodash';
 import { useMemo, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
-import Loader from '../../../components/common/Loader/Loader';
 import TagsContainerV2 from '../../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { LayoutType } from '../../../components/Tag/TagsViewer/TagsViewer.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -51,12 +50,10 @@ import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;
-  loading: boolean;
 }
 
 const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
   knowledgePage,
-  loading,
 }) => {
   const { t } = i18n;
   const navigate = useNavigate();
@@ -112,10 +109,6 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
       contextCenterClassBase.getArticlePath(knowledgePage.fullyQualifiedName)
     );
   };
-
-  if (loading) {
-    return <Loader />;
-  }
 
   return (
     <Grid

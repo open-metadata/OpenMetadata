@@ -12,6 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import datalakeSchema from '../../public/jsons/connectionSchemas/connections/database/datalakeConnection.json';
 import teradataSchema from '../../public/jsons/connectionSchemas/connections/database/teradataConnection.json';
 import mlflowSchema from '../../public/jsons/connectionSchemas/connections/mlmodel/mlflowConnection.json';
 import {
@@ -85,6 +86,20 @@ describe('getSchemaProperties', () => {
     expect(
       getSchemaProperties(schema.properties.authType, { password: 'x' }, schema)
     ).toHaveProperty('password.format', 'password');
+  });
+
+  it('matches a branch by its nested keys when branches share a top-level key', () => {
+    // Azure, GCS and S3 all declare `securityConfig`; only S3's declares the AWS keys.
+    const resolved = getSchemaProperties(
+      datalakeSchema.properties.configSource,
+      { securityConfig: { awsSecretAccessKey: '*********' } },
+      datalakeSchema
+    );
+
+    expect(resolved.securityConfig).toHaveProperty(
+      'properties.awsSecretAccessKey.format',
+      'password'
+    );
   });
 
   it('returns an empty object for a property with neither properties nor branches', () => {
@@ -177,6 +192,35 @@ describe('getKeyValues', () => {
     );
 
     expect(password).toHaveAttribute('type', 'password');
+  });
+
+  it('masks a Datalake S3 secret while keeping the access key id readable', () => {
+    render(
+      <div>
+        {getKeyValues({
+          obj: {
+            configSource: {
+              securityConfig: {
+                awsAccessKeyId: 'AKIA-EXAMPLE',
+                awsSecretAccessKey: '*********',
+                awsRegion: 'us-east-1',
+              },
+            },
+          },
+          schemaPropertyObject: datalakeSchema.properties,
+          schema: datalakeSchema,
+          serviceCategory: 'databaseServices',
+        })}
+      </div>
+    );
+
+    expect(screen.getByRole('textbox', { name: 'awsAccessKeyId' })).toHaveValue(
+      'AKIA-EXAMPLE'
+    );
+    expect(screen.getByLabelText('awsSecretAccessKey')).toHaveAttribute(
+      'type',
+      'password'
+    );
   });
 
   it('leaves non-secret fields readable', () => {

@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -21,8 +23,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
@@ -66,6 +70,24 @@ class OpenSearchBulkSinkSimpleTest {
     assertEquals(0, stats.getTotalRecords());
     assertEquals(0, stats.getSuccessRecords());
     assertEquals(0, stats.getFailedRecords());
+  }
+
+  @Test
+  void testCountsSuccessfulOntologyBatch() throws Exception {
+    var entities = List.of(new OntologyConcept(), new OntologyConcept());
+    when(searchRepository.getIndexMapping(Entity.ONTOLOGY_CONCEPT)).thenReturn(indexMapping);
+    when(searchRepository.writeSpecializedIndexBatch(
+            Entity.ONTOLOGY_CONCEPT, entities, "test_index", null))
+        .thenReturn(true);
+
+    try {
+      openSearchBulkSink.write(entities, Map.of(ENTITY_TYPE_KEY, Entity.ONTOLOGY_CONCEPT));
+      var stats = openSearchBulkSink.getStats();
+      assertEquals(2, stats.getSuccessRecords());
+      assertEquals(2, stats.getTotalRecords());
+    } finally {
+      openSearchBulkSink.close();
+    }
   }
 
   @Test
