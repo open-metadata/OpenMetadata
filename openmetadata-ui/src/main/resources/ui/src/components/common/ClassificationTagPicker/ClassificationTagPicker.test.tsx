@@ -211,9 +211,10 @@ describe('ClassificationTagPicker', () => {
   });
 
   // The tree reads the lock off `value` for the chips and Backspace, which act before it loads.
-  // `displayOnly` opts the seeded derived tag out of the radio-group lock so a sibling pick
-  // overrides it instead of freezing a mutually-exclusive classification.
-  it('marks derived tags disabled and displayOnly in the value it hands the tree', () => {
+  // A DERIVED classification tag may be implied by an applied glossary term, not only inherited
+  // from a parent, and the backend enforces mutual exclusivity on those implied tags, so the
+  // radio-group lock must stay — derived tags stay `disabled` and are NOT marked `displayOnly`.
+  it('keeps derived tags disabled but not displayOnly in the value it hands the tree', () => {
     const own = makeClassificationTag('Personal.Email');
     const inherited = makeClassificationTag('DataZone.Sandbox', {
       labelType: LabelType.Derived,
@@ -227,10 +228,14 @@ describe('ClassificationTagPicker', () => {
       capturedTreeSelectProps.value as TreeSelectNode<TagLabel>[];
 
     expect(
-      selected.map((node) => [node.id, node.disabled, node.displayOnly])
+      selected.map((node) => [
+        node.id,
+        node.disabled,
+        node.displayOnly ?? false,
+      ])
     ).toEqual([
       ['Personal.Email', false, false],
-      ['DataZone.Sandbox', true, true],
+      ['DataZone.Sandbox', true, false],
     ]);
   });
 

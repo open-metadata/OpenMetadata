@@ -999,14 +999,18 @@ describe('TreeSelect disabled nodes', () => {
         'data-selected',
         'true'
       );
+      // The inherited display-only sibling stays ticked next to the user's
+      // pick: the backend strips DERIVED labels before enforcing exclusivity,
+      // so the draft must not show a removal Apply would never persist.
       expect(screen.getByTestId('tree-node-PII.Email')).toHaveAttribute(
         'data-selected',
-        'false'
+        'true'
       );
       if (commitMode === 'staged') {
         fireEvent.click(screen.getByTestId('update-btn'));
       }
       expect(emittedIds(onChange, onChange.mock.calls.length - 1)).toEqual([
+        PII_EMAIL.id,
         PII_SSN.id,
       ]);
     }
@@ -1051,7 +1055,8 @@ describe('TreeSelect disabled nodes', () => {
       'data-selected',
       'true'
     );
-    expect(emittedIds(onChange, 0)).toEqual([PII_SSN.id]);
+    // The unfetched inherited sibling stays in the selection alongside the pick.
+    expect(emittedIds(onChange, 0)).toEqual([PII_EMAIL.id, PII_SSN.id]);
   });
 
   // A locked selection that is not display-only (e.g. a permission-blocked term

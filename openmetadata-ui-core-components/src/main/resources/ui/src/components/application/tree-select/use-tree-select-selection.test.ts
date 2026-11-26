@@ -245,7 +245,13 @@ describe('useTreeSelectSelection', () => {
 
       act(() => result.current.toggleNodeSelection(ssn, pii));
 
-      expect(result.current.selectedData.map((n) => n.id)).toEqual(['pii.ssn']);
+      // The display-only inherited sibling stays ticked next to the user's
+      // pick: the backend strips DERIVED labels before enforcing mutual
+      // exclusivity, so the draft must not drop a row Apply would keep.
+      expect(result.current.selectedData.map((n) => n.id)).toEqual([
+        'pii.email',
+        'pii.ssn',
+      ]);
     });
 
     it('overrides a display-only locked radio sibling even when its branch is unfetched', () => {
@@ -285,7 +291,11 @@ describe('useTreeSelectSelection', () => {
 
       act(() => result.current.toggleNodeSelection(ssn, pii));
 
-      expect(result.current.selectedData.map((n) => n.id)).toEqual(['pii.ssn']);
+      // The unfetched display-only inherited sibling stays in the selection.
+      expect(result.current.selectedData.map((n) => n.id)).toEqual([
+        'pii.email',
+        'pii.ssn',
+      ]);
     });
 
     // The relaxation is for display-only selections alone; a locked radio sibling
