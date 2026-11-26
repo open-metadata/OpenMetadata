@@ -147,14 +147,7 @@ export const useGlobalSearchItems = ({
       sourceRecents
         .filter((recent) => recent.rows.length > 0)
         .forEach((recent) => {
-          section(`recent-${recent.key}`, recent.label, {
-            seeAll: {
-              label: t('label.view-all-entity', {
-                entity: labelFor(recent.key),
-              }),
-              onPress: () => onShowType(recent.key),
-            },
-          });
+          section(`recent-${recent.key}`, recent.label);
           rows(recent.key, recent.rows.slice(0, RECENT_SOURCE_ROWS));
         });
 

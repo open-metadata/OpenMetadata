@@ -142,16 +142,12 @@ describe('useGlobalSearchItems', () => {
       ).toEqual([{ term: 'customers', timestamp: 2 }]);
     });
 
-    it('offers view all on a source recent', () => {
+    it('lists a source recent under its heading, with no link (as in the design)', () => {
       const items = renderItems({ sourceRecents: [chatRecents] });
       const section = findSection(items, 'recent-chats');
 
       expect(section.label).toBe('Recent chats');
-      expect(section.seeAll?.label).toBe('label.view-all-entity');
-
-      section.seeAll?.onPress();
-
-      expect(onShowType).toHaveBeenCalledWith('chats');
+      expect(section.seeAll).toBeUndefined();
     });
 
     it('shows only the scoped source recents', () => {
