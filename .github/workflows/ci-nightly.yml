@@ -15,6 +15,11 @@ on:
     - cron: 0 1 * * *
   workflow_dispatch:
     inputs:
+      workload:
+        description: Nightly workloads to run
+        type: choice
+        options: [all, java, python, connectors]
+        default: all
       connectors:
         description: CLI E2E connectors as a JSON array (subset of the default list)
         type: string
@@ -25,11 +30,12 @@ permissions:
 env:
   DEFAULT_CONNECTORS: *default-connectors
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}-${{ inputs.workload }}
   cancel-in-progress: true
 jobs:
   plan:
     name: Select Python workloads
+    if: ${{ inputs.workload != 'java' }}
     runs-on: ubuntu-latest
     outputs:
       python-versions: ${{ steps.versions.outputs.versions }}
@@ -73,6 +79,7 @@ jobs:
   py-static-checks:
     name: py-static-checks
     needs: plan
+    if: &run-full-python ${{ inputs.workload != 'java' && inputs.workload != 'connectors' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -109,6 +116,7 @@ jobs:
     needs:
       - plan
       - prepare-classification-models
+    if: *run-full-python
     strategy:
       fail-fast: false
       matrix:
@@ -134,6 +142,7 @@ jobs:
       - plan
       - prepare-classification-models
       - backend
+    if: *run-full-python
     strategy:
       fail-fast: false
       matrix:
@@ -160,10 +169,11 @@ jobs:
       python-version: ${{ needs.plan.outputs.python-highest }}
       ref: ${{ needs.plan.outputs.ref }}
       connectors: ${{ needs.plan.outputs.connectors }}
-      collect-coverage: ${{ github.ref == 'refs/heads/main' }}
+      collect-coverage: ${{ github.ref == 'refs/heads/main' && inputs.workload != 'connectors' }}
 
   python-operator:
     needs: [plan, backend, ingestion-image]
+    if: *run-full-python
     uses: ./.github/workflows/reusable-py-operator-build-test.yml
     with:
       ref: ${{ needs.plan.outputs.ref }}
@@ -171,6 +181,7 @@ jobs:
 
   airflow-apis:
     needs: [plan, backend]
+    if: *run-full-python
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -185,30 +196,6 @@ jobs:
           python-version: ${{ needs.plan.outputs.python-lowest }}
           use-backend-image: 'true'
           collect-coverage: ${{ github.ref == 'refs/heads/main' }}
-
-  py-tests-status:
-    name: py-tests-status
-    needs:
-      - plan
-      - airflow-apis
-      - py-static-checks
-      - prepare-classification-models
-      - backend
-      - ingestion-image
-      - python-unit
-      - python-integration
-      - python-cli-e2e
-      - python-operator
-    if: ${{ always() }}
-    runs-on: ubuntu-slim
-    timeout-minutes: 2
-    steps:
-      - name: Verify selected Python workloads
-        env:
-          NEEDS_JSON: ${{ toJSON(needs) }}
-        run: |
-          jq -e 'all(.[]; .result == "success")' <<< "$NEEDS_JSON"
-        shell: bash
 
   sonar-cloud-coverage-upload:
     needs:
@@ -239,41 +226,11 @@ jobs:
           publish-ingestion: ${{ contains(fromJSON('["success", "failure"]'), needs.python-unit.result) }}
           publish-airflow-apis: ${{ needs.airflow-apis.result == 'success' }}
 
-  notify:
-    needs:
-      - plan
-      - py-static-checks
-      - prepare-classification-models
-      - backend
-      - ingestion-image
-      - python-unit
-      - python-integration
-      - python-cli-e2e
-      - python-operator
-      - py-tests-status
-      - sonar-cloud-coverage-upload
-    if: ${{ always() && !cancelled() && (needs.py-tests-status.result == 'failure' || needs.sonar-cloud-coverage-upload.result == 'failure') }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Slack on nightly failure
-        continue-on-error: true
-        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
-          errors: true
-          payload: |
-            {
-              "channel": "C03EYBDDX17",
-              "text": "<!subteam^S0AH093PEQL> Python CI nightly failed on `${{ github.ref_name }}`.\nSelection: ${{ needs.plan.result }}; checks: ${{ needs.py-static-checks.result }}; models: ${{ needs.prepare-classification-models.result }}; backend: ${{ needs.backend.result }}; units: ${{ needs.python-unit.result }}; integrations: ${{ needs.python-integration.result }}; CLI E2E: ${{ needs.python-cli-e2e.result }}; operator image: ${{ needs.python-operator.result }}; Sonar: ${{ needs.sonar-cloud-coverage-upload.result }}.\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }
-
   integration-test-build:
     name: Build Integration Test Runtime
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    if: ${{ github.event_name == 'schedule' }}
+    if: ${{ github.event_name == 'schedule' || inputs.workload == 'all' || inputs.workload == 'java' }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -285,7 +242,6 @@ jobs:
 
   it-mysql-elasticsearch:
     needs: integration-test-build
-    if: ${{ github.event_name == 'schedule' }}
     permissions:
       contents: read
       checks: write
@@ -298,28 +254,13 @@ jobs:
       lanes_json: '["parallel","global-state","multi-node","retry-queue","rdf"]'
       store_database_version: oldest
 
-  integration-tests-mysql-elasticsearch:
-    name: integration-tests-mysql-elasticsearch
-    needs: [integration-test-build, it-mysql-elasticsearch]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    if: ${{ always() && github.event_name == 'schedule' }}
-    steps:
-      - name: Verify MySQL + Elasticsearch Integration Test Lanes
-        env:
-          BUILD_RESULT: ${{ needs.integration-test-build.result }}
-          LANES_RESULT: ${{ needs.it-mysql-elasticsearch.result }}
-        run: |
-          if [[ "$BUILD_RESULT" != "success" || "$LANES_RESULT" != "success" ]]; then
-            echo "Java integration jobs did not complete successfully: build=${BUILD_RESULT}, lanes=${LANES_RESULT}"
-            exit 1
-          fi
-
   maven-sonarcloud-ci:
     name: Maven SonarCloud CI
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    if: ${{ github.event_name == 'schedule' }}
+    if: >-
+      ${{ github.ref == 'refs/heads/main' &&
+          (github.event_name == 'schedule' || inputs.workload == 'all' || inputs.workload == 'java') }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -331,3 +272,50 @@ jobs:
         uses: ./.github/actions/java-sonar
         with:
           sonar-token: ${{ secrets.SONAR_TOKEN }}
+
+  nightly-status:
+    name: Nightly status
+    needs:
+      - plan
+      - backend
+      - ingestion-image
+      - prepare-classification-models
+      - py-static-checks
+      - python-unit
+      - python-integration
+      - python-cli-e2e
+      - python-operator
+      - airflow-apis
+      - sonar-cloud-coverage-upload
+      - integration-test-build
+      - it-mysql-elasticsearch
+      - maven-sonarcloud-ci
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts/nightly_summary.py
+          sparse-checkout-cone-mode: false
+      - name: Summarize nightly results
+        id: summary
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          WORKLOAD: ${{ inputs.workload || 'all' }}
+          SLACK_CHANNEL: C03EYBDDX17
+          PYTHON_ON_CALL: '<!subteam^S0AH093PEQL>'
+        run: python3 .github/scripts/nightly_summary.py
+      - name: Notify Slack of nightly failures
+        if: ${{ steps.summary.outputs.failed == 'true' }}
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload-file-path: ${{ runner.temp }}/nightly-slack.json
+      - name: Fail if a selected workload did not succeed
+        if: ${{ steps.summary.outputs.failed == 'true' }}
+        run: exit 1

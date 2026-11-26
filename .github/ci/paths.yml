@@ -181,6 +181,7 @@ ci-rules:
   - ".github/workflows/**"
   - ".github/scripts/check_pr_workflow_security.py"
   - ".github/scripts/configure_docker_storage.sh"
+  - ".github/scripts/nightly_summary.py"
   - ".github/scripts/prune_ghcr_package.py"
   - ".github/scripts/summarize_surefire.py"
   - ".github/scripts/validate_ci_rules.sh"

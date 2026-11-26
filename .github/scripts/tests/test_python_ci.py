@@ -161,26 +161,6 @@ def test_gate_rejects_unexpected_results_and_dependencies(gate):
     assert gate({"a": {"result": "success"}, "omitted-job": {"result": "failure"}}, {"a": "success"}).returncode != 0
 
 
-def test_nightly_gate_requires_every_dependency_to_succeed():
-    job = workflow("ci-nightly.yml")["jobs"]["py-tests-status"]
-    successful = {name: {"result": "success"} for name in job["needs"]}
-
-    def invoke(needs):
-        return run(
-            "bash",
-            "-eo",
-            "pipefail",
-            "-c",
-            job["steps"][0]["run"],
-            env={**os.environ, "NEEDS_JSON": json.dumps(needs)},
-        )
-
-    result = invoke(successful)
-    assert result.returncode == 0, result.stderr
-    for name, outcome in itertools.product(successful, ["failure", "cancelled", "skipped"]):
-        assert invoke({**successful, name: {"result": outcome}}).returncode != 0, (name, outcome)
-
-
 def test_nightly_artifact_names_are_unique_across_invocations():
     unit_steps = yaml.load((ROOT / ".github/actions/python-unit/action.yml").read_text(), Loader=yaml.BaseLoader)[
         "runs"

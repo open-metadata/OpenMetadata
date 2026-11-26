@@ -334,7 +334,9 @@ def test_one_nightly_schedule_runs_java_without_waiting_for_python():
     jobs = workflow["jobs"]
     for name in ("integration-test-build", "maven-sonarcloud-ci"):
         assert "needs" not in jobs[name]
-        assert jobs[name]["if"] == "${{ github.event_name == 'schedule' }}"
+        assert "github.event_name == 'schedule'" in jobs[name]["if"]
+        assert "inputs.workload == 'java'" in jobs[name]["if"]
+    assert "github.ref == 'refs/heads/main'" in jobs["maven-sonarcloud-ci"]["if"]
     assert jobs["it-mysql-elasticsearch"]["needs"] == "integration-test-build"
     assert jobs["it-mysql-elasticsearch"]["with"]["store_database_version"] == "oldest"
 
