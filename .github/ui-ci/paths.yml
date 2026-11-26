@@ -1,6 +1,6 @@
 # Read by the plan job of ci-pr.yml and ci-merge-queue.yml (dorny/paths-filter).
 # `ui` selects checkstyle and browser tests (which then select by impact);
-# `ui-unit` selects Jest and must stay a subset of `ui`.
+# `ui-unit` selects Jest, and the plan job also selects `ui` whenever it matches.
 ui:
   - openmetadata-ui/src/main/resources/ui/**
   - openmetadata-ui-core-components/src/main/resources/ui/**

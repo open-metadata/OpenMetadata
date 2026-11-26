@@ -36,7 +36,8 @@ jobs:
       python: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' }}
       airflow-apis: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.airflow-apis == 'true' }}
       static: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' || steps.filter.outputs.airflow-apis == 'true' || steps.filter.outputs.static == 'true' }}
-      ui: ${{ github.event_name == 'workflow_dispatch' || steps.ui-filter.outputs.ui == 'true' }}
+      # ui-unit implies ui: Jest waits for checkstyle on pull requests.
+      ui: ${{ github.event_name == 'workflow_dispatch' || steps.ui-filter.outputs.ui == 'true' || steps.ui-filter.outputs.ui-unit == 'true' }}
       ui-unit: ${{ github.event_name == 'workflow_dispatch' || steps.ui-filter.outputs.ui-unit == 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

@@ -36,6 +36,8 @@ push would cancel. Python had already moved to event-owned entrypoints (`ci-pr.y
 A UI pull request takes checkstyle time plus test time instead of the slowest of three parallel
 workflows. In exchange, a lint failure costs one runner. Gating on the whole checkstyle job, not
 a lint-only subset, adds about 1.5 minutes of wall time (bundle build, knip) before tests start.
-Splitting it would mean a second checkstyle job with its own setup. A queue entry's impact map
-counts only when the whole `ci-merge-queue` run passed. Backend joins the same entrypoints
+Splitting it would mean a second checkstyle job with its own setup. Browser tests and the core-components
+tests become merge-blocking for the first time; the ruleset never required them. A queue entry's
+impact map counts only when the whole `ci-merge-queue` run passed. Dispatching an entrypoint by
+hand runs every UI job. Backend joins the same entrypoints
 separately, coordinated with its owners and the ruleset change.

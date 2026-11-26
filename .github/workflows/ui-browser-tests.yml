@@ -39,9 +39,9 @@ env:
   SHARDS: 5
   # Test files per runner when only some run (130 files over 5 runners).
   FILES_PER_SHARD: 26
-  # What a merge-queue entry must touch to select browser tests at all
-  # (merge_group has no `paths` filter). A core change that breaks the app
-  # is caught by the scheduled full run.
+  # What the scheduled run must see changed since the last full run to run at
+  # all. Pull requests and merge-queue entries are selected by the caller's
+  # plan job (.github/ui-ci/paths.yml).
   UI_PATHS: >-
     openmetadata-ui/src/main/resources/ui/
     openmetadata-ui-core-components/src/main/resources/ui/
@@ -149,9 +149,7 @@ jobs:
         env:
           BASE: ${{ github.event.merge_group.base_sha || 'HEAD^1' }}
         run: |
-          if [ "${{ github.event_name }}" = "merge_group" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
-            echo '{"mode": "none", "reason": "no UI change in this merge-queue entry", "tests": [], "uncovered": []}' > selection.json
-          elif [ "${{ github.event_name }}" = "schedule" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
             echo '{"mode": "none", "reason": "no UI change since the last full run", "tests": [], "uncovered": []}' > selection.json
           elif [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "merge_group" ]; then
             # A pull request's merge commit has its base at HEAD^1; a merge-queue
