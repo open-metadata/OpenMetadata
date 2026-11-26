@@ -15,20 +15,20 @@ import { get } from 'lodash';
 import { migratedTo } from '../../../constant/migration';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import {
-    LineageDataClass,
-    LineageEntityUnion
+  LineageDataClass,
+  LineageEntityUnion,
 } from '../../../support/entity/LineageDataClass';
 import {
-    getApiContext,
-    getEntityTypeSearchIndexMapping
+  getApiContext,
+  getEntityTypeSearchIndexMapping,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-    fitToScreen,
-    openImpactAnalysisTab,
-    performZoomOut,
-    setLineageDepthAndVerify,
-    visitLineageTab
+  fitToScreen,
+  openImpactAnalysisTab,
+  performZoomOut,
+  setLineageDepthAndVerify,
+  visitLineageTab,
 } from '../../../utils/lineage';
 import { waitForSearchIndexed } from '../../../utils/polling';
 import { waitForAggregation } from '../../../utils/searchAggregation';
