@@ -299,10 +299,6 @@ const RolesListPage = () => {
 
   const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {
     if (cursorType && paging) {
-      fetchRoles({
-        [cursorType]: paging[cursorType],
-        total: paging.total,
-      } as Paging);
       handlePageChange(
         currentPage,
         { cursorType, cursorValue: paging[cursorType] },

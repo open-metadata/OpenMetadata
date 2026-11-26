@@ -39,6 +39,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * server searching for itself.
  */
 public final class PrivateSearchFields {
+  public static final String BOUND_ASSETS = "boundAssets";
   private static final String EMAIL = "email";
   private static final String ALL_INDICES = "_all";
   private static final String REFUSED =
@@ -63,6 +64,12 @@ public final class PrivateSearchFields {
     List<String> excludes = new ArrayList<>(listOrEmpty(requested));
     if (!matchesPrivateFields(subject, index) && !excludes.contains(EMAIL)) {
       excludes.add(EMAIL);
+    }
+    if (subject != null
+        && !subject.isAdmin()
+        && !excludes.contains(BOUND_ASSETS)
+        && targetsDocuments(index, Entity.ONTOLOGY_CONCEPT)) {
+      excludes.add(BOUND_ASSETS);
     }
     return Collections.unmodifiableList(excludes);
   }
@@ -121,20 +128,24 @@ public final class PrivateSearchFields {
 
   /** Whether {@code index} can reach user documents; naming no index searches every index. */
   static boolean targetsUserDocuments(String index) {
+    return targetsDocuments(index, Entity.USER);
+  }
+
+  private static boolean targetsDocuments(String index, String type) {
     SearchRepository repository = Entity.getSearchRepository();
-    IndexMapping users = repository == null ? null : repository.getIndexMapping(Entity.USER);
-    return users != null
+    IndexMapping mapping = repository == null ? null : repository.getIndexMapping(type);
+    return mapping != null
         && (nullOrEmpty(index)
             || reaches(
                 Objects.requireNonNullElse(repository.getIndexOrAliasName(index), index),
-                namesOf(users),
+                namesOf(mapping, type),
                 repository.getClusterAlias()));
   }
 
-  private static Set<String> namesOf(IndexMapping mapping) {
+  private static Set<String> namesOf(IndexMapping mapping, String type) {
     Set<String> names = new HashSet<>(listOrEmpty(mapping.getParentAliases()));
     names.addAll(listOrEmpty(mapping.getChildAliases()));
-    names.add(Entity.USER);
+    names.add(type);
     names.add(mapping.getIndexName());
     names.add(mapping.getAlias());
     names.remove(null);

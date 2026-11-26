@@ -557,12 +557,14 @@ export const AuthProvider = ({
    * Stores redirect URL for successful login. The query string is kept so a
    * re-authentication lands back on the same view (filters, tabs, search).
    */
-  const handleStoreProtectedRedirectPath = useCallback(() => {
-    const { pathname, search } = locationRef.current;
-    if (applicationRoutesClass.isProtectedRoute(pathname)) {
-      storeRedirectPath(`${pathname}${search}`);
-    }
-  }, [storeRedirectPath]);
+  const handleStoreProtectedRedirectPath = useCallback(
+    ({ pathname, search } = locationRef.current) => {
+      if (applicationRoutesClass.isProtectedRoute(pathname)) {
+        storeRedirectPath(`${pathname}${search}`);
+      }
+    },
+    [storeRedirectPath]
+  );
 
   const resetUserDetails = (forceLogout = false) => {
     clearPersonaSession();
@@ -985,9 +987,10 @@ export const AuthProvider = ({
 
   // Signed-in session: load the user unless this is the SSO callback route.
   const resumeSignedInSession = async () => {
+    const entryLocation = locationRef.current;
     const oidcToken = await getOidcToken();
     if (!oidcToken) {
-      handleStoreProtectedRedirectPath();
+      handleStoreProtectedRedirectPath(entryLocation);
       setApplicationLoading(false);
 
       return;

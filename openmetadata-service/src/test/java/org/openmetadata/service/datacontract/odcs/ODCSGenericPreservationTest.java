@@ -25,12 +25,18 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.ODCSConverter;
 
 class ODCSGenericPreservationTest {
@@ -267,6 +273,43 @@ class ODCSGenericPreservationTest {
     assertEquals("external", export(merged).at("/team/members/0/username").asText());
     merged = ODCSConverter.smartMerge(existing, imported(source("\"team\":{\"members\":[]}")));
     assertFalse(export(merged).path("team").has("members"));
+  }
+
+  @Test
+  void sameUserWithOwnerAndReviewerRolesPreservesBothWithoutCollision() throws Exception {
+    EntityReference aliceRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.USER)
+            .withName("alice")
+            .withDisplayName("Alice");
+    User alice = Mockito.mock(User.class);
+    Mockito.when(alice.getEntityReference()).thenReturn(aliceRef);
+
+    JsonNode source =
+        source(
+            """
+      "team":{"members":[
+        {"username":"alice","role":"owner","dateIn":"2024-01-01"},
+        {"username":"alice","role":"reviewer","dateIn":"2025-02-02"}
+      ]}
+      """);
+    try (MockedStatic<Entity> mockedEntity = Mockito.mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.USER, "alice", "", Include.NON_DELETED))
+          .thenReturn(alice);
+
+      DataContract contract = imported(source);
+      assertEquals(List.of(aliceRef), contract.getOwners());
+      assertEquals(List.of(aliceRef), contract.getReviewers());
+
+      JsonNode exported = export(contract);
+      assertEquals(2, exported.at("/team/members").size());
+      assertEquals("owner", exported.at("/team/members/0/role").asText());
+      assertEquals("2024-01-01", exported.at("/team/members/0/dateIn").asText());
+      assertEquals("reviewer", exported.at("/team/members/1/role").asText());
+      assertEquals("2025-02-02", exported.at("/team/members/1/dateIn").asText());
+    }
   }
 
   @Test

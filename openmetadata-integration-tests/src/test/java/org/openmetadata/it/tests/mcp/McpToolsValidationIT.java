@@ -281,6 +281,27 @@ public class McpToolsValidationIT extends McpTestBase {
   }
 
   @Test
+  @Order(24)
+  void testPatchEntityWideTableStaysCompactUnderBudget() throws Exception {
+    String patchJson =
+        "[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"Wide table patched compactly\"}]";
+    Map<String, Object> toolCall =
+        McpTestUtils.createPatchEntityToolCall(
+            Entity.TABLE, wideTable.getFullyQualifiedName(), patchJson);
+
+    JsonNode entityData = readEntityText(executeToolCall(toolCall));
+    assertThat(entityData.path("fullyQualifiedName").asText())
+        .isEqualTo(wideTable.getFullyQualifiedName());
+    assertThat(entityData.path("description").asText()).isEqualTo("Wide table patched compactly");
+    assertThat(entityData.path("changed")).extracting(JsonNode::asText).contains("description");
+    assertThat(entityData.has("columns")).isFalse();
+    assertThat(entityData.has("truncated")).isFalse();
+    assertThat(entityData.toString().length())
+        .as("a description patch on a wide table stays small: %s", entityData)
+        .isLessThan(2_000);
+  }
+
+  @Test
   @Order(6)
   void testGetEntityLineageTool() throws Exception {
     Map<String, Object> toolCall =
@@ -760,8 +781,8 @@ public class McpToolsValidationIT extends McpTestBase {
     assertThat(firstResult.has("text")).isTrue();
     String responseText = firstResult.get("text").asText();
 
-    // The patched entity is returned flat, the same shape the create_* tools return. It used to be
-    // wrapped in an "entity" key because the raw PatchResponse was serialized as-is.
+    // The reply is a flat confirmation: identity, version, what changed and its new value, but not
+    // the untouched columns.
     JsonNode entityData = OBJECT_MAPPER.readTree(responseText);
     assertThat(entityData.has("id")).isTrue();
     assertThat(entityData.has("description")).isTrue();
@@ -773,6 +794,12 @@ public class McpToolsValidationIT extends McpTestBase {
         .withFailMessage("Patch response payload: %s", responseText)
         .isEqualTo("updated");
     assertThat(entityData.has("version")).isTrue();
+    assertThat(entityData.path("entityType").asText()).isEqualTo(Entity.TABLE);
+    assertThat(entityData.has("updatedAt")).isTrue();
+    assertThat(entityData.path("changed")).extracting(JsonNode::asText).contains("description");
+    assertThat(entityData.has("columns"))
+        .withFailMessage("Compact patch response must omit columns: %s", responseText)
+        .isFalse();
   }
 
   private void validateLineageResponse(JsonNode result, String expectedEntityFqn) throws Exception {

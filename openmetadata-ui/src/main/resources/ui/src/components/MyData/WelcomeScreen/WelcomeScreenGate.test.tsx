@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { Link, MemoryRouter } from 'react-router-dom';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../../constants/constants';
 import { RouteVisibilityProvider } from '../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { updateUserDetail } from '../../../rest/userAPI';
@@ -49,7 +50,8 @@ const renderGate = () =>
   render(
     <WelcomeScreenGate>
       <div data-testid="home">home</div>
-    </WelcomeScreenGate>
+    </WelcomeScreenGate>,
+    { wrapper: MemoryRouter }
   );
 
 describe('WelcomeScreenGate', () => {
@@ -93,7 +95,7 @@ describe('WelcomeScreenGate', () => {
         </WelcomeScreenGate>
       </RouteVisibilityProvider>
     );
-    const { rerender } = render(gate(true));
+    const { rerender } = render(gate(true), { wrapper: MemoryRouter });
 
     expect(await screen.findByTestId('welcome')).toBeInTheDocument();
 
@@ -101,6 +103,24 @@ describe('WelcomeScreenGate', () => {
     rerender(gate(false));
     // Coming back must show the home, not the welcome screen again.
     rerender(gate(true));
+
+    expect(screen.getByTestId('home')).toBeInTheDocument();
+    expect(screen.queryByTestId('welcome')).not.toBeInTheDocument();
+  });
+
+  it('dismisses the welcome screen on navigation to the route already shown', async () => {
+    render(
+      <MemoryRouter initialEntries={['/my-data']}>
+        <Link to="/my-data">Home</Link>
+        <WelcomeScreenGate>
+          <div data-testid="home">home</div>
+        </WelcomeScreenGate>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByTestId('welcome')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Home' }));
 
     expect(screen.getByTestId('home')).toBeInTheDocument();
     expect(screen.queryByTestId('welcome')).not.toBeInTheDocument();

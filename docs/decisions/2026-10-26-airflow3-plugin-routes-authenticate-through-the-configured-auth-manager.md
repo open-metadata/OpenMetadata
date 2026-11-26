@@ -1,7 +1,7 @@
 # On Airflow 3, the managed-API plugin routes authenticate and authorize through the configured auth manager
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial)
+- **Revisions:** v1 2026-10-26 (initial) · v2 2026-11-23 (`can_create` on `DAGs` authorizes as `PUT`)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `openmetadata-airflow-apis/tests/unit/test_security_compat.py` (request-level tests through a Flask client, including the real `SimpleAuthManager`)
 - **Related:** PR #36145
@@ -60,3 +60,15 @@ when the auth manager cannot be resolved, raises, or denies any listed permissio
   there until its client can present that auth manager's token.
 - Bearer tokens issued by the auth manager are not honoured on these routes; a caller that
   needs them is the trigger to revisit this record.
+
+## Amendment
+
+**v2 2026-11-23.** On the `DAGs` resource, `can_create` is authorized as `PUT`, not `POST`.
+FAB's `DAGs` resource only defines `can_read`, `can_edit` and `can_delete`, so `FabAuthManager`
+answered `POST` on it with `("can_create", "DAGs") in user.perms`, which no role ever holds. Every
+caller, the Helm chart's `Admin` included, got `403` on `health-auth` and `deploy`, the two
+routes that declare `can_create`. The Airflow Helm chart configures `FabAuthManager`, so every
+2.1.0 Helm deployment lost its pipeline service. `SimpleAuthManager` grants `POST` and `PUT`
+on DAGs to the same roles, so it is unaffected. The other resources keep the
+`POST` mapping. Guard: `TestBasicCredentialsAgainstFabAuthManager`, which drives the real
+`FabAuthManager`.

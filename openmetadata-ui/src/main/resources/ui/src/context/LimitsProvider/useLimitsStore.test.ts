@@ -37,14 +37,18 @@ const getConfig = (): LimitConfig => ({
   },
 });
 
-const getLimitResponse = (currentCount: number, limitReached = false) => ({
+const getLimitResponse = (
+  currentCount: number,
+  limitReached = false,
+  resource = 'metric'
+) => ({
   featureLimitStatuses: [
     {
-      name: 'metric',
+      name: resource,
       limitReached,
       currentCount,
       configuredLimit: {
-        name: 'metric',
+        name: resource,
         limits: {
           softLimit: 2,
           hardLimit: 3,
@@ -75,6 +79,7 @@ describe('useLimitStore', () => {
       type: 'danger',
       hardLimitExceed: true,
       softLimitExceed: true,
+      resource: 'metric',
     });
   });
 
@@ -89,7 +94,44 @@ describe('useLimitStore', () => {
       type: 'warning',
       hardLimitExceed: false,
       softLimitExceed: true,
+      resource: 'metric',
     });
+  });
+
+  it('clears its banner once a forced refresh drops usage below the limits', async () => {
+    mockGetLimitByResource.mockResolvedValueOnce(getLimitResponse(3, true));
+    await useLimitStore.getState().getResourceLimit('metric', true, true);
+
+    expect(useLimitStore.getState().bannerDetails?.subheader).toBe(
+      '3/3 (FREE, 100%)'
+    );
+
+    mockGetLimitByResource.mockResolvedValueOnce(getLimitResponse(1));
+    await useLimitStore.getState().getResourceLimit('metric', true, true);
+
+    expect(useLimitStore.getState().bannerDetails).toBeNull();
+  });
+
+  it("keeps another resource's banner when this resource is within its limits", async () => {
+    mockGetLimitByResource.mockResolvedValueOnce(getLimitResponse(3, true));
+    await useLimitStore.getState().getResourceLimit('metric');
+
+    mockGetLimitByResource.mockResolvedValueOnce(
+      getLimitResponse(1, false, 'user')
+    );
+    await useLimitStore.getState().getResourceLimit('user', true, true);
+
+    expect(useLimitStore.getState().bannerDetails?.resource).toBe('metric');
+  });
+
+  it('leaves the banner alone when fetching without showBanner', async () => {
+    mockGetLimitByResource.mockResolvedValueOnce(getLimitResponse(3, true));
+    await useLimitStore.getState().getResourceLimit('metric');
+
+    mockGetLimitByResource.mockResolvedValueOnce(getLimitResponse(1));
+    await useLimitStore.getState().getResourceLimit('metric', false, true);
+
+    expect(useLimitStore.getState().bannerDetails?.resource).toBe('metric');
   });
 
   it('does not request or banner a disabled limit configuration', async () => {

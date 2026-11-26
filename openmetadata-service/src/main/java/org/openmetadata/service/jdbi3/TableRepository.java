@@ -122,10 +122,12 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.EntitySpecViolationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.ApprovedGlossaryTermGuard.HeldTerm;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.security.Authorizer;
@@ -138,6 +140,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LikeEscape;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidatorUtil;
 
@@ -1411,14 +1414,51 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
+  // Takes out of the data model each glossary term that is not Approved and that it newly applies
+  // to the table or a matching stored column, to be kept as pending.
+  private List<HeldTerm> holdUnapprovedModelTerms(Table table, DataModel dataModel) {
+    Map<String, Set<String>> held =
+        ApprovedGlossaryTermGuard.heldTermHashesByTarget(
+            modelTagsByTarget(table, dataModel), glossaryTagsByTarget(table));
+    List<HeldTerm> heldTerms = new ArrayList<>();
+    if (!held.isEmpty()) {
+      dataModel.setTags(
+          takeHeld(heldTerms, table.getFullyQualifiedName(), dataModel.getTags(), held));
+      for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
+        storedColumn(table, modelColumn)
+            .ifPresent(
+                column ->
+                    modelColumn.setTags(
+                        takeHeld(
+                            heldTerms,
+                            column.getFullyQualifiedName(),
+                            modelColumn.getTags(),
+                            held)));
+      }
+    }
+    return heldTerms;
+  }
+
+  private static List<TagLabel> takeHeld(
+      List<HeldTerm> heldTerms, String target, List<TagLabel> tags, Map<String, Set<String>> held) {
+    List<TagLabel> remaining = new ArrayList<>(listOrEmpty(tags));
+    ApprovedGlossaryTermGuard.takeTerms(remaining, held.get(target))
+        .forEach(label -> heldTerms.add(new HeldTerm(target, label)));
+    return tags == null && remaining.isEmpty() ? null : remaining;
+  }
+
+  private static Optional<Column> storedColumn(Table table, Column modelColumn) {
+    return listOrEmpty(table.getColumns()).stream()
+        .filter(column -> EntityUtil.columnNameMatch.test(column, modelColumn))
+        .findAny();
+  }
+
   // The labels a data model applies, keyed by the table or matching stored column they land on.
   private static Map<String, List<TagLabel>> modelTagsByTarget(Table table, DataModel dataModel) {
     Map<String, List<TagLabel>> tagsByTarget = new HashMap<>();
     tagsByTarget.put(table.getFullyQualifiedName(), listOrEmpty(dataModel.getTags()));
     for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
-      listOrEmpty(table.getColumns()).stream()
-          .filter(column -> EntityUtil.columnNameMatch.test(column, modelColumn))
-          .findAny()
+      storedColumn(table, modelColumn)
           .ifPresent(
               column ->
                   tagsByTarget.put(
@@ -1427,17 +1467,33 @@ public class TableRepository extends EntityRepository<Table> {
     return tagsByTarget;
   }
 
+  /**
+   * The whole stored row, with the fields {@link #addDataModel} merges into set on it. addDataModel
+   * writes the entire row back with {@code dao.update}, so it cannot start from {@code get()}: that
+   * nulls every field not requested, and the write then deleted them, schemaDefinition among them.
+   */
+  private Table getWholeStoredTable(UUID tableId) {
+    final Fields fields =
+        getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD, TABLE_CONSTRAINTS_FIELD));
+    final Table table = setFieldsInternal(find(tableId, NON_DELETED, false), fields);
+    setInheritedFields(table, fields);
+    return table;
+  }
+
+  /**
+   * addDataModel used to drop schemaDefinition while the row kept the sourceHash of the request
+   * that carried it. Such a row takes the full update, so the next ingestion run writes it back.
+   */
+  @Override
+  protected boolean hasLostSourceFields(Table stored, Table incoming) {
+    return !nullOrEmpty(incoming.getSchemaDefinition())
+        && nullOrEmpty(stored.getSchemaDefinition());
+  }
+
   @Transaction
-  public Table addDataModel(UUID tableId, DataModel dataModel) {
-    Table table =
-        get(
-            null,
-            tableId,
-            getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD, TABLE_CONSTRAINTS_FIELD)),
-            NON_DELETED,
-            false);
-    ApprovedGlossaryTermGuard.checkNewlyApplied(
-        modelTagsByTarget(table, dataModel), glossaryTagsByTarget(table));
+  public Table addDataModel(UUID tableId, DataModel dataModel, String updatedBy) {
+    Table table = getWholeStoredTable(tableId);
+    List<HeldTerm> heldTerms = holdUnapprovedModelTerms(table, dataModel);
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
@@ -1486,10 +1542,11 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     if (!updatedColumnFqns.isEmpty()) {
-      daoCollection.tagUsageDAO().deleteTagsByTargets(updatedColumnFqns);
+      daoCollection.tagUsageDAO().deleteShownTagsByTargets(updatedColumnFqns);
     }
     applyColumnTags(table.getColumns());
-    dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
+    dao.update(table.getId(), table.getFullyQualifiedName(), serializeForStorage(table));
+    storePendingGlossaryTerms(heldTerms, updatedBy);
     // addDataModel bypasses the EntityRepository.update() path, so invalidateCachesAfterStore
     // never runs. Drop every cached variant manually so the next GET rebuilds with the freshly
     // merged tags/dataModel instead of stale pre-merge JSON. It also bypasses postUpdate, which is
@@ -1694,7 +1751,7 @@ public class TableRepository extends EntityRepository<Table> {
       collectColumnFqns(table.getColumns(), columnFqns);
     }
     if (!columnFqns.isEmpty()) {
-      daoCollection.tagUsageDAO().deleteTagsByTargets(columnFqns);
+      daoCollection.tagUsageDAO().deleteShownTagsByTargets(columnFqns);
     }
   }
 
@@ -1848,6 +1905,17 @@ public class TableRepository extends EntityRepository<Table> {
     deleteResidualExecutableTestSuite(table, deletedBy);
   }
 
+  @Override
+  protected void postRestore(Table table) {
+    super.postRestore(table);
+    refreshOntologyBindings(table);
+  }
+
+  private void refreshOntologyBindings(Table table) {
+    PostCommitActionQueue.runOrDefer(
+        () -> OntologyTermSearch.bindingsChanged(table.getEntityReference()));
+  }
+
   /**
    * The profiler purge runs here rather than in {@link #entitySpecificCleanup}, which executes
    * inside the delete transaction: a table with a long profiling history can own millions of
@@ -1861,6 +1929,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   protected void postDelete(Table table, boolean hardDelete) {
     super.postDelete(table, hardDelete);
+    refreshOntologyBindings(table);
     if (hardDelete) {
       long deletedAt = System.currentTimeMillis();
       AsyncService.getInstance()
@@ -2547,7 +2616,7 @@ public class TableRepository extends EntityRepository<Table> {
 
       // manage table ER relationship based on table constraints
       addConstraintRelationship(origTable, added);
-      deleteConstraintRelationship(origTable, deleted);
+      deleteConstraintRelationship(origTable, deleted, referredTables(updatedConstraints));
     }
 
     /**
@@ -2622,12 +2691,28 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  private void deleteConstraintRelationship(Table table, List<TableConstraint> constraints) {
+  // Tables the constraints refer to. A constraint replaced by one that still refers to the same
+  // table, such as a foreign key whose column pairing was corrected, keeps the link to it.
+  private static Set<String> referredTables(List<TableConstraint> constraints) {
+    Set<String> tables = new HashSet<>();
+    for (TableConstraint constraint : listOrEmpty(constraints)) {
+      for (String column : listOrEmpty(constraint.getReferredColumns())) {
+        tables.add(FullyQualifiedName.getParentFQN(column));
+      }
+    }
+    return tables;
+  }
+
+  private void deleteConstraintRelationship(
+      Table table, List<TableConstraint> constraints, Set<String> stillReferredTables) {
     if (!nullOrEmpty(constraints)) {
       for (TableConstraint constraint : constraints) {
         if (!nullOrEmpty(constraint.getReferredColumns())) {
           for (String column : constraint.getReferredColumns()) {
             String toParent = FullyQualifiedName.getParentFQN(column);
+            if (stillReferredTables.contains(toParent)) {
+              continue;
+            }
             try {
               EntityReference toTable = Entity.getEntityReferenceByName(TABLE, toParent, ALL);
               deleteRelationship(
@@ -3538,6 +3623,8 @@ public class TableRepository extends EntityRepository<Table> {
     return nameMatches || displayNameMatches;
   }
 
+  // The UI mirrors this order to find a deep-linked column's page (getColumnPageForFqn); change
+  // both together. ADR:2026-11-24-column-deep-link-page-mirrors-server-column-sort
   private Comparator<Column> columnComparator(String sortBy, String sortOrder) {
     Comparator<Column> comparator;
     if ("ordinalPosition".equals(sortBy)) {
