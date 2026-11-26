@@ -68624,22 +68624,6 @@
                     "endColumn": 50,
                     "lineCount": 1
                 }
-            },
-            {
-                "code": "reportOptionalMemberAccess",
-                "range": {
-                    "startColumn": 45,
-                    "endColumn": 51,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportOperatorIssue",
-                "range": {
-                    "startColumn": 66,
-                    "endColumn": 80,
-                    "lineCount": 1
-                }
             }
         ],
         "./src/metadata/profiler/adaptors/adaptor_factory.py": [

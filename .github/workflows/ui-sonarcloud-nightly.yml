@@ -92,7 +92,7 @@ jobs:
       # test:cov-summary writes only json-summary; Sonar reads lcov.info.
       - name: Run Coverage
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: yarn test:cov-summary --coverageReporters lcov
+        run: yarn test:cov-summary --coverageReporters lcov --silent
 
       # Deps and ANTLR come from the steps above, so only Chromium is added here
       # (no --with-deps: the runner image has its libraries; see ui-browser-setup).
