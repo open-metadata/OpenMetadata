@@ -125,9 +125,11 @@ v3 (2026-11-26): a stored vector is reused only for the model that made it.
   refresh that follows every term write applies the rule.
 - **`reembed` ignores stored vectors.** It embeds every entity again (`reembedEntity`) and exits
   with 1 when any entity could not be read or re-embedded; a batch that cannot be read counts all
-  its entities. It rewrites the live indexes in place, so it first reads their fields and leaves
-  out, before any provider call and counted as not re-embedded, every type whose entity index or
-  the chunk index does not map a vector of the model's dimension; only a reindex rebuilds those.
+  its entities, and an entity whose re-embedding throws counts as well. It rewrites the live
+  indexes in place, so it first reads their fields, declares the field on an index that maps none
+  as server start and the smart `reindex` do, and leaves out, before any provider call and counted
+  as not re-embedded, every type whose entity index or the chunk index still does not map a vector
+  of the model's dimension; only a reindex rebuilds those.
   An index that records another model of the same dimension is what it replaces, so the server's
   record of indexes that cannot hold the model's vectors plays no part in it
   (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model). It embeds no

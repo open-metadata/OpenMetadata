@@ -1955,16 +1955,18 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   /**
-   * Leaves out of the run, counted as not re-embedded, every type whose entity index or the chunk
-   * index cannot take the model's vectors in place, before any provider call is paid for. Its
-   * vectors cannot be replaced, and a vector written to an index that maps no field for it would
-   * be mapped as plain numbers.
+   * Declares the vector field on every index that maps none, as server start and the smart {@code
+   * reindex} do, then leaves out of the run, counted as not re-embedded, every type whose entity
+   * index or the chunk index still cannot take the model's vectors in place, before any provider
+   * call is paid for. Its vectors cannot be replaced, and a vector written to an index that maps no
+   * field for it would be mapped as plain numbers.
    */
   static void leaveOutTypesThatCannotTakeVectors(
       VectorIndexService vecService,
       Map<String, Integer> entityTotals,
       Map<String, AtomicInteger> failedCounts) {
     SearchRepository repo = Entity.getSearchRepository();
+    repo.checkVectorFields();
     boolean chunksTakeVectors = repo.takesVectorsInPlace(vecService.getChunkIndexName());
     List.copyOf(entityTotals.keySet()).stream()
         .filter(entityType -> !chunksTakeVectors || !entityIndexTakesVectors(repo, entityType))
@@ -2068,25 +2070,53 @@ public class OpenMetadataOperations implements Callable<Integer> {
         if (task.batch() == null) {
           break;
         }
-        String entityType = task.entityType();
-        String entityIndexName = resolveEntityIndexName(entityType);
-        if (entityIndexName == null) {
-          LOG.warn("No index mapping found for entity type: {}, skipping batch", entityType);
-          continue;
-        }
-        for (EntityInterface<?> entity : task.batch().getData()) {
-          Map<String, java.util.concurrent.atomic.AtomicInteger> outcome =
-              vecService.reembedEntity(entity, entityIndexName) ? processedCounts : failedCounts;
-          outcome
-              .computeIfAbsent(entityType, key -> new java.util.concurrent.atomic.AtomicInteger(0))
-              .incrementAndGet();
-        }
+        reembedBatch(
+            vecService, task.entityType(), task.batch().getData(), processedCounts, failedCounts);
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     } finally {
       LOG.debug("Consumer {} stopped", consumerId);
     }
+  }
+
+  /**
+   * Re-embeds one batch, counting each entity as re-embedded or not. An entity whose re-embedding
+   * throws, and every entity of a batch whose index cannot be resolved, counts as not re-embedded,
+   * so the run records no model and exits 1.
+   */
+  static void reembedBatch(
+      VectorIndexService vecService,
+      String entityType,
+      List<? extends EntityInterface<?>> entities,
+      Map<String, AtomicInteger> processedCounts,
+      Map<String, AtomicInteger> failedCounts) {
+    String entityIndexName = resolveEntityIndexName(entityType);
+    if (entityIndexName == null) {
+      LOG.warn(
+          "No index mapping found for entity type {}; {} entities not re-embedded",
+          entityType,
+          entities.size());
+      countNotReembedded(failedCounts, entityType, entities.size());
+    } else {
+      for (EntityInterface<?> entity : entities) {
+        Map<String, AtomicInteger> outcome =
+            reembedded(vecService, entity, entityIndexName) ? processedCounts : failedCounts;
+        outcome.computeIfAbsent(entityType, key -> new AtomicInteger(0)).incrementAndGet();
+      }
+    }
+  }
+
+  private static boolean reembedded(
+      VectorIndexService vecService, EntityInterface<?> entity, String entityIndexName) {
+    boolean reembedded;
+    try {
+      reembedded = vecService.reembedEntity(entity, entityIndexName);
+    } catch (Exception e) {
+      LOG.warn("Could not re-embed entity {} in {}", entity.getId(), entityIndexName, e);
+      reembedded = false;
+    }
+    return reembedded;
   }
 
   private static String resolveEntityIndexName(String entityType) {

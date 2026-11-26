@@ -4,12 +4,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -17,7 +20,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
@@ -121,6 +126,60 @@ class OpenMetadataOperationsReembedRunTest {
     assertEquals(4, failed.get("topic").get());
   }
 
+  @Test
+  void aMissingVectorFieldIsDeclaredBeforeTypesAreLeftOut() {
+    AtomicBoolean declared = new AtomicBoolean();
+    SearchRepository repo = repositoryWhere(true, Map.of("table", true));
+    when(repo.takesVectorsInPlace(anyString())).thenAnswer(invocation -> declared.get());
+    doAnswer(invocation -> declared.getAndSet(true)).when(repo).checkVectorFields();
+    Map<String, Integer> totals = new ConcurrentHashMap<>(Map.of("table", 6));
+    Map<String, AtomicInteger> failed = new ConcurrentHashMap<>();
+
+    leaveOutTypesThatCannotTakeVectors(repo, totals, failed);
+
+    assertEquals(Map.of("table", 6), totals);
+    assertTrue(failed.isEmpty());
+  }
+
+  @Test
+  void anEntityWhoseReembeddingThrowsCountsAsNotReembeddedAndRecordsNoModel() {
+    Table throwing = new Table().withId(UUID.randomUUID());
+    Table written = new Table().withId(UUID.randomUUID());
+    VectorIndexService vecService = mock(VectorIndexService.class);
+    when(vecService.reembedEntity(eq(throwing), anyString()))
+        .thenThrow(new IllegalStateException("no entity reference"));
+    when(vecService.reembedEntity(eq(written), anyString())).thenReturn(true);
+    ReembedRun run = run();
+    AtomicBoolean recorded = new AtomicBoolean();
+
+    reembedBatch(
+        run, repositoryWhere(true, Map.of("table", true)), vecService, "table", throwing, written);
+    int exitCode =
+        OpenMetadataOperations.reembedExitCode(
+            run.failedCounts(), () -> recorded.compareAndSet(false, true));
+
+    assertEquals(1, run.processedCounts().get("table").get());
+    assertEquals(1, run.failedCounts().get("table").get());
+    assertEquals(1, exitCode);
+    assertFalse(recorded.get());
+  }
+
+  @Test
+  void aBatchWhoseIndexCannotBeResolvedCountsEveryEntityAsNotReembedded() {
+    ReembedRun run = run();
+
+    reembedBatch(
+        run,
+        repositoryWhere(true, Map.of()),
+        mock(VectorIndexService.class),
+        "topic",
+        new Topic().withId(UUID.randomUUID()),
+        new Topic().withId(UUID.randomUUID()));
+
+    assertEquals(2, run.failedCounts().get("topic").get());
+    assertFalse(run.processedCounts().containsKey("topic"));
+  }
+
   /** Entity types whose index takes the model's vectors in place, and whether the chunk index does. */
   private static SearchRepository repositoryWhere(
       boolean chunksTakeVectors, Map<String, Boolean> entityIndexTakesVectors) {
@@ -150,6 +209,19 @@ class OpenMetadataOperationsReembedRunTest {
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getSearchRepository).thenReturn(repo);
       OpenMetadataOperations.leaveOutTypesThatCannotTakeVectors(vecService, totals, failed);
+    }
+  }
+
+  private static void reembedBatch(
+      ReembedRun run,
+      SearchRepository repo,
+      VectorIndexService vecService,
+      String entityType,
+      EntityInterface<?>... entities) {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(repo);
+      OpenMetadataOperations.reembedBatch(
+          vecService, entityType, List.of(entities), run.processedCounts(), run.failedCounts());
     }
   }
 
