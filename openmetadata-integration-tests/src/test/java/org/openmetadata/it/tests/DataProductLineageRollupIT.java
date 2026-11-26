@@ -155,16 +155,9 @@ public class DataProductLineageRollupIT {
     Metric m2 = metric(ns, "m2", d2, dp2);
     putEdge(m1, m2);
     assertEquals(1, assetEdges(dp1, dp2));
-    String csv =
-        String.join(
-            "\n",
-            String.join(",", METRIC_CSV_HEADER),
-            metricRow(m1, d1, dp3),
-            metricRow(m2, d2, dp4));
 
-    String result = client().metrics().importCsv("*", csv, false);
+    importMetrics(metricRow(m1, d1, dp3), metricRow(m2, d2, dp4));
 
-    assertEquals(0, MAPPER.readTree(result).path("numberOfRowsFailed").asInt(), result);
     assertEdgeAbsent(dp1, dp2);
     assertEquals(1, assetEdges(dp3, dp4));
   }
@@ -184,20 +177,43 @@ public class DataProductLineageRollupIT {
     putEdge(dp1, dp4);
     LineageDetails drawn = edge(dp1, dp4);
     assertNull(drawn.getAssetEdges(), "an edge drawn between products counts no asset edges");
-    String csv =
-        String.join(
-            "\n",
-            String.join(",", METRIC_CSV_HEADER),
-            metricRow(m1, d1, dp3),
-            metricRow(m2, d2, dp4));
 
-    String result = client().metrics().importCsv("*", csv, false);
+    importMetrics(metricRow(m1, d1, dp3), metricRow(m2, d2, dp4));
 
-    assertEquals(0, MAPPER.readTree(result).path("numberOfRowsFailed").asInt(), result);
     assertEquals(1, assetEdges(dp3, dp4));
     LineageDetails kept = edge(dp1, dp4);
     assertEquals(drawn.getSource(), kept.getSource(), "the drawn edge between the products stays");
     assertEquals(drawn.getCreatedAt(), kept.getCreatedAt());
+  }
+
+  /** An import that connects assets under a drawn edge counts them on it and keeps its details. */
+  @Test
+  void csvImportCountsAssetEdgesOnADrawnEdgeAndKeepsIt(TestNamespace ns) throws Exception {
+    Domain d1 = domain(ns, "d1");
+    Domain d2 = domain(ns, "d2");
+    DataProduct dp1 = dataProduct(ns, "dp1", d1);
+    DataProduct dp2 = dataProduct(ns, "dp2", d2);
+    DataProduct dp4 = dataProduct(ns, "dp4", d2);
+    Metric m1 = metric(ns, "m1", d1, dp1);
+    Metric m2 = metric(ns, "m2", d2, dp2);
+    putEdge(m1, m2);
+    putEdge(dp1, dp4, new LineageDetails().withDescription("drawn by an admin"));
+    LineageDetails drawn = edge(dp1, dp4);
+
+    importMetrics(metricRow(m2, d2, dp4));
+
+    LineageDetails counted = edge(dp1, dp4);
+    assertEquals(1, counted.getAssetEdges(), "m1 -> m2 now connects dp1 and dp4");
+    assertEquals(drawn.getSource(), counted.getSource());
+    assertEquals(drawn.getDescription(), counted.getDescription());
+    assertEquals(drawn.getCreatedAt(), counted.getCreatedAt());
+
+    importMetrics(metricRow(m2, d2, dp2));
+
+    LineageDetails released = edge(dp1, dp4);
+    assertNull(released.getAssetEdges(), "no asset edge connects dp1 and dp4 any more");
+    assertEquals(drawn.getDescription(), released.getDescription(), "the drawn edge stays");
+    assertEquals(1, assetEdges(dp1, dp2));
   }
 
   private static Domain domain(TestNamespace ns, String name) {
@@ -254,6 +270,12 @@ public class DataProductLineageRollupIT {
                     .withDataProducts(List.of(product.getFullyQualifiedName()))));
   }
 
+  private static void importMetrics(String... rows) throws Exception {
+    String csv = String.join("\n", String.join(",", METRIC_CSV_HEADER), String.join("\n", rows));
+    String result = client().metrics().importCsv("*", csv, false);
+    assertEquals(0, MAPPER.readTree(result).path("numberOfRowsFailed").asInt(), result);
+  }
+
   private static String metricRow(Metric metric, Domain domain, DataProduct product) {
     List<String> row = new ArrayList<>(Collections.nCopies(METRIC_CSV_HEADER.size(), ""));
     row.set(METRIC_CSV_HEADER.indexOf("name*"), metric.getName());
@@ -285,6 +307,11 @@ public class DataProductLineageRollupIT {
   }
 
   private static void putEdge(EntityInterface<?> from, EntityInterface<?> to) {
+    putEdge(from, to, new LineageDetails());
+  }
+
+  private static void putEdge(
+      EntityInterface<?> from, EntityInterface<?> to, LineageDetails details) {
     client()
         .lineage()
         .addLineage(
@@ -293,7 +320,7 @@ public class DataProductLineageRollupIT {
                     new EntitiesEdge()
                         .withFromEntity(from.getEntityReference())
                         .withToEntity(to.getEntityReference())
-                        .withLineageDetails(new LineageDetails())));
+                        .withLineageDetails(details)));
   }
 
   private static Integer assetEdges(DataProduct from, DataProduct to) {

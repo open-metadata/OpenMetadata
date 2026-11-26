@@ -383,28 +383,44 @@ public class LineageUtil {
     }
   }
 
+  /**
+   * A stored edge whose source is not {@code ChildAssets} was drawn between the products. It keeps
+   * its details and only carries the count, as {@code LineageRepository} does when an asset edge is
+   * added under it, so no recount replaces or deletes it.
+   */
   private static void recountDataProductLineage(EntityReference from, EntityReference to) {
-    int count =
-        Entity.getCollectionDAO()
-            .relationshipDAO()
-            .countDataProductsChildAssets(from.getId(), to.getId());
-    if (count > 0) {
+    CollectionDAO.EntityRelationshipDAO dao = Entity.getCollectionDAO().relationshipDAO();
+    int count = dao.countDataProductsChildAssets(from.getId(), to.getId());
+    CollectionDAO.EntityRelationshipObject row =
+        dao.getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
+    LineageDetails stored =
+        row == null ? null : JsonUtils.readValue(row.getJson(), LineageDetails.class);
+    if (stored != null && stored.getSource() != LineageDetails.Source.CHILD_ASSETS) {
+      recountDrawnLineage(from, to, stored, count);
+    } else if (count > 0) {
       insertLineage(count, from, to);
-    } else {
-      deleteCountedLineage(from, to);
+    } else if (stored != null) {
+      dao.delete(
+          from.getId(), from.getType(), to.getId(), to.getType(), Relationship.UPSTREAM.ordinal());
+      deleteLineageFromSearch(from, to, stored);
     }
   }
 
-  // An edge drawn between the products counts no asset edges, so no recount deletes it.
-  private static void deleteCountedLineage(EntityReference from, EntityReference to) {
-    CollectionDAO.EntityRelationshipDAO dao = Entity.getCollectionDAO().relationshipDAO();
-    int upstream = Relationship.UPSTREAM.ordinal();
-    CollectionDAO.EntityRelationshipObject row = dao.getRecord(from.getId(), to.getId(), upstream);
-    LineageDetails stored =
-        row == null ? null : JsonUtils.readValue(row.getJson(), LineageDetails.class);
-    if (stored != null && stored.getAssetEdges() != null) {
-      dao.delete(from.getId(), from.getType(), to.getId(), to.getType(), upstream);
-      deleteLineageFromSearch(from, to, stored);
+  private static void recountDrawnLineage(
+      EntityReference from, EntityReference to, LineageDetails drawn, int count) {
+    Integer assetEdges = count > 0 ? count : null;
+    if (!Objects.equals(drawn.getAssetEdges(), assetEdges)) {
+      drawn.withAssetEdges(assetEdges);
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              from.getId(),
+              to.getId(),
+              from.getType(),
+              to.getType(),
+              Relationship.UPSTREAM.ordinal(),
+              JsonUtils.pojoToJson(drawn));
+      addLineageToSearch(from, to, drawn);
     }
   }
 
