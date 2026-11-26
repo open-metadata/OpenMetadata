@@ -63,14 +63,20 @@ jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
 jest.mock('../../common/Table/TableV2', () => {
   return function MockTable({
     columns,
+    customPaginationProps,
     dataSource,
     extraTableFilters,
     loading,
     locale,
     rowSelection,
     rowKey,
+    searchProps,
   }: {
     columns?: unknown[];
+    customPaginationProps?: {
+      isNumberBased?: boolean;
+      pagingHandler?: (params: { currentPage: number }) => void;
+    };
     extraTableFilters?: ReactNode;
     locale?: { emptyText?: ReactNode };
     dataSource?: Array<{ id: string; name: string; [key: string]: unknown }>;
@@ -81,6 +87,7 @@ jest.mock('../../common/Table/TableV2', () => {
       preserveSelectedRowKeys?: boolean;
     };
     rowKey: string;
+    searchProps?: { onSearch?: (value: string) => void };
   }) {
     const handleSelect = (id: string) => {
       if (!rowSelection?.onChange) {
@@ -114,6 +121,18 @@ jest.mock('../../common/Table/TableV2', () => {
     return (
       <div data-testid="mock-table">
         {extraTableFilters}
+        <button
+          data-testid="next-page"
+          onClick={() =>
+            customPaginationProps?.pagingHandler?.({ currentPage: 2 })
+          }>
+          Next
+        </button>
+        <button
+          data-testid="search-test-cases"
+          onClick={() => searchProps?.onSearch?.('2')}>
+          Search
+        </button>
         {!dataSource?.length && locale?.emptyText}
         <div>Loading: {loading ? 'true' : 'false'}</div>
         <div>Row Selection: {rowSelection ? 'enabled' : 'disabled'}</div>
@@ -121,6 +140,10 @@ jest.mock('../../common/Table/TableV2', () => {
           Preserve: {rowSelection?.preserveSelectedRowKeys ? 'true' : 'false'}
         </div>
         <div>Data Source Length: {dataSource?.length || 0}</div>
+        <div>
+          Number Based:{' '}
+          {customPaginationProps?.isNumberBased ? 'true' : 'false'}
+        </div>
         <div>Columns: {columns?.length || 0}</div>
         {dataSource?.map((item) => (
           <div data-testid={`table-row-${item.id}`} key={String(item[rowKey])}>
@@ -227,6 +250,14 @@ const mockTestCases = [
     },
   },
 ] as unknown as TestCase[];
+
+const secondPageTestCase = {
+  id: 'test-11',
+  name: 'Test Case 11',
+  description: 'Lives on the second page',
+  testCaseType: TestCaseType.table,
+  fullyQualifiedName: 'test.case.11',
+} as unknown as TestCase;
 
 // A seeded quality expectation whose test case is NOT in the fetched list
 // (lives on a later page, excluded by the testType filter, or was deleted).
@@ -466,6 +497,117 @@ describe('ContractQualityFormTab', () => {
       });
     });
 
+    it('should keep a selection made on another page when selecting on the next page', async () => {
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('select-row-test-1')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('select-row-test-1'));
+      });
+
+      (getListTestCaseBySearch as jest.Mock).mockResolvedValueOnce({
+        data: [secondPageTestCase],
+        paging: { total: 11 },
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('next-page'));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('select-row-test-11')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('select-row-test-11'));
+      });
+
+      expect(mockOnChange).toHaveBeenLastCalledWith({
+        qualityExpectations: [
+          {
+            description: undefined,
+            id: 'test-1',
+            name: 'Test Case 1',
+            type: EntityType.TEST_CASE,
+          },
+          {
+            description: 'Lives on the second page',
+            id: 'test-11',
+            name: 'Test Case 11',
+            type: EntityType.TEST_CASE,
+          },
+        ],
+      });
+    });
+
+    it('should keep a selection made before a search when selecting a search result', async () => {
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('select-row-test-1')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('select-row-test-1'));
+      });
+
+      (getListTestCaseBySearch as jest.Mock).mockResolvedValueOnce({
+        data: [mockTestCases[1]],
+        paging: { total: 1 },
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('search-test-cases'));
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('select-row-test-1')
+        ).not.toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('select-row-test-2'));
+      });
+
+      expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ q: '2', offset: 0 })
+      );
+      expect(mockOnChange).toHaveBeenLastCalledWith({
+        qualityExpectations: [
+          expect.objectContaining({ id: 'test-1', name: 'Test Case 1' }),
+          expect.objectContaining({ id: 'test-2', name: 'Test Case 2' }),
+        ],
+      });
+    });
+
+    it('should drop a deselected test case from the next emitted list', async () => {
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('select-row-test-1')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('select-row-test-1'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('select-row-test-2'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('select-row-test-1'));
+      });
+
+      expect(mockOnChange).toHaveBeenLastCalledWith({
+        qualityExpectations: [
+          expect.objectContaining({ id: 'test-2', name: 'Test Case 2' }),
+        ],
+      });
+    });
+
     it('should pass preserveSelectedRowKeys: true to the table', async () => {
       render(
         <ContractQualityFormTab
@@ -571,26 +713,95 @@ describe('ContractQualityFormTab', () => {
   });
 
   describe('Pagination', () => {
-    it('should handle page changes', async () => {
-      const mockHandlePageChange = jest.fn();
-      const mockUsePaging = jest.requireMock(
-        '../../../hooks/paging/usePaging'
-      ).usePaging;
-      mockUsePaging.mockReturnValue({
-        currentPage: 1,
-        pageSize: 10,
-        handlePageChange: mockHandlePageChange,
-        handlePageSizeChange: jest.fn(),
-        showPagination: true,
-        paging: { total: 100 },
-        handlePagingChange: jest.fn(),
-      });
+    const mockHandlePageChange = jest.fn();
 
+    const mockPaging = (pageSize: number) => {
+      jest
+        .requireMock('../../../hooks/paging/usePaging')
+        .usePaging.mockReturnValue({
+          currentPage: 1,
+          pageSize,
+          handlePageChange: mockHandlePageChange,
+          handlePageSizeChange: jest.fn(),
+          showPagination: true,
+          paging: { offset: 0, limit: pageSize, total: 20 },
+          handlePagingChange: jest.fn(),
+        });
+    };
+
+    beforeEach(() => {
+      mockPaging(10);
+    });
+
+    it('should page by number because the search list returns offset paging', async () => {
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
+
+      expect(await screen.findByText('Number Based: true')).toBeInTheDocument();
+    });
+
+    it('should fetch the next page by offset', async () => {
       render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
       await waitFor(() => {
-        expect(getListTestCaseBySearch).toHaveBeenCalled();
+        expect(screen.getByTestId('select-row-test-1')).toBeInTheDocument();
       });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('next-page'));
+      });
+
+      expect(mockHandlePageChange).toHaveBeenLastCalledWith(2);
+      expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ offset: 10, limit: 10 })
+      );
+    });
+
+    it('should keep the search term when paging through search results', async () => {
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('select-row-test-1')).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('search-test-cases'));
+      });
+
+      expect(mockHandlePageChange).toHaveBeenLastCalledWith(1);
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('next-page'));
+      });
+
+      expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ offset: 10, q: '2' })
+      );
+    });
+
+    it('should refetch from the first page when the page size changes', async () => {
+      const { rerender } = render(
+        <ContractQualityFormTab selectedQuality={[]} {...commonProps} />
+      );
+
+      await waitFor(() => {
+        expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1);
+      });
+
+      mockPaging(25);
+      rerender(
+        <ContractQualityFormTab selectedQuality={[]} {...commonProps} />
+      );
+
+      await waitFor(() => {
+        expect(getListTestCaseBySearch).toHaveBeenCalledTimes(2);
+      });
+
+      expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ limit: 25 })
+      );
+      expect(getListTestCaseBySearch).not.toHaveBeenLastCalledWith(
+        expect.objectContaining({ offset: expect.anything() })
+      );
     });
   });
 
