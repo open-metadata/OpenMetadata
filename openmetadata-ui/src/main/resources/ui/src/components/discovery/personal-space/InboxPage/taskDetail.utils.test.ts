@@ -658,6 +658,7 @@ describe('deriveTaskAboutEntity', () => {
     expect(about).toMatchObject({
       columnCount: 3,
       piiColumnCount: 1,
+      isPii: true,
       downstreamCount: 12,
     });
   });
@@ -674,6 +675,25 @@ describe('deriveTaskAboutEntity', () => {
         ],
       } as unknown as EntityUnion).piiColumnCount
     ).toBe(1);
+  });
+
+  // Entity-level PII.Sensitive masks every column's sample data, so the whole
+  // table counts as PII even when no column carries the tag itself.
+  it('treats every column as PII when the entity is tagged PII.Sensitive', () => {
+    expect(
+      deriveTaskAboutEntity({
+        tags: [{ tagFQN: 'PII.Sensitive' }],
+        columns: [{}, { tags: [{ tagFQN: 'Tier.Tier1' }] }],
+      } as unknown as EntityUnion)
+    ).toMatchObject({ columnCount: 2, piiColumnCount: 2, isPii: true });
+  });
+
+  it('flags an entity-level PII.Sensitive asset that has no columns', () => {
+    expect(
+      deriveTaskAboutEntity({
+        tags: [{ tagFQN: 'PII.Sensitive' }],
+      } as unknown as EntityUnion)
+    ).toMatchObject({ piiColumnCount: undefined, isPii: true });
   });
 
   it('reads the weekly usage count for the queries tile', () => {
@@ -700,6 +720,7 @@ describe('deriveTaskAboutEntity', () => {
       tier: undefined,
       columnCount: undefined,
       piiColumnCount: undefined,
+      isPii: false,
       downstreamCount: undefined,
       weeklyQueryCount: undefined,
       ownerCount: undefined,
