@@ -21,6 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.jdbi.v3.core.Handle;
 
 /**
@@ -69,8 +70,8 @@ final class SqlCatalog {
 
   /**
    * A base table with at least one eligible column; {@code primaryKey} is in ordinal order, and
-   * {@code narrowingColumns} holds indexed scalar columns used to narrow compare-and-set updates on
-   * tables without a primary key.
+   * {@code narrowingColumns} holds indexed non-token scalar columns used to narrow compare-and-set
+   * updates on tables without a primary key.
    */
   record SqlTable(
       String name,
@@ -138,16 +139,20 @@ final class SqlCatalog {
                   primaryKey.isEmpty()
                       ? narrowingColumnsOf(
                           indexed.getOrDefault(table, new LinkedHashSet<>()),
-                          rawTypes.getOrDefault(table, Map.of()))
+                          rawTypes.getOrDefault(table, Map.of()),
+                          entry.getValue())
                       : List.of();
               return new SqlTable(table, primaryKey, narrowing, entry.getValue());
             })
         .toList();
   }
 
-  private static List<String> narrowingColumnsOf(
-      Set<String> indexed, Map<String, String> columnDataTypes) {
+  static List<String> narrowingColumnsOf(
+      Set<String> indexed, Map<String, String> columnDataTypes, List<SqlColumn> eligibleColumns) {
+    Set<String> tokenColumns =
+        eligibleColumns.stream().map(SqlColumn::name).collect(Collectors.toSet());
     return indexed.stream()
+        .filter(col -> !tokenColumns.contains(col))
         .filter(
             col -> {
               String type = columnDataTypes.get(col);

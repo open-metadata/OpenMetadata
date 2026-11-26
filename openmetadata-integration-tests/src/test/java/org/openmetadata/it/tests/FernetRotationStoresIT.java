@@ -487,6 +487,51 @@ class FernetRotationStoresIT {
   }
 
   @Test
+  void anUnkeyedTableWithAnIndexedTokenColumnRewritesAllTokenColumnsInOnePass() {
+    String table = "fernet_it_nopk_idx_tok_" + suffix();
+    jdbi.useHandle(
+        handle -> {
+          handle.execute(
+              "CREATE TABLE "
+                  + table
+                  + " (tag varchar(36) NOT NULL, token_a varchar(255) NOT NULL, token_b text NOT NULL)");
+          handle.execute("CREATE INDEX " + table + "_tag_idx ON " + table + " (tag)");
+          handle.execute("CREATE INDEX " + table + "_a_idx ON " + table + " (token_a)");
+        });
+    try {
+      jdbi.useHandle(
+          handle ->
+              handle
+                  .createUpdate(
+                      "INSERT INTO " + table + " (tag, token_a, token_b) VALUES ('row-1', :a, :b)")
+                  .bind("a", OLD.seal("secret-a"))
+                  .bind("b", OLD.seal("secret-b"))
+                  .execute());
+
+      Table seen = RotationStoresTestSupport.catalogTable(jdbi, type, table).orElseThrow();
+      assertEquals(List.of(), seen.primaryKey());
+      Set<String> narrowingLower =
+          seen.narrowingColumns().stream()
+              .map(col -> col.toLowerCase(Locale.ROOT))
+              .collect(Collectors.toSet());
+      assertEquals(Set.of("tag"), narrowingLower);
+
+      Pass rewrite = RotationStoresTestSupport.rewrite(jdbi, type, table, RING);
+      Pass check = RotationStoresTestSupport.check(jdbi, type, table, RING);
+
+      assertEquals(2, rewrite.count("REKEYED"));
+      assertEquals(0, rewrite.count("UNREWRITABLE"));
+      assertEquals(2, check.count("PRIMARY"));
+      assertEquals(0, check.count("OLDER_KEY"));
+      assertEquals(List.of(), check.problems());
+      assertEquals(new Opening.Primary("secret-a"), NEW.open(readText(table, "token_a")));
+      assertEquals(new Opening.Primary("secret-b"), NEW.open(readText(table, "token_b")));
+    } finally {
+      jdbi.useHandle(handle -> handle.execute("DROP TABLE " + table));
+    }
+  }
+
+  @Test
   void encryptedAppRunHistoryInAppsExtensionTimeSeriesIsDiscoveredAndRotated() {
     String appId = UUID.randomUUID().toString();
     long timestamp = System.currentTimeMillis();
@@ -519,8 +564,11 @@ class FernetRotationStoresIT {
               .map(col -> col.toLowerCase(Locale.ROOT))
               .collect(Collectors.toSet());
       assertTrue(
-          narrowingLower.containsAll(Set.of("appid", "extension", "timestamp")),
-          "unkeyed CAS narrows on indexed columns: " + seen.narrowingColumns());
+          narrowingLower.containsAll(Set.of("appid", "timestamp")),
+          "unkeyed CAS narrows on indexed non-token columns: " + seen.narrowingColumns());
+      assertFalse(
+          narrowingLower.contains("extension"),
+          "eligible token columns are excluded from narrowing: " + seen.narrowingColumns());
 
       List<Value> defaultCandidates = RotationStoresTestSupport.defaultReadCandidates(jdbi, type);
       assertTrue(
