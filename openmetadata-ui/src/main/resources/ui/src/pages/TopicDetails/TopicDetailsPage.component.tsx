@@ -353,7 +353,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       />
     );
   }
-  if (!topicPermissions.ViewAll && !topicPermissions.ViewBasic) {
+  if (!canViewTopic) {
     return (
       <ErrorPlaceHolder
         className="border-none"

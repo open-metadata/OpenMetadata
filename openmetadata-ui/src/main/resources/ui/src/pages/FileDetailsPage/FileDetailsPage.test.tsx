@@ -237,7 +237,9 @@ jest.mock('../../utils/EntityNameUtils', () => ({
 
 jest.mock('../../utils/PermissionsUtils', () => ({
   DEFAULT_ENTITY_PERMISSION: { ViewAll: false, ViewBasic: false },
-  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
+  getPrioritizedViewPermission: jest.requireActual(
+    '../../utils/PermissionsUtils'
+  ).getPrioritizedViewPermission,
 }));
 
 jest.mock('../../utils/RouterUtils', () => ({
@@ -336,23 +338,29 @@ describe('FileDetailsPage', () => {
       });
     });
 
-    it('should render permission error when user lacks view permissions', async () => {
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: jest
-          .fn()
-          .mockImplementation(() =>
-            Promise.resolve({ ViewAll: false, ViewBasic: false })
-          ),
-      }));
+    it.each([
+      { ViewAll: false, ViewBasic: false },
+      { ViewAll: true, ViewBasic: false },
+    ])(
+      'should render permission error when user lacks view permissions (%o)',
+      async (permissions) => {
+        (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+          getEntityPermissionByFqn: jest
+            .fn()
+            .mockImplementation(() => Promise.resolve(permissions)),
+        }));
 
-      await renderComponent();
+        await renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
-      });
+        await waitFor(() => {
+          expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        });
 
-      expect(screen.getByTestId('error-type')).toHaveTextContent('PERMISSION');
-    });
+        expect(screen.getByTestId('error-type')).toHaveTextContent(
+          'PERMISSION'
+        );
+      }
+    );
   });
 
   describe('File Details Management', () => {

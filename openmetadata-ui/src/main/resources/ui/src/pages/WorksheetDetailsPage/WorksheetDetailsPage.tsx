@@ -333,7 +333,12 @@ const WorksheetDetailsPage = () => {
       </ErrorPlaceHolder>
     );
   }
-  if (!worksheetPermissions.ViewAll && !worksheetPermissions.ViewBasic) {
+  if (
+    !getPrioritizedViewPermission(
+      worksheetPermissions,
+      PermissionOperation.ViewBasic
+    )
+  ) {
     return (
       <ErrorPlaceHolder
         className="border-none"

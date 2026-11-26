@@ -269,7 +269,12 @@ function FileDetailsPage() {
       </ErrorPlaceHolder>
     );
   }
-  if (!filePermissions.ViewAll && !filePermissions.ViewBasic) {
+  if (
+    !getPrioritizedViewPermission(
+      filePermissions,
+      PermissionOperation.ViewBasic
+    )
+  ) {
     return (
       <ErrorPlaceHolder
         className="border-none"
