@@ -76,7 +76,7 @@ final class OntologyToolSupport {
   }
 
   static Map<String, Object> writeResult(
-      final Response response, final CatalogSecurityContext context) {
+      final Response response, final String entityType, final CatalogSecurityContext context) {
     requireSuccess(response);
     final EntityInterface<?> entity = (EntityInterface<?>) response.getEntity();
     final String pendingHeader = response.getHeaderString(RestUtil.PENDING_CHANGE_HEADER);
@@ -85,8 +85,12 @@ final class OntologyToolSupport {
     if (pending == null) {
       McpChangeEventUtil.publishChangeEvent(entity, event, context.getUserPrincipal().getName());
     }
-    final Map<String, Object> result = McpResponseUtils.compactPatch(entity, event);
-    if (event == EventType.ENTITY_NO_CHANGE) {
+    final Map<String, Object> result =
+        McpResponseUtils.compactPatch(
+            entity, entityType, pending == null ? event : EventType.ENTITY_NO_CHANGE);
+    if (event == EventType.ENTITY_CREATED) {
+      result.put("_operation", "created");
+    } else if (event == EventType.ENTITY_NO_CHANGE) {
       result.put("_operation", "unchanged");
     }
     return McpResponseUtils.markHeld(result, pending);

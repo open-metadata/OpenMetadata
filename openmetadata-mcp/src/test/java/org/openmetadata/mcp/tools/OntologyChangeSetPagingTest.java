@@ -115,8 +115,12 @@ class OntologyChangeSetPagingTest {
         assertThat(acknowledgement.has("changed")).isFalse();
         events.verifyNoInteractions();
       } else {
-        assertThat(acknowledgement.path("changed"))
-            .isEqualTo(JsonUtils.valueToTree(List.of("state")));
+        if (outcome.equals("unchanged")) {
+          assertThat(acknowledgement.has("changed")).isFalse();
+        } else {
+          assertThat(acknowledgement.path("changed"))
+              .isEqualTo(JsonUtils.valueToTree(List.of("state")));
+        }
         events.verify(
             () ->
                 McpChangeEventUtil.publishChangeEvent(

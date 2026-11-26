@@ -96,7 +96,7 @@ final class OntologyTool implements TypedMcpTool<Object> {
     try (final Response response =
         resource(GlossaryTermResource.class)
             .addTermRelation(uriInfo.apply(context), context, request.sourceTermId(), relation)) {
-      return OntologyToolSupport.writeResult(response, context);
+      return OntologyToolSupport.writeResult(response, Entity.GLOSSARY_TERM, context);
     }
   }
 
@@ -124,7 +124,8 @@ final class OntologyTool implements TypedMcpTool<Object> {
 
   private Object changeSetAcknowledgement(
       final Response response, final CatalogSecurityContext context) {
-    final Map<String, Object> outcome = OntologyToolSupport.writeResult(response, context);
+    final Map<String, Object> outcome =
+        OntologyToolSupport.writeResult(response, Entity.ONTOLOGY_CHANGE_SET, context);
     return OntologyChangeSetPaging.acknowledgement(
         (OntologyChangeSet) response.getEntity(), outcome);
   }

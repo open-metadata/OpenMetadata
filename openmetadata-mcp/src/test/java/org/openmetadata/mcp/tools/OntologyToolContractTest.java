@@ -20,10 +20,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -229,20 +232,30 @@ class OntologyToolContractTest {
         .isEqualTo(expected);
   }
 
-  @Test
-  void heldRelationRemainsPendingWithoutPublishingAnUpdateEvent() {
+  @ParameterizedTest
+  @EnumSource(names = {"ENTITY_UPDATED", "ENTITY_NO_CHANGE"})
+  void heldRelationRemainsPendingWithoutPublishingAnUpdateEvent(final EventType event) {
     final UUID pending = UUID.randomUUID();
     try (final MockedStatic<McpChangeEventUtil> events = mockStatic(McpChangeEventUtil.class);
         final Response response =
-            Response.accepted(term())
-                .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_NO_CHANGE)
+            Response.accepted(
+                    term()
+                        .withDescription("Previous edit")
+                        .withChangeDescription(
+                            new ChangeDescription()
+                                .withFieldsUpdated(
+                                    List.of(new FieldChange().withName("description")))))
+                .header(RestUtil.CHANGE_CUSTOM_HEADER, event)
                 .header(RestUtil.PENDING_CHANGE_HEADER, pending)
                 .build()) {
-      final Map<String, Object> result = OntologyToolSupport.writeResult(response, context());
+      final Map<String, Object> result =
+          OntologyToolSupport.writeResult(response, Entity.GLOSSARY_TERM, context());
       assertThat(result)
           .containsEntry("_operation", "pendingApproval")
           .containsEntry("changeRequestId", pending.toString());
-      assertThat((List<?>) result.get("relatedTerms")).isEmpty();
+      assertThat(result)
+          .containsEntry("entityType", Entity.GLOSSARY_TERM)
+          .doesNotContainKeys("relatedTerms", "changed", "description");
       events.verifyNoInteractions();
     }
   }
@@ -275,7 +288,7 @@ class OntologyToolContractTest {
     final GlossaryTerm entity = term();
     try (final MockedStatic<McpChangeEventUtil> events = mockStatic(McpChangeEventUtil.class);
         final Response response = Response.status(201).entity(entity).build()) {
-      assertThat(OntologyToolSupport.writeResult(response, context()))
+      assertThat(OntologyToolSupport.writeResult(response, Entity.GLOSSARY_TERM, context()))
           .containsEntry("_operation", "created");
       events.verify(
           () -> McpChangeEventUtil.publishChangeEvent(entity, EventType.ENTITY_CREATED, "alice"));
@@ -286,7 +299,8 @@ class OntologyToolContractTest {
   @ValueSource(ints = {400, 403, 409, 500})
   void resourceFailuresAreNotReportedAsSuccessfulWrites(final int status) {
     try (final Response response = Response.status(status).build()) {
-      assertThatThrownBy(() -> OntologyToolSupport.writeResult(response, context()))
+      assertThatThrownBy(
+              () -> OntologyToolSupport.writeResult(response, Entity.GLOSSARY_TERM, context()))
           .isInstanceOf(WebApplicationException.class)
           .satisfies(
               error ->
@@ -298,7 +312,8 @@ class OntologyToolContractTest {
   @Test
   void aNonCreateResponseCannotInventACreationEvent() {
     try (final Response response = Response.ok(term()).build()) {
-      assertThatThrownBy(() -> OntologyToolSupport.writeResult(response, context()))
+      assertThatThrownBy(
+              () -> OntologyToolSupport.writeResult(response, Entity.GLOSSARY_TERM, context()))
           .isInstanceOf(IllegalStateException.class)
           .hasMessageContaining("missing its change type");
     }
