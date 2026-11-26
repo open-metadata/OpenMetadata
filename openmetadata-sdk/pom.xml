@@ -18,7 +18,7 @@
         <junit.version>${org.junit.jupiter.version}</junit.version>
         <junit-platform.version>${org.junit.platform.version}</junit-platform.version>
         <mockito.version>5.24.0</mockito.version>
-        <slf4j.version>2.0.9</slf4j.version>
+        <slf4j.version>2.0.20</slf4j.version>
         <lombok.version>1.18.48</lombok.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <jwt.version>4.6.2</jwt.version>

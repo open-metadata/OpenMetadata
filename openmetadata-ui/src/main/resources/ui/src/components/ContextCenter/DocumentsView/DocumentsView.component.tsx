@@ -150,7 +150,6 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
                     aria-hidden="true"
                     className="tw:shrink-0 tw:text-fg-brand-primary tw:ml-2"
                     size={16}
-                    strokeWidth={2}
                   />
                 )}
               </Box>
@@ -347,7 +346,6 @@ const FileActions: FC<FileActionsProps> = ({
                           aria-hidden="true"
                           className="tw:shrink-0 tw:text-fg-quaternary"
                           size={16}
-                          strokeWidth={2}
                         />
                       </Box>
                     )}
@@ -414,7 +412,6 @@ const FileActions: FC<FileActionsProps> = ({
                           aria-hidden="true"
                           className="tw:shrink-0 tw:text-fg-quaternary"
                           size={16}
-                          strokeWidth={2}
                         />
                       </Box>
                     )}

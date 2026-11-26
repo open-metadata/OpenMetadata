@@ -83,13 +83,13 @@ jobs:
         uses: ./.github/actions/hydrate-maven-cache
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Download Integration Test Runtime
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.artifact_name }}
           path: ${{ runner.temp }}/java-it-build

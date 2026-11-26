@@ -41,7 +41,7 @@ import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.UnrecordedStagedChunkDeleteException;
 import org.openmetadata.service.search.vector.VectorIndexService;
-import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesSource;
@@ -846,7 +846,7 @@ public class PartitionWorker {
     SearchRepository searchRepository = Entity.getSearchRepository();
     VectorIndexService vectorService =
         searchRepository == null ? null : searchRepository.getVectorIndexService();
-    if (vectorService != null && AvailableEntityTypes.isVectorIndexable(entityType)) {
+    if (vectorService != null && EmbeddedEntityTypes.isEmbedded(entityType)) {
       vectorService.requireStagedChunkFailuresRecorded();
     }
   }

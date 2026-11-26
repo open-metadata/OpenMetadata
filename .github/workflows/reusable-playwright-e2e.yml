@@ -403,7 +403,7 @@ jobs:
 
       - name: Setup JDK 21
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -530,7 +530,7 @@ jobs:
 
       - name: Setup JDK 21
         if: ${{ env.SKIP_UI_BUILD != 'true' }}
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -627,7 +627,7 @@ jobs:
           persist-credentials: false
 
       - name: Download selection
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: playwright-selection
           path: ${{ runner.temp }}/playwright-selection
@@ -855,7 +855,6 @@ jobs:
             --project=ImportExport \
             --project=DataAssetRulesEnabled \
             --project=DataAssetRulesDisabled \
-            --project=SearchRBAC \
             --project=DomainIsolation \
             --project=Reindex \
             --project=GlobalSettings \
@@ -931,7 +930,7 @@ jobs:
             --project=chromium --project=Basic --project="Data Insight" \
             --project=Ingestion --project=ImportExport \
             --project=DataAssetRulesEnabled --project=DataAssetRulesDisabled \
-            --project=SearchRBAC --project=DomainIsolation --project=Reindex \
+            --project=DomainIsolation --project=Reindex \
             --project=GlobalSettings --project=SystemCertificationTags \
             --project=IntakeForm --project=AdvancedSearch --project=search-nightly \
             > "$RUNNER_TEMP/playwright-plans/quarantine-inventory.json"
@@ -1051,14 +1050,14 @@ jobs:
 
       - name: Download OpenMetadata distribution
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: openmetadata-distribution
           path: openmetadata-dist/target
 
       - name: Download ingestion image
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: playwright-ingestion-image
           path: ${{ runner.temp }}/playwright-ingestion-image
@@ -1520,7 +1519,7 @@ jobs:
 
       - name: Download OpenMetadata distribution
         id: download-distribution
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: openmetadata-distribution
           path: ${{ runner.temp }}/openmetadata-distribution
@@ -1528,7 +1527,7 @@ jobs:
       - name: Download seeded fixture
         id: download-fixture
         if: ${{ !contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: playwright-seeded-fixture
           path: ${{ runner.temp }}/playwright-fixture
@@ -1536,14 +1535,14 @@ jobs:
       - name: Download ingestion image
         id: download-ingestion-image
         if: ${{ matrix.requiresAirflow || contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: playwright-ingestion-image
           path: ${{ runner.temp }}/playwright-ingestion-image
 
       - name: Download shard plans
         id: download-plans
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: playwright-shard-plans
           path: ${{ runner.temp }}/playwright-plans
@@ -1818,7 +1817,7 @@ jobs:
       # as a runner-clock cancellation.
       - name: Download the regular UI bundle
         if: ${{ matrix.lane == 'visual' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: playwright-visual-ui
           path: ${{ runner.temp }}/playwright-visual-ui
@@ -2336,7 +2335,7 @@ jobs:
           done
 
       - name: Download blob reports
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: playwright-blob-*
           path: openmetadata-ui/src/main/resources/ui/blob-reports
