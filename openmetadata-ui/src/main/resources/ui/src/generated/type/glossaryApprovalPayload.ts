@@ -42,6 +42,12 @@ export interface GlossaryApprovalPayload {
      */
     proposedChangesBaseVersion?: number;
     /**
+     * True when part of the entity's history since proposedChangesBaseVersion could not be
+     * read, so proposedChanges lists only the changes after that part. Absent when
+     * proposedChanges covers the whole cycle. Set by the approval workflow.
+     */
+    proposedChangesIncomplete?: boolean;
+    /**
      * Proposed state of the term after changes.
      */
     proposedState?: string;
