@@ -31,6 +31,12 @@ const TabsLabel = withSuspenseFallback(
   lazy(() => import('../../components/common/TabsLabel/TabsLabel.component'))
 );
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import(
@@ -110,8 +116,9 @@ export const getApiEndpointDetailsPageTabs = ({
     },
     {
       label: (
-        <TabsLabel
+        <ActivityFeedTabLabel
           count={feedCount.totalCount}
+          entityType={EntityType.API_ENDPOINT}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={

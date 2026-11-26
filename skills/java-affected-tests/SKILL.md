@@ -169,7 +169,7 @@ them.
 
 ## 6. After you open the PR
 
-- PR checks: Java unit tests. `maven-collate-ci` builds Collate and runs its unit tests against
+- PR checks: Java unit tests. `Collate CI` builds Collate and runs its unit tests against
   your change.
 - Merge queue: the full IT suite on MySQL+ES and PostgreSQL+OS (both required), PostgreSQL+ES+Redis
   (required once #35761 completes the rollout in

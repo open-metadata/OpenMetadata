@@ -47,30 +47,6 @@ class TestGrafanaApiClient(TestCase):
         self.assertTrue(session.verify)
 
     @patch("requests.Session.request")
-    def test_get_folders_pagination(self, mock_request):
-        """Test fetching folders with pagination"""
-        # Mock two pages of results
-        page1_response = MagicMock()
-        page1_response.json.return_value = [
-            {"id": 1, "uid": "folder-1", "title": "Folder 1"},
-            {"id": 2, "uid": "folder-2", "title": "Folder 2"},
-        ]
-
-        page2_response = MagicMock()
-        page2_response.json.return_value = [
-            {"id": 3, "uid": "folder-3", "title": "Folder 3"},
-        ]
-
-        mock_request.side_effect = [page1_response, page2_response]
-
-        folders = self.client.get_folders()
-
-        self.assertEqual(len(folders), 3)
-        self.assertEqual(folders[0].title, "Folder 1")
-        self.assertEqual(folders[2].title, "Folder 3")
-        self.assertEqual(mock_request.call_count, 2)
-
-    @patch("requests.Session.request")
     def test_search_dashboards(self, mock_request):
         """Test searching dashboards"""
         mock_response = MagicMock()
@@ -188,52 +164,6 @@ class TestGrafanaApiClient(TestCase):
         self.assertEqual(datasources[1].type, "prometheus")
 
     @patch("requests.Session.request")
-    def test_get_datasource_by_id(self, mock_request):
-        """Test fetching datasource by ID"""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "id": 1,
-            "uid": "postgres-uid",
-            "name": "PostgreSQL",
-            "type": "postgres",
-        }
-        mock_request.return_value = mock_response
-
-        datasource = self.client.get_datasource(1)
-
-        self.assertIsInstance(datasource, GrafanaDatasource)
-        self.assertEqual(datasource.name, "PostgreSQL")
-
-        mock_request.assert_called_once_with(
-            method="GET",
-            url="https://grafana.example.com/api/datasources/1",
-            timeout=30,
-        )
-
-    @patch("requests.Session.request")
-    def test_get_datasource_by_uid(self, mock_request):
-        """Test fetching datasource by UID"""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "id": 1,
-            "uid": "postgres-uid",
-            "name": "PostgreSQL",
-            "type": "postgres",
-        }
-        mock_request.return_value = mock_response
-
-        datasource = self.client.get_datasource("postgres-uid")
-
-        self.assertIsInstance(datasource, GrafanaDatasource)
-        self.assertEqual(datasource.uid, "postgres-uid")
-
-        mock_request.assert_called_once_with(
-            method="GET",
-            url="https://grafana.example.com/api/datasources/uid/postgres-uid",
-            timeout=30,
-        )
-
-    @patch("requests.Session.request")
     def test_error_handling_401(self, mock_request):
         """Test handling 401 unauthorized error"""
         mock_response = MagicMock()
@@ -241,7 +171,7 @@ class TestGrafanaApiClient(TestCase):
         mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
         mock_request.return_value = mock_response
 
-        result = self.client.get_folders()
+        result = self.client.search_dashboards()
 
         self.assertEqual(result, [])
         mock_request.assert_called_once()

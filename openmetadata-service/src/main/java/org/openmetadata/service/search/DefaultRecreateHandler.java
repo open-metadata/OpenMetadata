@@ -196,6 +196,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         }
 
         stampPromoted(entityType);
+        onStagedIndexPromoted(context);
         promoted = true;
 
         for (String oldIndex : oldIndicesToDelete) {
@@ -412,6 +413,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       }
 
       stampPromoted(entityType);
+      onStagedIndexPromoted(context);
       promoted = true;
 
       for (String oldIndex : oldIndicesToDelete) {
@@ -447,6 +449,13 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
    * reindex job stats/failures, not in mapping drift. Best-effort: a stamping failure must not
    * fail a promotion that already succeeded.
    */
+  /**
+   * Called once a staged entity index has replaced the live one, unlike the {@code true} that
+   * {@link #finalizeReindex} and {@link #promoteEntityIndex} also return when an empty staged index
+   * is discarded and the live index stays.
+   */
+  protected void onStagedIndexPromoted(EntityReindexContext context) {}
+
   private void stampPromoted(String entityType) {
     CollectionDAO collectionDAO = Entity.getCollectionDAO();
     if (collectionDAO != null) {

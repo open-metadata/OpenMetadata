@@ -15,7 +15,9 @@ import org.openmetadata.service.events.consumer.ConsumerKind;
  * consumer that reads change events is counted by the rows its events leave, and the events after
  * its position are still to read. One that makes its own work is counted by what it reported, and
  * reads no change event: none is still to read, and it stands at the latest offset whatever its
- * position row says.
+ * position row says. An alert that is switched off is not running: none is still to read either,
+ * since switching it back on starts it from the latest offset, but it reports its position row as
+ * stored (ADR:2026-11-19-a-disabled-alert-has-nothing-pending).
  */
 public sealed interface AlertProgress {
 
@@ -44,8 +46,24 @@ public sealed interface AlertProgress {
     EventSubscriptionOffset position = AlertRecord.positionOrLatest(alert.getId());
     long latest = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
     return ConsumerKind.of(alert).readsChangeEvents()
-        ? new ReadsChangeEvents(alert, position, latest)
+        ? readerOf(alert, position, latest)
         : new MakesItsOwnWork(alert.getId(), position, latest);
+  }
+
+  private static AlertProgress readerOf(
+      EventSubscription alert, EventSubscriptionOffset position, long latest) {
+    return Boolean.FALSE.equals(alert.getEnabled())
+        ? new SwitchedOff(alert.getId(), position, latest)
+        : new ReadsChangeEvents(alert, position, latest);
+  }
+
+  private static Counts countedFromRows(UUID alertId) {
+    String id = alertId.toString();
+    long delivered = Entity.getCollectionDAO().eventSubscriptionDAO().getSuccessfulRecordCount(id);
+    long failed = Entity.getCollectionDAO().changeEventDAO().countFailedEvents(id);
+    long countedTwice =
+        Entity.getCollectionDAO().eventSubscriptionDAO().countEventsBothDeliveredAndFailed(id);
+    return new Counts(delivered + failed - countedTwice, delivered, failed);
   }
 
   Counts counts();
@@ -74,13 +92,7 @@ public sealed interface AlertProgress {
 
     @Override
     public Counts counts() {
-      String id = alert.getId().toString();
-      long delivered =
-          Entity.getCollectionDAO().eventSubscriptionDAO().getSuccessfulRecordCount(id);
-      long failed = Entity.getCollectionDAO().changeEventDAO().countFailedEvents(id);
-      long countedTwice =
-          Entity.getCollectionDAO().eventSubscriptionDAO().countEventsBothDeliveredAndFailed(id);
-      return new Counts(delivered + failed - countedTwice, delivered, failed);
+      return countedFromRows(alert.getId());
     }
 
     @Override
@@ -117,8 +129,61 @@ public sealed interface AlertProgress {
     }
   }
 
+  /** Has no change event still to read, whatever its position row says. */
+  sealed interface ReadsNothing extends AlertProgress {
+
+    EventSubscriptionOffset position();
+
+    long latest();
+
+    @Override
+    default long unread() {
+      return 0;
+    }
+
+    @Override
+    default boolean caughtUp() {
+      return true;
+    }
+
+    @Override
+    default long startingOffset() {
+      return position().getStartingOffset();
+    }
+
+    @Override
+    default long latestOffset() {
+      return latest();
+    }
+
+    @Override
+    default PendingCount relevantUnreadCount(Relevance relevance) {
+      return PendingCount.NONE;
+    }
+
+    @Override
+    default UnreadPage unreadPage(int limit, int pageOffset, Relevance relevance) {
+      return UnreadPage.EMPTY;
+    }
+  }
+
+  /** Not running: keeps the rows of what it handled and the position where it stopped. */
+  record SwitchedOff(UUID alertId, EventSubscriptionOffset position, long latest)
+      implements ReadsNothing {
+
+    @Override
+    public Counts counts() {
+      return countedFromRows(alertId);
+    }
+
+    @Override
+    public long currentOffset() {
+      return position.getCurrentOffset();
+    }
+  }
+
   record MakesItsOwnWork(UUID alertId, EventSubscriptionOffset position, long latest)
-      implements AlertProgress {
+      implements ReadsNothing {
 
     @Override
     public Counts counts() {
@@ -130,26 +195,6 @@ public sealed interface AlertProgress {
     @Override
     public long currentOffset() {
       return latest;
-    }
-
-    @Override
-    public long startingOffset() {
-      return position.getStartingOffset();
-    }
-
-    @Override
-    public long latestOffset() {
-      return latest;
-    }
-
-    @Override
-    public PendingCount relevantUnreadCount(Relevance relevance) {
-      return PendingCount.NONE;
-    }
-
-    @Override
-    public UnreadPage unreadPage(int limit, int pageOffset, Relevance relevance) {
-      return UnreadPage.EMPTY;
     }
   }
 }

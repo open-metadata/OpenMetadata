@@ -730,7 +730,12 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   private void postUpdate(SettingsType settingsType) {
-    SettingsChangeWatcher.acknowledgeLocalWrite(settingsType);
+    // MCP is not acknowledged: the generic settings API saves it without reloading it, so this
+    // server's watcher applies it like every other server's, retrying and reporting a failed
+    // reload. /system/mcp/config reloads it itself, which leaves the watcher nothing to do.
+    if (settingsType != SettingsType.MCP_CONFIGURATION) {
+      SettingsChangeWatcher.acknowledgeLocalWrite(settingsType);
+    }
     refreshLocalState(settingsType);
     // Rebuilding indexes changes shared state, so only the server that wrote the setting does it.
     if (settingsType == SettingsType.SEARCH_SETTINGS && Entity.getSearchRepository() != null) {
@@ -1427,7 +1432,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
         .withDescription(description)
         .withMessage(
             "Vector search service could not be initialized. "
-                + "The embedding client is configured but the OpenSearch vector service failed to start."
+                + "The embedding client is configured but the vector service failed to start."
                 + errorSuffix
                 + " "
                 + configMessage)
@@ -1439,24 +1444,31 @@ public class SystemRepository implements DeploymentSettingPreparer {
       StepValidation embeddingsValidation,
       String description,
       String configMessage) {
-    Optional<String> pipelineError = searchRepository.checkHybridSearchPipeline();
-    if (pipelineError.isPresent()) {
-      return embeddingsValidation
-          .withDescription(description)
-          .withMessage(
-              "Embeddings are working but the hybrid search pipeline check failed: "
-                  + pipelineError.get()
-                  + " "
-                  + configMessage)
-          .withPassed(false);
-    }
-
+    boolean usesPipeline = searchRepository.usesHybridSearchPipeline();
+    Optional<String> pipelineError =
+        usesPipeline ? searchRepository.checkHybridSearchPipeline() : Optional.empty();
+    String message =
+        pipelineError
+            .map(
+                error ->
+                    "Embeddings are working but the hybrid search pipeline check failed: "
+                        + error
+                        + " "
+                        + configMessage)
+            .orElseGet(() -> workingMessage(usesPipeline, configMessage));
     return embeddingsValidation
         .withDescription(description)
-        .withMessage(
-            String.format(
-                "Embeddings and hybrid search pipeline are working correctly. %s", configMessage))
-        .withPassed(true);
+        .withMessage(message)
+        .withPassed(pipelineError.isEmpty());
+  }
+
+  /** An engine without the hybrid RRF pipeline has nothing to say about one. */
+  private static String workingMessage(boolean usesPipeline, String configMessage) {
+    String working =
+        usesPipeline
+            ? "Embeddings and hybrid search pipeline are working correctly. %s"
+            : "Embeddings are working correctly. %s";
+    return String.format(working, configMessage);
   }
 
   private StepValidation validateEmbeddingGeneration(

@@ -66,7 +66,7 @@ public final class ChildFieldPageReader {
     ChildFieldResolver.ensureChildFqns(parent, entityType);
     List<FieldInterface> allChildren = ChildFieldResolver.childrenOf(parent, entityType);
     return allChildren.isEmpty()
-        ? emptyChildPage(limit, offset)
+        ? emptyChildPage()
         : buildChildPage(
             parent, allChildren, limit, offset, fieldsParam, sortBy, sortOrder, enricher);
   }
@@ -91,12 +91,9 @@ public final class ChildFieldPageReader {
         enricher);
   }
 
-  /**
-   * An entity with no children answers with before "0" and after offset + limit even though there
-   * is nothing to page to. That is what both legacy readers returned and what clients see today.
-   */
-  private ResultList<FieldInterface> emptyChildPage(int limit, int offset) {
-    return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
+  /** No cursors: there is nothing to page to (ADR:2026-11-25-empty-child-page-has-no-cursors). */
+  private ResultList<FieldInterface> emptyChildPage() {
+    return new ResultList<>(new ArrayList<>(), null, null, 0);
   }
 
   private ResultList<FieldInterface> buildChildPage(

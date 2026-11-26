@@ -18,11 +18,8 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 STORAGE_SCRIPT = ".github/scripts/configure_docker_storage.sh"
-LANE_WORKFLOWS = (
-    "integration-tests-mysql-elasticsearch.yml",
-    "integration-tests-postgres-elasticsearch-redis.yml",
-    "integration-tests-postgres-opensearch.yml",
-)
+LANE_WORKFLOWS = ("java-integration-lanes-reusable.yml",)
+BACKEND_WORKFLOW = "openmetadata-service-unit-tests.yml"
 LANE_JOB = "integration-test-lanes"
 LANE_MODULE = "openmetadata-integration-tests"
 
@@ -154,19 +151,16 @@ def test_lane_maven_build_cannot_need_the_antlr_cli(workflow):
     assert "antlr" not in lane_pom.lower()
 
 
-@pytest.mark.parametrize("workflow", LANE_WORKFLOWS)
-def test_storage_script_changes_trigger_the_lanes(workflow):
-    loaded = load_workflow(workflow)
-    push_paths = triggers(loaded)["push"]["paths"]
+def test_storage_script_changes_trigger_the_lanes():
+    loaded = load_workflow(BACKEND_WORKFLOW)
     filter_steps = [
         step
         for step in loaded["jobs"]["changes"]["steps"]
         if uses(step, "dorny/paths-filter")
     ]
 
-    assert STORAGE_SCRIPT in push_paths
     assert len(filter_steps) == 1
-    backend_filter = yaml.safe_load(filter_steps[0]["with"]["filters"])["backend"]
+    backend_filter = yaml.safe_load(filter_steps[0]["with"]["filters"])["backend_it"]
     assert STORAGE_SCRIPT in backend_filter
 
 

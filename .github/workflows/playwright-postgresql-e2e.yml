@@ -12,7 +12,7 @@
 # Dispatcher for the postgresql Playwright E2E PR gate.
 #
 # The heavy lifting (gate → build → shard) lives in
-# `playwright-e2e-reusable.yml`; this file adds two top-level jobs that
+# `reusable-playwright-e2e.yml`; this file adds two top-level jobs that
 # MUST stay in the caller so branch protection can find them by their
 # UN-PREFIXED check names:
 #
@@ -81,7 +81,7 @@ permissions:
 jobs:
   playwright:
     if: ${{ github.event_name != 'pull_request' }}
-    uses: ./.github/workflows/playwright-e2e-reusable.yml
+    uses: ./.github/workflows/reusable-playwright-e2e.yml
     # secrets: inherit passes the full TEST_* / GITHUB_TOKEN set into the
     # reusable without re-listing each one; the reusable only reads what it
     # needs.
@@ -89,6 +89,7 @@ jobs:
     permissions:
       actions: read
       contents: read
+      packages: read
       pull-requests: read
       checks: read
     with:
@@ -160,7 +161,7 @@ jobs:
       - name: Download failed merge-queue shard results
         if: ${{ failure() && github.event_name == 'merge_group' }}
         continue-on-error: true
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           # Current attempt only: artifacts belong to the run, so a re-run would
           # otherwise report tests that failed only in an earlier attempt.
@@ -259,7 +260,7 @@ jobs:
       - name: Download blob reports
         id: download-blobs
         if: ${{ always() && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           pattern: playwright-blob-*
@@ -269,7 +270,7 @@ jobs:
       - name: Download timing metrics
         id: download-timings
         if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           pattern: playwright-timings-*
@@ -279,7 +280,7 @@ jobs:
         id: download-plans
         if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
         continue-on-error: true
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: playwright-shard-plans
           path: ${{ runner.temp }}/playwright-plans
@@ -287,7 +288,7 @@ jobs:
       - name: Download all results JSON
         id: download-results
         if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.playwright_ci_result != 'skipped' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           # Every attempt: a "Re-run failed jobs" attempt only re-uploads the
@@ -619,16 +620,11 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-      # If gate itself didn't produce a valid decision (crash, cancelled,
-      # unknown), FAIL loudly rather than silently reporting green below.
-      # Without this guard, the "should_run != 'true'" branch (or any
-      # negative match) would treat an unset gate output the same as an
-      # explicit skip decision — hiding the gate failure and letting a
-      # required check pass on an invalid pipeline state.
-      - name: Guard against missing gate decision
+      # A missing selection result must not be interpreted as an intentional skip.
+      - name: Require successful selection
         if: ${{ github.event_name != 'merge_group' && needs.playwright.outputs.gate_result != 'success' }}
         run: |
-          echo "::error::gate did not succeed (result=${{ needs.playwright.outputs.gate_result }}, should_run=${{ needs.playwright.outputs.gate_should_run }}). Refusing synthetic green — this playwright-summary must not report success without a valid gate decision."
+          echo "::error::Workload selection did not succeed (result=${{ needs.playwright.outputs.gate_result }}, should_run=${{ needs.playwright.outputs.gate_should_run }})."
           exit 1
 
       - name: Render consolidated job summary and gate on results
@@ -737,7 +733,7 @@ jobs:
 
       - name: Download all results JSON
         continue-on-error: true
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: playwright-results-json-*
           path: results
@@ -901,7 +897,7 @@ jobs:
           persist-credentials: true
 
       - name: Download timing history artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: playwright-timing-history-full-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/timing-history

@@ -744,3 +744,167 @@ describe('getTrimmedHtmlContent', () => {
     expect(getTrimmedHtmlContent(html, 10)).toBe('<p>First...</p>');
   });
 });
+
+describe('getHtmlStringFromMarkdownString: CommonMark lists', () => {
+  it.each([2, 4])(
+    'preserves three list levels with %i-space indentation',
+    (indent) => {
+      const markdown = `- Parent item.\n${' '.repeat(
+        indent
+      )}- Pattern A\n${' '.repeat(indent * 2)}- Pattern B\n- Sibling`;
+      const doc = new DOMParser().parseFromString(
+        getHtmlStringFromMarkdownString(markdown),
+        'text/html'
+      );
+
+      expect(
+        doc.querySelector('ul > li > ul > li > ul > li')?.textContent
+      ).toBe('Pattern B');
+      expect(doc.querySelectorAll('body > ul > li')).toHaveLength(2);
+    }
+  );
+
+  it('preserves ordered and mixed nested lists', () => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString(
+        '1. Parent\n   - Child\n     1. Grandchild'
+      ),
+      'text/html'
+    );
+
+    expect(doc.querySelector('ol > li > ul > li > ol > li')?.textContent).toBe(
+      'Grandchild'
+    );
+  });
+
+  it('keeps list markers inside fenced code literal', () => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString('```\n- Parent\n  - Child\n```'),
+      'text/html'
+    );
+
+    expect(doc.querySelector('ul')).toBeNull();
+    expect(doc.querySelector('code')?.textContent).toContain('  - Child');
+  });
+
+  it.each(['main.py', 'customer.id', 'orders.io'])(
+    'does not turn the dotted name %s into a link',
+    (content) => {
+      const doc = new DOMParser().parseFromString(
+        getHtmlStringFromMarkdownString(content),
+        'text/html'
+      );
+
+      expect(doc.querySelector('a')).toBeNull();
+      expect(doc.body.textContent).toBe(content);
+    }
+  );
+
+  it('still autolinks explicit URLs, www hosts, and email addresses', () => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString(
+        'https://example.com www.example.com/path?q=1. admin@example.com'
+      ),
+      'text/html'
+    );
+
+    expect(
+      Array.from(doc.querySelectorAll('a'), (link) => link.getAttribute('href'))
+    ).toEqual([
+      'https://example.com',
+      'http://www.example.com/path?q=1',
+      'mailto:admin@example.com',
+    ]);
+  });
+
+  it.each(['https', 'http', 'ftp'])(
+    'autolinks %s URLs immediately after a colon',
+    (scheme) => {
+      const url = `${scheme}://example.com`;
+      const doc = new DOMParser().parseFromString(
+        getHtmlStringFromMarkdownString(`Docs:${url}`),
+        'text/html'
+      );
+
+      expect(doc.querySelector('a')?.getAttribute('href')).toBe(url);
+      expect(doc.querySelector('a')?.textContent).toBe(url);
+      expect(doc.body.textContent).toBe(`Docs:${url}`);
+    }
+  );
+
+  it.each(['range ~10-~20 rows', '~5~ ms', 'PROGRA~1\\foo~2'])(
+    'keeps single tildes literal in %s',
+    (content) => {
+      const doc = new DOMParser().parseFromString(
+        getHtmlStringFromMarkdownString(content),
+        'text/html'
+      );
+
+      expect(doc.querySelector('del')).toBeNull();
+      expect(doc.body.textContent).toBe(content);
+    }
+  );
+
+  it('parses nested formatting while keeping single tildes literal', () => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString(
+        '~**approximately**~ and ~~**deleted**~~'
+      ),
+      'text/html'
+    );
+
+    expect(doc.body.textContent).toBe('~approximately~ and deleted');
+    expect(doc.querySelectorAll('del')).toHaveLength(1);
+    expect(doc.querySelector('del > strong')?.textContent).toBe('deleted');
+    expect(doc.querySelector('p > strong')?.textContent).toBe('approximately');
+  });
+
+  it('preserves escaped HTML surrounded by single tildes', () => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString('~\\<img src=x onerror=alert(1)>~'),
+      'text/html'
+    );
+
+    expect(doc.querySelector('img')).toBeNull();
+    expect(doc.querySelector('del')).toBeNull();
+    expect(doc.body.textContent).toBe('~<img src=x onerror=alert(1)>~');
+  });
+
+  it('preserves nested formatting inside underline', () => {
+    expect(
+      getHtmlStringFromMarkdownString('__underline with **bold**__')
+    ).toContain('<u>underline with <strong>bold</strong></u>');
+  });
+
+  it('leaves unknown and escaped emoji shortcodes as text', () => {
+    expect(getHtmlStringFromMarkdownString('\\:smile: :not_an_emoji:')).toBe(
+      '<p>:smile: :not_an_emoji:</p>'
+    );
+  });
+
+  it('leaves emoji shortcodes inside code literal', () => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString('`:smile:`\n\n```\n:smile:\n```'),
+      'text/html'
+    );
+
+    expect(
+      Array.from(doc.querySelectorAll('code'), (code) =>
+        code.textContent?.trim()
+      )
+    ).toEqual([':smile:', ':smile:']);
+  });
+
+  it('preserves supported inline formatting and links', () => {
+    const html = getHtmlStringFromMarkdownString(
+      '**bold** __underline__ ~~deleted~~ :smile: https://example.com'
+    );
+
+    expect(html).toContain('<strong>bold</strong>');
+    expect(html).toContain('<u>underline</u>');
+    expect(html).toContain('<del>deleted</del>');
+    expect(html).toContain('😄');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+  });
+});

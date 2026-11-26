@@ -18,7 +18,10 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { useAlertSelection } from '../../../../../../hooks/useAlertSelection';
+import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import AlertAiForm from '../../../../../observability/Alerts/AlertAiForm.component';
 import NotificationAlertForm from './NotificationAlertForm';
 
@@ -119,13 +122,27 @@ jest.mock(
   })
 );
 
-jest.mock('../../../../../../utils/PermissionDerivation', () => ({
-  getDerivedPermissionFlags: jest.fn().mockReturnValue({ canViewAll: false }),
-}));
+const mockUseEntityPermissions = jest.fn();
 
-jest.mock('../../../../../../utils/PermissionsUtils', () => ({
-  DEFAULT_ENTITY_PERMISSION: {},
-}));
+// Mock the hook, run the real derivation over a minimal permission object.
+const setMockPermissions = (overrides: Partial<OperationPermission> = {}) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock(
+  '../../../../../../hooks/useEntityPermissions/useEntityPermissions',
+  () => ({
+    useEntityPermissions: (...args: unknown[]) =>
+      mockUseEntityPermissions(...args),
+  })
+);
 
 jest.mock('../../../../../../constants/constants', () => ({
   PAGE_SIZE_LARGE: 50,
@@ -160,6 +177,7 @@ describe('NotificationAlertForm', () => {
   const mockOnNavigate = jest.fn();
 
   beforeEach(() => {
+    setMockPermissions({ [Operation.EditAll]: true });
     (useAlertSelection as jest.Mock).mockReturnValue({
       support: {},
       ready: true,
@@ -183,6 +201,45 @@ describe('NotificationAlertForm', () => {
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
     expect(screen.queryByTestId('alert-ai-form')).not.toBeInTheDocument();
+  });
+
+  it('starts a new alert enabled, with a switch its creator can use', async () => {
+    await act(async () => {
+      render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
+    });
+
+    await waitFor(() => {
+      expect(AlertAiForm).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          canEditEnabled: true,
+          value: expect.objectContaining({ enabled: true }),
+        }),
+        expect.anything()
+      );
+    });
+  });
+
+  it('lets only someone who can edit the alert switch it off or on', async () => {
+    setMockPermissions({ [Operation.EditAll]: false });
+
+    await act(async () => {
+      render(
+        <NotificationAlertForm fqn="alert.fqn" onNavigate={mockOnNavigate} />
+      );
+    });
+
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      'eventsubscription',
+      'alert.fqn',
+      { enabled: true }
+    );
+
+    await waitFor(() => {
+      expect(AlertAiForm).toHaveBeenLastCalledWith(
+        expect.objectContaining({ canEditEnabled: false }),
+        expect.anything()
+      );
+    });
   });
 
   it('should render AlertAiForm after loading', async () => {
