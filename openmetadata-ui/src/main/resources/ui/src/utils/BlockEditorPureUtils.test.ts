@@ -881,6 +881,7 @@ describe('getHtmlStringFromMarkdownString: CommonMark lists', () => {
     ['_a **b**_', '<p>_a <strong>b</strong>_</p>'],
     ['*a _b_ c*', '<p><em>a _b_ c</em></p>'],
     ['___x___', '<p><u>x</u></p>'],
+    ['___x__ y_', '<p>_<u>x</u> y_</p>'],
   ])('keeps single underscores literal in %s', (markdown, expected) => {
     expect(getHtmlStringFromMarkdownString(markdown)).toBe(expected);
   });
