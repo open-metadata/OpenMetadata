@@ -47,6 +47,9 @@ TARGET_MAP = {
 
 _NAMED_ENTITY_TYPES = frozenset({"PERSON", "LOCATION", "NRP"})
 _MIN_DISTINCT_UNCONTEXTUALIZED_NER_MATCHES = 2
+# Every tag walks the values in the same order, so an evicting LRU smaller than the value count would
+# never hit; the memo keeps the first N parses and values beyond it are parsed per tag as before.
+NLP_ARTIFACTS_MEMO_MAX_SIZE = 500
 
 
 def _column_fqn_named_by(entity_link: str) -> str | None:
@@ -157,9 +160,12 @@ class TagAnalyzer:
 
     def _nlp_artifacts(self, value: str, language: str, nlp_engine: NlpEngine) -> NlpArtifacts:
         key = (language, value)
-        if key not in self._nlp_artifacts_memo:
-            self._nlp_artifacts_memo[key] = nlp_engine.process_text(value, language)
-        return self._nlp_artifacts_memo[key]
+        artifacts = self._nlp_artifacts_memo.get(key)
+        if artifacts is None:
+            artifacts = nlp_engine.process_text(value, language)
+            if len(self._nlp_artifacts_memo) < NLP_ARTIFACTS_MEMO_MAX_SIZE:
+                self._nlp_artifacts_memo[key] = artifacts
+        return artifacts
 
     def should_skip_recognizer(self, exception_list: list[RecognizerException]):
         # Compare FQNs rather than links: splitting the column FQN on every dot to build its link broke

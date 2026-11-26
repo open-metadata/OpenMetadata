@@ -12,6 +12,7 @@
 Unit tests for PII classifiers
 """
 
+from collections import Counter
 from unittest.mock import Mock, patch
 
 import pytest
@@ -341,6 +342,32 @@ class TestTagScorer:
         assert {s.tag.name.root for s in scored} == {"EmailTag", "PhoneTag"}
         parsed_texts = sorted(call.args[1] for call in process_text.call_args_list)
         assert parsed_texts == sorted({*sample_data, column_to_analyze.name.root})
+
+    def test_list_valued_samples_are_parsed_once_per_element(self, email_tag, phone_tag, column_to_analyze):
+        nlp_engine = load_nlp_engine()
+        sample_data = [["john@example.com", "555-123-4567"], ["john@example.com"], None]
+
+        with patch.object(nlp_engine, "process_text", wraps=nlp_engine.process_text) as process_text:
+            scored = ScoreTagsForColumnService(nlp_engine=nlp_engine)(
+                column_to_analyze, sample_data, [email_tag, phone_tag]
+            )
+
+        assert {s.tag.name.root for s in scored} == {"EmailTag", "PhoneTag"}
+        parsed_texts = sorted(call.args[0] for call in process_text.call_args_list)
+        assert parsed_texts == sorted({"john@example.com", "555-123-4567", column_to_analyze.name.root})
+
+    def test_values_beyond_the_memo_cap_are_parsed_per_tag(self, email_tag, phone_tag, column_to_analyze):
+        nlp_engine = load_nlp_engine()
+        sample_data = [f"user{i}@example.com" for i in range(3)]
+
+        with (
+            patch("metadata.pii.tag_analyzer.NLP_ARTIFACTS_MEMO_MAX_SIZE", 2),
+            patch.object(nlp_engine, "process_text", wraps=nlp_engine.process_text) as process_text,
+        ):
+            ScoreTagsForColumnService(nlp_engine=nlp_engine)(column_to_analyze, sample_data, [email_tag, phone_tag])
+
+        parse_counts = Counter(call.args[0] for call in process_text.call_args_list)
+        assert [parse_counts[value] for value in sample_data] == [1, 1, 2]
 
 
 class TestTagAnalyzer:
