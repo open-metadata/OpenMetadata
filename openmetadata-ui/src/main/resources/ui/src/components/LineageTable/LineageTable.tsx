@@ -116,7 +116,10 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     }))
   );
 
-  const { lineageConfig } = useLineageStore();
+  const {
+    lineageConfig,
+    timeFilter: { startTime, endTime },
+  } = useLineageStore();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { t } = useTranslation();
@@ -531,6 +534,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         queryFilter,
         columnFilter: columnFilterValue,
         direction: lineageDirection,
+        startTime,
+        endTime,
       });
 
       const upstreamEdges = map(res.upstreamEdges ?? [], (edge) => edge);
@@ -566,6 +571,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         queryFilter,
         lineageDirection,
         columnFilterValue,
+        startTime,
+        endTime,
       });
       const shouldIncludePaginationInfo =
         paginationInfoKeyRef.current !== paginationInfoKey;
@@ -583,6 +590,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         query_filter: queryFilter,
         column_filter: columnFilterValue,
         include_pagination_info: shouldIncludePaginationInfo,
+        startTime,
+        endTime,
       });
 
       delete res.nodes[fqn];
@@ -644,6 +653,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     setLineagePagingInfo,
     setLoading,
     impactLevel,
+    startTime,
+    endTime,
   ]);
 
   // Table-level lineage: fetch on all dependencies
