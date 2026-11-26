@@ -215,29 +215,30 @@ const SectionFields = ({
     (p) => schemaProperties[p.name]?.type !== 'boolean'
   );
 
-  const orderedFieldGroups = nonBooleanProperties
-    .reduce<FieldGroup[]>((groups, element) => {
-      if (isWide(element.name, schemaProperties)) {
-        groups.push({ property: element, type: 'wide' });
-
-        return groups;
-      }
-
+  const orderedFieldGroups = nonBooleanProperties.reduce<FieldGroup[]>(
+    (groups, element) => {
       const lastGroup = groups[groups.length - 1];
 
-      if (lastGroup?.type === 'grid') {
+      if (isWide(element.name, schemaProperties)) {
+        groups.push({ property: element, type: 'wide' });
+      } else if (lastGroup?.type === 'grid') {
         lastGroup.properties.push(element);
+      } else if (
+        lastGroup?.type === 'wide' &&
+        !isWide(lastGroup.property.name, schemaProperties)
+      ) {
+        groups[groups.length - 1] = {
+          properties: [lastGroup.property, element],
+          type: 'grid',
+        };
       } else {
-        groups.push({ properties: [element], type: 'grid' });
+        groups.push({ property: element, type: 'wide' });
       }
 
       return groups;
-    }, [])
-    .map<FieldGroup>((group) =>
-      group.type === 'grid' && group.properties.length === 1
-        ? { property: group.properties[0], type: 'wide' }
-        : group
-    );
+    },
+    []
+  );
 
   const renderProperty = (
     element: ObjectFieldTemplatePropertyType,
