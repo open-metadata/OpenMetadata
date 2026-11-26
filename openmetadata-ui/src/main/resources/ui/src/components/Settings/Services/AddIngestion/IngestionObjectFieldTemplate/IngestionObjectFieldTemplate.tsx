@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   ButtonUtility,
   Card,
   Divider,
@@ -333,14 +334,14 @@ const SectionCard = ({
         title={section.title}
         onToggle={() => setOpen((prev) => !prev)}
       />
-      <div className={classNames(!showBody && 'tw:hidden')}>
+      <Box className={classNames(!showBody && 'tw:hidden')} direction="col">
         <Divider className="tw:my-3" />
         <SectionFields
           isCompact={isCompact}
           properties={section.properties}
           schemaProperties={section.schemaProperties}
         />
-      </div>
+      </Box>
     </Card>
   );
 };
