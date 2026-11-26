@@ -1050,7 +1050,7 @@ fi
 step "Java $JAVA_VERSION";      ensure_java   || true
 step "Maven";                   ensure_maven  || true
 step "Node $NODE_VERSION";      ensure_node   || true
-step "Yarn (classic)";          ensure_yarn   || true
+step "Yarn";                    ensure_yarn   || true
 step "Python >= $PYTHON_MIN";   ensure_python || true
 step "ANTLR $ANTLR_VERSION";    ensure_antlr  || true
 step "Docker";                  ensure_docker || true

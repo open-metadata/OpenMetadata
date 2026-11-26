@@ -56,18 +56,14 @@ jobs:
         with:
           node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
 
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
-
       - name: Caching Yarn dependencies
         uses: actions/cache@v6
         id: yarn-cache
         with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-node-yarn-${{ hashFiles('**/yarn.lock') }}
+          path: ~/.yarn/berry/cache
+          key: yarn4-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
           restore-keys: |
-            ${{ runner.os }}-node-yarn-
+            yarn4-pkg-cache-${{ runner.os }}-
 
       - name: Install Antlr4 CLI
         run: sudo make install_antlr_cli
