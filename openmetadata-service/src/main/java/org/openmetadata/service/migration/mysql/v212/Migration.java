@@ -18,6 +18,7 @@ import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v212.DataProductLineageRebuild;
 import org.openmetadata.service.migration.utils.v212.LogicalTestSuitePipelineMigration;
 
 public class Migration extends MigrationProcessImpl {
@@ -33,5 +34,10 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         LogicalTestSuitePipelineMigration.STEP_NAME,
         () -> LogicalTestSuitePipelineMigration.migrate(handle, MYSQL));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        DataProductLineageRebuild.STEP_NAME,
+        () -> DataProductLineageRebuild.rebuildAll(handle, MYSQL));
   }
 }

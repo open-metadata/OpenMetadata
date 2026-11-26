@@ -1,6 +1,5 @@
 package org.openmetadata.service.util;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrDefault;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -10,14 +9,17 @@ import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -251,15 +253,6 @@ public class LineageUtil {
     insertLineage(count, fromDomain, toDomain);
   }
 
-  private static void insertDataProductLineage(
-      EntityReference fromDataProduct, EntityReference toDataProduct) {
-    int count =
-        Entity.getCollectionDAO()
-            .relationshipDAO()
-            .countDataProductsChildAssets(fromDataProduct.getId(), toDataProduct.getId());
-    insertLineage(count, fromDataProduct, toDataProduct);
-  }
-
   private static void insertLineage(int count, EntityReference fromRef, EntityReference toRef) {
     // Two assets of one domain or data product give it no edge to itself.
     if (fromRef.getId().equals(toRef.getId())) {
@@ -309,64 +302,27 @@ public class LineageUtil {
         .updateLineage(destinationIndexName, to, lineageData);
   }
 
-  public static void addDataProductsLineage(
-      UUID entityId, String entityType, List<EntityReference> updatedDataProducts) {
-    for (EntityReference ref : listOrEmpty(updatedDataProducts)) {
-      List<CollectionDAO.EntityRelationshipObject> downstreamDataProducts =
-          Entity.getCollectionDAO()
-              .relationshipDAO()
-              .findDownstreamDataProducts(entityId, entityType);
-      List<CollectionDAO.EntityRelationshipObject> upstreamDataProducts =
-          Entity.getCollectionDAO()
-              .relationshipDAO()
-              .findUpstreamDataProducts(entityId, entityType);
-      for (CollectionDAO.EntityRelationshipObject downstreamDataProduct : downstreamDataProducts) {
-        insertDataProductLineage(
-            ref,
-            Entity.getEntityReferenceById(
-                downstreamDataProduct.getFromEntity(),
-                UUID.fromString(downstreamDataProduct.getFromId()),
-                Include.ALL));
-      }
-      for (CollectionDAO.EntityRelationshipObject upstreamDataProduct : upstreamDataProducts) {
-        insertDataProductLineage(
-            Entity.getEntityReferenceById(
-                upstreamDataProduct.getFromEntity(),
-                UUID.fromString(upstreamDataProduct.getFromId()),
-                Include.ALL),
-            ref);
+  /**
+   * The data product pairs whose rollup changes when an entity gains or loses {@code
+   * dataProductIds}: each of them against each product its lineage neighbours hold.
+   */
+  public static Set<Pair<UUID, UUID>> dataProductPairs(
+      UUID entityId, String entityType, Collection<UUID> dataProductIds) {
+    Set<Pair<UUID, UUID>> pairs = new HashSet<>();
+    if (!dataProductIds.isEmpty()) {
+      CollectionDAO.EntityRelationshipDAO dao = Entity.getCollectionDAO().relationshipDAO();
+      Set<UUID> downstream = heldDataProducts(dao.findDownstreamDataProducts(entityId, entityType));
+      Set<UUID> upstream = heldDataProducts(dao.findUpstreamDataProducts(entityId, entityType));
+      for (UUID dataProductId : dataProductIds) {
+        downstream.forEach(neighbour -> pairs.add(Pair.of(dataProductId, neighbour)));
+        upstream.forEach(neighbour -> pairs.add(Pair.of(neighbour, dataProductId)));
       }
     }
+    return pairs;
   }
 
-  public static void removeDataProductsLineage(
-      UUID entityId, String entityType, List<EntityReference> updatedDataProducts) {
-    for (EntityReference ref : listOrEmpty(updatedDataProducts)) {
-      List<CollectionDAO.EntityRelationshipObject> downstreamDataProducts =
-          Entity.getCollectionDAO()
-              .relationshipDAO()
-              .findDownstreamDataProducts(entityId, entityType);
-      List<CollectionDAO.EntityRelationshipObject> upstreamDataProducts =
-          Entity.getCollectionDAO()
-              .relationshipDAO()
-              .findUpstreamDataProducts(entityId, entityType);
-      for (CollectionDAO.EntityRelationshipObject downstreamDataProduct : downstreamDataProducts) {
-        updateLineage(
-            ref,
-            Entity.getEntityReferenceById(
-                downstreamDataProduct.getFromEntity(),
-                UUID.fromString(downstreamDataProduct.getFromId()),
-                Include.ALL));
-      }
-      for (CollectionDAO.EntityRelationshipObject upstreamDataProduct : upstreamDataProducts) {
-        updateLineage(
-            Entity.getEntityReferenceById(
-                upstreamDataProduct.getFromEntity(),
-                UUID.fromString(upstreamDataProduct.getFromId()),
-                Include.ALL),
-            ref);
-      }
-    }
+  private static Set<UUID> heldDataProducts(List<CollectionDAO.EntityRelationshipObject> has) {
+    return has.stream().map(row -> UUID.fromString(row.getFromId())).collect(Collectors.toSet());
   }
 
   /**
@@ -386,7 +342,8 @@ public class LineageUtil {
   /**
    * A stored edge whose source is not {@code ChildAssets} was drawn between the products. It keeps
    * its details and only carries the count, as {@code LineageRepository} does when an asset edge is
-   * added under it, so no recount replaces or deletes it.
+   * added under it, so no recount replaces or deletes it
+   * (ADR:2026-11-26-data-product-lineage-rollups-are-recounted-and-drawn-edges-stay).
    */
   private static void recountDataProductLineage(EntityReference from, EntityReference to) {
     CollectionDAO.EntityRelationshipDAO dao = Entity.getCollectionDAO().relationshipDAO();
@@ -395,22 +352,22 @@ public class LineageUtil {
         dao.getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
     LineageDetails stored =
         row == null ? null : JsonUtils.readValue(row.getJson(), LineageDetails.class);
-    if (stored != null && stored.getSource() != LineageDetails.Source.CHILD_ASSETS) {
-      recountDrawnLineage(from, to, stored, count);
-    } else if (count > 0) {
+    if (stored == null) {
       insertLineage(count, from, to);
-    } else if (stored != null) {
+    } else if (count == 0 && stored.getSource() == LineageDetails.Source.CHILD_ASSETS) {
       dao.delete(
           from.getId(), from.getType(), to.getId(), to.getType(), Relationship.UPSTREAM.ordinal());
       deleteLineageFromSearch(from, to, stored);
+    } else {
+      recountStoredLineage(from, to, stored, count);
     }
   }
 
-  private static void recountDrawnLineage(
-      EntityReference from, EntityReference to, LineageDetails drawn, int count) {
+  private static void recountStoredLineage(
+      EntityReference from, EntityReference to, LineageDetails stored, int count) {
     Integer assetEdges = count > 0 ? count : null;
-    if (!Objects.equals(drawn.getAssetEdges(), assetEdges)) {
-      drawn.withAssetEdges(assetEdges);
+    if (!Objects.equals(stored.getAssetEdges(), assetEdges)) {
+      stored.withAssetEdges(assetEdges);
       Entity.getCollectionDAO()
           .relationshipDAO()
           .insert(
@@ -419,8 +376,8 @@ public class LineageUtil {
               from.getType(),
               to.getType(),
               Relationship.UPSTREAM.ordinal(),
-              JsonUtils.pojoToJson(drawn));
-      addLineageToSearch(from, to, drawn);
+              JsonUtils.pojoToJson(stored));
+      addLineageToSearch(from, to, stored);
     }
   }
 

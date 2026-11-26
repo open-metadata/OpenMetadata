@@ -106,6 +106,7 @@ import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -1526,12 +1527,16 @@ public class LineageRepository {
     boolean hasField =
         hasField(fromEntity.getEntityReference(), field)
             && hasField(toEntity.getEntityReference(), field);
-    if (!hasField) return;
-
-    for (EntityReference fromRef : getter.apply(fromEntity)) {
-      for (EntityReference toRef : getter.apply(toEntity)) {
-        processExtendedLineageCleanup(fromRef, toRef);
-      }
+    if (hasField) {
+      // The asset edge is already deleted, so a recount releases it and keeps an edge drawn
+      // between the products
+      // (ADR:2026-11-26-data-product-lineage-rollups-are-recounted-and-drawn-edges-stay).
+      List<EntityReference> fromRefs = listOrEmpty(getter.apply(fromEntity));
+      List<EntityReference> toRefs = listOrEmpty(getter.apply(toEntity));
+      Set<Pair<UUID, UUID>> pairs = new HashSet<>();
+      fromRefs.forEach(from -> toRefs.forEach(to -> pairs.add(Pair.of(from.getId(), to.getId()))));
+      LineageUtil.recountDataProductsLineage(pairs);
+      fromRefs.forEach(from -> toRefs.forEach(to -> invalidateLineageCacheForEdge(from, to)));
     }
   }
 

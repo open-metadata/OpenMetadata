@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
@@ -110,43 +111,6 @@ class LineageUtilTest {
   }
 
   @Test
-  void addDataProductsLineageSkipsInsertWhenNoChildAssetsExist() {
-    UUID entityId = UUID.randomUUID();
-    EntityReference dataProduct = entityRef(Entity.DATA_PRODUCT, UUID.randomUUID(), "dp.updated");
-    EntityReference downstreamProduct =
-        entityRef(Entity.DATA_PRODUCT, UUID.randomUUID(), "dp.downstream");
-    CollectionDAO collectionDAO = mock(CollectionDAO.class);
-    CollectionDAO.EntityRelationshipDAO relationshipDAO =
-        mock(CollectionDAO.EntityRelationshipDAO.class);
-    SearchRepository searchRepository = mock(SearchRepository.class);
-
-    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
-    when(relationshipDAO.findDownstreamDataProducts(entityId, Entity.TABLE))
-        .thenReturn(List.of(relationshipObject(downstreamProduct)));
-    when(relationshipDAO.findUpstreamDataProducts(entityId, Entity.TABLE)).thenReturn(List.of());
-    when(relationshipDAO.countDataProductsChildAssets(
-            dataProduct.getId(), downstreamProduct.getId()))
-        .thenReturn(0);
-
-    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
-      mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
-      mockedEntity.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      mockedEntity
-          .when(
-              () ->
-                  Entity.getEntityReferenceById(
-                      Entity.DATA_PRODUCT, downstreamProduct.getId(), Include.ALL))
-          .thenReturn(downstreamProduct);
-
-      LineageUtil.addDataProductsLineage(entityId, Entity.TABLE, List.of(dataProduct));
-
-      verify(relationshipDAO, never())
-          .insert(any(), any(), any(), any(), any(Integer.class), any(String.class));
-      verifyNoInteractions(searchRepository);
-    }
-  }
-
-  @Test
   void removeDomainLineageDecrementsAssetEdgesWhenRelationshipStillExists() {
     UUID entityId = UUID.randomUUID();
     EntityReference updatedDomain = entityRef(Entity.DOMAIN, UUID.randomUUID(), "domain.updated");
@@ -214,65 +178,198 @@ class LineageUtilTest {
   }
 
   @Test
-  void removeDataProductsLineageDeletesRelationshipAndSearchEntryWhenLastEdgeIsRemoved() {
+  void dataProductPairsPairsEachProductWithItsNeighboursProducts() {
     UUID entityId = UUID.randomUUID();
-    EntityReference dataProduct = entityRef(Entity.DATA_PRODUCT, UUID.randomUUID(), "dp.updated");
-    EntityReference downstreamProduct =
-        entityRef(Entity.DATA_PRODUCT, UUID.randomUUID(), "dp.downstream");
+    UUID moved = UUID.randomUUID();
+    EntityReference downstream = entityRef(Entity.DATA_PRODUCT, UUID.randomUUID(), "dp.down");
+    EntityReference upstream = entityRef(Entity.DATA_PRODUCT, UUID.randomUUID(), "dp.up");
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     CollectionDAO.EntityRelationshipDAO relationshipDAO =
         mock(CollectionDAO.EntityRelationshipDAO.class);
-    SearchRepository searchRepository = mock(SearchRepository.class);
-    SearchClient searchClient = mock(SearchClient.class);
-    LineageDetails lineageDetails =
-        new LineageDetails().withAssetEdges(1).withSource(LineageDetails.Source.CHILD_ASSETS);
-
     when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
     when(relationshipDAO.findDownstreamDataProducts(entityId, Entity.TABLE))
-        .thenReturn(List.of(relationshipObject(downstreamProduct)));
-    when(relationshipDAO.findUpstreamDataProducts(entityId, Entity.TABLE)).thenReturn(List.of());
-    when(relationshipDAO.getRecord(
-            dataProduct.getId(), downstreamProduct.getId(), Relationship.UPSTREAM.ordinal()))
-        .thenReturn(
-            CollectionDAO.EntityRelationshipObject.builder()
-                .json(JsonUtils.pojoToJson(lineageDetails))
-                .build());
-    when(searchRepository.getSearchClient()).thenReturn(searchClient);
+        .thenReturn(List.of(relationshipObject(downstream)));
+    when(relationshipDAO.findUpstreamDataProducts(entityId, Entity.TABLE))
+        .thenReturn(List.of(relationshipObject(upstream)));
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
-      mockedEntity.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      mockedEntity
-          .when(
-              () ->
-                  Entity.getEntityReferenceById(
-                      Entity.DATA_PRODUCT, downstreamProduct.getId(), Include.ALL))
-          .thenReturn(downstreamProduct);
 
-      LineageUtil.removeDataProductsLineage(entityId, Entity.TABLE, List.of(dataProduct));
+      assertEquals(
+          Set.of(Pair.of(moved, downstream.getId()), Pair.of(upstream.getId(), moved)),
+          LineageUtil.dataProductPairs(entityId, Entity.TABLE, List.of(moved)));
+      assertTrue(LineageUtil.dataProductPairs(entityId, Entity.TABLE, List.of()).isEmpty());
+    }
+  }
 
-      verify(relationshipDAO)
+  @Test
+  void recountWritesNoEdgeWhenNoAssetEdgeConnectsTheProducts() {
+    DataProductPair pair = new DataProductPair(0, null);
+
+    try (MockedStatic<Entity> mockedEntity = pair.mockEntity()) {
+      LineageUtil.recountDataProductsLineage(Set.of(pair.ids()));
+
+      verify(pair.relationshipDAO, never())
+          .insert(any(), any(), any(), any(), any(Integer.class), any(String.class));
+      verifyNoInteractions(pair.searchClient);
+    }
+  }
+
+  @Test
+  void recountDeletesTheRollupWhenNoAssetEdgeIsLeft() {
+    DataProductPair pair =
+        new DataProductPair(
+            0,
+            new LineageDetails().withSource(LineageDetails.Source.CHILD_ASSETS).withAssetEdges(1));
+
+    try (MockedStatic<Entity> mockedEntity = pair.mockEntity()) {
+      LineageUtil.recountDataProductsLineage(Set.of(pair.ids()));
+
+      verify(pair.relationshipDAO)
           .delete(
-              eq(dataProduct.getId()),
-              eq(Entity.DATA_PRODUCT),
-              eq(downstreamProduct.getId()),
-              eq(Entity.DATA_PRODUCT),
-              eq(Relationship.UPSTREAM.ordinal()));
-
+              pair.from.getId(),
+              Entity.DATA_PRODUCT,
+              pair.to.getId(),
+              Entity.DATA_PRODUCT,
+              Relationship.UPSTREAM.ordinal());
       ArgumentCaptor<Pair<String, String>> fieldCaptor = ArgumentCaptor.forClass(Pair.class);
-      ArgumentCaptor<Pair<String, Map<String, Object>>> updateCaptor =
-          ArgumentCaptor.forClass(Pair.class);
-      verify(searchClient)
-          .updateChildren(
-              eq(SearchClient.GLOBAL_SEARCH_ALIAS), fieldCaptor.capture(), updateCaptor.capture());
-      assertEquals("upstreamLineage.docUniqueId", fieldCaptor.getValue().getLeft());
-      assertEquals(
-          dataProduct.getId() + "--->" + downstreamProduct.getId(),
-          fieldCaptor.getValue().getRight());
-      assertEquals(SearchClient.REMOVE_LINEAGE_SCRIPT, updateCaptor.getValue().getLeft());
-      assertEquals(
-          dataProduct.getId() + "--->" + downstreamProduct.getId(),
-          updateCaptor.getValue().getRight().get("docUniqueId"));
+      verify(pair.searchClient)
+          .updateChildren(eq(SearchClient.GLOBAL_SEARCH_ALIAS), fieldCaptor.capture(), any());
+      assertEquals(pair.from.getId() + "--->" + pair.to.getId(), fieldCaptor.getValue().getRight());
+    }
+  }
+
+  @Test
+  void recountKeepsADrawnEdgeAndOnlyClearsItsCount() {
+    DataProductPair pair =
+        new DataProductPair(
+            0,
+            new LineageDetails()
+                .withSource(LineageDetails.Source.MANUAL)
+                .withDescription("drawn")
+                .withCreatedAt(7L)
+                .withAssetEdges(1));
+
+    try (MockedStatic<Entity> mockedEntity = pair.mockEntity()) {
+      LineageUtil.recountDataProductsLineage(Set.of(pair.ids()));
+
+      LineageDetails written = pair.writtenDetails();
+      assertNull(written.getAssetEdges());
+      assertEquals(LineageDetails.Source.MANUAL, written.getSource());
+      assertEquals("drawn", written.getDescription());
+      assertEquals(7L, written.getCreatedAt());
+      verify(pair.relationshipDAO, never())
+          .delete(any(UUID.class), any(), any(UUID.class), any(), any(Integer.class));
+    }
+  }
+
+  @Test
+  void recountCountsAssetEdgesOnARollupAndKeepsItsCreation() {
+    DataProductPair pair =
+        new DataProductPair(
+            3,
+            new LineageDetails()
+                .withSource(LineageDetails.Source.CHILD_ASSETS)
+                .withCreatedAt(7L)
+                .withAssetEdges(1));
+
+    try (MockedStatic<Entity> mockedEntity = pair.mockEntity()) {
+      LineageUtil.recountDataProductsLineage(Set.of(pair.ids()));
+
+      LineageDetails written = pair.writtenDetails();
+      assertEquals(3, written.getAssetEdges());
+      assertEquals(7L, written.getCreatedAt());
+    }
+  }
+
+  @Test
+  void recountLeavesAnEdgeWithTheRightCountAsItIs() {
+    DataProductPair pair =
+        new DataProductPair(
+            2,
+            new LineageDetails().withSource(LineageDetails.Source.CHILD_ASSETS).withAssetEdges(2));
+
+    try (MockedStatic<Entity> mockedEntity = pair.mockEntity()) {
+      LineageUtil.recountDataProductsLineage(Set.of(pair.ids()));
+
+      verify(pair.relationshipDAO, never())
+          .insert(any(), any(), any(), any(), any(Integer.class), any(String.class));
+      verify(pair.relationshipDAO, never())
+          .delete(any(UUID.class), any(), any(UUID.class), any(), any(Integer.class));
+      verifyNoInteractions(pair.searchClient);
+    }
+  }
+
+  @Test
+  void recountSkipsAPairOfOneProduct() {
+    UUID id = UUID.randomUUID();
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      LineageUtil.recountDataProductsLineage(Set.of(Pair.of(id, id)));
+
+      mockedEntity.verifyNoInteractions();
+    }
+  }
+
+  /** Two data products with a stored edge between them, or none, and the asset edges they count. */
+  private static final class DataProductPair {
+    private final EntityReference from =
+        entityRef(Entity.DATA_PRODUCT, UUID.randomUUID(), "dp.from");
+    private final EntityReference to = entityRef(Entity.DATA_PRODUCT, UUID.randomUUID(), "dp.to");
+    private final CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    private final CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    private final SearchRepository searchRepository = mock(SearchRepository.class);
+    private final SearchClient searchClient = mock(SearchClient.class);
+
+    private DataProductPair(int assetEdges, LineageDetails stored) {
+      when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+      when(relationshipDAO.countDataProductsChildAssets(from.getId(), to.getId()))
+          .thenReturn(assetEdges);
+      when(relationshipDAO.getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal()))
+          .thenReturn(
+              stored == null
+                  ? null
+                  : CollectionDAO.EntityRelationshipObject.builder()
+                      .json(JsonUtils.pojoToJson(stored))
+                      .build());
+      when(searchRepository.getSearchClient()).thenReturn(searchClient);
+      when(searchRepository.getIndexMapping(Entity.DATA_PRODUCT))
+          .thenReturn(IndexMapping.builder().indexName("data_product_search").build());
+      when(searchRepository.getClusterAlias()).thenReturn("cluster");
+      when(searchRepository.getWriteIndexName(any(IndexMapping.class)))
+          .thenAnswer(
+              invocation -> invocation.getArgument(0, IndexMapping.class).getIndexName("cluster"));
+    }
+
+    private Pair<UUID, UUID> ids() {
+      return Pair.of(from.getId(), to.getId());
+    }
+
+    private MockedStatic<Entity> mockEntity() {
+      MockedStatic<Entity> mockedEntity = mockStatic(Entity.class);
+      mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      mockedEntity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      for (EntityReference ref : List.of(from, to)) {
+        mockedEntity
+            .when(
+                () -> Entity.getEntityReferenceById(Entity.DATA_PRODUCT, ref.getId(), Include.ALL))
+            .thenReturn(ref);
+      }
+      return mockedEntity;
+    }
+
+    private LineageDetails writtenDetails() {
+      ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
+      verify(relationshipDAO)
+          .insert(
+              eq(from.getId()),
+              eq(to.getId()),
+              eq(Entity.DATA_PRODUCT),
+              eq(Entity.DATA_PRODUCT),
+              eq(Relationship.UPSTREAM.ordinal()),
+              json.capture());
+      return JsonUtils.readValue(json.getValue(), LineageDetails.class);
     }
   }
 
