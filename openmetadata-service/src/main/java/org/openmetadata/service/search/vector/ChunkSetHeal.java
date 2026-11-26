@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.search.vector.AbstractVectorIndexService.DocVersion;
+import org.openmetadata.service.search.vector.VectorIndexService.ChunkSetsBounded;
 
 /**
  * Removes the chunk documents no header counts: ids at or past their parent's chunk 0 {@code
@@ -34,6 +35,7 @@ final class ChunkSetHeal {
 
   /** The requests the heal sends, each retried as every by-id chunk request is. */
   interface Requests {
+    /** A search every shard answered in full; a partial or timed out answer throws. */
     JsonNode search(String index, String body);
 
     int headerCount(String index, String parentId);
@@ -48,20 +50,23 @@ final class ChunkSetHeal {
   }
 
   /** Heals every parent of {@code index} that holds chunks its header does not count. */
-  int healParentsOf(String index) {
-    int healed = 0;
+  ChunkSetsBounded healParentsOf(String index) {
+    int parentsHealed = 0;
+    int chunksRemoved = 0;
     JsonNode afterKey = null;
     boolean morePages = true;
     while (morePages) {
       JsonNode parents =
           requests.search(index, parentsPage(afterKey)).path("aggregations").path(PARENTS);
       for (JsonNode bucket : parents.path("buckets")) {
-        healed += holdsUncountedChunks(bucket) ? heal(index, parentIdOf(bucket)) : 0;
+        int removed = holdsUncountedChunks(bucket) ? heal(index, parentIdOf(bucket)) : 0;
+        parentsHealed += removed > 0 ? 1 : 0;
+        chunksRemoved += removed;
       }
       afterKey = parents.path("after_key");
       morePages = !parents.path("buckets").isEmpty() && afterKey.isObject();
     }
-    return healed;
+    return new ChunkSetsBounded(index, parentsHealed, chunksRemoved);
   }
 
   private static boolean holdsUncountedChunks(JsonNode bucket) {
@@ -76,7 +81,7 @@ final class ChunkSetHeal {
     return bucket.path("key").path(PARENT_ID).asText();
   }
 
-  /** Returns 1 when the parent had chunks past its header, which are now deleted, and 0 if not. */
+  /** Returns how many chunks the parent had past its header, which are now deleted. */
   private int heal(String index, String parentId) {
     Map<String, DocVersion> listed = listChunksPastChunkZero(index, parentId);
     int count = requests.headerCount(index, parentId);
@@ -89,13 +94,13 @@ final class ChunkSetHeal {
         });
     if (!uncounted.isEmpty()) {
       requests.deleteUnlessRewritten(index, parentId, uncounted);
-      LOG.info(
+      LOG.debug(
           "Removed {} chunk documents of {} in {} that its header does not count",
           uncounted.size(),
           parentId,
           index);
     }
-    return uncounted.isEmpty() ? 0 : 1;
+    return uncounted.size();
   }
 
   private Map<String, DocVersion> listChunksPastChunkZero(String index, String parentId) {

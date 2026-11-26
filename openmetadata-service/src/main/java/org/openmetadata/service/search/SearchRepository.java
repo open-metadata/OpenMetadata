@@ -180,6 +180,8 @@ import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.scripts.SoftDeleteScript;
 import org.openmetadata.service.search.security.PrivateSearchFields;
+import org.openmetadata.service.search.vector.ChunkSetHealLease;
+import org.openmetadata.service.search.vector.ChunkSetHealRunner;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
@@ -1003,7 +1005,7 @@ public class SearchRepository {
       this.vectorServiceInitError = null;
       Thread.ofVirtual()
           .name("vector-chunk-heal")
-          .start(vectorIndexService::removeChunksNoHeaderCounts);
+          .start(new ChunkSetHealRunner(vectorIndexService, ChunkSetHealLease.forCluster()));
 
       LOG.info(
           "Vector search service initialized with provider={}, dimension={}",

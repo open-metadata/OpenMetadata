@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -42,6 +43,7 @@ import org.openmetadata.service.search.vector.AbstractVectorIndexService;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
+import org.openmetadata.service.search.vector.VectorIndexService.ChunkSetsBounded;
 import org.openmetadata.service.search.vector.VectorSearchParameters;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
@@ -333,7 +335,7 @@ class VectorChunkIndexIT {
     }
 
     @Test
-    void theHealRemovesTheChunksNoHeaderCounts() {
+    void theHealRemovesTheChunksNoHeaderCounts() throws IOException {
       assertTheHealRemovesTheChunksNoHeaderCounts(service);
     }
   }
@@ -425,7 +427,7 @@ class VectorChunkIndexIT {
     }
 
     @Test
-    void theHealRemovesTheChunksNoHeaderCounts() {
+    void theHealRemovesTheChunksNoHeaderCounts() throws IOException {
       assertTheHealRemovesTheChunksNoHeaderCounts(service);
     }
   }
@@ -783,7 +785,7 @@ class VectorChunkIndexIT {
    * is how the record is cleared here to stand for an index written by an earlier release.
    */
   private static void assertTheHealRemovesTheChunksNoHeaderCounts(
-      AbstractVectorIndexService service) {
+      AbstractVectorIndexService service) throws IOException {
     String live = service.getChunkIndexName();
     Table orders = table("orders", "word ".repeat(500));
     Table refunds = table("refunds", "Refunds issued");
@@ -798,7 +800,10 @@ class VectorChunkIndexIT {
       storeLegacyChunk(service, live, refunds, 2);
       refresh(service, live);
 
-      service.removeChunksNoHeaderCounts();
+      assertEquals(
+          Optional.of(new ChunkSetsBounded(target, 2, 2)),
+          service.removeChunksNoHeaderCounts(),
+          "every shard answered, and one chunk of each entity was past its header");
 
       assertEquals(
           Set.of(id(orders) + "_0", id(orders) + "_1"), storedChunkIds(service, live, orders));

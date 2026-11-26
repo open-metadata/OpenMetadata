@@ -2,19 +2,21 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-20 (initial); v2 2026-11-23 (an unwritable chunk index keeps the entity
-  embedding; the chunk generation goes live with the entity indexes, and only a missed delete
-  blocks it; the header's count bounds every stored chunk id); v3 2026-11-23 (the Revisit clause
-  is resolved by a kNN query clause hook; fusing the two legs stays out of OpenMetadata); v4
-  2026-11-24 (ontology terms keep the engine split of their own record); v5 2026-11-26 (the RRF
-  search pipeline is gone); v6 2026-11-26 (a delete trusts the header's bound; chunk 0 is a
-  conditional write, and a heal removes once the chunks no header counts; by-id chunk requests
-  retry a busy cluster; a header that cannot be read fails the write or delete, and a live delete
-  the cluster refuses goes to the search retry queue; an unrecorded staged delete is read from any
-  failed partition, also at the end of the job; a run waits out the generation lookup's cache)
+  embedding; the chunk generation goes live with the entity indexes, and only a missed delete blocks
+  it; the header's count bounds every stored chunk id); v3 2026-11-23 (the Revisit clause is
+  resolved by a kNN query clause hook; fusing the two legs stays out of OpenMetadata); v4 2026-11-24
+  (ontology terms keep the engine split of their own record); v5 2026-11-26 (the RRF search pipeline
+  is gone); v6 2026-11-26 (a delete trusts the header's bound; chunk 0 is a conditional write, and a
+  heal removes once the chunks no header counts, on one server at a time and retried until it is
+  recorded; by-id chunk requests retry a busy cluster; a header that cannot be read fails the write
+  or delete, and a live delete the cluster refuses goes to the search retry queue; an unrecorded
+  staged delete is read from any failed partition, also at the end of the job; a run waits out the
+  generation lookup's cache)
 - **Deciders:** Search and AI context maintainers
 - **Guard:** `VectorChunkIndexIT` (each scenario on a real cluster of each engine),
   `ChunkSetBoundTest` (trims and deletes after a write that stopped part way, the requests a
-  delete sends, a header that cannot be read, the request retry, racing writers, the heal),
+  delete sends, a header that cannot be read, the request retry, racing writers, the heal and its
+  retries), `ChunkSetHealLeaseTest` (the heal's lease),
   `SearchIndexRetryWorkerTest` and `VectorEmbeddingHandlerTest` (a live delete the cluster
   refused is replayed), `RecreateWithEmbeddingsTest` (the wait before the first read),
   `DistributedIndexingStrategyTest` and
@@ -135,7 +137,10 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   that finds chunk 0 changed reads it again and applies its set over the new header, up to three
   times. Nothing serializes writes to one entity across nodes, or between the reindex sink and a
   live edit, so without this a writer that shrank the set after another grew it would lower the
-  count below ids the other wrote, and the delete would never reach them.
+  count below ids the other wrote, and the delete would never reach them. A writer that gives up
+  has already sent its other chunks over the winner's set, so it writes chunk 0 once more over
+  the version it read last, without a fingerprint and with a count that covers both sets: a trim
+  or delete still reaches every id, and the next update writes the set again.
 - **A delete removes every chunk of the entity**, in the live index and in a staged generation,
   by id up to the header's count: the chunks past chunk 0, then chunk 0, so a delete that stops
   part way keeps the count for its retry. Ids are deleted in real time, so writes no refresh has
@@ -154,7 +159,15 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   header after, in real time, and deletes only those past it, each at the version listed, so a
   chunk a writer rewrote meanwhile stays. It then sets `_meta.chunkSetsBounded` on the index. An
   index created empty, a staged generation among them, starts with it, and a mapping update keeps
-  it. A heal that fails leaves it unset, and the next start tries again.
+  it. A search a shard failed or that timed out answers 200 with what the rest found, so the heal
+  retries such an answer like a busy cluster and never records a pass that missed chunks. A pass
+  that fails throws and leaves the record unset. `ChunkSetHealRunner` runs the pass at startup and
+  tries again after 30 seconds, doubling up to 15 minutes, until the record is there. Only the
+  server holding the `VECTOR_CHUNK_HEAL` row of `search_reindex_lock` runs it: the expiring,
+  renewed lease the search reindex and Data Insights runs take under their own keys. A server
+  that finds the row held waits and tries again, so if the holder stops, the next one takes over
+  once the row expires, five minutes after its last renewal. One line reports what the pass
+  removed.
 - **By-id chunk requests retry a busy or briefly unavailable cluster.** The header read, the
   chunk bulks and the heal's requests go through their own retry policy, `vector-chunk-request`:
   a 429, 502, 503 or 504, a request that got no response, an error for the document in a
@@ -196,8 +209,8 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   delete or by an entity index that kept its live index.
 - **The heal reads the whole chunk index once.** The first start after the upgrade sends one
   aggregation request per 500 parents, in the background, and three requests for each parent it
-  heals. Every node that starts before the index records the heal runs it; the deletes are
-  conditional, so concurrent runs only repeat work.
+  heals, on one server; the others try the lease again until the record is there. The deletes are
+  conditional, so a pass repeated after a lost lease only repeats work.
 - **Upgrade cost on Elasticsearch.** No chunk documents exist before this change. The first
   Search Indexing run after the upgrade creates the chunk index and embeds every chunk of each
   vector-indexable entity it covers, one provider call per chunk. That includes entities whose

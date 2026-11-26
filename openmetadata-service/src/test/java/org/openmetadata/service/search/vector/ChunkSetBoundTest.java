@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doReturn;
@@ -17,20 +18,28 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.IntConsumer;
 import java.util.function.Predicate;
 import org.apache.commons.lang3.function.FailableRunnable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.OntologyConcept;
@@ -56,6 +65,7 @@ class ChunkSetBoundTest {
   private static final String ENTITY_INDEX = "table_search_index";
 
   private FakeCluster cluster;
+  private AdjustableClock clock;
   private InMemoryVectorService service;
   private EmbeddingClient embeddingClient;
   private Table table;
@@ -68,7 +78,8 @@ class ChunkSetBoundTest {
     when(embeddingClient.getDimension()).thenReturn(3);
     when(embeddingClient.isAvailable()).thenReturn(true);
     cluster = new FakeCluster();
-    service = new InMemoryVectorService(embeddingClient, cluster);
+    clock = new AdjustableClock(Instant.parse("2026-11-26T12:00:00Z"));
+    service = new InMemoryVectorService(embeddingClient, cluster, clock);
     table = new Table().withId(UUID.randomUUID()).withName("orders").withUpdatedAt(1L);
     parentId = table.getId().toString();
   }
@@ -194,13 +205,13 @@ class ChunkSetBoundTest {
   }
 
   @Test
-  void aFailedGenerationProbeHidesTheGenerationOnlyForItsBackoff() throws InterruptedException {
+  void aFailedGenerationProbeHidesTheGenerationOnlyForItsBackoff() {
     givenTheLiveChunkIndexExists();
     cluster.stageGeneration(STAGED);
     assertTrue(write(STAGED, chunks(1)));
     cluster.failNextGenerationProbe();
     service.deleteEntityChunks(UUID.randomUUID().toString());
-    Thread.sleep(2_100);
+    clock.advance(Duration.ofMillis(2_100));
 
     service.deleteEntityChunks(parentId);
 
@@ -347,7 +358,7 @@ class ChunkSetBoundTest {
   }
 
   @Test
-  void theHealRemovesChunksPastTheirHeader() {
+  void theHealRemovesChunksPastTheirHeader() throws IOException {
     givenTheLiveChunkIndexExists();
     assertTrue(write(LIVE, chunks(2)));
     cluster.storeRefreshed(LIVE, parentId + "_4", Map.of("parentId", parentId, "chunkIndex", 4));
@@ -364,7 +375,7 @@ class ChunkSetBoundTest {
   }
 
   @Test
-  void aDeleteRemovesChunksStoredWithoutAHeader() {
+  void aDeleteRemovesChunksStoredWithoutAHeader() throws IOException {
     cluster.storeRefreshed(LIVE, parentId + "_2", Map.of("parentId", parentId, "chunkIndex", 2));
     String noChunkZero = UUID.randomUUID().toString();
     cluster.storeRefreshed(LIVE, noChunkZero + "_1", Map.of("parentId", noChunkZero));
@@ -378,7 +389,7 @@ class ChunkSetBoundTest {
   }
 
   @Test
-  void theHealKeepsAChunkAWriterRewroteAfterItWasListed() {
+  void theHealKeepsAChunkAWriterRewroteAfterItWasListed() throws IOException {
     givenTheLiveChunkIndexExists();
     assertTrue(write(LIVE, chunks(1)));
     cluster.storeRefreshed(LIVE, parentId + "_3", Map.of("parentId", parentId, "chunkIndex", 3));
@@ -393,7 +404,7 @@ class ChunkSetBoundTest {
   }
 
   @Test
-  void theHealRunsOncePerIndex() {
+  void theHealRunsOncePerIndex() throws IOException {
     givenTheLiveChunkIndexExists();
     service.removeChunksNoHeaderCounts();
     int aggregationsBefore = cluster.aggregations;
@@ -404,7 +415,7 @@ class ChunkSetBoundTest {
   }
 
   @Test
-  void aChunkIndexCreatedEmptyIsNeverHealed() {
+  void aChunkIndexCreatedEmptyIsNeverHealed() throws IOException {
     assertTrue(write(LIVE, chunks(2)));
 
     service.removeChunksNoHeaderCounts();
@@ -413,11 +424,11 @@ class ChunkSetBoundTest {
   }
 
   @Test
-  void aHealThatFailsIsNotRecordedAndTheNextStartHeals() {
+  void aHealThatFailsThrowsAndIsNotRecordedAndTheNextPassHeals() throws IOException {
     givenTheLiveChunkIndexExists();
     cluster.storeRefreshed(LIVE, parentId + "_2", Map.of("parentId", parentId, "chunkIndex", 2));
     cluster.failSearches(true);
-    service.removeChunksNoHeaderCounts();
+    assertThrows(RuntimeException.class, service::removeChunksNoHeaderCounts);
     assertFalse(cluster.meta(LIVE).path("chunkSetsBounded").asBoolean(false));
     cluster.failSearches(false);
 
@@ -436,6 +447,158 @@ class ChunkSetBoundTest {
     assertTrue(cluster.meta(LIVE).path("chunkSetsBounded").asBoolean(false));
     assertEquals(
         VectorDocBuilder.CHUNK_DOC_VERSION, cluster.meta(LIVE).path("chunkDocVersion").asInt());
+  }
+
+  /** A failed shard or a timed out search still answers 200, with what the rest found. */
+  @ParameterizedTest(name = "{0}")
+  @EnumSource(
+      value = IncompleteSearch.class,
+      names = {"AGGREGATION_SHARD_FAILED", "LISTING_TIMED_OUT"})
+  void aHealOverAnIncompleteSearchAnswerIsNotRecorded(IncompleteSearch answer) throws IOException {
+    givenTheLiveChunkIndexExists();
+    assertTrue(write(LIVE, chunks(2)));
+    cluster.storeRefreshed(LIVE, parentId + "_4", Map.of("parentId", parentId, "chunkIndex", 4));
+    cluster.refreshAll(LIVE);
+    cluster.answerSearches(answer);
+
+    Optional<Exception> failure = failureOf(service::removeChunksNoHeaderCounts);
+
+    assertFalse(
+        cluster.meta(LIVE).path("chunkSetsBounded").asBoolean(false), "not recorded as healed");
+    assertTrue(failure.isPresent(), "the pass fails, so it is tried again");
+    cluster.answerSearches(IncompleteSearch.NONE);
+    service.removeChunksNoHeaderCounts();
+    service.deleteEntityChunks(parentId);
+    assertEquals(Set.of(), cluster.chunkIds(LIVE, parentId), "the next pass reaches the chunk");
+  }
+
+  @Test
+  void aWriterThatLosesEveryHeaderRaceLeavesTheSetForTheNextUpdateToRewrite() {
+    givenTheLiveChunkIndexExists();
+    assertTrue(write(LIVE, chunks(3)));
+    List<Map<String, Object>> five = chunks(5);
+    List<Map<String, Object>> two = chunks(2);
+    // Each of the loser's three attempts sends its other chunks, then chunk 0. The winner writes
+    // its whole set just before each of those chunk bulks.
+    cluster.beforeEachBulk(
+        bulk -> {
+          if (bulk % 2 == 1 && bulk <= 5) {
+            assertTrue(write(LIVE, five));
+          }
+        });
+
+    assertFalse(write(LIVE, two), "the loser gives up after three conflicts");
+    cluster.beforeEachBulk(null);
+
+    assertFalse(
+        cluster.header(LIVE, parentId).has("fingerprint"),
+        "chunk 1 is the loser's, so no update may read the set as current");
+    service.updateEntityEmbeddingChunks(withChunks(5), LIVE);
+    assertEquals(
+        five.getFirst().get("fingerprint"),
+        cluster.header(LIVE, parentId).path("fingerprint").asText());
+    assertEquals(5, cluster.chunkIds(LIVE, parentId).size(), "the winner's next update rewrote");
+  }
+
+  @Test
+  void aWriterThatLosesEveryHeaderRaceWhileGrowingTheSetLeavesNoChunkPastTheHeader() {
+    givenTheLiveChunkIndexExists();
+    assertTrue(write(LIVE, chunks(3)));
+    List<Map<String, Object>> five = chunks(5);
+    List<Map<String, Object>> two = chunks(2);
+    // Each of the loser's three attempts raises the count, sends its other chunks, then writes
+    // chunk 0. The winner shrinks the set to two just before each of those chunk bulks.
+    cluster.beforeEachBulk(
+        bulk -> {
+          if (bulk % 3 == 2 && bulk <= 8) {
+            assertTrue(write(LIVE, two));
+          }
+        });
+
+    assertFalse(write(LIVE, five), "the loser gives up after three conflicts");
+    cluster.beforeEachBulk(null);
+
+    assertEquals(
+        5,
+        cluster.header(LIVE, parentId).path("chunkCount").asInt(),
+        "the header counts the ids the loser wrote past the winner's set");
+    service.deleteEntityChunks(parentId);
+    assertEquals(Set.of(), cluster.chunkIds(LIVE, parentId), "a delete reaches every chunk");
+  }
+
+  @Test
+  void aHealThatFailsIsTriedAgainInTheSameProcessUntilItIsRecorded() {
+    givenTheLiveChunkIndexExists();
+    cluster.storeRefreshed(LIVE, parentId + "_2", Map.of("parentId", parentId, "chunkIndex", 2));
+    cluster.failSearchesWith(500);
+    List<Duration> pauses = new ArrayList<>();
+    ChunkSetHealRunner runner =
+        new ChunkSetHealRunner(
+            service,
+            new LeaseTable().leaseOf("server"),
+            wait -> {
+              pauses.add(wait);
+              if (pauses.size() == 7) {
+                cluster.failSearches(false);
+              }
+            });
+
+    runner.run();
+
+    assertTrue(cluster.meta(LIVE).path("chunkSetsBounded").asBoolean(false), "recorded");
+    assertEquals(Set.of(), cluster.chunkIds(LIVE, parentId));
+    assertEquals(
+        List.of(
+            Duration.ofSeconds(30),
+            Duration.ofMinutes(1),
+            Duration.ofMinutes(2),
+            Duration.ofMinutes(4),
+            Duration.ofMinutes(8),
+            Duration.ofMinutes(15),
+            Duration.ofMinutes(15)),
+        pauses,
+        "the wait doubles up to 15 minutes");
+  }
+
+  @Test
+  void aServerThatFindsTheLeaseHeldRunsNoPassAndStopsOnceTheHealIsRecorded() {
+    givenTheLiveChunkIndexExists();
+    cluster.storeRefreshed(LIVE, parentId + "_2", Map.of("parentId", parentId, "chunkIndex", 2));
+    LeaseTable leases = new LeaseTable();
+    ChunkSetHealRunner.Lease first = leases.leaseOf("first");
+    assertTrue(first.tryAcquire(), "the first server starts its pass");
+    List<Integer> aggregationsWhileHeld = new ArrayList<>();
+    int[] aggregationsOfTheFirstPass = new int[1];
+    ChunkSetHealRunner second =
+        new ChunkSetHealRunner(
+            service,
+            leases.leaseOf("second"),
+            wait -> {
+              aggregationsWhileHeld.add(cluster.aggregations);
+              first.release();
+              new ChunkSetHealRunner(service, first, ignored -> fail("the pass succeeds")).run();
+              aggregationsOfTheFirstPass[0] = cluster.aggregations;
+            });
+
+    second.run();
+
+    assertEquals(List.of(0), aggregationsWhileHeld, "the second server waited, sending nothing");
+    assertEquals(
+        aggregationsOfTheFirstPass[0],
+        cluster.aggregations,
+        "it then finds the heal recorded and runs no pass of its own");
+    assertEquals(Set.of(), cluster.chunkIds(LIVE, parentId));
+    assertTrue(leases.leaseOf("third").tryAcquire(), "the lease is released");
+  }
+
+  private static Optional<Exception> failureOf(FailableRunnable<Exception> step) {
+    Optional<Exception> failure = Optional.empty();
+    try {
+      step.run();
+    } catch (Exception e) {
+      failure = Optional.of(e);
+    }
+    return failure;
   }
 
   private void givenTheLiveChunkIndexExists() {
@@ -479,12 +642,72 @@ class ChunkSetBoundTest {
     return table.withDescription(description);
   }
 
+  /** A clock a scenario moves forward itself. */
+  private static final class AdjustableClock extends Clock {
+    private Instant now;
+
+    AdjustableClock(Instant start) {
+      now = start;
+    }
+
+    void advance(Duration duration) {
+      now = now.plus(duration);
+    }
+
+    @Override
+    public ZoneId getZone() {
+      return ZoneOffset.UTC;
+    }
+
+    @Override
+    public Clock withZone(ZoneId zone) {
+      return this;
+    }
+
+    @Override
+    public Instant instant() {
+      return now;
+    }
+  }
+
+  /** One lock row the servers of a cluster share. */
+  private static final class LeaseTable {
+    private String holder;
+
+    ChunkSetHealRunner.Lease leaseOf(String server) {
+      return new ChunkSetHealRunner.Lease() {
+        @Override
+        public boolean tryAcquire() {
+          boolean free = holder == null;
+          if (free) {
+            holder = server;
+          }
+          return free;
+        }
+
+        @Override
+        public void release() {
+          if (server.equals(holder)) {
+            holder = null;
+          }
+        }
+      };
+    }
+  }
+
+  /** How the cluster answers the heal's searches: in full, or with what part of it found. */
+  enum IncompleteSearch {
+    NONE,
+    AGGREGATION_SHARD_FAILED,
+    LISTING_TIMED_OUT
+  }
+
   /** The shared vector index code over {@link FakeCluster}. */
   private static final class InMemoryVectorService extends AbstractVectorIndexService {
     private final FakeCluster cluster;
 
-    InMemoryVectorService(EmbeddingClient embeddingClient, FakeCluster cluster) {
-      super(embeddingClient, parameters -> Set.of());
+    InMemoryVectorService(EmbeddingClient embeddingClient, FakeCluster cluster, Clock clock) {
+      super(embeddingClient, parameters -> Set.of(), clock);
       this.cluster = cluster;
     }
 
@@ -574,6 +797,11 @@ class ChunkSetBoundTest {
     private int aggregations;
     private int headerReads;
     private boolean searchesFail;
+    private int searchFailureStatus;
+    private IncompleteSearch incompleteSearch = IncompleteSearch.NONE;
+    private IntConsumer beforeEachBulk;
+    private int hookedBulks;
+    private boolean inBulkHook;
 
     void rejectHeaderWritesTo(String index) {
       rejectHeaderIndex = index::equals;
@@ -611,6 +839,15 @@ class ChunkSetBoundTest {
       beforeNextBulk = writer;
     }
 
+    /**
+     * Runs {@code writer} before every bulk until cleared, with the bulk's number since it was set.
+     * The bulks the writer sends itself are not counted and run no writer.
+     */
+    void beforeEachBulk(IntConsumer writer) {
+      beforeEachBulk = writer;
+      hookedBulks = 0;
+    }
+
     /** A bare generation index, found by the probe for un-promoted generations. */
     void stageGeneration(String index) {
       existing.add(index);
@@ -627,6 +864,16 @@ class ChunkSetBoundTest {
 
     void failSearches(boolean failing) {
       searchesFail = failing;
+      searchFailureStatus = 503;
+    }
+
+    void failSearchesWith(int status) {
+      searchesFail = true;
+      searchFailureStatus = status;
+    }
+
+    void answerSearches(IncompleteSearch answer) {
+      incompleteSearch = answer;
     }
 
     void storeMeta(String index, Map<String, Object> meta) {
@@ -823,6 +1070,7 @@ class ChunkSetBoundTest {
         beforeNextBulk = null;
         concurrentWriter.run();
       }
+      runTheWriterBeforeEachBulk();
       bulkRequests++;
       boolean rejected = rejectedBulks > 0;
       rejectedBulks = rejected ? rejectedBulks - 1 : 0;
@@ -844,6 +1092,17 @@ class ChunkSetBoundTest {
       ObjectNode result = MAPPER.createObjectNode().put("errors", errors);
       result.set("items", items);
       return ok(result.toString());
+    }
+
+    private void runTheWriterBeforeEachBulk() {
+      if (beforeEachBulk != null && !inBulkHook) {
+        inBulkHook = true;
+        try {
+          beforeEachBulk.accept(++hookedBulks);
+        } finally {
+          inBulkHook = false;
+        }
+      }
     }
 
     private ObjectNode apply(String action, JsonNode meta, JsonNode source) {
@@ -912,13 +1171,27 @@ class ChunkSetBoundTest {
       JsonNode composite = request.path("aggs").path("parents").path("composite");
       AbstractVectorIndexService.RawResponse response;
       if (searchesFail) {
-        response = failure(503);
+        response = failure(searchFailureStatus);
       } else if (composite.isMissingNode()) {
-        response = ok(searchHits(index, request.path("query").path("bool")).toString());
+        response =
+            incompleteSearch == IncompleteSearch.LISTING_TIMED_OUT
+                ? ok("{\"timed_out\":true,\"hits\":{\"hits\":[]}}")
+                : ok(searchHits(index, request.path("query").path("bool")).toString());
       } else {
-        response = ok(compositePage(index, composite).toString());
+        response =
+            incompleteSearch == IncompleteSearch.AGGREGATION_SHARD_FAILED
+                ? shardFailedPage()
+                : ok(compositePage(index, composite).toString());
       }
       return response;
+    }
+
+    // The shard holding every parent failed; the one that answered holds none.
+    private AbstractVectorIndexService.RawResponse shardFailedPage() {
+      aggregations++;
+      return ok(
+          "{\"_shards\":{\"total\":2,\"successful\":1,\"failed\":1},"
+              + "\"aggregations\":{\"parents\":{\"buckets\":[]}}}");
     }
 
     // Only the shapes the chunk code sends: a parent's chunks other than the ids it excludes.

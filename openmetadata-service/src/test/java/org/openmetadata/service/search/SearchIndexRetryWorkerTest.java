@@ -18,11 +18,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Answers.CALLS_REAL_METHODS;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -248,6 +252,56 @@ class SearchIndexRetryWorkerTest {
     verify(vectorService).deleteEntityChunks(optedOut.getId().toString());
     verify(vectorService).deleteEntityChunks(replaced);
     verify(vectorService, never()).deleteEntityChunks(embedded.getId().toString());
+  }
+
+  /** The queue's worker removes the chunks of a retried entity only when it is not embedded. */
+  @Test
+  void processingARetryRemovesTheChunksOfAnEntityOnlyWhenItIsNotEmbedded() throws Exception {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    SearchIndexRetryQueueDAO queue = mock(SearchIndexRetryQueueDAO.class);
+    when(collectionDAO.searchIndexRetryQueueDAO()).thenReturn(queue);
+    when(queue.deleteClaimed(anyString(), anyString(), anyString())).thenReturn(1);
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    SearchIndexRetryWorker retryWorker =
+        spy(new SearchIndexRetryWorker(collectionDAO, searchRepository));
+    doNothing().when(retryWorker).propagateAfterRetry(any(), any());
+    EntityInterface<?> softDeleted = entity(true);
+    EntityInterface<?> embedded = entity(false);
+    Method processRecord =
+        SearchIndexRetryWorker.class.getDeclaredMethod(
+            "processRecord", SearchIndexRetryRecord.class);
+    processRecord.setAccessible(true);
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(() -> Entity.isVectorEmbeddable(embedded)).thenReturn(true);
+      for (EntityInterface<?> entity : List.of(softDeleted, embedded)) {
+        EntityReference reference =
+            new EntityReference().withId(entity.getId()).withType(Entity.TABLE);
+        entities
+            .when(() -> Entity.getEntityReferenceById(Entity.TABLE, entity.getId(), Include.ALL))
+            .thenReturn(reference);
+        doReturn(entity).when(retryWorker).reindexEntityCascade(reference);
+        processRecord.invoke(retryWorker, retryRecordOf(entity));
+      }
+    }
+
+    verify(vectorService).deleteEntityChunks(softDeleted.getId().toString());
+    verify(vectorService, never()).deleteEntityChunks(embedded.getId().toString());
+    verify(queue, times(2)).deleteClaimed(anyString(), anyString(), eq("claim"));
+  }
+
+  private static SearchIndexRetryRecord retryRecordOf(EntityInterface<?> entity) {
+    return new SearchIndexRetryRecord(
+        entity.getId().toString(),
+        "service.database.orders",
+        "chunk delete refused",
+        STATUS_IN_PROGRESS,
+        Entity.TABLE,
+        0,
+        null,
+        "claim");
   }
 
   private static EntityInterface<?> entity(boolean deleted) {

@@ -1,8 +1,10 @@
 package org.openmetadata.service.search.vector;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.Entity;
@@ -60,10 +62,15 @@ public interface VectorIndexService {
 
   /**
    * Removes, once per chunk index, the chunk documents no chunk header counts, which chunk sets
-   * written before the header was a conditional write can hold. Runs in the background at startup
-   * and logs a failure, which the next start retries.
+   * written before the header was a conditional write can hold, and records on the index that it
+   * holds none. Returns what was removed, or empty when the index already carried the record or
+   * does not exist. Throws when the pass could not finish, and the record stays unset. {@link
+   * ChunkSetHealRunner} runs it at startup until it succeeds.
    */
-  void removeChunksNoHeaderCounts();
+  Optional<ChunkSetsBounded> removeChunksNoHeaderCounts() throws IOException;
+
+  /** What one heal pass removed from {@code index}. */
+  record ChunkSetsBounded(String index, int parents, int chunks) {}
 
   /**
    * Strip the embedding fields from an entity document. Entity-doc embedding writes are partial
