@@ -117,6 +117,21 @@ describe('AssetSummaryPanel', () => {
     expect(screen.getByText('label.no-entity')).toBeInTheDocument();
   });
 
+  it('shows a Markdown or HTML description as plain text', () => {
+    renderPanel(
+      makeRow({
+        entityType: EntityType.TABLE,
+        description:
+          '<p>**Orders** placed by [customers](https://x.io)</p><p>Daily</p>',
+      })
+    );
+
+    expect(
+      screen.getByText('Orders placed by customers Daily')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/\*\*|<p>|\]\(/)).not.toBeInTheDocument();
+  });
+
   it('opens and closes through its buttons', () => {
     renderPanel(tableRow);
 

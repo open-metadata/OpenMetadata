@@ -28,7 +28,10 @@ export const useSourceRecents = (
     const withRecent = sources.filter((source) => source.recent);
 
     Promise.allSettled(
-      withRecent.map((source) => source.recent?.(controller.signal) ?? [])
+      // Inside a promise, so a source whose `recent` throws is just skipped.
+      withRecent.map((source) =>
+        Promise.resolve().then(() => source.recent?.(controller.signal) ?? [])
+      )
     ).then((settled) => {
       if (controller.signal.aborted) {
         return;

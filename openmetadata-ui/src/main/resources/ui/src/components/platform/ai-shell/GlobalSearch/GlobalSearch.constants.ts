@@ -63,4 +63,5 @@ export const OPEN_SCOPED_SEARCH_SHORTCUT = IS_APPLE ? '⌥⌘K' : 'Ctrl+Alt+K';
 
 export const QUERY_ACTION_OPTION_ID = 'global-search-query-action';
 export const RESULTS_LIST_ID = 'global-search-results';
+export const QUERY_ACTION_LIST_ID = 'global-search-query-action-list';
 export const BREADCRUMB_SEPARATOR = ' › ';

@@ -34,6 +34,10 @@ export interface GlobalSearchInputProps {
   onClear: () => void;
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   onClose: () => void;
+  /** Ids of the listboxes this combobox controls. */
+  listboxIds: string[];
+  /** Id of the highlighted option, if any. */
+  activeOptionId?: string;
 }
 
 /**
@@ -55,8 +59,17 @@ const GlobalSearchInput = ({
   onClear,
   onKeyDown,
   onClose,
+  listboxIds,
+  activeOptionId,
 }: GlobalSearchInputProps) => {
   const { t } = useTranslation();
+
+  // Core Input forwards the aria props react-aria's TextField accepts, but not
+  // `role` or `aria-expanded`, which make it a combobox over the result list.
+  useEffect(() => {
+    inputRef.current?.setAttribute('role', 'combobox');
+    inputRef.current?.setAttribute('aria-expanded', 'true');
+  }, [inputRef]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -67,6 +80,9 @@ const GlobalSearchInput = ({
       <Box align="center" className="tw:px-4 tw:py-2" gap={2}>
         <Input
           borderless
+          aria-activedescendant={activeOptionId}
+          aria-autocomplete="list"
+          aria-controls={listboxIds.join(' ') || undefined}
           aria-label={t('label.search')}
           className="tw:flex-1"
           fontSize="md"

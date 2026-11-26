@@ -25,6 +25,7 @@ const renderInput = (props: Partial<GlobalSearchInputProps> = {}) => {
     <GlobalSearchInput
       inputRef={inputRef}
       isLoading={false}
+      listboxIds={[]}
       placeholder="Search"
       value=""
       onChange={onChange}
@@ -44,6 +45,18 @@ describe('GlobalSearchInput', () => {
 
     expect(input).toHaveFocus();
     expect(input).toHaveAttribute('placeholder', 'Search');
+  });
+
+  it('is a combobox that controls the result listboxes and names the active option', () => {
+    const input = renderInput({
+      listboxIds: ['list-a', 'list-b'],
+      activeOptionId: 'option-1',
+    });
+
+    expect(input).toHaveAttribute('role', 'combobox');
+    expect(input).toHaveAttribute('aria-expanded', 'true');
+    expect(input).toHaveAttribute('aria-controls', 'list-a list-b');
+    expect(input).toHaveAttribute('aria-activedescendant', 'option-1');
   });
 
   it('shows a spinner and a progress line while loading', () => {

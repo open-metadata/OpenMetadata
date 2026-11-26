@@ -39,6 +39,7 @@ import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
 import { EntityIconSize } from '../../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import { stripMarkdown } from '../../../../utils/RichTextStringUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import {
   getTagName,
@@ -88,7 +89,9 @@ const AssetSummaryPanel = ({
     'certification.tagLabel.tagFQN'
   );
   const status: string | undefined = get(source, 'entityStatus');
-  const description: string = get(source, 'description', '');
+  // Descriptions are Markdown (or the block editor's HTML); the preview shows
+  // them as plain text clamped to three lines.
+  const description = stripMarkdown(get(source, 'description', '') ?? '');
   const columns = get(source, 'columns') as unknown[] | undefined;
   const formatCount = (count?: number) =>
     count === undefined ? EMPTY_VALUE : String(count);

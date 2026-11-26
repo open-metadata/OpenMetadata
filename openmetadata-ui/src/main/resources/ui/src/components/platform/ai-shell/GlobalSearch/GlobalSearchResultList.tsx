@@ -20,8 +20,8 @@ import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
-import { RESULTS_LIST_ID } from './GlobalSearch.constants';
 import { GlobalSearchListItem } from './GlobalSearch.types';
+import { getListboxId, groupBySection } from './GlobalSearch.utils';
 import GlobalSearchResultRow from './GlobalSearchResultRow';
 
 /** Title/meta widths of the prototype's loading rows. */
@@ -137,43 +137,58 @@ const GlobalSearchResultList = ({
       aria-label={t('label.result-plural')}
       className="tw:flex-none tw:pt-1.5"
       direction="col"
-      id={RESULTS_LIST_ID}
-      role="listbox">
-      {items.map((item) =>
-        item.kind === 'section' ? (
-          <Box
-            align="center"
-            className="tw:mt-3 tw:px-5"
-            justify="between"
-            key={item.key}
-            role="presentation">
-            <Typography color="quaternary" size="text-xs" weight="medium">
-              {item.label}
-            </Typography>
-            {item.hasSort ? sortControl : null}
-            {item.seeAll ? (
-              <Button
-                color="link-color"
-                size="sm"
-                onClick={item.seeAll.onPress}>
-                {item.seeAll.label}
-              </Button>
+      role="region">
+      {groupBySection(items).map(({ section, rows }) => {
+        const listboxId = getListboxId(section?.key);
+        const headingId = `${listboxId}-heading`;
+
+        return (
+          <Box direction="col" key={listboxId}>
+            {/* The heading and its controls (sort, "See all") sit outside the
+                listbox, which may hold only options. */}
+            {section ? (
+              <Box align="center" className="tw:mt-3 tw:px-5" justify="between">
+                <Typography
+                  color="quaternary"
+                  id={headingId}
+                  size="text-xs"
+                  weight="medium">
+                  {section.label}
+                </Typography>
+                {section.hasSort ? sortControl : null}
+                {section.seeAll ? (
+                  <Button
+                    color="link-color"
+                    size="sm"
+                    onClick={section.seeAll.onPress}>
+                    {section.seeAll.label}
+                  </Button>
+                ) : null}
+              </Box>
             ) : null}
+            <Box
+              align="stretch"
+              aria-labelledby={section ? headingId : undefined}
+              direction="col"
+              id={listboxId}
+              role="listbox">
+              {rows.map((item) => (
+                <GlobalSearchResultRow
+                  id={`global-search-option-${item.key}`}
+                  isActive={activeKey === item.key}
+                  isPreviewed={previewId === item.row.id}
+                  key={item.key}
+                  query={query}
+                  row={item.row}
+                  onHover={() => onHover(item.key)}
+                  onRemove={item.onRemove}
+                  onSelect={item.onSelect}
+                />
+              ))}
+            </Box>
           </Box>
-        ) : (
-          <GlobalSearchResultRow
-            id={`global-search-option-${item.key}`}
-            isActive={activeKey === item.key}
-            isPreviewed={previewId === item.row.id}
-            key={item.key}
-            query={query}
-            row={item.row}
-            onHover={() => onHover(item.key)}
-            onRemove={item.onRemove}
-            onSelect={item.onSelect}
-          />
-        )
-      )}
+        );
+      })}
     </Box>
   );
 };

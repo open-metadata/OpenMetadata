@@ -16,7 +16,9 @@ import { getQuickFilterQuery } from '../../../../utils/ExplorePureUtils';
 import {
   ASSETS_CATEGORY,
   MAX_VISIBLE_TABS,
+  QUERY_ACTION_LIST_ID,
   QUERY_ACTION_OPTION_ID,
+  RESULTS_LIST_ID,
   TASKS_CATEGORY,
 } from './GlobalSearch.constants';
 import {
@@ -375,6 +377,54 @@ export const getUsableSources = (sources: GlobalSearchSourceContribution[]) => {
     return isUsable;
   });
 };
+
+/** Id of the listbox holding one section's rows (the combobox controls each). */
+export const getListboxId = (sectionKey?: string) =>
+  sectionKey ? `${RESULTS_LIST_ID}-${sectionKey}` : RESULTS_LIST_ID;
+
+/**
+ * Rows the keyboard can reach. While the list reloads it shows skeletons, so
+ * the previous rows are not on screen and must not be highlighted or opened.
+ */
+export const getNavigableRows = <T>(
+  rows: T[],
+  isListLoading: boolean,
+  isCounting: boolean
+): T[] => (isListLoading || isCounting ? [] : rows);
+
+/** Rows grouped under the section heading that precedes them. */
+export const groupBySection = <
+  T extends { kind: 'section' | 'row'; key: string }
+>(
+  items: T[]
+) => {
+  type Section = Extract<T, { kind: 'section' }>;
+  type Row = Extract<T, { kind: 'row' }>;
+  const groups: { section?: Section; rows: Row[] }[] = [];
+  items.forEach((item) => {
+    if (item.kind === 'section') {
+      groups.push({ section: item as Section, rows: [] });
+    } else {
+      if (groups.length === 0) {
+        groups.push({ rows: [] });
+      }
+      groups[groups.length - 1].rows.push(item as Row);
+    }
+  });
+
+  return groups;
+};
+
+/** Every listbox the search input controls: the query action's, then each section's. */
+export const getListboxIds = <
+  T extends { kind: 'section' | 'row'; key: string }
+>(
+  items: T[],
+  hasQueryAction: boolean
+) => [
+  ...(hasQueryAction ? [QUERY_ACTION_LIST_ID] : []),
+  ...groupBySection(items).map((group) => getListboxId(group.section?.key)),
+];
 
 /** Opened from a scoped trigger (e.g. a source's own search button) or not. */
 export const getSearchScope = (entry: GlobalSearchFilter) => {

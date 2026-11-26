@@ -336,6 +336,69 @@ describe('useGlobalSearchResults', () => {
     expect(result.current.results.assets.count).toBe(3);
   });
 
+  it('reports loading on the same render a filter or a new query changes', async () => {
+    // What each render saw, before its effects run: the panel decides on that
+    // render whether a tab is empty, so a stale "not loading" strands the tab.
+    const seen: boolean[] = [];
+    const onTab: GlobalSearchQuery = { ...baseParams, filter: 'glossaryTerm' };
+    const { rerender } = renderHook(
+      (props: GlobalSearchQuery) => {
+        const state = useGlobalSearchResults(props);
+        seen.push(state.isLoading);
+
+        return state;
+      },
+      { initialProps: onTab }
+    );
+    await flushDebounce();
+
+    let first = seen.length;
+    rerender({
+      ...onTab,
+      facets: { [EntityFields.OWNERS]: [{ key: 'alice', label: 'Alice' }] },
+    });
+
+    expect(seen[first]).toBe(true);
+
+    rerender({ ...onTab, query: '' });
+    first = seen.length;
+    rerender({ ...onTab, query: 'orders' });
+
+    expect(seen[first]).toBe(true);
+  });
+
+  it('shows the error when the Data assets search fails while its counts load', async () => {
+    (searchQuery as jest.Mock).mockImplementation(({ searchIndex }) =>
+      searchIndex === SearchIndex.DATA_ASSET
+        ? Promise.reject(new Error('500'))
+        : Promise.resolve(hits(3, [hit('g1', 'glossaryTerm')]))
+    );
+    const { result } = renderHook(() =>
+      useGlobalSearchResults({ ...baseParams, filter: 'assets' })
+    );
+    await flushDebounce();
+
+    expect(result.current.results.assets).toBeUndefined();
+    expect(result.current.hasError).toBe(true);
+  });
+
+  it('treats a plugin source that throws synchronously as a failed source', async () => {
+    const broken: GlobalSearchSourceContribution = {
+      key: 'notes',
+      labelKey: 'label.notes',
+      search: () => {
+        throw new Error('not a promise');
+      },
+    };
+    const { result } = renderHook(() =>
+      useGlobalSearchResults({ ...baseParams, sources: [broken] })
+    );
+    await flushDebounce();
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.results.assets.count).toBe(3);
+  });
+
   it('reports an error only when every source fails', async () => {
     (chatsSource.search as jest.Mock).mockRejectedValue(new Error('boom'));
     (searchEntityTypeCounts as jest.Mock).mockRejectedValue(new Error('boom'));

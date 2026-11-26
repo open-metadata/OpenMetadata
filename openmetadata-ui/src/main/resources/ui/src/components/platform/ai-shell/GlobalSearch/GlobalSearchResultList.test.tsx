@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { GlobalSearchListItem } from './GlobalSearch.types';
 import GlobalSearchResultList, {
   GlobalSearchResultListProps,
@@ -121,9 +121,13 @@ describe('GlobalSearchResultList', () => {
   it('renders sections and rows, with sort only on the sortable section', () => {
     renderList({ activeKey: 'tasks-t1' });
 
-    expect(screen.getByRole('listbox')).toBeInTheDocument();
-    expect(screen.getByText('Data assets')).toBeInTheDocument();
-    expect(screen.getByText('Tasks')).toBeInTheDocument();
+    // One listbox per section, named by its heading; the heading's own
+    // controls (sort, "See all") sit outside it, since a listbox holds options only.
+    const assets = screen.getByRole('listbox', { name: 'Data assets' });
+
+    expect(screen.getByRole('listbox', { name: 'Tasks' })).toBeInTheDocument();
+    expect(within(assets).queryByRole('button')).not.toBeInTheDocument();
+    expect(within(assets).getAllByRole('option').length).toBeGreaterThan(0);
     expect(screen.getAllByTestId('sort-control')).toHaveLength(1);
     expect(screen.getByTestId('global-search-row-t1')).toHaveAttribute(
       'aria-selected',

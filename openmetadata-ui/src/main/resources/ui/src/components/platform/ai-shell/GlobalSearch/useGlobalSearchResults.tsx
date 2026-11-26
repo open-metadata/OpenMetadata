@@ -273,10 +273,18 @@ const fetchTasks = async (params: GlobalSearchQuery, signal: AbortSignal) => {
  * whatever the server's `dataAsset` alias holds; every other entity type the
  * `all` alias returns for the query becomes its own category.
  */
+type CategoryEntries = [GlobalSearchCategory, GlobalSearchSection][];
+
+interface CategoryJob {
+  entries: CategoryEntries;
+  /** Some of the job's searches failed; the entries are what succeeded. */
+  failed?: boolean;
+}
+
 const fetchEntityCategories = async (
   params: GlobalSearchQuery,
   signal: AbortSignal
-): Promise<[GlobalSearchCategory, GlobalSearchSection][]> => {
+): Promise<CategoryJob> => {
   const [assetCounts, allCounts] = await Promise.all([
     searchEntityTypeCounts({
       query: params.query,
@@ -309,17 +317,22 @@ const fetchEntityCategories = async (
   ]);
   const keys = [ASSETS_CATEGORY, ...otherTypes];
 
-  return settled.flatMap((result, index) =>
-    result.status === 'fulfilled'
-      ? [
-          [keys[index], result.value] as [
-            GlobalSearchCategory,
-            GlobalSearchSection
-          ],
-        ]
-      : []
-  );
+  return {
+    entries: settled.flatMap(
+      (result, index): CategoryEntries =>
+        result.status === 'fulfilled' ? [[keys[index], result.value]] : []
+    ),
+    failed: settled.some((result) => result.status === 'rejected'),
+  };
 };
+
+// A plugin's search runs inside a promise, so one that throws synchronously
+// counts as a failed source instead of breaking the whole fetch.
+const searchSource = (
+  source: GlobalSearchSourceContribution,
+  query: string,
+  signal: AbortSignal
+) => Promise.resolve().then(() => source.search(query, signal));
 
 interface FetchOutcome {
   results: GlobalSearchResults;
@@ -348,7 +361,7 @@ const fetchActiveCategory = async (
   const fetchSection =
     fetchers[filter] ??
     (source
-      ? () => source.search(params.query, signal)
+      ? () => searchSource(source, params.query, signal)
       : () => fetchEntityType(filter, params, signal));
 
   try {
@@ -363,26 +376,24 @@ const fetchAll = async (
   signal: AbortSignal
 ): Promise<FetchOutcome> => {
   const sources = getSearchedSources(params);
-  const jobs: Promise<[GlobalSearchCategory, GlobalSearchSection][]>[] = [
-    ...sources.map((source) =>
-      source
-        .search(params.query, signal)
-        .then((section): [GlobalSearchCategory, GlobalSearchSection][] => [
-          [source.key, section],
-        ])
-    ),
-  ];
+  const jobs: Promise<CategoryJob>[] = sources.map((source) =>
+    searchSource(source, params.query, signal).then((section) => ({
+      entries: [[source.key, section]],
+    }))
+  );
   if (!params.scopedSources) {
     jobs.push(fetchEntityCategories(params, signal));
     jobs.push(
-      fetchTasks(params, signal).then((section) => [[TASKS_CATEGORY, section]])
+      fetchTasks(params, signal).then((section) => ({
+        entries: [[TASKS_CATEGORY, section]],
+      }))
     );
   }
   const settled = await Promise.allSettled(jobs);
   const results: GlobalSearchResults = {};
   settled.forEach((result) => {
     if (result.status === 'fulfilled') {
-      result.value.forEach(([key, section]) => {
+      result.value.entries.forEach(([key, section]) => {
         results[key] = section;
       });
     }
@@ -390,7 +401,9 @@ const fetchAll = async (
 
   return {
     results,
-    failed: settled.some((result) => result.status === 'rejected'),
+    failed: settled.some(
+      (result) => result.status === 'rejected' || result.value.failed
+    ),
   };
 };
 
@@ -511,16 +524,21 @@ export const useGlobalSearchResults = (params: GlobalSearchQuery) => {
   ]);
 
   const isListChange = loadedListKey.current !== listKey;
+  // The effect that starts a fetch runs after this render, so a query or filter
+  // change is already pending here even though `isLoading` is still false.
+  const isPending =
+    Boolean(trimmed) && (isListChange || loadedQueryKey.current !== queryKey);
+  const isBusy = isLoading || isPending;
 
   return {
     results,
-    isLoading,
+    isLoading: isBusy,
     /** Typing: show the spinner and progress line; keep the list as it is. */
-    isQueryLoading: isLoading && !isListChange,
+    isQueryLoading: isBusy && !isListChange,
     /** Tab, filter, sort or scope changed: show skeleton rows only. */
-    isListLoading: isLoading && isListChange,
+    isListLoading: isBusy && isListChange,
     /** No counts yet for this query, so tab counts stay hidden. */
-    isCounting: isLoading && Object.keys(results).length === 0,
+    isCounting: isBusy && Object.keys(results).length === 0,
     hasError,
   };
 };

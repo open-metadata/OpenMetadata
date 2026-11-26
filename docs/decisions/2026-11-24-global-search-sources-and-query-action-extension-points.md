@@ -22,6 +22,10 @@ row on the typed query. OSS must not import Collate code or ship assistant or ch
     `labelKey`); `placeholderKey` for the input when search opens scoped to it;
     `hasScopeShortcut` (⌥⌘K opens search scoped to it); `footer` (`labelKey`, `path`).
   - A row may carry `addon` (e.g. an avatar stack) and `enterLabel` (what Enter does on it).
+  - A source whose `search` or `recent` throws (even synchronously) or rejects counts as a failed
+    source: its results are left out, and the error card shows if what the user is looking at
+    comes back empty. Sources are not timed out, so a slow source delays the results it is
+    fetched with; a plugin should honour `signal` and keep its search fast.
 - `app-mode.globalSearch.queryAction` (`EXTENSION_POINTS.APP_MODE_GLOBAL_SEARCH_QUERY_ACTION`)
   takes a `GlobalSearchQueryActionContribution`; the last contribution wins. Once the user has
   typed, and unless the search failed, OSS renders its `component` above the results on every tab,

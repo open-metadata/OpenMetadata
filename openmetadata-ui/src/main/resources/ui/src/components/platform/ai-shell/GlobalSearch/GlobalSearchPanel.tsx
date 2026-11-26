@@ -39,6 +39,7 @@ import AssetSummaryPanel from './AssetSummaryPanel';
 import {
   ASSETS_CATEGORY,
   DEFAULT_ASSET_SORT,
+  QUERY_ACTION_LIST_ID,
   QUERY_ACTION_OPTION_ID,
   TASKS_CATEGORY,
 } from './GlobalSearch.constants';
@@ -59,6 +60,8 @@ import {
   getContributedLabelKeys,
   getExploreParams,
   getKeyAction,
+  getListboxIds,
+  getNavigableRows,
   getPanelView,
   getSearchScope,
   getTabCounts,
@@ -363,13 +366,13 @@ const GlobalSearchPanel = () => {
     isActionActive,
     row: activeRow,
     optionId: activeOptionId,
-  } = getActiveOption(rows, activeIndex, view.showQueryAction);
+  } = getActiveOption(
+    getNavigableRows(rows, isListLoading, isCounting),
+    activeIndex,
+    view.showQueryAction
+  );
 
   useEffect(() => {
-    inputRef.current?.setAttribute(
-      'aria-activedescendant',
-      activeOptionId ?? ''
-    );
     if (activeOptionId) {
       document
         .getElementById(activeOptionId)
@@ -392,6 +395,31 @@ const GlobalSearchPanel = () => {
     clear: resetSearch,
     close,
   };
+
+  // Esc must work wherever focus is in the dialog (a filter trigger, the sort
+  // menu button, or nowhere after a recent search is removed), not only in the
+  // input. An open popover handles its own Esc first and marks it handled.
+  const escapeRef = useRef(() => undefined as void);
+  escapeRef.current = () => {
+    keyActions[query ? 'clear' : 'close']();
+    inputRef.current?.focus();
+  };
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.key !== 'Escape' ||
+        event.defaultPrevented ||
+        event.target === inputRef.current
+      ) {
+        return;
+      }
+      event.preventDefault();
+      escapeRef.current();
+    };
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     // Enter and Esc confirm or cancel an IME composition (Japanese, Chinese,
@@ -429,8 +457,10 @@ const GlobalSearchPanel = () => {
       data-testid="global-search-modal"
       direction="col">
       <GlobalSearchInput
+        activeOptionId={activeOptionId}
         inputRef={inputRef}
         isLoading={isQueryLoading}
+        listboxIds={getListboxIds(items, view.showQueryAction)}
         placeholder={t(labelKeys.placeholder)}
         value={query}
         onChange={changeQuery}
@@ -467,14 +497,20 @@ const GlobalSearchPanel = () => {
       />
       {view.showTabBar ? <Divider /> : null}
       {QueryAction && view.showQueryAction ? (
-        <QueryAction
-          filter={filter}
-          id={QUERY_ACTION_OPTION_ID}
-          isActive={isActionActive}
-          query={trimmed}
-          onHover={() => setActiveIndex(-1)}
-          onSelect={runQueryAction}
-        />
+        <Box
+          aria-label={t(labelKeys.actionHint)}
+          direction="col"
+          id={QUERY_ACTION_LIST_ID}
+          role="listbox">
+          <QueryAction
+            filter={filter}
+            id={QUERY_ACTION_OPTION_ID}
+            isActive={isActionActive}
+            query={trimmed}
+            onHover={() => setActiveIndex(-1)}
+            onSelect={runQueryAction}
+          />
+        </Box>
       ) : null}
       <Box className="tw:min-h-0 tw:flex-1">
         <Box className="tw:relative tw:min-w-0 tw:flex-1" direction="col">

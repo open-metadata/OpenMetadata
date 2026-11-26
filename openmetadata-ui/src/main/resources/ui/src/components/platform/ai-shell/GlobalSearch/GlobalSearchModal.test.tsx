@@ -313,6 +313,39 @@ describe('GlobalSearchModal', () => {
     );
   });
 
+  it('handles Esc when focus has left the input', async () => {
+    useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
+    renderModal();
+    await type('customer');
+    // e.g. a filter or sort trigger after picking a value
+    screen.getByTestId('global-search-close').focus();
+
+    fireEvent.keyDown(document.activeElement as Element, { key: 'Escape' });
+
+    expect(screen.getByTestId('global-search-input')).toHaveValue('');
+    expect(screen.getByTestId('global-search-input')).toHaveFocus();
+
+    (document.activeElement as HTMLElement).blur();
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+
+    expect(useGlobalSearchStore.getState().isOpen).toBe(false);
+  });
+
+  it('opens nothing with Enter while the list reloads behind skeletons', async () => {
+    useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
+    renderModal();
+    await type('customer');
+
+    // Switching tab reloads the list; until it lands the old rows are hidden.
+    press('Tab');
+    press('Enter');
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(
+      screen.queryByTestId('global-search-summary')
+    ).not.toBeInTheDocument();
+  });
+
   it('leaves Enter to an IME while it is composing', async () => {
     useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
     renderModal();
