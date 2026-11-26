@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,8 +32,10 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
 import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.LiveEmbeddingField;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.lineage.MissingLineageEntityException;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -911,5 +914,116 @@ class OsUtilsTest {
     assertEquals("flat_object", extension.path("type").asText());
     assertFalse(extension.has("ignore_above"), "flat_object must not carry ignore_above");
     assertFalse(extension.has("depth_limit"), "flat_object must not carry depth_limit");
+  }
+
+  private static final String OPENSEARCH_VECTOR_MAPPING =
+      "{\"settings\":{\"index\":{}},\"mappings\":{\"properties\":{"
+          + "\"fingerprint\":{\"type\":\"keyword\"},\"added\":{\"type\":\"keyword\"}}}}";
+
+  private JsonNode updatedProperties(LiveEmbeddingField live) {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+      when(searchRepository.getEmbeddingClient()).thenReturn(embeddingClient);
+      when(embeddingClient.getDimension()).thenReturn(384);
+      return JsonUtils.readTree(
+              OsUtils.enrichIndexMappingForOpenSearchUpdate(OPENSEARCH_VECTOR_MAPPING, () -> live))
+          .path("mappings")
+          .path("properties");
+    }
+  }
+
+  private static LiveEmbeddingField liveKnnVector(int dimension) {
+    return new LiveEmbeddingField(
+        "table_search_index",
+        Set.of("table_search_index"),
+        Map.of("table_search_index", new LiveEmbeddingField.Declared("knn_vector", dimension)),
+        Set.of(),
+        null);
+  }
+
+  @Test
+  void aMappingUpdate_leavesOutAVectorFieldTheLiveIndexAlreadyMaps() {
+    JsonNode properties = updatedProperties(liveKnnVector(384));
+
+    assertTrue(properties.path("embedding").isMissingNode());
+    assertTrue(properties.has("added"));
+  }
+
+  @Test
+  void aMappingUpdate_declaresTheVectorFieldWhenNoIndexMapsIt() {
+    JsonNode embedding =
+        updatedProperties(LiveEmbeddingField.notMapped("table_search_index")).path("embedding");
+
+    assertEquals("knn_vector", embedding.path("type").asText());
+    assertEquals(384, embedding.path("dimension").asInt());
+    assertEquals(48, embedding.path("method").path("parameters").path("m").asInt());
+  }
+
+  @Test
+  void aMappingUpdate_leavesOutAVectorFieldOfAnotherDimension() {
+    JsonNode properties = updatedProperties(liveKnnVector(768));
+
+    assertTrue(properties.path("embedding").isMissingNode());
+    assertTrue(properties.has("added"));
+  }
+
+  @Test
+  void aMappingUpdate_leavesOutTheVectorFieldOnAnIndexCreatedWithoutKnn() {
+    LiveEmbeddingField withoutKnn =
+        new LiveEmbeddingField(
+            "table_search_index",
+            Set.of("table_search_index"),
+            Map.of(),
+            Set.of("table_search_index"),
+            null);
+
+    assertTrue(updatedProperties(withoutKnn).path("embedding").isMissingNode());
+  }
+
+  @Test
+  void aMappingUpdate_leavesOutTheVectorFieldWhenTheLiveFieldCannotBeRead() {
+    JsonNode properties =
+        updatedProperties(LiveEmbeddingField.unreadable("table_search_index", "503"));
+
+    assertTrue(properties.path("embedding").isMissingNode());
+    assertTrue(properties.has("added"));
+  }
+
+  private Optional<String> declarationFor(LiveEmbeddingField live) {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+      when(searchRepository.getEmbeddingClient()).thenReturn(embeddingClient);
+      when(embeddingClient.getDimension()).thenReturn(384);
+      return OsUtils.embeddingFieldDeclaration(() -> live);
+    }
+  }
+
+  @Test
+  void anEmbeddingFieldDeclaration_carriesOnlyTheKnnVectorField() {
+    JsonNode properties =
+        JsonUtils.readTree(
+                declarationFor(LiveEmbeddingField.notMapped("table_search_index")).orElseThrow())
+            .path("properties");
+
+    assertEquals(1, properties.size());
+    assertEquals("knn_vector", properties.path("embedding").path("type").asText());
+    assertEquals(384, properties.path("embedding").path("dimension").asInt());
+  }
+
+  @Test
+  void anEmbeddingFieldDeclaration_isEmptyWhenTheFieldIsMappedOrCannotBeAdded() {
+    LiveEmbeddingField withoutKnn =
+        new LiveEmbeddingField(
+            "table_search_index",
+            Set.of("table_search_index"),
+            Map.of(),
+            Set.of("table_search_index"),
+            null);
+
+    assertTrue(declarationFor(liveKnnVector(384)).isEmpty());
+    assertTrue(declarationFor(liveKnnVector(768)).isEmpty());
+    assertTrue(declarationFor(withoutKnn).isEmpty());
   }
 }

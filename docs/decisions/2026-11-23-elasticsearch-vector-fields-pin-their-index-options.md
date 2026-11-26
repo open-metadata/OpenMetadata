@@ -34,10 +34,11 @@ The options are sent only when the field is created, and an existing field is ne
   options. If the mapping content itself declares `embedding` with `index_options`, those are
   used instead;
 - updating an existing index (`enrichIndexMappingForElasticsearchUpdate`, used by `PUT
-  _mapping`) first reads the live mapping. When any index behind the name already maps
-  `embedding`, the field is left out of the body, and the field keeps whatever it was created
-  with. When none does (for example embeddings were just turned on), the field is added with the
-  pinned options;
+  _mapping`) first reads the live `embedding` field. When any index behind the name already maps
+  it, the field is left out of the body, and the field keeps whatever it was created with. When
+  none does (for example embeddings were just turned on), the field is added with the pinned
+  options. The server applies the same rule to every vector index when its vector search service
+  starts (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model);
 - the chunk index mapping upgrade already leaves the `embedding` field out.
 
 Re-declaring the field on an update is not safe either way. Elasticsearch reads a `dense_vector`
@@ -45,9 +46,9 @@ sent without `index_options` as the engine default and refuses to change the opt
 existing field (`m` cannot go down, `hnsw` cannot become `bbq_hnsw`); sending the pinned options
 is refused on an index created before this change, which has the engine default. `PUT _mapping`
 is atomic, so one refused field drops every other field in the body, and `migrate` would leave
-each upgrade's new fields unmapped. The dimension check stays: an update fails with
-`IllegalStateException` when the live `embedding` has a different `dims` than the embedding
-client, since `dims` cannot change on an existing index.
+each upgrade's new fields unmapped. A live `embedding` whose `dims` differ from the embedding
+client, which cannot change on an existing index, is left as it is and reported
+(ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model).
 
 ## Consequences
 

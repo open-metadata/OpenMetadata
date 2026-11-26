@@ -419,6 +419,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Phase 3: Vector search (embeddings + vector index)
     Entity.getSearchRepository().initializeVectorSearchService();
+    Entity.getSearchRepository().updateEmbeddingFields();
 
     SecurityConfigurationManager.getInstance().initialize(this, catalogConfig, environment);
 

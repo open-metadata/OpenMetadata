@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -41,6 +42,7 @@ import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.LiveEmbeddingField;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.lineage.MissingLineageEntityException;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -610,10 +612,8 @@ class EsUtilsTest {
 
   @Test
   void enrichIndexMappingThrowsWhenMetaDimensionMismatchesClient() {
-    // dense_vector.dims is immutable on an existing ES index. If the embedding
-    // client reports a different dimension than what the index was built with,
-    // silently rewriting dims would either be rejected by ES (putMapping) or
-    // produce a mapping that disagrees with stored vectors. Must hard-fail.
+    // Mapping content built for another model is a broken mapping, not a live index to
+    // reconcile, so it hard-fails.
     String mapping =
         "{\"mappings\":{"
             + "\"_meta\":{\"embedding_model\":\"old-model\",\"embedding_dimension\":384},"
@@ -638,17 +638,12 @@ class EsUtilsTest {
       assertTrue(
           ex.getMessage().contains("384") && ex.getMessage().contains("1536"),
           "Exception message must include both old and new dimensions");
-      assertTrue(
-          ex.getMessage().toLowerCase().contains("reindex"),
-          "Exception message must direct the operator to reindex");
     }
   }
 
   @Test
   void enrichIndexMappingThrowsWhenExistingEmbeddingDimsDiffersFromClient() {
-    // Index already has properties.embedding with dims=384 but no _meta block.
-    // dense_vector.dims is immutable, so we must hard-fail rather than rewrite
-    // (which would either be rejected by ES putMapping or corrupt search).
+    // The mapping content declares properties.embedding with dims=384 but no _meta block.
     String mapping =
         "{\"mappings\":{"
             + "\"properties\":{"
@@ -676,9 +671,6 @@ class EsUtilsTest {
       assertTrue(
           ex.getMessage().contains("384") && ex.getMessage().contains("1536"),
           "Exception message must include both old and new dimensions");
-      assertTrue(
-          ex.getMessage().toLowerCase().contains("reindex"),
-          "Exception message must direct the operator to reindex");
     }
   }
 
@@ -792,15 +784,30 @@ class EsUtilsTest {
                     .asText()));
   }
 
+  private static final String META_AND_VECTOR_MAPPING =
+      "{\"mappings\":{\"_meta\":{\"embedding_model\":\"test-model\",\"embedding_dimension\":8},"
+          + "\"properties\":{\"fingerprint\":{\"type\":\"keyword\"}}}}";
+
+  private static LiveEmbeddingField liveVector(int dimensions) {
+    return new LiveEmbeddingField(
+        "table_search_index",
+        Set.of("table_search_index"),
+        Map.of("table_search_index", new LiveEmbeddingField.Declared("dense_vector", dimensions)),
+        Set.of(),
+        null);
+  }
+
+  private static JsonNode updatedMappings(Supplier<LiveEmbeddingField> live) {
+    return JsonUtils.readTree(
+            EsUtils.enrichIndexMappingForElasticsearchUpdate(META_AND_VECTOR_MAPPING, live))
+        .path("mappings");
+  }
+
   @Test
   void aMappingUpdate_leavesOutAnEmbeddingTheLiveIndexAlreadyMaps() {
     withEmbeddingClient(
         () -> {
-          JsonNode mappings =
-              JsonUtils.readTree(
-                      EsUtils.enrichIndexMappingForElasticsearchUpdate(
-                          VECTOR_MAPPING, () -> new LiveEmbeddingField(true, Set.of(8))))
-                  .path("mappings");
+          JsonNode mappings = updatedMappings(() -> liveVector(8));
           assertFalse(mappings.path("properties").has("embedding"));
           assertTrue(mappings.path("properties").has("fingerprint"));
           assertEquals(8, mappings.path("_meta").path("embedding_dimension").asInt());
@@ -814,7 +821,7 @@ class EsUtilsTest {
           JsonNode embedding =
               embeddingOf(
                   EsUtils.enrichIndexMappingForElasticsearchUpdate(
-                      VECTOR_MAPPING, () -> LiveEmbeddingField.NOT_MAPPED));
+                      VECTOR_MAPPING, () -> LiveEmbeddingField.notMapped("table_search_index")));
           assertEquals(8, embedding.path("dims").asInt());
           assertEquals("hnsw", embedding.path("index_options").path("type").asText());
           assertEquals(48, embedding.path("index_options").path("m").asInt());
@@ -822,14 +829,46 @@ class EsUtilsTest {
   }
 
   @Test
-  void aMappingUpdate_failsWhenTheLiveEmbeddingHasAnotherDimension() {
+  void aMappingUpdate_leavesOutTheEmbeddingAndItsMetaWhenTheLiveFieldHasAnotherDimension() {
     withEmbeddingClient(
-        () ->
-            assertThrows(
-                IllegalStateException.class,
-                () ->
-                    EsUtils.enrichIndexMappingForElasticsearchUpdate(
-                        VECTOR_MAPPING, () -> new LiveEmbeddingField(true, Set.of(384)))));
+        () -> {
+          JsonNode mappings = updatedMappings(() -> liveVector(384));
+          assertFalse(mappings.path("properties").has("embedding"));
+          assertTrue(mappings.path("properties").has("fingerprint"));
+          assertTrue(mappings.path("_meta").isMissingNode(), "the live _meta must stay as it is");
+        });
+  }
+
+  @Test
+  void aMappingUpdate_leavesOutTheEmbeddingAndItsMetaWhenTheLiveFieldCannotBeRead() {
+    withEmbeddingClient(
+        () -> {
+          JsonNode mappings =
+              updatedMappings(
+                  () -> LiveEmbeddingField.unreadable("table_search_index", "503 Unavailable"));
+          assertFalse(mappings.path("properties").has("embedding"));
+          assertTrue(mappings.path("properties").has("fingerprint"));
+          assertTrue(mappings.path("_meta").isMissingNode());
+        });
+  }
+
+  @Test
+  void aMappingUpdate_keepsOtherMetaEntriesWhenItLeavesTheEmbeddingMetaOut() {
+    String mapping =
+        "{\"mappings\":{\"_meta\":{\"owner\":\"platform\",\"embedding_dimension\":8},"
+            + "\"properties\":{\"fingerprint\":{\"type\":\"keyword\"}}}}";
+    withEmbeddingClient(
+        () -> {
+          JsonNode meta =
+              JsonUtils.readTree(
+                      EsUtils.enrichIndexMappingForElasticsearchUpdate(
+                          mapping, () -> liveVector(384)))
+                  .path("mappings")
+                  .path("_meta");
+          assertEquals("platform", meta.path("owner").asText());
+          assertFalse(meta.has("embedding_dimension"));
+          assertFalse(meta.has("embedding_model"));
+        });
   }
 
   @Test
@@ -844,6 +883,50 @@ class EsUtilsTest {
                 throw new AssertionError("the live mapping must not be read");
               });
       assertFalse(embeddingOf(updated).isObject());
+    }
+  }
+
+  @Test
+  void anEmbeddingFieldDeclaration_carriesOnlyThePinnedFieldAndTheModel() {
+    withEmbeddingClient(
+        () -> {
+          JsonNode mappings =
+              JsonUtils.readTree(
+                  EsUtils.embeddingFieldDeclaration(
+                          () -> LiveEmbeddingField.notMapped("table_search_index"))
+                      .orElseThrow());
+          assertEquals(1, mappings.path("properties").size());
+          JsonNode embedding = mappings.path("properties").path("embedding");
+          assertEquals(8, embedding.path("dims").asInt());
+          assertEquals("hnsw", embedding.path("index_options").path("type").asText());
+          assertEquals(8, mappings.path("_meta").path("embedding_dimension").asInt());
+        });
+  }
+
+  @Test
+  void anEmbeddingFieldDeclaration_isEmptyWhenTheLiveIndexMapsTheField() {
+    withEmbeddingClient(
+        () -> {
+          assertTrue(EsUtils.embeddingFieldDeclaration(() -> liveVector(8)).isEmpty());
+          assertTrue(EsUtils.embeddingFieldDeclaration(() -> liveVector(384)).isEmpty());
+          assertTrue(
+              EsUtils.embeddingFieldDeclaration(
+                      () -> LiveEmbeddingField.unreadable("table_search_index", "503"))
+                  .isEmpty());
+        });
+  }
+
+  @Test
+  void anEmbeddingFieldDeclaration_withoutEmbeddings_neverReadsTheLiveIndex() {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(false);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      assertTrue(
+          EsUtils.embeddingFieldDeclaration(
+                  () -> {
+                    throw new AssertionError("the live mapping must not be read");
+                  })
+              .isEmpty());
     }
   }
 }

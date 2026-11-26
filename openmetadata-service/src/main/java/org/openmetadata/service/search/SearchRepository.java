@@ -1012,6 +1012,28 @@ public class SearchRepository {
     }
   }
 
+  /**
+   * Brings the {@code embedding} field of every existing vector index in line with the embedding
+   * model, once the vector search service has started. The server calls it on start: startup
+   * creates missing indexes before the embedding client exists, and {@code migrate} never has one,
+   * so this is where the live indexes first meet the model. {@code reindex} does not, since it
+   * rebuilds them (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model).
+   */
+  public void updateEmbeddingFields() {
+    if (vectorServiceInitialized) {
+      managedIndexMappings().values().stream()
+          .filter(indexMapping -> declaresEmbeddings(indexMapping) && indexExists(indexMapping))
+          .forEach(searchClient::updateEmbeddingField);
+    }
+  }
+
+  /** Whether the index mapping marks the index as a vector index, by its {@code fingerprint}. */
+  private boolean declaresEmbeddings(IndexMapping indexMapping) {
+    String mapping = getHardenedResourceMapping(indexMapping);
+    return mapping != null
+        && JsonUtils.readTree(mapping).path("mappings").path("properties").has("fingerprint");
+  }
+
   private static int resolveKnnNumCandidatesMultiplier(ElasticSearchConfiguration cfg) {
     NaturalLanguageSearchConfiguration nlCfg = cfg.getNaturalLanguageSearch();
     if (nlCfg != null

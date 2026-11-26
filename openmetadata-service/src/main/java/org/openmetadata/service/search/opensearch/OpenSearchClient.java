@@ -346,6 +346,11 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public void updateEmbeddingField(IndexMapping indexMapping) {
+    indexManager.updateEmbeddingField(indexMapping);
+  }
+
+  @Override
   public void deleteIndex(IndexMapping indexMapping) {
     indexManager.deleteIndex(indexMapping);
   }

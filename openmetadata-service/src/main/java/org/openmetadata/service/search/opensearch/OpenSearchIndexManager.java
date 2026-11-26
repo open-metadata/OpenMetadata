@@ -4,18 +4,24 @@ import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.stream.JsonParser;
 import java.io.IOException;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.IndexManagementClient;
+import org.openmetadata.service.search.LiveEmbeddingField;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.mapping.TypeMapping;
+import os.org.opensearch.client.opensearch.generic.Requests;
+import os.org.opensearch.client.opensearch.generic.Response;
 import os.org.opensearch.client.opensearch.indices.CreateIndexRequest;
 import os.org.opensearch.client.opensearch.indices.CreateIndexResponse;
 import os.org.opensearch.client.opensearch.indices.DeleteIndexRequest;
@@ -92,34 +98,104 @@ public class OpenSearchIndexManager implements IndexManagementClient {
 
       String transformedContent =
           (indexMappingContent != null && !indexMappingContent.isEmpty())
-              ? OsUtils.enrichIndexMappingForOpenSearch(indexMappingContent)
+              ? OsUtils.enrichIndexMappingForOpenSearchUpdate(
+                  indexMappingContent, () -> readLiveEmbeddingField(indexName))
               : indexMappingContent;
 
-      PutMappingRequest request =
-          PutMappingRequest.of(
-              builder -> {
-                builder.index(indexName);
-                if (transformedContent != null && !transformedContent.isEmpty()) {
-                  try {
-                    JsonNode rootNode = JsonUtils.readTree(transformedContent);
-                    JsonNode mappingsNode = rootNode.get("mappings");
-
-                    if (mappingsNode != null && !mappingsNode.isNull()) {
-                      // Parse the mappings JSON into TypeMapping
-                      TypeMapping typeMapping = parseTypeMapping(mappingsNode);
-                      builder.properties(typeMapping.properties());
-                    }
-                  } catch (Exception e) {
-                    LOG.warn("Failed to parse mapping content, skipping mapping update", e);
-                  }
-                }
-                return builder;
-              });
-
-      client.indices().putMapping(request);
+      putMapping(indexName, transformedContent);
       LOG.info("Successfully updated mapping for index: {}", indexName);
     } catch (Exception e) {
-      LOG.error("Failed to Update Open Search index {}", indexMapping.getIndexName(clusterAlias));
+      LOG.error(
+          "Failed to Update Open Search index {}", indexMapping.getIndexName(clusterAlias), e);
+    }
+  }
+
+  @Override
+  public void updateEmbeddingField(IndexMapping indexMapping) {
+    String indexName = indexMapping.getIndexName(clusterAlias);
+    if (isClientAvailable) {
+      OsUtils.embeddingFieldDeclaration(() -> readLiveEmbeddingField(indexName))
+          .ifPresent(declaration -> declareEmbeddingField(indexName, declaration));
+    }
+  }
+
+  private void declareEmbeddingField(String indexName, String declaration) {
+    try {
+      putMapping(indexName, "{\"mappings\":" + declaration + "}");
+      LOG.info("Declared the embedding field of index {}", indexName);
+    } catch (IOException | OpenSearchException e) {
+      LOG.error("Failed to declare the embedding field of index {}", indexName, e);
+    }
+  }
+
+  /** Sends the {@code mappings.properties} of {@code content} as a {@code PUT _mapping}. */
+  private void putMapping(String indexName, String content) throws IOException {
+    PutMappingRequest request =
+        PutMappingRequest.of(
+            builder -> {
+              builder.index(indexName);
+              if (content != null && !content.isEmpty()) {
+                try {
+                  JsonNode rootNode = JsonUtils.readTree(content);
+                  JsonNode mappingsNode = rootNode.get("mappings");
+
+                  if (mappingsNode != null && !mappingsNode.isNull()) {
+                    // Parse the mappings JSON into TypeMapping
+                    TypeMapping typeMapping = parseTypeMapping(mappingsNode);
+                    builder.properties(typeMapping.properties());
+                  }
+                } catch (Exception e) {
+                  LOG.warn("Failed to parse mapping content, skipping mapping update", e);
+                }
+              }
+              return builder;
+            });
+    client.indices().putMapping(request);
+  }
+
+  /**
+   * The {@code embedding} field every index behind the name maps now, read from the field mapping
+   * API as raw JSON. When none maps it, the indexes that were created without {@code index.knn},
+   * which cannot take a {@code knn_vector}, are read too. A failed read is returned as such, never
+   * thrown, so the update can still apply the rest.
+   */
+  private LiveEmbeddingField readLiveEmbeddingField(String indexName) {
+    LiveEmbeddingField live;
+    try {
+      LiveEmbeddingField mapped =
+          LiveEmbeddingField.fromFieldMapping(
+              indexName,
+              getJson("/" + indexName + "/_mapping/field/" + LiveEmbeddingField.FIELD),
+              OsUtils.KNN_VECTOR,
+              OsUtils.KNN_VECTOR_DIMENSION);
+      live = mapped.mapped() ? mapped : mapped.withVectorSupportOnlyIn(knnIndexes(indexName));
+    } catch (IOException | OpenSearchException e) {
+      live = LiveEmbeddingField.unreadable(indexName, e.getMessage());
+    }
+    return live;
+  }
+
+  /** The indexes behind the name created with {@code index.knn}, a setting fixed at creation. */
+  private Set<String> knnIndexes(String indexName) throws IOException {
+    return getJson("/" + indexName + "/_settings/index.knn").properties().stream()
+        .filter(index -> index.getValue().path("settings").path("index").path("knn").asBoolean())
+        .map(Map.Entry::getKey)
+        .collect(Collectors.toSet());
+  }
+
+  private JsonNode getJson(String endpoint) throws IOException {
+    try (Response response =
+        client.generic().execute(Requests.builder().endpoint(endpoint).method("GET").build())) {
+      String body =
+          response
+              .getBody()
+              .map(content -> new String(content.bodyAsBytes(), StandardCharsets.UTF_8))
+              .orElse("");
+      if (response.getStatus() != 200) {
+        throw new IOException(
+            String.format("%s answered %d: %s", endpoint, response.getStatus(), body));
+      }
+      return JsonUtils.readTree(body);
     }
   }
 

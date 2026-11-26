@@ -20,7 +20,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
@@ -30,11 +32,13 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
-import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.EmbeddingFieldUpdate;
+import org.openmetadata.service.search.LiveEmbeddingField;
 import org.openmetadata.service.search.lineage.MissingLineageEntityException;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.util.LineageUtil;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
@@ -55,6 +59,10 @@ public class OsUtils {
   // Keep vectors in _source to avoid prematurely closed readers (opensearch-project/k-NN#3138).
   private static final String VECTOR_INDEX_MAPPING =
       "/elasticsearch/opensearch_vector_index_mapping.json";
+
+  static final String KNN_VECTOR = "knn_vector";
+
+  static final String KNN_VECTOR_DIMENSION = "dimension";
 
   private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
       new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
@@ -703,6 +711,25 @@ public class OsUtils {
    * @return Transformed index mapping content for OpenSearch
    */
   public static String enrichIndexMappingForOpenSearch(String indexMappingContent) {
+    return enrichIndexMapping(indexMappingContent, () -> LiveEmbeddingField.notMapped(""));
+  }
+
+  /**
+   * As {@link #enrichIndexMappingForOpenSearch}, for a {@code PUT _mapping} on an existing index.
+   * The live {@code embedding} field decides whether the body declares it ({@link
+   * EmbeddingFieldUpdate}): only when no index behind the name maps it yet and every one of them
+   * can take it. OpenSearch refuses to change the dimension or the method of an existing {@code
+   * knn_vector}, or to add one to an index created without {@code index.knn}, and {@code PUT
+   * _mapping} is atomic, so sending it there would drop every other field in the body. The live
+   * field is read only when the index is a vector index and embeddings are on.
+   */
+  public static String enrichIndexMappingForOpenSearchUpdate(
+      String indexMappingContent, Supplier<LiveEmbeddingField> liveEmbedding) {
+    return enrichIndexMapping(indexMappingContent, liveEmbedding);
+  }
+
+  private static String enrichIndexMapping(
+      String indexMappingContent, Supplier<LiveEmbeddingField> liveEmbedding) {
     if (nullOrEmpty(indexMappingContent)) {
       throw new IllegalArgumentException("Empty Index Mapping Content.");
     }
@@ -723,7 +750,7 @@ public class OsUtils {
     }
 
     // Add knn_vector settings for embedding-enabled indexes
-    addKnnVectorSettings(rootNode);
+    addKnnVectorSettings(rootNode, liveEmbedding);
 
     return rootNode.toString();
   }
@@ -752,39 +779,63 @@ public class OsUtils {
    * reindex.
    */
   static void addKnnVectorSettings(JsonNode rootNode) {
+    addKnnVectorSettings(rootNode, () -> LiveEmbeddingField.notMapped(""));
+  }
+
+  private static void addKnnVectorSettings(
+      JsonNode rootNode, Supplier<LiveEmbeddingField> liveEmbedding) {
     JsonNode properties = rootNode.path("mappings").path("properties");
-    if (properties.isMissingNode() || !properties.has("fingerprint")) {
-      return;
-    }
-
-    // The embedding client is the single source of truth for the vector dimension.
-    // We do NOT fall back to _meta or a hardcoded default, because:
-    // 1. On first enable, existing indexes won't have _meta yet
-    // 2. On model change, _meta would carry the old (wrong) dimension
-    // If the client is not available (embeddings disabled), we skip knn setup entirely.
-    SearchRepository searchRepository = Entity.getSearchRepository();
-    if (searchRepository == null
-        || !searchRepository.isVectorEmbeddingEnabled()
-        || searchRepository.getEmbeddingClient() == null) {
-      return;
-    }
-
-    int dimension = searchRepository.getEmbeddingClient().getDimension();
-
-    // If _meta.embedding_dimension exists, validate it matches the client.
-    // A mismatch means the index was built with a different model/config and needs a reindex.
-    JsonNode meta = rootNode.path("mappings").path("_meta");
-    if (!meta.isMissingNode() && meta.has("embedding_dimension")) {
-      int metaDimension = meta.get("embedding_dimension").asInt();
-      if (metaDimension != dimension) {
-        LOG.error(
-            "Embedding dimension mismatch: _meta says {} but embedding client reports {}. "
-                + "Using embedding client dimension. A reindex may be required.",
-            metaDimension,
-            dimension);
+    boolean vectorIndex = !properties.isMissingNode() && properties.has("fingerprint");
+    // The embedding client is the single source of truth for the vector dimension. If it is not
+    // available (embeddings disabled), knn setup is skipped entirely.
+    EmbeddingClient embeddingClient = EmbeddingFieldUpdate.activeEmbeddingClient().orElse(null);
+    if (vectorIndex && embeddingClient != null) {
+      int dimension = embeddingClient.getDimension();
+      logDeclaredDimensionMismatch(rootNode, dimension);
+      addKnnIndexSettings(rootNode);
+      EmbeddingFieldUpdate update =
+          EmbeddingFieldUpdate.decide(liveEmbedding.get(), dimension, embeddingClient.getModelId());
+      ((ObjectNode) properties).remove(LiveEmbeddingField.FIELD);
+      if (update == EmbeddingFieldUpdate.DECLARE) {
+        ((ObjectNode) properties).set(LiveEmbeddingField.FIELD, knnVectorField(dimension));
       }
     }
+  }
 
+  /**
+   * The {@code PUT _mapping} body that declares the {@code knn_vector} field on an existing vector
+   * index that does not map it yet and was created with {@code index.knn} ({@link
+   * EmbeddingFieldUpdate#declarationFor}).
+   */
+  public static Optional<String> embeddingFieldDeclaration(
+      Supplier<LiveEmbeddingField> liveEmbedding) {
+    return EmbeddingFieldUpdate.declarationFor(
+        liveEmbedding,
+        embeddingClient -> {
+          ObjectNode mappings = mapper.createObjectNode();
+          mappings
+              .putObject("properties")
+              .set(LiveEmbeddingField.FIELD, knnVectorField(embeddingClient.getDimension()));
+          return mappings;
+        });
+  }
+
+  /**
+   * A {@code _meta.embedding_dimension} in the mapping content that differs from the client means
+   * the content was built for another model.
+   */
+  private static void logDeclaredDimensionMismatch(JsonNode rootNode, int dimension) {
+    JsonNode meta = rootNode.path("mappings").path("_meta");
+    if (meta.has("embedding_dimension") && meta.get("embedding_dimension").asInt() != dimension) {
+      LOG.error(
+          "Embedding dimension mismatch: _meta says {} but embedding client reports {}. "
+              + "Using embedding client dimension. A reindex may be required.",
+          meta.get("embedding_dimension").asInt(),
+          dimension);
+    }
+  }
+
+  private static void addKnnIndexSettings(JsonNode rootNode) {
     JsonNode indexSettingsNode = rootNode.path("settings").path("index");
     if (!indexSettingsNode.isMissingNode() && indexSettingsNode.isObject()) {
       ObjectNode indexSettings = (ObjectNode) indexSettingsNode;
@@ -792,23 +843,20 @@ public class OsUtils {
       indexSettings.put("knn.algo_param.ef_search", 1000);
       indexSettings.put("knn.advanced.filtered_exact_search_threshold", 0);
     }
+  }
 
-    ObjectMapper mapper = new ObjectMapper();
-    ObjectNode embeddingNode = mapper.createObjectNode();
-    embeddingNode.put("type", "knn_vector");
-    embeddingNode.put("dimension", dimension);
-
-    ObjectNode methodNode = mapper.createObjectNode();
-    methodNode.put("name", "hnsw");
-    methodNode.put("engine", "lucene");
-    methodNode.put("space_type", "cosinesimil");
-
-    ObjectNode paramsNode = mapper.createObjectNode();
-    paramsNode.put("m", 48);
-    paramsNode.put("ef_construction", 256);
+  private static ObjectNode knnVectorField(int dimension) {
+    ObjectNode paramsNode = mapper.createObjectNode().put("m", 48).put("ef_construction", 256);
+    ObjectNode methodNode =
+        mapper
+            .createObjectNode()
+            .put("name", "hnsw")
+            .put("engine", "lucene")
+            .put("space_type", "cosinesimil");
     methodNode.set("parameters", paramsNode);
-
+    ObjectNode embeddingNode =
+        mapper.createObjectNode().put("type", KNN_VECTOR).put(KNN_VECTOR_DIMENSION, dimension);
     embeddingNode.set("method", methodNode);
-    ((ObjectNode) properties).set("embedding", embeddingNode);
+    return embeddingNode;
   }
 }

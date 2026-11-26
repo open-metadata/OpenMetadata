@@ -37,6 +37,16 @@ public interface IndexManagementClient {
   void updateIndex(IndexMapping indexMapping, String indexMappingContent);
 
   /**
+   * Brings the {@code embedding} field of an existing vector index in line with the configured
+   * embedding model ({@link EmbeddingFieldUpdate}): declares it when no index behind the name maps
+   * it, and reports an index that cannot hold the model's vectors. Changes nothing else.
+   *
+   * @param indexMapping the index mapping configuration of an index whose mapping has {@code
+   *     fingerprint}
+   */
+  void updateEmbeddingField(IndexMapping indexMapping);
+
+  /**
    * Delete an index.
    *
    * @param indexMapping the index mapping configuration
