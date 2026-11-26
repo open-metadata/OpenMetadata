@@ -22,6 +22,7 @@ from collate_dbt_artifacts_parser.parser import (
 )
 from pydantic import AnyUrl
 
+from metadata.entity_resolution.table_search import database_service_type_cache, search_cache
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.metric import Language
@@ -5519,6 +5520,15 @@ class TestCatalogMapping:
     BQ_SOURCE = "bq_svc.my-gcp-project.raw.customers"
     MANIFEST_FQN = "trino_svc.bq_catalog.analytics.stg_customers"
 
+    @pytest.fixture(autouse=True)
+    def clear_lineage_caches(self):
+        """Query lineage caches table lookups per process, so a table one test finds would answer the next."""
+        for cache in (search_cache, database_service_type_cache):
+            cache.clear()
+        yield
+        for cache in (search_cache, database_service_type_cache):
+            cache.clear()
+
     @staticmethod
     def _source(*ingested_fqns, catalog_mapping=None, search_across_databases=False):
         """A DbtSource built from an agent config, whose search answers wildcard FQN queries."""
@@ -5830,6 +5840,64 @@ class TestCatalogMapping:
             for request in requests
             for link in request.lineage_details.columnsLineage
         ] == [(f"{source_fqn}.id", f"{model_fqn}.id"), (f"{source_fqn}.name", f"{model_fqn}.name")]
+
+    @staticmethod
+    def _query_lineage_requests(source, model, sql, upstream):
+        source.metadata.get_by_name.return_value = None
+        source.config.serviceConnection = SimpleNamespace(
+            root=SimpleNamespace(config=SimpleNamespace(type=SimpleNamespace(value="Trino")))
+        )
+        data_model_link = SimpleNamespace(
+            table_entity=model,
+            upstream_table_ids={},
+            parse_query_lineage=True,
+            datamodel=SimpleNamespace(sql=SimpleNamespace(root=sql), upstream=upstream),
+        )
+        return [
+            either.right.lineage_request
+            for either in source.create_dbt_query_lineage(data_model_link)
+            if either.right is not None
+        ]
+
+    def test_query_lineage_looks_in_the_models_own_service_first(self):
+        """A table the SQL reads under both services resolves in the model's; its upstream, only in bq_svc, there."""
+        visits, countries = "bq_svc.raw_db.raw.visits", "trino_svc.raw_db.raw.countries"
+        model = self._table_with_columns("trino_svc.iceberg.analytics.stg_visits")
+        source = self._source(search_across_databases=True)
+        source.metadata.es_search_from_fqn.side_effect = self._search_among(
+            [
+                self._table_with_columns(visits),
+                self._table_with_columns(countries),
+                self._table_with_columns("bq_svc.raw_db.raw.countries"),
+                model,
+            ]
+        )
+
+        requests = self._query_lineage_requests(
+            source,
+            model,
+            'select v.id, c.name from "raw_db"."raw"."visits" v join "raw_db"."raw"."countries" c on v.id = c.id',
+            [visits],
+        )
+
+        assert {request.from_entity_fqn for request in requests} == {visits, countries}
+
+    def test_query_lineage_keeps_the_model_as_its_target_before_search_has_indexed_it(self):
+        """A table of the model's name in an upstream's service is not the model."""
+        source_fqn = "bq_svc.my-gcp-project.raw.visits"
+        model = self._table_with_columns("trino_svc.iceberg.analytics.stg_visits")
+        source = self._source(catalog_mapping={"bq_catalog": "my-gcp-project"})
+        source.metadata.es_search_from_fqn.side_effect = self._search_among(
+            [self._table_with_columns(source_fqn), self._table_with_columns("bq_svc.iceberg.analytics.stg_visits")]
+        )
+
+        requests = self._query_lineage_requests(
+            source, model, 'select id, name from "bq_catalog"."raw"."visits"', [source_fqn]
+        )
+
+        assert [(request.from_entity_fqn, request.to_entity_fqn) for request in requests] == [
+            (source_fqn, model_str(model.fullyQualifiedName))
+        ]
 
     def test_each_catalog_is_mapped_once_when_a_database_is_also_a_mapped_catalog(self):
         source = self._source(catalog_mapping={"hive": "warehouse", "warehouse": "warehouse_prod"})

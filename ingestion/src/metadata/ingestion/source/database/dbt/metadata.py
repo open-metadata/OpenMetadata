@@ -1685,6 +1685,7 @@ class DbtSource(DbtServiceSource):
                     dialect=dialect,
                     timeout_seconds=self.source_config.parsingTimeoutLimit,
                     lineage_source=LineageSource.DbtLineage,
+                    view_entity=to_entity,
                 )
                 override_lineage = self._overrides_lineage(data_model_link)
                 for lineage in lineages or []:
