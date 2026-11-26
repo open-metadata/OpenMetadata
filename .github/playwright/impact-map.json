@@ -89,6 +89,18 @@
   ],
   "mappings": [
     {
+      "_comment": "Task Form designer: field builder, schema round-trip, and the custom forms a task workflow renders from it.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/TaskFormSettingsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/TaskFormDesignerUtils*"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/TaskFormSettings.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts"
+      ]
+    },
+    {
       "_comment": "MCP administrator controls and client revocation.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/platform/settings/mcp/**",
