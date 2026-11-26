@@ -1,7 +1,7 @@
 # Every version names the bot of the request that wrote it
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-16 (initial)
+- **Revisions:** v1 2026-11-16 (initial) · v2 2026-11-26 (port versions and legacy import display)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `BotImpersonationIT` (the `test_impersonated*`, `test_admin*`, `test_botDeleteThenAdminRestore*`, `test_editUndoneInItsSession*` and `test_botUndoingItsEditInItsSession*` cases, which read the versions and their change events), `ChangeRequestAdmissionIT#approvedChangeABotStagedForAHumanIsPublishedNamingTheBot`, `ChangeRequestImportAndBulkIT#csvImportABotMakesForAUserIsStagedNamingTheBot`, `ImpersonationContextTest`, `EntityUtilTest`, `SecurityUtilTest#testGetImpersonatingBot*`, `McpChangeEventUtilTest#publishChangeEvent_namesTheBotOfTheToolCall`
 - **Related:** #37869, #37892, #37893, open-metadata/ai-platform#2213,
@@ -43,6 +43,13 @@ For every entity type whose schema declares `impersonatedBy`:
   current.
 - In-session consolidation folds only edits with the same `updatedBy` and the same
   `impersonatedBy`.
+- A standalone data-product port edit archives the old version and records the request's writer
+  pair on a new version, in the same transaction as the relationships and the change event. A
+  port edit joins the version a mixed approval just published when the field changes advanced it.
+  A retry that changes no relationships creates no version. A later field PATCH starts its own
+  version because the field updater cannot replay port edits during consolidation.
+- The version panel hides the impersonation row when the writer names match. Older CSV imports
+  stored the importer's name in both fields.
 - The change event of a write names the request that made it. The response filter takes the user
   and the bot from the request's security context. A write that records its event itself for the
   request's user takes the bot from `ImpersonationContext`: `ChangeEventHandler.entityChangeEvent`

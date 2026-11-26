@@ -110,17 +110,21 @@ describe('VersionButton', () => {
     expect(impersonation).toHaveTextContent('caip-bot');
   });
 
-  it('should not render an impersonation row for a direct change', () => {
+  it.each([
+    ['a direct change', undefined],
+    ['a legacy CSV import', version.updatedBy],
+  ])('does not render an impersonation row for %s', (_, impersonatedBy) => {
     render(
       <VersionButton
         isMajorVersion={isMajorVersion}
         selected={selected}
         summary="Some change description"
-        version={version}
+        version={{ ...version, impersonatedBy }}
         onVersionSelect={onVersionSelect}
       />
     );
 
+    expect(screen.getByText(version.updatedBy)).toBeInTheDocument();
     expect(
       screen.queryByTestId('version-impersonated-by')
     ).not.toBeInTheDocument();

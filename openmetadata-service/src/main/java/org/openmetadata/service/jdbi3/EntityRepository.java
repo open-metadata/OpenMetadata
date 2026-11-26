@@ -11778,6 +11778,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         updated.setChangeDescription(original.getChangeDescription());
       }
       updated.setUpdatedBy(original.getUpdatedBy());
+      updated.setImpersonatedBy(original.getImpersonatedBy());
       updated.setUpdatedAt(original.getUpdatedAt());
     }
 

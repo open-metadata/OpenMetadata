@@ -68,11 +68,13 @@ import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.AccessDetails;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.DescriptionUpdatePayload;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
@@ -1125,6 +1127,36 @@ public class BotImpersonationIT {
   }
 
   @Test
+  void test_directLifecycleEdit_keepsTheBotOfTheCurrentVersion(TestNamespace ns) {
+    OpenMetadataClient direct = SdkClients.adminClient();
+    User admin = direct.users().getByName(ADMIN_USER_NAME);
+    Impersonation impersonation = impersonating(ns, "lifecycle", admin);
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    Table table = direct.tables().create(tableRequest(ns, schema, "lifecycle"));
+    String tableId = table.getId().toString();
+    impersonation.viaBot().tables().patch(tableId, descriptionPatch("Written by the bot"));
+
+    LifeCycle lifecycle =
+        new LifeCycle().withAccessed(new AccessDetails().withTimestamp(1695060100L));
+    direct
+        .tables()
+        .patch(
+            tableId,
+            JsonUtils.valueToTree(
+                List.of(Map.of("op", "add", "path", "/lifeCycle", "value", lifecycle))));
+
+    assertEquals(
+        lifecycle.getAccessed().getTimestamp(),
+        direct.tables().get(tableId, "lifeCycle").getLifeCycle().getAccessed().getTimestamp());
+    assertEquals(
+        List.of(
+            new VersionAuthor(0.2, ADMIN_USER_NAME, impersonation.bot()),
+            new VersionAuthor(0.1, ADMIN_USER_NAME, null)),
+        versionAuthors(direct.tables().getVersionList(table.getId())));
+  }
+
+  @Test
   void test_editUndoneInItsSession_keepsTheBotOfTheVersionItReturnsTo(TestNamespace ns) {
     User target = createRegularUser(ns, "undo");
     Impersonation impersonation = impersonating(ns, "undo", target);
@@ -1532,7 +1564,7 @@ public class BotImpersonationIT {
   }
 
   @Test
-  void test_impersonatedInputPortsAdd_namesTheBot(TestNamespace ns) {
+  void test_impersonatedPortEdit_keepsDistinctVersionAuthors(TestNamespace ns) {
     User admin = SdkClients.adminClient().users().getByName(ADMIN_USER_NAME);
     Impersonation impersonation = impersonating(ns, "ports", admin);
     Domain domain = createDomain(ns, "impports");
@@ -1547,13 +1579,10 @@ public class BotImpersonationIT {
     DatabaseSchema schema =
         DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
     Table table = SdkClients.adminClient().tables().create(tableRequest(ns, schema, "port"));
+    BulkAssets port = new BulkAssets().withAssets(List.of(table.getEntityReference()));
     long since = System.currentTimeMillis();
 
-    impersonation
-        .viaBot()
-        .dataProducts()
-        .inputPorts(dataProduct.getFullyQualifiedName())
-        .add(new BulkAssets().withAssets(List.of(table.getEntityReference())));
+    impersonation.viaBot().dataProducts().inputPorts(dataProduct.getFullyQualifiedName()).add(port);
 
     DataProduct written =
         SdkClients.adminClient().dataProducts().get(dataProduct.getId().toString());
@@ -1567,6 +1596,24 @@ public class BotImpersonationIT {
         ChangeEventLog.awaitUpdateAuthor(
             Entity.DATA_PRODUCT, dataProduct.getId(), "inputPorts", since),
         "The change event of the input port the bot added must name the bot");
+
+    impersonation.viaBot().dataProducts().inputPorts(dataProduct.getFullyQualifiedName()).add(port);
+    SdkClients.adminClient()
+        .dataProducts()
+        .inputPorts(dataProduct.getFullyQualifiedName())
+        .remove(port);
+    SdkClients.adminClient()
+        .dataProducts()
+        .patch(dataProduct.getId().toString(), descriptionPatch("Edited after removing the port"));
+
+    assertEquals(
+        List.of(
+            new VersionAuthor(0.4, ADMIN_USER_NAME, null),
+            new VersionAuthor(0.3, ADMIN_USER_NAME, null),
+            new VersionAuthor(0.2, ADMIN_USER_NAME, impersonation.bot()),
+            new VersionAuthor(0.1, ADMIN_USER_NAME, null)),
+        versionAuthors(SdkClients.adminClient().dataProducts().getVersionList(dataProduct.getId())),
+        "A retry adds no version, and a later field edit preserves both port versions");
   }
 
   @Test

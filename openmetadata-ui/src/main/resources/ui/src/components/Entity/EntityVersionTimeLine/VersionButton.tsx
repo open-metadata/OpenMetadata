@@ -40,13 +40,16 @@ export const VersionButton = forwardRef<
       version: versionNumber,
       updatedAt,
     } = version;
+    // Older CSV imports stored the importer's name in both writer fields.
+    const impersonatingBot =
+      impersonatedBy === updatedBy ? undefined : impersonatedBy;
     const [, , user] = useUserProfile({
       permission: true,
       name: updatedBy,
     });
     const [, , impersonator] = useUserProfile({
-      permission: Boolean(impersonatedBy),
-      name: impersonatedBy ?? '',
+      permission: Boolean(impersonatingBot),
+      name: impersonatingBot ?? '',
     });
 
     const versionText = `v${parseFloat(toString(versionNumber)).toFixed(1)}`;
@@ -119,7 +122,7 @@ export const VersionButton = forwardRef<
               {formatDateTime(updatedAt)}
             </span>
           </div>
-          {impersonatedBy ? (
+          {impersonatingBot ? (
             <Box
               align="center"
               data-testid="version-impersonated-by"
@@ -128,11 +131,11 @@ export const VersionButton = forwardRef<
               <Typography size="text-xs">
                 {t('label.impersonated-by-with-colon')}
               </Typography>
-              <UserPopOverCard profileWidth={16} userName={impersonatedBy}>
+              <UserPopOverCard profileWidth={16} userName={impersonatingBot}>
                 <Link
                   className="tw:text-xs"
-                  to={getSettingsLink(getUserPath(impersonatedBy))}>
-                  {getEntityName(impersonator) || impersonatedBy}
+                  to={getSettingsLink(getUserPath(impersonatingBot))}>
+                  {getEntityName(impersonator) || impersonatingBot}
                 </Link>
               </UserPopOverCard>
             </Box>

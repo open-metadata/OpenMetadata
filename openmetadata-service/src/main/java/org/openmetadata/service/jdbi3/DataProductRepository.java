@@ -89,7 +89,6 @@ import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.DefaultAuthorizer;
-import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -526,7 +525,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
             ? null
             : holdPorts(dataProduct.getId(), eligible, relationship, isAdd, actor);
     if (held == null && !eligible.isEmpty()) {
-      writePorts(dataProduct, eligible, relationship, isAdd, actor.userName());
+      writePorts(dataProduct, eligible, relationship, isAdd, actor);
     }
     return portsResult(rows, held);
   }
@@ -676,15 +675,35 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       final List<EntityReference> ports,
       final Relationship relationship,
       final boolean isAdd,
-      final String updatedBy) {
-    linkPorts(dataProduct, ports, relationship, isAdd);
-    final DataProduct stored = get(null, dataProduct.getId(), getFields("*"));
-    recordPortChange(
-        stored,
-        portChangeDescription(
-            stored.getVersion(), Map.of(new PortChange(relationship, isAdd), ports)),
-        new PortWriter(updatedBy, ImpersonationContext.getImpersonatedBy()),
-        false);
+      final ChangeActor actor) {
+    final List<EntityReference> changed =
+        changedPorts(dataProduct.getId(), ports, relationship, isAdd);
+    if (!changed.isEmpty()) {
+      final DataProduct stored = get(null, dataProduct.getId(), getPutFields(), NON_DELETED, false);
+      linkPorts(stored, changed, relationship, isAdd);
+      recordPortChange(
+          stored,
+          portChangeDescription(
+              stored.getVersion(), Map.of(new PortChange(relationship, isAdd), changed)),
+          new PortWriter(actor.userName(), actor.impersonatedBy()),
+          false);
+    }
+  }
+
+  private List<EntityReference> changedPorts(
+      final UUID productId,
+      final List<EntityReference> ports,
+      final Relationship relationship,
+      final boolean isAdd) {
+    final Set<UUID> existing = relatedIds(productId, relationship);
+    final List<EntityReference> changed = new ArrayList<>();
+    for (final EntityReference port : ports) {
+      final boolean changesSet = isAdd ? existing.add(port.getId()) : existing.remove(port.getId());
+      if (changesSet) {
+        changed.add(port);
+      }
+    }
+    return changed;
   }
 
   private void linkPorts(
@@ -733,14 +752,24 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       final ChangeDescription change,
       final PortWriter writer,
       final boolean joinsFieldChange) {
+    final Double previousVersion = dataProduct.getVersion();
+    if (!joinsFieldChange) {
+      startPortVersion(dataProduct);
+    }
     joinPortChange(dataProduct, change, joinsFieldChange);
     dataProduct.setUpdatedBy(writer.updatedBy());
     dataProduct.setImpersonatedBy(writer.impersonatedBy());
-    storeEntity(dataProduct, true);
-    invalidate(dataProduct);
+    storeEntityWithVersion(dataProduct, true, previousVersion);
     final ChangeEvent changeEvent =
-        getChangeEvent(dataProduct, change, DATA_PRODUCT, dataProduct.getVersion());
+        getChangeEvent(dataProduct, change, DATA_PRODUCT, previousVersion);
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+  }
+
+  private void startPortVersion(final DataProduct dataProduct) {
+    storeVersions(List.of(dataProduct));
+    dataProduct.setVersion(EntityUtil.nextVersion(dataProduct.getVersion()));
+    dataProduct.setUpdatedAt(System.currentTimeMillis());
+    dataProduct.setIncrementalChangeDescription(null);
   }
 
   // {@code joinsFieldChange}: the same approval has just published field changes at this version,
@@ -756,6 +785,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     } else {
       dataProduct.setChangeDescription(change);
     }
+  }
+
+  private static boolean hasPortChanges(final ChangeDescription change) {
+    return change != null
+        && Stream.concat(
+                listOrEmpty(change.getFieldsAdded()).stream(),
+                listOrEmpty(change.getFieldsDeleted()).stream())
+            .anyMatch(field -> PORT_FIELDS_BY_NAME.containsKey(field.getName()));
   }
 
   private static BulkOperationResult portsResult(final List<PortRow> rows, final String held) {
@@ -864,7 +901,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       final String impersonatedBy,
       final boolean withFieldChanges) {
     validateStagedRelations(entityId, ops);
-    final DataProduct dataProduct = get(null, entityId, getFields("*"));
+    final DataProduct dataProduct = get(null, entityId, getPutFields(), NON_DELETED, false);
     final Map<PortChange, List<EntityReference>> changes = portsByChange(ops);
     changes.forEach(
         (change, ports) -> linkPorts(dataProduct, ports, change.relationship(), change.isAdd()));
@@ -1126,6 +1163,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     public DataProductUpdater(DataProduct original, DataProduct updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    protected boolean consolidateChanges(
+        DataProduct original, DataProduct updated, Operation operation) {
+      // The field updater cannot replay port edits, which live in dedicated relationships.
+      return !hasPortChanges(original.getChangeDescription())
+          && super.consolidateChanges(original, updated, operation);
     }
 
     @Override
