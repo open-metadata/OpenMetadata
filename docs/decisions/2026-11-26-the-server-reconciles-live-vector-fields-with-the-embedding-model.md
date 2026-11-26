@@ -20,7 +20,9 @@ chunk index) has to hold vectors of the configured embedding model. Neither engi
 vector field change its dimensions or its index options, OpenSearch refuses a `knn_vector` on an
 index created without `index.knn` (a setting fixed at creation), and `PUT _mapping` is atomic: one
 refused field drops every field in the request. Only a rebuild fixes an index built for another
-model, or created without vector support.
+dimension, or created without vector support. One whose vectors another model of the same dimension
+made is also fixed by a complete `reembed`, which replaces them in place and records the model
+(ADR:2026-11-11-reindex-reuses-an-embedding-only-when-its-fingerprint-matches).
 
 Indexes are created by `migrate` and by the missing-index step of server start, both before any
 embedding client exists. When index creation took the model from the client, those indexes got no
@@ -70,8 +72,8 @@ vector field, and on OpenSearch no `index.knn`, so they could never get one.
    exists, is an empty answer, and only indexes of which none can hold the vectors are a 503 with
    the report. The status page's Semantic Search step fails with the same report. Such an index is
    read again on the node whose rebuild replaces it, whenever the status page is opened, and at most
-   once a minute when a write or a search meets it, so a rebuild run from any node or the CLI clears
-   it without a restart.
+   once a minute when a write or a search meets it, so a rebuild run from any node or the CLI, or a
+   complete `reembed` of an index of the model's dimension, clears it without a restart.
 6. **A mismatch fails neither startup nor `migrate`.** The rebuild that fixes it needs the server,
    or the CLI, running with the new model, and Docker Compose starts the server only after `migrate`
    succeeds while the Helm chart runs `migrate` as an init container of every server pod.

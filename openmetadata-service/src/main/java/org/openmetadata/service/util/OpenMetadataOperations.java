@@ -1957,7 +1957,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
    * vectors cannot be replaced, and a vector written to an index that maps no field for it would
    * be mapped as plain numbers.
    */
-  private void leaveOutTypesThatCannotTakeVectors(
+  static void leaveOutTypesThatCannotTakeVectors(
       VectorIndexService vecService,
       Map<String, Integer> entityTotals,
       Map<String, AtomicInteger> failedCounts) {
@@ -1970,7 +1970,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
                 countNotReembedded(failedCounts, entityType, entityTotals.remove(entityType)));
   }
 
-  private boolean entityIndexTakesVectors(SearchRepository repo, String entityType) {
+  private static boolean entityIndexTakesVectors(SearchRepository repo, String entityType) {
     String entityIndexName = resolveEntityIndexName(entityType);
     return entityIndexName != null && repo.takesVectorsInPlace(entityIndexName);
   }
@@ -1985,7 +1985,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         new ArrayList<>(
             EmbeddedEntityTypes.ALL.stream()
                 .filter(OpenMetadataOperations::isReembedableEntityType)
-                .map(this::resolveEntityIndexName)
+                .map(OpenMetadataOperations::resolveEntityIndexName)
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList());
@@ -2104,7 +2104,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
-  private String resolveEntityIndexName(String entityType) {
+  private static String resolveEntityIndexName(String entityType) {
     try {
       org.openmetadata.search.IndexMapping mapping =
           Entity.getSearchRepository().getIndexMapping(entityType);
