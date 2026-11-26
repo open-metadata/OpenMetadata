@@ -975,6 +975,10 @@ class OntologyEntityDAOIT {
     } catch (SQLException exception) {
       throw new IllegalStateException("Cannot configure workflow test database", exception);
     }
+    if (dialect == ConnectionType.MYSQL) {
+      // Flowable asks JDBC for tables without a catalog. Only the scratch schema belongs to it.
+      dataSource.setProperties(Map.of("nullDatabaseMeansCurrent", "true"));
+    }
     dataSource.setUser(OntologyTestDatabase.user());
     dataSource.setPassword(OntologyTestDatabase.password());
     OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
