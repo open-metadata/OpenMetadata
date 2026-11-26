@@ -33,6 +33,8 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +43,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.function.ToDoubleBiFunction;
 import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -89,7 +92,10 @@ import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.helper.WorkflowVariableResolver;
+import org.openmetadata.service.governance.workflows.util.ApprovalCycle;
+import org.openmetadata.service.governance.workflows.util.ApprovalCycleHistory;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.CyclePreview;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
@@ -100,6 +106,7 @@ import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStar
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DurationUtil;
+import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 /**
@@ -132,6 +139,12 @@ public class CreateTask implements TaskListener {
           .failAfterMaxAttempts(false)
           .build();
   static final String LIFECYCLE_MOVE_KEY = "lifecycleMove";
+  private static final Set<TaskEntityType> PREVIEWED_APPROVAL_TYPES =
+      Set.of(TaskEntityType.GlossaryApproval, TaskEntityType.RequestApproval);
+  private static final Comparator<Task> OLDEST_FIRST =
+      Comparator.comparing(
+              Task::getCreatedAt, Comparator.nullsLast(Comparator.<Long>naturalOrder()))
+          .thenComparing(task -> task.getId().toString());
 
   private Expression inputNamespaceMapExpr;
   private Expression assigneesVarNameExpr;
@@ -544,16 +557,16 @@ public class CreateTask implements TaskListener {
       terminateDeletedWorkflowManagedDraftTask(delegateTask, requestedTaskId);
       return null;
     }
-    Object priorApprovalPayload =
-        existingTask == null
-            ? findPriorOpenApprovalPayload(
+    List<Task> priorApprovals =
+        existingTask == null && taskCategory == TaskCategory.Approval
+            ? findPriorOpenApprovals(
                 taskRepository,
                 entity,
-                taskCategory,
                 resolvedWorkflowDefinitionId,
                 workflowInstanceId,
                 reviewsChangeRequest(delegateTask) ? updatedBy : null)
-            : null;
+            : List.of();
+    Object priorApprovalPayload = oldestPayload(priorApprovals);
     if (existingTask != null) {
       LOG.info(
           "[CreateTask] Updating existing task '{}' stage='{}' workflowAssignees={} requestedAssignees={}",
@@ -597,8 +610,7 @@ public class CreateTask implements TaskListener {
       updatedTask.setUpdatedBy(updatedBy);
       updatedTask.setPayload(
           requestedPayload != null
-              ? ChangePreviewUtils.preserveProposedChanges(
-                  requestedPayload, updatedTask.getPayload())
+              ? ChangePreviewUtils.preservePreviewState(requestedPayload, updatedTask.getPayload())
               : updatedTask.getPayload());
       if (effectiveWorkflowDefinitionId != null) {
         updatedTask.setWorkflowDefinitionId(effectiveWorkflowDefinitionId);
@@ -629,13 +641,19 @@ public class CreateTask implements TaskListener {
       updatedTask.setPayload(
           withGrantExpirationDate(stageStatus, taskType, updatedTask.getPayload()));
       updatedTask.setPayload(mergeManualGrantReason(updatedTask.getPayload(), manualGrantReason));
+      final Object ownPayload = updatedTask.getPayload();
       updatedTask.setPayload(
           approvalPayload(
               taskType,
               entity,
-              updatedTask.getPayload(),
+              ownPayload,
               lifecycleMove,
-              previewChanges(delegateTask, entity, false)));
+              () ->
+                  previewChanges(
+                      delegateTask,
+                      entity,
+                      Collections.singletonList(ownPayload),
+                      ApprovalCycleHistory::latestChange)));
       updatedTask.setPayload(linkChangeRequest(updatedTask.getPayload(), delegateTask));
       if (requestedExternalReference != null) {
         updatedTask.setExternalReference(
@@ -702,7 +720,7 @@ public class CreateTask implements TaskListener {
             .withDescription(
                 taskDescription != null ? taskDescription : buildTaskDescription(entity, taskType))
             .withPayload(
-                ChangePreviewUtils.preserveProposedChanges(
+                ChangePreviewUtils.preservePreviewState(
                     requestedPayload != null
                         ? requestedPayload
                         : (payload != null ? payload : priorApprovalPayload),
@@ -739,7 +757,12 @@ public class CreateTask implements TaskListener {
             entity,
             task.getPayload(),
             lifecycleMove,
-            previewChanges(delegateTask, entity, priorApprovalPayload == null)));
+            () ->
+                previewChanges(
+                    delegateTask,
+                    entity,
+                    payloadsOf(priorApprovals),
+                    ApprovalCycleHistory::lastApprovalOrLatestChange)));
     task.setPayload(linkChangeRequest(task.getPayload(), delegateTask));
     if (requestedExternalReference != null) {
       task.setExternalReference(
@@ -833,26 +856,23 @@ public class CreateTask implements TaskListener {
   }
 
   /**
-   * Find an open prior approval task on the same entity bound to the same workflow definition but
-   * a different workflow instance, and return its payload. Used to carry forward the {@code
-   * proposedChanges} blob across re-edits, since each entity edit spawns a fresh workflow run that
-   * creates a new Task (the prior task is closed asynchronously by {@link
-   * #supersedePriorApprovalTask}). Returns {@code null} when no eligible prior task exists.
+   * The open approvals that earlier runs of the same workflow opened on the entity, oldest first.
+   * The new task continues their approval cycle and {@link #supersedePriorApprovalTask} closes them
+   * once it exists. Empty when there are none or they cannot be read.
    */
-  static Object findPriorOpenApprovalPayload(
+  static List<Task> findPriorOpenApprovals(
       TaskRepository taskRepository,
       EntityInterface<?> entity,
-      TaskCategory taskCategory,
       UUID currentWorkflowDefinitionId,
       UUID currentWorkflowInstanceId,
       String requesterToMatch) {
-    Object priorPayload = null;
-    if (taskCategory == TaskCategory.Approval && entity != null) {
+    List<Task> priors = List.of();
+    if (entity != null) {
       try {
-        priorPayload =
+        priors =
             taskRepository
                 .listNonTerminalTasksByEntityAndCategory(
-                    entity.getFullyQualifiedName(), taskCategory)
+                    entity.getFullyQualifiedName(), TaskCategory.Approval)
                 .stream()
                 .filter(
                     prior ->
@@ -861,18 +881,24 @@ public class CreateTask implements TaskListener {
                             currentWorkflowDefinitionId,
                             currentWorkflowInstanceId,
                             requesterToMatch))
-                .map(Task::getPayload)
-                .filter(java.util.Objects::nonNull)
-                .findFirst()
-                .orElse(null);
+                .sorted(OLDEST_FIRST)
+                .toList();
       } catch (Exception e) {
         LOG.warn(
-            "[CreateTask] Failed to lookup prior approval task payload for entity '{}': {}",
+            "[CreateTask] Failed to lookup prior approval tasks for entity '{}': {}",
             entity.getFullyQualifiedName(),
             e.getMessage());
       }
     }
-    return priorPayload;
+    return priors;
+  }
+
+  private static Object oldestPayload(List<Task> priors) {
+    return priors.stream().map(Task::getPayload).filter(Objects::nonNull).findFirst().orElse(null);
+  }
+
+  private static List<Object> payloadsOf(List<Task> priors) {
+    return priors.stream().map(Task::getPayload).toList();
   }
 
   static boolean isSupersedablePriorApprovalTask(
@@ -1244,7 +1270,7 @@ public class CreateTask implements TaskListener {
       EntityInterface<?> entity,
       Object payload,
       LifecycleMove move,
-      PreviewChanges changes) {
+      Supplier<PreviewChanges> changes) {
     return move == null
         ? applyProposedChangesIfApproval(taskType, entity, payload, changes)
         : withLifecycleMove(payload, move);
@@ -1255,6 +1281,7 @@ public class CreateTask implements TaskListener {
     final Map<String, Object> updated =
         payload == null ? new LinkedHashMap<>() : new LinkedHashMap<>(JsonUtils.getMap(payload));
     updated.remove(ChangePreviewUtils.PROPOSED_CHANGES_KEY);
+    updated.remove(ChangePreviewUtils.PROPOSED_CHANGES_BASE_VERSION_KEY);
     updated.put(LIFECYCLE_MOVE_KEY, move);
     return updated;
   }
@@ -1265,41 +1292,77 @@ public class CreateTask implements TaskListener {
   }
 
   /**
-   * For approval task types (GlossaryApproval, RequestApproval), augment the task payload with a
-   * {@code proposedChanges} map computed from the target entity's change description, merged
-   * against any existing {@code proposedChanges} on the prior payload (set-cancellation). Returns
-   * the payload unchanged for non-approval task types or when the entity carries no change
-   * description.
+   * For approval task types (GlossaryApproval, RequestApproval), the task payload lists the changes
+   * under review in {@code proposedChanges}. The changes are read only for those types; any other
+   * task keeps its payload.
    */
   static Object applyProposedChangesIfApproval(
-      TaskEntityType taskType, EntityInterface<?> entity, Object payload, PreviewChanges changes) {
-    if (taskType != TaskEntityType.GlossaryApproval && taskType != TaskEntityType.RequestApproval) {
-      return payload;
+      TaskEntityType taskType,
+      EntityInterface<?> entity,
+      Object payload,
+      Supplier<PreviewChanges> changes) {
+    Object updated = payload;
+    if (PREVIEWED_APPROVAL_TYPES.contains(taskType)) {
+      updated = changes.get().applyTo(entity, payload);
     }
-    return ChangePreviewUtils.buildProposedChangesPayload(
-        entity, payload, changes.pending(), changes.opening());
+    return updated;
   }
 
   /**
-   * The changes an approval task previews: the pending revision a change-request run reviews, and,
-   * for a task that opens an approval cycle, the change of the version the triggering edit produced.
-   * The workflow's own writes (setting the status to In Review before the task exists) are stored
-   * after that edit, so the entity's latest change is not the edit under review. A task that
-   * supersedes an open approval carries its preview forward and folds in each edit's own hop
-   * instead, which keeps edits cancelled earlier in the cycle from coming back.
+   * The changes an approval task previews: the pending revision a change-request run reviews, or,
+   * for any other run, every change the entity's history holds since the approval cycle began. It
+   * is read again at every task write, so an edit that started no run (a bot's, or one the trigger
+   * filter skipped) still reaches the next task, and a preview stored on a superseded task is never
+   * carried forward.
    */
-  record PreviewChanges(ChangeDescription pending, ChangeDescription opening) {
+  record PreviewChanges(ChangeDescription pending, CyclePreview cycle) {
     static final PreviewChanges NONE = new PreviewChanges(null, null);
+
+    Object applyTo(EntityInterface<?> entity, Object payload) {
+      return cycle != null
+          ? ChangePreviewUtils.withCyclePreview(entity, payload, cycle)
+          : ChangePreviewUtils.buildProposedChangesPayload(entity, payload, pending);
+    }
   }
 
   private static PreviewChanges previewChanges(
-      DelegateTask delegateTask, EntityInterface<?> entity, boolean opensCycle) {
-    final Object triggeringVersion =
-        new WorkflowVariableHandler(delegateTask)
-            .getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE);
-    return new PreviewChanges(
-        pendingChange(delegateTask),
-        opensCycle ? TriggeringChange.of(entity, triggeringVersion) : null);
+      DelegateTask delegateTask,
+      EntityInterface<?> entity,
+      List<Object> carriedPayloads,
+      ToDoubleBiFunction<ApprovalCycleHistory, EntityInterface<?>> unknownBase) {
+    return reviewsChangeRequest(delegateTask)
+        ? new PreviewChanges(pendingChange(delegateTask), null)
+        : new PreviewChanges(
+            null,
+            cyclePreview(triggeringVersion(delegateTask), entity, carriedPayloads, unknownBase));
+  }
+
+  // The history is read fresh, so a cache another node filled before the cycle's latest edit
+  // cannot leave that edit out of the preview.
+  private static CyclePreview cyclePreview(
+      Object triggeringVersion,
+      EntityInterface<?> entity,
+      List<Object> carriedPayloads,
+      ToDoubleBiFunction<ApprovalCycleHistory, EntityInterface<?>> unknownBase) {
+    String entityType = Entity.getEntityTypeFromObject(entity);
+    CyclePreview preview;
+    try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
+      EntityInterface<?> current =
+          Entity.getEntityRepository(entityType).find(entity.getId(), Include.ALL);
+      ApprovalCycleHistory history = ApprovalCycleHistory.forEntityType(entityType);
+      double base =
+          ApprovalCycle.baseVersion(
+              TriggeringChange.baseVersion(current, triggeringVersion),
+              carriedPayloads,
+              () -> unknownBase.applyAsDouble(history, current));
+      preview = new CyclePreview(base, history.changesSince(current, base));
+    }
+    return preview;
+  }
+
+  private static Object triggeringVersion(DelegateTask delegateTask) {
+    return new WorkflowVariableHandler(delegateTask)
+        .getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE);
   }
 
   private static Object linkChangeRequest(Object payload, DelegateTask delegateTask) {

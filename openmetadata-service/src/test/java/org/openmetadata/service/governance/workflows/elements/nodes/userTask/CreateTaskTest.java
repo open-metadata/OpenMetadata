@@ -1238,6 +1238,37 @@ class CreateTaskTest {
             prior, workflowDefinitionId, UUID.randomUUID(), null));
   }
 
+  // The new task continues the oldest open approval's cycle, whatever order the store lists them
+  // in.
+  @Test
+  void testPriorOpenApprovalsAreListedOldestFirst() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task newer = openApproval(workflowDefinitionId, 2_000L);
+    Task older = openApproval(workflowDefinitionId, 1_000L);
+    TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
+    when(taskRepository.listNonTerminalTasksByEntityAndCategory("glossary", TaskCategory.Approval))
+        .thenReturn(List.of(newer, older));
+
+    List<Task> priors =
+        CreateTask.findPriorOpenApprovals(
+            taskRepository,
+            new Glossary().withFullyQualifiedName("glossary"),
+            workflowDefinitionId,
+            UUID.randomUUID(),
+            null);
+
+    assertEquals(List.of(older.getId(), newer.getId()), priors.stream().map(Task::getId).toList());
+  }
+
+  private static Task openApproval(UUID workflowDefinitionId, long createdAt) {
+    return new Task()
+        .withId(UUID.randomUUID())
+        .withStatus(TaskEntityStatus.Open)
+        .withWorkflowDefinitionId(workflowDefinitionId)
+        .withWorkflowInstanceId(UUID.randomUUID())
+        .withCreatedAt(createdAt);
+  }
+
   // ---- mergeManualGrantReason ----
 
   @Test
