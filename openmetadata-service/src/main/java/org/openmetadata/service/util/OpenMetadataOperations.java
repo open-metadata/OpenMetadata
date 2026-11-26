@@ -149,6 +149,7 @@ import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -1870,8 +1871,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             vecService,
             run.processedCounts(),
             run.failedCounts());
-    for (String entityType :
-        org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
+    for (String entityType : EmbeddedEntityTypes.ALL) {
       if (isReembedableEntityType(entityType)) {
         // Ontology term embeddings are rebuilt only via the release-aware reindex path, which
         // publishes terms through the gated writer that keeps drafts out of search. See
@@ -1938,8 +1938,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private static void logReembedSummary(ReembedRun run) {
-    for (String entityType :
-        org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
+    for (String entityType : EmbeddedEntityTypes.ALL) {
       LOG.info(
           "Finished re-embedding {} entities for type {} (failed reads: {})",
           run.processedCounts().getOrDefault(entityType, new AtomicInteger(0)).get(),
@@ -2083,8 +2082,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private int calculateReembedTotalBatches(int batchSize, Map<String, Integer> entityTotals) {
     int totalBatches = 0;
-    for (String entityType :
-        org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
+    for (String entityType : EmbeddedEntityTypes.ALL) {
       if (!isReembedableEntityType(entityType)) {
         // Ontology term embeddings are rebuilt only via the release-aware reindex path, which
         // publishes terms through the gated writer that keeps drafts out of search (see ADR

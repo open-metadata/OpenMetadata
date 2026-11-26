@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { toString } from 'lodash';
 import { forwardRef } from 'react';
@@ -34,10 +34,22 @@ export const VersionButton = forwardRef<
   ) => {
     const { t } = useTranslation();
 
-    const { updatedBy, version: versionNumber, updatedAt } = version;
+    const {
+      updatedBy,
+      impersonatedBy,
+      version: versionNumber,
+      updatedAt,
+    } = version;
+    // Older CSV imports stored the importer's name in both writer fields.
+    const impersonatingBot =
+      impersonatedBy === updatedBy ? undefined : impersonatedBy;
     const [, , user] = useUserProfile({
       permission: true,
       name: updatedBy,
+    });
+    const [, , impersonator] = useUserProfile({
+      permission: Boolean(impersonatingBot),
+      name: impersonatingBot ?? '',
     });
 
     const versionText = `v${parseFloat(toString(versionNumber)).toFixed(1)}`;
@@ -110,6 +122,24 @@ export const VersionButton = forwardRef<
               {formatDateTime(updatedAt)}
             </span>
           </div>
+          {impersonatingBot ? (
+            <Box
+              align="center"
+              data-testid="version-impersonated-by"
+              gap={1}
+              wrap="wrap">
+              <Typography size="text-xs">
+                {t('label.impersonated-by-with-colon')}
+              </Typography>
+              <UserPopOverCard profileWidth={16} userName={impersonatingBot}>
+                <Link
+                  className="tw:text-xs"
+                  to={getSettingsLink(getUserPath(impersonatingBot))}>
+                  {getEntityName(impersonator) || impersonatingBot}
+                </Link>
+              </UserPopOverCard>
+            </Box>
+          ) : null}
         </div>
       </div>
     );

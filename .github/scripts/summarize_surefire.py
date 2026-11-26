@@ -135,6 +135,15 @@ def _badge(outcome: str) -> str:
     }.get(outcome, outcome.upper() if outcome else "UNKNOWN")
 
 
+def _stage_result(outcome: str) -> str:
+    return {
+        "success": "passed",
+        "failure": "failed",
+        "skipped": "skipped",
+        "cancelled": "cancelled",
+    }.get(outcome, "not completed")
+
+
 def _escape_md(text: str) -> str:
     return text.replace("|", "\\|").replace("\n", " ").replace("\r", "")
 
@@ -152,7 +161,13 @@ def render_markdown(
     summary: SuiteSummary,
     max_failures: int = 30,
 ) -> str:
-    lines: list[str] = [f"## {title}", ""]
+    lines: list[str] = [
+        f"## {title}",
+        "",
+        f"**Java checkstyle {_stage_result(checkstyle_outcome)}; "
+        f"unit tests {_stage_result(unit_tests_outcome)}.**",
+        "",
+    ]
     lines.append("| Stage | Status | Details |")
     lines.append("|---|---|---|")
 
