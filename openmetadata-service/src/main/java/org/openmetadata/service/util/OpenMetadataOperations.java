@@ -56,6 +56,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -190,6 +191,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private static final String CATALOG_VERSION_RESOURCE = "/catalog/VERSION";
   private static final String UNKNOWN_VERSION = "unknown";
   private static final String DEFAULT_VERSION = "1.8.0-SNAPSHOT";
+  // Exit code of `rebuild-domain-lineage --status` while a rebuild or a domain reindex is due.
+  private static final int DOMAIN_LINEAGE_REPAIR_DUE = 2;
+  private static final long NOT_A_DOMAIN_LINEAGE_REINDEX = -1;
   private static final Duration DEPLOY_CONNECT_TIMEOUT = Duration.ofSeconds(30);
   private static final Duration MIN_DEPLOY_CHUNK_TIMEOUT = Duration.ofMinutes(2);
   private static final String STATUS_FAILED = "FAILED";
@@ -1630,22 +1634,53 @@ public class OpenMetadataOperations implements Callable<Integer> {
               + " the server while it runs; it scans all of entity_relationship, so its run time"
               + " grows with that table. Then run `reindex --force --entities=domain,dataProduct`:"
               + " without --force, a reindex skips mappings it finds unchanged and the domain view"
-              + " keeps the old counts.")
-  public Integer rebuildDomainLineage() {
+              + " keeps the old counts. With --status it changes nothing and reports whether a"
+              + " rebuild or a reindex is due: exit code 0 when neither is, 2 when one is.")
+  public Integer rebuildDomainLineage(
+      @Option(
+              names = {"--status"},
+              defaultValue = "false",
+              description = "Only report whether a rebuild or a domain reindex is due.")
+          boolean statusOnly) {
     try {
       parseConfig();
-      Map<DomainLineageRebuild.Change, Long> changes = DomainLineageRebuild.rebuild(collectionDAO);
-      printToAsciiTable(
-          List.of("Change", "Domain pairs"),
-          changes.entrySet().stream()
-              .map(change -> List.of(change.getKey().name(), String.valueOf(change.getValue())))
-              .toList(),
-          "No domain lineage edge exists or is due.");
-      return 0;
+      return statusOnly ? reportDomainLineageStatus() : rebuildAndRecordDomainLineage();
     } catch (Exception e) {
       LOG.error("Failed to rebuild domain lineage due to ", e);
       return 1;
     }
+  }
+
+  // The rebuild records the drift version it started from, so a domain write that leaves rollups
+  // stale while it scans still reads as due afterwards.
+  private int rebuildAndRecordDomainLineage() {
+    long driftAtStart = DomainLineageRecovery.read().driftVersion();
+    Map<DomainLineageRebuild.Change, Long> changes = DomainLineageRebuild.rebuild(collectionDAO);
+    DomainLineageRecovery.markRebuilt(driftAtStart);
+    printToAsciiTable(
+        List.of("Change", "Domain pairs"),
+        changes.entrySet().stream()
+            .map(change -> List.of(change.getKey().name(), String.valueOf(change.getValue())))
+            .toList(),
+        "No domain lineage edge exists or is due.");
+    LOG.info(DomainLineageRecovery.describe(DomainLineageRecovery.read()));
+    return 0;
+  }
+
+  private int reportDomainLineageStatus() {
+    DomainLineageRecovery.State state = DomainLineageRecovery.read();
+    printToAsciiTable(
+        List.of("Status", "Drift", "Rebuilt", "Reindexed", "Last drift reason"),
+        List.of(
+            List.of(
+                state.status().name(),
+                String.valueOf(state.driftVersion()),
+                String.valueOf(state.rebuiltVersion()),
+                String.valueOf(state.reindexedVersion()),
+                String.valueOf(state.lastReason()))),
+        "No domain lineage state is stored.");
+    LOG.info(DomainLineageRecovery.describe(state));
+    return state.status() == DomainLineageRecovery.Status.HEALTHY ? 0 : DOMAIN_LINEAGE_REPAIR_DUE;
   }
 
   @Command(name = "reindex", description = "Re Indexes data into search engine from command line.")
@@ -1764,26 +1799,57 @@ public class OpenMetadataOperations implements Callable<Integer> {
         cleanEntityStr = entityStr.substring(1, entityStr.length() - 1);
       }
       Set<String> entities = new HashSet<>(Arrays.asList(cleanEntityStr.split(",")));
-      return executeSearchReindexApp(
-          appName,
-          entities,
-          batchSize,
-          payloadSize,
-          producerThreads,
-          consumerThreads,
-          queueSize,
-          backOff,
-          maxBackOff,
-          maxRequests,
-          retries,
-          autoTune,
-          force,
-          slackBotToken,
-          slackChannel);
+      long rebuiltAtStart = domainLineageRebuiltVersion(force, entities);
+      int result =
+          executeSearchReindexApp(
+              appName,
+              entities,
+              batchSize,
+              payloadSize,
+              producerThreads,
+              consumerThreads,
+              queueSize,
+              backOff,
+              maxBackOff,
+              maxRequests,
+              retries,
+              autoTune,
+              force,
+              slackBotToken,
+              slackChannel);
+      if (result == 0 && rebuiltAtStart != NOT_A_DOMAIN_LINEAGE_REINDEX) {
+        DomainLineageRecovery.markReindexed(rebuiltAtStart);
+      }
+      return result;
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
       return 1;
     }
+  }
+
+  /**
+   * The rebuilt version a forced reindex of the domain documents starts from, which it records once
+   * it succeeds, so it clears only the rebuilds that finished before it began.
+   */
+  private long domainLineageRebuiltVersion(boolean force, Set<String> entities) {
+    long rebuilt = NOT_A_DOMAIN_LINEAGE_REINDEX;
+    if (force && DomainLineageRecovery.reindexCoversDomainLineage(entities)) {
+      rebuilt = readDomainLineageRebuiltVersion();
+    }
+    return rebuilt;
+  }
+
+  // The reindex does not depend on the rebuild state, so a state it cannot read, as before the
+  // 2.1.2
+  // migration created it, only leaves the reindex unrecorded.
+  private long readDomainLineageRebuiltVersion() {
+    long rebuilt = NOT_A_DOMAIN_LINEAGE_REINDEX;
+    try {
+      rebuilt = DomainLineageRecovery.read().rebuiltVersion();
+    } catch (JdbiException e) {
+      LOG.warn("Could not read the domain lineage rebuild state; this reindex is not recorded", e);
+    }
+    return rebuilt;
   }
 
   @Command(

@@ -4708,6 +4708,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           clearRelationshipsForUpdateMany(updatedEntities);
           storeRelationshipsInternal(updatedEntities);
           LineageDomainRollups.move(inheritors.followedBy(domainMoves));
+          inheritors.recordDriftWhenOverCap();
           // Drop every cached variant for each updated entity so the next GET rebuilds from the
           // freshly-stored row + relationships.
           for (T entity : updatedEntities) {
@@ -12651,6 +12652,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                         original.getEntityReference(),
                         domainsInEffect(original, ownBefore),
                         domainsInEffect(updated, ownAfter)))));
+        inheritors.recordDriftWhenOverCap();
         LineageDomainCoordinator.reach(
             LineageDomainCoordinator.Stage.DOMAIN_ROLLUPS_MOVED, original.getId());
       }

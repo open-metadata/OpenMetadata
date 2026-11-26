@@ -6,10 +6,12 @@
   domain-bearing type, discovery counts distinct ids under a cap, a rollup write invalidates the
   lineage caches, and a manual row keeps its source when its last asset edge leaves); v4 2026-11-26
   (the repair and the Postgres prefix indexes move to the unreleased 2.1.2); v5 2026-11-26 (rollup
-  writers serialize on guard rows)
+  writers serialize on guard rows); v6 2026-11-26 (a write over the cap records that a rebuild is
+  due)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `DomainLineageRefcountIT`, `DomainLineageInheritanceIT`, `DomainLineageRebuildIT`,
-  `LineageDomainRollupsTest`, `LineageDomainInheritorsTest`, `MigrationArchitectureTest`
+  `DomainLineageRecoveryIT`, `LineageDomainRollupsTest`, `LineageDomainInheritorsTest`,
+  `DomainLineageRecoveryTest`, `MigrationArchitectureTest`
 - **Related:** #33961
 
 ## Context
@@ -119,11 +121,10 @@ rollup divergence, needs the same change in `LineageRepository`.
   tables (not measured), so the cap stays at 5,000. The cap counts distinct descendants across
   every container and type of the write: each prefix query asks for the cap plus one rows, so an
   overlapping prefix cannot crowd out a sibling, and the scan stops once the union exceeds the cap.
-  Above the cap nothing moves: the request succeeds and a WARN (`Domain lineage was not moved for
-  the descendants of …`) names the rebuild command. Those descendants' rollups stay
+  Above the cap the descendants do not move: the request succeeds, the container's own edges move,
+  and the write records that a rebuild is due (amendment v6). Those descendants' rollups stay
   under their old domains, and a later delete of one of their edges is lost on the missing new
-  pair, until the rebuild runs. Which durable fallback replaces the warning (queue the rebuild,
-  re-project after commit in chunks, or persist a "rebuild due" marker) is a maintainer decision.
+  pair, until the rebuild runs.
 - **The rebuild command**, `openmetadata-ops.sh rebuild-domain-lineage`, runs `DomainLineageRebuild`.
   It overwrites counts tallied from a full scan of `entity_relationship`, so it needs lineage and
   domain writes paused (or the server stopped), its run time grows with that table, and a
@@ -164,3 +165,24 @@ A domain write that moves rollups and a lineage edge write no longer race: they 
 `domain_lineage_guard` in one order, so a count is never written from a read the other writer has
 since changed, including when the pair's rollup row does not exist yet. The rule, its isolation
 level and its cost are ADR:2026-11-26-domain-lineage-rollup-writers-lock-guard-rows-in-one-order.
+
+## Amendment — 2026-11-26: a write over the cap records that a rebuild is due
+
+- **The marker commits with the write.** A domain write whose descendants exceed the cap adds one
+  to `driftVersion` in `domain_lineage_rebuild_state` (one row, `id = 'active'`, 2.1.2), in the
+  write's transaction, after it moved the rollups it could: a rolled-back write records nothing,
+  and a consolidation replay, which moves no rollups, records nothing either. The WARN naming the
+  rebuild is logged after commit. A write with 5,001 descendants that all hold their own domains
+  also records it; the rebuild is a fixed point there.
+- **Two recovery steps clear it, each from the version it started at.** `rebuild-domain-lineage`
+  sets `rebuiltVersion` to the `driftVersion` it read before it scanned, and a
+  `reindex --force` covering `domain` and `dataProduct` (or `all`) that succeeds sets
+  `reindexedVersion` to the `rebuiltVersion` it read before it ran. So a write over the cap that
+  lands during either step stays due, and a reindex run before the rebuild clears nothing. Due is
+  `REBUILD_REQUIRED` while `driftVersion > rebuiltVersion`, then `REINDEX_REQUIRED` while
+  `driftVersion > reindexedVersion`, else `HEALTHY` (`DomainLineageRecovery.State`). Only the CLI
+  reindex records itself; a reindex started from the UI leaves `REINDEX_REQUIRED` until the CLI one
+  runs.
+- **Operators see it** as the `Domain Lineage` entry of `GET /v1/system/status` (failing, with the
+  commands, while anything is due), through `rebuild-domain-lineage --status` (exit code 0, or 2
+  while due), and in the WARN. The liveness checks do not read it.

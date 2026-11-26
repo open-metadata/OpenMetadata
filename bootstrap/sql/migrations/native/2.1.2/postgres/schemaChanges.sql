@@ -31,3 +31,22 @@ INSERT INTO domain_lineage_guard (id) VALUES
     ('pair-54'), ('pair-55'), ('pair-56'), ('pair-57'), ('pair-58'), ('pair-59'), ('pair-60'),
     ('pair-61'), ('pair-62'), ('pair-63')
 ON CONFLICT (id) DO NOTHING;
+
+-- What a domain write could not move in its own transaction (more lineage-bearing descendants than
+-- the cap), and how far the rebuild and the domain reindex have caught up
+-- (ADR:2026-11-20-a-domain-lineage-edge-counts-the-edges-its-domains-assets-hold-in-effect).
+-- driftVersion counts such writes, in the write's transaction; the rebuild advances rebuiltVersion
+-- to the driftVersion it started from, and a forced domain and data product reindex advances
+-- reindexedVersion to the rebuiltVersion it started from.
+CREATE TABLE IF NOT EXISTS domain_lineage_rebuild_state (
+    id VARCHAR(16) NOT NULL PRIMARY KEY,
+    driftVersion BIGINT NOT NULL DEFAULT 0,
+    rebuiltVersion BIGINT NOT NULL DEFAULT 0,
+    reindexedVersion BIGINT NOT NULL DEFAULT 0,
+    firstDriftedAt BIGINT NOT NULL DEFAULT 0,
+    lastDriftedAt BIGINT NOT NULL DEFAULT 0,
+    lastRebuiltAt BIGINT NOT NULL DEFAULT 0,
+    lastReindexedAt BIGINT NOT NULL DEFAULT 0,
+    lastReason TEXT
+);
+INSERT INTO domain_lineage_rebuild_state (id) VALUES ('active') ON CONFLICT (id) DO NOTHING;

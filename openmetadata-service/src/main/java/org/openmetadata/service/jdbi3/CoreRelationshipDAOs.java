@@ -59,6 +59,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.ontology.RelationshipTypeIds;
+import org.openmetadata.service.util.DomainLineageRecovery;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
@@ -82,6 +83,9 @@ public interface CoreRelationshipDAOs {
 
   @CreateSqlObject
   DomainLineageGuardDAO domainLineageGuardDAO();
+
+  @CreateSqlObject
+  DomainLineageRebuildStateDAO domainLineageRebuildStateDAO();
 
   interface EntityExtensionDAO {
     @ConnectionAwareSqlUpdate(
@@ -2542,5 +2546,66 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery("SELECT id FROM domain_lineage_guard WHERE id = :id FOR SHARE")
     String lockShared(@Bind("id") String id);
+  }
+
+  /** The single row recording which domain lineage repairs are due. */
+  interface DomainLineageRebuildStateDAO {
+    @SqlQuery(
+        "SELECT driftVersion, rebuiltVersion, reindexedVersion, firstDriftedAt, lastDriftedAt, "
+            + "lastRebuiltAt, lastReindexedAt, lastReason FROM domain_lineage_rebuild_state "
+            + "WHERE id = 'active'")
+    @RegisterRowMapper(DomainLineageRebuildStateMapper.class)
+    DomainLineageRecovery.State read();
+
+    /** Counts one domain write whose descendants were left for the rebuild. */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO domain_lineage_rebuild_state "
+                + "(id, driftVersion, firstDriftedAt, lastDriftedAt, lastReason) "
+                + "VALUES ('active', 1, :now, :now, :reason) ON DUPLICATE KEY UPDATE "
+                + "firstDriftedAt = IF(driftVersion <= rebuiltVersion "
+                + "AND driftVersion <= reindexedVersion, VALUES(firstDriftedAt), firstDriftedAt), "
+                + "driftVersion = driftVersion + 1, lastDriftedAt = VALUES(lastDriftedAt), "
+                + "lastReason = VALUES(lastReason)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO domain_lineage_rebuild_state AS s "
+                + "(id, driftVersion, firstDriftedAt, lastDriftedAt, lastReason) "
+                + "VALUES ('active', 1, :now, :now, :reason) ON CONFLICT (id) DO UPDATE SET "
+                + "firstDriftedAt = CASE WHEN s.driftVersion <= s.rebuiltVersion "
+                + "AND s.driftVersion <= s.reindexedVersion THEN EXCLUDED.firstDriftedAt "
+                + "ELSE s.firstDriftedAt END, driftVersion = s.driftVersion + 1, "
+                + "lastDriftedAt = EXCLUDED.lastDriftedAt, lastReason = EXCLUDED.lastReason",
+        connectionType = POSTGRES)
+    void recordDrift(@Bind("now") long now, @Bind("reason") String reason);
+
+    @SqlUpdate(
+        "UPDATE domain_lineage_rebuild_state SET "
+            + "rebuiltVersion = GREATEST(rebuiltVersion, :version), lastRebuiltAt = :now "
+            + "WHERE id = 'active'")
+    int markRebuilt(@Bind("version") long version, @Bind("now") long now);
+
+    @SqlUpdate(
+        "UPDATE domain_lineage_rebuild_state SET "
+            + "reindexedVersion = GREATEST(reindexedVersion, :version), lastReindexedAt = :now "
+            + "WHERE id = 'active'")
+    int markReindexed(@Bind("version") long version, @Bind("now") long now);
+
+    class DomainLineageRebuildStateMapper implements RowMapper<DomainLineageRecovery.State> {
+      @Override
+      public DomainLineageRecovery.State map(final ResultSet rs, final StatementContext ctx)
+          throws SQLException {
+        return new DomainLineageRecovery.State(
+            rs.getLong("driftVersion"),
+            rs.getLong("rebuiltVersion"),
+            rs.getLong("reindexedVersion"),
+            rs.getLong("firstDriftedAt"),
+            rs.getLong("lastDriftedAt"),
+            rs.getLong("lastRebuiltAt"),
+            rs.getLong("lastReindexedAt"),
+            rs.getString("lastReason"));
+      }
+    }
   }
 }

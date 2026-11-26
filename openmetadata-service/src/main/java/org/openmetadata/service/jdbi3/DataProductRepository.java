@@ -1340,6 +1340,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         }
       }
       LineageDomainRollups.move(inheritors.followedBy(inheritingWhenBare(domainMoves)));
+      inheritors.recordDriftWhenOverCap();
 
       // Drop every cache layer for each migrated asset - the bundle cache stores domains as a
       // field and would otherwise serve stale data. invalidateCacheForReferencedEntity pulls the

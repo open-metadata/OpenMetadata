@@ -110,7 +110,7 @@ class LineageDomainInheritorsTest {
     assertEquals(Set.copyOf(tables.values()), idsOf(found));
     assertEquals(6, found.size(), "each table once");
     assertTrue(
-        LineageDomainInheritors.movesInTheWrite(containers, found, 6),
+        LineageDomainInheritors.movesInTheWrite(found, 6),
         "six distinct endpoints fit a cap of six");
   }
 
@@ -124,7 +124,7 @@ class LineageDomainInheritorsTest {
         LineageDomainInheritors.descendantsWithLineage(
             containers, 5, type -> Set.of(Entity.TABLE), tablesUnder(tables));
 
-    assertFalse(LineageDomainInheritors.movesInTheWrite(containers, found, 5));
+    assertFalse(LineageDomainInheritors.movesInTheWrite(found, 5));
   }
 
   private static Map<String, UUID> tables() {
@@ -154,12 +154,53 @@ class LineageDomainInheritorsTest {
 
   @Test
   void aWriteAboveTheCapMovesNoDescendantInItsTransaction() {
-    List<EntityReference> containers = List.of(reference(Entity.DATABASE_SERVICE));
     List<EntityReference> two = List.of(reference(Entity.TABLE), reference(Entity.TABLE));
 
-    assertTrue(LineageDomainInheritors.movesInTheWrite(containers, two, 2));
-    assertFalse(LineageDomainInheritors.movesInTheWrite(containers, two, 1));
-    assertFalse(LineageDomainInheritors.movesInTheWrite(containers, List.of(), 2));
+    assertTrue(LineageDomainInheritors.movesInTheWrite(two, 2));
+    assertFalse(LineageDomainInheritors.movesInTheWrite(two, 1));
+    assertFalse(LineageDomainInheritors.movesInTheWrite(List.of(), 2));
+  }
+
+  /** Over the cap the write still moves its own edges, and is the one that records the drift. */
+  @Test
+  void aWriteOneAboveTheCapLeavesItsDescendantsAndKeepsTheCallersMoves() {
+    List<EntityReference> containers =
+        List.of(named(Entity.DATABASE, DATABASE_FQN), named(Entity.DATABASE_SCHEMA, SCHEMA_FQN));
+    DomainMove containerMove = new DomainMove(containers.getFirst(), List.of(X), List.of(D1));
+
+    LineageDomainInheritors inheritors =
+        LineageDomainInheritors.of(
+            containers, 5, type -> Set.of(Entity.TABLE), tablesUnder(tables()));
+
+    assertTrue(inheritors.isOverCap());
+    assertEquals(List.of(), inheritors.moves());
+    assertEquals(List.of(containerMove), inheritors.followedBy(List.of(containerMove)));
+  }
+
+  @Test
+  void aWriteAtTheCapMovesEveryDescendantAndIsNotOverIt() {
+    List<EntityReference> containers =
+        List.of(named(Entity.DATABASE, DATABASE_FQN), named(Entity.DATABASE_SCHEMA, SCHEMA_FQN));
+
+    LineageDomainInheritors inheritors =
+        LineageDomainInheritors.of(
+            containers, 6, type -> Set.of(Entity.TABLE), tablesUnder(tables()));
+
+    assertFalse(inheritors.isOverCap());
+    assertEquals(6, inheritors.moves().size());
+  }
+
+  @Test
+  void aWriteWithNoDescendantsWithLineageIsNeitherMovedNorOverTheCap() {
+    LineageDomainInheritors inheritors =
+        LineageDomainInheritors.of(
+            List.of(named(Entity.DATABASE, DATABASE_FQN)),
+            5,
+            type -> Set.of(Entity.TABLE),
+            (type, fqn, limit) -> List.of());
+
+    assertFalse(inheritors.isOverCap());
+    assertEquals(List.of(), inheritors.moves());
   }
 
   /**

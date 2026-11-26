@@ -14,9 +14,11 @@
 package org.openmetadata.service.util;
 
 import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -47,12 +49,14 @@ public final class LineageDomainInheritors {
 
   /**
    * A write re-projects at most this many descendants in its own transaction. Above it the rollups
-   * are left for the rebuild command, which the warning names.
+   * are left for the rebuild, and the write records in its transaction that one is due.
    */
   public static final int MAX_REPROJECTED = 5_000;
 
   public static final LineageDomainInheritors NONE =
-      new LineageDomainInheritors(List.of(), Map.of());
+      new LineageDomainInheritors(List.of(), Map.of(), List.of(), MAX_REPROJECTED);
+
+  private static volatile int reprojectionCap = MAX_REPROJECTED;
 
   private static final int CONTAINERS_NAMED_IN_WARNING = 5;
 
@@ -63,11 +67,19 @@ public final class LineageDomainInheritors {
 
   private final List<EntityReference> inheritors;
   private final Map<UUID, List<EntityReference>> before;
+  // The containers of a write whose descendants exceeded the cap; empty when it moves them.
+  private final List<EntityReference> overCapContainers;
+  private final int cap;
 
   private LineageDomainInheritors(
-      final List<EntityReference> inheritors, final Map<UUID, List<EntityReference>> before) {
+      final List<EntityReference> inheritors,
+      final Map<UUID, List<EntityReference>> before,
+      final List<EntityReference> overCapContainers,
+      final int cap) {
     this.inheritors = inheritors;
     this.before = before;
+    this.overCapContainers = overCapContainers;
+    this.cap = cap;
   }
 
   /**
@@ -80,9 +92,19 @@ public final class LineageDomainInheritors {
     }
     return of(
         containers,
-        MAX_REPROJECTED,
+        reprojectionCap,
         LineageDomainInheritors::inheritingTypes,
         LineageDomainInheritors::lineageEndIds);
+  }
+
+  /**
+   * Lowers the cap until the returned handle is closed, so an integration test can go over it with a
+   * few tables instead of thousands.
+   */
+  @VisibleForTesting
+  public static AutoCloseable capReprojectionForTesting(final int cap) {
+    reprojectionCap = cap;
+    return () -> reprojectionCap = MAX_REPROJECTED;
   }
 
   static LineageDomainInheritors of(
@@ -92,9 +114,15 @@ public final class LineageDomainInheritors {
       final DescendantIds descendantIds) {
     final List<EntityReference> found =
         descendantsWithLineage(containers, cap, inheritingTypesOf, descendantIds);
-    return movesInTheWrite(containers, found, cap)
-        ? new LineageDomainInheritors(found, LineageDomainRollups.domainsHeldBy(found))
-        : NONE;
+    LineageDomainInheritors result = NONE;
+    if (movesInTheWrite(found, cap)) {
+      result =
+          new LineageDomainInheritors(
+              found, LineageDomainRollups.domainsHeldBy(found), List.of(), cap);
+    } else if (found.size() > cap) {
+      result = new LineageDomainInheritors(List.of(), Map.of(), List.copyOf(containers), cap);
+    }
+    return result;
   }
 
   /** The lineage-end ids of one type under an FQN, at most {@code limit} of them. */
@@ -111,17 +139,31 @@ public final class LineageDomainInheritors {
 
   /**
    * Whether the write moves the descendants it found in its own transaction. Above the cap it moves
-   * none of them and warns: their rollups stay under the old domains until the rebuild runs.
+   * none of them: their rollups stay under the old domains until the rebuild runs.
    */
-  static boolean movesInTheWrite(
-      final Collection<EntityReference> containers,
-      final List<EntityReference> found,
-      final int cap) {
-    final boolean overCap = found.size() > cap;
-    if (overCap) {
-      warnNotReprojected(containers, cap);
+  static boolean movesInTheWrite(final List<EntityReference> found, final int cap) {
+    return found.size() <= cap && !found.isEmpty();
+  }
+
+  /** Whether this write found more descendants with lineage than it may move. */
+  public boolean isOverCap() {
+    return !overCapContainers.isEmpty();
+  }
+
+  /**
+   * Records, in the write's transaction, that a rebuild is due when the write left its descendants'
+   * rollups under their old domains. A rolled-back write records nothing, and the warning is logged
+   * only once the write commits.
+   */
+  public void recordDriftWhenOverCap() {
+    if (isOverCap()) {
+      final String containers = describe(overCapContainers);
+      DomainLineageRecovery.recordDrift(
+          String.format(
+              "The domains of %s changed while more than %d of their descendants had lineage.",
+              containers, cap));
+      PostCommitActionQueue.runOrDefer(() -> warnNotReprojected(containers, cap));
     }
-    return !overCap && !found.isEmpty();
   }
 
   /** Each descendant's move from the domains read before the write to the ones it holds now. */
@@ -262,18 +304,25 @@ public final class LineageDomainInheritors {
             .toList();
   }
 
-  private static void warnNotReprojected(
-      final Collection<EntityReference> containers, final int cap) {
+  private static void warnNotReprojected(final String containers, final int cap) {
     LOG.warn(
         "Domain lineage was not moved for the descendants of {}: more than {} of them have"
-            + " lineage, so their domain lineage edges stay under their old domains. Run"
-            + " `./bootstrap/openmetadata-ops.sh rebuild-domain-lineage` with lineage and domain"
-            + " writes paused (or the server stopped), then `./bootstrap/openmetadata-ops.sh"
-            + " reindex --force --entities=domain,dataProduct`.",
+            + " lineage, so their domain lineage edges stay under their old domains until the"
+            + " rebuild runs. The system status reports it as due. Run `{}` with lineage and domain"
+            + " writes paused (or the server stopped), then `{}`.",
+        containers,
+        cap,
+        DomainLineageRecovery.REBUILD_COMMAND,
+        DomainLineageRecovery.REINDEX_COMMAND);
+  }
+
+  private static String describe(final List<EntityReference> containers) {
+    final String named =
         containers.stream()
             .limit(CONTAINERS_NAMED_IN_WARNING)
             .map(container -> container.getType() + " " + container.getId())
-            .toList(),
-        cap);
+            .collect(joining(", "));
+    final int unnamed = containers.size() - CONTAINERS_NAMED_IN_WARNING;
+    return unnamed > 0 ? named + " and " + unnamed + " more" : named;
   }
 }
