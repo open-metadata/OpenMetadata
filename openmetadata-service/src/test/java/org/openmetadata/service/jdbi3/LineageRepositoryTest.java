@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -65,6 +66,7 @@ class LineageRepositoryTest {
 
   private static MockedStatic<Entity> mockedEntity;
   private static SearchRepository searchRepository;
+  private static EntityRepository<?> storedTables;
 
   @BeforeAll
   static void initMocks() {
@@ -79,6 +81,7 @@ class LineageRepositoryTest {
     mockedEntity = mockStatic(Entity.class);
     mockedEntity.when(Entity::getSearchRepository).thenReturn(searchRepository);
     mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+    storedTables = mock(EntityRepository.class);
   }
 
   @AfterAll
@@ -290,9 +293,18 @@ class LineageRepositoryTest {
                         .withName("amount")
                         .withDataType(ColumnDataType.BIGINT)
                         .withFullyQualifiedName(table.getFullyQualifiedName() + ".amount")));
+    stubStoredTable(salesTable);
+  }
+
+  /**
+   * Column lineage reads an end's child names from the stored table, whose JSON carries the
+   * columns, so the validation needs neither a field read nor a tag lookup.
+   */
+  private static void stubStoredTable(final Table table) {
+    doReturn(table).when(storedTables).find(table.getId(), Include.NON_DELETED);
     mockedEntity
-        .when(() -> Entity.getEntity(Entity.TABLE, table.getId(), "columns", Include.NON_DELETED))
-        .thenReturn(salesTable);
+        .when(() -> Entity.getEntityRepository(Entity.TABLE))
+        .thenAnswer(invocation -> storedTables);
   }
 
   private static LineageDetails columnLineageDetails(
@@ -1861,9 +1873,9 @@ class LineageRepositoryTest {
   }
 
   /**
-   * Stubs {@link Entity#getEntity} for the given table with a column-bearing {@link Table} entity
-   * serving both getChildrenNames (fields=columns + Include.NON_DELETED) and buildExtendedLineage
-   * (fields="" + Include.ALL), so addLineage can complete without touching real repositories.
+   * Stubs a column-bearing {@link Table} as both the stored table getChildrenNames reads and the
+   * entity buildExtendedLineage loads (fields="" + Include.ALL), so addLineage can complete
+   * without touching real repositories.
    */
   private static void mockTableForLineage(EntityReference tableRef, String columnName) {
     String fqn = tableRef.getFullyQualifiedName();
@@ -1881,5 +1893,6 @@ class LineageRepositoryTest {
     mockedEntity
         .when(() -> Entity.getEntity(eq(Entity.TABLE), eq(tableRef.getId()), any(), any()))
         .thenReturn(table);
+    stubStoredTable(table);
   }
 }

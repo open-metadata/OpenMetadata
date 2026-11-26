@@ -10,6 +10,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreatePipeline;
+import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -32,6 +34,7 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -40,6 +43,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
@@ -109,6 +113,48 @@ public class LineageEdgePipelineAuthorizationIT {
     assertThrows(
         ForbiddenException.class,
         () -> putEdge(caller, edge, new LineageDetails().withPipeline(ref(hidden))));
+    assertEdgeAbsent(edge);
+  }
+
+  @Test
+  void putById_linkingPipelineCallerCannotViewIsForbidden(TestNamespace ns) {
+    EdgeTables edge = createEdgeTables(ns);
+    Pipeline hidden = createPipeline(ns, "hidden");
+    OpenMetadataClient caller =
+        clientForPrincipalWithRules(
+            ns, "nopipeid", List.of(allowEditLineageOnTables(ns), denyViewingPipelines(ns)));
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(edge.from().getEntityReference())
+                    .withToEntity(edge.to().getEntityReference())
+                    .withLineageDetails(new LineageDetails().withPipeline(ref(hidden))));
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> caller.getHttpClient().executeForString(HttpMethod.PUT, LINEAGE_PATH, addLineage));
+    assertEdgeAbsent(edge);
+  }
+
+  /**
+   * The pipeline is resolved before it is authorized, from the row the write replaces, so a pipeline
+   * that does not exist is reported as missing even to a caller who could not view it.
+   */
+  @Test
+  void linkingMissingPipelineIsNotFound(TestNamespace ns) {
+    EdgeTables edge = createEdgeTables(ns);
+    OpenMetadataClient caller =
+        clientForPrincipalWithRules(
+            ns, "missingpipe", List.of(allowEditLineageOnTables(ns), denyViewingPipelines(ns)));
+    EntityReference missing =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.PIPELINE);
+
+    OpenMetadataException notFound =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> putEdge(caller, edge, new LineageDetails().withPipeline(missing)));
+    assertEquals(404, notFound.getStatusCode(), notFound.getMessage());
     assertEdgeAbsent(edge);
   }
 

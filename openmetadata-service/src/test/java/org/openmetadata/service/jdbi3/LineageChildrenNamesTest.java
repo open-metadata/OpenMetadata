@@ -74,6 +74,19 @@ class LineageChildrenNamesTest {
     return (Set<String>) method.invoke(repository, reference);
   }
 
+  /**
+   * Child names come from the stored entity: its JSON carries the inline child containers, so no
+   * field read and no tag lookup is needed to list them.
+   */
+  static void stubStored(
+      MockedStatic<Entity> mocked, EntityReference reference, EntityInterface<?> stored) {
+    EntityRepository<?> repository = Mockito.mock(EntityRepository.class);
+    Mockito.doReturn(stored).when(repository).find(reference.getId(), Include.NON_DELETED);
+    mocked
+        .when(() -> Entity.getEntityRepository(reference.getType()))
+        .thenAnswer(invocation -> repository);
+  }
+
   static EntityReference ref(String type) {
     return new EntityReference().withType(type).withId(UUID.randomUUID());
   }
@@ -122,12 +135,7 @@ class LineageChildrenNamesTest {
     Table table = tableFixture();
     EntityReference reference = ref(Entity.TABLE);
     try (MockedStatic<Entity> mocked = mockedEntity()) {
-      mocked
-          .when(
-              () ->
-                  Entity.getEntity(
-                      eq(Entity.TABLE), any(UUID.class), anyString(), any(Include.class)))
-          .thenReturn(table);
+      stubStored(mocked, reference, table);
       assertEquals(Set.of("profile", "profile.full_name"), invokeGetChildrenNames(reference));
     }
   }
@@ -137,12 +145,7 @@ class LineageChildrenNamesTest {
     Topic topic = topicFixture();
     EntityReference reference = ref(Entity.TOPIC);
     try (MockedStatic<Entity> mocked = mockedEntity()) {
-      mocked
-          .when(
-              () ->
-                  Entity.getEntity(
-                      eq(Entity.TOPIC), any(UUID.class), anyString(), any(Include.class)))
-          .thenReturn(topic);
+      stubStored(mocked, reference, topic);
       assertEquals(Set.of("customer", "customer.id"), invokeGetChildrenNames(reference));
     }
   }
@@ -152,12 +155,7 @@ class LineageChildrenNamesTest {
     Topic topic = new Topic().withFullyQualifiedName("svc.topic");
     EntityReference reference = ref(Entity.TOPIC);
     try (MockedStatic<Entity> mocked = mockedEntity()) {
-      mocked
-          .when(
-              () ->
-                  Entity.getEntity(
-                      eq(Entity.TOPIC), any(UUID.class), anyString(), any(Include.class)))
-          .thenReturn(topic);
+      stubStored(mocked, reference, topic);
       assertEquals(Set.of(), invokeGetChildrenNames(reference));
     }
   }
@@ -176,12 +174,7 @@ class LineageChildrenNamesTest {
                                 .withFullyQualifiedName("svc.cont.payload"))));
     EntityReference reference = ref(Entity.CONTAINER);
     try (MockedStatic<Entity> mocked = mockedEntity()) {
-      mocked
-          .when(
-              () ->
-                  Entity.getEntity(
-                      eq(Entity.CONTAINER), any(UUID.class), anyString(), any(Include.class)))
-          .thenReturn(container);
+      stubStored(mocked, reference, container);
       assertEquals(Set.of("payload"), invokeGetChildrenNames(reference));
     }
   }
@@ -191,12 +184,7 @@ class LineageChildrenNamesTest {
     Container container = new Container().withFullyQualifiedName("svc.cont");
     EntityReference reference = ref(Entity.CONTAINER);
     try (MockedStatic<Entity> mocked = mockedEntity()) {
-      mocked
-          .when(
-              () ->
-                  Entity.getEntity(
-                      eq(Entity.CONTAINER), any(UUID.class), anyString(), any(Include.class)))
-          .thenReturn(container);
+      stubStored(mocked, reference, container);
       assertEquals(Set.of(), invokeGetChildrenNames(reference));
     }
   }
@@ -213,12 +201,7 @@ class LineageChildrenNamesTest {
                         .withFullyQualifiedName("svc.idx.title")));
     EntityReference reference = ref(Entity.SEARCH_INDEX);
     try (MockedStatic<Entity> mocked = mockedEntity()) {
-      mocked
-          .when(
-              () ->
-                  Entity.getEntity(
-                      eq(Entity.SEARCH_INDEX), any(UUID.class), anyString(), any(Include.class)))
-          .thenReturn(searchIndex);
+      stubStored(mocked, reference, searchIndex);
       assertEquals(Set.of("title"), invokeGetChildrenNames(reference));
     }
   }
@@ -244,12 +227,7 @@ class LineageChildrenNamesTest {
                                 .withFullyQualifiedName("svc.api.ep.payload"))));
     EntityReference reference = ref(Entity.API_ENDPOINT);
     try (MockedStatic<Entity> mocked = mockedEntity()) {
-      mocked
-          .when(
-              () ->
-                  Entity.getEntity(
-                      eq(Entity.API_ENDPOINT), any(UUID.class), anyString(), any(Include.class)))
-          .thenReturn(endpoint);
+      stubStored(mocked, reference, endpoint);
       assertEquals(Set.of("status", "payload"), invokeGetChildrenNames(reference));
     }
   }
@@ -277,12 +255,7 @@ class LineageChildrenNamesTest {
     MlModel model = mlModelFixture();
     EntityReference reference = ref(Entity.MLMODEL);
     try (MockedStatic<Entity> mocked = mockedEntity()) {
-      mocked
-          .when(
-              () ->
-                  Entity.getEntity(
-                      eq(Entity.MLMODEL), any(UUID.class), anyString(), any(Include.class)))
-          .thenReturn(model);
+      stubStored(mocked, reference, model);
       assertEquals(Set.of("age"), invokeGetChildrenNames(reference));
     }
   }
@@ -299,12 +272,7 @@ class LineageChildrenNamesTest {
       EntityReference reference = ref(testCase.type());
       Set<String> oldResult;
       try (MockedStatic<Entity> mocked = mockedEntity()) {
-        mocked
-            .when(
-                () ->
-                    Entity.getEntity(
-                        eq(testCase.type()), any(UUID.class), anyString(), any(Include.class)))
-            .thenReturn(testCase.entity());
+        stubStored(mocked, reference, testCase.entity());
         oldResult = invokeGetChildrenNames(reference);
       }
       Set<String> viaRegistry =
@@ -328,12 +296,7 @@ class LineageChildrenNamesTest {
                 List.of(new Task().withName("extract").withFullyQualifiedName("svc.pipe.extract")));
     EntityReference reference = ref(Entity.PIPELINE);
     try (MockedStatic<Entity> mocked = mockedEntity()) {
-      mocked
-          .when(
-              () ->
-                  Entity.getEntity(
-                      eq(Entity.PIPELINE), any(UUID.class), anyString(), any(Include.class)))
-          .thenReturn(pipeline);
+      stubStored(mocked, reference, pipeline);
       assertEquals(Set.of("extract"), invokeGetChildrenNames(reference));
     }
   }
