@@ -223,9 +223,12 @@ export const getAggregateFieldOptions = (
   isNLPEnabled = false,
   queryText?: string
 ) => {
-  const withWildCardValue = value
-    ? `.*${escapeESReservedCharacters(value)}.*`
-    : '.*';
+  // The server escapes Lucene regexp metacharacters in the inner term (see
+  // SearchUtils.escapeLuceneRegexp / buildBestMatchIncludePatterns) so quick-filter
+  // values like "Pii.Phone (mobile)" or "C++" are matched literally. Pre-escaping
+  // client-side would double-escape the backslashes the server adds, so the value
+  // is sent raw inside the .*….* wrapper that selects the best-match path.
+  const withWildCardValue = value ? `.*${value}.*` : '.*';
   const params = {
     index,
     field,
@@ -254,9 +257,9 @@ export const postAggregateFieldOptions = ({
   fieldValue,
   ...rest
 }: AggregationRequest) => {
-  const withWildCardValue = fieldValue
-    ? `.*${escapeESReservedCharacters(fieldValue)}.*`
-    : '.*';
+  // See getAggregateFieldOptions: the server owns Lucene regexp escaping, so
+  // fieldValue is sent raw inside the .*….* wrapper.
+  const withWildCardValue = fieldValue ? `.*${fieldValue}.*` : '.*';
   const body: AggregationRequest = {
     fieldValue: withWildCardValue,
     ...rest,

@@ -1500,4 +1500,275 @@ describe('BulkEntityImportPage', () => {
       expect(screen.getByText('label.next')).toBeInTheDocument();
     });
   });
+
+  describe('Bulk Edit aborted websocket', () => {
+    const abortedResult = {
+      status: 'aborted',
+      abortReason: 'CSV file contains invalid data',
+      numberOfRowsProcessed: 0,
+    };
+    const bulkEditEntityMock = BulkEditEntity as jest.Mock;
+
+    const restoreBulkEditEntityMock = () =>
+      bulkEditEntityMock.mockImplementation(() => (
+        <div data-testid="bulk-edit-entity">Bulk Edit Entity</div>
+      ));
+
+    afterEach(() => {
+      restoreBulkEditEntityMock();
+      const {
+        useGridEditController,
+      } = require('../../../hooks/useGridEditController');
+      useGridEditController.mockImplementation(() => ({
+        handleCopy: jest.fn(),
+        handlePaste: jest.fn(),
+        pushToUndoStack: jest.fn(),
+        handleOnRowsChange: jest.fn(),
+        setGridContainer: jest.fn(),
+        handleAddRow: jest.fn(),
+      }));
+    });
+
+    const emitSocket = async (response: Record<string, unknown>) => {
+      await act(async () => {
+        const socketCallback = mockSocket.on.mock.calls.find(
+          (call) => call[0] === 'csvImportChannel'
+        )?.[1];
+
+        socketCallback?.(JSON.stringify(response));
+      });
+    };
+
+    // Drives the page into a state where an async validation job is active in
+    // bulk-edit mode, so a following COMPLETED frame is processed by the real
+    // completion handler. Uses a functional BulkEditEntity mock to edit a cell
+    // and trigger validate, plus a useGridEditController override that actually
+    // persists row edits into page state.
+    const setupActiveBulkEditValidationJob = async () => {
+      const { useFqn } = require('../../../hooks/useFqn');
+      const { useRequiredParams } = require('../../../utils/useRequiredParams');
+      const {
+        useGridEditController,
+      } = require('../../../hooks/useGridEditController');
+      const CSVUtils = require('../../../utils/CSV/CSV.utils');
+
+      useFqn.mockReturnValue({ fqn: '*' });
+      useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
+      mockIsBulkEditRoute.mockReturnValue(true);
+      mockLocation.pathname = '/bulk/edit/metric/*';
+      mockLocation.state = null;
+      mockGetMetrics.mockResolvedValueOnce({
+        data: [{ id: 'metric-1', name: 'net_sales', displayName: 'Net Sales' }],
+        paging: {},
+      });
+      CSVUtils.getMetricColumnsAndDataSourceFromMetrics.mockReturnValue({
+        columns: [
+          { key: 'name*', name: 'Name', editable: true },
+          { key: 'description', name: 'Description', editable: true },
+        ],
+        dataSource: [
+          { id: 'metric-1', 'name*': 'net_sales', description: 'old' },
+        ],
+      });
+
+      useGridEditController.mockImplementation(
+        ({
+          setDataSource,
+        }: {
+          setDataSource: (rows: Record<string, string>[]) => void;
+        }) => ({
+          handleCopy: jest.fn(),
+          handlePaste: jest.fn(),
+          pushToUndoStack: jest.fn(),
+          handleOnRowsChange: (rows: Record<string, string>[]) =>
+            setDataSource(rows),
+          setGridContainer: jest.fn(),
+          handleAddRow: jest.fn(),
+        })
+      );
+
+      bulkEditEntityMock.mockImplementation(
+        (props: Record<string, unknown>) => (
+          <div data-testid="bulk-edit-entity">
+            <span data-testid="active-step-prop">
+              {props.activeStep as number}
+            </span>
+            <span data-testid="is-validating-prop">
+              {props.isValidating ? 'true' : 'false'}
+            </span>
+            {(props.validationData as { abortReason?: string })
+              ?.abortReason && (
+              <span data-testid="abort-reason-prop">
+                {(props.validationData as { abortReason?: string }).abortReason}
+              </span>
+            )}
+            <button
+              aria-label="Edit cell"
+              data-testid="bulk-edit-edit-cell"
+              onClick={() => {
+                const rows = [
+                  ...(props.dataSource as Record<string, string>[]),
+                ];
+                rows[0] = { ...rows[0], description: 'changed-value' };
+                (
+                  props.handleOnRowsChange as (
+                    rows: Record<string, string>[]
+                  ) => void
+                )(rows);
+              }}
+            />
+            <button
+              aria-label="Validate"
+              data-testid="bulk-edit-validate"
+              onClick={() => {
+                void (props.handleValidate as () => Promise<void>)();
+              }}
+            />
+          </div>
+        )
+      );
+
+      renderComponent('/bulk/edit/metric/*');
+
+      // Wait for listing hydration to settle the grid at the edit step.
+      await waitFor(() => {
+        expect(bulkEditEntityMock).toHaveBeenCalled();
+        expect(
+          CSVUtils.getMetricColumnsAndDataSourceFromMetrics
+        ).toHaveBeenCalled();
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId('active-step-prop')).toHaveTextContent('1');
+      });
+
+      // Record an edit so handleValidate doesn't early-return on no changes.
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('bulk-edit-edit-cell'));
+      });
+
+      // Kick off the async validation. The mocked validate API resolves with
+      // jobId 'test-job-id', which activateRequestedImportJob stores as the
+      // active job — the precondition for a COMPLETED frame to be processed.
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('bulk-edit-validate'));
+      });
+
+      // Wait for handleValidate's async API to resolve and for
+      // activateRequestedImportJob to store the active job before emitting a
+      // COMPLETED frame; otherwise the websocket handler drops it.
+      await waitFor(() => {
+        const lastCall = bulkEditEntityMock.mock.calls.at(-1);
+
+        expect(lastCall?.[0].activeAsyncImportJob?.jobId).toBe('test-job-id');
+      });
+
+      // The footer buttons gate on `isValidating`, so it must be true while the
+      // async validation job is in flight (i.e. before the COMPLETED frame).
+      await waitFor(() => {
+        expect(screen.getByTestId('is-validating-prop')).toHaveTextContent(
+          'true'
+        );
+      });
+    };
+
+    it('keeps the grid mounted on EDIT_VALIDATE and surfaces the abort reason when a bulk-edit validation is aborted', async () => {
+      await setupActiveBulkEditValidationJob();
+
+      // Emit the COMPLETED/aborted frame the way the background-jobs tray
+      // cancellation would: jobId matches the active job.
+      await emitSocket({
+        jobId: 'test-job-id',
+        status: 'COMPLETED',
+        result: abortedResult,
+        error: null,
+      });
+
+      // The grid stays mounted on the edit step — not reset to step 0.
+      await waitFor(() => {
+        expect(screen.getByTestId('bulk-edit-entity')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('active-step-prop')).toHaveTextContent('1');
+      expect(screen.queryByTestId('active-step-prop')).not.toHaveTextContent(
+        '0'
+      );
+
+      // The abort reason is forwarded to the grid so the user can see why the
+      // validation stopped (BulkEditEntity renders it as an error banner).
+      expect(screen.getByTestId('abort-reason-prop')).toHaveTextContent(
+        abortedResult.abortReason
+      );
+
+      // The completion handler must clear `isValidating` so the footer cancel/
+      // validate buttons are reusable after an abort.
+      expect(screen.getByTestId('is-validating-prop')).toHaveTextContent(
+        'false'
+      );
+    });
+
+    it('keeps the grid mounted when a bulk-edit validation fails before processing any rows', async () => {
+      await setupActiveBulkEditValidationJob();
+
+      await emitSocket({
+        jobId: 'test-job-id',
+        status: 'COMPLETED',
+        result: {
+          status: 'failure',
+          numberOfRowsProcessed: 0,
+          numberOfRowsFailed: 0,
+        },
+        error: null,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('bulk-edit-entity')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('active-step-prop')).toHaveTextContent('1');
+
+      // Empty-failure also clears `isValidating` so the footer recovers.
+      expect(screen.getByTestId('is-validating-prop')).toHaveTextContent(
+        'false'
+      );
+    });
+
+    it('still resets to the upload step when the import wizard (non-bulk-edit) validation is aborted', async () => {
+      // Control: the import wizard keeps the old reset-to-upload behavior, which
+      // is correct there because it has a step-0 abort/upload surface.
+      mockLocation.pathname = '/table/test.table/import';
+      mockGetEntityColumnsAndDataSourceFromCSV.mockReturnValue({
+        columns: [
+          { key: 'name', name: 'Name' },
+          { key: 'description', name: 'Description' },
+        ],
+        dataSource: [
+          { name: 'row1', description: 'desc1' },
+          { name: 'row2', description: 'desc2' },
+        ],
+      });
+
+      renderComponent();
+
+      await uploadCsv();
+      await startPreview();
+
+      // STARTED + COMPLETED/aborted — mirrors the existing aborted-path test.
+      await emitSocket({
+        jobId: 'test-job-id',
+        status: 'STARTED',
+        error: null,
+      });
+      await emitSocket({
+        jobId: 'test-job-id',
+        status: 'COMPLETED',
+        result: mockCSVImportResultAborted,
+        error: null,
+      });
+
+      // Import wizard shows its abort-reason card at the upload step.
+      await waitFor(() => {
+        expect(screen.getByTestId('abort-reason')).toBeInTheDocument();
+      });
+    });
+  });
 });

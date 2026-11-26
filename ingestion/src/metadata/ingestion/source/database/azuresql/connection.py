@@ -15,6 +15,7 @@ Source connection handler
 
 from urllib.parse import quote_plus
 
+from sqlalchemy import text
 from sqlalchemy.engine import URL, Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -40,8 +41,12 @@ from metadata.ingestion.connections.builders import (
     get_connection_options_dict,
 )
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_db_common,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.azuresql.queries import AZURE_SQL_GET_DATABASES
 from metadata.utils.constants import THREE_MIN
 
 DEFAULT_SQL_SERVER_PORT = 1433
@@ -90,11 +95,13 @@ def get_connection_url(connection: AzureSQLConnectionConfig | MssqlConnection) -
 
 class AzureSQLConnection(BaseConnection[AzureSQLConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
-        return create_generic_db_connection(
+        engine = create_generic_db_connection(
             connection=self.service_connection,
             get_connection_url_fn=get_connection_url,
             get_connection_args_fn=get_connection_args_common,
         )
+        self._on_close(engine.dispose)
+        return engine
 
     def get_connection_dict(self) -> dict:
         """Return the connection parameters for data-diff."""
@@ -113,12 +120,36 @@ class AzureSQLConnection(BaseConnection[AzureSQLConnectionConfig, Engine]):
             "database": connection.database,
         }
 
+        # data-diff supplies its own server, schema, driver, and worker count.
+        reserved_options = {
+            "addr",
+            "address",
+            "network address",
+            "odbc_driver",
+            "pwd",
+            "schema",
+            "server",
+            "thread_count",
+            "timeout",  # pyodbc expects an integer argument here.
+            "uid",
+        }
         authentication_mode = connection.authenticationMode
         if isinstance(authentication_mode, AuthenticationMode) and authentication_mode.authentication is not None:
             connection_dict["Authentication"] = authentication_mode.authentication.value
             connection_dict["Encrypt"] = "yes" if authentication_mode.encrypt else "no"
+            reserved_options.add("trusted_connection")
 
-        return connection_dict
+        reserved_options.update(key.casefold() for key in connection_dict)
+        options = {
+            key: value
+            for key, value in (get_connection_options_dict(connection) or {}).items()
+            if value and key.casefold() not in reserved_options
+        }
+        return {**connection_dict, **options}
+
+    def _check_database_catalog(self) -> None:
+        if self.service_connection.ingestAllDatabases:
+            list_catalog_databases(self.service_connection)
 
     def test_connection(
         self,
@@ -135,5 +166,16 @@ class AzureSQLConnection(BaseConnection[AzureSQLConnectionConfig, Engine]):
             engine=self.client,
             service_connection=self.service_connection,
             automation_workflow=automation_workflow,
+            additional_checks={"GetDatabases": self._check_database_catalog},
             timeout_seconds=timeout_seconds,
         )
+
+
+def list_catalog_databases(config: AzureSQLConnectionConfig) -> list[str]:
+    # In Azure SQL Database, sys.databases lists sibling databases only in master.
+    catalog = config.model_copy(update={"database": "master"})
+    with AzureSQLConnection(catalog) as connection, connection.client.connect() as client:
+        databases = list(client.execute(text(AZURE_SQL_GET_DATABASES)).scalars())
+    if not databases:
+        raise SourceConnectionException("Azure SQL database discovery requires a connection to master")
+    return databases

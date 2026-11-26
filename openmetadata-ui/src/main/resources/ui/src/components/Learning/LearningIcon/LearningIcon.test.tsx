@@ -197,7 +197,7 @@ describe('LearningIcon', () => {
     expect(iconElement).toHaveClass('custom-class');
   });
 
-  it('should render learning icon when resources exist', async () => {
+  it('should fetch learning resources for the supplied page context', async () => {
     render(<LearningIcon pageId="glossary" />);
 
     await waitFor(() => {

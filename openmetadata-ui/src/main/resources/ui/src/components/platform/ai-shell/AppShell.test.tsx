@@ -30,6 +30,8 @@ jest.mock('../../AppRouter/withSuspenseFallback', () => ({
 
 jest.mock('./Sidebar/Sidebar', () => () => <nav data-testid="sidebar" />);
 
+jest.mock('./GlobalSearch/GlobalSearchModal', () => () => null);
+
 jest.mock('./appModeExtensions', () => ({
   useAppModeBanners: () => [
     {
