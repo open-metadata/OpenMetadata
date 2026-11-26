@@ -527,7 +527,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           TestSuite copy =
               JsonUtils.readValue(JsonUtils.pojoToJson(suite), TestSuite.class)
                   .withInherited(true)
-                  .withChangeDescription(null);
+                  .withChangeDescription(null)
+                  .withIncrementalChangeDescription(null);
           testCaseToTestSuites.computeIfAbsent(testCaseId, k -> new ArrayList<>()).add(copy);
         }
       }
@@ -1029,7 +1030,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             Entity.<TestSuite>getEntity(
                     TEST_SUITE, record.getId(), "owners,domains,reviewers", Include.ALL, false)
                 .withInherited(true)
-                .withChangeDescription(null);
+                .withChangeDescription(null)
+                .withIncrementalChangeDescription(null);
         suites.add(suite);
       } catch (EntityNotFoundException ex) {
         LOG.warn(
