@@ -140,6 +140,7 @@ import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingModel;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.LoggerFactory;
 
@@ -4841,7 +4842,7 @@ class SearchRepositoryBehaviorTest {
     assertTrue(report.contains("needs a rebuild of 3 search indexes"), report);
     assertTrue(report.contains("table_search_index has dense_vector of 384 dimensions"), report);
     assertTrue(report.contains("data_asset_embeddings_chunks"), report);
-    assertTrue(report.contains("reindex --force"), report);
+    assertTrue(report.contains("openmetadata-ops.sh reindex"), report);
     assertFalse(repository.getVectorFieldHealth().canHold("table_search_index"));
     verify(searchClient, never()).declareEmbeddingField(anyString(), any());
   }
@@ -4898,7 +4899,7 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void aDjlModelIsLoadedOnceForItsDimensionAndKeptForTheVectorService() {
+  void aDjlModelIsNotLoadedBeforeTheVectorSearchServiceStarts() {
     LLMConfiguration previous = LlmConfigHolder.get();
     LlmConfigHolder.initialize(
         new LLMConfiguration()
@@ -4913,15 +4914,176 @@ class SearchRepositoryBehaviorTest {
       when(djl.getDimension()).thenReturn(384);
       doReturn(djl).when(repository).createEmbeddingClient(any(LLMConfiguration.class));
 
-      assertEquals(
-          Optional.of(new EmbeddingModel("all-MiniLM-L6-v2", 384)), repository.getEmbeddingModel());
+      assertTrue(repository.getEmbeddingModel().isEmpty(), "its dimension is unknown until loaded");
+      assertTrue(repository.buildsVectorIndexes(), "its indexes still get index.knn");
+      assertFalse(
+          JsonUtils.readTree(repository.readIndexMapping(TABLE_MAPPING))
+              .path("mappings")
+              .has("_meta"),
+          "the field and the model come when the server starts");
+      verify(repository, never()).createEmbeddingClient(any(LLMConfiguration.class));
+
       repository.initializeVectorSearchService();
 
       verify(repository, times(1)).createEmbeddingClient(any(LLMConfiguration.class));
-      assertSame(djl, repository.getEmbeddingClient());
+      assertEquals(
+          Optional.of(new EmbeddingModel("all-MiniLM-L6-v2", 384)), repository.getEmbeddingModel());
     } finally {
       LlmConfigHolder.initialize(previous);
     }
+  }
+
+  @Test
+  void migrateReportsEveryIndexThatCannotHoldTheModelInOneError() throws Exception {
+    SearchRepository repository = semanticSearchRepository();
+    doReturn(Optional.of(MODEL_768)).when(repository).getEmbeddingModel();
+    doReturn(true).when(repository).indexExists(any(IndexMapping.class));
+    Set<String> heldForAnotherModel = Set.of("table_search_index", "domain_search_index");
+    doAnswer(
+            invocation -> {
+              String name = invocation.<IndexMapping>getArgument(0).getIndexName(null);
+              if (heldForAnotherModel.contains(name)) {
+                repository
+                    .getVectorFieldHealth()
+                    .recordCannotHold(
+                        name, Set.of(name), name + " has dense_vector of 384 dimensions");
+              }
+              return null;
+            })
+        .when(searchClient)
+        .updateIndex(any(IndexMapping.class), any());
+    ListAppender<ILoggingEvent> logs = searchRepositoryLogs();
+
+    repository.updateIndexes();
+
+    List<String> errors = errors(logs);
+    assertEquals(1, errors.size(), errors.toString());
+    assertTrue(
+        errors.getFirst().contains("needs a rebuild of 2 search indexes"), errors.getFirst());
+    assertTrue(errors.getFirst().contains("domain_search_index has dense_vector of 384"));
+    assertTrue(errors.getFirst().contains("table_search_index has dense_vector of 384"));
+  }
+
+  /** A repository whose embedding client and vector service exist, as after {@code reindex} starts. */
+  private SearchRepository repositoryReadyToReindex(VectorIndexService vectorService)
+      throws Exception {
+    SearchRepository repository =
+        newRepository(
+            Map.of(
+                Entity.TABLE, TABLE_MAPPING,
+                Entity.DOMAIN, DOMAIN_MAPPING,
+                Entity.DATABASE_SERVICE, DATABASE_SERVICE_MAPPING),
+            "",
+            ElasticSearchConfiguration.SearchType.ELASTICSEARCH,
+            new NaturalLanguageSearchConfiguration().withSemanticSearchEnabled(true));
+    EmbeddingClient client = mock(EmbeddingClient.class);
+    when(client.getModelId()).thenReturn(MODEL_768.id());
+    when(client.getDimension()).thenReturn(MODEL_768.dimension());
+    setPrivateField(repository, "embeddingClient", client);
+    setPrivateField(repository, "vectorIndexService", vectorService);
+    lenient().when(vectorService.getChunkIndexName()).thenReturn("data_asset_embeddings_chunks");
+    lenient()
+        .when(vectorService.chunkIndexNames())
+        .thenReturn(List.of("data_asset_embeddings_chunks"));
+    return repository;
+  }
+
+  @Test
+  void theSmartReindexRebuildsTheEntityIndexesThatCannotHoldTheModel() throws Exception {
+    SearchRepository repository = repositoryReadyToReindex(mock(VectorIndexService.class));
+    existingIndexes("table_search_index", "domain_search_index", "data_asset_embeddings_chunks");
+    when(searchClient.readEmbeddingField("table_search_index"))
+        .thenReturn(heldAs("table_search_index", 384));
+    when(searchClient.readEmbeddingField("domain_search_index"))
+        .thenReturn(heldAs("domain_search_index", 768));
+    when(searchClient.readEmbeddingField("data_asset_embeddings_chunks"))
+        .thenReturn(heldAs("data_asset_embeddings_chunks", 768));
+
+    repository.checkVectorFields();
+
+    assertEquals(Set.of(Entity.TABLE), repository.entityTypesThatCannotHoldVectors());
+    verify(searchClient, never()).readEmbeddingField("database_service_search_index");
+  }
+
+  @Test
+  void aChunkIndexThatCannotHoldTheModelRebuildsEveryDataAssetType() throws Exception {
+    SearchRepository repository = repositoryReadyToReindex(mock(VectorIndexService.class));
+    existingIndexes("table_search_index", "data_asset_embeddings_chunks");
+    when(searchClient.readEmbeddingField("table_search_index"))
+        .thenReturn(heldAs("table_search_index", 768));
+    when(searchClient.readEmbeddingField("data_asset_embeddings_chunks"))
+        .thenReturn(heldAs("data_asset_embeddings_chunks", 384));
+
+    repository.checkVectorFields();
+
+    Set<String> rebuilt = repository.entityTypesThatCannotHoldVectors();
+    assertTrue(
+        rebuilt.containsAll(EmbeddedEntityTypes.DATA_ASSETS),
+        "only a recreate of every data-asset type replaces the chunk index: " + rebuilt);
+  }
+
+  @Test
+  void anOntologyChunkIndexThatCannotHoldTheModelRebuildsBothOntologyTermTypes() throws Exception {
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    SearchRepository repository = repositoryReadyToReindex(vectorService);
+    when(vectorService.chunkIndexNames())
+        .thenReturn(List.of("data_asset_embeddings_chunks", "ontology_embeddings_chunks"));
+    existingIndexes(
+        "table_search_index", "data_asset_embeddings_chunks", "ontology_embeddings_chunks");
+    when(searchClient.readEmbeddingField("table_search_index"))
+        .thenReturn(heldAs("table_search_index", 768));
+    when(searchClient.readEmbeddingField("data_asset_embeddings_chunks"))
+        .thenReturn(heldAs("data_asset_embeddings_chunks", 768));
+    when(searchClient.readEmbeddingField("ontology_embeddings_chunks"))
+        .thenReturn(heldAs("ontology_embeddings_chunks", 384));
+
+    repository.checkVectorFields();
+
+    assertEquals(
+        Set.of(Entity.ONTOLOGY_CONCEPT, Entity.ONTOLOGY_PROPERTY),
+        repository.entityTypesThatCannotHoldVectors(),
+        "only a recreate of both ontology term types rebuilds the ontology chunk index");
+  }
+
+  @Test
+  void anIndexARebuildReplacedNoLongerCountsForTheSmartReindex() throws Exception {
+    SearchRepository repository = repositoryReadyToReindex(mock(VectorIndexService.class));
+    existingIndexes("table_search_index");
+    when(searchClient.readEmbeddingField("table_search_index"))
+        .thenReturn(heldAs("table_search_index", 384))
+        .thenReturn(heldAs("table_search_index", 768));
+    repository.checkVectorFields();
+
+    assertTrue(repository.entityTypesThatCannotHoldVectors().isEmpty());
+    assertTrue(repository.getVectorFieldHealth().mismatches().isEmpty());
+  }
+
+  @Test
+  void aRebuiltIndexIsLetBackInOnlyOnceItHoldsTheModelsVectors() throws Exception {
+    SearchRepository repository =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING),
+            "",
+            ElasticSearchConfiguration.SearchType.ELASTICSEARCH,
+            new NaturalLanguageSearchConfiguration().withSemanticSearchEnabled(true));
+    EmbeddingClient client = mock(EmbeddingClient.class);
+    when(client.getModelId()).thenReturn(MODEL_768.id());
+    when(client.getDimension()).thenReturn(MODEL_768.dimension());
+    setPrivateField(repository, "embeddingClient", client);
+    existingIndexes("table_search_index");
+    when(searchClient.readEmbeddingField("table_search_index"))
+        .thenReturn(heldAs("table_search_index", 384))
+        .thenReturn(heldAs("table_search_index", 384))
+        .thenReturn(heldAs("table_search_index", 768));
+    VectorFieldHealth health = repository.getVectorFieldHealth();
+    health.check("table_search_index");
+    assertFalse(health.canHold("table_search_index"));
+
+    health.refresh("table_search_index");
+    assertFalse(health.canHold("table_search_index"), "rebuilt for another model, it stays out");
+
+    health.refresh("table_search_index");
+    assertTrue(health.canHold("table_search_index"), "rebuilt for this model, it is let back in");
   }
 
   @Test
@@ -4932,6 +5094,7 @@ class SearchRepositoryBehaviorTest {
       SearchRepository repository = semanticSearchRepository();
 
       assertTrue(repository.getEmbeddingModel().isEmpty());
+      assertFalse(repository.buildsVectorIndexes());
       assertFalse(
           JsonUtils.readTree(repository.readIndexMapping(TABLE_MAPPING))
               .path("mappings")

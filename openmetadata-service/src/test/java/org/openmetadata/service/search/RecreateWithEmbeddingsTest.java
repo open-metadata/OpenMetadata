@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,6 +27,7 @@ import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 
 class RecreateWithEmbeddingsTest {
   private static final String STAGED_CHUNKS = "data_asset_embeddings_chunks_g1700000000000";
+  private static final String STAGED_ONTOLOGY_CHUNKS = "ontology_embeddings_chunks_g1700000000000";
 
   private final VectorIndexService vectorService = mock(VectorIndexService.class);
   private final SearchRepository searchRepository = mock(SearchRepository.class);
@@ -59,6 +61,58 @@ class RecreateWithEmbeddingsTest {
     }
 
     verify(vectorService).markEntityTypeReindexed("table", false, STAGED_CHUNKS);
+  }
+
+  @Test
+  void aJobDrivenRecreateOfBothTermTypesStagesTheOntologyChunkIndex() {
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    when(vectorService.beginStagedOntologyChunkRecreate()).thenReturn(STAGED_ONTOLOGY_CHUNKS);
+    DefaultRecreateHandler handler =
+        new RecreateWithEmbeddings().withJobData(new EventPublisherJob());
+
+    ReindexContext context;
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      context = handler.reCreateIndexes(Set.of(Entity.ONTOLOGY_CONCEPT, Entity.ONTOLOGY_PROPERTY));
+    }
+
+    assertEquals(Optional.of(STAGED_ONTOLOGY_CHUNKS), context.getStagedOntologyChunkIndex());
+    assertTrue(context.getEntities().stream().noneMatch(type -> type.startsWith("__")));
+  }
+
+  @Test
+  void aRecreateOfOneTermTypeOrWithoutAJobLeavesTheOntologyChunkIndexInPlace() {
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      new RecreateWithEmbeddings()
+          .withJobData(new EventPublisherJob())
+          .reCreateIndexes(Set.of(Entity.ONTOLOGY_CONCEPT));
+      new RecreateWithEmbeddings()
+          .reCreateIndexes(Set.of(Entity.ONTOLOGY_CONCEPT, Entity.ONTOLOGY_PROPERTY));
+    }
+
+    verify(vectorService, never()).beginStagedOntologyChunkRecreate();
+  }
+
+  @Test
+  void anOntologyTermTypeIsMarkedForItsRunsOntologyChunkGeneration() {
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    EntityReindexContext context =
+        EntityReindexContext.builder()
+            .entityType(Entity.ONTOLOGY_PROPERTY)
+            .stagedChunkIndex(STAGED_CHUNKS)
+            .stagedOntologyChunkIndex(STAGED_ONTOLOGY_CHUNKS)
+            .build();
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      new RecreateWithEmbeddings().finalizeReindex(context, true);
+    }
+
+    verify(vectorService)
+        .markEntityTypeReindexed(Entity.ONTOLOGY_PROPERTY, false, STAGED_ONTOLOGY_CHUNKS);
   }
 
   @Test

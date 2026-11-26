@@ -767,7 +767,7 @@ class OsUtilsTest {
   void testEnrichIndexMappingForOpenSearchTransformsStemmerAndFieldTypes() {
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      when(searchRepository.getEmbeddingModel()).thenReturn(Optional.empty());
+      when(searchRepository.buildsVectorIndexes()).thenReturn(false);
 
       String enriched =
           OsUtils.enrichIndexMappingForOpenSearch(
@@ -866,6 +866,7 @@ class OsUtilsTest {
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.buildsVectorIndexes()).thenReturn(true);
       when(searchRepository.getEmbeddingModel())
           .thenReturn(Optional.of(new EmbeddingModel("model-a", 1536)));
 
@@ -901,6 +902,39 @@ class OsUtilsTest {
   }
 
   @Test
+  void aVectorIndexForAModelNotLoadedYetGetsKnnAndNoField() {
+    JsonNode root = JsonUtils.readTree(OPENSEARCH_VECTOR_MAPPING);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.buildsVectorIndexes()).thenReturn(true);
+      when(searchRepository.getEmbeddingModel()).thenReturn(Optional.empty());
+
+      OsUtils.addKnnVectorSettings(root);
+    }
+
+    assertTrue(
+        root.path("settings").path("index").path("knn").asBoolean(),
+        "index.knn is taken only at creation, so the field can be declared at server start");
+    assertTrue(root.path("mappings").path("properties").path("embedding").isMissingNode());
+    assertTrue(root.path("mappings").path("_meta").isMissingNode());
+  }
+
+  @Test
+  void aVectorIndexGetsNoKnnWhileNoVectorsAreBuilt() {
+    JsonNode root = JsonUtils.readTree(OPENSEARCH_VECTOR_MAPPING);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.buildsVectorIndexes()).thenReturn(false);
+
+      OsUtils.addKnnVectorSettings(root);
+    }
+
+    assertTrue(root.path("settings").path("index").path("knn").isMissingNode());
+  }
+
+  @Test
   void transformsFlattenedToFlatObjectAndStripsEsOnlyParams() {
     JsonNode mappings =
         org.openmetadata.schema.utils.JsonUtils.readTree(
@@ -924,6 +958,7 @@ class OsUtilsTest {
   private JsonNode updatedMappings(LiveEmbeddingField live) {
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.buildsVectorIndexes()).thenReturn(true);
       when(searchRepository.getEmbeddingModel())
           .thenReturn(Optional.of(new EmbeddingModel("model-a", 384)));
       when(searchRepository.getVectorFieldHealth()).thenReturn(health);

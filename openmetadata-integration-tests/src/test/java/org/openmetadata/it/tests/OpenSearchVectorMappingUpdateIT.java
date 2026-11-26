@@ -4,9 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
@@ -20,9 +25,15 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import org.apache.commons.lang3.function.FailableRunnable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -33,16 +44,23 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.mockito.MockedStatic;
 import org.openmetadata.it.util.MappingReadFailingProxy;
+import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.EmbeddingFieldUpdate;
 import org.openmetadata.service.search.LiveEmbeddingField;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.VectorFieldHealth;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.opensearch.OpenSearchIndexManager;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingModel;
+import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.opensearch.testcontainers.OpensearchContainer;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.utility.DockerImageName;
@@ -311,12 +329,34 @@ class OpenSearchVectorMappingUpdateIT {
 
     LiveEmbeddingField live = client.readEmbeddingField(indexName);
     assertEquals(EmbeddingFieldUpdate.DECLARE, EmbeddingFieldUpdate.updateFor(live, MODEL));
-    client.declareEmbeddingField(indexName, MODEL);
+    Logger indexManager = (Logger) LoggerFactory.getLogger(OpenSearchIndexManager.class);
+    Level configured = indexManager.getLevel();
+    indexManager.setLevel(Level.INFO);
+    try {
+      client.declareEmbeddingField(indexName, MODEL);
+    } finally {
+      indexManager.setLevel(configured);
+    }
 
     JsonNode embedding = liveMappings(indexName).path("properties").path("embedding");
     assertEquals("knn_vector", embedding.path("type").asText());
     assertEquals(DIMENSION, embedding.path("dimension").asInt());
     assertEquals(MODEL.id(), recordedModel(indexName));
+    assertEquals(
+        EmbeddingFieldUpdate.KEEP,
+        EmbeddingFieldUpdate.updateFor(client.readEmbeddingField(indexName), MODEL),
+        "a second start or smart reindex declares nothing");
+    assertTrue(
+        messages()
+            .contains(
+                "Declared the embedding field of index "
+                    + indexName
+                    + " for the embedding model "
+                    + MODEL.id()
+                    + " ("
+                    + DIMENSION
+                    + " dimensions)"),
+        messages().toString());
   }
 
   @Test
@@ -329,6 +369,226 @@ class OpenSearchVectorMappingUpdateIT {
 
     assertEquals(EmbeddingFieldUpdate.LEAVE_OUT, EmbeddingFieldUpdate.updateFor(live, MODEL));
     assertEquals(indexName + " was created without vector support", live.describe(MODEL));
+  }
+
+  @Test
+  void migrateCreatesAnIndexWithKnnForAModelNotLoadedYetAndTheServerDeclaresItsField()
+      throws Exception {
+    String indexName = "model_not_loaded_table_search_index";
+
+    withModelNotLoadedYet(() -> client.createIndex(indexName, FIRST_RELEASE_MAPPING));
+
+    assertTrue(knnEnabled(indexName), "index.knn is fixed at creation, so it must be set now");
+    assertFalse(liveMappings(indexName).path("properties").has("embedding"));
+    LiveEmbeddingField live = client.readEmbeddingField(indexName);
+    assertEquals(EmbeddingFieldUpdate.DECLARE, EmbeddingFieldUpdate.updateFor(live, MODEL));
+    client.declareEmbeddingField(indexName, MODEL);
+    JsonNode embedding = liveMappings(indexName).path("properties").path("embedding");
+    assertEquals("knn_vector", embedding.path("type").asText());
+    assertEquals(DIMENSION, embedding.path("dimension").asInt());
+    assertEquals(MODEL.id(), recordedModel(indexName));
+  }
+
+  @Test
+  void anOntologySearchBeforeItsChunkIndexExistsFindsNothingWhileAnotherIndexNeedsARebuild() {
+    health.recordCannotHold(
+        "table_search_index",
+        Set.of("table_search_index"),
+        "table_search_index has knn_vector of 768 dimensions");
+    EmbeddingClient embeddings = mock(EmbeddingClient.class);
+    OpenSearchVectorService vectorService =
+        new OpenSearchVectorService(client.getNewClient(), embeddings);
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.getVectorFieldHealth()).thenReturn(health);
+    List<VectorSearchResponse> responses = new ArrayList<>();
+
+    withSearchRepository(
+        searchRepository,
+        () ->
+            responses.add(
+                vectorService.search(
+                    "churn",
+                    Map.of("entityType", List.of(Entity.ONTOLOGY_CONCEPT)),
+                    3,
+                    0,
+                    10,
+                    0.0)));
+
+    assertTrue(responses.getFirst().hits.isEmpty());
+    verify(embeddings, never()).embedQuery(any(String.class));
+  }
+
+  /**
+   * After a model switch, a recreate of both ontology term types rebuilds the ontology chunk index:
+   * term chunks go to a staged generation for the model while the live index keeps its old
+   * vectors, and the generation replaces it in one alias swap once both term types are promoted,
+   * after which the index can hold the model's vectors and ontology vector search answers again.
+   */
+  @Test
+  void aRecreateOfBothTermTypesRebuildsAnOntologyChunkIndexThatCannotHoldTheModel()
+      throws Exception {
+    String live = "ontology_embeddings_chunks";
+    String stagedTermIndex = "ontology_concept_search_index_rebuild_it";
+    send("PUT", "/" + live, chunkIndexFor(768, "an-earlier-model"));
+    send("PUT", "/" + live + "/_doc/old_0?refresh=true", oldChunk(768));
+    send("PUT", "/" + stagedTermIndex, TERM_INDEX_FOR_THE_MODEL);
+    VectorFieldHealth readsTheCluster = healthReadingTheCluster();
+    readsTheCluster.check(live);
+    assertNeedsARebuild(readsTheCluster, live);
+    EmbeddingClient embeddings = embeddingsOf(MODEL);
+    OpenSearchVectorService vectorService =
+        new OpenSearchVectorService(client.getNewClient(), embeddings);
+    OntologyConcept concept = concept("Customer", "A person who buys");
+    send(
+        "PUT",
+        "/" + stagedTermIndex + "/_doc/" + concept.getId() + "?refresh=true",
+        "{\"name\":\"Customer\"}");
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.getVectorFieldHealth()).thenReturn(readsTheCluster);
+    List<String> generations = new ArrayList<>();
+    List<VectorSearchResponse> responses = new ArrayList<>();
+
+    withSearchRepository(
+        searchRepository,
+        () -> {
+          generations.add(vectorService.beginStagedOntologyChunkRecreate());
+          writeTermEmbeddings(vectorService, concept, stagedTermIndex);
+          vectorService.markEntityTypeReindexed(
+              Entity.ONTOLOGY_CONCEPT, true, generations.getFirst());
+          assertEquals(1, chunkCount(live, "old"), "the live index serves until promotion");
+          vectorService.markEntityTypeReindexed(
+              Entity.ONTOLOGY_PROPERTY, true, generations.getFirst());
+          responses.add(
+              vectorService.search(
+                  "customer",
+                  Map.of("entityType", List.of(Entity.ONTOLOGY_CONCEPT)),
+                  3,
+                  0,
+                  10,
+                  0.0));
+        });
+
+    String generation = generations.getFirst();
+    assertTrue(generation.startsWith(live + "_g"), generation);
+    assertEquals(Set.of(generation), indexesBehind(live), "the alias now names the generation");
+    assertEquals(
+        DIMENSION,
+        liveMappings(generation).path("properties").path("embedding").path("dimension").asInt());
+    assertTrue(readsTheCluster.mismatches().isEmpty(), readsTheCluster.mismatches().toString());
+    assertEquals(1, responses.getFirst().hits.size(), responses.getFirst().hits.toString());
+    assertEquals(concept.getId().toString(), responses.getFirst().hits.getFirst().get("parentId"));
+    assertTrue(
+        get("/" + stagedTermIndex + "/_doc/" + concept.getId()).path("_source").has("embedding"),
+        "the rebuilt term document gets its vector too");
+  }
+
+  /** Reads the embedding field of a name on the cluster and records what it means for vectors. */
+  private VectorFieldHealth healthReadingTheCluster() {
+    AtomicReference<VectorFieldHealth> self = new AtomicReference<>();
+    self.set(
+        new VectorFieldHealth(
+            name -> {
+              LiveEmbeddingField field = client.readEmbeddingField(name);
+              self.get().record(field, MODEL, EmbeddingFieldUpdate.updateFor(field, MODEL));
+            }));
+    return self.get();
+  }
+
+  private static void assertNeedsARebuild(VectorFieldHealth readsTheCluster, String indexName) {
+    List<VectorFieldHealth.Mismatch> mismatches = readsTheCluster.mismatches();
+    assertEquals(1, mismatches.size(), mismatches.toString());
+    assertEquals(indexName, mismatches.getFirst().name());
+  }
+
+  private static EmbeddingClient embeddingsOf(EmbeddingModel model) {
+    float[] vector = new float[model.dimension()];
+    vector[0] = 1.0f;
+    EmbeddingClient embeddings = mock(EmbeddingClient.class);
+    when(embeddings.getModelId()).thenReturn(model.id());
+    when(embeddings.getDimension()).thenReturn(model.dimension());
+    when(embeddings.isAvailable()).thenReturn(true);
+    when(embeddings.embed(any(String.class))).thenReturn(vector);
+    when(embeddings.embedQuery(any(String.class))).thenReturn(vector);
+    return embeddings;
+  }
+
+  private static OntologyConcept concept(String name, String description) {
+    OntologyConcept concept =
+        spy(
+            new OntologyConcept()
+                .withId(UUID.randomUUID())
+                .withName(name)
+                .withDescription(description));
+    doReturn(
+            new EntityReference()
+                .withId(concept.getId())
+                .withName(name)
+                .withType(Entity.ONTOLOGY_CONCEPT))
+        .when(concept)
+        .getEntityReference();
+    return concept;
+  }
+
+  /** A term embedding of the active release, as the release-aware reindex writes it. */
+  private static void writeTermEmbeddings(
+      OpenSearchVectorService vectorService, OntologyConcept concept, String termIndex) {
+    try (MockedStatic<OntologyTermSearch> terms =
+        mockStatic(OntologyTermSearch.class, CALLS_REAL_METHODS)) {
+      terms
+          .when(() -> OntologyTermSearch.writeCurrentEmbedding(any(), any(), any()))
+          .thenAnswer(
+              invocation -> {
+                invocation.<FailableRunnable<?>>getArgument(2).run();
+                return null;
+              });
+      vectorService.updateEntityEmbeddings(
+          concept, termIndex, concept.getName() + ": " + concept.getDescription());
+    }
+  }
+
+  private static String chunkIndexFor(int dimension, String modelId) {
+    return "{\"settings\":{\"index\":{\"knn\":true}},\"mappings\":{\"dynamic\":false,"
+        + "\"_meta\":{\"embedding_model\":\""
+        + modelId
+        + "\",\"embedding_dimension\":"
+        + dimension
+        + "},\"properties\":{\"parentId\":{\"type\":\"keyword\"},"
+        + "\"entityType\":{\"type\":\"keyword\"},\"fingerprint\":{\"type\":\"keyword\"},"
+        + "\"embedding\":{\"type\":\"knn_vector\",\"dimension\":"
+        + dimension
+        + ",\"method\":{\"name\":\"hnsw\",\"engine\":\"lucene\",\"space_type\":\"cosinesimil\"}}}}}";
+  }
+
+  private static String oldChunk(int dimension) {
+    StringBuilder vector = new StringBuilder("[1.0");
+    for (int i = 1; i < dimension; i++) {
+      vector.append(",0.0");
+    }
+    return "{\"parentId\":\"old\",\"entityType\":\"ontologyConcept\",\"embedding\":"
+        + vector.append(']')
+        + "}";
+  }
+
+  private static final String TERM_INDEX_FOR_THE_MODEL =
+      "{\"settings\":{\"index\":{\"knn\":true}},\"mappings\":{\"properties\":{"
+          + "\"fingerprint\":{\"type\":\"keyword\"},\"name\":{\"type\":\"keyword\"},"
+          + "\"embedding\":{\"type\":\"knn_vector\",\"dimension\":"
+          + DIMENSION
+          + ",\"method\":{\"name\":\"hnsw\",\"engine\":\"lucene\",\"space_type\":\"cosinesimil\"}}}}}";
+
+  private long chunkCount(String index, String parentId) {
+    try {
+      send("POST", "/" + index + "/_refresh", "");
+      return get("/" + index + "/_count?q=parentId:" + parentId).path("count").asLong();
+    } catch (Exception e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
+  private Set<String> indexesBehind(String name) throws Exception {
+    Set<String> indexes = new TreeSet<>();
+    get("/" + name + "/_alias").fieldNames().forEachRemaining(indexes::add);
+    return indexes;
   }
 
   private static EmbeddingModel model(int dimension) {
@@ -363,7 +623,20 @@ class OpenSearchVectorMappingUpdateIT {
    */
   private void withModel(EmbeddingModel model, Runnable action) {
     SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.buildsVectorIndexes()).thenReturn(true);
     when(searchRepository.getEmbeddingModel()).thenReturn(Optional.of(model));
+    when(searchRepository.getVectorFieldHealth()).thenReturn(health);
+    withSearchRepository(searchRepository, action);
+  }
+
+  /**
+   * Runs the action with semantic search on for a model whose dimension is known only once it is
+   * loaded, a DJL model, as {@code migrate} sees it.
+   */
+  private void withModelNotLoadedYet(Runnable action) {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.buildsVectorIndexes()).thenReturn(true);
+    when(searchRepository.getEmbeddingModel()).thenReturn(Optional.empty());
     when(searchRepository.getVectorFieldHealth()).thenReturn(health);
     withSearchRepository(searchRepository, action);
   }
@@ -426,6 +699,10 @@ class OpenSearchVectorMappingUpdateIT {
     return (Logger) LoggerFactory.getLogger("org.openmetadata.service.search");
   }
 
+  private List<String> messages() {
+    return searchLogs.list.stream().map(ILoggingEvent::getFormattedMessage).toList();
+  }
+
   private List<String> errors() {
     return searchLogs.list.stream()
         .filter(event -> event.getLevel() == Level.ERROR)
@@ -443,7 +720,7 @@ class OpenSearchVectorMappingUpdateIT {
     assertTrue(mismatches.getFirst().reason().contains(reason), mismatches.toString());
     String report = health.report(MODEL).orElseThrow();
     assertTrue(report.contains(indexName), report);
-    assertTrue(report.contains("reindex --force"), report);
+    assertTrue(report.contains("openmetadata-ops.sh reindex"), report);
     assertTrue(errors().isEmpty(), "nothing is logged per index: " + errors());
   }
 }

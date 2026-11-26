@@ -5,11 +5,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.indexes.OntologyTermIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.Refresh;
@@ -28,10 +30,22 @@ public final class OntologyChunkIndex {
     return name(search == null ? null : search.getClusterAlias());
   }
 
-  private static String name(String clusterAlias) {
+  static String name(String clusterAlias) {
     return clusterAlias == null || clusterAlias.isEmpty()
         ? BASE_NAME
         : clusterAlias.toLowerCase(Locale.ROOT) + "_" + BASE_NAME;
+  }
+
+  /**
+   * Where term chunks are written and deleted now: the generation a run staged to rebuild the
+   * ontology chunk index while that run lasts, and otherwise the live index.
+   */
+  private static String writeTarget(String clusterAlias) {
+    SearchRepository search = Entity.getSearchRepository();
+    VectorIndexService vectors = search == null ? null : search.getVectorIndexService();
+    return Optional.ofNullable(vectors)
+        .flatMap(VectorIndexService::stagedOntologyChunkTarget)
+        .orElseGet(() -> name(clusterAlias));
   }
 
   static void reconcile(
@@ -41,7 +55,7 @@ public final class OntologyChunkIndex {
       Map<UUID, OntologyTermIndex> active)
       throws IOException {
     if (client instanceof OpenSearchClient openSearch) {
-      final var index = name(clusterAlias);
+      final String index = writeTarget(clusterAlias);
       // Disabling embeddings can leave chunks from an earlier configuration.
       if (Entity.getSearchRepository().isVectorEmbeddingEnabled()
           || openSearch.getNewClient().indices().exists(r -> r.index(index)).value()) {
@@ -56,7 +70,7 @@ public final class OntologyChunkIndex {
     if (!(client instanceof OpenSearchClient openSearch)) {
       return;
     }
-    final var index = name(clusterAlias);
+    final String index = writeTarget(clusterAlias);
     refresh(openSearch, index);
     Map<String, FieldValue> after = Map.of();
     do {

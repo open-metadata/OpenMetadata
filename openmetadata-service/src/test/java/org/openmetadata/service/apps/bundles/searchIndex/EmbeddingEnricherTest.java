@@ -199,6 +199,18 @@ class EmbeddingEnricherTest {
   }
 
   @Test
+  void aRecreateRunEmbedsIntoTheStagedIndexWhileTheLiveOneCannotHoldTheModel() throws Exception {
+    vectorFieldHealth.recordCannotHold(
+        INDEX, Set.of(ORIGINAL_INDEX), ORIGINAL_INDEX + " has knn_vector of 384 dimensions");
+
+    String enriched = enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateRun());
+
+    assertEquals("[0.1,0.2,0.3]", JsonUtils.readTree(enriched).path("embedding").toString());
+    assertEquals(1, chunksWrittenTo(STAGED_CHUNKS).size());
+    assertFalse(vectorFieldHealth.canHold(INDEX), "the live index stays out until it is replaced");
+  }
+
+  @Test
   void aStoredEmbeddingOfAnotherDimensionIsRecomputed() throws Exception {
     JsonNode twoDimensional = storedEmbedding("[0.5,0.6]");
 

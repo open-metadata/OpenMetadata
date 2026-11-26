@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -176,6 +177,24 @@ class ElasticSearchBulkSinkBehaviorTest {
   @Test
   void anEntityWithACurrentStoredEmbeddingIsIndexedWithItAndItsChunksAreBackfilled()
       throws Exception {
+    assertEquals(List.of(0.1, 0.2, 0.3), indexedThroughARecreate("table_index").get("embedding"));
+  }
+
+  @Test
+  void aRecreateRunKeepsVectorsOnTheStagedIndexWhileTheLiveOneCannotHoldTheModel()
+      throws Exception {
+    VectorFieldHealth health = new VectorFieldHealth(name -> {});
+    health.recordCannotHold(
+        "table_index", Set.of("table_index_rebuild_old"), "it has dense_vector of 384 dimensions");
+    when(searchRepository.getVectorFieldHealth()).thenReturn(health);
+
+    Map<String, Object> indexed = indexedThroughARecreate("table_index_rebuild_new");
+
+    assertEquals(List.of(0.1, 0.2, 0.3), indexed.get("embedding"));
+  }
+
+  /** The document a Recreate run sends to {@code targetIndex}, the index the run writes. */
+  private Map<String, Object> indexedThroughARecreate(String targetIndex) throws Exception {
     EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
@@ -222,7 +241,7 @@ class ElasticSearchBulkSinkBehaviorTest {
             Map.class
           },
           entity,
-          "table_index",
+          targetIndex,
           recreate,
           null,
           true,
@@ -243,9 +262,9 @@ class ElasticSearchBulkSinkBehaviorTest {
           EsUtils.jsonDataToMap((JsonData) operationCaptor.getValue().index().document());
       assertEquals("orders", indexed.get("name"));
       assertEquals("fp", indexed.get("fingerprint"));
-      assertEquals(List.of(0.1, 0.2, 0.3), indexed.get("embedding"));
       verify(vectorService).backfillEntityChunks(entity, "data_asset_embeddings_chunks_g1");
       assertEquals(1, sink.getVectorStats().getSuccessRecords());
+      return indexed;
     }
   }
 

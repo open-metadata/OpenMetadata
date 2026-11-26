@@ -32,7 +32,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -1655,17 +1655,23 @@ public class SystemRepository implements DeploymentSettingPreparer {
     }
   }
 
-  public record ReindexStatus(List<String> stalePending, int untrackedCount) {}
+  /**
+   * @param cannotHoldVectors entity types whose live index cannot hold the vectors of the
+   *     configured embedding model, which the smart reindex rebuilds as it rebuilds stale ones
+   */
+  public record ReindexStatus(
+      List<String> stalePending, List<String> cannotHoldVectors, int untrackedCount) {}
 
   public record SearchReindexStatus(
       List<String> stalePending,
+      List<String> cannotHoldVectors,
       int untrackedCount,
       List<String> missingIndexes,
       List<String> orphanIndexes,
       boolean clusterHealthy,
       boolean driftComputed) {
     boolean reindexNeeded() {
-      return !stalePending.isEmpty() || !missingIndexes.isEmpty();
+      return !stalePending.isEmpty() || !cannotHoldVectors.isEmpty() || !missingIndexes.isEmpty();
     }
 
     boolean passed() {
@@ -1675,19 +1681,22 @@ public class SystemRepository implements DeploymentSettingPreparer {
 
   static ReindexStatus classifyReindexStatus(
       Map<String, MappingDriftState> drift, Set<String> existingIndexes) {
-    List<String> stalePending = new ArrayList<>();
-    int untrackedCount = 0;
-    for (Map.Entry<String, MappingDriftState> entry : drift.entrySet()) {
-      if (existingIndexes.contains(entry.getKey())) {
-        if (entry.getValue() == MappingDriftState.STALE) {
-          stalePending.add(entry.getKey());
-        } else if (entry.getValue() == MappingDriftState.UNTRACKED) {
-          untrackedCount++;
-        }
-      }
-    }
-    Collections.sort(stalePending);
-    return new ReindexStatus(stalePending, untrackedCount);
+    Map<MappingDriftState, List<String>> byState = new EnumMap<>(MappingDriftState.class);
+    drift.forEach(
+        (entityType, state) -> {
+          if (existingIndexes.contains(entityType)) {
+            byState.computeIfAbsent(state, ignored -> new ArrayList<>()).add(entityType);
+          }
+        });
+    return new ReindexStatus(
+        sortedIn(byState, MappingDriftState.STALE),
+        sortedIn(byState, MappingDriftState.CANNOT_HOLD_VECTORS),
+        sortedIn(byState, MappingDriftState.UNTRACKED).size());
+  }
+
+  private static List<String> sortedIn(
+      Map<MappingDriftState, List<String>> byState, MappingDriftState state) {
+    return byState.getOrDefault(state, List.of()).stream().sorted().toList();
   }
 
   static String buildReindexStatusMessage(SearchReindexStatus status) {
@@ -1716,6 +1725,12 @@ public class SystemRepository implements DeploymentSettingPreparer {
           String.format(
               " %d index(es) built from an older mapping: %s.",
               status.stalePending().size(), status.stalePending()));
+    }
+    if (!status.cannotHoldVectors().isEmpty()) {
+      message.append(
+          String.format(
+              " %d index(es) cannot hold the vectors of the configured embedding model: %s.",
+              status.cannotHoldVectors().size(), status.cannotHoldVectors()));
     }
     if (!status.missingIndexes().isEmpty()) {
       message.append(
@@ -1867,6 +1882,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
     DriftResult drift = computeMappingDrift(searchRepository, missingIndexes);
     return new SearchReindexStatus(
         drift.status().stalePending(),
+        drift.status().cannotHoldVectors(),
         drift.status().untrackedCount(),
         missingIndexes,
         orphanIndexes,
@@ -1878,11 +1894,12 @@ public class SystemRepository implements DeploymentSettingPreparer {
 
   private DriftResult computeMappingDrift(
       SearchRepository searchRepository, List<String> missingIndexes) {
-    ReindexStatus status = new ReindexStatus(new ArrayList<>(), 0);
+    ReindexStatus status = new ReindexStatus(List.of(), List.of(), 0);
     boolean computed = false;
     try {
       IndexMappingVersionTracker tracker =
-          IndexMappingVersionTracker.create(Entity.getCollectionDAO());
+          IndexMappingVersionTracker.create(
+              Entity.getCollectionDAO(), searchRepository::entityTypesThatCannotHoldVectors);
       Set<String> existingIndexes = existingTrackedIndexes(searchRepository, missingIndexes);
       status = classifyReindexStatus(tracker.computeDrift(), existingIndexes);
       computed = true;

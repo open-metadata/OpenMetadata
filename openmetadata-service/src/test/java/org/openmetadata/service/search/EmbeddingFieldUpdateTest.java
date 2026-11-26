@@ -127,4 +127,21 @@ class EmbeddingFieldUpdateTest {
             "{\"_meta\":{\"embedding_model\":\"old\",\"embedding_dimension\":768,"
                 + "\"other\":\"kept\"}}");
   }
+
+  @Test
+  void recordingTheModelKeepsTheOtherEntriesOfTheLiveMeta() {
+    ObjectNode mappings =
+        (ObjectNode)
+            JsonUtils.readTree(
+                "{\"_meta\":{\"chunkDocVersion\":8,\"embedding_model\":\"old\","
+                    + "\"embedding_dimension\":768}}");
+
+    ObjectNode meta = EmbeddingFieldUpdate.recordModel(mappings, MODEL);
+
+    assertEquals(
+        JsonUtils.readTree(
+            "{\"chunkDocVersion\":8,\"embedding_model\":\"model-a\",\"embedding_dimension\":384}"),
+        meta);
+    assertEquals(meta, mappings.path("_meta"));
+  }
 }

@@ -48,13 +48,17 @@ import org.openmetadata.service.util.FreshReadScope;
 
 public final class OntologyTermSearch {
   public static final String ALIAS = "ontologyTerms";
+
+  /** The ontology term types, each with its own index behind {@link #ALIAS}. */
+  public static final List<String> TERM_TYPES =
+      List.of(Entity.ONTOLOGY_CONCEPT, Entity.ONTOLOGY_PROPERTY);
+
   static final int PAGE_SIZE = 250;
 
   private OntologyTermSearch() {}
 
   public static boolean isTerm(String type) {
-    return Entity.ONTOLOGY_CONCEPT.equalsIgnoreCase(type)
-        || Entity.ONTOLOGY_PROPERTY.equalsIgnoreCase(type);
+    return TERM_TYPES.stream().anyMatch(term -> term.equalsIgnoreCase(type));
   }
 
   public static OntologyTermIndex activeIndex(EntityReference reference) {

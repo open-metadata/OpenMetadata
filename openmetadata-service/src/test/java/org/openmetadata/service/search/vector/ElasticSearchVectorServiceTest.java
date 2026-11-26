@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.function.FailableRunnable;
 import org.apache.hc.core5.http.HttpEntity;
@@ -60,6 +61,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.OntologyTermSearch;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.VectorFieldHealth;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
 import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
@@ -588,6 +591,66 @@ class ElasticSearchVectorServiceTest {
     assertEquals("[0.1,0.2,0.3]", update.path("doc").path("embedding").toString());
   }
 
+  /**
+   * On Elasticsearch a term's vector lives on its term document, so after a model switch the
+   * rebuild of its term type is the whole fix: the vector goes to the rebuilt term index while the
+   * live one cannot hold the model's vectors, and no ontology chunk generation is ever staged.
+   */
+  @Test
+  void aTermsVectorGoesToItsRebuiltTermIndexWhileTheLiveOneCannotHoldTheModel() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.getDimension()).thenReturn(3);
+    OntologyConcept concept =
+        spy(
+            new OntologyConcept()
+                .withId(UUID.randomUUID())
+                .withName("Customer")
+                .withDescription("A person who buys"));
+    doReturn(
+            new EntityReference()
+                .withId(concept.getId())
+                .withName("Customer")
+                .withType(Entity.ONTOLOGY_CONCEPT))
+        .when(concept)
+        .getEntityReference();
+    String liveTermIndex = "ontology_concept_search_index";
+    String rebuiltTermIndex = "ontology_concept_search_index_rebuild_2";
+    VectorFieldHealth health = new VectorFieldHealth(name -> {});
+    health.recordCannotHold(
+        liveTermIndex,
+        Set.of("ontology_concept_search_index_rebuild_1"),
+        "ontology_concept_search_index_rebuild_1 has dense_vector of 768 dimensions");
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.getVectorFieldHealth()).thenReturn(health);
+    answerByEndpointSuffix(Map.of());
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS);
+        MockedStatic<OntologyTermSearch> terms =
+            mockStatic(OntologyTermSearch.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      terms
+          .when(() -> OntologyTermSearch.writeCurrentEmbedding(any(), any(), any()))
+          .thenAnswer(
+              invocation -> {
+                invocation.<FailableRunnable<?>>getArgument(2).run();
+                return null;
+              });
+      assertNull(vectorService.beginStagedOntologyChunkRecreate());
+      vectorService.updateEntityEmbeddings(concept, liveTermIndex, "Customer: A person who buys");
+      vectorService.updateEntityEmbeddings(
+          concept, rebuiltTermIndex, "Customer: A person who buys");
+    }
+
+    sentRequest(
+        "POST", "/" + rebuiltTermIndex + "/_update/" + concept.getId() + "?retry_on_conflict=3");
+    ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+    verify(mockRestClient, atLeastOnce()).performRequest(sent.capture());
+    assertTrue(
+        sent.getAllValues().stream()
+            .noneMatch(r -> r.getEndpoint().startsWith("/" + liveTermIndex + "/")),
+        "the live term index that cannot hold the model gets no vector");
+  }
+
   @Test
   void anOntologyTermKeepsItsVectorOnItsTermDocumentAndWritesNoChunk() throws Exception {
     when(mockEmbeddingClient.isAvailable()).thenReturn(true);
@@ -900,6 +963,61 @@ class ElasticSearchVectorServiceTest {
     promoteEveryEntityIndex(staged);
 
     assertEquals(0, sentCount("POST", "/_aliases"), "the live chunks stay");
+  }
+
+  // --- The chunk indexes VectorFieldHealth reads again around a rebuild ---
+
+  private final List<String> readAgain = new ArrayList<>();
+
+  /** A node that recorded the live chunk index as unable to hold the model's vectors. */
+  private MockedStatic<Entity> withChunkIndexThatCannotHoldTheModel(VectorFieldHealth health) {
+    health.recordCannotHold(
+        vectorService.getChunkIndexName(),
+        Set.of("data_asset_embeddings_chunks_g1"),
+        "data_asset_embeddings_chunks_g1 has dense_vector of 384 dimensions");
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.getVectorFieldHealth()).thenReturn(health);
+    MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS);
+    entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+    return entity;
+  }
+
+  @Test
+  void aPromotedChunkGenerationIsReadAgainSoItsVectorsAreLetBackIn() throws Exception {
+    String base = vectorService.getChunkIndexName();
+    AtomicReference<VectorFieldHealth> self = new AtomicReference<>();
+    VectorFieldHealth health =
+        new VectorFieldHealth(
+            name -> {
+              readAgain.add(name);
+              self.get().forget(name);
+            });
+    self.set(health);
+    answerByEndpointContaining(freshInstallRules());
+
+    try (MockedStatic<Entity> ignored = withChunkIndexThatCannotHoldTheModel(health)) {
+      String staged = vectorService.beginStagedChunkRecreate();
+      assertFalse(health.canHold(base), "flagged until the rebuild goes live");
+
+      promoteEveryEntityIndex(staged);
+    }
+
+    assertEquals(1, sentCount("POST", "/_aliases"), "the generation goes live");
+    assertEquals(List.of(base), readAgain, "the promoted chunk index is read again at once");
+    assertTrue(health.canHold(base));
+  }
+
+  @Test
+  void aLatchedStagedGenerationIsCheckedAgainstTheModelBeforeAnyWrite() {
+    VectorFieldHealth health = new VectorFieldHealth(readAgain::add);
+    String staged = vectorService.getChunkIndexName() + "_g2";
+
+    try (MockedStatic<Entity> ignored = withChunkIndexThatCannotHoldTheModel(health)) {
+      vectorService.latchParticipantStagedTarget(staged);
+      vectorService.latchParticipantStagedTarget(null);
+    }
+
+    assertEquals(List.of(staged), readAgain, "a participant reads the field of its run's target");
   }
 
   private static final String LIVE_DOC = "/data_asset_embeddings_chunks/_doc/";

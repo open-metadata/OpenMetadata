@@ -466,7 +466,7 @@ class ElasticsearchVectorMappingUpdateIT {
     assertTrue(mismatches.getFirst().reason().contains(reason), mismatches.toString());
     String report = health.report(MODEL).orElseThrow();
     assertTrue(report.contains(indexName), report);
-    assertTrue(report.contains("reindex --force"), report);
+    assertTrue(report.contains("openmetadata-ops.sh reindex"), report);
     assertTrue(errors().isEmpty(), "nothing is logged per index: " + errors());
   }
 }

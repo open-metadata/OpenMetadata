@@ -149,7 +149,11 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
   @Override
   public void declareEmbeddingField(String name, EmbeddingModel model) throws IOException {
     putMapping(name, EsUtils.embeddingFieldDeclaration(model));
-    LOG.info("Declared the embedding field of index {}", name);
+    LOG.info(
+        "Declared the embedding field of index {} for the embedding model {} ({} dimensions)",
+        name,
+        model.id(),
+        model.dimension());
   }
 
   private void putMapping(String indexName, String mappingsJson) throws IOException {
