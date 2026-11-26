@@ -14,6 +14,7 @@ import { Badge, Button } from 'antd';
 import classNames from 'classnames';
 import { RefObject, useCallback, useRef } from 'react';
 import { EntityReference } from '../../../generated/entity/type';
+import { getSuggestionUserKey } from '../../../utils/Suggestion/SuggestionUtils';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
@@ -37,11 +38,6 @@ const AvatarCarouselItem = ({
     useSuggestionsContext();
   const buttonRef = useRef(null);
   avatarBtnRefs.current[index] = buttonRef;
-  const getUserSuggestionsCount = useCallback(
-    (userName: string) =>
-      suggestionsByUser.get(userName)?.combinedData.length ?? 0,
-    [suggestionsByUser]
-  );
 
   const handleAvatarClick = useCallback(() => {
     // Call the original onAvatarClick function
@@ -66,11 +62,13 @@ const AvatarCarouselItem = ({
     </Button>
   );
 
+  const suggestionsCount =
+    suggestionsByUser.get(getSuggestionUserKey(avatar))?.combinedData.length ??
+    0;
+
   return (
     <UserPopOverCard key={avatar.id} userName={avatar?.name ?? ''}>
-      <Badge count={getUserSuggestionsCount(avatar?.name ?? '')}>
-        {button}
-      </Badge>
+      <Badge count={suggestionsCount}>{button}</Badge>
     </UserPopOverCard>
   );
 };
