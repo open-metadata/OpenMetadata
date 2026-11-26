@@ -501,36 +501,52 @@ def index_of(steps: list[dict], predicate) -> int:
 MAVEN_JOBS = [
     "backend-checks",
     "k8s_operator-unit-tests",
-    "docker-image-smoke-test",
 ]
 
 
 @pytest.mark.parametrize("job", MAVEN_JOBS)
 @pytest.mark.parametrize("workflow", ("ci-pr.yml", "ci-merge-queue.yml"))
-def test_java_jobs_restore_maven_before_build_and_save_on_push(
-    workflow: str, job: str
-) -> None:
+def test_java_jobs_restore_maven_before_build(workflow: str, job: str) -> None:
     steps = java_steps(workflow, job)
     hydrate = index_of(
         steps, lambda s: s.get("uses") == "./.github/actions/hydrate-maven-cache"
     )
-    save = index_of(
-        steps, lambda s: s.get("uses", "").startswith("actions/cache/save@")
-    )
     first_mvn = index_of(steps, lambda s: "mvn " in s.get("run", ""))
-    assert hydrate < first_mvn < save
-    assert steps[save]["with"]["path"] == "~/.m2"
+    assert hydrate < first_mvn
     assert not excludes_pull_request(steps[hydrate].get("if", ""))
-    # Saved after the build so the entry holds what the build downloaded, and
-    # only from push (main), the scope every PR can read.
-    assert steps[save]["if"].replace(" ", "").startswith("github.event_name=='push'")
+    assert not any(
+        step.get("uses", "").startswith(("actions/cache@", "actions/cache/save@"))
+        for step in steps
+    )
+
+
+@pytest.mark.parametrize("workflow", ("ci-pr.yml", "ci-merge-queue.yml"))
+def test_smoke_uses_the_workflow_backend_image(workflow: str) -> None:
+    jobs = load(WORKFLOWS / workflow)["jobs"]
+    assert "backend" in jobs["docker-image-smoke-test"]["needs"]
+    assert jobs["backend"]["uses"] == "./.github/workflows/reusable-build-backend.yml"
+    assert "needs.plan.outputs.docker-smoke == 'true'" in jobs["backend"]["if"]
+
+    loader = ROOT / ".github/actions/load-backend-image/action.yml"
+    [download] = [
+        step
+        for step in load(loader)["runs"]["steps"]
+        if "download-artifact" in step.get("uses", "")
+    ]
+    builder = load(WORKFLOWS / "reusable-build-backend.yml")["jobs"]["build"]
+    [upload] = [
+        step for step in builder["steps"] if "upload-artifact" in step.get("uses", "")
+    ]
+    assert download["with"]["name"] == upload["with"]["name"]
+    assert any(
+        step.get("uses") == "./.github/actions/load-backend-image"
+        for step in java_steps(workflow, "docker-image-smoke-test")
+    )
 
 
 def test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests() -> None:
-    backend = load(WORKFLOWS / "ci-merge-queue.yml")
-    jobs = backend["jobs"]
+    jobs = load(WORKFLOWS / "ci-merge-queue.yml")["jobs"]
 
-    assert "pull_request" not in backend["on"]
     # Integration-test build runs once and shares its artifact across all 3 profiles.
     build_steps = java_steps("ci-merge-queue.yml", "integration-test-build")
     assert any(

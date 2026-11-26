@@ -20,48 +20,52 @@ from pathlib import Path
 def select(
     entrypoint: str, event: str, payload: dict, matched: set[str]
 ) -> dict[str, bool]:
-    """Return the jobs selected for a PR, merge group, push, or dispatch."""
+    """Return the jobs selected for a PR, merge group, or dispatch."""
+    queue = entrypoint == "merge-queue"
+    default_workload = "all" if queue else "python"
     manual = (
-        payload.get("inputs", {}).get("workload", "python")
+        payload.get("inputs", {}).get("workload", default_workload)
         if event == "workflow_dispatch"
         else None
     )
-    queue = entrypoint == "merge-queue"
+    manual_all = queue and manual == "all"
+    manual_java = manual_all or manual == "java"
+    manual_python = manual_all or manual == "python"
     draft = event == "pull_request" and payload["pull_request"]["draft"]
     pr_update = event == "pull_request" and payload["action"] != "ready_for_review"
-    java_unit = not draft and (manual == "java" or "java-unit" in matched)
+    java_unit = not draft and (manual_java or "java-unit" in matched)
     python = not draft and (
-        manual == "python"
+        manual_python
         or (event == "pull_request" and "python" in matched)
         or (event == "merge_group" and bool({"python", "python-backend"} & matched))
     )
-    airflow = manual == "python" or (
+    airflow = manual_python or (
         not draft
         and event in {"pull_request", "merge_group"}
         and "airflow-apis" in matched
     )
-    java_it = queue and (manual == "java" or "java-integration" in matched)
-    rdf = queue and "rdf" in matched
+    java_it = queue and (manual_java or "java-integration" in matched)
+    validate = event == "merge_group" or manual_all
 
     return {
         "checkstyle": java_unit or (not draft and "java-checkstyle" in matched),
         "java-unit": java_unit,
-        "java-operator": not draft and (manual == "java" or "java-operator" in matched),
-        "docker-smoke": not draft and (manual == "java" or "docker-smoke" in matched),
-        "java-it": java_it or rdf,
+        "java-operator": not draft and (manual_java or "java-operator" in matched),
+        "docker-smoke": not draft and (manual_java or "docker-smoke" in matched),
+        "java-it": java_it,
         "java-it-redis": java_it,
         "python": python,
         "airflow-apis": airflow,
         "static": python
         or airflow
-        or (not draft and event != "push" and "python-static" in matched),
-        "json-yaml": event == "merge_group" or (pr_update and "json-yaml" in matched),
-        "ci-rules": event == "merge_group" or (pr_update and "ci-rules" in matched),
+        or (not draft and "python-static" in matched),
+        "json-yaml": validate or (pr_update and "json-yaml" in matched),
+        "ci-rules": validate or (pr_update and "ci-rules" in matched),
         "quickstart-compose": not queue
         and (
             manual == "quickstart-compose" or (pr_update and "quickstart-compose" in matched)
         ),
-        "dar": queue and event in {"merge_group", "push"} and "dar" in matched,
+        "dar": queue and event == "merge_group" and "dar" in matched,
     }
 
 

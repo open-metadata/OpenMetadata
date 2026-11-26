@@ -3,30 +3,7 @@ description: Smoke test the server image.
 runs:
   using: composite
   steps:
-    - name: Hydrate Maven dependencies
-      id: maven-cache
-      uses: ./.github/actions/hydrate-maven-cache
-
-    - name: Set up JDK 21
-      uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
-      with:
-        java-version: "21"
-        distribution: "temurin"
-
-    - name: Build the backend distribution tarball
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      shell: bash
-      run: |
-        mvn -B -T 1C -Dmaven.test.skip=true -DonlyBackend package -pl openmetadata-dist -am
-
-    - name: Save Maven dependencies
-      if: github.event_name == 'push' && steps.maven-cache.outputs.cache-hit != 'true'
-      continue-on-error: true
-      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-      with:
-        path: ~/.m2
-        key: ${{ steps.maven-cache.outputs.cache-primary-key }}
+    - uses: ./.github/actions/load-backend-image
 
     - name: Smoke test the server image
       shell: bash

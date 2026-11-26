@@ -79,29 +79,8 @@ def selected_workloads(tmp_path, entrypoint, event, payload, matches):
             "merge-queue",
             "merge_group",
             {},
-            ["rdf"],
-            {"java-it", "json-yaml", "ci-rules"},
-        ),
-        (
-            "merge-queue",
-            "push",
-            {},
-            [
-                "java-unit",
-                "java-integration",
-                "python",
-                "airflow-apis",
-                "json-yaml",
-                "ci-rules",
-                "dar",
-            ],
-            {
-                "checkstyle",
-                "java-unit",
-                "java-it",
-                "java-it-redis",
-                "dar",
-            },
+            ["dar"],
+            {"dar", "json-yaml", "ci-rules"},
         ),
         (
             "pr",
@@ -144,6 +123,39 @@ def selected_workloads(tmp_path, entrypoint, event, payload, matches):
             {"inputs": {"workload": "quickstart-compose"}},
             [],
             {"quickstart-compose"},
+        ),
+        (
+            "merge-queue",
+            "workflow_dispatch",
+            {"inputs": {"workload": "all"}},
+            [],
+            {
+                "checkstyle",
+                "java-unit",
+                "java-operator",
+                "docker-smoke",
+                "java-it",
+                "java-it-redis",
+                "python",
+                "airflow-apis",
+                "static",
+                "json-yaml",
+                "ci-rules",
+            },
+        ),
+        (
+            "merge-queue",
+            "workflow_dispatch",
+            {"inputs": {"workload": "python"}},
+            [],
+            {"python", "airflow-apis", "static"},
+        ),
+        (
+            "merge-queue",
+            "workflow_dispatch",
+            {"inputs": {"workload": "data-access-request"}},
+            [],
+            set(),
         ),
         (
             "merge-queue",
@@ -205,6 +217,16 @@ def path_filters():
             "docker/development/Dockerfile.dockerignore",
             {"docker-smoke"},
             {"docker-smoke", "python", "static", "json-yaml", "ci-rules"},
+        ),
+        (
+            "docker/rdf-store/kubernetes/fuseki-deployment.yaml",
+            {"json-yaml"},
+            {"json-yaml", "ci-rules"},
+        ),
+        (
+            "openmetadata-integration-tests/src/test/java/org/openmetadata/it/bootstrap/FusekiTestImage.java",
+            {"checkstyle"},
+            {"checkstyle", "java-it", "java-it-redis", "json-yaml", "ci-rules"},
         ),
         (
             "openmetadata-spec/src/main/resources/json/schema/governance/workflows/workflowDefinition.json",
@@ -285,7 +307,7 @@ def test_changed_paths_select_expected_workloads(
 
 
 def test_missing_path_detection_result_fails_planning(tmp_path):
-    result, outputs = run_plan(tmp_path, "merge-queue", "push", {}, "")
+    result, outputs = run_plan(tmp_path, "merge-queue", "merge_group", {}, "")
 
     assert result.returncode != 0
     assert not outputs.exists()

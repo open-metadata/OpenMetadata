@@ -12,15 +12,13 @@
 name: ci-merge-queue
 on:
   merge_group: null
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       workload:
         description: Queue checks to run manually
         type: choice
-        options: [python, java, data-access-request]
-        default: python
+        options: [all, python, java, data-access-request]
+        default: all
       store-database-version:
         description: Metadata store MySQL version, shipped or oldest
         type: choice
@@ -31,7 +29,7 @@ permissions:
   packages: read
   pull-requests: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'push' && github.run_id || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}-${{ inputs.workload }}-${{ inputs.store-database-version }}
   cancel-in-progress: true
 jobs:
   plan:
@@ -42,7 +40,7 @@ jobs:
   backend:
     name: Build backend image
     needs: plan
-    if: ${{ needs.plan.outputs.python == 'true' || needs.plan.outputs.airflow-apis == 'true' }}
+    if: ${{ needs.plan.outputs.python == 'true' || needs.plan.outputs.airflow-apis == 'true' || needs.plan.outputs.docker-smoke == 'true' }}
     uses: ./.github/workflows/reusable-build-backend.yml
     with:
       ref: ${{ needs.plan.outputs.ref }}
@@ -139,10 +137,9 @@ jobs:
       - airflow-apis
       - py-static-checks
       - prepare-classification-models
-      - backend
       - python-unit
       - python-integration
-    if: ${{ always() && (github.event_name == 'merge_group' || inputs.workload == 'python') }}
+    if: ${{ always() && (github.event_name == 'merge_group' || inputs.workload == 'all' || inputs.workload == 'python') }}
     runs-on: ubuntu-slim
     timeout-minutes: 2
     steps:
@@ -155,7 +152,6 @@ jobs:
               "airflow-apis": "${{ needs.plan.outputs.airflow-apis == 'true' && 'success' || 'skipped' }}",
               "py-static-checks": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
               "prepare-classification-models": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
-              "backend": "${{ (needs.plan.outputs.python == 'true' || needs.plan.outputs.airflow-apis == 'true') && 'success' || 'skipped' }}",
               "python-unit": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
               "python-integration": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}"
             }
@@ -184,10 +180,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
-      # Restore-only (exact Actions cache -> GHCR pre-baked image -> prefix fallback);
-      # the save after the build runs on push to main only.
       - name: Hydrate Maven dependencies
-        id: maven-cache
         uses: ./.github/actions/hydrate-maven-cache
 
       - name: Set up JDK 21
@@ -231,14 +224,6 @@ jobs:
           checkstyle-outcome: ${{ steps.checkstyle.outcome }}
           unit-tests-outcome: ${{ steps.unit-tests.outcome }}
 
-      - name: Save Maven dependencies
-        if: github.event_name == 'push' && steps.maven-cache.outputs.cache-hit != 'true' && steps.checkstyle.outcome == 'success'
-        continue-on-error: true
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: ~/.m2
-          key: ${{ steps.maven-cache.outputs.cache-primary-key }}
-
   k8s_operator-unit-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -256,7 +241,7 @@ jobs:
   docker-image-smoke-test:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    needs: plan
+    needs: [plan, backend]
     if: ${{ needs.plan.outputs.docker-smoke == 'true' }}
     steps:
       - name: Checkout
@@ -270,9 +255,9 @@ jobs:
   backend-checks-status:
     name: backend-checks-status
     needs: [plan, backend-checks, k8s_operator-unit-tests, docker-image-smoke-test]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     timeout-minutes: 5
-    if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.workload == 'java') }}
+    if: &report-java-status ${{ always() && (github.event_name == 'merge_group' || inputs.workload == 'all' || inputs.workload == 'java') }}
     steps:
       - name: Verify backend checks, operator tests, and Docker smoke test
         env:
@@ -389,9 +374,9 @@ jobs:
   integration-tests-mysql-elasticsearch:
     name: integration-tests-mysql-elasticsearch
     needs: [plan, backend-checks, integration-test-build, it-mysql-elasticsearch]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     timeout-minutes: 5
-    if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.workload == 'java') }}
+    if: *report-java-status
     steps:
       - name: Verify MySQL + Elasticsearch Integration Test Lanes
         env:
@@ -400,7 +385,7 @@ jobs:
           UNIT_RESULT: ${{ needs.backend-checks.result }}
           BUILD_RESULT: ${{ needs.integration-test-build.result }}
           LANES_RESULT: ${{ needs.it-mysql-elasticsearch.result }}
-        run: |
+        run: &verify-java-integration |
           if [[ "$CHANGES_RESULT" == "success" && "$BACKEND_CHANGED" != "true" ]]; then
             echo "No backend integration-test paths changed."
             exit 0
@@ -414,9 +399,9 @@ jobs:
   integration-tests-postgres-opensearch:
     name: integration-tests-postgres-opensearch
     needs: [plan, backend-checks, integration-test-build, it-postgres-opensearch]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     timeout-minutes: 5
-    if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.workload == 'java') }}
+    if: *report-java-status
     steps:
       - name: Verify PostgreSQL + OpenSearch Integration Test Lanes
         env:
@@ -425,23 +410,14 @@ jobs:
           UNIT_RESULT: ${{ needs.backend-checks.result }}
           BUILD_RESULT: ${{ needs.integration-test-build.result }}
           LANES_RESULT: ${{ needs.it-postgres-opensearch.result }}
-        run: |
-          if [[ "$CHANGES_RESULT" == "success" && "$BACKEND_CHANGED" != "true" ]]; then
-            echo "No backend integration-test paths changed."
-            exit 0
-          fi
-          if [[ "$CHANGES_RESULT" != "success" || "$BUILD_RESULT" != "success" || "$LANES_RESULT" != "success" ]] || \
-             [[ "$UNIT_RESULT" != "success" && "$UNIT_RESULT" != "skipped" ]]; then
-            echo "Java integration jobs did not complete successfully: changes=${CHANGES_RESULT}, unit=${UNIT_RESULT}, build=${BUILD_RESULT}, lanes=${LANES_RESULT}"
-            exit 1
-          fi
+        run: *verify-java-integration
 
   integration-tests-postgres-elasticsearch-redis:
     name: integration-tests-postgres-elasticsearch-redis
     needs: [plan, backend-checks, integration-test-build, it-postgres-elasticsearch-redis]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     timeout-minutes: 5
-    if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.workload == 'java') }}
+    if: *report-java-status
     steps:
       - name: Verify PostgreSQL + Elasticsearch + Redis Integration Test Lanes
         env:
@@ -450,16 +426,7 @@ jobs:
           UNIT_RESULT: ${{ needs.backend-checks.result }}
           BUILD_RESULT: ${{ needs.integration-test-build.result }}
           LANES_RESULT: ${{ needs.it-postgres-elasticsearch-redis.result }}
-        run: |
-          if [[ "$CHANGES_RESULT" == "success" && "$BACKEND_CHANGED" != "true" ]]; then
-            echo "No backend integration-test paths changed."
-            exit 0
-          fi
-          if [[ "$CHANGES_RESULT" != "success" || "$BUILD_RESULT" != "success" || "$LANES_RESULT" != "success" ]] || \
-             [[ "$UNIT_RESULT" != "success" && "$UNIT_RESULT" != "skipped" ]]; then
-            echo "Java integration jobs did not complete successfully: changes=${CHANGES_RESULT}, unit=${UNIT_RESULT}, build=${BUILD_RESULT}, lanes=${LANES_RESULT}"
-            exit 1
-          fi
+        run: *verify-java-integration
 
   validate-json-yaml:
     needs: plan
@@ -484,7 +451,8 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       needs.plan.outputs.dar == 'true' ||
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.workload == 'data-access-request')
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
+        (inputs.workload == 'all' || inputs.workload == 'data-access-request'))
     steps:
       # Dispatched by file name straight to the REST endpoint, not through
       # benc-uk/workflow-dispatch: that action finds the workflow by paging through the list of

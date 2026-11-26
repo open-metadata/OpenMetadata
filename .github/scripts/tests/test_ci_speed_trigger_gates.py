@@ -32,19 +32,16 @@ def test_backport_automerge_keeps_its_provenance_gate():
     assert "backport/$BASE/pr-" in steps[0]["run"]
 
 
-def test_data_access_request_e2e_does_not_run_on_pull_requests():
-    workflow = load("ci-merge-queue.yml")
-    assert "data-access-request-e2e" in workflow["jobs"]
-    assert "pull_request" not in workflow["on"]
-    assert {"push", "merge_group", "workflow_dispatch"} <= set(workflow["on"])
-    assert "data-access-request-e2e" not in load("ci-pr.yml")["jobs"]
+def test_merge_queue_ci_runs_only_on_merge_groups_and_manual_dispatch():
+    assert set(load("ci-merge-queue.yml")["on"]) == {"merge_group", "workflow_dispatch"}
 
 
 def test_data_access_request_e2e_requires_selection_or_explicit_main_dispatch():
+    assert "data-access-request-e2e" not in load("ci-pr.yml")["jobs"]
     job = load("ci-merge-queue.yml")["jobs"]["data-access-request-e2e"]
     assert job["needs"] == "plan"
     assert " ".join(job["if"].split()) == (
         "needs.plan.outputs.dar == 'true' || "
         "(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' "
-        "&& inputs.workload == 'data-access-request')"
+        "&& (inputs.workload == 'all' || inputs.workload == 'data-access-request'))"
     )

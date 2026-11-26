@@ -37,6 +37,9 @@ docker-smoke:
   - '.github/workflows/ci-pr.yml'
   - '.github/workflows/ci-merge-queue.yml'
   - '.github/actions/java-docker-smoke/**'
+  - '.github/actions/load-backend-image/**'
+  - '.github/workflows/reusable-build-backend.yml'
+  - '.github/scripts/ci_backend_image.sh'
   - 'docker/openmetadata-start.sh'
   - 'docker/development/Dockerfile'
   - 'docker/development/Dockerfile.dockerignore'
@@ -70,9 +73,6 @@ java-integration:
   - 'scripts/ci_plan.py'
   - '.github/workflows/reusable-java-integration-lanes.yml'
   - '.github/actions/java-integration-build/**'
-rdf:
-  - 'docker/rdf-store/**'
-
 python:
   - ingestion/src/**/!(*.md)
   - ingestion/tests/**/!(*.md)
@@ -140,6 +140,7 @@ python-backend:
   - openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java
   - .github/actions/python-diagnostics/**
   - .github/actions/setup-openmetadata-test-environment/action.yml
+  - .github/actions/load-backend-image/**
   - .github/workflows/ci-merge-queue.yml
   - .github/workflows/reusable-py-integration.yml
   - .github/workflows/reusable-build-backend.yml

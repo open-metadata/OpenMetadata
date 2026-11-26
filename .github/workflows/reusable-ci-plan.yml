@@ -83,7 +83,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-          fetch-depth: ${{ (github.event_name == 'merge_group' || github.event_name == 'push') && '0' || '1' }}
+          fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '1' }}
           sparse-checkout: |
             .github/ci/paths.yml
             ingestion/pyproject.toml
@@ -95,8 +95,8 @@ jobs:
         id: filter
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
-          base: ${{ github.event.merge_group.base_sha || github.event.before || '' }}
-          ref: ${{ github.event_name != 'pull_request' && github.sha || '' }}
+          base: ${{ github.event.merge_group.base_sha || '' }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || '' }}
           filters: .github/ci/paths.yml
       - name: Select workloads
         id: workloads

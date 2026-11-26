@@ -1,7 +1,7 @@
 # Backend CI gates integration-test lanes behind unit tests and builds once
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-24 (initial) · v2 2026-11-25 (check names and stage reporting)
+- **Revisions:** v1 2026-11-24 (initial) · v2 2026-11-25 (check names and stage reporting) · v3 2026-11-26 (merge-queue triggers) · v4 2026-11-26 (smoke image and dispatch)
 - **Deciders:** Sriharsha Chintalapani
 - **Guard:** `test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests` in `.github/scripts/tests/test_ci_speed_java_and_cache.py`
 - **Related:** PR #38624, ADR:2026-10-19-the-redis-cache-lane-gates-the-merge-queue, ADR:2026-11-24-ci-caches-live-in-ghcr-with-actions-cache-fallback
@@ -25,3 +25,20 @@ ADR:2026-11-25-backend-checks-reports-native-stage-failures renames the combined
 `backend-checks`, removes the compatibility placeholder, and makes stage failures visible directly.
 References above to the service unit-test job now mean `backend-checks`; the integration-test gates
 still accept only success or a legitimate skip. The new record defines the required-check cutover.
+
+## Amendment: merge-queue triggers (2026-11-26)
+
+`ci-merge-queue.yml` runs on `merge_group` and `workflow_dispatch`. The merge-group run already
+validates the merge candidate, so a push to `main` does not repeat those checks. Java jobs restore
+the Maven cache. `ci-builder-images.yml` refreshes the GHCR Maven cache on relevant pushes and its
+daily schedule under ADR:2026-11-24-ci-caches-live-in-ghcr-with-actions-cache-fallback.
+
+## Amendment: smoke image and dispatch (2026-11-26)
+
+Docker smoke tests use the run's revision-checked `ci-backend-image` artifact. When Python or
+Airflow tests also need the server image, they share the same build. The Fuseki Kubernetes example
+receives YAML validation. Java RDF integration tests use their own pinned image and run when the
+Java integration paths change.
+
+Manual merge-queue runs default to `all` and can select an individual workload. The manual
+data access request suite runs only on `main`.

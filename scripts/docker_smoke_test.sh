@@ -19,11 +19,11 @@
 #
 #   ./scripts/docker_smoke_test.sh [image-tag]
 #
-# Requires openmetadata-dist/target/openmetadata-*.tar.gz (mvn -DskipTests package).
+# Requires a prebuilt server image (defaults to ci-backend:local).
 
 set -euo pipefail
 
-IMAGE="${1:-openmetadata-server:smoke}"
+IMAGE="${1:-ci-backend:local}"
 CONTAINER="om-smoke-$$"
 WORKDIR_TMP="$(mktemp -d)"
 
@@ -41,8 +41,8 @@ cleanup() {
 trap cleanup EXIT
 
 echo "==> Preflight"
-if ! compgen -G "openmetadata-dist/target/openmetadata-*.tar.gz" >/dev/null; then
-  echo "missing openmetadata-dist/target/openmetadata-*.tar.gz -- run 'mvn -DskipTests package' first"
+if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+  echo "missing prebuilt image: $IMAGE"
   exit 1
 fi
 
@@ -55,6 +55,11 @@ for ignore in docker/docker-compose-quickstart/Dockerfile.dockerignore \
               docker/development/Dockerfile.dockerignore; do
   while IFS= read -r entry; do
     path="${entry#!}"
+    # The image build consumes the generated distribution before the smoke job starts.
+    case "$ignore:$path" in
+      'docker/development/Dockerfile.dockerignore:openmetadata-dist/target/'|\
+      'docker/development/Dockerfile.dockerignore:openmetadata-dist/target/openmetadata-*.tar.gz') continue ;;
+    esac
     case "$path" in
       *[*?]*) compgen -G "$path" >/dev/null 2>&1 || stale_includes="$stale_includes $ignore:$path" ;;
       *)      [ -e "${path%/}" ] || stale_includes="$stale_includes $ignore:$path" ;;
@@ -83,13 +88,6 @@ done < <(awk '/^docker-smoke:$/{f=1;next} f && /^[a-z_-]+:$/{f=0} f' "$PATH_FILT
 if [ -n "$stale_filters" ]; then
   echo "stale docker path-filter entr(ies) in $PATH_FILTERS, the path no longer exists:$stale_filters"
   exit 1
-fi
-
-if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
-  echo "==> Building $IMAGE"
-  docker build -f docker/development/Dockerfile -t "$IMAGE" .
-else
-  echo "==> Using pre-built $IMAGE"
 fi
 
 echo

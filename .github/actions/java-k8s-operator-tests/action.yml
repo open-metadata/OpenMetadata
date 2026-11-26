@@ -4,7 +4,6 @@ runs:
   using: composite
   steps:
     - name: Hydrate Maven dependencies
-      id: maven-cache
       uses: ./.github/actions/hydrate-maven-cache
 
     - name: Set up JDK 21
@@ -35,14 +34,6 @@ runs:
           --unit-tests-outcome "${{ steps.k8s-tests.outcome }}" \
           --report-glob "openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml" \
           --emit-annotations
-
-    - name: Save Maven dependencies
-      if: github.event_name == 'push' && steps.maven-cache.outputs.cache-hit != 'true'
-      continue-on-error: true
-      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-      with:
-        path: ~/.m2
-        key: ${{ steps.maven-cache.outputs.cache-primary-key }}
 
     - name: Upload surefire reports
       if: ${{ steps.k8s-tests.outcome == 'failure' && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}

@@ -37,6 +37,14 @@ jobs:
     with:
       entrypoint: pr
 
+  backend:
+    name: Build backend image
+    needs: plan
+    if: ${{ needs.plan.outputs.docker-smoke == 'true' }}
+    uses: ./.github/workflows/reusable-build-backend.yml
+    with:
+      ref: ${{ needs.plan.outputs.ref }}
+
   # Static checks, unit tests and Airflow API tests share one runner. Later suites still run
   # after an earlier one fails so a single push reports every selected failure. The job runs
   # even when nothing is selected or planning fails, so the required checks are always reported.
@@ -179,10 +187,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
-      # Restore-only (exact Actions cache -> GHCR pre-baked image -> prefix fallback);
-      # the save after the build runs on push to main only.
       - name: Hydrate Maven dependencies
-        id: maven-cache
         uses: ./.github/actions/hydrate-maven-cache
 
       - name: Set up JDK 21
@@ -226,14 +231,6 @@ jobs:
           checkstyle-outcome: ${{ steps.checkstyle.outcome }}
           unit-tests-outcome: ${{ steps.unit-tests.outcome }}
 
-      - name: Save Maven dependencies
-        if: github.event_name == 'push' && steps.maven-cache.outputs.cache-hit != 'true' && steps.checkstyle.outcome == 'success'
-        continue-on-error: true
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: ~/.m2
-          key: ${{ steps.maven-cache.outputs.cache-primary-key }}
-
   k8s_operator-unit-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -251,7 +248,7 @@ jobs:
   docker-image-smoke-test:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    needs: plan
+    needs: [plan, backend]
     if: ${{ needs.plan.outputs.docker-smoke == 'true' }}
     steps:
       - name: Checkout
