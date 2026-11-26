@@ -22,6 +22,7 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonPatch;
 import jakarta.json.JsonReader;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
@@ -799,6 +800,14 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     /* Nothing to do */
   }
 
+  @Override
+  protected void validatePatch(TestSuite original, TestSuite updated, JsonPatch patch) {
+    super.validatePatch(original, updated, patch);
+    updated
+        .withBasic(original.getBasic())
+        .withBasicEntityReference(original.getBasicEntityReference());
+  }
+
   private List<EntityReference> getTestCases(TestSuite entity) {
     return findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
   }
@@ -1155,6 +1164,9 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      updated
+          .withBasic(original.getBasic())
+          .withBasicEntityReference(original.getBasicEntityReference());
       compareAndUpdate(
           UPDATE_FIELDS,
           () -> {

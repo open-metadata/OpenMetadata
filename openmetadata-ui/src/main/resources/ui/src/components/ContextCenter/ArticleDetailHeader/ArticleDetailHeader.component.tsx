@@ -124,11 +124,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const { breadcrumbInsideCard, isEmbedded } =
     getContextCenterHeaderPresentation(isAiMode);
 
-  // Named-flag derivation (rule 2 — prop-consumed OperationPermission, owner is
-  // ContextCenterArticlesPage, out of this batch's scope). Ungated: `knowledgePage?.deleted`
-  // gates unrelated UI (vote/follow button disabled state) below, never folded into the
-  // edit flags here.
-  const { canEditAll, canEditOwners } = useMemo(
+  // `permissions` is the open article's entity-level permission (conditions such as
+  // isOwner() already evaluated). Ungated: `knowledgePage?.deleted` gates unrelated UI
+  // (vote/follow button disabled state) below, never folded into these flags.
+  const { canEditAll, canEditOwners, canDelete } = useMemo(
     () => getDerivedPermissionFlags(permissions),
     [permissions]
   );
@@ -548,7 +547,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         />
         <CopyButton testId="copy-btn" value={window.location.href} />
 
-        {permissions?.Delete && (
+        {canDelete && (
           <Dropdown.Root>
             <ButtonUtility
               data-testid="manage-button"
@@ -603,7 +602,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       knowledgePage,
       isFollowing,
       handleFollowClick,
-      permissions?.Delete,
+      canDelete,
       t,
       isDeleting,
       isDeleteModalOpen,

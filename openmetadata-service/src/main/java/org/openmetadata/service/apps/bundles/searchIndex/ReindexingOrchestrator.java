@@ -157,7 +157,6 @@ public class ReindexingOrchestrator {
     LOG.info("Running preflight fixes before reindexing");
     markStaleRunningJobsStopped();
     syncIndexTemplates();
-    ensureHybridSearchPipeline();
     cleanupOrphanedIndicesPreFlight();
   }
 
@@ -167,15 +166,6 @@ public class ReindexingOrchestrator {
       LOG.info("Preflight: synced index templates from indexMapping files");
     } catch (Exception e) {
       LOG.warn("Preflight: failed to sync index templates: {}", e.getMessage());
-    }
-  }
-
-  private void ensureHybridSearchPipeline() {
-    try {
-      searchRepository.ensureHybridSearchPipeline();
-      LOG.info("Preflight: ensured hybrid search pipeline is up to date");
-    } catch (Exception e) {
-      LOG.warn("Preflight: failed to ensure hybrid search pipeline: {}", e.getMessage());
     }
   }
 

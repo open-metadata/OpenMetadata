@@ -81,6 +81,7 @@ import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.AuditReportSearchVisibility;
 import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.PrivateSearchFields;
@@ -127,6 +128,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final ContextMemorySearchVisibility contextMemoryVisibility =
       new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
+  private final AuditReportSearchVisibility auditReportVisibility =
+      new AuditReportSearchVisibility(new OpenSearchQueryBuilderFactory());
   private final NLQService nlqService;
   private static final String SORT_FIELD_SCORE = "_score";
   private static final String SORT_TYPE_KEYWORD = "keyword";
@@ -215,7 +218,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
                     .query(
                         restrictToOrgWideMemories(
                             OpenSearchRbacQueries.withAccessPolicies(
-                                sourceUrlQuery, subjectContext, rbacConditionEvaluator))));
+                                sourceUrlQuery, subjectContext, rbacConditionEvaluator),
+                            subjectContext)));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
@@ -260,7 +264,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             .query(
                 restrictToOrgWideMemories(
                     OpenSearchRbacQueries.withAccessPolicies(
-                        query, subjectContext, rbacConditionEvaluator)));
+                        query, subjectContext, rbacConditionEvaluator),
+                    subjectContext));
     List<String> sourceExcludes = PrivateSearchFields.sourceExcludes(subjectContext, index, null);
     if (!sourceExcludes.isEmpty()) {
       request.source(source -> source.filter(filter -> filter.excludes(sourceExcludes)));
@@ -1141,8 +1146,19 @@ public class OpenSearchSearchManager implements SearchManagementClient {
    * must fail closed. Non-memory documents are unaffected.
    */
   private Query restrictToOrgWideMemories(Query query) {
+    return restrictToOrgWideMemories(query, null);
+  }
+
+  private Query restrictToOrgWideMemories(Query query, SubjectContext subjectContext) {
     Query memoryFilter =
-        ((OpenSearchQueryBuilder) contextMemoryVisibility.buildOrgWideOnlyFilter()).buildV2();
+        ((OpenSearchQueryBuilder)
+                new OpenSearchQueryBuilderFactory()
+                    .boolQuery()
+                    .must(
+                        List.of(
+                            contextMemoryVisibility.buildOrgWideOnlyFilter(),
+                            auditReportVisibility.buildVisibilityFilter(subjectContext))))
+            .buildV2();
     return query == null
         ? memoryFilter
         : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
@@ -1332,6 +1348,11 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       SubjectContext subjectContext,
       OpenSearchRequestBuilder requestBuilder,
       OMQueryBuilder visibilityBuilder) {
+    requestBuilder
+        .filter(
+            ((OpenSearchQueryBuilder) auditReportVisibility.buildVisibilityFilter(subjectContext))
+                .buildV2())
+        .auditReportVisibilityResolved();
     if (visibilityBuilder != null) {
       requestBuilder.filter(((OpenSearchQueryBuilder) visibilityBuilder).buildV2());
     }
@@ -1627,7 +1648,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             .trackTotalHits(false)
             .timeout("30s")
             .preference(SearchUtils.searchPreferenceFor(subjectContext))
-            .contextMemoryVisibilityResolved();
+            .contextMemoryVisibilityResolved()
+            .auditReportVisibilityResolved();
     body.path("aggs")
         .fields()
         .forEachRemaining(
