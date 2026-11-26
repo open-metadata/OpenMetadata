@@ -330,7 +330,6 @@ export default defineConfig({
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
-        '**/SearchRBAC.spec.ts',
         '**/IntakeForm.spec.ts',
         '**/ProfileGovernance.spec.ts',
         '**/AdvancedSearch.spec.ts',
@@ -446,16 +445,6 @@ export default defineConfig({
       fullyParallel: true,
     },
     {
-      name: 'search-rbac-setup',
-      testMatch: '**/search-rbac.setup.ts',
-      dependencies: authDependencies,
-      teardown: 'search-rbac-teardown',
-    },
-    {
-      name: 'search-rbac-teardown',
-      testMatch: '**/search-rbac.teardown.ts',
-    },
-    {
       name: 'Basic',
       grep: combineGrep(/@basic/),
       // The SSO scenario matrix (SsoScenarios.spec.ts) tags its Basic-provider
@@ -504,15 +493,6 @@ export default defineConfig({
           },
         ]
       : []),
-    {
-      name: 'SearchRBAC',
-      testMatch: '**/SearchRBAC.spec.ts',
-      grep: shardGrep,
-      dependencies: ['search-rbac-setup'],
-      use: { ...devices['Desktop Chrome'] },
-      fullyParallel: false,
-      workers: 1,
-    },
     // Domain isolation E2E suite (issue #24180). Runs in the single-worker global-state lane
     // because several specs toggle the global `enableAccessControl` search setting; each file
     // restores it in afterAll, and serial execution (workers: 1) prevents cross-file races.

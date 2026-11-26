@@ -280,31 +280,6 @@ class DBTCloudClient:
             logger.debug(f"Could not fetch job count: {exc}")
         return None
 
-    def get_latest_successful_run_id(self, job_id: int) -> int | None:
-        """
-        Get the latest successful run ID for a given job.
-        """
-        try:
-            query_params = {
-                "job_definition_id": job_id,
-                "order_by": "-finished_at",
-                "limit": "1",
-                "status": "10",  # 10 = Success in dbt Cloud API
-            }
-
-            result = self.client.get(f"/accounts/{self.config.accountId}/runs/", data=query_params)
-            run_list_response = DBTRunList.model_validate(result)
-
-            if run_list_response.Runs:
-                return run_list_response.Runs[0].id
-
-            return None  # noqa: TRY300
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get latest successful run for job {job_id}: {exc}")
-            return None
-
     def get_latest_run(self, job_id: int) -> DBTRun | None:
         """
         Most recent run of a job, ignoring any lookback window.

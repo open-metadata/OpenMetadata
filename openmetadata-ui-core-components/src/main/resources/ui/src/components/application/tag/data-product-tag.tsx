@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { CSSProperties, FC, MouseEvent } from 'react';
 import { Package } from '../../../icons/Package';
@@ -43,6 +44,7 @@ export const DataProductTag: FC<EntityTagProps> = ({
   closeButtonTestId,
   ...otherProps
 }) => {
+  const { t } = useCoreTranslation();
   const resolvedColor = color ?? DEFAULT_TAG_COLOR;
   const tagColorStyle = { '--tag-color': resolvedColor } as CSSProperties;
 
@@ -81,6 +83,7 @@ export const DataProductTag: FC<EntityTagProps> = ({
     return (
       <BadgeWithButton
         {...sharedProps}
+        buttonLabel={t('label.remove-entity', { entity: label })}
         buttonTestId={closeButtonTestId}
         className={cx(sharedProps.className, 'tag-accent__close-icon')}
         isDisabled={disabled}

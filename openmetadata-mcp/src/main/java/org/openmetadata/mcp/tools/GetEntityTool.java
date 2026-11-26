@@ -19,6 +19,7 @@ import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.AIContext;
@@ -30,6 +31,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.AIContextBuilder;
 import org.openmetadata.service.aicontext.AIContextMarkdown;
+import org.openmetadata.service.aicontext.PromptText;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.lineage.LineagePermissionFilter;
@@ -451,13 +453,23 @@ public class GetEntityTool implements McpTool {
    * caller then gets the full body rather than nothing.
    */
   private static List<String> passages(IncludeContext ctx, String query) {
-    return Entity.getSearchRepository()
-        .getVectorIndexService()
-        .searchChunksByParent(
-            ctx.entity().getId().toString(),
-            query,
-            ctx.options().passages(),
-            getSubjectContext(ctx.securityContext()));
+    List<String> found =
+        Entity.getSearchRepository()
+            .getVectorIndexService()
+            .searchChunksByParent(
+                ctx.entity().getId().toString(),
+                query,
+                ctx.options().passages(),
+                getSubjectContext(ctx.securityContext()));
+    // PageBodyTextContributor includes the raw editor HTML in indexed page chunks.
+    return ctx.entity() instanceof Page ? readablePassages(found) : found;
+  }
+
+  private static List<String> readablePassages(List<String> passages) {
+    return passages.stream()
+        .map(PromptText::forContentRead)
+        .filter(passage -> !nullOrEmpty(passage) && !passage.isBlank())
+        .toList();
   }
 
   private static Object renderText(IncludeContext ctx, String text) {

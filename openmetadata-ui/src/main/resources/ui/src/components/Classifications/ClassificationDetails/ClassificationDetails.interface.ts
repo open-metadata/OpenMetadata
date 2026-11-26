@@ -13,6 +13,7 @@
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Classification } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
+import { EntityReference } from '../../../generated/entity/type';
 import { DeleteTagsType } from '../../../pages/TagsPage/TagsPage.interface';
 
 export interface ClassificationDetailsProps {
@@ -30,6 +31,10 @@ export interface ClassificationDetailsProps {
   handleUpdateClassification?: (
     updatedClassification: Classification
   ) => Promise<void>;
+  handleClassificationDomainsUpdate?: (
+    id: string,
+    domains?: EntityReference[]
+  ) => void;
   handleToggleDisable?: (tag: Tag) => void;
   handleEditClassificationClick?: () => void;
 }
