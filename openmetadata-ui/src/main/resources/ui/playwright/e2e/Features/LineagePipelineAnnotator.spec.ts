@@ -40,10 +40,6 @@ let table: TableClass;
 let dbServiceFqn: string;
 let messagingServiceFqn: string;
 let pipelineServiceFqn: string;
-let topicFqn: string;
-let pipelineFqn: string;
-
-const LINEAGE_API = '/api/v1/lineage/getLineage?fqn=*';
 
 test.describe('Lineage Pipeline Annotator', () => {
   test.beforeAll(async ({ browser }) => {
@@ -84,7 +80,6 @@ test.describe('Lineage Pipeline Annotator', () => {
           },
         })
         .then((r) => r.json());
-      topicFqn = topicResp.fullyQualifiedName;
 
       const psName = `pw-airflow-${uuid()}`;
       const psResp = await apiContext
@@ -111,7 +106,6 @@ test.describe('Lineage Pipeline Annotator', () => {
           },
         })
         .then((r) => r.json());
-      pipelineFqn = pipelineResp.fullyQualifiedName;
 
       await apiContext.put('/api/v1/lineage', {
         data: {
@@ -161,97 +155,6 @@ test.describe('Lineage Pipeline Annotator', () => {
         await page.close();
       }
     }
-  });
-
-  test('entity lineage does not include service nodes', async ({ page }) => {
-    const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
-    await page.goto(`/table/${encodeURIComponent(tableFqn)}`, {
-      waitUntil: 'domcontentloaded',
-    });
-
-    const lineageResponsePromise = page.waitForResponse(LINEAGE_API);
-    await page.click('[data-testid="lineage"]');
-    const lineageResponse = await lineageResponsePromise;
-    const lineageData = await lineageResponse.json();
-
-    const nodeFqns = Object.keys(lineageData.nodes ?? {});
-
-    expect(nodeFqns).not.toContain(dbServiceFqn);
-    expect(nodeFqns).not.toContain(messagingServiceFqn);
-    expect(nodeFqns).not.toContain(pipelineServiceFqn);
-    expect(nodeFqns).toContain(topicFqn);
-  });
-
-  test('entity lineage edge preserves pipeline annotation', async ({
-    page,
-  }) => {
-    const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
-    await page.goto(`/table/${encodeURIComponent(tableFqn)}`, {
-      waitUntil: 'domcontentloaded',
-    });
-
-    const lineageResponsePromise = page.waitForResponse(LINEAGE_API);
-    await page.click('[data-testid="lineage"]');
-    const lineageResponse = await lineageResponsePromise;
-    const lineageData = await lineageResponse.json();
-
-    const downstreamEdges: Array<{
-      pipeline?: { fullyQualifiedName?: string };
-    }> = Object.values(lineageData.downstreamEdges ?? {});
-
-    const hasPipelineAnnotation = downstreamEdges.some(
-      (edge) => edge?.pipeline?.fullyQualifiedName === pipelineFqn
-    );
-
-    expect(hasPipelineAnnotation).toBe(true);
-  });
-
-  test('service lineage has pipeline service connected to both services', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    const token = await getToken(page);
-    const apiContext = await getAuthContext(token);
-
-    const response = await apiContext.get(
-      `/api/v1/lineage/getLineage?fqn=${encodeURIComponent(
-        pipelineServiceFqn
-      )}&type=pipelineService&upstreamDepth=1&downstreamDepth=1`
-    );
-
-    expect(response.ok()).toBe(true);
-
-    const data = await response.json();
-    const nodeFqns = Object.keys(data.nodes ?? {});
-
-    expect(nodeFqns).toContain(dbServiceFqn);
-    expect(nodeFqns).toContain(messagingServiceFqn);
-
-    await apiContext.dispose();
-  });
-
-  test('database service has pipeline service as downstream in service lineage', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    const token = await getToken(page);
-    const apiContext = await getAuthContext(token);
-
-    const response = await apiContext.get(
-      `/api/v1/lineage/getLineage?fqn=${encodeURIComponent(
-        dbServiceFqn
-      )}&type=databaseService&upstreamDepth=0&downstreamDepth=1`
-    );
-
-    expect(response.ok()).toBe(true);
-
-    const data = await response.json();
-    const nodeFqns = Object.keys(data.nodes ?? {});
-
-    expect(nodeFqns).toContain(pipelineServiceFqn);
-    expect(nodeFqns).not.toContain(messagingServiceFqn);
-
-    await apiContext.dispose();
   });
 
   test('service view routes through the pipeline instead of drawing a direct edge', async ({

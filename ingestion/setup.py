@@ -209,7 +209,7 @@ base_requirements = {
     "Jinja2>=3.1.6",  # 3.1.5/3.1.6 close sandbox escapes; the Rule Library relies on the sandbox
     "idna>=3.15",  # CVE-2026-45409 idna.encode() bypass of CVE-2024-3651 fix
     "jsonpatch<2.0, >=1.24",
-    "kubernetes>=21.0.0,<36",  # 36.0.0 regressed in-cluster auth (https://github.com/kubernetes-client/python/issues/2582)
+    "kubernetes>=36.0.3,<37",  # 35.0.0 ignores NO_PROXY; 36.0.0 broke in-cluster auth (fixed 36.0.1); 37 rewrites the client
     "lxml>=6.1.0",  # CVE-2026-41066 iterparse/ETCompatXMLParser XXE
     "Mako>=1.3.12",  # CVE-2026-44307 TemplateLookup path traversal
     "memory-profiler",

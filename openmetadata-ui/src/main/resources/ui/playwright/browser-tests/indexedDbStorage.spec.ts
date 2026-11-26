@@ -13,7 +13,6 @@
 import { expect, test } from '@playwright/test';
 import { createServer } from 'http';
 import { AddressInfo } from 'net';
-import { dirname, join } from 'path';
 
 const stateFor = (origin: string) => ({
   cookies: [],
@@ -50,12 +49,9 @@ const stateFor = (origin: string) => ({
 // keeps this a test of the correction itself, not of the install.
 const {
   patchStorageSource,
+  readStorageScript,
 } = require('../../scripts/patch-playwright-indexeddb.cjs');
-const installedStorageSource: string = require(join(
-  dirname(require.resolve('playwright-core/package.json')),
-  'lib/generated/storageScriptSource.js'
-)).source;
-const storageSource: string = patchStorageSource(installedStorageSource);
+const storageSource: string = patchStorageSource(readStorageScript().source);
 
 const storageTest = test.extend<{ origin: string }>({
   // eslint-disable-next-line no-empty-pattern -- The HTTP server fixture has no browser dependencies.

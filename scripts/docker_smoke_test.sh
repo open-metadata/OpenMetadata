@@ -237,6 +237,18 @@ case "$pid1" in
   "") fail "could not read /proc/1 before the container exited" ;;
   *) fail "PID 1 is '${pid1%% *}', not the JVM -- docker stop will SIGKILL instead of shutting down" ;;
 esac
+
+# Only the jars under libs/ belong on the launch classpath. Java reads an empty
+# entry, a leading or doubled ':', as the working directory.
+launch_cp="$(echo "$pid1" | awk '{ for (i = 1; i < NF; i++) if ($i == "-cp") { print $(i + 1); exit } }')"
+non_jar="$(printf '%s\n' "$launch_cp" | tr ':' '\n' | grep -cvE '\.jar$' || true)"
+if [ -z "$launch_cp" ]; then
+  fail "could not read the JVM's -cp from /proc/1"
+elif [ "$non_jar" -ne 0 ]; then
+  fail "the launch classpath has $non_jar entr(ies) that are not jars, empty ones included: ${launch_cp:0:80}..."
+else
+  pass "the launch classpath holds only jars"
+fi
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 
 # The JVM echoes JAVA_TOOL_OPTIONS to stderr before any logging starts ("Picked up

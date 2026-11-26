@@ -45,6 +45,7 @@ interface ContractDetailFormValues {
   name: string;
   entityStatus: FormSelectItem | null;
   owners: EntityReferenceOption[];
+  reviewers: EntityReferenceOption[];
   description: string;
 }
 
@@ -71,6 +72,7 @@ export const ContractDetailFormTab: React.FC<{
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.TABLE);
   const ownersPicker = useUserTeamOptions();
+  const reviewersPicker = useUserTeamOptions();
 
   const statusOptions = useMemo<FormSelectItem[]>(
     () =>
@@ -90,6 +92,7 @@ export const ContractDetailFormTab: React.FC<{
       name: contract ? getEntityName(contract) : '',
       entityStatus: statusOptions.find((item) => item.id === status) ?? null,
       owners: (contract?.owners ?? []).map(toEntityReferenceOption),
+      reviewers: (contract?.reviewers ?? []).map(toEntityReferenceOption),
       description: contract?.description ?? '',
     };
   };
@@ -118,6 +121,11 @@ export const ContractDetailFormTab: React.FC<{
         owners: {
           owners: toEntityReferences(
             (values.owners ?? []) as EntityReferenceOption[]
+          ),
+        },
+        reviewers: {
+          reviewers: toEntityReferences(
+            (values.reviewers ?? []) as EntityReferenceOption[]
           ),
         },
         description: { description: values.description },
@@ -181,8 +189,33 @@ export const ContractDetailFormTab: React.FC<{
         },
         type: FieldTypes.USER_TEAM_SELECT_INPUT,
       },
+      {
+        id: 'root/reviewers',
+        label: t('label.reviewer-plural'),
+        name: 'reviewers',
+        placeholder: t('label.please-select-entity', {
+          entity: t('label.reviewer-plural'),
+        }),
+        props: {
+          'data-testid': 'contract-reviewers',
+          // The server already filtered the options by the search text.
+          filterOption: () => true,
+          multiple: true,
+          ...reviewersPicker,
+        },
+        rules: {
+          validate: (reviewers: EntityReferenceOption[]) =>
+            hasOwnerRuleViolation(reviewers, {
+              canAddMultipleUserOwners: true,
+              canAddMultipleTeamOwner: false,
+            })
+              ? t('message.reviewer-multiple-users-or-single-team')
+              : true,
+        },
+        type: FieldTypes.USER_TEAM_SELECT_INPUT,
+      },
     ],
-    [entityRules, ownersPicker, statusOptions, t]
+    [entityRules, ownersPicker, reviewersPicker, statusOptions, t]
   );
 
   return (

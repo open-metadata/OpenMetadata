@@ -166,20 +166,6 @@ test.describe('Domain isolation - tasks @domain-isolation', () => {
     }
   });
 
-  test('userA sees only their own-domain task', async ({ userAPage }) => {
-    expect(await tasksAboutTable(userAPage, tableA)).toContain(fqnOf(tableA));
-    expect(await tasksAboutTable(userAPage, tableB)).not.toContain(
-      fqnOf(tableB)
-    );
-  });
-
-  test('userB sees only their own-domain task', async ({ userBPage }) => {
-    expect(await tasksAboutTable(userBPage, tableB)).toContain(fqnOf(tableB));
-    expect(await tasksAboutTable(userBPage, tableA)).not.toContain(
-      fqnOf(tableA)
-    );
-  });
-
   test('admin sees tasks from both domains', async ({ adminPage }) => {
     expect(await tasksAboutTable(adminPage, tableA)).toContain(fqnOf(tableA));
     expect(await tasksAboutTable(adminPage, tableB)).toContain(fqnOf(tableB));

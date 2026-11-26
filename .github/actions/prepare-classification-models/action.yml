@@ -7,6 +7,9 @@ inputs:
   save-cache:
     description: Save cache misses in the default-branch warmer
     default: 'false'
+  upload-artifact:
+    description: Upload prepared model archives for other runners
+    default: 'true'
 runs:
   using: composite
   steps:
@@ -24,9 +27,11 @@ runs:
         } >> "$GITHUB_OUTPUT"
         rm -rf "$RUNNER_TEMP/classification-models"
     - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      if: env.OM_UV_EXECUTABLE == ''
       with:
         python-version: ${{ steps.discover.outputs.python }}
     - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      if: env.OM_UV_EXECUTABLE == ''
       with:
         version: ${{ steps.discover.outputs.uv }}
         enable-cache: false
@@ -51,7 +56,7 @@ runs:
         model: ${{ toJSON(fromJSON(steps.discover.outputs.models)[3]) }}
         save-cache: ${{ inputs.save-cache }}
     - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-      if: inputs.save-cache != 'true'
+      if: inputs.save-cache != 'true' && inputs.upload-artifact == 'true'
       with:
         name: classification-models
         path: ${{ runner.temp }}/classification-models
