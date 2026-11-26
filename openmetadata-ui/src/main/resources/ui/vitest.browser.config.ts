@@ -145,8 +145,8 @@ export default defineConfig(async (env) => {
           provider: 'istanbul',
           // A failing test must not drop the whole report.
           reportOnFailure: true,
-          // Report only files the browser actually loaded. Sonar does not read
-          // this report yet; it shows in the CI job summary.
+          // Report only files the browser actually loaded. The nightly
+          // SonarCloud scan reads lcov.info alongside Jest's.
           exclude: [
             'src/**/*.test.*',
             'src/test/**',

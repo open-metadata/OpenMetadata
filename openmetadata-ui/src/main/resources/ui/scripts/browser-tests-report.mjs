@@ -12,20 +12,19 @@
  */
 
 /**
- * Writes the browser-test PR comment: what ran and why, the results, and how
+ * Writes the browser-test report for the job summary: what ran and why, the results, and how
  * much of the PR's changed code the browser tests that ran executed. With
  * selective runs an overall coverage percentage only reflects the tests that
- * happened to run, so the comment reports changed lines instead.
+ * happened to run, so the report shows changed lines instead.
  *
  *   node scripts/browser-tests-report.mjs --base <sha> --selection selection.json \
  *     --junit src/test/browser/junit.xml \
- *     --coverage src/test/browser/coverage/coverage-final.json > comment.md
+ *     --coverage src/test/browser/coverage/coverage-final.json >> "$GITHUB_STEP_SUMMARY"
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-export const MARKER = '<!-- ui-browser-tests -->';
 const UI = 'openmetadata-ui/src/main/resources/ui/';
 const SOURCE = /^src\/.*\.(ts|tsx|js|jsx)$/;
 const NOT_PRODUCT =
@@ -122,7 +121,7 @@ const pct = (covered, total) =>
   total ? `${Math.round((covered / total) * 100)}%` : 'n/a';
 
 export const renderComment = ({ selection, results, rows }) => {
-  const out = [MARKER, '### UI browser tests', ''];
+  const out = ['### UI browser tests', ''];
   const ran =
     selection.mode === 'all'
       ? `all test files (${selection.reason})`

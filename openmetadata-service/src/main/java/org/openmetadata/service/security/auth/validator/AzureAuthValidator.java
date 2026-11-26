@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -86,6 +87,8 @@ public class AzureAuthValidator {
             ValidationErrorBuilder.FieldPaths.OIDC_TENANT,
             "Tenant ID is required for Azure confidential clients");
       }
+      // Azure tenant IDs (GUIDs and the common/organizations/consumers names) are case-insensitive.
+      tenantId = tenantId.toLowerCase(Locale.ROOT);
 
       // Validate tenant ID format
       if (!isValidGuid(tenantId)
@@ -107,8 +110,8 @@ public class AzureAuthValidator {
             AZURE_LOGIN_BASE + "/" + tenantId + "/v2.0" + OPENID_CONFIG_PATH;
 
         // Check if the provided URI matches either v1 or v2 format
-        if (!discoveryUri.equals(expectedDiscoveryUri)
-            && !discoveryUri.equals(expectedV2DiscoveryUri)) {
+        if (!discoveryUri.equalsIgnoreCase(expectedDiscoveryUri)
+            && !discoveryUri.equalsIgnoreCase(expectedV2DiscoveryUri)) {
           // Check if it's a malformed URI (common error: missing slash)
           if (discoveryUri.contains(".well-knownopenid-configuration")) {
             return ValidationErrorBuilder.createFieldError(
@@ -280,7 +283,8 @@ public class AzureAuthValidator {
       throw new IllegalArgumentException(
           "Invalid Azure authority format. Expected: https://login.microsoftonline.com/{tenant-id}");
     }
-    String tenantId = parts[parts.length - 1];
+    // Azure tenant IDs (GUIDs and the common/organizations/consumers names) are case-insensitive.
+    String tenantId = parts[parts.length - 1].toLowerCase(Locale.ROOT);
 
     // Validate tenant ID format
     if (!isValidGuid(tenantId)
@@ -365,7 +369,9 @@ public class AzureAuthValidator {
       }
 
       Set<String> azureJwksUrls = azureJwksUrls(tenantId);
-      if (publicKeyUrls.stream().noneMatch(azureJwksUrls::contains)) {
+      if (publicKeyUrls.stream()
+          .map(url -> url.toLowerCase(Locale.ROOT))
+          .noneMatch(azureJwksUrls::contains)) {
         return ValidationErrorBuilder.createFieldError(
             ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
             "At least one public key URL must be an Azure JWKS endpoint, such as "
