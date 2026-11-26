@@ -37,6 +37,10 @@ import {
   ContextMemory,
   EntityReference,
 } from '../../../generated/entity/context/contextMemory';
+import {
+  MemoryActionPermissions,
+  NO_MEMORY_ACTIONS,
+} from '../../../hooks/discovery/context-center/useMemoryActionPermissions';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/StringUtils';
@@ -115,11 +119,8 @@ const MemoryRowSkeleton: FC = () => (
 );
 
 interface MemoryRowProps {
-  currentUserName?: string;
-  isAdminUser?: boolean;
   memory: ContextMemory;
-  canEdit?: boolean;
-  canDelete?: boolean;
+  actions: MemoryActionPermissions;
   onDeleteMemory?: (memory: ContextMemory) => void;
   onEditMemory?: (memory: ContextMemory) => void;
   onTogglePin?: (memory: ContextMemory) => void;
@@ -128,18 +129,12 @@ interface MemoryRowProps {
 }
 
 const MemoryRow: FC<MemoryRowProps> = ({
-  currentUserName,
-  isAdminUser,
+  actions,
   memory,
-  canEdit,
-  canDelete,
   onDeleteMemory,
   onEditMemory,
   onViewMemory,
 }) => {
-  const isOwner =
-    memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
-  const canActOnMemory = isOwner || Boolean(isAdminUser);
   const { t } = useTranslation();
   const memoryUrl = useMemo(
     () =>
@@ -292,7 +287,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
           <CopyLinkButton url={memoryUrl}>
             <CopyIcon aria-hidden="true" height={20} width={20} />
           </CopyLinkButton>
-          {canActOnMemory && canEdit && onEditMemory && (
+          {actions.canEdit && onEditMemory && (
             <Tooltip title={t('label.edit')}>
               <TooltipTrigger>
                 <ButtonUtility
@@ -305,7 +300,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
               </TooltipTrigger>
             </Tooltip>
           )}
-          {canActOnMemory && canDelete && (
+          {actions.canDelete && (
             <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />
           )}
         </Box>
@@ -315,14 +310,11 @@ const MemoryRow: FC<MemoryRowProps> = ({
 };
 
 const MemoriesView: FC<MemoriesViewProps> = ({
-  currentUserName,
   data,
-  isAdminUser,
+  getMemoryActions = () => NO_MEMORY_ACTIONS,
   isLoading,
   onDeleteMemory,
   onEditMemory,
-  canEdit,
-  canDelete,
   isPinningMemoryId,
   onTogglePin,
   onViewMemory,
@@ -384,10 +376,7 @@ const MemoriesView: FC<MemoriesViewProps> = ({
     <>
       {data.map((memory) => (
         <MemoryRow
-          canDelete={canDelete}
-          canEdit={canEdit}
-          currentUserName={currentUserName}
-          isAdminUser={isAdminUser}
+          actions={getMemoryActions(memory)}
           isPinningMemoryId={isPinningMemoryId}
           key={memory.id}
           memory={memory}

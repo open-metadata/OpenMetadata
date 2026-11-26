@@ -63,6 +63,7 @@ import {
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import { useMemoryActionPermissions } from '../../../hooks/discovery/context-center/useMemoryActionPermissions';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { queryClient } from '../../../queryClient';
 import {
@@ -142,30 +143,18 @@ const ContextCenterMemoriesPage: FC = () => {
     [t]
   );
 
-  const { hasCreatePermission, hasDeletePermission, hasEditPermission } =
-    useMemo(
-      () => ({
-        hasCreatePermission: permissions.Create,
-        hasDeletePermission: permissions.Delete,
-        hasEditPermission: permissions.EditAll,
-      }),
-      [permissions.Create, permissions.Delete, permissions.EditAll]
-    );
+  const hasCreatePermission = permissions.Create;
 
-  const canDeleteMemory = useMemo(() => {
-    const memory = memoryToEdit ?? memoryToView;
-
-    const isOwner =
-      memory?.owners?.some((o) => o.name === currentUser?.name) ?? false;
-
-    return hasDeletePermission && (isOwner || Boolean(currentUser?.isAdmin));
-  }, [
-    hasDeletePermission,
-    memoryToEdit,
-    memoryToView,
-    currentUser?.name,
-    currentUser?.isAdmin,
-  ]);
+  const selectedMemory = memoryToEdit ?? memoryToView;
+  const actionTargets = useMemo(
+    () => [...memories, selectedMemory],
+    [memories, selectedMemory]
+  );
+  const { getMemoryActions } = useMemoryActionPermissions(
+    actionTargets,
+    permissions
+  );
+  const selectedMemoryActions = getMemoryActions(selectedMemory);
 
   const fetchMemories = useCallback(
     async (showLoader = true) => {
@@ -890,11 +879,8 @@ const ContextCenterMemoriesPage: FC = () => {
               style={{ overflow: 'unset' }}>
               <div>
                 <MemoriesView
-                  canDelete={hasDeletePermission}
-                  canEdit={hasEditPermission}
-                  currentUserName={currentUser?.name}
                   data={memories}
-                  isAdminUser={currentUser?.isAdmin}
+                  getMemoryActions={getMemoryActions}
                   isFiltered={isMemoriesFilteredOnly}
                   isLoading={isMemoriesLoading}
                   isPinningMemoryId={isPinningMemoryId}
@@ -920,8 +906,8 @@ const ContextCenterMemoriesPage: FC = () => {
       {/* Edit / Create modal */}
       <CreateMemoryModal
         canCreate={hasCreatePermission}
-        canDelete={canDeleteMemory}
-        canEdit={hasEditPermission}
+        canDelete={selectedMemoryActions.canDelete}
+        canEdit={selectedMemoryActions.canEdit}
         currentUserName={currentUser?.name}
         isAdminUser={currentUser?.isAdmin}
         isOpen={isCreateModalOpen}
@@ -936,8 +922,8 @@ const ContextCenterMemoriesPage: FC = () => {
       {memoryToView && (
         <CreateMemoryModal
           viewOnly
-          canDelete={canDeleteMemory}
-          canEdit={hasEditPermission}
+          canDelete={selectedMemoryActions.canDelete}
+          canEdit={selectedMemoryActions.canEdit}
           currentUserName={currentUser?.name}
           isAdminUser={currentUser?.isAdmin}
           isOpen={isViewModalOpen}
