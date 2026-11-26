@@ -5,12 +5,11 @@ import java.io.UncheckedIOException;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.VectorIndexService;
-import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 
 @Slf4j
 public class RecreateWithEmbeddings extends DefaultRecreateHandler {
@@ -74,7 +73,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
             "Partial recreate ({} of {} vector-indexable types) — keeping the chunk index; "
                 + "orphaned chunks, if any, are only swept by a full recreate",
             coveredVectorTypeCount(entities),
-            AvailableEntityTypes.DATA_ASSET_CHUNK_TYPES.size());
+            EmbeddedEntityTypes.DATA_ASSETS.size());
       }
     }
     return stagedGeneration;
@@ -91,20 +90,19 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
   }
 
   /**
-   * Whether the run covers every type that writes to the data-asset chunk index, compared case-insensitively: the
-   * reindex job carries canonical camelCase names ("glossaryTerm") while {@link
-   * AvailableEntityTypes#DATA_ASSET_CHUNK_TYPES} is lowercased ("glossaryterm") — a case-sensitive containsAll would
-   * never match and the chunk recreate would silently never fire.
+   * Whether the run covers every type that writes to the data-asset chunk index ({@link
+   * EmbeddedEntityTypes#DATA_ASSETS}), compared case-insensitively so a job that names a type in
+   * another casing still counts.
    */
   static boolean coversAllVectorTypes(Set<String> entities) {
-    return coveredVectorTypeCount(entities) == AvailableEntityTypes.DATA_ASSET_CHUNK_TYPES.size();
+    return coveredVectorTypeCount(entities) == EmbeddedEntityTypes.DATA_ASSETS.size();
   }
 
   static long coveredVectorTypeCount(Set<String> entities) {
-    Set<String> normalized =
-        entities.stream().map(e -> e.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-    return AvailableEntityTypes.DATA_ASSET_CHUNK_TYPES.stream()
-        .filter(normalized::contains)
+    return entities.stream()
+        .filter(EmbeddedEntityTypes::isDataAsset)
+        .map(entity -> entity.toLowerCase(Locale.ROOT))
+        .distinct()
         .count();
   }
 

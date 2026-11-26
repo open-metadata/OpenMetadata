@@ -26,6 +26,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -38,8 +39,8 @@ import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
-import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
@@ -620,6 +621,11 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   private final Object stagedChunkLock = new Object();
   private volatile String stagedChunkIndex;
+  private static final Set<String> DATA_ASSET_TYPES_LOWERCASE =
+      EmbeddedEntityTypes.DATA_ASSETS.stream()
+          .map(type -> type.toLowerCase(Locale.ROOT))
+          .collect(Collectors.toUnmodifiableSet());
+
   private volatile Set<String> stagedExpectedTypes = Set.of();
   private final Set<String> stagedFinalizedTypes = ConcurrentHashMap.newKeySet();
   // Types whose entity index kept its live index. Any of them keeps the live chunks too.
@@ -689,7 +695,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
         throw new RuntimeException("Failed to create staged chunk index " + generation, e);
       }
       stagedChunkIndex = generation;
-      stagedExpectedTypes = AvailableEntityTypes.DATA_ASSET_CHUNK_TYPES;
+      stagedExpectedTypes = DATA_ASSET_TYPES_LOWERCASE;
       stagedFinalizedTypes.clear();
       stagedKeptLiveTypes.clear();
       flaggedGenerations.clear();

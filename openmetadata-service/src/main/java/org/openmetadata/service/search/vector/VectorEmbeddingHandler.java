@@ -1,10 +1,8 @@
 package org.openmetadata.service.search.vector;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -13,15 +11,12 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventHandler;
 import org.openmetadata.service.search.OntologyTermSearch;
-import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
-  private static final Set<String> LIFECYCLE_TYPES =
-      AvailableEntityTypes.LIST.stream()
-          .filter(type -> !OntologyTermSearch.isTerm(type))
-          .collect(Collectors.toUnmodifiableSet());
+  private static final Set<String> LIFECYCLE_TYPES = Set.copyOf(EmbeddedEntityTypes.DATA_ASSETS);
   private final VectorIndexService vectorService;
 
   @Override
@@ -138,7 +133,7 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
 
   private boolean isSupported(EntityInterface<?> entity) {
     String entityType = extractEntityType(entity);
-    return entityType != null && isSupportedEntityType(entityType);
+    return EmbeddedEntityTypes.isEmbedded(entityType);
   }
 
   public void refreshOntologyEmbedding(EntityReference reference) {
@@ -204,9 +199,5 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
       LOG.warn("Failed to extract entity type: {}", e.getMessage());
       return null;
     }
-  }
-
-  private boolean isSupportedEntityType(String entityType) {
-    return AvailableEntityTypes.SET.contains(entityType.toLowerCase(Locale.ROOT));
   }
 }
