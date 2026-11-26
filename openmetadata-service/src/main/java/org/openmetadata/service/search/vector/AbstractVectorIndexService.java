@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
@@ -299,14 +300,21 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   }
 
   /**
-   * Created on the first write without the data-asset read alias, since ontology terms are read
-   * through their own index. Like the data-asset chunk index, it is only marked ensured once its
-   * mapping is current, and a write is refused while it is not.
+   * The ontology chunk index term chunks go to: the generation a run staged to rebuild it while
+   * that run lasts, and otherwise the live one, created on the first write without the data-asset
+   * read alias, since ontology terms are read through their own index. Like the data-asset chunk
+   * index, the live one is only marked ensured once its mapping is current, and a write is refused
+   * while it is not.
    */
   private String ontologyChunkWriteTarget() {
     if (!chunksOntologyTerms()) {
       throw new IllegalStateException(engineName() + " keeps no ontology chunk index");
     }
+    return requireVectorsFit(
+        stagedOntologyChunkTarget().orElseGet(this::ensuredLiveOntologyChunkIndex));
+  }
+
+  private String ensuredLiveOntologyChunkIndex() {
     String index = OntologyChunkIndex.name();
     if (!ontologyChunkIndexEnsured) {
       synchronized (this) {
@@ -318,7 +326,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     if (!ontologyChunkIndexEnsured) {
       throw new IllegalStateException("Ontology vector chunk index unavailable");
     }
-    return requireVectorsFit(index);
+    return index;
   }
 
   private boolean ensureOntologyChunkIndex(String index) {
@@ -415,7 +423,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   private boolean ontologyTargetsCanHoldVectors(String entityIndexName) {
     return canHoldVectors(entityIndexName)
-        && (!chunksOntologyTerms() || canHoldVectors(OntologyChunkIndex.name()));
+        && (!chunksOntologyTerms()
+            || canHoldVectors(stagedOntologyChunkTarget().orElseGet(OntologyChunkIndex::name)));
   }
 
   private void refreshOntologyEmbeddings(
@@ -760,11 +769,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       String liveTarget = resolved.name();
       deleteOrphanChunkGenerations(base, liveTarget);
       generation = nextChunkGenerationName(base);
-      try {
-        executeGenericRequest("PUT", "/" + generation, buildChunkIndexMapping(false));
-      } catch (Exception e) {
-        throw new RuntimeException("Failed to create staged chunk index " + generation, e);
-      }
+      createStagedGeneration(generation);
       stagedChunkIndex = generation;
       stagedExpectedTypes = DATA_ASSET_TYPES_LOWERCASE;
       stagedFinalizedTypes.clear();
@@ -778,6 +783,16 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
           liveTarget);
     }
     return generation;
+  }
+
+  // Created bare, for the configured model: attaching an alias before promotion would make the
+  // half-built generation readable.
+  private void createStagedGeneration(String generation) {
+    try {
+      executeGenericRequest("PUT", "/" + generation, buildChunkIndexMapping(false));
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to create staged chunk index " + generation, e);
+    }
   }
 
   /** {@code name} is null on a fresh install; {@code known} is false when resolution failed. */
@@ -816,6 +831,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
             generation);
       }
     }
+    clearStagedOntologyChunkState(generation);
   }
 
   /**
@@ -846,6 +862,15 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    */
   @Override
   public void markEntityTypeReindexed(
+      String entityType, boolean entityIndexPromoted, String runGeneration) {
+    if (OntologyTermSearch.isTerm(entityType)) {
+      markOntologyTypeReindexed(entityType, entityIndexPromoted, runGeneration);
+    } else {
+      markDataAssetTypeReindexed(entityType, entityIndexPromoted, runGeneration);
+    }
+  }
+
+  private void markDataAssetTypeReindexed(
       String entityType, boolean entityIndexPromoted, String runGeneration) {
     String normalized = entityType == null ? null : entityType.toLowerCase(Locale.ROOT);
     String generation = stagedChunkIndex;
@@ -1110,8 +1135,158 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   @Override
   public void clearParticipantStagedTarget() {
     participantStagedTarget = null;
+    participantOntologyChunks = null;
     flaggedGenerations.clear();
     unflaggedGenerations.clear();
+  }
+
+  // The ontology chunk index is written in place by every ontology reindex. Only a staged
+  // generation replaces one that cannot hold the model's vectors, so a recreate of both term types
+  // then writes every term chunk into a bare generation built for the model, which goes live in
+  // one atomic alias swap once both types are promoted. Until then the live index stays as it is
+  // (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model).
+  private static final Set<String> ONTOLOGY_TERM_TYPES =
+      OntologyTermSearch.TERM_TYPES.stream()
+          .map(type -> type.toLowerCase(Locale.ROOT))
+          .collect(Collectors.toUnmodifiableSet());
+  private final Object stagedOntologyLock = new Object();
+  private volatile String stagedOntologyChunks;
+  private volatile String participantOntologyChunks;
+  private final Set<String> ontologyFinalizedTypes = ConcurrentHashMap.newKeySet();
+  private final Set<String> ontologyKeptLiveTypes = ConcurrentHashMap.newKeySet();
+
+  @Override
+  public String beginStagedOntologyChunkRecreate() {
+    String generation = null;
+    if (chunksOntologyTerms() && liveOntologyChunksCannotHoldVectors() && isEmbeddingAvailable()) {
+      synchronized (stagedOntologyLock) {
+        generation = stageOntologyChunkGeneration();
+      }
+    }
+    return generation;
+  }
+
+  // Read now, so the run decides on the live index as it is rather than as it was last checked.
+  private static boolean liveOntologyChunksCannotHoldVectors() {
+    String index = OntologyChunkIndex.name();
+    vectorFieldHealth().ifPresent(health -> health.check(index));
+    return !canHoldVectors(index);
+  }
+
+  private String stageOntologyChunkGeneration() {
+    String base = OntologyChunkIndex.name();
+    ResolvedLiveTarget live = tryResolveLiveChunkTarget(base);
+    String generation = null;
+    if (live.known() && live.name() != null) {
+      deleteOrphanChunkGenerations(base, live.name());
+      generation = nextChunkGenerationName(base);
+      createStagedGeneration(generation);
+      stagedOntologyChunks = generation;
+      ontologyFinalizedTypes.clear();
+      ontologyKeptLiveTypes.clear();
+      LOG.info(
+          "Staged ontology chunk index {} for the embedding model; {} stays live until both "
+              + "ontology term types are promoted",
+          generation,
+          live.name());
+    }
+    return generation;
+  }
+
+  @Override
+  public Optional<String> stagedOntologyChunkTarget() {
+    String staged = stagedOntologyChunks;
+    return Optional.ofNullable(staged != null ? staged : participantOntologyChunks);
+  }
+
+  @Override
+  public void latchParticipantStagedOntologyTarget(String staged) {
+    participantOntologyChunks = staged;
+  }
+
+  private void clearStagedOntologyChunkState(String generation) {
+    synchronized (stagedOntologyLock) {
+      if (generation.equals(stagedOntologyChunks)) {
+        stagedOntologyChunks = null;
+        LOG.warn(
+            "Cleared staged ontology chunk state for {}; its run died before finalization and the "
+                + "next staged recreate sweeps it",
+            generation);
+      }
+    }
+  }
+
+  private void markOntologyTypeReindexed(
+      String entityType, boolean entityIndexPromoted, String runGeneration) {
+    synchronized (stagedOntologyLock) {
+      String generation = stagedOntologyChunks;
+      if (generation != null && generation.equals(runGeneration)) {
+        recordOntologyTypeOutcome(entityType.toLowerCase(Locale.ROOT), entityIndexPromoted);
+      } else if (generation != null) {
+        LOG.warn(
+            "Ignoring the ontology chunk mark for {} of run generation {} while {} is staged",
+            entityType,
+            runGeneration,
+            generation);
+      }
+    }
+  }
+
+  // The run ends here either way, so its state never outlives the last type.
+  private void recordOntologyTypeOutcome(String entityType, boolean entityIndexPromoted) {
+    if (!entityIndexPromoted) {
+      ontologyKeptLiveTypes.add(entityType);
+    }
+    ontologyFinalizedTypes.add(entityType);
+    if (ontologyFinalizedTypes.containsAll(ONTOLOGY_TERM_TYPES)) {
+      String generation = stagedOntologyChunks;
+      try {
+        promoteStagedOntologyChunks(generation);
+      } finally {
+        stagedOntologyChunks = null;
+      }
+    }
+  }
+
+  private void promoteStagedOntologyChunks(String generation) {
+    String base = OntologyChunkIndex.name();
+    String liveTarget = requireResolvedLiveChunkTarget(base);
+    Optional<String> keepLive = reasonToKeepLiveOntologyChunks(generation, liveTarget);
+    if (keepLive.isPresent()) {
+      LOG.warn(
+          "Staged ontology chunk index {} is not promoted because {}; the live index stays and "
+              + "the next staged recreate sweeps it",
+          generation,
+          keepLive.get());
+    } else {
+      swapInOntologyChunkGeneration(generation, base, liveTarget);
+    }
+  }
+
+  private Optional<String> reasonToKeepLiveOntologyChunks(String generation, String liveTarget) {
+    String reason = null;
+    if (!ontologyKeptLiveTypes.isEmpty()) {
+      reason =
+          "the entity indexes of "
+              + new TreeSet<>(ontologyKeptLiveTypes)
+              + " kept their live index";
+    } else if (!stagedCanReplaceLive(generation, liveTarget)) {
+      reason = "it holds no chunks while the live index does, or a count could not be read";
+    }
+    return Optional.ofNullable(reason);
+  }
+
+  private void swapInOntologyChunkGeneration(String generation, String base, String oldTarget) {
+    try {
+      executeGenericRequest(
+          "POST", "/_aliases", buildChunkPromoteActions(generation, List.of(base), oldTarget));
+    } catch (RuntimeException e) {
+      throw new RuntimeException("Failed to promote staged ontology chunk index " + generation, e);
+    }
+    ontologyChunkIndexEnsured = true;
+    vectorFieldHealth().ifPresent(health -> health.refresh(base));
+    LOG.info(
+        "Promoted staged ontology chunk index {} (previous target: {})", generation, oldTarget);
   }
 
   /** Newest generation index not yet holding the read alias, or null when none exists. */
@@ -1144,18 +1319,21 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    */
   static String buildChunkPromoteActions(
       String generation, String readAlias, String searchAlias, String oldTarget) {
-    var actions = MAPPER.createArrayNode();
-    actions.add(
-        MAPPER
-            .createObjectNode()
-            .set(
-                "add", MAPPER.createObjectNode().put("index", generation).put("alias", readAlias)));
-    actions.add(
-        MAPPER
-            .createObjectNode()
-            .set(
-                "add",
-                MAPPER.createObjectNode().put("index", generation).put("alias", searchAlias)));
+    return buildChunkPromoteActions(generation, List.of(readAlias, searchAlias), oldTarget);
+  }
+
+  /** As above, attaching {@code aliases} only. */
+  static String buildChunkPromoteActions(
+      String generation, List<String> aliases, String oldTarget) {
+    ArrayNode actions = MAPPER.createArrayNode();
+    aliases.forEach(
+        alias ->
+            actions.add(
+                MAPPER
+                    .createObjectNode()
+                    .set(
+                        "add",
+                        MAPPER.createObjectNode().put("index", generation).put("alias", alias))));
     if (oldTarget != null && !oldTarget.equals(generation)) {
       actions.add(
           MAPPER

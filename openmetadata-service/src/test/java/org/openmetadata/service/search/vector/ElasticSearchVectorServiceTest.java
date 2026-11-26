@@ -589,6 +589,66 @@ class ElasticSearchVectorServiceTest {
     assertEquals("[0.1,0.2,0.3]", update.path("doc").path("embedding").toString());
   }
 
+  /**
+   * On Elasticsearch a term's vector lives on its term document, so after a model switch the
+   * rebuild of its term type is the whole fix: the vector goes to the rebuilt term index while the
+   * live one cannot hold the model's vectors, and no ontology chunk generation is ever staged.
+   */
+  @Test
+  void aTermsVectorGoesToItsRebuiltTermIndexWhileTheLiveOneCannotHoldTheModel() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.getDimension()).thenReturn(3);
+    OntologyConcept concept =
+        spy(
+            new OntologyConcept()
+                .withId(UUID.randomUUID())
+                .withName("Customer")
+                .withDescription("A person who buys"));
+    doReturn(
+            new EntityReference()
+                .withId(concept.getId())
+                .withName("Customer")
+                .withType(Entity.ONTOLOGY_CONCEPT))
+        .when(concept)
+        .getEntityReference();
+    String liveTermIndex = "ontology_concept_search_index";
+    String rebuiltTermIndex = "ontology_concept_search_index_rebuild_2";
+    VectorFieldHealth health = new VectorFieldHealth(name -> {});
+    health.recordCannotHold(
+        liveTermIndex,
+        Set.of("ontology_concept_search_index_rebuild_1"),
+        "ontology_concept_search_index_rebuild_1 has dense_vector of 768 dimensions");
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.getVectorFieldHealth()).thenReturn(health);
+    answerByEndpointSuffix(Map.of());
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS);
+        MockedStatic<OntologyTermSearch> terms =
+            mockStatic(OntologyTermSearch.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      terms
+          .when(() -> OntologyTermSearch.writeCurrentEmbedding(any(), any(), any()))
+          .thenAnswer(
+              invocation -> {
+                invocation.<FailableRunnable<?>>getArgument(2).run();
+                return null;
+              });
+      assertNull(vectorService.beginStagedOntologyChunkRecreate());
+      vectorService.updateEntityEmbeddings(concept, liveTermIndex, "Customer: A person who buys");
+      vectorService.updateEntityEmbeddings(
+          concept, rebuiltTermIndex, "Customer: A person who buys");
+    }
+
+    sentRequest(
+        "POST", "/" + rebuiltTermIndex + "/_update/" + concept.getId() + "?retry_on_conflict=3");
+    ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+    verify(mockRestClient, atLeastOnce()).performRequest(sent.capture());
+    assertTrue(
+        sent.getAllValues().stream()
+            .noneMatch(r -> r.getEndpoint().startsWith("/" + liveTermIndex + "/")),
+        "the live term index that cannot hold the model gets no vector");
+  }
+
   @Test
   void anOntologyTermKeepsItsVectorOnItsTermDocumentAndWritesNoChunk() throws Exception {
     when(mockEmbeddingClient.isAvailable()).thenReturn(true);

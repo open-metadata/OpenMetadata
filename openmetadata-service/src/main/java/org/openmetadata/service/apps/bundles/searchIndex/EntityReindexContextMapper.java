@@ -33,6 +33,7 @@ public final class EntityReindexContextMapper {
         .activeIndex(originalIndex)
         .stagedIndex(stagedIndexContext.getStagedIndex(entityType).orElse(null))
         .stagedChunkIndex(stagedIndexContext.getStagedChunkIndex().orElse(null))
+        .stagedOntologyChunkIndex(stagedIndexContext.getStagedOntologyChunkIndex().orElse(null))
         .canonicalAliases(stagedIndexContext.getCanonicalAlias(entityType).orElse(null))
         .existingAliases(stagedIndexContext.getExistingAliases(entityType))
         .parentAliases(new HashSet<>(listOrEmpty(stagedIndexContext.getParentAliases(entityType))))

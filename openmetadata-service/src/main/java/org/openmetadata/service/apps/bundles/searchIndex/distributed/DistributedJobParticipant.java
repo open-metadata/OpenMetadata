@@ -323,6 +323,9 @@ public class DistributedJobParticipant implements Managed {
       VectorIndexService vectorService = searchRepository.getVectorIndexService();
       if (vectorService != null) {
         reindexContext.getStagedChunkIndex().ifPresent(vectorService::latchParticipantStagedTarget);
+        reindexContext
+            .getStagedOntologyChunkIndex()
+            .ifPresent(vectorService::latchParticipantStagedOntologyTarget);
       }
 
       appCtx = resolveAppRunRecordContext();

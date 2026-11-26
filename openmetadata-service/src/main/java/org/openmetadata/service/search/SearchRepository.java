@@ -705,6 +705,7 @@ public class SearchRepository {
                   .activeIndex(activeIndex)
                   .stagedIndex(stagedIndex)
                   .stagedChunkIndex(context.getStagedChunkIndex().orElse(null))
+                  .stagedOntologyChunkIndex(context.getStagedOntologyChunkIndex().orElse(null))
                   .canonicalAliases(canonicalAlias)
                   .existingAliases(existingAliases)
                   .parentAliases(parentAliases)
@@ -1064,9 +1065,10 @@ public class SearchRepository {
   /**
    * The entity types to rebuild so that every index {@link #vectorFieldHealth} records as unable
    * to hold the embedding model's vectors gets a field for the model: the type of each such entity
-   * index, and every data-asset type for the data-asset chunk index, which only a recreate of all
-   * of them rebuilds. The indexes recorded so are read again first, so one a finished rebuild
-   * replaced no longer counts
+   * index, every data-asset type for the data-asset chunk index, and both ontology term types for
+   * the ontology chunk index, since only a recreate of all the types writing to a chunk index
+   * rebuilds it. The indexes recorded so are read again first, so one a finished rebuild replaced
+   * no longer counts
    * (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model).
    */
   public Set<String> entityTypesThatCannotHoldVectors() {
@@ -1085,6 +1087,9 @@ public class SearchRepository {
             });
     if (vectorIndexService != null && unable.contains(vectorIndexService.getChunkIndexName())) {
       entityTypes.addAll(EmbeddedEntityTypes.DATA_ASSETS);
+    }
+    if (unable.contains(OntologyChunkIndex.name(clusterAlias))) {
+      entityTypes.addAll(OntologyTermSearch.TERM_TYPES);
     }
     return entityTypes;
   }

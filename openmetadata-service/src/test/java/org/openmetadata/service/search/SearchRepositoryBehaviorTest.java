@@ -5023,6 +5023,29 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void anOntologyChunkIndexThatCannotHoldTheModelRebuildsBothOntologyTermTypes() throws Exception {
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    SearchRepository repository = repositoryReadyToReindex(vectorService);
+    when(vectorService.chunkIndexNames())
+        .thenReturn(List.of("data_asset_embeddings_chunks", "ontology_embeddings_chunks"));
+    existingIndexes(
+        "table_search_index", "data_asset_embeddings_chunks", "ontology_embeddings_chunks");
+    when(searchClient.readEmbeddingField("table_search_index"))
+        .thenReturn(heldAs("table_search_index", 768));
+    when(searchClient.readEmbeddingField("data_asset_embeddings_chunks"))
+        .thenReturn(heldAs("data_asset_embeddings_chunks", 768));
+    when(searchClient.readEmbeddingField("ontology_embeddings_chunks"))
+        .thenReturn(heldAs("ontology_embeddings_chunks", 384));
+
+    repository.checkVectorFields();
+
+    assertEquals(
+        Set.of(Entity.ONTOLOGY_CONCEPT, Entity.ONTOLOGY_PROPERTY),
+        repository.entityTypesThatCannotHoldVectors(),
+        "only a recreate of both ontology term types rebuilds the ontology chunk index");
+  }
+
+  @Test
   void anIndexARebuildReplacedNoLongerCountsForTheSmartReindex() throws Exception {
     SearchRepository repository = repositoryReadyToReindex(mock(VectorIndexService.class));
     existingIndexes("table_search_index");

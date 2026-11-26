@@ -135,7 +135,11 @@ public class OpenSearchIndexManager implements IndexManagementClient {
   @Override
   public void declareEmbeddingField(String name, EmbeddingModel model) throws IOException {
     putMapping(name, "{\"mappings\":" + OsUtils.embeddingFieldDeclaration(model) + "}");
-    LOG.info("Declared the embedding field of index {}", name);
+    LOG.info(
+        "Declared the embedding field of index {} for the embedding model {} ({} dimensions)",
+        name,
+        model.id(),
+        model.dimension());
   }
 
   /**

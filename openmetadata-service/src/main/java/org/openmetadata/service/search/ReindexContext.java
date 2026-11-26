@@ -24,6 +24,9 @@ public class ReindexContext {
    */
   public static final String STAGED_CHUNK_KEY = "__vectorChunks__";
 
+  /** The same, for the staged ontology chunk generation. Never a real entity type either. */
+  public static final String STAGED_ONTOLOGY_CHUNK_KEY = "__ontologyChunks__";
+
   /**
    * Staged vector-chunk generation created by this run's reCreateIndexes, or empty when the run
    * did not stage one (partial recreates, normal runs).
@@ -33,10 +36,27 @@ public class ReindexContext {
   }
 
   public void setStagedChunkIndex(String stagedChunkIndex) {
-    if (stagedChunkIndex == null) {
-      stagedIndexByEntity.remove(STAGED_CHUNK_KEY);
+    putReserved(STAGED_CHUNK_KEY, stagedChunkIndex);
+  }
+
+  /**
+   * Staged ontology chunk generation created by this run's reCreateIndexes, or empty when the run
+   * did not stage one: it does not recreate both ontology term types, or the live ontology chunk
+   * index can hold the embedding model's vectors.
+   */
+  public Optional<String> getStagedOntologyChunkIndex() {
+    return Optional.ofNullable(stagedIndexByEntity.get(STAGED_ONTOLOGY_CHUNK_KEY));
+  }
+
+  public void setStagedOntologyChunkIndex(String stagedOntologyChunkIndex) {
+    putReserved(STAGED_ONTOLOGY_CHUNK_KEY, stagedOntologyChunkIndex);
+  }
+
+  private void putReserved(String key, String generation) {
+    if (generation == null) {
+      stagedIndexByEntity.remove(key);
     } else {
-      stagedIndexByEntity.put(STAGED_CHUNK_KEY, stagedChunkIndex);
+      stagedIndexByEntity.put(key, generation);
     }
   }
 
@@ -64,6 +84,7 @@ public class ReindexContext {
   public Set<String> getEntities() {
     Set<String> entities = new java.util.HashSet<>(stagedIndexByEntity.keySet());
     entities.remove(STAGED_CHUNK_KEY);
+    entities.remove(STAGED_ONTOLOGY_CHUNK_KEY);
     return Collections.unmodifiableSet(entities);
   }
 

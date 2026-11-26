@@ -7,9 +7,11 @@
   and read cases on a real engine), SearchRepositoryBehaviorTest (`startVectorSearch`, the smart
   reindex set), IndexMappingVersionTrackerTest, SystemRepositoryReindexStatusTest,
   VectorFieldHealthTest, EmbeddingFieldUpdateTest, LiveEmbeddingFieldTest, EmbeddingModelTest,
-  OpenSearchVectorServiceTest, SystemRepositoryEmbeddingsValidationTest
+  OpenSearchVectorServiceTest, OpenSearchVectorServiceOntologyChunkStagingTest,
+  RecreateWithEmbeddingsTest, SystemRepositoryEmbeddingsValidationTest
 - **Related:** ADR:2026-11-23-elasticsearch-vector-fields-pin-their-index-options,
-  ADR:2026-11-20-elasticsearch-and-opensearch-share-one-vector-index-service
+  ADR:2026-11-20-elasticsearch-and-opensearch-share-one-vector-index-service,
+  ADR:2026-11-23-ontology-terms-have-dedicated-search-indexes
 
 ## Context
 
@@ -77,12 +79,28 @@ vector field, and on OpenSearch no `index.knn`, so they could never get one.
    changed, or a live index `VectorFieldHealth` records as unable to hold the model's vectors.
    `IndexMappingVersionTracker` reports the second as `CANNOT_HOLD_VECTORS`, because a mapping hash
    cannot see it. The `reindex` command without `--force`, the step operators run after an upgrade
-   (the Helm chart ships it as the `cron-reindex` job), first reads every vector field, so on any
-   upgrade, patch releases included, it rebuilds those indexes besides the changed ones: an entity
-   index's own type, and every data-asset type for the data-asset chunk index, which only a recreate
-   of all of them replaces. The status page's reindex step lists the same indexes. There is no
-   migration and no rebuild started by the server. A finished rebuild leaves an index that holds the
-   model's vectors, so both read current again.
+   (the Helm chart ships it as the `cron-reindex` job), first reads every vector field and applies
+   decision 2 as server start does, so it also declares a missing field on an index that can take
+   one: an additive change, logged with the model, that a second run finds done. On any upgrade,
+   patch releases included, it then rebuilds those indexes besides the changed ones: an entity
+   index's own type, every data-asset type for the data-asset chunk index, and both ontology term
+   types for the ontology chunk index, since only a recreate of every type that writes to a chunk
+   index replaces it. The status page's reindex step lists the same indexes. There is no migration
+   and no rebuild started by the server. A finished rebuild leaves an index that holds the model's
+   vectors, so both read current again.
+8. **A recreate of both ontology term types rebuilds an ontology chunk index that cannot hold the
+   model's vectors.** Every ontology reindex writes `ontology_embeddings_chunks` in place
+   (ADR:2026-11-23-ontology-terms-have-dedicated-search-indexes), and in place every term chunk
+   would be refused for good. So such a run, when job-driven, stages a bare generation for the
+   model, `ontology_embeddings_chunks_g<N>`, as the data-asset chunk generation is staged, and while
+   the run lasts every term chunk write and delete on its coordinator and its participants goes
+   there. Once both term types are promoted, one atomic `_aliases` call points
+   `ontology_embeddings_chunks` at the generation and removes the previous index; until then
+   ontology searches read the previous index. A term type that kept its live index, or a generation
+   without chunks while the previous index has some, keeps the previous index, and the next staged
+   recreate sweeps the generation. An index that can hold the model's vectors is still written in
+   place, so a normal reindex embeds no term again. Elasticsearch keeps no ontology chunks: a term's
+   vector lives on its term document, so rebuilding its type is the whole fix.
 
 ## Consequences
 
@@ -91,8 +109,11 @@ without a rebuild. An OpenSearch index created without `index.knn`, as a 2.1 `mi
 vector index that no rebuild has replaced since, is rebuilt by the first smart `reindex` after the
 upgrade, and the status page says so until then. After a model switch, semantic search keeps working
 on whatever already holds the new model's vectors and gives one clear signal for the rest, instead
-of an error per document and an HTTP 500 per search. Another reader of the vector indexes can ask
-`SearchRepository.getVectorFieldHealth()` which ones to leave out. Each node judges with its own
-configured model, so during a rolling switch nodes disagree until they all run the new one. Two
-models of the same dimension are told apart only on indexes that record their model. Each start and
-each smart `reindex` makes two or three small reads per vector index.
+of an error per document and an HTTP 500 per search. Ontology terms take the same path: the same
+smart `reindex` rebuilds their chunk index, and a term written during that rebuild on a node that
+takes no part in it gets its chunks at its next write, as its term document does on any staged
+rebuild. Another reader of the vector indexes can ask `SearchRepository.getVectorFieldHealth()`
+which ones to leave out. Each node judges with its own configured model, so during a rolling switch
+nodes disagree until they all run the new one. Two models of the same dimension are told apart only
+on indexes that record their model. Each start and each smart `reindex` makes two or three small
+reads per vector index.
