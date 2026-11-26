@@ -86,7 +86,6 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
-import { useGenericDomainLabel } from '../../common/DomainLabel/useGenericDomainLabel';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -175,6 +174,7 @@ const ClassificationDetails = forwardRef(
       handleAfterDeleteAction,
       classificationPermissions,
       handleUpdateClassification,
+      handleClassificationDomainsUpdate,
       handleEditTagClick,
       deleteTags,
       isAddingTag,
@@ -196,7 +196,6 @@ const ClassificationDetails = forwardRef(
     const { fqn: tagCategoryName } = useFqn();
     const navigate = useNavigate();
     const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
-    const domainProps = useGenericDomainLabel();
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(true);
     const isLoading = isTagsLoading || isClassificationLoading;
@@ -253,12 +252,6 @@ const ClassificationDetails = forwardRef(
       cursorType,
     }) => {
       if (cursorType) {
-        fetchClassificationChildren(
-          currentClassification?.fullyQualifiedName ?? '',
-          {
-            [cursorType]: paging[cursorType],
-          }
-        );
         handlePageChange(
           currentPage,
           { cursorType, cursorValue: paging[cursorType] },
@@ -545,6 +538,10 @@ const ClassificationDetails = forwardRef(
       ]
     );
 
+    const isPagedPastFirstPage =
+      Number(pagingCursor.currentPage) !== 1 ||
+      Boolean(pagingCursor.cursorType || pagingCursor.cursorValue);
+
     useEffect(() => {
       if (currentClassification?.fullyQualifiedName && !isAddingTag) {
         const classificationChanged =
@@ -556,7 +553,7 @@ const ClassificationDetails = forwardRef(
           currentClassification.fullyQualifiedName;
 
         if (classificationChanged) {
-          isClassificationChangingRef.current = true;
+          isClassificationChangingRef.current = isPagedPastFirstPage;
           handlePageChange(1, { cursorType: null, cursorValue: undefined });
           fetchClassificationChildren(currentClassification.fullyQualifiedName);
 
@@ -728,7 +725,8 @@ const ClassificationDetails = forwardRef(
     }
 
     function renderTagsPanel() {
-      return isEmpty(tags) && !isLoading ? (
+      return isEmpty(tags) &&
+        (!isLoading || currentClassification?.termCount === 0) ? (
         <Box className="tw:relative tw:min-h-[360px]">
           <NoDataPlaceholder
             actions={
@@ -809,10 +807,20 @@ const ClassificationDetails = forwardRef(
             </div>
             <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-5">
               <DomainLabel
-                {...domainProps}
                 multiple
                 showDomainHeading
-                hasPermission={editDomainPermission}
+                afterDomainUpdateAction={(updated) =>
+                  handleClassificationDomainsUpdate?.(
+                    updated.id,
+                    updated.domains
+                  )
+                }
+                domains={currentClassification.domains}
+                entityFqn={currentClassification.fullyQualifiedName ?? ''}
+                entityId={currentClassification.id}
+                entityType={EntityType.CLASSIFICATION}
+                hasPermission={!isVersionView && editDomainPermission}
+                key={currentClassification.id}
                 variant="widget"
               />
               <WidgetCard

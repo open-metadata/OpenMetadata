@@ -18,13 +18,14 @@ import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholde
 import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 
-import { isEmpty } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
+  NO_DATA_PLACEHOLDER,
 } from '../../../../constants/constants';
 import { DATABASE_SCHEMAS_DUMMY_DATA } from '../../../../constants/Database.constants';
 import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
@@ -305,7 +306,9 @@ export const DatabaseSchemaTable = ({
               key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
               width: 120,
               render: (text: UsageDetails) =>
-                getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
+                isNil(text?.weeklyStats?.percentileRank)
+                  ? NO_DATA_PLACEHOLDER
+                  : getUsagePercentile(text.weeklyStats.percentileRank),
             },
           ]
         : []),

@@ -130,7 +130,8 @@ def test_cli_prepares_all_profiles_from_another_working_directory(tmp_path):
     assert result.stdout.strip() == str(output)
     models = sorted((output / "type/datacontract/odcs").glob("v*/odcsContract.json"))
     sources = sorted((ROOT / "openmetadata-spec/src/main/resources/odcs").glob("v*/schema.json"))
-    assert len(models) == len(sources) == 6
+    assert sources
+    assert len(models) == len(sources)
     for source in sources:
         model = json.loads(
             (output / "type/datacontract/odcs" / source.parent.name.replace(".", "") / "odcsContract.json").read_text()

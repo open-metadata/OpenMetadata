@@ -10,6 +10,7 @@ import static org.openmetadata.service.search.SearchUtils.getMaxExpansions;
 import static org.openmetadata.service.search.SearchUtils.isColumnIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataQualityIndex;
+import static org.openmetadata.service.search.SearchUtils.isOntologyIndex;
 import static org.openmetadata.service.search.SearchUtils.isServiceIndex;
 import static org.openmetadata.service.search.SearchUtils.isTimeSeriesIndex;
 
@@ -379,7 +380,7 @@ public class ElasticSearchSourceBuilderFactory
       return buildDataQualitySearchBuilderV2(indexName, searchQuery, fromOffset, size, freeText);
     }
 
-    if (isDataAssetIndex(indexName)) {
+    if (isDataAssetIndex(indexName) || isOntologyIndex(indexName)) {
       return buildDataAssetSearchBuilderV2(
           indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
@@ -924,7 +925,7 @@ public class ElasticSearchSourceBuilderFactory
             }
           });
 
-      String fuzziness = getFuzziness(query);
+      String fuzziness = getFuzziness(query, fields.keySet());
       int maxExpansions = getMaxExpansions(query);
 
       Query fuzzyQuery =

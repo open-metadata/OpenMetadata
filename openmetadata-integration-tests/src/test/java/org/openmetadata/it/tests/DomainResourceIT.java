@@ -90,6 +90,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
   public DomainResourceIT() {
     supportsFollowers = false;
+    supportsCustomExtension = true;
     supportsTags = true;
     supportsDomains = false;
     supportsDataProducts = false;

@@ -25,6 +25,7 @@ import jakarta.json.JsonPatch;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import jakarta.validation.ConstraintViolationException;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -150,6 +151,7 @@ import org.openmetadata.service.security.auth.validator.CustomOidcValidator;
 import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
 import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
+import org.openmetadata.service.security.auth.validator.SamlIdpCertificateGate;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
 import org.openmetadata.service.seeding.EssentialSeedReport;
 import org.openmetadata.service.seeding.EssentialSeeds;
@@ -385,6 +387,29 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   /**
+   * Puts back {@code restored}, the rows a save read before it wrote {@code written}, while both
+   * rows still hold what that save wrote; a 412 when another save replaced them meanwhile. The rows
+   * go back as they were read, without the write step: they passed it when they were stored, and
+   * checking them again against the save being undone would refuse what was accepted, such as an
+   * IdP certificate that has expired since.
+   * ADR:2026-11-12-a-security-configuration-save-applies-in-full-or-is-refused
+   */
+  public void restoreSecurityConfigurationIfCurrent(
+      final StoredSecurityConfiguration restored, final StoredSecurityConfiguration written) {
+    dao.updateSecuritySettingsIfCurrent(
+        new SecuritySettingsUpdate(
+            SettingsType.AUTHENTICATION_CONFIGURATION.value(),
+            written.authenticationJson(),
+            restored.authenticationJson()),
+        new SecuritySettingsUpdate(
+            SettingsType.AUTHORIZER_CONFIGURATION.value(),
+            written.authorizerJson(),
+            restored.authorizerJson()));
+    settingUpdated(SettingsType.AUTHENTICATION_CONFIGURATION);
+    settingUpdated(SettingsType.AUTHORIZER_CONFIGURATION);
+  }
+
+  /**
    * Writes both security settings whatever the rows hold, for when one is missing and there is
    * nothing to compare with, and returns what is stored now. A failed write is thrown, never
    * answered with a response the caller could ignore.
@@ -401,8 +426,10 @@ public class SystemRepository implements DeploymentSettingPreparer {
             .withConfigValue(configuration.getAuthorizerConfiguration());
     assertDeploymentFieldsUnchanged(authentication);
     assertDeploymentFieldsUnchanged(authorizer);
-    String authenticationJson = prepareSettingForUpdate(authentication);
-    String authorizerJson = prepareSettingForUpdate(authorizer);
+    final String authenticationJson =
+        prepareSettingForUpdate(authentication, storedValueOf(authentication.getConfigType()));
+    final String authorizerJson =
+        prepareSettingForUpdate(authorizer, storedValueOf(authorizer.getConfigType()));
     dao.insertSettings(SettingsType.AUTHENTICATION_CONFIGURATION.value(), authenticationJson);
     dao.insertSettings(SettingsType.AUTHORIZER_CONFIGURATION.value(), authorizerJson);
     settingUpdated(SettingsType.AUTHENTICATION_CONFIGURATION);
@@ -412,7 +439,9 @@ public class SystemRepository implements DeploymentSettingPreparer {
 
   private SecuritySettingsUpdate securityUpdate(Settings setting, String expectedJson) {
     return new SecuritySettingsUpdate(
-        setting.getConfigType().value(), expectedJson, prepareSettingForUpdate(setting));
+        setting.getConfigType().value(),
+        expectedJson,
+        prepareSettingForUpdate(setting, valueOf(setting.getConfigType(), expectedJson)));
   }
 
   /**
@@ -520,21 +549,18 @@ public class SystemRepository implements DeploymentSettingPreparer {
     return null;
   }
 
+  /**
+   * Stores {@code setting} and answers 201 or 200. A write that fails is thrown, as a 400 when the
+   * value is refused and a 500 otherwise, never answered with a response a caller such as an
+   * administration command could ignore and report as stored.
+   * ADR:2026-11-23-a-settings-write-that-fails-is-thrown
+   */
   @Transaction
-  public Response createOrUpdate(Settings setting) {
+  public Response createOrUpdate(final Settings setting) {
     OpenMetadataBaseUrlValidator.validate(setting);
-    Settings oldValue = dao.getConfigWithKey(setting.getConfigType().toString());
+    final Settings oldValue = dao.getConfigWithKey(setting.getConfigType().toString());
     preserveEmailSettings(setting, oldValue);
-
-    try {
-      updateSetting(setting);
-    } catch (BadRequestException | SettingsManagedByEnvironmentException ex) {
-      // Callers such as administration jobs only notice a rejection that is thrown.
-      throw ex;
-    } catch (Exception ex) {
-      LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
-      return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
-    }
+    updateSetting(setting, storedValueOf(oldValue));
     prepareFetchedSettings(setting);
     if (oldValue == null) {
       return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, ENTITY_CREATED))
@@ -548,7 +574,9 @@ public class SystemRepository implements DeploymentSettingPreparer {
     OpenMetadataBaseUrlValidator.validate(setting);
     try {
       updateSetting(setting);
-    } catch (BadRequestException | SettingsManagedByEnvironmentException ex) {
+    } catch (BadRequestException
+        | SettingsManagedByEnvironmentException
+        | WebApplicationException ex) {
       // Callers such as administration jobs only notice a rejection that is thrown.
       throw ex;
     } catch (Exception ex) {
@@ -702,7 +730,12 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   private void postUpdate(SettingsType settingsType) {
-    SettingsChangeWatcher.acknowledgeLocalWrite(settingsType);
+    // MCP is not acknowledged: the generic settings API saves it without reloading it, so this
+    // server's watcher applies it like every other server's, retrying and reporting a failed
+    // reload. /system/mcp/config reloads it itself, which leaves the watcher nothing to do.
+    if (settingsType != SettingsType.MCP_CONFIGURATION) {
+      SettingsChangeWatcher.acknowledgeLocalWrite(settingsType);
+    }
     refreshLocalState(settingsType);
     // Rebuilding indexes changes shared state, so only the server that wrote the setting does it.
     if (settingsType == SettingsType.SEARCH_SETTINGS && Entity.getSearchRepository() != null) {
@@ -724,12 +757,16 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   public void updateSetting(Settings setting) {
+    updateSetting(setting, storedValueOf(setting.getConfigType()));
+  }
+
+  private void updateSetting(final Settings setting, final JsonNode stored) {
     assertDeploymentFieldsUnchanged(setting);
     try {
-      String updatedJson = prepareSettingForUpdate(setting);
+      final String updatedJson = prepareSettingForUpdate(setting, stored);
       dao.insertSettings(setting.getConfigType().toString(), updatedJson);
       settingUpdated(setting.getConfigType());
-    } catch (BadRequestException ex) {
+    } catch (BadRequestException | WebApplicationException ex) {
       throw ex;
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
@@ -743,7 +780,8 @@ public class SystemRepository implements DeploymentSettingPreparer {
   private void updateSettingIfCurrent(Settings setting, String expectedJson) {
     assertDeploymentFieldsUnchanged(setting);
     try {
-      String updatedJson = prepareSettingForUpdate(setting);
+      final String updatedJson =
+          prepareSettingForUpdate(setting, valueOf(setting.getConfigType(), expectedJson));
       int updated =
           dao.updateSettingsIfCurrent(
               setting.getConfigType().toString(), expectedJson, updatedJson);
@@ -753,7 +791,8 @@ public class SystemRepository implements DeploymentSettingPreparer {
                 + " changed since it was read; read it again and retry");
       }
       settingUpdated(setting.getConfigType());
-    } catch (BadRequestException | PreconditionFailedException ex) {
+    } catch (BadRequestException | WebApplicationException ex) {
+      // A refused value, such as an unusable IdP certificate, or a 412 from a concurrent write.
       throw ex;
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
@@ -777,7 +816,14 @@ public class SystemRepository implements DeploymentSettingPreparer {
     updateSettingIfCurrent(setting, expectedJson);
   }
 
-  private String prepareSettingForUpdate(Settings setting) {
+  /**
+   * Every write of a setting's value passes here before it reaches the database, whichever way it
+   * came in: an API save, an administration command, a seed or a reconciled deployment value. The
+   * checks of a setting type that compare with what is stored get {@code stored}, the value this
+   * write replaces with its secrets decrypted, or null when there is none.
+   * ADR:2026-11-20-the-stored-saml-idp-certificate-is-standard-pem
+   */
+  private String prepareSettingForUpdate(final Settings setting, final JsonNode stored) {
     if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
       SmtpSettings emailConfig =
           JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
@@ -822,6 +868,11 @@ public class SystemRepository implements DeploymentSettingPreparer {
       AuthenticationConfiguration authConfig =
           JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
       rejectInvalidTokenValidity(authConfig);
+      SamlIdpCertificateGate.requireUsable(
+          authConfig,
+          stored == null
+              ? null
+              : JsonUtils.convertValue(stored, AuthenticationConfiguration.class));
       setting.setConfigValue(authConfig);
     } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
       AuthorizerConfiguration authorizerConfig =
@@ -830,6 +881,25 @@ public class SystemRepository implements DeploymentSettingPreparer {
       setting.setConfigValue(authorizerConfig);
     }
     return storageJsonOf(setting);
+  }
+
+  /** The stored value of a setting, with its secrets decrypted; null when it is not stored. */
+  private JsonNode storedValueOf(final SettingsType type) {
+    return valueOf(type, dao.getConfigJsonWithKey(type.value()));
+  }
+
+  private static JsonNode storedValueOf(final Settings stored) {
+    return stored == null || stored.getConfigValue() == null
+        ? null
+        : decryptedValue(stored.getConfigType(), JsonUtils.valueToTree(stored.getConfigValue()));
+  }
+
+  private static JsonNode valueOf(final SettingsType type, final String storedJson) {
+    return storedJson == null ? null : decryptedValue(type, JsonUtils.readTree(storedJson));
+  }
+
+  private static JsonNode decryptedValue(final SettingsType type, final JsonNode value) {
+    return value.isObject() ? SettingsSecrets.decrypted(type, value) : value;
   }
 
   /** Authentication secrets are stored Fernet-encrypted; the caller keeps the clear values. */
@@ -863,19 +933,20 @@ public class SystemRepository implements DeploymentSettingPreparer {
    * setting, without calling the identity provider, and returns the JSON to store.
    */
   @Override
-  public String prepareReconciled(SettingsType type, JsonNode value) {
+  public String prepareReconciled(
+      final SettingsType type, final JsonNode value, final JsonNode stored) {
     Settings setting = settingsOf(type, value);
     OpenMetadataBaseUrlValidator.validate(setting);
     if (setting.getConfigValue() instanceof AuthenticationConfiguration authConfig) {
       ActiveProviderValidator.validate(authConfig, authConfig);
     }
-    return prepareSettingForUpdate(setting);
+    return prepareSettingForUpdate(setting, stored);
   }
 
   /** Applies the checks a first start always ran on a seeded value; returns the JSON to store. */
   @Override
   public String prepareSeed(SettingsType type, JsonNode value) {
-    return prepareSettingForUpdate(settingsOf(type, value));
+    return prepareSettingForUpdate(settingsOf(type, value), null);
   }
 
   private static Settings settingsOf(SettingsType type, JsonNode value) {
@@ -1361,7 +1432,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
         .withDescription(description)
         .withMessage(
             "Vector search service could not be initialized. "
-                + "The embedding client is configured but the OpenSearch vector service failed to start."
+                + "The embedding client is configured but the vector service failed to start."
                 + errorSuffix
                 + " "
                 + configMessage)
@@ -1373,24 +1444,31 @@ public class SystemRepository implements DeploymentSettingPreparer {
       StepValidation embeddingsValidation,
       String description,
       String configMessage) {
-    Optional<String> pipelineError = searchRepository.checkHybridSearchPipeline();
-    if (pipelineError.isPresent()) {
-      return embeddingsValidation
-          .withDescription(description)
-          .withMessage(
-              "Embeddings are working but the hybrid search pipeline check failed: "
-                  + pipelineError.get()
-                  + " "
-                  + configMessage)
-          .withPassed(false);
-    }
-
+    boolean usesPipeline = searchRepository.usesHybridSearchPipeline();
+    Optional<String> pipelineError =
+        usesPipeline ? searchRepository.checkHybridSearchPipeline() : Optional.empty();
+    String message =
+        pipelineError
+            .map(
+                error ->
+                    "Embeddings are working but the hybrid search pipeline check failed: "
+                        + error
+                        + " "
+                        + configMessage)
+            .orElseGet(() -> workingMessage(usesPipeline, configMessage));
     return embeddingsValidation
         .withDescription(description)
-        .withMessage(
-            String.format(
-                "Embeddings and hybrid search pipeline are working correctly. %s", configMessage))
-        .withPassed(true);
+        .withMessage(message)
+        .withPassed(pipelineError.isEmpty());
+  }
+
+  /** An engine without the hybrid RRF pipeline has nothing to say about one. */
+  private static String workingMessage(boolean usesPipeline, String configMessage) {
+    String working =
+        usesPipeline
+            ? "Embeddings and hybrid search pipeline are working correctly. %s"
+            : "Embeddings are working correctly. %s";
+    return String.format(working, configMessage);
   }
 
   private StepValidation validateEmbeddingGeneration(

@@ -14,9 +14,9 @@
 package org.openmetadata.mcp.tools;
 
 /** A graph query that exceeded the server's time limit; classified by name as a timeout. */
-final class RdfQueryTimeoutException extends RuntimeException {
+public final class RdfQueryTimeoutException extends RuntimeException {
 
-  RdfQueryTimeoutException(final String message, final Throwable cause) {
+  public RdfQueryTimeoutException(final String message, final Throwable cause) {
     super(message, cause);
   }
 }

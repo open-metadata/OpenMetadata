@@ -47,12 +47,12 @@ import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyRelease;
-import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jobs.BackgroundJobTypes;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyPackInstallJobHandler;
 import org.openmetadata.service.ontology.OntologyPackInstallJobManager;
@@ -376,7 +376,7 @@ public class NativeOntologyCapacityPerfIT extends BaseOntologyApprovalIT {
             .withPackDigest(OntologyPackInstallations.packDigest(source, modules));
     return Entity.getJobDAO()
         .insertTrackedJobInternal(
-            BackgroundJob.JobType.ONTOLOGY_PACK_INSTALL.name(),
+            BackgroundJobTypes.ONTOLOGY_PACK_INSTALL,
             OntologyPackInstallJobManager.HANDLER_NAME,
             JsonUtils.pojoToJson(arguments),
             "admin",

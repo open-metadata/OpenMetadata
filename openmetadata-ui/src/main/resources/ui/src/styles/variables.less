@@ -418,10 +418,10 @@
 @margin-xs: @size-xs; // small items
 @margin-xss: @size-xxs; // more small
 
-@error-bg-color: rgb(from @error-color r g b / 0.1);
-@success-bg-color: rgb(from @success-color r g b / 0.1);
-@warning-bg-color: rgb(from @warning-color r g b / 0.1);
-@info-bg-color: rgb(from @info-color r g b / 0.1);
+@error-bg-color: ~'rgb(from @{error-color} r g b / 0.1)';
+@success-bg-color: ~'rgb(from @{success-color} r g b / 0.1)';
+@warning-bg-color: ~'rgb(from @{warning-color} r g b / 0.1)';
+@info-bg-color: ~'rgb(from @{info-color} r g b / 0.1)';
 
 @card-radius: @border-rad-sm;
 @menu-radius: @border-rad-sm;
