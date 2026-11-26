@@ -50,22 +50,35 @@ const serviceTypeBuckets = (...buckets: Array<[string, number]>) =>
     },
   } as never);
 
-const serviceIdBuckets = (
-  ...buckets: Array<[string, number, { displayName?: string; name?: string }]>
-) =>
+type ServiceSource = {
+  serviceType: string;
+  service: { displayName?: string; name?: string };
+};
+
+const serviceIdBuckets = (...buckets: Array<[string, number, ServiceSource]>) =>
   ({
     data: {
       aggregations: {
         'sterms#service.id': {
-          buckets: buckets.map(([key, doc_count, service]) => ({
+          buckets: buckets.map(([key, doc_count, source]) => ({
             doc_count,
             key,
-            'top_hits#top': { hits: { hits: [{ _source: { service } }] } },
+            'top_hits#top': { hits: { hits: [{ _source: source }] } },
           })),
         },
       },
     },
   } as never);
+
+const dashboard = (service: ServiceSource['service']): ServiceSource => ({
+  service,
+  serviceType: 'CustomDashboard',
+});
+
+const database = (service: ServiceSource['service']): ServiceSource => ({
+  service,
+  serviceType: 'CustomDatabase',
+});
 
 const DAY_ONE = 1_700_000_000_000;
 const DAY_TWO = DAY_ONE + 86_400_000;
@@ -322,17 +335,22 @@ describe('useDataEstate', () => {
   });
 
   // Every custom connector registers as e.g. `CustomDashboard`, so its slice
-  // read "Custom Dashboard" whatever the tool behind it was.
+  // read "Custom Dashboard" whatever the tool behind it was. The index's
+  // lowercase normalizer returns the type bucket as `customdashboard`.
   it('names custom connector slices after their services', async () => {
     mockGetCharts.mockResolvedValue(chartsResponse([], []));
     mockSearchData
       .mockResolvedValueOnce(
-        serviceTypeBuckets(['Snowflake', 100], ['CustomDashboard', 80])
+        serviceTypeBuckets(['snowflake', 100], ['customdashboard', 80])
       )
       .mockResolvedValueOnce(
         serviceIdBuckets(
-          ['id-1', 60, { displayName: 'Semantic Layer', name: 'semantic' }],
-          ['id-2', 20, { name: 'in_house_bi' }]
+          [
+            'id-1',
+            60,
+            dashboard({ displayName: 'Semantic Layer', name: 'semantic' }),
+          ],
+          ['id-2', 20, dashboard({ name: 'in_house_bi' })]
         )
       );
 
@@ -341,18 +359,38 @@ describe('useDataEstate', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.connectors).toEqual([
-      { count: 100, key: 'Snowflake', name: 'Snowflake' },
+      { count: 100, key: 'snowflake', name: 'Snowflake' },
       { count: 60, key: 'service:id-1', name: 'Semantic Layer' },
       { count: 20, key: 'service:id-2', name: 'in_house_bi' },
     ]);
-    expect(mockSearchData).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        fieldName: 'service.id',
-        query: JSON.stringify({
-          query: { terms: { serviceType: ['CustomDashboard'] } },
-        }),
-      })
-    );
+  });
+
+  // Columns carry their table's `serviceType` and `service.id`; counting them
+  // made a custom database's services outgrow its slice, so it never split.
+  it('leaves columns out of the per-service split', async () => {
+    mockGetCharts.mockResolvedValue(chartsResponse([], []));
+    mockSearchData
+      .mockResolvedValueOnce(serviceTypeBuckets(['customdatabase', 4]))
+      .mockResolvedValueOnce(
+        serviceIdBuckets(['id-db', 4, database({ name: 'acme' })])
+      );
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const [{ fieldName, query, sourceFields }] = mockSearchData.mock.calls[1];
+
+    expect(fieldName).toBe('service.id');
+    expect(sourceFields).toContain('serviceType');
+    expect(JSON.parse(query ?? '{}')).toEqual({
+      query: {
+        bool: {
+          filter: [{ terms: { serviceType: ['customdatabase'] } }],
+          must_not: [{ term: { entityType: 'tableColumn' } }],
+        },
+      },
+    });
   });
 
   // Service names are unique only within a category: a CustomDatabase and a
@@ -361,12 +399,12 @@ describe('useDataEstate', () => {
     mockGetCharts.mockResolvedValue(chartsResponse([], []));
     mockSearchData
       .mockResolvedValueOnce(
-        serviceTypeBuckets(['CustomDashboard', 30], ['CustomDatabase', 10])
+        serviceTypeBuckets(['customdashboard', 30], ['customdatabase', 10])
       )
       .mockResolvedValueOnce(
         serviceIdBuckets(
-          ['id-dash', 30, { name: 'prod' }],
-          ['id-db', 10, { name: 'prod' }]
+          ['id-dash', 30, dashboard({ name: 'prod' })],
+          ['id-db', 10, database({ name: 'prod' })]
         )
       );
 
@@ -387,10 +425,10 @@ describe('useDataEstate', () => {
     mockGetCharts.mockResolvedValue(chartsResponse([], []));
     mockSearchData
       .mockResolvedValueOnce(
-        serviceTypeBuckets(['Looker', 50], ['CustomDashboard', 40])
+        serviceTypeBuckets(['looker', 50], ['customdashboard', 40])
       )
       .mockResolvedValueOnce(
-        serviceIdBuckets(['Looker', 40, { name: 'Looker' }])
+        serviceIdBuckets(['looker', 40, dashboard({ name: 'looker' })])
       );
 
     const { result } = renderHook(() => useDataEstate(), { wrapper });
@@ -399,30 +437,39 @@ describe('useDataEstate', () => {
 
     const keys = result.current.connectors.map((c) => c.key);
 
-    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys).toEqual(['looker', 'service:looker']);
   });
 
-  // Past the page size the split comes back short; replacing the custom slice
-  // with it would drop assets from the bar.
-  it('keeps the unsplit custom slice when the split is incomplete', async () => {
+  // Past the page size, or with an asset indexed between the two requests, a
+  // type's split comes back short; replacing its slice would drop assets from
+  // the bar. The other types still split.
+  it('keeps only the short type unsplit', async () => {
     mockGetCharts.mockResolvedValue(chartsResponse([], []));
     mockSearchData
-      .mockResolvedValueOnce(serviceTypeBuckets(['CustomDashboard', 80]))
-      .mockResolvedValueOnce(serviceIdBuckets(['id-1', 60, { name: 'a' }]));
+      .mockResolvedValueOnce(
+        serviceTypeBuckets(['customdashboard', 80], ['customdatabase', 10])
+      )
+      .mockResolvedValueOnce(
+        serviceIdBuckets(
+          ['id-dash', 60, dashboard({ name: 'a' })],
+          ['id-db', 10, database({ displayName: 'Acme Warehouse' })]
+        )
+      );
 
     const { result } = renderHook(() => useDataEstate(), { wrapper });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.connectors).toEqual([
-      { count: 80, key: 'CustomDashboard', name: 'Custom Dashboard' },
+      { count: 80, key: 'customdashboard', name: 'Custom Dashboard' },
+      { count: 10, key: 'service:id-db', name: 'Acme Warehouse' },
     ]);
   });
 
   it('keeps the unsplit custom slice when the split fails', async () => {
     mockGetCharts.mockResolvedValue(chartsResponse([], []));
     mockSearchData
-      .mockResolvedValueOnce(serviceTypeBuckets(['CustomDashboard', 80]))
+      .mockResolvedValueOnce(serviceTypeBuckets(['customdashboard', 80]))
       .mockRejectedValueOnce(new Error('boom'));
 
     const { result } = renderHook(() => useDataEstate(), { wrapper });
@@ -430,7 +477,7 @@ describe('useDataEstate', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.connectors).toEqual([
-      { count: 80, key: 'CustomDashboard', name: 'Custom Dashboard' },
+      { count: 80, key: 'customdashboard', name: 'Custom Dashboard' },
     ]);
   });
 

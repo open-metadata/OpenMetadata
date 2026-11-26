@@ -42,7 +42,11 @@ export const DATA_ESTATE_TTL_MS = 5 * 60 * 1000;
 const SERVICE_TYPE_FIELD = 'serviceType';
 // By id: service names are unique only within a service category.
 const SERVICE_ID_FIELD = 'service.id';
-const SERVICE_LABEL_SOURCES = ['service.displayName', 'service.name'];
+const SERVICE_LABEL_SOURCES = [
+  SERVICE_TYPE_FIELD,
+  'service.displayName',
+  'service.name',
+];
 // Prefixed so a custom slice's key can never equal a serviceType or OTHER_CONNECTORS_KEY.
 const CUSTOM_SERVICE_KEY_PREFIX = 'service:';
 
@@ -51,10 +55,9 @@ const CUSTOM_SERVICE_KEY_PREFIX = 'service:';
  * counting them would size every connector by its column count. Data Insights
  * and the "Total data assets" card do not count columns as assets either.
  */
+const EXCLUDE_COLUMNS = [{ term: { entityType: EntityType.TABLE_COLUMN } }];
 const EXCLUDE_COLUMNS_QUERY = JSON.stringify({
-  query: {
-    bool: { must_not: [{ term: { entityType: EntityType.TABLE_COLUMN } }] },
-  },
+  query: { bool: { must_not: EXCLUDE_COLUMNS } },
 });
 
 /**
@@ -198,18 +201,25 @@ type TopHitsBucket = Bucket & {
   'top_hits#top'?: {
     hits?: {
       hits?: Array<{
-        _source?: { service?: { displayName?: string; name?: string } };
+        _source?: {
+          serviceType?: string;
+          service?: { displayName?: string; name?: string };
+        };
       }>;
     };
   };
 };
 
+const sumCounts = (connectors: ConnectorCount[]): number =>
+  connectors.reduce((total, connector) => total + connector.count, 0);
+
 /**
  * Every custom connector shares one `serviceType`, so its slice would read
  * "Custom Dashboard" whatever the tool behind it. Split those slices by
  * service and name each after the service's `displayName`, then its name.
- * When the split fails or comes back incomplete, the unsplit slices stay, so
- * the bar still adds up.
+ * Each type is checked on its own: a type whose split fails or comes back
+ * short keeps its unsplit slice, so the bar still adds up, without holding
+ * back the types that did split.
  */
 const splitCustomConnectors = async (
   custom: ConnectorCount[]
@@ -222,8 +232,17 @@ const splitCustomConnectors = async (
       deleted: false,
       fieldName: SERVICE_ID_FIELD,
       index: SearchIndex.DATA_ASSET,
+      // Same column exclusion as the breakdown, or a custom database's
+      // columns inflate its services past the slice they split.
       query: JSON.stringify({
-        query: { terms: { [SERVICE_TYPE_FIELD]: custom.map((c) => c.key) } },
+        query: {
+          bool: {
+            filter: [
+              { terms: { [SERVICE_TYPE_FIELD]: custom.map((c) => c.key) } },
+            ],
+            must_not: EXCLUDE_COLUMNS,
+          },
+        },
       }),
       size: AGGREGATE_PAGE_SIZE_LARGE,
       sourceFields: SERVICE_LABEL_SOURCES,
@@ -232,21 +251,29 @@ const splitCustomConnectors = async (
     const buckets: TopHitsBucket[] =
       getAggregations(response.data.aggregations ?? {})[SERVICE_ID_FIELD]
         ?.buckets ?? [];
-    const services = buckets.map((bucket) => {
-      const service = bucket['top_hits#top']?.hits?.hits?.[0]?._source?.service;
 
-      return {
+    // The `serviceType` keyword is lower-cased by its normalizer, so the
+    // breakdown's keys (`customdashboard`) differ from `_source`
+    // (`CustomDashboard`); compare both sides lower-cased.
+    const servicesByType = new Map<string, ConnectorCount[]>();
+    buckets.forEach((bucket) => {
+      const source = bucket['top_hits#top']?.hits?.hits?.[0]?._source;
+      const type = source?.serviceType?.toLowerCase() ?? '';
+      const services = servicesByType.get(type) ?? [];
+      services.push({
         count: bucket.doc_count,
         key: `${CUSTOM_SERVICE_KEY_PREFIX}${bucket.key}`,
-        name: service?.displayName || service?.name || bucket.key,
-      };
+        name:
+          source?.service?.displayName || source?.service?.name || bucket.key,
+      });
+      servicesByType.set(type, services);
     });
 
-    // A response capped at the page size would drop assets from the bar.
-    const sum = (connectors: ConnectorCount[]) =>
-      connectors.reduce((total, connector) => total + connector.count, 0);
+    return custom.flatMap((slice) => {
+      const services = servicesByType.get(slice.key.toLowerCase()) ?? [];
 
-    return sum(services) === sum(custom) ? services : custom;
+      return sumCounts(services) === slice.count ? services : [slice];
+    });
   } catch {
     return custom;
   }
