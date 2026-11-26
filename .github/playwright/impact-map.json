@@ -1086,6 +1086,19 @@
       ]
     },
     {
+      "_comment": "AI-mode global search (Cmd/Ctrl+K): the modal, its results hook, tabs, filters and summary panel, plus the Explore quick filters and sort dropdown it embeds. The generated map only links the few files the spec's imports reach, so a change to the results hook or the modal would otherwise skip this spec.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/GlobalSearch/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/Sidebar/SidebarSearchButton.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/Explore/ExploreQuickFilters.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/Explore/ExploreSortDropdown/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AIMode/GlobalSearch.spec.ts"
+      ]
+    },
+    {
       "_comment": "System announcements: Settings > Notifications > Announcements (list, form, routed pages) and its AI-mode settings-modal section.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/platform/settings/announcements/**",
