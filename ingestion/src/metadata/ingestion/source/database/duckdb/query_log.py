@@ -68,8 +68,9 @@ class DuckDBQueryParserSource(QueryParserSource):
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
         if not self._query_log_exists():
             logger.info(
-                f"DuckDB table {DUCKDB_QUERY_LOG_TABLE} not found: no query history to read. "
-                "Create and populate it to ingest usage and query lineage."
+                "DuckDB table %s not found: no query history to read. "
+                "Create and populate it to ingest usage and query lineage.",
+                DUCKDB_QUERY_LOG_TABLE,
             )
             return DUCKDB_EMPTY_SQL_STATEMENT
         database_name = get_database_name(self.engine, self.service_connection)  # pyright: ignore[reportArgumentType]
