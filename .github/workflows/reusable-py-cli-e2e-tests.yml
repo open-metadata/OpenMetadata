@@ -1,0 +1,251 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: reusable-py-cli-e2e-tests
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Highest supported Python version for connector E2E tests
+        required: true
+        type: string
+      connectors:
+        description: Connector names as a JSON array
+        required: true
+        type: string
+      ref:
+        description: Git commit SHA to test; must match the shared backend image
+        type: string
+        required: true
+      test-suite:
+        description: CLI test implementation (legacy or v2)
+        type: string
+        default: legacy
+      collect-coverage:
+        description: Collect and upload connector coverage for Sonar
+        type: boolean
+        default: true
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  py-cli-e2e-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        e2e-test: ${{ fromJSON(inputs.connectors) }}
+    # V1 and V2 Snowflake tests share a database and must run one at a time.
+    concurrency:
+      group: ${{ matrix.e2e-test == 'snowflake' && 'cli-e2e-snowflake-database' || format('{0}-{1}-{2}', github.workflow, github.run_id, matrix.e2e-test) }}
+      cancel-in-progress: false
+    environment: test
+    env:
+      E2E_TEST: ${{ matrix.e2e-test }}
+      TEST_SUITE: ${{ inputs.test-suite }}
+      COLLECT_COVERAGE: ${{ inputs.collect-coverage }}
+    steps:
+      # TODO: Measure connector disk usage before narrowing runner cleanup.
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: configure aws credentials
+        if: contains(fromJSON('["quicksight", "datalake_s3", "athena"]'), matrix.e2e-test)
+        uses: aws-actions/configure-aws-credentials@4a1596c86fd706dc0521e32f0121ad1a6d1adb74
+        with:
+          role-to-assume: ${{ secrets.E2E_AWS_IAM_ROLE_ARN }}
+          role-session-name: github-ci-aws-e2e-tests
+          aws-region: ${{ secrets.E2E_AWS_REGION }}
+      - name: Download ingestion image
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: python-ci-ingestion-image
+          path: ${{ runner.temp }}
+      - name: Load ingestion image
+        run: bash .github/scripts/python_ci_ingestion_image.sh load "$RUNNER_TEMP/python-ci-ingestion.tar.zst"
+        shell: bash
+      # TODO: Validate all CLI connectors without Airflow before removing ingestion image setup.
+      # TODO: Profile a small MySQL fixture database instead of the backend schema.
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          use-backend-image: 'true'
+          args: -m no-ui -s true
+      - name: Prepare Python environment
+        uses: ./.github/actions/prepare-python-environment
+        with:
+          python-version: ${{ inputs.python-version }}
+          profile: test-classification
+      - name: Reclaim unused disk for Exasol
+        if: matrix.e2e-test == 'exasol'
+        continue-on-error: true
+        run: |
+          {
+            echo "Before Exasol disk reclaim"
+            df -h
+            docker system df
+            sudo rm -rf /opt/hostedtoolcache/CodeQL
+            docker image prune --all --force || true
+            docker builder prune --all --force || true
+            echo "After Exasol disk reclaim"
+            df -h
+            docker system df
+          } 2>&1 | tee "${RUNNER_TEMP}/exasol-disk-reclaim.log"
+        shell: bash
+      - name: Run connector E2E
+        id: tests
+        if: inputs.test-suite != 'v2'
+        shell: bash
+        run: &run-cli-e2e |
+          set -o pipefail
+          source env/bin/activate
+          cd ingestion
+          args=()
+          if [[ "$COLLECT_COVERAGE" != 'true' ]]; then
+            args+=(--no-cov)
+          fi
+          nox --no-venv -s cli-e2e -- "$E2E_TEST" --suite "$TEST_SUITE" "${args[@]}" 2>&1 | tee cli-e2e-test-run.log
+        env:
+          E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
+          E2E_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY_E2E }}
+          E2E_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
+          E2E_BQ_PROJECT_ID2: ${{ secrets.TEST_BQ_PROJECT_ID2 }}
+          E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
+          E2E_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
+          E2E_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
+          E2E_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD_YAML }}
+          E2E_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
+          E2E_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
+          E2E_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
+          E2E_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE_E2E }}
+          E2E_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
+          E2E_REDSHIFT_DBT_CATALOG_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_CATALOG_HTTP_FILE_PATH }}
+          E2E_REDSHIFT_DBT_MANIFEST_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_MANIFEST_HTTP_FILE_PATH }}
+          E2E_REDSHIFT_DBT_RUN_RESULTS_HTTP_FILE_PATH: ${{ secrets.E2E_REDSHIFT_DBT_RUN_RESULTS_HTTP_FILE_PATH }}
+          E2E_REDSHIFT_HOST_PORT: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
+          E2E_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
+          E2E_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
+          E2E_REDSHIFT_DATABASE: ${{ secrets.E2E_REDSHIFT_DATABASE }}
+          E2E_REDSHIFT_DB: ${{ secrets.E2E_REDSHIFT_DB }}
+          E2E_MSSQL_USERNAME: ${{ secrets.E2E_MSSQL_USERNAME }}
+          E2E_MSSQL_PASSWORD: ${{ secrets.E2E_MSSQL_PASSWORD }}
+          E2E_MSSQL_HOST: ${{ secrets.E2E_MSSQL_HOST }}
+          E2E_MSSQL_DATABASE: ${{ secrets.E2E_MSSQL_DATABASE }}
+          E2E_VERTICA_USERNAME: ${{ secrets.E2E_VERTICA_USERNAME }}
+          E2E_VERTICA_PASSWORD: ${{ secrets.E2E_VERTICA_PASSWORD }}
+          E2E_VERTICA_HOST_PORT: ${{ secrets.E2E_VERTICA_HOST_PORT }}
+          E2E_TABLEAU_PAT_NAME: ${{ secrets.E2E_TABLEAU_PAT_NAME }}
+          E2E_TABLEAU_PAT_SECRET: ${{ secrets.E2E_TABLEAU_PAT_SECRET }}
+          E2E_TABLEAU_HOST_PORT: ${{ secrets.E2E_TABLEAU_HOST_PORT }}
+          E2E_TABLEAU_SITE: ${{ secrets.E2E_TABLEAU_SITE }}
+          E2E_REDASH_HOST_PORT: ${{ secrets.E2E_REDASH_HOST_PORT }}
+          E2E_REDASH_USERNAME: ${{ secrets.E2E_REDASH_USERNAME }}
+          E2E_REDASH_API_KEY: ${{ secrets.E2E_REDASH_API_KEY }}
+          E2E_POWERBI_CLIENT_SECRET: ${{ secrets.E2E_POWERBI_CLIENT_SECRET }}
+          E2E_POWERBI_CLIENT_ID: ${{ secrets.E2E_POWERBI_CLIENT_ID }}
+          E2E_POWERBI_TENANT_ID: ${{ secrets.E2E_POWERBI_TENANT_ID }}
+          E2E_METABASE_HOST_PORT: ${{ secrets.TEST_METABASE_HOST_PORT }}
+          E2E_METABASE_PASSWORD: ${{ secrets.TEST_METABASE_PASSWORD }}
+          E2E_METABASE_USERNAME: ${{ secrets.TEST_METABASE_USERNAME }}
+          E2E_HIVE_HOST_PORT: ${{ secrets.E2E_HIVE_HOST_PORT }}
+          E2E_HIVE_AUTH: ${{ secrets.E2E_HIVE_AUTH }}
+          E2E_QUICKSIGHT_AWS_ACCOUNTID: ${{ secrets.E2E_QUICKSIGHT_AWS_ACCOUNTID }}
+          E2E_QUICKSIGHT_REGION: ${{ secrets.E2E_QUICKSIGHT_REGION }}
+          E2E_DATALAKE_S3_BUCKET_NAME: ${{ secrets.E2E_DATALAKE_S3_BUCKET_NAME }}
+          E2E_DATALAKE_S3_PREFIX: ${{ secrets.E2E_DATALAKE_S3_PREFIX }}
+          E2E_DATALAKE_S3_REGION: ${{ secrets.E2E_AWS_REGION }}
+          E2E_POSTGRES_USERNAME: ${{ secrets.E2E_POSTGRES_USERNAME }}
+          E2E_POSTGRES_PASSWORD: ${{ secrets.E2E_POSTGRES_PASSWORD }}
+          E2E_POSTGRES_HOSTPORT: ${{ secrets.TEST_POSTGRES_HOST_PORT }}
+          E2E_POSTGRES_DATABASE: ${{ secrets.E2E_POSTGRES_DATABASE }}
+          E2E_ORACLE_HOST_PORT: ${{ secrets.E2E_ORACLE_HOST_PORT }}
+          E2E_ORACLE_USERNAME: ${{ secrets.E2E_ORACLE_USERNAME }}
+          E2E_ORACLE_PASSWORD: ${{ secrets.E2E_ORACLE_PASSWORD }}
+          E2E_ORACLE_SERVICE_NAME: ${{ secrets.E2E_ORACLE_SERVICE_NAME }}
+          E2E_ATHENA_REGION: ${{ secrets.E2E_AWS_REGION }}
+          E2E_ATHENA_S3STAGINGDIR: ${{ secrets.E2E_ATHENA_S3STAGINGDIR }}
+          E2E_ATHENA_WORKGROUP: ${{ secrets.E2E_ATHENA_WORKGROUP }}
+      - name: Run CLI E2E v2 tests
+        id: e2e-v2-test
+        if: inputs.test-suite == 'v2' && matrix.e2e-test != 'bigquery' && matrix.e2e-test != 'snowflake'
+        shell: bash
+        run: *run-cli-e2e
+        env:
+          OM_ADMIN_EMAIL: admin@open-metadata.org
+          OM_ADMIN_PASSWORD: admin
+      - name: Run BigQuery CLI E2E v2 tests
+        id: e2e-v2-bigquery-test
+        if: inputs.test-suite == 'v2' && matrix.e2e-test == 'bigquery'
+        shell: bash
+        run: *run-cli-e2e
+        env:
+          OM_ADMIN_EMAIL: admin@open-metadata.org
+          OM_ADMIN_PASSWORD: admin
+          E2E_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
+          E2E_BQ_PROJECT_ID2: ${{ secrets.TEST_BQ_PROJECT_ID2 }}
+          E2E_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY_E2E }}
+          E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
+          E2E_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
+      - name: Run Snowflake CLI E2E v2 tests
+        id: e2e-v2-snowflake-test
+        if: inputs.test-suite == 'v2' && matrix.e2e-test == 'snowflake'
+        shell: bash
+        run: *run-cli-e2e
+        env:
+          OM_ADMIN_EMAIL: admin@open-metadata.org
+          OM_ADMIN_PASSWORD: admin
+          E2E_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
+          E2E_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
+          E2E_SNOWFLAKE_PRIVATE_KEY: ${{ secrets.TEST_SNOWFLAKE_PASSWORD_YAML }}
+          E2E_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
+          E2E_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
+          E2E_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE_E2E }}
+      - name: Upload connector coverage
+        if: ${{ inputs.collect-coverage && !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: cli-coverage-${{ inputs.test-suite == 'v2' && 'v2-' || '' }}${{ inputs.python-version }}-${{ matrix.e2e-test }}
+          path: ingestion/.coverage.${{ matrix.e2e-test }}
+          include-hidden-files: true
+      - name: Report test results
+        if: ${{ always() }}
+        uses: ./.github/actions/report-test-results
+        with:
+          step-outcome: ${{ job.status }}
+          exit-code-file: ingestion/cli-e2e-test-exit-code.txt
+          test-profile: python-cli-e2e-${{ inputs.test-suite }}
+          artifact-name: tests-${{ inputs.test-suite == 'v2' && 'v2-' || '' }}${{ inputs.python-version }}-${{ matrix.e2e-test }}
+      - name: Collect failure diagnostics
+        if: ${{ failure() || cancelled() }}
+        uses: ./.github/actions/python-diagnostics
+        with:
+          artifact-name: py-cli-e2e-diagnostics-${{ inputs.test-suite }}-${{ inputs.python-version }}-${{ matrix.e2e-test }}
+      - name: Stop test environment
+        if: ${{ always() }}
+        working-directory: docker/development
+        run: |
+          docker compose down --remove-orphans
+          sudo rm -rf "${PWD}/docker-volume"
+        shell: bash
