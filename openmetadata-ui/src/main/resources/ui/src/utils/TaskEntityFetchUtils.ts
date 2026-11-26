@@ -56,6 +56,7 @@ import { t } from './i18next/LocalUtil';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
+import { defaultFields as SearchIndexFields } from './SearchIndexUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
 import { showErrorToast } from './ToastUtils';
@@ -326,7 +327,7 @@ export const fetchEntityDetail = (
       break;
 
     case EntityType.SEARCH_INDEX:
-      getSearchIndexDetailsByFQN(entityFQN)
+      getSearchIndexDetailsByFQN(entityFQN, { fields: SearchIndexFields })
         .then((res) => {
           setEntityData(res);
         })
