@@ -1,7 +1,7 @@
 # An MCP write an approval workflow holds answers pending approval
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-13 (initial)
+- **Revisions:** v1 2026-11-13 (initial) · v2 2026-11-25 (a held patch_entity reply carries no published values)
 - **Deciders:** Vishnu Jain
 - **Guard:** `PatchEntityToolTest#execute_reportsAWriteAnApprovalWorkflowHeldAsPendingApproval`,
   `CreateTestCaseToolTest#aHeldOverwriteIsReportedAsPendingApproval`
@@ -30,3 +30,10 @@ change was applied that no reviewer had approved yet.
 
 - An MCP client tells "submitted for approval" from "applied" by `_operation` alone.
 - A new write tool that skips `markHeld` reports a held write as done again; review checks for it.
+
+## Amendment
+
+v2 2026-11-25: `patch_entity` answers with a compact confirmation
+(ADR:2026-11-17-mcp-patch-entity-returns-compact-confirmation), so a held patch carries the
+entity's identity and published version, not its published field values. `create_test_case` is
+unchanged.

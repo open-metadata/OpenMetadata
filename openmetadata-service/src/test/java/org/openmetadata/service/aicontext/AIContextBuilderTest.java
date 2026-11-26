@@ -41,6 +41,7 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.AIContext;
@@ -1017,5 +1018,61 @@ class AIContextBuilderTest {
     assertEquals(List.of(9, "value-9"), bounded.getRows().get(9));
     rows.get(0).set(1, "mutated");
     assertEquals("value-0", bounded.getRows().get(0).get(1));
+  }
+
+  @Test
+  void fullContentOf_stripsImagesFromArticleAndKeepsMetricExpressionVerbatim() {
+    String payload = "A".repeat(5_000);
+    Page article =
+        new Page()
+            .withName("architecture")
+            .withDescription(
+                "<p class=\"om-p\">Overview: x &gt;&#61; 1 and &#39;a&#39;</p>"
+                    + "<p><img src=\"data:image/png;base64,"
+                    + payload
+                    + "\"></p>"
+                    + "<p>References <a data-entitytype=\"table\" data-fqn=\"svc.db.sch.orders\""
+                    + " class=\"om-mention\">Orders</a>.</p>");
+
+    String pageContent = AIContextBuilder.fullContentOf(article);
+
+    assertFalse(pageContent.contains("base64"));
+    assertFalse(pageContent.contains("<img"));
+    assertFalse(pageContent.contains("class="));
+    assertTrue(pageContent.contains("Overview: x >= 1 and 'a'"), pageContent);
+    assertTrue(pageContent.contains("data-fqn=\"svc.db.sch.orders\""));
+
+    Metric metric =
+        new Metric()
+            .withName("net_revenue")
+            .withDescription(
+                "<p>Net revenue</p><img src=\"data:image/png;base64," + payload + "\">")
+            .withMetricExpression(
+                new MetricExpression()
+                    .withCode("SELECT SUM(amount) FROM orders WHERE amount > 0 AND amount < 1000"));
+
+    String metricContent = AIContextBuilder.fullContentOf(metric);
+
+    assertFalse(metricContent.contains("base64"));
+    assertTrue(metricContent.contains("Net revenue"));
+    assertTrue(
+        metricContent.contains("SELECT SUM(amount) FROM orders WHERE amount > 0 AND amount < 1000"),
+        "SQL comparison operators must not be HTML-escaped by PromptText");
+
+    Metric imageOnlyMetric =
+        new Metric()
+            .withName("image_only")
+            .withDescription("<img src=\"data:image/png;base64," + payload + "\">")
+            .withMetricExpression(new MetricExpression().withCode("COUNT(*)"));
+    assertEquals("COUNT(*)", AIContextBuilder.fullContentOf(imageOnlyMetric));
+
+    ContextMemory memory =
+        new ContextMemory()
+            .withName("memo")
+            .withAnswer(
+                "<p>Keep active accounts.</p><img src=\"data:image/png;base64," + payload + "\">");
+    String memoryContent = AIContextBuilder.fullContentOf(memory);
+    assertFalse(memoryContent.contains("base64"));
+    assertTrue(memoryContent.contains("Keep active accounts."));
   }
 }

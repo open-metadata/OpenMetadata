@@ -41,7 +41,7 @@ jobs:
       - name: Download rendered Playwright comment
         id: download-comment
         continue-on-error: true
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: playwright-pr-comment-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
           path: ${{ runner.temp }}/playwright-pr-comment

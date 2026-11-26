@@ -85,7 +85,7 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
   private final DataInsightsSearchConfiguration dataInsightsSearchConfiguration;
   private final DataInsightsSearchInterface searchInterface;
 
-  private DataInsightsEntityEnricherProcessor entityEnricher;
+  DataInsightsEntityEnricherProcessor entityEnricher;
   private Processor entityProcessor;
   private Sink searchIndexSink;
   private DataInsightsExtensions extensions;
@@ -522,13 +522,14 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
    * all entity types processed in this workflow run, so its counters are cumulative across sources
    * — calling this in each source's finally block keeps the workflow's view of the stats current.
    */
-  private void mergeEnricherStepStats() {
+  void mergeEnricherStepStats() {
     if (entityEnricher == null) {
       return;
     }
-    Map<String, StepStats> perStep = entityEnricher.getEntityStats();
-    for (Map.Entry<String, StepStats> entry : perStep.entrySet()) {
-      workflowStats.updateWorkflowStepStats("[Enricher] " + entry.getKey(), entry.getValue());
+    final Map<String, StepStats> perStep = entityEnricher.getEntityStats();
+    for (final Map.Entry<String, StepStats> entry : perStep.entrySet()) {
+      workflowStats.updateWorkflowStepStats(
+          WorkflowStats.ENRICHER_STEP_PREFIX + entry.getKey(), entry.getValue());
     }
   }
 
@@ -596,18 +597,12 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
     }
   }
 
-  private void updateWorkflowStats(String stepName, StepStats newStepStats) {
+  void updateWorkflowStats(final String stepName, final StepStats newStepStats) {
     workflowStats.updateWorkflowStepStats(stepName, newStepStats);
-
-    int currentSuccess =
-        workflowStats.getWorkflowStepStats().values().stream()
-            .mapToInt(StepStats::getSuccessRecords)
-            .sum();
-    int currentFailed =
-        workflowStats.getWorkflowStepStats().values().stream()
-            .mapToInt(StepStats::getFailedRecords)
-            .sum();
-
-    workflowStats.updateWorkflowStats(currentSuccess, currentFailed);
+    final Map<String, StepStats> stepStats = workflowStats.getWorkflowStepStats();
+    final StepStats overallStats = workflowStats.getWorkflowStats();
+    overallStats.setTotalRecords(WorkflowStats.sumTotalRecords(stepStats));
+    overallStats.setSuccessRecords(WorkflowStats.sumSuccessRecords(stepStats));
+    overallStats.setFailedRecords(WorkflowStats.sumFailedRecords(stepStats));
   }
 }

@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy import create_engine, text
 from testcontainers.mysql import MySqlContainer
 
+from _openmetadata_testutils.helpers.database_images import mysql_source_image
 from _openmetadata_testutils.helpers.docker import try_bind
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -19,7 +20,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 def mysql_container(tmp_path_factory):
     """Start a PostgreSQL container with the dvdrental database."""
     test_db_tar_path = os.path.join(os.path.dirname(__file__), "data", "mysql", "test_db-1.0.7.tar.gz")  # noqa: PTH118, PTH120
-    container = MySqlContainer(image="mysql:8.4.13", dbname="employees")
+    container = MySqlContainer(image=mysql_source_image(), dbname="employees")
     with try_bind(container, 3306, 3307) if not os.getenv("CI") else container as container:
         docker_container = container.get_wrapped_container()
         docker_container.exec_run(["mkdir", "-p", "/data"])
@@ -28,7 +29,8 @@ def mysql_container(tmp_path_factory):
             [
                 "sh",
                 "-c",
-                f"cd /data/test_db && mysql -uroot -p{container.password}  < employees.sql",
+                # employees.sql loads its data with `source`, a client command MySQL 9 turns off by default
+                f"cd /data/test_db && mysql --commands -uroot -p{container.password}  < employees.sql",
             ],
             [
                 "sh",
