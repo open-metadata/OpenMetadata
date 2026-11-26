@@ -35,19 +35,19 @@ class PublicOidcAuthServletHandlerTest {
           try (exchange) {
             if (requests.incrementAndGet() == 1) {
               exchange.sendResponseHeaders(503, -1);
-              return;
+            } else {
+              final byte[] document =
+                  """
+                  {"issuer":"%1$s","authorization_endpoint":"%1$s/authorize","token_endpoint":"%1$s/token",
+                   "jwks_uri":"%1$s/keys","subject_types_supported":["public"],"response_types_supported":["code"],
+                   "id_token_signing_alg_values_supported":["RS256"]}
+                  """
+                      .formatted(authority)
+                      .getBytes(StandardCharsets.UTF_8);
+              exchange.getResponseHeaders().set("Content-Type", "application/json");
+              exchange.sendResponseHeaders(200, document.length);
+              exchange.getResponseBody().write(document);
             }
-            final byte[] document =
-                """
-                {"issuer":"%1$s","authorization_endpoint":"%1$s/authorize","token_endpoint":"%1$s/token",
-                 "jwks_uri":"%1$s/keys","subject_types_supported":["public"],"response_types_supported":["code"],
-                 "id_token_signing_alg_values_supported":["RS256"]}
-                """
-                    .formatted(authority)
-                    .getBytes(StandardCharsets.UTF_8);
-            exchange.getResponseHeaders().set("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, document.length);
-            exchange.getResponseBody().write(document);
           }
         });
     server.start();

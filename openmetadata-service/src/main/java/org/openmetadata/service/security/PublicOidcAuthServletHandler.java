@@ -52,26 +52,25 @@ final class PublicOidcAuthServletHandler extends NoopAuthServeletHandler {
       handler = null;
       initializationFailure = null;
     }
-    if (handler != null) {
-      return handler;
+    if (handler == null) {
+      if (initializationFailure != null
+          && nanoTime.getAsLong() - failedAt < PublicOidcConfiguration.DISCOVERY_INTERVAL_NANOS) {
+        throw initializationFailure;
+      }
+      try {
+        // Only public-client deployments that actually use MCP need backend discovery.
+        final AuthenticationConfiguration effective =
+            JsonUtils.deepCopy(authentication, AuthenticationConfiguration.class);
+        effective.setOidcConfiguration(publicCodeFlow(authentication, base));
+        handler = new AuthenticationCodeFlowHandler(effective, authorizer, sessions, true);
+        initializationFailure = null;
+      } catch (RuntimeException failure) {
+        initializationFailure = failure;
+        failedAt = nanoTime.getAsLong();
+        throw failure;
+      }
     }
-    if (initializationFailure != null
-        && nanoTime.getAsLong() - failedAt < PublicOidcConfiguration.DISCOVERY_INTERVAL_NANOS) {
-      throw initializationFailure;
-    }
-    try {
-      // Only public-client deployments that actually use MCP need backend discovery.
-      final AuthenticationConfiguration effective =
-          JsonUtils.deepCopy(authentication, AuthenticationConfiguration.class);
-      effective.setOidcConfiguration(publicCodeFlow(authentication, base));
-      handler = new AuthenticationCodeFlowHandler(effective, authorizer, sessions, true);
-      initializationFailure = null;
-      return handler;
-    } catch (RuntimeException failure) {
-      initializationFailure = failure;
-      failedAt = nanoTime.getAsLong();
-      throw failure;
-    }
+    return handler;
   }
 
   static OidcClientConfig publicCodeFlow(AuthenticationConfiguration authentication, String base) {
