@@ -328,8 +328,15 @@ public class DistributedIndexingStrategy {
     double minRatio =
         config != null ? config.minSuccessRatio() : RatioPromotionPolicy.DEFAULT_MIN_SUCCESS_RATIO;
     return new DistributedReindexFinalizer(
-            indexPromotionHandler, stagedIndexContext, new RatioPromotionPolicy(minRatio))
+            indexPromotionHandler,
+            stagedIndexContext,
+            new RatioPromotionPolicy(minRatio),
+            this::lostAStagedChunkDelete)
         .finalizeRemainingEntities(getPromotedEntities(), getFinalEntityStats(), finalSuccess);
+  }
+
+  private boolean lostAStagedChunkDelete() {
+    return distributedExecutor != null && distributedExecutor.lostAStagedChunkDelete();
   }
 
   private StepStats getColumnStats() {

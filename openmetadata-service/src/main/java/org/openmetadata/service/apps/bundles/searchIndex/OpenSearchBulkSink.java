@@ -1055,7 +1055,6 @@ public class OpenSearchBulkSink implements BulkSink {
 
   @Override
   public void close() {
-    embeddingEnricher.logMissedChunksSummary();
     try {
       bulkProcessor.flush();
 
@@ -1072,6 +1071,9 @@ public class OpenSearchBulkSink implements BulkSink {
       if (!columnTerminated) {
         LOG.warn("Column bulk processor did not terminate within timeout");
       }
+      // The documents are written now, so the misses of writes that ran without a partition can
+      // be retried. No partition end retries them.
+      embeddingEnricher.retryMissesWithoutAPartitionAndLogTheSummary();
 
       updateStats();
 
@@ -1085,6 +1087,7 @@ public class OpenSearchBulkSink implements BulkSink {
 
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while closing bulk processor", e);
+      embeddingEnricher.logMissedChunksSummary();
       Thread.currentThread().interrupt();
     }
   }

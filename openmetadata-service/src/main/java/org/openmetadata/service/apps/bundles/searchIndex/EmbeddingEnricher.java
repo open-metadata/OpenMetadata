@@ -267,6 +267,16 @@ final class EmbeddingEnricher {
     missedChunks.logSummary();
   }
 
+  /**
+   * For a sink that is closing, once its documents are written: retries the misses of writes that
+   * ran without a partition, such as a live bulk update, then logs the summary. Misses of a
+   * partition that stopped before its end stay unretried, because the run was told to stop.
+   */
+  void retryMissesWithoutAPartitionAndLogTheSummary() {
+    retryMissedChunks(null);
+    missedChunks.logSummary();
+  }
+
   private static void count(AtomicLong counter, StageStatsTracker tracker, StatsResult result) {
     counter.incrementAndGet();
     if (tracker != null) {

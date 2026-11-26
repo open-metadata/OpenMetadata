@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -10,6 +11,8 @@ import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,7 +22,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.hc.core5.http.HttpHost;
@@ -88,6 +94,127 @@ class VectorChunkIndexIT {
     }
   }
 
+  /**
+   * The requests a scenario sends, each with the index it addresses: the one in its path, or for a
+   * bulk the one its first action names. It can also answer the reads of a chunk header in one
+   * index with a 503, as a cluster under load does.
+   */
+  private static final class RequestLog {
+    private static final Pattern BULK_INDEX = Pattern.compile("\"_index\":\"([^\"]+)\"");
+    private final List<String> sent = new CopyOnWriteArrayList<>();
+    private volatile String unreadableHeaderIndex;
+
+    void record(String method, String endpoint, String body) {
+      sent.add(method + " " + endpoint + " -> " + target(endpoint, body));
+    }
+
+    boolean failsHeaderRead(String endpoint, String body) {
+      String index = unreadableHeaderIndex;
+      boolean headerRead =
+          endpoint.contains("/_mget") && body != null && body.contains("_0\"")
+              || endpoint.contains("/_doc/") && endpoint.contains("_0?");
+      return index != null && endpoint.startsWith("/" + index + "/") && headerRead;
+    }
+
+    void failHeaderReadsOf(String index) {
+      unreadableHeaderIndex = index;
+    }
+
+    void acceptHeaderReads() {
+      unreadableHeaderIndex = null;
+    }
+
+    void clear() {
+      sent.clear();
+    }
+
+    long countTo(String index) {
+      return sent.stream().filter(request -> request.endsWith("-> " + index)).count();
+    }
+
+    long deletesByQuery() {
+      return sent.stream().filter(request -> request.contains("/_delete_by_query")).count();
+    }
+
+    private static String target(String endpoint, String body) {
+      String index = endpoint.substring(1).split("[/?]")[0];
+      if ("_bulk".equals(index) && body != null) {
+        Matcher named = BULK_INDEX.matcher(body);
+        index = named.find() ? named.group(1) : index;
+      }
+      return index;
+    }
+
+    @Override
+    public String toString() {
+      return String.join("\n", sent);
+    }
+  }
+
+  private static final class CountedOpenSearchVectorService extends OpenSearchVectorService {
+    private final RequestLog requests;
+
+    CountedOpenSearchVectorService(
+        OpenSearchClient client, EmbeddingClient provider, RequestLog requests) {
+      super(client, provider);
+      this.requests = requests;
+    }
+
+    @Override
+    protected RawResponse performRequest(String method, String endpoint, String body)
+        throws IOException {
+      requests.record(method, endpoint, body);
+      return requests.failsHeaderRead(endpoint, body)
+          ? unavailable()
+          : super.performRequest(method, endpoint, body);
+    }
+
+    // The response record's constructor is protected, so a subclass outside its package builds it
+    // reflectively.
+    private static RawResponse unavailable() throws IOException {
+      try {
+        Constructor<RawResponse> constructor =
+            RawResponse.class.getDeclaredConstructor(int.class, String.class);
+        constructor.setAccessible(true);
+        return constructor.newInstance(503, "{\"error\":\"unavailable\"}");
+      } catch (ReflectiveOperationException e) {
+        throw new IOException("Could not build a 503 response", e);
+      }
+    }
+  }
+
+  private static final class CountedElasticSearchVectorService extends ElasticSearchVectorService {
+    private final RequestLog requests;
+
+    CountedElasticSearchVectorService(
+        ElasticsearchClient client, EmbeddingClient provider, RequestLog requests) {
+      super(client, provider);
+      this.requests = requests;
+    }
+
+    @Override
+    protected RawResponse performRequest(String method, String endpoint, String body)
+        throws IOException {
+      requests.record(method, endpoint, body);
+      return requests.failsHeaderRead(endpoint, body)
+          ? unavailable()
+          : super.performRequest(method, endpoint, body);
+    }
+
+    // The response record's constructor is protected, so a subclass outside its package builds it
+    // reflectively.
+    private static RawResponse unavailable() throws IOException {
+      try {
+        Constructor<RawResponse> constructor =
+            RawResponse.class.getDeclaredConstructor(int.class, String.class);
+        constructor.setAccessible(true);
+        return constructor.newInstance(503, "{\"error\":\"unavailable\"}");
+      } catch (ReflectiveOperationException e) {
+        throw new IOException("Could not build a 503 response", e);
+      }
+    }
+  }
+
   @Nested
   @TestInstance(TestInstance.Lifecycle.PER_CLASS)
   @Execution(ExecutionMode.SAME_THREAD)
@@ -100,8 +227,10 @@ class VectorChunkIndexIT {
             .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
             .withEnv("OPENSEARCH_INITIAL_ADMIN_PASSWORD", "Test@12345")
             .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms512m -Xmx512m");
+    private final RequestLog requests = new RequestLog();
     private OpenSearchClient client;
     private OpenSearchVectorService service;
+    private OpenSearchVectorService countedService;
 
     @BeforeAll
     void start() {
@@ -113,6 +242,7 @@ class VectorChunkIndexIT {
                   .setHttpClientConfigCallback(builder -> builder.disableContentCompression())
                   .build());
       service = new OpenSearchVectorService(client, provider);
+      countedService = new CountedOpenSearchVectorService(client, provider, requests);
     }
 
     @AfterAll
@@ -150,6 +280,16 @@ class VectorChunkIndexIT {
     void aRetriedEmbeddingMergesIntoTheIndexedEntityDocument() {
       assertARetriedEmbeddingMergesIntoTheIndexedEntityDocument(service);
     }
+
+    @Test
+    void aDeleteSendsOnlyTheRequestsItsHeaderBoundNeeds() {
+      assertADeleteSendsOnlyTheRequestsItsHeaderBoundNeeds(countedService, requests);
+    }
+
+    @Test
+    void aDeleteThatCannotReadTheHeaderFailsAndKeepsEveryChunk() {
+      assertADeleteThatCannotReadTheHeaderFailsAndKeepsEveryChunk(countedService, requests);
+    }
   }
 
   @Nested
@@ -163,8 +303,10 @@ class VectorChunkIndexIT {
             .withEnv("xpack.security.enabled", "false")
             .withEnv("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
             .withStartupTimeout(Duration.ofMinutes(5));
+    private final RequestLog requests = new RequestLog();
     private Rest5Client restClient;
     private ElasticSearchVectorService service;
+    private ElasticSearchVectorService countedService;
 
     @BeforeAll
     void start() {
@@ -174,11 +316,10 @@ class VectorChunkIndexIT {
                   new HttpHost("http", container.getHost(), container.getMappedPort(9200)))
               .setHttpClientConfigCallback(builder -> builder.disableContentCompression())
               .build();
-      service =
-          new ElasticSearchVectorService(
-              new ElasticsearchClient(
-                  new Rest5ClientTransport(restClient, new JacksonJsonpMapper())),
-              provider);
+      ElasticsearchClient client =
+          new ElasticsearchClient(new Rest5ClientTransport(restClient, new JacksonJsonpMapper()));
+      service = new ElasticSearchVectorService(client, provider);
+      countedService = new CountedElasticSearchVectorService(client, provider, requests);
     }
 
     @AfterAll
@@ -215,6 +356,16 @@ class VectorChunkIndexIT {
     @Test
     void aRetriedEmbeddingMergesIntoTheIndexedEntityDocument() {
       assertARetriedEmbeddingMergesIntoTheIndexedEntityDocument(service);
+    }
+
+    @Test
+    void aDeleteSendsOnlyTheRequestsItsHeaderBoundNeeds() {
+      assertADeleteSendsOnlyTheRequestsItsHeaderBoundNeeds(countedService, requests);
+    }
+
+    @Test
+    void aDeleteThatCannotReadTheHeaderFailsAndKeepsEveryChunk() {
+      assertADeleteThatCannotReadTheHeaderFailsAndKeepsEveryChunk(countedService, requests);
     }
   }
 
@@ -394,8 +545,6 @@ class VectorChunkIndexIT {
       if (staged != null) {
         service.clearStagedChunkState(staged);
       }
-      // Refreshed first, so the delete's query also reaches what a failed assertion left behind.
-      refresh(service, live);
       service.deleteEntityChunks(id(orders));
       refresh(service, live);
     }
@@ -436,6 +585,85 @@ class VectorChunkIndexIT {
     } finally {
       service.executeGenericRequest("DELETE", "/" + entityIndex, null);
     }
+  }
+
+  /**
+   * The header's count bounds every chunk id an entity has, so a delete reads the header once and
+   * deletes by id: the chunks past chunk 0, then chunk 0. It sends no delete-by-query, and an entity
+   * with no chunks costs that one read. Ids are deleted in real time, so chunks no refresh has made
+   * searchable yet go too.
+   */
+  private static void assertADeleteSendsOnlyTheRequestsItsHeaderBoundNeeds(
+      AbstractVectorIndexService service, RequestLog requests) {
+    String live = service.getChunkIndexName();
+    Table neverEmbedded = table("archive", "Archived orders");
+    Table oneChunk = table("orders", "Orders placed online");
+    Table threeChunks = table("ledger", "word ".repeat(940));
+    Map<String, Long> expected = Map.of("archive", 1L, "orders", 2L, "ledger", 3L);
+    Map<String, Long> sent = new HashMap<>();
+    Map<String, Long> deletesByQuery = new HashMap<>();
+    List<Table> tables = List.of(neverEmbedded, oneChunk, threeChunks);
+    try {
+      writeChunks(service, oneChunk, null);
+      writeChunks(service, threeChunks, null);
+      assertEquals(3, storedChunkIds(service, live, threeChunks).size());
+      service.deleteEntityChunks(UUID.randomUUID().toString());
+
+      for (Table table : tables) {
+        requests.clear();
+        service.deleteEntityChunks(id(table));
+        sent.put(table.getName(), requests.countTo(live));
+        deletesByQuery.put(table.getName(), requests.deletesByQuery());
+        assertEquals(Set.of(), storedChunkIds(service, live, table), table.getName());
+      }
+
+      assertEquals(expected, sent, "requests to the chunk index per delete");
+      assertEquals(Map.of("archive", 0L, "orders", 0L, "ledger", 0L), deletesByQuery);
+    } finally {
+      requests.clear();
+      tables.forEach(table -> service.deleteEntityChunks(id(table)));
+    }
+  }
+
+  /**
+   * A chunk header the cluster cannot answer for is not a missing one. The delete fails and
+   * deletes nothing, so the header and its count stay for the next delete, which removes every
+   * chunk, including those no refresh has made searchable.
+   */
+  private static void assertADeleteThatCannotReadTheHeaderFailsAndKeepsEveryChunk(
+      AbstractVectorIndexService service, RequestLog requests) {
+    String live = service.getChunkIndexName();
+    Table ledger = table("ledger", "word ".repeat(940));
+    try {
+      writeChunks(service, ledger, null);
+      refreshInterval(service, live, "-1");
+      writeChunks(service, ledger.withDescription("word ".repeat(941)), null);
+      requests.failHeaderReadsOf(live);
+
+      assertThrows(RuntimeException.class, () -> service.deleteEntityChunks(id(ledger)));
+      requests.acceptHeaderReads();
+
+      assertEquals(
+          Set.of(id(ledger) + "_0", id(ledger) + "_1", id(ledger) + "_2"),
+          storedChunkIds(service, live, ledger));
+      service.deleteEntityChunks(id(ledger));
+      assertEquals(Set.of(), storedChunkIds(service, live, ledger));
+    } finally {
+      requests.acceptHeaderReads();
+      refreshInterval(service, live, "null");
+      refresh(service, live);
+      service.deleteEntityChunks(id(ledger));
+    }
+  }
+
+  private static void refreshInterval(
+      AbstractVectorIndexService service, String index, String interval) {
+    service.executeGenericRequest(
+        "PUT", "/" + index + "/_settings", "{\"index.refresh_interval\":" + quoted(interval) + "}");
+  }
+
+  private static String quoted(String interval) {
+    return "null".equals(interval) ? interval : "\"" + interval + "\"";
   }
 
   private static void growWithTheHeaderFailing(

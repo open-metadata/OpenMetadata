@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.vector;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -170,6 +171,19 @@ class VectorEmbeddingHandlerTest {
     handler.onEntityUpdated(null, null, subjectContext);
 
     verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
+  }
+
+  /** A type with no embeddings has no chunks, so none of its lifecycle events sends a delete. */
+  @Test
+  void aTypeWithoutEmbeddingsSendsNoChunkDelete() {
+    EntityInterface<?> user = createMockEntity(Entity.USER);
+
+    handler.onEntityDeleted(user, subjectContext);
+    handler.onEntitySoftDeletedOrRestored(user, true, subjectContext);
+    handler.invalidateStaleEmbedding(user);
+
+    assertFalse(handler.getSupportedEntityTypes().contains(Entity.USER));
+    verify(vectorIndexService, never()).deleteEntityChunks(anyString());
   }
 
   @Test

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.HashMap;
@@ -139,12 +140,82 @@ class ChunkSetBoundTest {
   }
 
   @Test
-  void aDeleteRemovesChunksStoredWithoutAHeader() {
+  void aDeleteRemovesAChunkSetStoredWithoutItsHeader() {
+    cluster.storeRefreshed(LIVE, parentId + "_1", Map.of("parentId", parentId, "chunkIndex", 1));
     cluster.storeRefreshed(LIVE, parentId + "_2", Map.of("parentId", parentId, "chunkIndex", 2));
 
     service.deleteEntityChunks(parentId);
 
     assertEquals(Set.of(), cluster.chunkIds(LIVE, parentId));
+  }
+
+  @ParameterizedTest(name = "{0} chunks")
+  @ValueSource(ints = {0, 1, 3})
+  void aDeleteSendsOneReadAndOneDeletePerRequestTheBoundNeedsAndNoQuery(int chunkCount) {
+    givenTheLiveChunkIndexExists();
+    if (chunkCount > 0) {
+      assertTrue(write(LIVE, chunks(chunkCount)));
+    }
+    service.deleteEntityChunks(UUID.randomUUID().toString());
+    int requestsBefore = cluster.requests;
+    int deletesByQueryBefore = cluster.deletesByQuery;
+
+    service.deleteEntityChunks(parentId);
+
+    assertEquals(Set.of(), cluster.chunkIds(LIVE, parentId));
+    int expected = chunkCount == 0 ? 1 : chunkCount == 1 ? 2 : 3;
+    assertEquals(
+        expected,
+        cluster.requests - requestsBefore,
+        "a read of the header, then the chunks past it, then the header");
+    assertEquals(0, cluster.deletesByQuery - deletesByQueryBefore);
+  }
+
+  @Test
+  void aHeaderThatCannotBeReadFailsTheStagedDeleteAndKeepsTheGenerationFromGoingLive() {
+    service.latchParticipantStagedTarget(STAGED);
+    assertTrue(write(STAGED, chunks(3)));
+    cluster.failReadsOf(STAGED, 503);
+
+    service.deleteEntityChunks(parentId);
+
+    assertEquals(
+        Set.of(parentId + "_0", parentId + "_1", parentId + "_2"),
+        cluster.chunkIds(STAGED, parentId),
+        "nothing is deleted from a chunk set whose header could not be read");
+    assertTrue(cluster.flaggedIncomplete(STAGED), "the missed delete is recorded");
+  }
+
+  @Test
+  void aHeaderThatCannotBeReadFailsTheWriteAndKeepsTheBound() {
+    givenTheLiveChunkIndexExists();
+    assertTrue(write(LIVE, chunks(3)));
+    cluster.failReadsOf(LIVE, 429);
+
+    assertFalse(write(LIVE, chunks(2)), "a write that cannot read the header is a miss");
+
+    cluster.acceptAllReads();
+    assertEquals(3, cluster.header(LIVE, parentId).path("chunkCount").asInt());
+    assertEquals(
+        Set.of(parentId + "_0", parentId + "_1", parentId + "_2"),
+        cluster.chunkIds(LIVE, parentId));
+  }
+
+  @Test
+  void aStagedGenerationProbeThatFailedIsAskedAgainByTheNextDelete() {
+    givenTheLiveChunkIndexExists();
+    cluster.stageGeneration(STAGED);
+    assertTrue(write(STAGED, chunks(1)));
+    cluster.failNextGenerationProbe();
+    service.deleteEntityChunks(UUID.randomUUID().toString());
+
+    service.deleteEntityChunks(parentId);
+
+    assertEquals(Set.of(), cluster.chunkIds(STAGED, parentId));
+  }
+
+  private void givenTheLiveChunkIndexExists() {
+    cluster.storeRefreshed(LIVE, "other_0", Map.of("parentId", "other", "chunkIndex", 0));
   }
 
   @Test
@@ -248,9 +319,18 @@ class ChunkSetBoundTest {
     private final Map<String, Map<String, JsonNode>> indices = new HashMap<>();
     private final Set<String> existing = new HashSet<>();
     private final Set<String> refreshed = new HashSet<>();
+    private static final String MGET = "/_mget";
+    private static final String GENERATIONS = LIVE + "_g*";
+    private final Set<String> generations = new HashSet<>();
+    private final Set<String> flagged = new HashSet<>();
     private int requestsToMissingIndices;
     private Predicate<String> rejectHeaderIndex = index -> false;
+    private Predicate<String> unreadableIndex = index -> false;
+    private int unreadableStatus;
+    private boolean failNextGenerationProbe;
     private int bulkRequests;
+    private int requests;
+    private int deletesByQuery;
 
     void rejectHeaderWritesTo(String index) {
       rejectHeaderIndex = index::equals;
@@ -258,6 +338,30 @@ class ChunkSetBoundTest {
 
     void acceptAllWrites() {
       rejectHeaderIndex = index -> false;
+    }
+
+    /** Header reads of {@code index} answer {@code status}, as a cluster under load does. */
+    void failReadsOf(String index, int status) {
+      unreadableIndex = index::equals;
+      unreadableStatus = status;
+    }
+
+    void acceptAllReads() {
+      unreadableIndex = index -> false;
+    }
+
+    /** A bare generation index, found by the probe for un-promoted generations. */
+    void stageGeneration(String index) {
+      existing.add(index);
+      generations.add(index);
+    }
+
+    void failNextGenerationProbe() {
+      failNextGenerationProbe = true;
+    }
+
+    boolean flaggedIncomplete(String index) {
+      return flagged.contains(index);
     }
 
     void storeRefreshed(String index, String id, Map<String, Object> source) {
@@ -284,29 +388,101 @@ class ChunkSetBoundTest {
 
     AbstractVectorIndexService.RawResponse handle(String method, String endpoint, String body)
         throws IOException {
+      requests++;
       AbstractVectorIndexService.RawResponse response = ok("{}");
       String index = endpoint.substring(1).split("[/?]")[0];
       boolean wholeIndex = endpoint.indexOf('/', 1) < 0;
-      if (wholeIndex && "PUT".equals(method)) {
+      if (GENERATIONS.equals(index)) {
+        response = probeGenerations();
+      } else if (wholeIndex && "PUT".equals(method)) {
         existing.add(index);
       } else if (wholeIndex && "HEAD".equals(method)) {
         response =
             new AbstractVectorIndexService.RawResponse(existing.contains(index) ? 200 : 404, null);
       } else if (endpoint.endsWith("/_alias")) {
         response = new AbstractVectorIndexService.RawResponse(404, "{\"status\":404}");
+      } else if (endpoint.endsWith("/_mapping") && "PUT".equals(method)) {
+        recordMeta(index, body);
       } else if (endpoint.equals("/_bulk")) {
         response = bulk(body);
       } else if (endpoint.contains("/_delete_by_query")) {
+        deletesByQuery++;
         response = deleteByQuery(index, body);
+      } else if (endpoint.startsWith("/" + index + MGET)) {
+        response = multiGet(index, body);
       } else if (endpoint.contains(DOC)) {
         response = getById(method, endpoint);
       }
       return response;
     }
 
+    private AbstractVectorIndexService.RawResponse probeGenerations() {
+      AbstractVectorIndexService.RawResponse response;
+      if (failNextGenerationProbe) {
+        failNextGenerationProbe = false;
+        response = new AbstractVectorIndexService.RawResponse(503, "{\"status\":503}");
+      } else {
+        ObjectNode body = MAPPER.createObjectNode();
+        generations.forEach(name -> body.putObject(name).putObject("aliases"));
+        response = ok(body.toString());
+      }
+      return response;
+    }
+
+    private void recordMeta(String index, String body) throws IOException {
+      if (MAPPER.readTree(body).path("_meta").path("incompleteChunkWrites").asBoolean(false)) {
+        flagged.add(index);
+      }
+    }
+
+    // A realtime multi-get, answering each id on its own, as both engines do: an index that
+    // does not exist is an error on every doc, not a 404 of the request.
+    private AbstractVectorIndexService.RawResponse multiGet(String index, String body)
+        throws IOException {
+      AbstractVectorIndexService.RawResponse response;
+      if (unreadableIndex.test(index)) {
+        response = unreadable();
+      } else {
+        ArrayNode docs = MAPPER.createArrayNode();
+        JsonNode request = MAPPER.readTree(body);
+        JsonNode requested = request.has("docs") ? request.path("docs") : request.path("ids");
+        requested.forEach(
+            doc -> docs.add(multiGetDoc(index, doc.path("_id").asText(doc.asText()))));
+        ObjectNode result = MAPPER.createObjectNode();
+        result.set("docs", docs);
+        response = ok(result.toString());
+      }
+      return response;
+    }
+
+    private ObjectNode multiGetDoc(String index, String id) {
+      ObjectNode doc = MAPPER.createObjectNode().put("_index", index).put("_id", id);
+      JsonNode source = docs(index).get(id);
+      if (!existing.contains(index)) {
+        doc.putObject("error").put("type", "index_not_found_exception");
+      } else if (source == null) {
+        doc.put("found", false);
+      } else {
+        doc.put("found", true).set("_source", source);
+      }
+      return doc;
+    }
+
+    private AbstractVectorIndexService.RawResponse unreadable() {
+      return new AbstractVectorIndexService.RawResponse(
+          unreadableStatus, "{\"status\":" + unreadableStatus + "}");
+    }
+
     private AbstractVectorIndexService.RawResponse getById(String method, String endpoint) {
       String index = endpoint.substring(1, endpoint.indexOf(DOC));
       String id = endpoint.substring(endpoint.indexOf(DOC) + DOC.length(), endpoint.indexOf('?'));
+      return unreadableIndex.test(index) && id.endsWith("_0") && "GET".equals(method)
+          ? unreadable()
+          : storedById(method, index, id);
+    }
+
+    private AbstractVectorIndexService.RawResponse storedById(
+        String method, String index, String id) {
       JsonNode source = docs(index).get(id);
       ObjectNode body = MAPPER.createObjectNode().put("found", source != null);
       if (source != null) {

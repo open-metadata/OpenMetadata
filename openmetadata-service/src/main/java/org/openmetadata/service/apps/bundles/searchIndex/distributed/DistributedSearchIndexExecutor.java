@@ -1387,13 +1387,13 @@ public class DistributedSearchIndexExecutor {
       return false;
     }
 
-    EntityReindexContext entityContext =
-        EntityReindexContextMapper.fromStagedContext(stagedIndexContext, entityType);
-    if (entityContext.getStagedIndex() == null) {
+    if (stagedIndexContext.getStagedIndex(entityType).isEmpty()) {
       LOG.debug("No staged index for entity '{}', skipping promotion", entityType);
       return true;
     }
-    entityContext.setStagedChunkDeleteUnrecorded(lostAStagedChunkDelete(entityType));
+    EntityReindexContext entityContext =
+        EntityReindexContextMapper.fromStagedContext(
+            stagedIndexContext, entityType, lostAStagedChunkDelete());
 
     boolean promoted = false;
     try {
@@ -1417,22 +1417,21 @@ public class DistributedSearchIndexExecutor {
   }
 
   /**
-   * Whether a node failed a partition of {@code entityType} because it missed a delete from the
-   * run's staged chunk generation and could not record it on the cluster. That partition fails
-   * for good without a retry, and nothing rewrites a FAILED row, so its error stays readable here
-   * whatever the type's other partitions did.
+   * Whether a node failed a partition of this run because it missed a delete from the run's staged
+   * chunk generation and could not record it on the cluster. The miss belongs to the generation,
+   * not to the type the node happened to be indexing, so a failed partition of any type counts.
+   * That partition fails for good without a retry, and nothing rewrites a FAILED row, so its error
+   * stays readable here whatever the other partitions did. Every path that finalizes a type reads
+   * it: the per-type promotion and the end of the job.
    */
-  private boolean lostAStagedChunkDelete(String entityType) {
+  public boolean lostAStagedChunkDelete() {
     SearchIndexJob job = currentJob;
     return job != null
         && coordinator.getPartitions(job.getId(), PartitionStatus.FAILED).stream()
+            .map(SearchIndexPartition::getLastError)
             .anyMatch(
-                partition ->
-                    entityType.equals(partition.getEntityType())
-                        && partition.getLastError() != null
-                        && partition
-                            .getLastError()
-                            .startsWith(VectorIndexService.UNRECORDED_STAGED_DELETE));
+                error ->
+                    error != null && error.startsWith(VectorIndexService.UNRECORDED_STAGED_DELETE));
   }
 
   /**

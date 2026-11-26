@@ -17,9 +17,10 @@ import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 /**
- * The entities whose chunk documents this node's reindex sink could not write during one run,
- * including those it could not embed at all. Each is retried once when the partition that missed
- * it finishes, after that partition's writes are flushed, and only then counted, so a recovered entity is one vector success and an entity that
+ * The entities whose chunk documents a bulk sink could not write, including those it could not
+ * embed at all. Each is retried once when the partition that missed it finishes, after that
+ * partition's writes are flushed, or, for a write that ran without a partition, when the sink
+ * closes. Only then is it counted, so a recovered entity is one vector success and an entity that
  * still misses is one vector failure. A miss never blocks the chunk generation; an entity left
  * without chunks gets them on its next edit or reindex.
  * ADR:2026-11-20-elasticsearch-and-opensearch-share-one-vector-index-service
@@ -110,11 +111,12 @@ final class MissedChunks {
     return embeddingClient != null && embeddingClient.isAvailable();
   }
 
-  // An entity deleted since its miss needs no embedding, so it is not a failure.
+  // Read as the reindex read it, soft-deleted entities included. An entity hard-deleted since its
+  // miss needs no embedding, so it is not a failure.
   private static boolean retryOnce(Miss miss, VectorIndexService vectorService) {
     boolean written;
     try {
-      EntityInterface<?> entity = Entity.getEntity(miss.entity(), ALL_FIELDS, Include.NON_DELETED);
+      EntityInterface<?> entity = Entity.getEntity(miss.entity(), ALL_FIELDS, Include.ALL);
       written =
           miss.missing() == Missing.EMBEDDING
               ? embedAfresh(entity, miss.targets(), vectorService)
@@ -151,18 +153,24 @@ final class MissedChunks {
     return embeddingWritten && chunksWritten;
   }
 
-  /** One warning per run on this node when anything was missed, with how the rest heal. */
+  /**
+   * One warning per sink on this node when anything was missed, with how the rest heal. A miss
+   * still pending was never retried: its partition stopped before its end.
+   */
   void logSummary() {
     long missedCount = missed.get();
     if (missedCount > 0) {
       LOG.warn(
           "Search Indexing missed the chunk documents of {} entities on this node, {} of them "
               + "with their entity embedding too; the retry recovered {}. {} count as vector "
-              + "failures and get their embeddings on their next edit or the next reindex",
+              + "failures, and {} were not retried because their partition stopped first. "
+              + "Entities still missing them get their embeddings on their next edit or the "
+              + "next reindex",
           missedCount,
           missedEmbeddings.get(),
           recovered.get(),
-          unrecovered.get());
+          unrecovered.get(),
+          pending.size());
     }
   }
 }

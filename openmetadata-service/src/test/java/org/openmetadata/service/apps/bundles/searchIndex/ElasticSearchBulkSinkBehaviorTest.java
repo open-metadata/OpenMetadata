@@ -15,6 +15,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -42,6 +43,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
@@ -54,6 +56,7 @@ import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 class ElasticSearchBulkSinkBehaviorTest {
 
@@ -745,6 +748,71 @@ class ElasticSearchBulkSinkBehaviorTest {
 
       assertSame(DocBuildContext.empty(), ContextCapturingIndex.observedContext);
     }
+  }
+
+  /**
+   * A live bulk write has no partition, so nothing retries its misses at a partition end. The sink
+   * retries them once it has flushed its documents, when it closes, and counts them.
+   */
+  @Test
+  void aChunkMissOfAWriteWithoutAPartitionIsRetriedWhenTheSinkCloses() throws Exception {
+    EntityInterface<?> entity = mock(EntityInterface.class);
+    UUID entityId = UUID.randomUUID();
+    EntityReference reference = new EntityReference().withId(entityId).withType(ENTITY_TYPE);
+    when(entity.getId()).thenReturn(entityId);
+    when(entity.getEntityReference()).thenReturn(reference);
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
+    when(embeddingClient.getDimension()).thenReturn(3);
+    when(embeddingClient.isAvailable()).thenReturn(true);
+    when(vectorService.getEmbeddingClient()).thenReturn(embeddingClient);
+    when(vectorService.backfillEntityChunks(entity, null)).thenReturn(false, true);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    JsonNode storedEmbedding =
+        new ObjectMapper().readTree("{\"fingerprint\":\"fp\",\"embedding\":[0.1,0.2,0.3]}");
+    ElasticSearchBulkSink sink;
+
+    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
+      entityMock
+          .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
+          .thenReturn(new StubSearchIndex(Map.of("name", "orders")));
+      entityMock.when(() -> Entity.getEntity(reference, "*", Include.ALL)).thenReturn(entity);
+      invokePrivate(
+          sink,
+          "addEntity",
+          new Class<?>[] {
+            EntityInterface.class,
+            String.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class,
+            Map.class,
+            boolean.class,
+            Map.class
+          },
+          entity,
+          "table_index",
+          null,
+          null,
+          true,
+          Map.of(entityId.toString(), storedEmbedding),
+          Map.of(),
+          false,
+          Map.of());
+
+      sink.close();
+    }
+
+    verify(vectorService, times(2)).backfillEntityChunks(entity, null);
+    assertEquals(1, sink.getVectorStats().getSuccessRecords());
+    assertEquals(0, sink.getVectorStats().getFailedRecords());
   }
 
   private Object invokePrivate(

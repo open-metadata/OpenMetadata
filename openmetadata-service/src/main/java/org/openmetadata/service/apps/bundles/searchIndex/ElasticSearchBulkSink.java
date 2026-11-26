@@ -1028,7 +1028,6 @@ public class ElasticSearchBulkSink implements BulkSink {
 
   @Override
   public void close() {
-    embeddingEnricher.logMissedChunksSummary();
     try {
       bulkProcessor.flush();
 
@@ -1045,6 +1044,9 @@ public class ElasticSearchBulkSink implements BulkSink {
       if (!columnTerminated) {
         LOG.warn("Column bulk processor did not terminate within timeout");
       }
+      // The documents are written now, so the misses of writes that ran without a partition can
+      // be retried. No partition end retries them.
+      embeddingEnricher.retryMissesWithoutAPartitionAndLogTheSummary();
 
       updateStats();
 
@@ -1058,6 +1060,7 @@ public class ElasticSearchBulkSink implements BulkSink {
 
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while closing bulk processor", e);
+      embeddingEnricher.logMissedChunksSummary();
       Thread.currentThread().interrupt();
     }
   }

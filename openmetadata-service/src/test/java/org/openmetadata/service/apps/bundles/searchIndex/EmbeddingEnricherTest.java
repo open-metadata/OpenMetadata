@@ -43,6 +43,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
@@ -309,6 +310,24 @@ class EmbeddingEnricherTest {
   }
 
   @Test
+  void theSummaryNamesTheMissesOfAPartitionThatStoppedBeforeItsRetry() {
+    ListAppender<ILoggingEvent> log = captureLogsOf(EmbeddingEnricher.class, MissedChunks.class);
+    when(vectorService.backfillEntityChunks(table, STAGED_CHUNKS)).thenReturn(false);
+
+    enricher.enrich(
+        table,
+        ENTITY_JSON,
+        Map.of(tableId, storedEmbedding("[0.5,0.6,0.7]")),
+        tracker,
+        recreateRun());
+    enricher.logMissedChunksSummary();
+
+    String summary = atLeast(log, Level.WARN).getFirst().getFormattedMessage();
+    assertTrue(summary.contains("the retry recovered 0. 0 count as vector failures"), summary);
+    assertTrue(summary.contains("1 were not retried"), summary);
+  }
+
+  @Test
   void aMissedChunkWriteIsRetriedOnceAndCountsOneSuccessWhenItRecovers() {
     when(vectorService.backfillEntityChunks(table, STAGED_CHUNKS)).thenReturn(false, true);
     theRetryReadsTheTable();
@@ -383,9 +402,37 @@ class EmbeddingEnricherTest {
     assertVectorStats(1, 0);
   }
 
-  private void theRetryReadsTheTable() {
+  /**
+   * The reindex reads soft-deleted entities too and embeds them, so its retry reads them the same
+   * way. Reading only live entities took a soft-deleted entity for a hard-deleted one: its miss was
+   * counted as written and its chunks were never retried.
+   */
+  @Test
+  void aMissOfASoftDeletedEntityIsRetriedAsTheReindexReadIt() {
+    when(vectorService.backfillEntityChunks(table, STAGED_CHUNKS)).thenReturn(false, true);
+    table.withDeleted(true);
     entities
         .when(() -> Entity.getEntity(any(EntityReference.class), eq("*"), eq(Include.NON_DELETED)))
+        .thenThrow(EntityNotFoundException.byId(tableId));
+    entities
+        .when(() -> Entity.getEntity(any(EntityReference.class), eq("*"), eq(Include.ALL)))
+        .thenReturn(table);
+
+    enricher.enrich(
+        table,
+        ENTITY_JSON,
+        Map.of(tableId, storedEmbedding("[0.5,0.6,0.7]")),
+        tracker,
+        recreateRun());
+    enricher.retryMissedChunks(tracker);
+
+    verify(vectorService, times(2)).backfillEntityChunks(table, STAGED_CHUNKS);
+    assertVectorStats(1, 0);
+  }
+
+  private void theRetryReadsTheTable() {
+    entities
+        .when(() -> Entity.getEntity(any(EntityReference.class), eq("*"), eq(Include.ALL)))
         .thenReturn(table);
   }
 

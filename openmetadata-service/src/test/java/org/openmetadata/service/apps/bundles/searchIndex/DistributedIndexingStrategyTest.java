@@ -37,10 +37,14 @@ import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedSearchIndexCoordinator;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedSearchIndexExecutor;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.EntityCompletionTracker;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.PartitionStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndexJob;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndexPartition;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -51,6 +55,7 @@ import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class DistributedIndexingStrategyTest {
@@ -622,6 +627,57 @@ class DistributedIndexingStrategyTest {
     // 4/5 (ratio 0.80) below the 0.95 threshold.
     assertEquals(Boolean.TRUE, outcomes.get("user"));
     assertEquals(Boolean.FALSE, outcomes.get("dashboard"));
+  }
+
+  /**
+   * A stopped run never reaches the per-type promotion callback, so the end of the job finalizes
+   * the type instead. A node that missed a delete from the run's chunk generation and could not
+   * record it failed a partition with that error, and the finalization must read it too.
+   */
+  @Test
+  void anEndOfJobFinalizationCarriesAStagedChunkDeleteANodeCouldNotRecord() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    DistributedSearchIndexCoordinator coordinator = mock(DistributedSearchIndexCoordinator.class);
+    when(coordinator.getPartitions(jobId, PartitionStatus.FAILED))
+        .thenReturn(
+            List.of(
+                SearchIndexPartition.builder()
+                    .entityType("table")
+                    .lastError(VectorIndexService.UNRECORDED_STAGED_DELETE + ": chunks_g1")
+                    .build()));
+    RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    when(indexPromotionHandler.finalizeReindex(any(), anyBoolean())).thenReturn(true);
+    ServerIdentityResolver resolver = mock(ServerIdentityResolver.class);
+    when(resolver.getServerId()).thenReturn("server-a");
+
+    try (MockedStatic<ServerIdentityResolver> resolverMock =
+        mockStatic(ServerIdentityResolver.class)) {
+      resolverMock.when(ServerIdentityResolver::getInstance).thenReturn(resolver);
+      DistributedSearchIndexExecutor executor = new DistributedSearchIndexExecutor(collectionDAO);
+      setExecutorField(executor, "coordinator", coordinator);
+      setExecutorField(executor, "currentJob", SearchIndexJob.builder().id(jobId).build());
+      setField("distributedExecutor", executor);
+
+      invokePrivate(
+          "finalizeAllEntityReindex",
+          new Class<?>[] {RecreateIndexHandler.class, ReindexContext.class, boolean.class},
+          indexPromotionHandler,
+          stagedContext("table"),
+          false);
+    }
+
+    ArgumentCaptor<EntityReindexContext> contextCaptor =
+        ArgumentCaptor.forClass(EntityReindexContext.class);
+    verify(indexPromotionHandler).finalizeReindex(contextCaptor.capture(), anyBoolean());
+    assertEquals("table", contextCaptor.getValue().getEntityType());
+    assertTrue(contextCaptor.getValue().isStagedChunkDeleteUnrecorded());
+  }
+
+  private static void setExecutorField(
+      DistributedSearchIndexExecutor executor, String fieldName, Object value) throws Exception {
+    Field field = DistributedSearchIndexExecutor.class.getDeclaredField(fieldName);
+    field.setAccessible(true);
+    field.set(executor, value);
   }
 
   @Test

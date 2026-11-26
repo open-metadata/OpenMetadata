@@ -6,10 +6,14 @@
   blocks it; the header's count bounds every stored chunk id); v3 2026-11-23 (the Revisit clause
   is resolved by a kNN query clause hook; fusing the two legs stays out of OpenMetadata); v4
   2026-11-24 (ontology terms keep the engine split of their own record); v5 2026-11-26 (the RRF
-  search pipeline is gone)
+  search pipeline is gone); v6 2026-11-26 (a delete trusts the header's bound; a header that
+  cannot be read fails the write or delete; an unrecorded staged delete is read from any failed
+  partition, also at the end of the job)
 - **Deciders:** Search and AI context maintainers
 - **Guard:** `VectorChunkIndexIT` (each scenario on a real cluster of each engine),
-  `ChunkSetBoundTest` (trims and deletes after a write that stopped part way),
+  `ChunkSetBoundTest` (trims and deletes after a write that stopped part way, the requests a
+  delete sends, a header that cannot be read), `DistributedIndexingStrategyTest` and
+  `DistributedSearchIndexExecutorTest` (an unrecorded staged delete keeps the live chunks),
   `ElasticSearchVectorServiceTest` (the Elasticsearch dialect and the promotion rule),
   `EmbeddingEnricherTest` (the reindex embedding step and its retry), `DefaultRecreateHandlerTest`
   (what an entity index tells the chunk generation), `StoredEmbeddingReuseIT` (both engines);
@@ -81,9 +85,12 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   writes are flushed, the node retries it once, writing both the entity document's embedding and
   the chunks when both were missed, and skipping the retry while the provider's circuit is open.
   Another partition of the same type never retries it, because the entity's document may not be
-  written yet. The entity then counts as one vector success, or one vector failure if its chunks
-  are still missing. Each node logs one summary warning per run, and the detail per entity at
-  debug. An entity left without chunks gets them on its next edit or
+  written yet. A write that ran without a partition, such as a live bulk update, is retried the
+  same way once its sink has flushed, when the sink closes. The retry reads the entity as the
+  reindex read it, soft-deleted entities included. The entity then counts as one vector success,
+  or one vector failure if its chunks are still missing; a miss whose partition stopped before its
+  end is not retried and the summary says how many. Each sink logs one summary warning, and the
+  detail per entity at debug. An entity left without chunks gets them on its next edit or
   reindex, through the fingerprint-guarded backfill. A missed mirror is not retried; it heals the
   same way.
 - **Only a missed delete blocks promotion.** A delete that fails in the staged generation would
@@ -91,16 +98,21 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   generation's index. A node saves the flag once per generation. The coordinator reads it before
   the alias swap and keeps the old chunks live when it is set; the next staged recreate sweeps the
   unpromoted generation. The flag lives on the cluster, so a participant's failure reaches the
-  coordinator. A node that cannot save the flag retries it when its partition ends and, if it
-  still cannot, fails the partition for good, without a retry, with an error that starts with
-  `VectorIndexService.UNRECORDED_STAGED_DELETE`. A retry on another node could not repair the
-  missed delete, and nothing rewrites a FAILED row, so the error stays for the rest of the job.
-  Whenever a type finishes, the coordinator reads that error from the job's failed partitions and
-  counts the type as keeping its live chunks. Keeping live chunks wins over a later promotion of
-  the same type, so no callback can undo it. The type's entity index still promotes its partial
-  data, and the run ends with errors. A delete that
-  fails after the coordinator reads the flag misses the generation, and the deleted entity's
-  chunks stay in it until the next full recreate.
+  coordinator. A node that cannot save the flag retries it when its next partition ends, whatever
+  that partition's type, and, if it still cannot, fails the partition for good, without a retry,
+  with an error that starts with `VectorIndexService.UNRECORDED_STAGED_DELETE`. A retry on another
+  node could not repair the missed delete, and nothing rewrites a FAILED row, so the error stays
+  for the rest of the job. The miss belongs to the generation, not to a type, so whenever a type
+  finishes, through its own promotion or at the end of a job that stopped first, the coordinator
+  reads that error from any of the job's failed partitions and counts the type as keeping its
+  live chunks. Keeping live chunks wins over a later promotion of the same type, so no callback
+  can undo it. The type's entity index still promotes its partial data, and the run ends with
+  errors. Three narrow windows remain, in which the deleted entity's chunks stay in the generation
+  until the next full recreate: a delete that fails after the coordinator reads the flag; a node
+  that misses a delete after its last partition and still cannot save the flag when it leaves the
+  run, which it logs as an error; and a node that has not joined the run, which finds the
+  generation through a probe cached for 15 seconds and so misses a generation created within
+  that time. A probe that fails is not cached, so it hides nothing beyond its own request.
 - **A live edit refreshes the entity document even when its chunk write fails.** Chunk 0
   carries the header the next update compares against, so it is written in its own request
   after every other chunk and delete succeeded. A failed write leaves the old header, and the
@@ -110,12 +122,23 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   that adds ids past the count first writes chunk 0 with the new count and no fingerprint. A
   write that then stops part way leaves a header that covers every id it wrote and that no
   update reads as current. Only a write that grows the set pays that extra request.
-- **A delete removes every chunk of the entity**, in the live index and in a staged generation:
-  by id up to the header's count, then by a query on `parentId` for anything a header that was
-  missing or behind did not cover, and chunk 0 last, so a delete that stops part way keeps the
-  count for its retry. That query costs one delete-by-query per entity delete; writes never run
-  one unless chunks are stored without a header. A delete sends nothing to a chunk index that
-  does not exist yet.
+- **A delete removes every chunk of the entity**, in the live index and in a staged generation,
+  by id up to the header's count: the chunks past chunk 0, then chunk 0, so a delete that stops
+  part way keeps the count for its retry. Ids are deleted in real time, so writes no refresh has
+  made searchable go too. The header is the whole truth, so a delete sends no delete-by-query:
+  every write keeps every chunk id below the count, and a query reaches only refreshed chunks, so
+  it never covered writes that raced each other. One realtime multi-get reads the header and
+  whether chunk 1 exists. Chunk 1 stored while no header counts it marks a chunk set written
+  before the header bounded the ids; only such a set is also removed by query, by a delete or by
+  the next write. A delete costs that one read for an entity with no chunks, plus one bulk for an
+  entity with one chunk and two for more. It sends nothing to a chunk index that does not exist
+  yet.
+- **A header that cannot be read is not a missing one.** When the cluster does not answer the
+  read, or answers it with an error for the document, after the request retry policy
+  (`vector-index-request`), the write or delete fails instead: a write would lower the bound, and
+  a delete would leave behind the chunks no refresh has made searchable and report success. A
+  failed write is a miss as above, a live edit still refreshes the entity document, and a delete
+  that misses the live index throws to its caller once it has tried the staged generation.
 - **Ontology terms keep the layout their own record gives them.**
   ADR:2026-11-23-ontology-terms-have-dedicated-search-indexes keeps their chunks in
   `ontology_embeddings_chunks` on OpenSearch and their vectors on the term documents on
