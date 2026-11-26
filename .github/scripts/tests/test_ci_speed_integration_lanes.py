@@ -18,7 +18,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 STORAGE_SCRIPT = ".github/scripts/configure_docker_storage.sh"
-LANE_WORKFLOWS = ("java-integration-lanes-reusable.yml",)
+LANE_WORKFLOWS = ("reusable-java-integration-lanes.yml",)
 PLANNER_WORKFLOW = "reusable-ci-plan.yml"
 LANE_JOB = "integration-test-lanes"
 LANE_MODULE = "openmetadata-integration-tests"

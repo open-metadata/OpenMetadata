@@ -7,7 +7,7 @@ runs:
       uses: ./.github/actions/hydrate-maven-cache
 
     - name: Set up JDK 21
-      uses: actions/setup-java@v6
+      uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
       with:
         java-version: '21'
         distribution: 'temurin'
@@ -64,7 +64,7 @@ runs:
     - name: Upload Integration Test Runtime
       id: upload-runtime
       continue-on-error: true
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
       with:
         name: java-it-build-${{ github.run_id }}
         overwrite: true
@@ -79,7 +79,7 @@ runs:
     # safe even when the first attempt already staged blobs.
     - name: Upload Integration Test Runtime (retry)
       if: ${{ steps.upload-runtime.outcome == 'failure' }}
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
       with:
         name: java-it-build-${{ github.run_id }}
         overwrite: true

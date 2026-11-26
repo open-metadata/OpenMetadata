@@ -13,8 +13,6 @@ name: ci-nightly
 on:
   schedule:
     - cron: 0 1 * * *
-    - cron: 0 2 * * *
-    - cron: 0 4 * * *
   workflow_dispatch:
     inputs:
       connectors:
@@ -27,25 +25,20 @@ permissions:
 env:
   DEFAULT_CONNECTORS: *default-connectors
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}-${{ github.event.schedule || 'manual' }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   plan:
-    name: Select nightly workloads
+    name: Select Python workloads
     runs-on: ubuntu-latest
     outputs:
-      python: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '0 1 * * *' }}
-      java-it: ${{ github.event.schedule == '0 2 * * *' }}
-      java-sonar: ${{ github.event.schedule == '0 4 * * *' }}
       python-versions: ${{ steps.versions.outputs.versions }}
       python-lowest: ${{ steps.versions.outputs.lowest }}
       python-highest: ${{ steps.versions.outputs.highest }}
       ref: ${{ github.sha }}
       connectors: ${{ steps.connectors.outputs.connectors }}
     steps:
-      - id: checkout
-        if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '0 1 * * *' }}
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -57,11 +50,9 @@ jobs:
           sparse-checkout-cone-mode: false
       - name: Read Python versions
         id: versions
-        if: ${{ steps.checkout.outcome == 'success' }}
         run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
       - name: Select connectors
         id: connectors
-        if: ${{ steps.checkout.outcome == 'success' }}
         env:
           SELECTED_CONNECTORS: ${{ inputs.connectors }}
         run: python3 scripts/python_ci.py connectors --output "$GITHUB_OUTPUT"
@@ -69,14 +60,12 @@ jobs:
   backend:
     name: Build backend image
     needs: plan
-    if: ${{ needs.plan.outputs.python == 'true' }}
     uses: ./.github/workflows/reusable-build-backend.yml
     with:
       ref: ${{ needs.plan.outputs.ref }}
 
   ingestion-image:
     needs: plan
-    if: ${{ needs.plan.outputs.python == 'true' }}
     uses: ./.github/workflows/reusable-build-ingestion.yml
     with:
       ref: ${{ needs.plan.outputs.ref }}
@@ -84,7 +73,6 @@ jobs:
   py-static-checks:
     name: py-static-checks
     needs: plan
-    if: ${{ needs.plan.outputs.python == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -101,7 +89,6 @@ jobs:
 
   prepare-classification-models:
     needs: plan
-    if: ${{ needs.plan.outputs.python == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -212,7 +199,7 @@ jobs:
       - python-integration
       - python-cli-e2e
       - python-operator
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || github.event.schedule == '0 1 * * *') }}
+    if: ${{ always() }}
     runs-on: ubuntu-slim
     timeout-minutes: 2
     steps:
@@ -286,29 +273,24 @@ jobs:
     name: Build Integration Test Runtime
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    needs: plan
-    if: ${{ needs.plan.outputs.java-it == 'true' }}
+    if: ${{ github.event_name == 'schedule' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.plan.outputs.ref }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Build the Java integration test runtime
         uses: ./.github/actions/java-integration-build
 
   it-mysql-elasticsearch:
-    needs: [plan, integration-test-build]
-    if: >-
-      !cancelled() &&
-      needs.plan.result == 'success' &&
-      needs.plan.outputs.java-it == 'true' &&
-      needs.integration-test-build.result == 'success'
+    needs: integration-test-build
+    if: ${{ github.event_name == 'schedule' }}
     permissions:
       contents: read
       checks: write
       packages: read
-    uses: ./.github/workflows/java-integration-lanes-reusable.yml
+    uses: ./.github/workflows/reusable-java-integration-lanes.yml
     with:
       profile_label: mysql-elasticsearch
       maven_profile: mysql-elasticsearch
@@ -318,26 +300,18 @@ jobs:
 
   integration-tests-mysql-elasticsearch:
     name: integration-tests-mysql-elasticsearch
-    needs: [plan, integration-test-build, it-mysql-elasticsearch]
+    needs: [integration-test-build, it-mysql-elasticsearch]
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: ${{ always() && github.event.schedule == '0 2 * * *' }}
+    if: ${{ always() && github.event_name == 'schedule' }}
     steps:
       - name: Verify MySQL + Elasticsearch Integration Test Lanes
         env:
-          CHANGES_RESULT: ${{ needs.plan.result }}
-          BACKEND_CHANGED: ${{ needs.plan.outputs.java-it == 'true' }}
-          UNIT_RESULT: skipped
           BUILD_RESULT: ${{ needs.integration-test-build.result }}
           LANES_RESULT: ${{ needs.it-mysql-elasticsearch.result }}
         run: |
-          if [[ "$CHANGES_RESULT" == "success" && "$BACKEND_CHANGED" != "true" ]]; then
-            echo "No backend integration-test paths changed."
-            exit 0
-          fi
-          if [[ "$CHANGES_RESULT" != "success" || "$BUILD_RESULT" != "success" || "$LANES_RESULT" != "success" ]] || \
-             [[ "$UNIT_RESULT" != "success" && "$UNIT_RESULT" != "skipped" ]]; then
-            echo "Java integration jobs did not complete successfully: changes=${CHANGES_RESULT}, unit=${UNIT_RESULT}, build=${BUILD_RESULT}, lanes=${LANES_RESULT}"
+          if [[ "$BUILD_RESULT" != "success" || "$LANES_RESULT" != "success" ]]; then
+            echo "Java integration jobs did not complete successfully: build=${BUILD_RESULT}, lanes=${LANES_RESULT}"
             exit 1
           fi
 
@@ -345,13 +319,12 @@ jobs:
     name: Maven SonarCloud CI
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    needs: plan
-    if: ${{ needs.plan.outputs.java-sonar == 'true' }}
+    if: ${{ github.event_name == 'schedule' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.plan.outputs.ref }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Build Maven static analysis
         uses: ./.github/actions/java-sonar

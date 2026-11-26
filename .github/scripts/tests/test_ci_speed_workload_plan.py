@@ -164,6 +164,18 @@ def test_missing_path_detection_result_fails_planning(tmp_path):
     assert not outputs.exists()
 
 
+def test_one_nightly_schedule_runs_java_without_waiting_for_python():
+    workflow = yaml.load((WORKFLOWS / "ci-nightly.yml").read_text(), Loader=yaml.BaseLoader)
+    assert workflow["on"]["schedule"] == [{"cron": "0 1 * * *"}]
+
+    jobs = workflow["jobs"]
+    for name in ("integration-test-build", "maven-sonarcloud-ci"):
+        assert "needs" not in jobs[name]
+        assert jobs[name]["if"] == "${{ github.event_name == 'schedule' }}"
+    assert jobs["it-mysql-elasticsearch"]["needs"] == "integration-test-build"
+    assert jobs["it-mysql-elasticsearch"]["with"]["store_database_version"] == "oldest"
+
+
 @pytest.mark.parametrize("workflow", ["ci-pr.yml", "ci-merge-queue.yml"])
 def test_backend_gate_rejects_failed_planner_when_nothing_runs(workflow):
     jobs = yaml.safe_load((WORKFLOWS / workflow).read_text())["jobs"]

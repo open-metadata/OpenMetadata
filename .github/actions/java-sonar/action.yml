@@ -8,7 +8,7 @@ runs:
       uses: ./.github/actions/hydrate-maven-cache
 
     - name: Set up JDK 21
-      uses: actions/setup-java@v6
+      uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
       with:
         java-version: "21"
         distribution: "temurin"
@@ -33,7 +33,7 @@ runs:
     - name: Save Maven dependencies
       if: github.event_name == 'push' && steps.maven-cache.outputs.cache-hit != 'true'
       continue-on-error: true
-      uses: actions/cache/save@v6
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.m2
         key: ${{ steps.maven-cache.outputs.cache-primary-key }}

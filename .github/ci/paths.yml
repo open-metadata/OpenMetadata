@@ -7,7 +7,7 @@ java-checkstyle:
   - '.github/workflows/reusable-ci-plan.yml'
   - '.github/ci/paths.yml'
   - 'scripts/ci_plan.py'
-  - '.github/actions/java-backend-checks/**'
+  - '.github/actions/java-backend-report/**'
   - '.github/scripts/summarize_surefire.py'
 java-unit:
   - '.github/workflows/ci-pr.yml'
@@ -15,7 +15,7 @@ java-unit:
   - '.github/workflows/reusable-ci-plan.yml'
   - '.github/ci/paths.yml'
   - 'scripts/ci_plan.py'
-  - '.github/actions/java-backend-checks/**'
+  - '.github/actions/java-backend-report/**'
   - '.github/actions/hydrate-maven-cache/**'
   - '.github/scripts/summarize_surefire.py'
   - 'openmetadata-service/**'
@@ -66,8 +66,8 @@ java-integration:
   - '.github/workflows/reusable-ci-plan.yml'
   - '.github/ci/paths.yml'
   - 'scripts/ci_plan.py'
-  - '.github/actions/java-backend-checks/**'
-  - '.github/workflows/java-integration-lanes-reusable.yml'
+  - '.github/actions/java-backend-report/**'
+  - '.github/workflows/reusable-java-integration-lanes.yml'
   - '.github/actions/java-integration-build/**'
 rdf:
   - 'docker/rdf-store/**'

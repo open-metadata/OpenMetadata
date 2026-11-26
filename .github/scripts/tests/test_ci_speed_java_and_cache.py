@@ -484,6 +484,8 @@ def steps_of(workflow: str, job: str) -> list[dict]:
 
 
 def java_steps(workflow: str, job: str) -> list[dict]:
+    if job == "backend-checks":
+        return steps_of(workflow, job)
     [action] = [
         step["uses"]
         for step in steps_of(workflow, job)
@@ -553,7 +555,7 @@ def test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests
         for s in build_steps
     )
 
-    reusable_steps = load(WORKFLOWS / "java-integration-lanes-reusable.yml")["jobs"][
+    reusable_steps = load(WORKFLOWS / "reusable-java-integration-lanes.yml")["jobs"][
         "integration-test-lanes"
     ]["steps"]
     assert any(
@@ -571,7 +573,7 @@ def test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests
         "it-postgres-elasticsearch-redis",
     ):
         job = jobs[profile_job]
-        assert job["uses"] == "./.github/workflows/java-integration-lanes-reusable.yml"
+        assert job["uses"] == "./.github/workflows/reusable-java-integration-lanes.yml"
         assert "backend-checks" in job["needs"]
         assert "integration-test-build" in job["needs"]
         # `!cancelled()` overrides GitHub's implicit `success()`, so IT-only paths
@@ -637,31 +639,35 @@ def test_service_unit_tests_skip_the_unused_apt_and_antlr_installs() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_java_checkstyle_is_unified_fail_fast_in_backend_job() -> None:
+@pytest.mark.parametrize("workflow", ("ci-pr.yml", "ci-merge-queue.yml"))
+def test_java_checkstyle_is_unified_fail_fast_in_backend_job(workflow: str) -> None:
     assert not (WORKFLOWS / "java-checkstyle.yml").exists()
-    jobs = load(WORKFLOWS / "ci-pr.yml")["jobs"]
+    jobs = load(WORKFLOWS / workflow)["jobs"]
     assert "java-checkstyle" not in jobs
     assert "openmetadata-service-unit-tests" not in jobs
     assert "openmetadata-service-unit-tests-status" not in jobs
     assert "backend-checks" in jobs["backend-checks-status"]["needs"]
 
-    steps = java_steps("ci-pr.yml", "backend-checks")
+    steps = steps_of(workflow, "backend-checks")
     checkstyle = index_of(steps, lambda s: s.get("id") == "checkstyle")
     unit_tests = index_of(steps, lambda s: s.get("id") == "unit-tests")
-    summarize = index_of(
-        steps, lambda s: "summarize_surefire.py" in s.get("run", "")
-    )
+    report_action = "./.github/actions/java-backend-report"
+    summarize = index_of(steps, lambda s: s.get("uses") == report_action)
     assert checkstyle < unit_tests < summarize
     assert "spotless:apply" in steps[checkstyle]["run"]
     assert "steps.checkstyle.outcome == 'success'" in steps[unit_tests]["if"]
     for index in (checkstyle, unit_tests):
         assert steps[index].get("continue-on-error", "false") == "false"
     assert "always()" in steps[summarize]["if"]
+    assert steps[summarize]["with"] == {
+        "checkstyle-outcome": "${{ steps.checkstyle.outcome }}",
+        "unit-tests-outcome": "${{ steps.unit-tests.outcome }}",
+    }
+    report_steps = load(ROOT / report_action[2:] / "action.yml")["runs"]["steps"]
     reports = next(
-        s for s in steps if s.get("uses", "").startswith("actions/upload-artifact@")
+        s for s in report_steps if s.get("uses", "").startswith("actions/upload-artifact@")
     )
-    assert "failure()" in reports["if"]
-    assert "steps.unit-tests.outcome == 'failure'" in reports["if"]
+    assert "inputs.unit-tests-outcome == 'failure'" in reports["if"]
     assert not any(s.get("name") == "Enforce Backend CI outcome" for s in steps)
 
 
@@ -734,7 +740,7 @@ def test_ghcr_cache_pulls_authenticate_with_github_token() -> None:
 
     for wf in (
         "ci-pr.yml",
-        "java-integration-lanes-reusable.yml",
+        "reusable-java-integration-lanes.yml",
         "reusable-build-backend.yml",
         "ci-merge-queue.yml",
         "ci-nightly.yml",
