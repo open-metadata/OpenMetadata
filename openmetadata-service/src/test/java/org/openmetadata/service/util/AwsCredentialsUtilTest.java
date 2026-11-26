@@ -7,15 +7,25 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.core.retry.RetryMode;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 
 class AwsCredentialsUtilTest {
 
@@ -206,5 +216,93 @@ class AwsCredentialsUtilTest {
             () -> AwsCredentialsUtil.buildCredentialsProvider(config));
 
     assertTrue(exception.getMessage().contains("AWS credentials not configured"));
+  }
+
+  @Test
+  @ResourceLock(Resources.SYSTEM_PROPERTIES)
+  void retryModeIsLegacyWhenTheOperatorConfiguredNone(@TempDir final Path home) throws Exception {
+    assumeNoRetryModeInEnvironment();
+    withSystemProperty(
+        "aws.configFile",
+        emptyProfile(home),
+        () -> assertEquals(RetryMode.LEGACY, AwsCredentialsUtil.configuredOrLegacyRetryMode()));
+  }
+
+  @Test
+  @ResourceLock(Resources.SYSTEM_PROPERTIES)
+  void anOperatorChosenRetryModeWins() {
+    withSystemProperty(
+        "aws.retryMode",
+        "standard",
+        () -> assertEquals(RetryMode.STANDARD, AwsCredentialsUtil.configuredOrLegacyRetryMode()));
+  }
+
+  @Test
+  @ResourceLock(Resources.SYSTEM_PROPERTIES)
+  void aThrottledCallIsAttemptedFourTimesAsBeforeTheSdkUpgrade(@TempDir final Path home)
+      throws Exception {
+    assumeNoRetryModeInEnvironment();
+    withSystemProperty(
+        "aws.configFile",
+        emptyProfile(home),
+        () ->
+            assertEquals(
+                4, attemptsForThrottledCall(AwsCredentialsUtil.configuredOrLegacyRetryMode())));
+  }
+
+  @Test
+  @ResourceLock(Resources.SYSTEM_PROPERTIES)
+  void theSdkDefaultWouldAttemptAThrottledCallOnlyThreeTimes(@TempDir final Path home)
+      throws Exception {
+    assumeNoRetryModeInEnvironment();
+    withSystemProperty(
+        "aws.configFile",
+        emptyProfile(home),
+        () -> assertEquals(3, attemptsForThrottledCall(null)));
+  }
+
+  private static int attemptsForThrottledCall(final RetryMode retryMode) {
+    try (ThrottlingAwsEndpoint endpoint = new ThrottlingAwsEndpoint();
+        SecretsManagerClient client =
+            SecretsManagerClient.builder()
+                .region(Region.US_EAST_1)
+                .endpointOverride(endpoint.uri())
+                .credentialsProvider(
+                    StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "secret")))
+                .overrideConfiguration(
+                    c -> {
+                      if (retryMode != null) {
+                        c.retryStrategy(retryMode);
+                      }
+                    })
+                .build()) {
+      assertThrows(SdkException.class, () -> client.getSecretValue(r -> r.secretId("throttled")));
+      return endpoint.attempts();
+    }
+  }
+
+  private static void assumeNoRetryModeInEnvironment() {
+    assumeTrue(
+        System.getenv("AWS_RETRY_MODE") == null && System.getProperty("aws.retryMode") == null,
+        "an operator retry mode is set in this environment");
+  }
+
+  private static String emptyProfile(final Path home) throws Exception {
+    return Files.writeString(home.resolve("config"), "").toString();
+  }
+
+  private static void withSystemProperty(
+      final String name, final String value, final Runnable assertion) {
+    final String previous = System.getProperty(name);
+    System.setProperty(name, value);
+    try {
+      assertion.run();
+    } finally {
+      if (previous == null) {
+        System.clearProperty(name);
+      } else {
+        System.setProperty(name, previous);
+      }
+    }
   }
 }

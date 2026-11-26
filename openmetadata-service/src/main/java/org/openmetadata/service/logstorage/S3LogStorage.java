@@ -48,6 +48,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.service.monitoring.StreamableLogsMetrics;
+import org.openmetadata.service.util.AwsCredentialsUtil;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
@@ -359,6 +360,7 @@ public class S3LogStorage implements LogStorageInterface {
     return ClientOverrideConfiguration.builder()
         .apiCallTimeout(S3_API_CALL_TIMEOUT)
         .apiCallAttemptTimeout(S3_API_CALL_ATTEMPT_TIMEOUT)
+        .retryStrategy(AwsCredentialsUtil.configuredOrLegacyRetryMode())
         .build();
   }
 

@@ -14,6 +14,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.service.config.S3Configuration;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AwsCredentialsUtil;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -56,7 +57,9 @@ public class S3AssetService implements AssetService {
         S3Client.builder()
             .region(Region.of(config.getRegion()))
             .credentialsProvider(credentialsProvider)
-            .serviceConfiguration(serviceConfiguration);
+            .serviceConfiguration(serviceConfiguration)
+            .overrideConfiguration(
+                c -> c.retryStrategy(AwsCredentialsUtil.configuredOrLegacyRetryMode()));
 
     if (endpointOverride != null) {
       builder.endpointOverride(endpointOverride);

@@ -20,6 +20,7 @@ import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.util.AwsCredentialsUtil;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
@@ -44,7 +45,11 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
 
   @Override
   void initClientWithoutCredentials() {
-    this.secretsClient = SecretsManagerClient.create();
+    this.secretsClient =
+        SecretsManagerClient.builder()
+            .overrideConfiguration(
+                c -> c.retryStrategy(AwsCredentialsUtil.configuredOrLegacyRetryMode()))
+            .build();
   }
 
   @Override
@@ -53,6 +58,8 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
         SecretsManagerClient.builder()
             .region(Region.of(region))
             .credentialsProvider(staticCredentialsProvider)
+            .overrideConfiguration(
+                c -> c.retryStrategy(AwsCredentialsUtil.configuredOrLegacyRetryMode()))
             .build();
   }
 

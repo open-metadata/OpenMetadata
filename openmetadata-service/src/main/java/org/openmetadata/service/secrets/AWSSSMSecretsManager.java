@@ -17,6 +17,7 @@ import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.MA
 import com.google.common.annotations.VisibleForTesting;
 import java.util.List;
 import java.util.regex.Pattern;
+import org.openmetadata.service.util.AwsCredentialsUtil;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ssm.SsmClient;
@@ -41,7 +42,11 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
 
   @Override
   void initClientWithoutCredentials() {
-    this.ssmClient = SsmClient.create();
+    this.ssmClient =
+        SsmClient.builder()
+            .overrideConfiguration(
+                c -> c.retryStrategy(AwsCredentialsUtil.configuredOrLegacyRetryMode()))
+            .build();
   }
 
   @Override
@@ -50,6 +55,8 @@ public class AWSSSMSecretsManager extends AWSBasedSecretsManager {
         SsmClient.builder()
             .region(Region.of(region))
             .credentialsProvider(staticCredentialsProvider)
+            .overrideConfiguration(
+                c -> c.retryStrategy(AwsCredentialsUtil.configuredOrLegacyRetryMode()))
             .build();
   }
 

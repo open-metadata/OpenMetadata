@@ -10,6 +10,7 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.awscore.retry.AwsRetryStrategy;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.retry.RetryMode;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
@@ -35,6 +36,16 @@ public class AwsCredentialsUtil {
                 .maxAttempts(MAX_RETRY_ATTEMPTS)
                 .build())
         .build();
+  }
+
+  /**
+   * The retry mode for OpenMetadata's AWS clients: the one the operator chose (AWS_RETRY_MODE,
+   * aws.retryMode or the profile's retry_mode), otherwise legacy. AWS SDK 2.58 changed the default
+   * mode from legacy (4 attempts) to standard (3 attempts); legacy keeps what these clients had.
+   * ADR:2026-11-26-aws-clients-keep-the-legacy-retry-mode
+   */
+  public static RetryMode configuredOrLegacyRetryMode() {
+    return RetryMode.resolver().defaultRetryMode(RetryMode.LEGACY).resolve();
   }
 
   public static AwsCredentialsProvider buildCredentialsProvider(AWSBaseConfig config) {
@@ -80,6 +91,7 @@ public class AwsCredentialsUtil {
         StsClient.builder()
             .credentialsProvider(baseProvider)
             .region(Region.of(config.getRegion()))
+            .overrideConfiguration(c -> c.retryStrategy(configuredOrLegacyRetryMode()))
             .build();
 
     return StsAssumeRoleCredentialsProvider.builder()
