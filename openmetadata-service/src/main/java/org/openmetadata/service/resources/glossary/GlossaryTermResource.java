@@ -106,6 +106,7 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -1369,17 +1370,18 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         .executeDatabaseTask(
             DatabaseOperation.ENTITY_DELETE_RESTORE,
             jobId,
-            () -> {
-              try {
-                GlossaryTerm movedGlossaryTerm =
-                    repository.moveGlossaryTerm(id, moveRequest, userName);
-                WebsocketNotificationHandler.sendMoveOperationCompleteNotification(
-                    jobId, securityContext, movedGlossaryTerm);
-              } catch (Exception e) {
-                WebsocketNotificationHandler.sendMoveOperationFailedNotification(
-                    jobId, securityContext, glossaryTerm, e.getMessage());
-              }
-            });
+            ImpersonationContext.propagate(
+                () -> {
+                  try {
+                    GlossaryTerm movedGlossaryTerm =
+                        repository.moveGlossaryTerm(id, moveRequest, userName);
+                    WebsocketNotificationHandler.sendMoveOperationCompleteNotification(
+                        jobId, securityContext, movedGlossaryTerm);
+                  } catch (Exception e) {
+                    WebsocketNotificationHandler.sendMoveOperationFailedNotification(
+                        jobId, securityContext, glossaryTerm, e.getMessage());
+                  }
+                }));
 
     return Response.accepted()
         .entity(
