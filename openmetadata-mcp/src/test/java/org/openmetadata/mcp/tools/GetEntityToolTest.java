@@ -260,46 +260,60 @@ class GetEntityToolTest {
         .doesNotContain("base64", "<img", "chunk 2/2");
   }
 
-  @Test
-  void contentQueryReturnsEmptyContentForImageOnlyArticle() throws Exception {
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "<p><img src=\"data:image/png;base64,AAAA\"></p><p>&nbsp;</p>",
+        "![Chart](https://example.com/chart.png)"
+      })
+  void contentQueryReturnsEmptyContentForImageOnlyArticle(String description) throws Exception {
     Page page =
         new Page()
             .withId(UUID.randomUUID())
             .withName("DiagramOnly")
             .withFullyQualifiedName("Knowledge.DiagramOnly")
-            .withDescription("<p><img src=\"data:image/png;base64,AAAA\"></p><p>&nbsp;</p>");
+            .withDescription(description);
 
     assertThat(queryArticle(page, indexedArticleChunks(page), "json"))
         .containsExactlyEntriesOf(Map.of("content", ""));
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {4, 4000})
-  void contentQueryDropsImageAttributesSplitIntoAnotherChunk(int imageSize) throws Exception {
-    String lead = "meaningful ".repeat(375);
+  @CsvSource({"inline, 4", "inline, 4000", "encoded, 4", "attachment, 4"})
+  void contentQueryDropsImageAttributesSplitIntoAnotherChunk(String syntax, int imageSize)
+      throws Exception {
+    String attributes = "data:image/png;base64," + "A".repeat(imageSize);
+    String diagram =
+        switch (syntax) {
+          case "inline" -> "<p><img src=\""
+              + attributes
+              + "\" width=\"240\" alt=\"Diagram caption\" /></p>";
+          case "encoded" -> "<p>&lt;img src=&quot;"
+              + attributes
+              + "&quot; width=&quot;240&quot; alt=&quot;Diagram caption&quot; /&gt;</p>";
+          case "attachment" -> "<div data-type=\"file-attachment\" data-is-image=\"true\" data-file-name=\"Diagram.png\"></div>";
+          default -> throw new IllegalArgumentException(syntax);
+        };
     Page page =
         new Page()
             .withId(UUID.randomUUID())
             .withName("Illustration")
             .withFullyQualifiedName("Knowledge.Illustration")
-            .withDescription(
-                "<p>"
-                    + lead
-                    + "</p> <p><img src=\"data:image/png;base64,"
-                    + "A".repeat(imageSize)
-                    + "\" width=\"240\" alt=\"Diagram caption\" /></p>");
+            .withDescription("<p>" + "meaningful ".repeat(375) + "</p> " + diagram);
     List<String> chunks = indexedArticleChunks(page);
-    assertThat(chunks.getLast()).contains("width=\"240\"").doesNotContain("<img", "meaningful");
+    assertThat(chunks.getLast())
+        .contains("chunk 2/2", "attachment".equals(syntax) ? "data-is-image" : "width=")
+        .doesNotContain("meaningful");
 
     Map<String, Object> fallback = queryArticle(page, List.of(chunks.getLast()), "json");
     assertThat((String) fallback.get("content"))
         .contains("meaningful")
-        .doesNotContain("base64", "width=", "Diagram caption");
+        .doesNotContain("base64", "width=", "Diagram caption", "Diagram.png");
 
     Map<String, Object> content = queryArticle(page, chunks, "markdown");
     assertThat((String) content.get("content"))
         .contains("meaningful", "chunk 1/2")
-        .doesNotContain("base64", "width=", "chunk 2/2");
+        .doesNotContain("base64", "width=", "Diagram.png", "chunk 2/2");
   }
 
   @Test

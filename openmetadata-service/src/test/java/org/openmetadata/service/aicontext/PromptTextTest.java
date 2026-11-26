@@ -20,12 +20,46 @@ import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
+import java.util.BitSet;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class PromptTextTest {
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "<img src=\"data:image/png;base64,AAAA\" width=\"240\">",
+        "&lt;img src=&quot;data:image/png;base64,AAAA&quot; alt=&quot;2 &gt; 1&quot;&gt;",
+        "![Chart](https://example.com/chart.png)",
+        "<div data-type=\"file-attachment\" data-is-image=\"true\" data-file-name=\"chart.png\">"
+      })
+  void inlineImagePositionsTracksSourceOffsetsAfterTheTitle(String image) {
+    String title = "title: ![example](https://example.com/example.png); description: ";
+    String before = "before &amp; ";
+    String source = title + before + image + " after";
+    int imageStart = title.length() + before.length();
+    BitSet expected = new BitSet();
+    expected.set(imageStart, imageStart + image.length());
+
+    assertEquals(expected, PromptText.inlineImagePositions(source, title.length()));
+  }
+
+  @Test
+  void articleReadsPreserveLiteralHtmlCodeAndDiscardEmptyLayout() {
+    assertEquals(
+        "<p><code><div></code></p>", PromptText.forArticleRead("<p><code>&lt;div&gt;</code></p>"));
+    assertEquals(
+        "",
+        PromptText.forArticleRead("<p><img src=\"data:image/png;base64,AAAA\"></p><p>&nbsp;</p>"));
+    assertEquals("", PromptText.forArticleRead("![Chart](https://example.com/chart.png)"));
+    assertEquals(
+        "[Chart](https://example.com/chart.png)",
+        PromptText.forArticleRead("[Chart](https://example.com/chart.png)"));
+  }
 
   @Test
   void contentReadRemovesEncodedImagesAndReadsTextAsWritten() {
