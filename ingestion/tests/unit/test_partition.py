@@ -346,11 +346,18 @@ def test_auto_detect_time_unit_partition(service_type, data_type, interval, expe
     )
 
 
-def test_auto_detect_integer_range_partition():
+@pytest.mark.parametrize(
+    "service_type,data_type",
+    [
+        (DatabaseServiceType.Timescale, DataType.BIGINT),
+        (DatabaseServiceType.Doris, DataType.LARGEINT),
+    ],
+)
+def test_auto_detect_integer_range_partition(service_type, data_type):
     entity = _table(
-        DatabaseServiceType.Timescale,
+        service_type,
         PartitionColumnDetails(columnName="id", intervalType=PartitionIntervalTypes.INTEGER_RANGE, interval="1000"),
-        {"id": DataType.BIGINT},
+        {"id": data_type},
     )
 
     partition = get_partition_details(entity, auto_detect_partition=True)
