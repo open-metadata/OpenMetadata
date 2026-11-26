@@ -49,8 +49,6 @@ def select(
         "docker-smoke": not draft and (manual == "java" or "docker-smoke" in matched),
         "java-it": java_it or rdf,
         "java-it-redis": java_it,
-        "java-sonar": queue
-        and (manual == "java" or (event == "push" and "java-sonar" in matched)),
         "python": python,
         "airflow-apis": airflow,
         "static": python

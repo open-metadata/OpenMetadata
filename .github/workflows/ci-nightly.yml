@@ -326,5 +326,8 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Build Maven static analysis
+          fetch-depth: 0
+      - name: Publish Java Sonar analysis
         uses: ./.github/actions/java-sonar
+        with:
+          sonar-token: ${{ secrets.SONAR_TOKEN }}

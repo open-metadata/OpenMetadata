@@ -70,17 +70,6 @@ java-integration:
   - '.github/actions/java-integration-build/**'
 rdf:
   - 'docker/rdf-store/**'
-java-sonar:
-  - '.github/actions/java-sonar/**'
-  - 'openmetadata-service/**'
-  - 'openmetadata-spec/src/main/resources/json/schema/**'
-  - 'openmetadata-dist/**'
-  - 'openmetadata-clients/**'
-  - 'openmetadata-sdk/**'
-  - 'common/**'
-  - 'pom.xml'
-  - 'Makefile'
-  - 'bootstrap/**'
 
 python:
   - ingestion/src/**/!(*.md)

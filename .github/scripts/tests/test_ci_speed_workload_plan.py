@@ -73,7 +73,6 @@ def run_plan(tmp_path, entrypoint, event, payload, matches):
             [
                 "java-unit",
                 "java-integration",
-                "java-sonar",
                 "python",
                 "airflow-apis",
                 "dar",
@@ -83,7 +82,6 @@ def run_plan(tmp_path, entrypoint, event, payload, matches):
                 "java-unit",
                 "java-it",
                 "java-it-redis",
-                "java-sonar",
                 "dar",
             },
         ),
@@ -134,7 +132,6 @@ def run_plan(tmp_path, entrypoint, event, payload, matches):
                 "docker-smoke",
                 "java-it",
                 "java-it-redis",
-                "java-sonar",
             },
         ),
     ],
@@ -174,6 +171,17 @@ def test_one_nightly_schedule_runs_java_without_waiting_for_python():
         assert jobs[name]["if"] == "${{ github.event_name == 'schedule' }}"
     assert jobs["it-mysql-elasticsearch"]["needs"] == "integration-test-build"
     assert jobs["it-mysql-elasticsearch"]["with"]["store_database_version"] == "oldest"
+
+    callers = set()
+    for path in WORKFLOWS.glob("*.y*ml"):
+        workflow = yaml.load(path.read_text(), Loader=yaml.BaseLoader)
+        for name, job in workflow["jobs"].items():
+            if any(
+                step.get("uses") == "./.github/actions/java-sonar"
+                for step in job.get("steps", [])
+            ):
+                callers.add((path.name, name))
+    assert callers == {("ci-nightly.yml", "maven-sonarcloud-ci")}
 
 
 @pytest.mark.parametrize("workflow", ["ci-pr.yml", "ci-merge-queue.yml"])

@@ -37,8 +37,6 @@ on:
         value: ${{ jobs.select.outputs.java-it }}
       java-it-redis:
         value: ${{ jobs.select.outputs.java-it-redis }}
-      java-sonar:
-        value: ${{ jobs.select.outputs.java-sonar }}
       python:
         value: ${{ jobs.select.outputs.python }}
       airflow-apis:
@@ -71,7 +69,6 @@ jobs:
       docker-smoke: ${{ steps.workloads.outputs.docker-smoke }}
       java-it: ${{ steps.workloads.outputs.java-it }}
       java-it-redis: ${{ steps.workloads.outputs.java-it-redis }}
-      java-sonar: ${{ steps.workloads.outputs.java-sonar }}
       python: ${{ steps.workloads.outputs.python }}
       airflow-apis: ${{ steps.workloads.outputs.airflow-apis }}
       static: ${{ steps.workloads.outputs.static }}

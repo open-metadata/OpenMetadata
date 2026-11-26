@@ -502,7 +502,6 @@ MAVEN_JOBS = [
     "backend-checks",
     "k8s_operator-unit-tests",
     "docker-image-smoke-test",
-    "maven-sonarcloud-ci",
 ]
 
 
@@ -539,11 +538,6 @@ def test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests
     jobs = backend["jobs"]
 
     assert "pull_request" not in backend["on"]
-    # SonarCloud stays off PR and merge_group.
-    sonar_if = jobs["maven-sonarcloud-ci"]["if"]
-    assert excludes_pull_request(sonar_if)
-    assert "github.event_name != 'merge_group'" in sonar_if
-
     # Integration-test build runs once and shares its artifact across all 3 profiles.
     build_steps = java_steps("ci-merge-queue.yml", "integration-test-build")
     assert any(
