@@ -1,5 +1,6 @@
 package org.openmetadata.service.rdf;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -36,7 +37,10 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
+import org.openmetadata.service.rdf.translator.ReferenceScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -599,7 +603,6 @@ class RdfPropertyMapperTest {
     @Test
     @DisplayName("FOREIGN_KEY table constraint emits om:references and TableConstraint resource")
     void testForeignKeyTableConstraint() throws Exception {
-      ArrayNode constraints = objectMapper.createArrayNode();
       ObjectNode fk = objectMapper.createObjectNode();
       fk.put("constraintType", "FOREIGN_KEY");
       fk.put("relationshipType", "MANY_TO_ONE");
@@ -609,15 +612,8 @@ class RdfPropertyMapperTest {
       ArrayNode referred = objectMapper.createArrayNode();
       referred.add("service.db.s.customers.id");
       fk.set("referredColumns", referred);
-      constraints.add(fk);
 
-      invokePrivate(
-          "emitTableConstraints",
-          new Class[] {JsonNode.class, String.class, Resource.class, Model.class},
-          constraints,
-          "service.db.s.orders",
-          entityResource,
-          model);
+      projectTableConstraint(fk, "service.db.s.orders");
 
       Resource customerIdCol =
           model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.orders.customer_id"));
@@ -664,7 +660,6 @@ class RdfPropertyMapperTest {
     })
     void testKeyUniquenessAppliesToTheWholeConstraint(
         String type, int columnCount, String firstColumn) throws Exception {
-      ArrayNode constraints = objectMapper.createArrayNode();
       ObjectNode pk = objectMapper.createObjectNode();
       pk.put("constraintType", type);
       ArrayNode cols = objectMapper.createArrayNode();
@@ -673,15 +668,8 @@ class RdfPropertyMapperTest {
         cols.add("user_id");
       }
       pk.set("columns", cols);
-      constraints.add(pk);
 
-      invokePrivate(
-          "emitTableConstraints",
-          new Class[] {JsonNode.class, String.class, Resource.class, Model.class},
-          constraints,
-          "service.db.s.users",
-          entityResource,
-          model);
+      projectTableConstraint(pk, "service.db.s.users");
 
       Resource constraint =
           model
@@ -716,6 +704,22 @@ class RdfPropertyMapperTest {
       }
     }
 
+    private void projectTableConstraint(final ObjectNode constraint, final String tableFqn) {
+      EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", "table");
+      final Table table =
+          new Table()
+              .withId(UUID.randomUUID())
+              .withName("table")
+              .withFullyQualifiedName(tableFqn)
+              .withTableConstraints(
+                  List.of(objectMapper.convertValue(constraint, TableConstraint.class)));
+      final JsonLdTranslator translator =
+          new JsonLdTranslator(
+              objectMapper, BASE_URI, (type, fqns) -> Map.of(), ReferenceScope.ALL);
+      model.add(translator.toRdf(table));
+      entityResource = model.createResource(BASE_URI + "entity/table/" + table.getId());
+    }
+
     private ObjectNode columnNode(String name, String dataType, String fqn, String constraint) {
       ObjectNode col = objectMapper.createObjectNode();
       col.put("name", name);
@@ -728,8 +732,8 @@ class RdfPropertyMapperTest {
     }
 
     @Test
-    @DisplayName("Column.profile is emitted as DQV measurements rather than a JSON literal")
-    void testColumnProfileEmittedAsDqv() throws Exception {
+    @DisplayName("Column.profile is emitted as facts on the column rather than a JSON literal")
+    void testColumnProfileEmittedAsColumnFacts() throws Exception {
       ArrayNode columns = objectMapper.createArrayNode();
       ObjectNode col = objectMapper.createObjectNode();
       col.put("name", "email");
@@ -753,36 +757,32 @@ class RdfPropertyMapperTest {
 
       Resource emailColumn =
           model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.users.email"));
-      Property hasMeasurement =
-          model.createProperty("http://www.w3.org/ns/dqv#", "hasQualityMeasurement");
-      java.util.List<Resource> measurements =
-          model.listObjectsOfProperty(emailColumn, hasMeasurement).toList().stream()
-              .map(node -> node.asResource())
-              .toList();
       assertEquals(
-          4,
-          measurements.size(),
-          "Expected 4 numeric profile metrics (valuesCount, nullCount, nullProportion, uniqueCount)");
-
-      Property isMeasurementOf =
-          model.createProperty("http://www.w3.org/ns/dqv#", "isMeasurementOf");
-      Property dqvValue = model.createProperty("http://www.w3.org/ns/dqv#", "value");
-      java.util.Map<String, Double> byMetric = new java.util.HashMap<>();
-      for (Resource m : measurements) {
-        Resource metric = model.getProperty(m, isMeasurementOf).getObject().asResource();
-        double v = model.getProperty(m, dqvValue).getDouble();
-        byMetric.put(metric.getURI(), v);
-      }
-      assertEquals(1000.0, byMetric.get(OM_NS + "ValuesCountMetric"), 0.0);
-      assertEquals(12.0, byMetric.get(OM_NS + "NullCountMetric"), 0.0);
-      assertEquals(0.012, byMetric.get(OM_NS + "NullProportionMetric"), 1e-9);
-      assertEquals(985.0, byMetric.get(OM_NS + "UniqueCountMetric"), 0.0);
-
-      // Each measurement should also be tied back to the column via dqv:computedOn.
-      Property computedOn = model.createProperty("http://www.w3.org/ns/dqv#", "computedOn");
-      for (Resource m : measurements) {
-        assertTrue(model.contains(m, computedOn, emailColumn));
-      }
+          1000L,
+          model
+              .getProperty(emailColumn, model.createProperty(OM_NS, "profileValuesCount"))
+              .getLong());
+      assertEquals(
+          12L,
+          model
+              .getProperty(emailColumn, model.createProperty(OM_NS, "profileNullCount"))
+              .getLong());
+      assertEquals(
+          0.012,
+          model
+              .getProperty(emailColumn, model.createProperty(OM_NS, "profileNullProportion"))
+              .getDouble(),
+          1e-9);
+      assertEquals(
+          985L,
+          model
+              .getProperty(emailColumn, model.createProperty(OM_NS, "profileUniqueCount"))
+              .getLong());
+      assertTrue(model.contains(emailColumn, model.createProperty(OM_NS, "profiledAt")));
+      assertFalse(
+          model.contains(
+              emailColumn,
+              model.createProperty("http://www.w3.org/ns/dqv#", "hasQualityMeasurement")));
     }
 
     @Test
@@ -1064,7 +1064,11 @@ class RdfPropertyMapperTest {
           model);
 
       Property tagProperty = model.createProperty(OM_NS, "hasTag");
-      Resource tagResource = model.createResource(BASE_URI + "tag/Glossary/PII");
+      // Synthetic tag IRIs are URL-encoded on the way out (URLEncoder on the FQN with dots
+      // turned into slashes) so characters the entity schema allows in tag names (spaces,
+      // { } | ^ \) cannot produce an IRI that violates RFC 3986. "Glossary/PII" percent-encodes
+      // to "Glossary%2FPII".
+      Resource tagResource = model.createResource(BASE_URI + "tag/Glossary%2FPII");
       assertTrue(model.contains(entityResource, tagProperty, tagResource));
       assertTrue(
           model.contains(tagResource, model.createProperty(OM_NS, "tagFQN"), "Glossary.PII"));
@@ -1092,6 +1096,74 @@ class RdfPropertyMapperTest {
               .listObjectsOfProperty(entityResource, model.createProperty(OM_NS, "reviewer"))
               .toList()
               .size());
+    }
+
+    @Test
+    @DisplayName("Synthetic tag IRI is URL-encoded so FQNs with spaces are RFC 3986 compliant")
+    void testResolveTagResourceUrlEncodesFqnWithSpaces() throws Exception {
+      // Tag names may contain spaces (the entityName schema permits them); the synthetic
+      // fallback must percent-encode the resulting path so RDFEntityDiffService.toRdfStatement
+      // does not 400 the whole diff response when it calls URI.create on the statement IRI.
+      ObjectNode tagLabel = objectMapper.createObjectNode();
+      tagLabel.put("tagFQN", "Classification.Personal Data");
+      tagLabel.put("name", "Personal Data");
+      tagLabel.put("source", "Classification");
+      tagLabel.put("labelType", "Manual");
+      tagLabel.put("state", "Confirmed");
+
+      invokePrivate(
+          "processFieldMapping",
+          new Class[] {String.class, JsonNode.class, Object.class, Resource.class, Model.class},
+          "tags",
+          tagLabel,
+          Map.of("@id", "om:hasTag", "@type", "@id"),
+          entityResource,
+          model);
+
+      Property tagProperty = model.createProperty(OM_NS, "hasTag");
+      Resource actualTagResource = model.getProperty(entityResource, tagProperty).getResource();
+      String tagUri = actualTagResource.getURI();
+      // URLEncoder.encode("Classification/Personal Data", UTF_8)
+      // -> "Classification%2FPersonal+Data": slash -> %2F, space -> +.
+      assertEquals(BASE_URI + "tag/Classification%2FPersonal+Data", tagUri);
+      // The emitted IRI must be a valid URI so the RDF diff endpoint does not 400.
+      assertDoesNotThrow(() -> URI.create(tagUri), "synthetic tag IRI must be RFC 3986 compliant");
+    }
+
+    @Test
+    @DisplayName(
+        "Synthetic tag IRI percent-encodes every RFC 3986 unsafe character a tag name allows")
+    void testResolveTagResourceUrlEncodesHostileFqnCharacters() throws Exception {
+      // Schema-allowed characters ({ } | ^ \) are rejected by URI.create in a path; the
+      // fallback encoder must percent-encode them all rather than emit an invalid IRI.
+      ObjectNode tagLabel = objectMapper.createObjectNode();
+      tagLabel.put("tagFQN", "Classification.Sensitive{High}|Meta^Data\\Slash");
+      tagLabel.put("name", "Sensitive{High}|Meta^Data\\Slash");
+      tagLabel.put("source", "Classification");
+      tagLabel.put("labelType", "Manual");
+      tagLabel.put("state", "Confirmed");
+
+      invokePrivate(
+          "processFieldMapping",
+          new Class[] {String.class, JsonNode.class, Object.class, Resource.class, Model.class},
+          "tags",
+          tagLabel,
+          Map.of("@id", "om:hasTag", "@type", "@id"),
+          entityResource,
+          model);
+
+      Property tagProperty = model.createProperty(OM_NS, "hasTag");
+      String tagUri = model.getProperty(entityResource, tagProperty).getResource().getURI();
+      // The exact percent-encoded form is not asserted byte-for-byte; what matters is that
+      // no unsafe character survives un-encoded, and that the result is a valid URI for
+      // RdfEntityDiffService.toRdfStatement's URI.create call.
+      assertFalse(tagUri.contains(" "), "space must be percent-encoded");
+      assertFalse(tagUri.contains("{"), "'{' must be percent-encoded");
+      assertFalse(tagUri.contains("}"), "'}' must be percent-encoded");
+      assertFalse(tagUri.contains("|"), "'|' must be percent-encoded");
+      assertFalse(tagUri.contains("^"), "'^' must be percent-encoded");
+      assertFalse(tagUri.contains("\\"), "'\\' must be percent-encoded");
+      assertDoesNotThrow(() -> URI.create(tagUri), "synthetic tag IRI must be RFC 3986 compliant");
     }
 
     @Test

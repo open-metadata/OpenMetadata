@@ -1892,6 +1892,37 @@ public interface CoreRelationshipDAOs {
         @Bind("relation") int relation);
 
     @SqlQuery(
+        "SELECT EXISTS (SELECT 1 FROM entity_relationship "
+            + "WHERE fromId = :fromId AND fromEntity = :fromEntity "
+            + "AND toId = :toId AND toEntity = :toEntity "
+            + "AND relation = :relation AND deleted = FALSE)")
+    boolean exists(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @BindUUID("toId") UUID toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, relationType, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE fromId = :fromId AND toId = :toId "
+            + "AND fromEntity = :entityType AND toEntity = :entityType "
+            + "AND relation = :relation AND deleted = FALSE "
+            + "UNION ALL "
+            + "SELECT fromId, toId, fromEntity, toEntity, relation, relationType, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE fromId = :toId AND toId = :fromId AND fromId <> toId "
+            + "AND fromEntity = :entityType AND toEntity = :entityType "
+            + "AND relation = :relation AND deleted = FALSE")
+    @RegisterRowMapper(RelationshipWithTypeObjectMapper.class)
+    List<EntityRelationshipObject> findBetween(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("entityType") String entityType,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
         "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship where relation = :relation ORDER BY fromId, toId LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(RelationshipObjectMapper.class)
     List<EntityRelationshipObject> getRecordWithOffset(

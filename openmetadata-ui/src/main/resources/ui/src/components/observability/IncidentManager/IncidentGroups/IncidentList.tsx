@@ -33,10 +33,8 @@ import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSu
 import { FqnPart } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
-  Assigned,
   Severities,
   TestCaseResolutionStatus,
-  TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useBulkEntityPermissions } from '../../../../hooks/useEntityPermissions/useBulkEntityPermissions';
@@ -58,13 +56,6 @@ import IncidentSeverityBadge from './IncidentSeverityBadge';
 
 /** Time of day under the date, with the zone the stamp is read in. */
 const LAST_UPDATED_TIME_FORMAT = "h:mm a '(UTC'ZZ')'";
-
-const getAssignee = (incident: TestCaseResolutionStatus) =>
-  incident.testCaseResolutionStatusType ===
-  TestCaseResolutionStatusTypes.Assigned
-    ? (incident.testCaseResolutionStatusDetails as Assigned | undefined)
-        ?.assignee
-    : undefined;
 
 const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
   const { t } = useTranslation();
@@ -218,7 +209,7 @@ const IncidentList = ({
         items={incidents}
         renderEmptyState={renderEmptyState}>
         {(incident) => {
-          const assignee = getAssignee(incident);
+          const assignee = incident.testCaseResolutionStatusDetails?.assignee;
           const status = incident.testCaseResolutionStatusType;
           const rowId = incident.id ?? incident.stateId;
           const lastUpdated = incident.updatedAt ?? incident.timestamp;

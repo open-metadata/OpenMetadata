@@ -37,10 +37,6 @@ jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () =>
     ))
 );
 
-jest.mock('components/common/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div data-testid="loader">Loader</div>)
-);
-
 jest.mock('react-router-dom', () => ({
   DataNode: jest.fn(),
   useNavigate: jest.fn().mockImplementation(() => mockPush),
@@ -58,7 +54,6 @@ jest.mock('components/common/ProfilePicture/ProfilePicture', () => {
 
 const mockProps = {
   knowledgePage: MOCK_KNOWLEDGE_PAGE_VERSION_DATA,
-  loading: false,
 };
 
 describe('Knowledge page version', () => {
@@ -100,12 +95,6 @@ describe('Knowledge page version', () => {
 
     expect(updateAt).toHaveTextContent('Sep 20, 2023');
     expect(versionButton).toHaveTextContent('1.1');
-  });
-
-  it('Should show the loader if loading is true', async () => {
-    render(<KnowledgePageVersion {...mockProps} loading />);
-
-    expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
   it('Version button should redirect to entity page', async () => {

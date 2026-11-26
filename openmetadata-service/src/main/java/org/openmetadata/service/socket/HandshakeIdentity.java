@@ -15,7 +15,9 @@ package org.openmetadata.service.socket;
 
 /**
  * The validated identity a push-feed socket may act as: the user id (UUID as a string) the socket
- * is keyed under, and the session id its handshake was accepted with. Both come from
- * {@link SocketAddressFilter#authenticate} — never from a client-supplied value.
+ * is keyed under, the session id its handshake was accepted with, and the provider value of the
+ * configuration that validated the handshake. All come from {@link
+ * SocketAddressFilter#authenticate} — never from a client-supplied value. The provider is null only
+ * when the filter has no configuration to validate a token with.
  */
-public record HandshakeIdentity(String userId, String sessionId) {}
+public record HandshakeIdentity(String userId, String sessionId, String provider) {}

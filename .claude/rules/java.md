@@ -24,12 +24,14 @@ repository) and `common/src/main/java/org/openmetadata/common/utils/CommonUtil.j
 
 - **Methods ≤ ~15 lines** (excluding blanks/braces) and do **one nameable thing** — if you describe
   it with "and"/"then", split it.
-- **Prefer one successful return, placed at the end.** Do not scatter multiple success and fallback
-  returns through a long method. Extract validation and named helpers until the main flow reads
-  linearly. Throwing a specific validation exception at the boundary is preferable to manufacturing
-  an `error` result or deeply nesting the valid path. Do not introduce a mutable `result` variable
-  solely to satisfy a return-count rule when a direct expression is clearer. (Returns inside lambdas,
-  `switch` expressions, and anonymous classes don't count against the outer method.)
+- **One return per method, at the end** (ADR:2026-11-20-a-method-returns-once). A method that
+  returns a value computes it through `if`/`else`, a ternary or a `switch` expression and returns it
+  once, as its last statement. A `void` method has no `return`: put the work inside the condition
+  that allows it. No guard-clause `return` and no early `return` from a loop. Throwing a specific
+  validation exception at the boundary is allowed and is preferable to manufacturing an `error`
+  result. When the conditions nest past three levels, extract a named helper instead of adding
+  returns. (Returns inside lambdas, `switch` expression arms and anonymous classes belong to those
+  bodies, not the outer method.)
   ```java
   // BAD: mixed validation, fallback, and success returns
   QueryResult execute(String query) {
@@ -44,6 +46,13 @@ repository) and `common/src/main/java/org/openmetadata/common/utils/CommonUtil.j
     String validatedQuery = requireSupportedQuery(query);
     return run(validatedQuery);
   }
+
+  // BAD: void guard clauses           // GOOD: the condition wraps the work
+  void refresh(Entity entity) {        void refresh(Entity entity) {
+    if (!client.isAvailable()) return;   if (client.isAvailable() && isStale(entity)) {
+    if (!isStale(entity)) return;          write(entity);
+    write(entity);                       }
+  }                                    }
   ```
 - **Max 3 levels of nesting** — extract a named eligibility helper, don't sprinkle early returns.
 - **Max cyclomatic complexity 10** — extract complex booleans into named methods.

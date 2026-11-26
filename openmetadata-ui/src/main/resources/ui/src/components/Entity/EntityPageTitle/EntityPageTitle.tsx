@@ -104,10 +104,8 @@ export const EntityPageTitle = ({
             />
             {actions}
           </Box>
+          {badges}
         </Box>
-      </Box>
-      <Box align="center" className="tw:h-8 tw:shrink-0 tw:self-start" gap={3}>
-        {badges}
       </Box>
     </Box>
   );

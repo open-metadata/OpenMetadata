@@ -103,6 +103,7 @@ export const ContractTab = () => {
       setIsLoading(true);
       const fetchedContract = await getContractByEntityId(id, entityType, [
         TabSpecificField.OWNERS,
+        TabSpecificField.REVIEWERS,
       ]);
       setContract(fetchedContract);
       if (fetchedContract?.id) {
