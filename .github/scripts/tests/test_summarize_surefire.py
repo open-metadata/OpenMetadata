@@ -16,6 +16,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[3]
 _SPEC = importlib.util.spec_from_file_location(
     "summarize_surefire", ROOT / ".github/scripts/summarize_surefire.py"
@@ -23,6 +25,27 @@ _SPEC = importlib.util.spec_from_file_location(
 summarize = importlib.util.module_from_spec(_SPEC)
 sys.modules[_SPEC.name] = summarize
 _SPEC.loader.exec_module(summarize)
+
+
+@pytest.mark.parametrize(
+    ("checkstyle", "unit_tests", "headline"),
+    [
+        ("success", "failure", "Java checkstyle passed; unit tests failed."),
+        ("failure", "skipped", "Java checkstyle failed; unit tests skipped."),
+        ("success", "success", "Java checkstyle passed; unit tests passed."),
+        ("success", "skipped", "Java checkstyle passed; unit tests skipped."),
+        ("success", "cancelled", "Java checkstyle passed; unit tests cancelled."),
+    ],
+)
+def test_summary_leads_with_stage_results(checkstyle, unit_tests, headline):
+    md = summarize.render_markdown(
+        title="Backend checks",
+        checkstyle_outcome=checkstyle,
+        checkstyle_files=[],
+        unit_tests_outcome=unit_tests,
+        summary=summarize.parse_surefire_reports([]),
+    )
+    assert md.startswith(f"## Backend checks\n\n**{headline}**\n")
 
 
 def test_checkstyle_failure_fail_fast_summary_and_annotations(tmp_path: Path) -> None:
