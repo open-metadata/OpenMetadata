@@ -176,16 +176,22 @@ describe('MetricDetailsPage', () => {
     await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalled());
   });
 
-  it('shows the permission placeholder when the user lacks view access', async () => {
-    setMockPermissions({ ViewAll: false, ViewBasic: false });
+  it.each([
+    { ViewAll: false, ViewBasic: false },
+    { ViewAll: true, ViewBasic: false },
+  ])(
+    'shows the permission placeholder when the user lacks view access (%o)',
+    async (permissions) => {
+      setMockPermissions(permissions);
 
-    renderPage();
+      renderPage();
 
-    expect(
-      await screen.findByTestId('permission-error-placeholder')
-    ).toBeInTheDocument();
-    expect(mockGetMetricByFqn).not.toHaveBeenCalled();
-  });
+      expect(
+        await screen.findByTestId('permission-error-placeholder')
+      ).toBeInTheDocument();
+      expect(mockGetMetricByFqn).not.toHaveBeenCalled();
+    }
+  );
 
   it('fetches and renders the metric once view permission resolves', async () => {
     setMockPermissions({ ViewBasic: true, EditAll: true });

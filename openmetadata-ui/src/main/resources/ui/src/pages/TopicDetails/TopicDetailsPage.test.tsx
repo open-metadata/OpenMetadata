@@ -124,6 +124,23 @@ describe('Test TopicDetailsPage component', () => {
     });
   });
 
+  it.each([
+    { ViewAll: false, ViewBasic: false },
+    { ViewAll: true, ViewBasic: false },
+  ])(
+    'shows the permission placeholder, not a stuck loader, for %o',
+    async (permissions) => {
+      setMockPermissions(permissions);
+
+      renderWithQueryClient(<TopicDetailsPageComponent />);
+
+      expect(
+        await screen.findByTestId('permission-error-placeholder')
+      ).toBeInTheDocument();
+      expect(getTopicByFqn).not.toHaveBeenCalled();
+    }
+  );
+
   it('should fetch permissions for the topic fqn', () => {
     renderWithQueryClient(<TopicDetailsPageComponent />);
 

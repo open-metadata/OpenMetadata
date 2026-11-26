@@ -59,17 +59,13 @@ const MetricDetailsPage = () => {
 
   const { fqn: metricFqn } = useFqn();
 
-  // canViewMetric is the query enabler for the entity fetch below, deliberately the
-  // prioritized ViewBasic flag (not the bare hasViewAccess OR used at the render gate near
-  // the bottom of this file) — matches the old getPrioritizedViewPermission(metricPermissions,
-  // Operation.ViewBasic) call exactly (see the canViewBasic doc comment in
-  // PermissionDerivation.ts for why the two must stay distinct).
+  // canViewMetric (prioritized ViewBasic) gates both the entity fetch and the permission
+  // placeholder below, so an explicit ViewBasic deny never leaves the page on the skeleton.
   const {
     permissions: metricPermissions,
     isLoading: isPermissionsLoading,
     error: permissionsError,
     canViewBasic: canViewMetric,
-    hasViewAccess,
   } = useEntityPermissions(ResourceEntity.METRIC, metricFqn, {
     enabled: Boolean(metricFqn),
   });
@@ -351,7 +347,7 @@ const MetricDetailsPage = () => {
       </div>
     );
   }
-  if (!hasViewAccess) {
+  if (!canViewMetric) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <PermissionPlaceholder

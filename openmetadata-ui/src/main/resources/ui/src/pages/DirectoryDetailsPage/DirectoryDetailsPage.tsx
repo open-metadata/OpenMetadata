@@ -76,7 +76,6 @@ const DirectoryDetailsPage = () => {
     isLoading: isPermissionsLoading,
     error: permissionsError,
     canViewBasic,
-    hasViewAccess,
   } = useEntityPermissions(ResourceEntity.DIRECTORY, directoryFQN);
 
   const { id: directoryId, version: currentVersion } = directoryDetails;
@@ -305,7 +304,7 @@ const DirectoryDetailsPage = () => {
       </div>
     );
   }
-  if (!hasViewAccess) {
+  if (!canViewBasic) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <PermissionPlaceholder

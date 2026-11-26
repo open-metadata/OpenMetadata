@@ -351,23 +351,29 @@ describe('SpreadsheetDetailsPage', () => {
       });
     });
 
-    it('should render permission error when user lacks view permissions', async () => {
-      setMockPermissions({ ViewAll: false, ViewBasic: false });
+    it.each([
+      { ViewAll: false, ViewBasic: false },
+      { ViewAll: true, ViewBasic: false },
+    ])(
+      'should render permission error when user lacks view permissions (%o)',
+      async (permissions) => {
+        setMockPermissions(permissions);
 
-      await renderComponent();
+        await renderComponent();
 
-      await waitFor(() => {
+        await waitFor(() => {
+          expect(
+            screen.getByTestId(
+              /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+            )
+          ).toBeInTheDocument();
+        });
+
         expect(
-          screen.getByTestId(
-            /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
-          )
+          screen.getByTestId('permission-error-placeholder')
         ).toBeInTheDocument();
-      });
-
-      expect(
-        screen.getByTestId('permission-error-placeholder')
-      ).toBeInTheDocument();
-    });
+      }
+    );
   });
 
   describe('Spreadsheet Details Management', () => {
