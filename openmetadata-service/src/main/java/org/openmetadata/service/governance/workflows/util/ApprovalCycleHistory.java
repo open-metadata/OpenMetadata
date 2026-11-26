@@ -33,7 +33,8 @@ import org.openmetadata.service.util.EntityUtil;
  * gives the net change since that base.
  *
  * <p>The walk follows each change's previous version, one stored row at a time, rather than paging
- * the version list: that list is ordered by its extension name, which sorts 10.0 before 9.0.
+ * the version list: that list is ordered by its extension name, which sorts 10.0 before 9.0. The
+ * cap and the walk are ADR:2026-11-26-an-approval-preview-lists-the-change-since-its-cycle-began.
  */
 @Slf4j
 public final class ApprovalCycleHistory {

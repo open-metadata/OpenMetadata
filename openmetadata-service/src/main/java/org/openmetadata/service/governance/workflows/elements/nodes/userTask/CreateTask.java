@@ -1313,7 +1313,7 @@ public class CreateTask implements TaskListener {
    * for any other run, every change the entity's history holds since the approval cycle began. It
    * is read again at every task write, so an edit that started no run (a bot's, or one the trigger
    * filter skipped) still reaches the next task, and a preview stored on a superseded task is never
-   * carried forward.
+   * carried forward. ADR:2026-11-26-an-approval-preview-lists-the-change-since-its-cycle-began
    */
   record PreviewChanges(ChangeDescription pending, CyclePreview cycle) {
     static final PreviewChanges NONE = new PreviewChanges(null, null);
