@@ -1,0 +1,16 @@
+{
+  "name": "openmetadata-skills",
+  "owner": {
+    "name": "OpenMetadata Project"
+  },
+  "metadata": {
+    "description": "Claude Code plugins from the OpenMetadata checkout."
+  },
+  "plugins": [
+    {
+      "name": "openmetadata-skills",
+      "source": "./",
+      "description": "Development workflows and connector skills for OpenMetadata."
+    }
+  ]
+}

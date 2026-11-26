@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Harness-integrity checks — keep the agent-facing config from silently decaying.
 
-Ten checks, all emitting GitHub Actions **warning** annotations (never failing) unless
+The checks emit GitHub Actions **warning** annotations (never failing) unless
 run with ``--strict``:
 
   1. dead-reference       — a path / make target / yarn script / maven goal named in the
@@ -27,6 +27,7 @@ run with ``--strict``:
                             fails standalone and as a pre-commit hook)
  10. ontology-packs       — a bundled ontology library pack payload, manifest, README or
                             NOTICE block that no longer matches scripts/ontology-packs/sources.json
+ 11. skill-discovery      — a skill directory missing from the installed Claude Code plugin
 
 Run locally with ``make harness-check`` or ``python3 scripts/harness/check_harness.py``.
 Stdlib only; deterministic; safe to run anywhere in the tree.
@@ -470,6 +471,18 @@ def check_skill_symlinks():
     return warnings
 
 
+def check_plugin_skills():
+    manifest = "skills/.claude-plugin/plugin.json"
+    declared = json.loads(read(manifest)).get("skills", [])
+    root = pathlib.Path(rp("skills"))
+    # Top-level skills are listed individually. One directory entry loads all vendored skills.
+    required = {f"./{path.parent.name}" for path in root.glob("*/SKILL.md")}
+    if any((root / "vendor").glob("*/SKILL.md")):
+        required.add("./vendor")
+    return [Warn("skill-discovery", manifest, 1, f"add {path} so the installed plugin exposes its skills")
+            for path in sorted(required.difference(declared))]
+
+
 # ------------------------------------------------------------------------- check 4
 
 
@@ -676,6 +689,7 @@ CHECKS = [
     check_java_impact_map,
     check_decision_records,
     check_ontology_packs,
+    check_plugin_skills,
 ]
 
 

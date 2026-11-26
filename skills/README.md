@@ -16,10 +16,14 @@ They are authoring-time aids, not gates — a skill only fires if an agent reads
 
 ```bash
 # From the OpenMetadata repo root
-claude plugin install skills/
+claude plugin marketplace add ./skills
+claude plugin install openmetadata-skills@openmetadata-skills
+claude plugin list
 ```
 
-This installs all skills, agents, hooks, and commands. The plugin auto-loads the OpenMetadata workflow on session start.
+Check that `openmetadata-skills@openmetadata-skills` is enabled. Start a new Claude Code session to use the plugin. For example, `/openmetadata-skills:connector-audit` runs the connector audit skill. The plugin loads the OpenMetadata workflow on session start.
+
+When adding a top-level skill, include its directory in [the plugin manifest](.claude-plugin/plugin.json). Each skill supplies its own slash command.
 
 ### Claude Code (In-Repo, Zero Setup)
 
@@ -202,20 +206,20 @@ JSON Schema (single source of truth)
 ## Quick Start
 
 ```bash
-# 1. Install the plugin
-claude plugin install skills/
+# 1. Install the plugin using the instructions above, then start Claude Code
+claude
 
 # 2. Start a new feature
-# Just describe what you want — the workflow skill will guide you to /planning
+# Describe what you want — the workflow skill will guide you to /openmetadata-skills:planning
 
 # 3. Implement with TDD
-# /tdd "Add new endpoint for data quality scores"
+# /openmetadata-skills:tdd "Add new endpoint for data quality scores"
 
 # 4. Verify coverage before PR
-# /test-enforcement
+# /openmetadata-skills:test-enforcement
 
 # 5. Review your changes
-# /code-review
+# /openmetadata-skills:code-review
 ```
 
 ## CI

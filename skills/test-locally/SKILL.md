@@ -2,7 +2,7 @@
 name: test-locally
 description: Build and deploy a full local OpenMetadata stack with Docker to test your connector in the UI. Handles code generation, build optimization, health checks, and guided testing.
 user-invocable: true
-argument-hint: "[--skip-maven] [--rebuild] [--teardown]"
+argument-hint: "[--skip-maven] [--database mysql|postgresql] [--rebuild] [--teardown]"
 allowed-tools:
   - Bash
   - Read
@@ -21,6 +21,7 @@ When a user asks to "test locally", "start docker", "deploy locally", "test in t
 ## Arguments
 
 - `--skip-maven` or `--fast`: Skip the Maven build (use when only ingestion Python code changed)
+- `--database mysql|postgresql`: Use the selected database for every `run_local_docker.sh -d` invocation below. The examples use the default, MySQL.
 - `--rebuild`: Tear down existing containers and rebuild
 - `--teardown` or `--down`: Just stop and remove containers
 - No arguments: Auto-detect what changed and choose the optimal build strategy
