@@ -570,11 +570,14 @@ def test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests
         for s in reusable_steps
     )
 
+    rollup_needs = jobs["backend-checks-status"]["needs"]
+    assert "integration-test-build" in rollup_needs
     for profile_job in (
         "it-mysql-elasticsearch",
         "it-postgres-opensearch",
         "it-postgres-elasticsearch-redis",
     ):
+        assert profile_job in rollup_needs
         job = jobs[profile_job]
         assert job["uses"] == "./.github/workflows/reusable-java-integration-lanes.yml"
         assert "backend-checks" in job["needs"]
@@ -588,16 +591,6 @@ def test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests
             in job["if"]
         )
         assert job["with"]["artifact_name"] == "java-it-build-${{ github.run_id }}"
-
-    # Required status check job names stay top-level so merge-rules matches them.
-    for required_check in (
-        "backend-checks",
-        "backend-checks-status",
-        "integration-tests-mysql-elasticsearch",
-        "integration-tests-postgres-opensearch",
-        "integration-tests-postgres-elasticsearch-redis",
-    ):
-        assert required_check in jobs
 
 
 # ---------------------------------------------------------------------------
@@ -671,70 +664,6 @@ def test_java_checkstyle_is_unified_fail_fast_in_backend_job(workflow: str) -> N
         s for s in report_steps if s.get("uses", "").startswith("actions/upload-artifact@")
     )
     assert "inputs.unit-tests-outcome == 'failure'" in reports["if"]
-
-
-@pytest.mark.parametrize(
-    ("profile", "selection"),
-    [
-        ("mysql-elasticsearch", "needs.plan.outputs.java-it == 'true'"),
-        ("postgres-opensearch", "needs.plan.outputs.java-it == 'true'"),
-        ("postgres-elasticsearch-redis", "needs.plan.outputs.java-it-redis"),
-    ],
-)
-@pytest.mark.parametrize(
-    ("outcomes", "exit_code"),
-    [
-        pytest.param({}, 0, id="all-succeed"),
-        pytest.param({"UNIT_RESULT": "skipped"}, 0, id="integration-only"),
-        pytest.param(
-            {
-                "BACKEND_CHANGED": "false",
-                "UNIT_RESULT": "skipped",
-                "BUILD_RESULT": "skipped",
-                "LANES_RESULT": "skipped",
-            },
-            0,
-            id="irrelevant-change",
-        ),
-        pytest.param(
-            {"CHANGES_RESULT": "failure", "BACKEND_CHANGED": "false"},
-            1,
-            id="planner-failure",
-        ),
-        pytest.param({"UNIT_RESULT": "failure"}, 1, id="unit-failure"),
-        pytest.param({"UNIT_RESULT": "cancelled"}, 1, id="unit-cancelled"),
-        pytest.param({"BUILD_RESULT": "failure"}, 1, id="build-failure"),
-        pytest.param({"LANES_RESULT": "failure"}, 1, id="lane-failure"),
-        pytest.param({"LANES_RESULT": "skipped"}, 1, id="unexpected-lane-skip"),
-    ],
-)
-def test_integration_gate_requires_selected_jobs_to_succeed(
-    profile, selection, outcomes, exit_code
-):
-    step = steps_of("ci-merge-queue.yml", f"integration-tests-{profile}")[0]
-    assert step["env"] == {
-        "CHANGES_RESULT": "${{ needs.plan.result }}",
-        "BACKEND_CHANGED": "${{ " + selection + " }}",
-        "UNIT_RESULT": "${{ needs.backend-checks.result }}",
-        "BUILD_RESULT": "${{ needs.integration-test-build.result }}",
-        "LANES_RESULT": "${{ needs.it-" + profile + ".result }}",
-    }
-    result = subprocess.run(
-        ["bash", "-e", "-c", step["run"]],
-        env={
-            **os.environ,
-            "CHANGES_RESULT": "success",
-            "BACKEND_CHANGED": "true",
-            "UNIT_RESULT": "success",
-            "BUILD_RESULT": "success",
-            "LANES_RESULT": "success",
-            **outcomes,
-        },
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert result.returncode == exit_code, result.stdout + result.stderr
 
 
 def test_ghcr_cache_pulls_authenticate_with_github_token() -> None:

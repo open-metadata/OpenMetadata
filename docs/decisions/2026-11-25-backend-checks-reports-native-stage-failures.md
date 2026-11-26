@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-25 (initial) · v2 2026-11-26 (Java rollup cutover)
 - **Deciders:** Sriharsha Chintalapani
-- **Guard:** `test_java_checkstyle_is_unified_fail_fast_in_backend_job`, `test_integration_gate_enforces_backend_result`, and `test_summary_leads_with_stage_results`
+- **Guard:** `test_java_checkstyle_is_unified_fail_fast_in_backend_job`, `test_merge_queue_backend_gate_verifies_selected_integration_jobs`, and `test_summary_leads_with_stage_results`
 - **Related:** ADR:2026-11-24-backend-ci-gates-integration-lanes-behind-unit-tests-and-builds-once
 
 ## Context
@@ -47,9 +47,10 @@ not update GitHub settings or historical runs.
 profiles in `ci-merge-queue`, along with checkstyle, service unit tests, operator tests, and Docker
 smoke. The PR version verifies the Java workloads selected on PRs.
 
-Deploy the expanded rollup with the three profile status jobs and their PR placeholders still
-reporting. Once the expanded rollup is live on `main` and verified on a merge group, replace the
-three required `integration-tests-*` contexts with `backend-checks-status` in `merge-rules`.
-Keep `backend-checks` required for early failures. After the cutover, remove the three legacy
-status jobs and PR placeholders. Requiring the rollup also makes operator tests and Docker smoke
-merge-blocking when selected.
+`backend-checks` runs after a successful plan selects Java checks. The rollup reports planning
+failures and verifies the results of the selected jobs.
+
+The rollout removes the three profile status jobs and their PR placeholders. Before merging the
+rollout PR, replace the three required `integration-tests-*` contexts with `backend-checks-status`
+in `merge-rules`. Keep `backend-checks` required for early failures. Requiring the rollup also
+makes operator tests and Docker smoke merge-blocking when selected.

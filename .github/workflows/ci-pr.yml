@@ -176,11 +176,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     needs: plan
-    if: ${{ !cancelled() && (needs.plan.result != 'success' || needs.plan.outputs.checkstyle == 'true') }}
+    if: ${{ needs.plan.outputs.checkstyle == 'true' }}
     steps:
-      - name: Require successful CI planning
-        if: ${{ needs.plan.result != 'success' }}
-        run: exit 1
       - name: Checkout
         id: checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -259,6 +256,46 @@ jobs:
       - name: Smoke test the server image
         uses: ./.github/actions/java-docker-smoke
 
+  validate-json-yaml:
+    needs: plan
+    if: ${{ needs.plan.outputs.json-yaml == 'true' || needs.plan.outputs.ci-rules == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python
+        with:
+          python-version: '3.12'
+      - uses: ./.github/actions/validate-json-yaml
+        if: ${{ needs.plan.outputs.json-yaml == 'true' }}
+      - uses: ./.github/actions/validate-ci-rules
+        if: ${{ needs.plan.outputs.ci-rules == 'true' }}
+
+  validate-docker-compose:
+    needs: plan
+    if: ${{ needs.plan.outputs.quickstart-compose == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENMETADATA_DB_IMAGE: docker.getcollate.io/openmetadata/db:latest
+      OPENMETADATA_SERVER_IMAGE: docker.getcollate.io/openmetadata/server:latest
+      OPENMETADATA_INGESTION_IMAGE: docker.getcollate.io/openmetadata/ingestion:latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+        with:
+          persist-credentials: false
+      - name: Validate OpenMetadata Docker Compose
+        uses: ./.github/actions/validate-omd-docker-compose
+        with:
+          compose_file: ./docker/docker-compose-quickstart/docker-compose.yml
+          health_check_timeout: 300
+
   backend-checks-status:
     name: backend-checks-status
     needs: [plan, backend-checks, k8s_operator-unit-tests, docker-image-smoke-test]
@@ -304,62 +341,3 @@ jobs:
           check "k8s_operator-unit-tests"         "$K8S_CHANGED"     "$K8S_RESULT"
           check "docker-image-smoke-test"         "$DOCKER_CHANGED"  "$DOCKER_RESULT"
           exit $fail
-
-  validate-json-yaml:
-    needs: plan
-    if: ${{ needs.plan.outputs.json-yaml == 'true' || needs.plan.outputs.ci-rules == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ needs.plan.outputs.ref }}
-          persist-credentials: false
-      - uses: ./.github/actions/setup-python
-        with:
-          python-version: '3.12'
-      - uses: ./.github/actions/validate-json-yaml
-        if: ${{ needs.plan.outputs.json-yaml == 'true' }}
-      - uses: ./.github/actions/validate-ci-rules
-        if: ${{ needs.plan.outputs.ci-rules == 'true' }}
-
-  validate-docker-compose:
-    needs: plan
-    if: ${{ needs.plan.outputs.quickstart-compose == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      OPENMETADATA_DB_IMAGE: docker.getcollate.io/openmetadata/db:latest
-      OPENMETADATA_SERVER_IMAGE: docker.getcollate.io/openmetadata/server:latest
-      OPENMETADATA_INGESTION_IMAGE: docker.getcollate.io/openmetadata/ingestion:latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-        with:
-          persist-credentials: false
-      - name: Validate OpenMetadata Docker Compose
-        uses: ./.github/actions/validate-omd-docker-compose
-        with:
-          compose_file: ./docker/docker-compose-quickstart/docker-compose.yml
-          health_check_timeout: 300
-
-  # Required contexts still report skipped on PRs. The jobs run in ci-merge-queue.
-  integration-tests-mysql-elasticsearch:
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'merge_group' }}
-    steps:
-      - run: exit 1
-
-  integration-tests-postgres-opensearch:
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'merge_group' }}
-    steps:
-      - run: exit 1
-
-  integration-tests-postgres-elasticsearch-redis:
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'merge_group' }}
-    steps:
-      - run: exit 1

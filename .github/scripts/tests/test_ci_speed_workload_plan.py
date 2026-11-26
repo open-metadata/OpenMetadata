@@ -374,7 +374,34 @@ def test_backend_gate_rejects_failed_planner_when_nothing_runs(workflow):
 @pytest.mark.parametrize(
     ("outcomes", "expected_error"),
     [
-        ({}, None),
+        pytest.param({}, None, id="integration-only"),
+        pytest.param(
+            {"JAVA_CHANGED": "true", "SERVICE_RESULT": "success"},
+            None,
+            id="backend-and-integration-succeed",
+        ),
+        pytest.param(
+            {
+                "JAVA_IT_CHANGED": "false",
+                "REDIS_IT_CHANGED": "false",
+                "IT_BUILD_RESULT": "skipped",
+                "MYSQL_ES_RESULT": "skipped",
+                "POSTGRES_OS_RESULT": "skipped",
+                "POSTGRES_REDIS_RESULT": "skipped",
+            },
+            None,
+            id="irrelevant-change",
+        ),
+        pytest.param(
+            {"JAVA_CHANGED": "true", "SERVICE_RESULT": "failure"},
+            "backend-checks",
+            id="backend-failure",
+        ),
+        pytest.param(
+            {"JAVA_CHANGED": "true", "SERVICE_RESULT": "cancelled"},
+            "backend-checks",
+            id="backend-cancelled",
+        ),
         ({"IT_BUILD_RESULT": "failure"}, "integration-test-build"),
         ({"MYSQL_ES_RESULT": "skipped"}, "it-mysql-elasticsearch"),
         ({"POSTGRES_OS_RESULT": "cancelled"}, "it-postgres-opensearch"),
