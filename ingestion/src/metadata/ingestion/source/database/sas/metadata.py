@@ -643,7 +643,8 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
                         left=StackTraceError(
                             name=table_name,
                             error=f"Failed to update custom properties for table [{table_name}]",
-                        )
+                        ),
+                        right=None,
                     )
 
                 # quit updating table profile if table doesn't exist
