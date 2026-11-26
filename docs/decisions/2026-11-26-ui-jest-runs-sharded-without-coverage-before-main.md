@@ -33,4 +33,4 @@ at the cost of three more runners' setup time. A coverage drop is not visible be
 coverage gate back means collecting coverage per shard, merging it, and comparing against main.
 Post that result from a separate `workflow_run` workflow, as the browser tests do, because PR jobs
 have a read-only token. If main's locale files ever drift, only the next PR that touches a locale
-file reports it.
+file or `yarn.lock` reports it.
