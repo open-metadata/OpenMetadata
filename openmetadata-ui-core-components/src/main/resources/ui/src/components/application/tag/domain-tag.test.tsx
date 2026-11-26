@@ -119,6 +119,14 @@ describe('DomainTag', () => {
     expect(onParentClick).not.toHaveBeenCalled();
   });
 
+  it('should give the delete button an accessible name from the label', () => {
+    render(<DomainTag label="Engineering" onDelete={vi.fn()} />);
+
+    expect(
+      screen.getByRole('button', { name: 'label.remove-entity' })
+    ).toBeInTheDocument();
+  });
+
   it('should set --tag-color to the default hex when no color prop is passed', () => {
     const { container } = render(<DomainTag label="Engineering" />);
 
