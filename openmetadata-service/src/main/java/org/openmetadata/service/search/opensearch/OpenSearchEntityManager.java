@@ -74,6 +74,7 @@ import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch._types.query_dsl.RangeQuery;
 import os.org.opensearch.client.opensearch.core.BulkRequest;
 import os.org.opensearch.client.opensearch.core.BulkResponse;
+import os.org.opensearch.client.opensearch.core.DeleteByQueryRequest;
 import os.org.opensearch.client.opensearch.core.DeleteByQueryResponse;
 import os.org.opensearch.client.opensearch.core.DeleteResponse;
 import os.org.opensearch.client.opensearch.core.GetResponse;
@@ -253,26 +254,21 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    // Build the query using the new OpenSearch client API
-    BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
-
-    for (Pair<String, String> p : fieldAndValue) {
-      boolQueryBuilder.must(
-          Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
-    }
-
-    // Execute delete by query using the new client
     DeleteByQueryResponse response =
-        client.deleteByQuery(
-            d ->
-                d.index(indexNames)
-                    .query(q -> q.bool(boolQueryBuilder.build()))
-                    .refresh(Refresh.True));
+        client.deleteByQuery(buildDeleteByFieldsRequest(indexNames, fieldAndValue));
 
     LOG.info(
         "DeleteByQuery response from OS - Deleted: {}, Failures: {}",
         response.deleted(),
         response.failures().size());
+
+    if (response.versionConflicts() != null && response.versionConflicts() > 0) {
+      LOG.warn(
+          "DeleteByQuery skipped {} documents due to version conflicts for indices: {}, fields: {}",
+          response.versionConflicts(),
+          indexNames,
+          fieldAndValue);
+    }
 
     if (!response.failures().isEmpty()) {
       String failureDetails =
@@ -281,6 +277,25 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               .collect(Collectors.joining("; "));
       LOG.error("DeleteByQuery encountered failures: {}", failureDetails);
     }
+  }
+
+  /**
+   * A reindex can rewrite matched child docs between the scroll and the delete; with the default
+   * conflicts=abort the whole cleanup failed with 409, so conflicted docs are skipped instead.
+   */
+  DeleteByQueryRequest buildDeleteByFieldsRequest(
+      List<String> indexNames, List<Pair<String, String>> fieldAndValue) {
+    BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+    for (Pair<String, String> p : fieldAndValue) {
+      boolQueryBuilder.must(
+          Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
+    }
+    return DeleteByQueryRequest.of(
+        d ->
+            d.index(indexNames)
+                .query(q -> q.bool(boolQueryBuilder.build()))
+                .conflicts(Conflicts.Proceed)
+                .refresh(Refresh.True));
   }
 
   @Override
