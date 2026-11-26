@@ -7255,6 +7255,11 @@ emoji-regex@^9.2.2:
   resolved "https://registry.yarnpkg.com/emoji-regex/-/emoji-regex-9.2.2.tgz#840c8803b0d8047f4ff0cf963176b32d4ef3ed72"
   integrity sha512-L18DaJsXSUk2+42pv8mLs5jJT2hqFkFE4j21wOmgbUqsZ2hL72NsUU785g9RXgo3s0ZNgVl42TiHp3ZtOv/Vyg==
 
+emojibase-data@18.0.0:
+  version "18.0.0"
+  resolved "https://registry.npmjs.org/emojibase-data/-/emojibase-data-18.0.0.tgz#a64ddfa7579ea27a90c0b7728ff8054bdab199eb"
+  integrity sha512-TPPRRYv2zPd0jKI+pTpMquwWNZXYAsC3IVsCMeg2X8y8fEzKwOks4/5bz0YavF5r6d71aGPpb6oDnUEwSLLMoA==
+
 engine.io-client@~6.6.1:
   version "6.6.8"
   resolved "https://registry.yarnpkg.com/engine.io-client/-/engine.io-client-6.6.8.tgz#bdedae9ef78cdfdd5c93b3bfe16e3c02062b66b0"
@@ -8103,11 +8108,6 @@ fuse.js@^7.0.0:
   version "7.3.0"
   resolved "https://registry.yarnpkg.com/fuse.js/-/fuse.js-7.3.0.tgz#68e1ea1c6c0ff262f1801a949a78edbe05b0bc13"
   integrity sha512-plz8RVjfcDedTGfVngWH1jmJvBvAwi1v2jecfDerbEnMcmOYUEEwKFTHbNoCiYyzaK2Ws8lABkTCcRSqCY1q4w==
-
-gemoji@8.1.0:
-  version "8.1.0"
-  resolved "https://registry.npmjs.org/gemoji/-/gemoji-8.1.0.tgz#3d47a26e569c51efa95198822a6f483d7a7ae600"
-  integrity sha512-HA4Gx59dw2+tn+UAa7XEV4ufUKI4fH1KgcbenVA9YKSj1QJTT0xh5Mwv5HMFNN3l2OtUe3ZIfuRwSyZS5pLIWw==
 
 generator-function@^2.0.0:
   version "2.0.1"

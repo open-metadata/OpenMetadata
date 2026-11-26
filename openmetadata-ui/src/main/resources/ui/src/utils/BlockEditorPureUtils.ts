@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { nameToEmoji } from 'gemoji';
+import githubShortcodes from 'emojibase-data/en/shortcodes/github.json';
+import emojiHexcodes from 'emojibase-data/meta/hexcodes.json';
 import { findLastIndex, isEmpty, sumBy } from 'lodash';
 import { Marked, Renderer } from 'marked';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
@@ -180,6 +181,25 @@ export const isHTMLString = (content: string) => {
   }
 };
 
+const shortcodeEntries: [string, string | string[]][] =
+  Object.entries(githubShortcodes);
+const emojiVariants: Record<string, Record<string, number>> = emojiHexcodes;
+
+const emojiByShortcode = new Map(
+  shortcodeEntries.flatMap(([hexcode, names]) => {
+    // Use the fully qualified sequence so text-default characters render as emoji.
+    const fullyQualified = Object.entries(emojiVariants[hexcode] ?? {}).find(
+      ([, qualification]) => qualification === 0
+    )?.[0];
+    const codepoints = (fullyQualified ?? hexcode)
+      .split('-')
+      .map((value) => parseInt(value, 16));
+    const emoji = String.fromCodePoint(...codepoints);
+    const aliases = typeof names === 'string' ? [names] : names;
+
+    return aliases.map((name) => [name, emoji] as const);
+  })
+);
 const defaultMarkdownRenderer = new Renderer();
 
 // CommonMark block parsing preserves each level of two-space-indented lists.
@@ -240,13 +260,7 @@ const markdownConverter = new Marked({
           };
         }
 
-        // Only own entries are shortcodes; inherited properties stay as text.
-        const html = Object.prototype.hasOwnProperty.call(
-          nameToEmoji,
-          shortcode
-        )
-          ? nameToEmoji[shortcode]
-          : undefined;
+        const html = emojiByShortcode.get(shortcode);
 
         // Unknown shortcodes can contain URL schemes; leave them to Marked's autolinker.
         return html === undefined
