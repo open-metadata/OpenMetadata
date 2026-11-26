@@ -28,6 +28,7 @@ import {
 import {
   buildPermissionRule,
   createDisposableArchivedDocument,
+  createMemoryViaApi,
   getLoggedInUser,
   loginAsUser,
   MEMORIES_API,

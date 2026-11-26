@@ -32,6 +32,9 @@ export const NO_MEMORY_ACTIONS: MemoryActionPermissions = {
   canDelete: false,
 };
 
+// Matches main's useBulkEntityPermissions so paging back and forth reuses lookups.
+const PERMISSION_STALE_TIME = 5 * 60 * 1000;
+
 export const memoryPermissionQueryKey = (fqn: string) =>
   ['permissions', 'entity', ResourceEntity.CONTEXT_MEMORY, fqn] as const;
 
@@ -82,6 +85,7 @@ export const useMemoryActionPermissions = (
         getOperationPermissions(
           await getEntityPermissionByFqn(ResourceEntity.CONTEXT_MEMORY, fqn)
         ),
+      staleTime: PERMISSION_STALE_TIME,
     })),
     combine: useCallback(
       (results: Array<{ data?: OperationPermission }>) =>
