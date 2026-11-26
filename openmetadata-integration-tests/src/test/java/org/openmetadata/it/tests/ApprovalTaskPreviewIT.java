@@ -15,7 +15,9 @@ package org.openmetadata.it.tests;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -57,6 +59,8 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
+import org.openmetadata.service.util.EntityUtil;
 
 /**
  * The Proposed Changes card of an approval task lists what the entity changed since its approval
@@ -207,6 +211,48 @@ public class ApprovalTaskPreviewIT {
     awaitPreview(term, Map.of(DESCRIPTION, replaced("Edited definition", "Reviewed definition")));
   }
 
+  // The history lost the cycle's first edit. The next task compares the version the cycle began
+  // from with the current one, so the reviewer still sees that edit.
+  @Test
+  void aVersionMissingFromTheHistoryStillPreviewsTheWholeCycle(TestNamespace ns) throws Exception {
+    GlossaryTerm term = approvedTerm(ns, "missing_version", "Original definition");
+    editDescription(SdkClients.adminClient(), term, "Edited definition");
+    Task opened =
+        awaitPreview(
+            term, Map.of(DESCRIPTION, replaced("Edited definition", "Original definition")));
+    dropVersion(term, firstEditOf(term, baseOf(opened)));
+
+    addSynonym(SdkClients.adminClient(), term, "Alias");
+
+    Task next =
+        awaitPreview(
+            term,
+            Map.of(
+                DESCRIPTION,
+                replaced("Edited definition", "Original definition"),
+                SYNONYMS,
+                added("Alias")));
+    assertFalse(isMarkedIncomplete(next));
+  }
+
+  // Without the version the cycle began from there is nothing to compare with, so the task lists
+  // the changes after the gap and says the list is incomplete.
+  @Test
+  void aCycleWhoseBaseIsMissingFromTheHistoryIsMarkedIncomplete(TestNamespace ns) throws Exception {
+    GlossaryTerm term = approvedTerm(ns, "missing_base", "Original definition");
+    editDescription(SdkClients.adminClient(), term, "Edited definition");
+    Task opened =
+        awaitPreview(
+            term, Map.of(DESCRIPTION, replaced("Edited definition", "Original definition")));
+    double base = baseOf(opened);
+    dropVersion(term, firstEditOf(term, base));
+    dropVersion(term, base);
+
+    addSynonym(SdkClients.adminClient(), term, "Alias");
+
+    assertTrue(isMarkedIncomplete(awaitPreview(term, Map.of(SYNONYMS, added("Alias")))));
+  }
+
   private static GlossaryTerm approvedTerm(TestNamespace ns, String name, String description)
       throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
@@ -321,6 +367,41 @@ public class ApprovalTaskPreviewIT {
             ? null
             : JsonUtils.getMap(task.getPayload()).get(ChangePreviewUtils.PROPOSED_CHANGES_KEY);
     return preview == null ? Map.of() : JsonUtils.convertValue(preview, PREVIEW_TYPE);
+  }
+
+  private static double baseOf(Task task) {
+    return ChangePreviewUtils.cycleBaseOf(task.getPayload()).orElseThrow();
+  }
+
+  // The cycle's first edit is the oldest version after the one the cycle began from.
+  private static double firstEditOf(GlossaryTerm term, double base) throws Exception {
+    return SdkClients.adminClient()
+        .glossaryTerms()
+        .getVersionList(term.getId())
+        .getVersions()
+        .stream()
+        .map(
+            stored ->
+                JsonUtils.readTree(
+                    stored instanceof String json ? json : JsonUtils.pojoToJson(stored)))
+        .mapToDouble(stored -> stored.path("version").asDouble())
+        .filter(version -> version > base)
+        .min()
+        .orElseThrow();
+  }
+
+  // The row must be there to drop, or the test would pass without a gap in the history.
+  private static void dropVersion(GlossaryTerm term, double version) {
+    String extension = EntityUtil.getVersionExtension(Entity.GLOSSARY_TERM, version);
+    EntityExtensionDAO versions = Entity.getCollectionDAO().entityExtensionDAO();
+    assertNotNull(versions.getExtension(term.getId(), extension));
+    versions.delete(term.getId(), extension);
+  }
+
+  private static boolean isMarkedIncomplete(Task task) {
+    return Boolean.TRUE.equals(
+        JsonUtils.getMap(task.getPayload())
+            .get(ChangePreviewUtils.PROPOSED_CHANGES_INCOMPLETE_KEY));
   }
 
   private static Map<String, List<String>> replaced(String newValue, String oldValue) {
