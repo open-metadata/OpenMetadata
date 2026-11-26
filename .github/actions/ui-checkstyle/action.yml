@@ -277,6 +277,7 @@ runs:
       shell: bash
 
     - name: Install Core Components Yarn Packages
+      id: core_install
       working-directory: openmetadata-ui-core-components/src/main/resources/ui
       run: |
         for attempt in 1 2 3; do
@@ -594,7 +595,17 @@ runs:
           const eslintSummary  = ${{ toJSON(steps.lint_src.outputs.summary) }} || '';
           const eslintDetails  = ${{ toJSON(steps.lint_src.outputs.details) }} || '';
 
-          if (failures.length === 0 && !eslintFindings) {
+          // Steps that fail the action outright and have no entry above.
+          const brokenSteps = [
+            ['Get changed src files', '${{ steps.changed-src-files.outcome }}'],
+            ['Get all changed UI files', '${{ steps.changed-ui-files.outcome }}'],
+            ['Get changed Playwright files', '${{ steps.changed-playwright-files.outcome }}'],
+            ['Install Core Components Yarn Packages', '${{ steps.core_install.outcome }}'],
+            ['Get changed core-components files', '${{ steps.changed-core-components-files.outcome }}'],
+            ['Get changed bundle inputs', '${{ steps.changed-bundle-inputs.outcome }}'],
+          ].filter(([, outcome]) => outcome === 'failure').map(([name]) => name);
+
+          if (failures.length === 0 && !eslintFindings && brokenSteps.length === 0) {
             return;
           }
 
@@ -606,11 +617,23 @@ runs:
             return lines.join('\n');
           });
 
-          const title = failures.length
+          const title = failures.length || brokenSteps.length
             ? '### ❌ UI Checkstyle Failed'
             : '### ⚠️ UI Checkstyle passed — lint findings in changed files';
 
           const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+          const brokenSection = brokenSteps.length
+            ? [
+                `#### ❌ ${brokenSteps.join(', ')} failed before the checks could run`,
+                '',
+                'This is a setup step, not a check on your code. Re-run the job; if it fails again,',
+                'its log says why.',
+                '',
+                `[View run](${runUrl})`,
+                '',
+              ]
+            : [];
+
           const eslintSection = eslintFindings
             ? [
                 `#### 🔍 ESLint findings in this PR's files — ${eslintSummary}`,
@@ -627,6 +650,7 @@ runs:
             '<!-- check:ui-checkstyle-summary -->',
             title,
             '',
+            ...brokenSection,
             ...sections.flatMap(s => [s, '']),
             ...eslintSection,
             '---',

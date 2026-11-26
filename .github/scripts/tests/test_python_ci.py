@@ -168,7 +168,7 @@ def test_gate_rejects_unexpected_results_and_dependencies(gate):
 
 @pytest.mark.parametrize(
     ("name", "job_id"),
-    [("ci-pr.yml", "ui-tests-status"), ("ci-merge-queue.yml", "ui-tests-status"), ("ui-ci.yml", "status")],
+    [("ci-pr.yml", "ui-tests-status"), ("ci-merge-queue.yml", "ui-tests-status")],
 )
 def test_ui_status_expects_a_result_for_every_dependency(name, job_id):
     job = workflow(name)["jobs"][job_id]

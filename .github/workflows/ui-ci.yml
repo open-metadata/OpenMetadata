@@ -74,25 +74,3 @@ jobs:
       # Downloads the impact map from earlier runs.
       actions: read
     uses: ./.github/workflows/ui-browser-tests.yml
-
-  # Fails the call when a selected job did not succeed or an unselected one ran.
-  status:
-    name: status
-    needs: [lint, unit, browser]
-    if: ${{ always() }}
-    runs-on: ubuntu-slim
-    timeout-minutes: 2
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-          sparse-checkout: .github/actions/ci-status-gate
-      - uses: ./.github/actions/ci-status-gate
-        with:
-          needs: ${{ toJSON(needs) }}
-          expected: |
-            {
-              "lint": "success",
-              "unit": "${{ inputs.unit && 'success' || 'skipped' }}",
-              "browser": "success"
-            }

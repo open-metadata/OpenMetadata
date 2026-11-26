@@ -252,7 +252,14 @@ def test_generation_drift_still_fails_without_auto_push(
     assert "commit" in summary.read_text()
 
 
-def test_ui_failure_summary_does_not_write_to_the_pr():
+@pytest.mark.parametrize(
+    ("failing", "expected"),
+    [
+        ("steps.lint_src.outcome", "ESLint"),
+        ("steps.core_install.outcome", "Install Core Components Yarn Packages failed"),
+    ],
+)
+def test_ui_failure_summary_does_not_write_to_the_pr(failing, expected):
     document = yaml.load(
         (ROOT / ".github/actions/ui-checkstyle/action.yml").read_text(),
         Loader=yaml.BaseLoader,
@@ -265,7 +272,7 @@ def test_ui_failure_summary_does_not_write_to_the_pr():
 
     def render(match):
         expression = match.group(1).strip()
-        if expression == "steps.lint_src.outcome":
+        if expression == failing:
             return "failure"
         return '""' if expression.startswith("toJSON(") else "success"
 
@@ -291,7 +298,7 @@ await (async () => {
     assert result.returncode == 0, result.stderr
     summary = json.loads(result.stdout)
     assert "UI Checkstyle Failed" in summary
-    assert "ESLint" in summary
+    assert expected in summary
 
 
 @pytest.mark.parametrize(

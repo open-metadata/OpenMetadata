@@ -47,11 +47,11 @@ This is the command to trust — it runs the fixing steps (organize-imports, esl
 headers, i18n sync, app-docs) **and** the audit gates (`tw-audit`, `tw-guard`).
 The gates are collected rather than short-circuited, so one failure does not hide the others.
 
-In CI, warnings appear in the sticky GitHub Actions comment on the PR titled
-**UI Checkstyle passed — lint findings in changed files**. The comment groups findings by rule and
-includes file, line, column, and message details for the PR's changed files. The same output is
-available in **Actions → UI Checkstyle → checkstyle → ESLint + Prettier + Organise Imports (src)**.
-Warnings remain non-blocking; ESLint errors and formatting changes still fail `ui-checkstyle`.
+In CI, warnings appear in the job summary of the `ui / lint` job, titled
+**UI Checkstyle passed — lint findings in changed files**. The summary groups findings by rule and
+includes file, line, column, and message details for the PR's changed files. The same output is in
+that job's **ESLint + Prettier + Organise Imports (src)** step.
+Warnings remain non-blocking; ESLint errors and formatting changes still fail `ui-tests-status`.
 
 ## What each gate enforces
 
