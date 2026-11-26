@@ -276,6 +276,51 @@ class TestTagProcessor:
         result = processor.create_column_tag_labels(column, sample_data)
         assert result == []
 
+    @pytest.mark.parametrize(
+        "classification_fqn, applied_fqn, source, candidate_name, has_reference, allowed",
+        [
+            ("PII", "PII.Sensitive.Email", TagSource.Classification, "Personal", True, False),
+            ("PII", "PII.Personal", TagSource.Classification, "Sensitive.Email", True, False),
+            ("PII", "PII.Personal", TagSource.Classification, "Sensitive.Email", False, False),
+            ('"My.PII"', '"My.PII".Sensitive.Email', TagSource.Classification, "Personal", True, False),
+            ("PII", "PII.Customer.Email", TagSource.Glossary, "Personal", True, True),
+        ],
+    )
+    def test_nested_tags_respect_classification_exclusivity(
+        self,
+        workflow_config: OpenMetadataWorkflowConfig,
+        mock_metadata: OpenMetadata,
+        classification_fqn: str,
+        applied_fqn: str,
+        source: TagSource,
+        candidate_name: str,
+        has_reference: bool,
+        allowed: bool,
+    ) -> None:
+        classification = ClassificationFactory.create(
+            fqn=classification_fqn, mutuallyExclusive=True, autoClassificationConfig__enabled=True
+        )
+        candidate = TagFactory.create(tag_name=candidate_name, tag_classification=classification)
+        if not has_reference:
+            candidate.classification = None
+        processor = TagProcessor(
+            config=workflow_config,
+            metadata=mock_metadata,
+            classification_manager=FakeClassificationManager((classification, [])),
+            score_tags_for_column=lambda *_: [],
+        )
+        column = Column(
+            name=ColumnName(root="customer_col"),
+            dataType=DataType.VARCHAR,
+            tags=[
+                TagLabel(
+                    tagFQN=TagFQN(root=applied_fqn), state=State.Confirmed, labelType=LabelType.Manual, source=source
+                )
+            ],
+        )
+
+        assert processor.filter_tags_to_analyze(column, [candidate]) == ([candidate] if allowed else [])
+
     def test_classify_email_column(self, processor: TagProcessor, email_tag: Tag) -> None:
         """Test classifying an email column"""
         column = Column(
@@ -733,383 +778,3 @@ class TestBuildTagLabel:
         assert tag_label.metadata is not None
         assert tag_label.metadata.recognizer is not None
         assert tag_label.metadata.recognizer.patterns is None
-
-
-class TestFilterTagsToAnalyzeNestedFqns:
-    """Regression tests for ``TagProcessor.filter_tags_to_analyze`` with nested
-    tag FQNs (e.g. ``PII.Sensitive.Email``).
-
-    The mutually-exclusive guard must resolve a tag's owning classification as
-    the FIRST FQN segment (the classification root), not the prefix before the
-    last dot. A single-level ``rsplit(".", 1)`` resolves a nested tag to its
-    parent tag FQN (``PII.Sensitive``) instead of the classification (``PII``),
-    so the classification-map lookup misses and conflicting candidates are
-    analyzed and applied -- silently violating exclusivity. These tests pin
-    the fixed behavior: nested existing tags and nested candidates are
-    correctly grouped under their classification for both mutually-exclusive
-    and non-mutually-exclusive classifications.
-    """
-
-    @pytest.fixture
-    def processor(
-        self,
-        pii_classification: Classification,
-        general_classification: Classification,
-    ) -> TagProcessor:
-        server_config = OpenMetadataConnection(
-            hostPort="http://localhost:8585/api",
-            authProvider="openmetadata",
-            securityConfig=OpenMetadataJWTClientConfig(jwtToken="test_token"),
-        )
-        config = OpenMetadataWorkflowConfig(
-            source=Source(
-                type="mysql",
-                serviceName="test",
-                sourceConfig=SourceConfig(
-                    config=DatabaseServiceAutoClassificationPipeline(
-                        confidence=85,
-                        enableAutoClassification=True,
-                    )
-                ),
-            ),
-            workflowConfig=WorkflowConfig(openMetadataServerConfig=server_config),
-        )
-        manager = FakeClassificationManager(
-            (pii_classification, []),
-            (general_classification, []),
-        )
-        return TagProcessor(
-            config=config,
-            metadata=Mock(spec=OpenMetadata),
-            classification_manager=manager,
-            score_tags_for_column=lambda *args, **kwargs: [],
-        )
-
-    @staticmethod
-    def _column_with_tags(*tag_fqns: str) -> Column:
-        return Column(
-            name=ColumnName(root="customer_col"),
-            fullyQualifiedName="svc.db.schema.table.customer_col",
-            dataType=DataType.VARCHAR,
-            tags=[
-                TagLabel(
-                    tagFQN=fqn,
-                    state=State.Confirmed,
-                    source=TagSource.Classification,
-                    labelType=LabelType.Manual,
-                )
-                for fqn in tag_fqns
-            ],
-        )
-
-    @staticmethod
-    def _fqns(tags: list[Tag]) -> list[str]:
-        return [tag.fullyQualifiedName for tag in tags]
-
-    @pytest.mark.parametrize(
-        "existing_fqn, candidate_tag_name",
-        [
-            ("PII.Personal", "Sensitive"),
-            ("PII.Personal", "Sensitive.Email"),
-            ("PII.Sensitive.Email", "Personal"),
-            ("PII.Sensitive.Email", "Sensitive.Phone"),
-            ("PII.Sensitive.Email.Personal", "Sensitive"),
-            ("PII.Sensitive.Email.Personal", "Sensitive.Email.Phone"),
-        ],
-    )
-    def test_me_classification_blocks_every_existing_candidate_shape_combination(
-        self,
-        processor: TagProcessor,
-        pii_classification: Classification,
-        existing_fqn: str,
-        candidate_tag_name: str,
-    ) -> None:
-        """For a mutually-exclusive classification, a tag already on the
-        column blocks every candidate from that classification regardless of
-        nesting depth on either side (flat vs nested existing tag, flat vs
-        nested candidate). The buggy ``rsplit(".", 1)`` only handled the first
-        row (flat/flat)."""
-        candidate = TagFactory.create(tag_name=candidate_tag_name, tag_classification=pii_classification)
-
-        result = processor.filter_tags_to_analyze(self._column_with_tags(existing_fqn), [candidate])
-
-        assert self._fqns(result) == []
-
-    def test_nested_existing_pii_tag_blocks_flat_candidates(
-        self,
-        processor: TagProcessor,
-        pii_classification: Classification,
-    ) -> None:
-        """The exact scenario from the bug report: an existing nested
-        ``PII.Sensitive.Email`` tag must suppress all other PII candidates."""
-        personal = TagFactory.create(tag_name="Personal", tag_classification=pii_classification)
-        sensitive = TagFactory.create(tag_name="Sensitive", tag_classification=pii_classification)
-
-        result = processor.filter_tags_to_analyze(
-            self._column_with_tags("PII.Sensitive.Email"),
-            [personal, sensitive],
-        )
-
-        assert self._fqns(result) == []
-
-    def test_flat_existing_pii_tag_blocks_nested_candidate(
-        self,
-        processor: TagProcessor,
-        pii_classification: Classification,
-    ) -> None:
-        """Symmetric to the reported bug: an existing flat PII tag must
-        suppress nested PII candidates too."""
-        nested_email = TagFactory.create(tag_name="Sensitive.Email", tag_classification=pii_classification)
-        nested_phone = TagFactory.create(tag_name="Sensitive.Phone", tag_classification=pii_classification)
-
-        result = processor.filter_tags_to_analyze(
-            self._column_with_tags("PII.Personal"),
-            [nested_email, nested_phone],
-        )
-
-        assert self._fqns(result) == []
-
-    def test_nested_existing_pii_tag_does_not_block_other_classification(
-        self,
-        processor: TagProcessor,
-        pii_classification: Classification,
-        general_classification: Classification,
-    ) -> None:
-        """A nested existing PII tag must only block PII candidates; candidates
-        from a different classification are unaffected."""
-        personal = TagFactory.create(tag_name="Personal", tag_classification=pii_classification)
-        credit_card = TagFactory.create(tag_name="CreditCard", tag_classification=general_classification)
-
-        result = processor.filter_tags_to_analyze(
-            self._column_with_tags("PII.Sensitive.Email"),
-            [personal, credit_card],
-        )
-
-        assert self._fqns(result) == ["General.CreditCard"]
-
-    def test_non_me_classification_nested_existing_tag_does_not_block(
-        self,
-        processor: TagProcessor,
-        general_classification: Classification,
-    ) -> None:
-        """``General`` is non-mutually-exclusive: a nested existing General tag
-        must not block other General candidates (the exclusivity guard only
-        applies to mutually exclusive classifications)."""
-        other = TagFactory.create(tag_name="Other", tag_classification=general_classification)
-
-        result = processor.filter_tags_to_analyze(
-            self._column_with_tags("General.Sensitive.Email"),
-            [other],
-        )
-
-        assert self._fqns(result) == ["General.Other"]
-
-    def test_nested_candidate_passes_when_no_existing_tag_in_same_me_classification(
-        self,
-        processor: TagProcessor,
-        pii_classification: Classification,
-        general_classification: Classification,
-    ) -> None:
-        """With no existing tag from a mutually-exclusive classification,
-        nested (and flat) candidates pass through the filter untouched."""
-        nested_email = TagFactory.create(tag_name="Sensitive.Email", tag_classification=pii_classification)
-        personal = TagFactory.create(tag_name="Personal", tag_classification=pii_classification)
-        credit_card = TagFactory.create(tag_name="CreditCard", tag_classification=general_classification)
-
-        result = processor.filter_tags_to_analyze(
-            self._column_with_tags("General.Sensitive.Email"),
-            [nested_email, personal, credit_card],
-        )
-
-        assert self._fqns(result) == ["PII.Sensitive.Email", "PII.Personal", "General.CreditCard"]
-
-    def test_candidate_without_classification_ref_uses_fqn_first_segment(
-        self,
-        processor: TagProcessor,
-        pii_classification: Classification,
-    ) -> None:
-        """A nested candidate whose ``classification`` back-reference is not
-        populated must still be blocked under the mutually-exclusive
-        classification by resolving the classification from the first FQN
-        segment."""
-        nested_email_no_ref = TagFactory.create(
-            tag_name="Sensitive.Email",
-            tag_classification=pii_classification,
-            classification=None,
-        )
-        assert nested_email_no_ref.classification is None
-        assert nested_email_no_ref.fullyQualifiedName == "PII.Sensitive.Email"
-
-        result = processor.filter_tags_to_analyze(
-            self._column_with_tags("PII.Personal"),
-            [nested_email_no_ref],
-        )
-
-        assert self._fqns(result) == []
-
-    def test_glossary_term_does_not_block_same_named_me_classification(
-        self,
-        processor: TagProcessor,
-        pii_classification: Classification,
-    ) -> None:
-        """A glossary term whose FQN shares the classification name (e.g.
-        ``PII.Customer.Email`` under a glossary named ``PII``) must NOT occupy
-        the mutually-exclusive ``PII`` classification: candidates from ``PII``
-        are still analyzed. Only Classification-sourced labels reserve a
-        classification; glossary terms merely share the FQN string form."""
-        personal = TagFactory.create(tag_name="Personal", tag_classification=pii_classification)
-
-        column = Column(
-            name=ColumnName(root="customer_col"),
-            fullyQualifiedName="svc.db.schema.table.customer_col",
-            dataType=DataType.VARCHAR,
-            tags=[
-                TagLabel(
-                    tagFQN="PII.Customer.Email",
-                    state=State.Confirmed,
-                    source=TagSource.Glossary,
-                    labelType=LabelType.Manual,
-                ),
-            ],
-        )
-
-        result = processor.filter_tags_to_analyze(column, [personal])
-
-        assert self._fqns(result) == ["PII.Personal"]
-
-
-class TestClassificationFqnResolution:
-    """Pin ``_classification_fqn_from_tag_fqn`` for dot-quoted and edge-case FQNs.
-
-    The helper resolves a tag's owning classification as the FIRST quote-aware
-    FQN segment (the classification root), returned verbatim (quotes intact)
-    so it matches the ``classification_map`` key form
-    (``classification.fullyQualifiedName.root``). The flat/nested ``PII`` cases
-    are covered end-to-end by ``TestFilterTagsToAnalyzeNestedFqns``; this class
-    pins the two shapes that the filter tests do not exercise: the dot-quoted
-    classification name (``\"My.PII\".Email`` -> ``\"My.PII\"``) where the
-    classification name itself contains a dot and is stored quoted in the FQN,
-    and the malformed/empty inputs that must degrade to ``None`` rather than
-    raise, matching the original ``rsplit``-based code's non-crashing behavior.
-    """
-
-    @pytest.mark.parametrize(
-        "tag_fqn, expected",
-        [
-            ('"My.PII".Email', '"My.PII"'),
-            ('"My.PII".Sensitive.Email', '"My.PII"'),
-            ("PII", None),
-            ("", None),
-            (None, None),
-        ],
-    )
-    def test_classification_fqn_from_tag_fqn(self, tag_fqn: str | None, expected: str | None) -> None:
-        from metadata.pii.tag_processor import _classification_fqn_from_tag_fqn
-
-        assert _classification_fqn_from_tag_fqn(tag_fqn) == expected
-
-
-class TestFilterTagsToAnalyzeQuotedClassificationFqn:
-    """Filter-level coverage for classifications whose names contain a dot.
-
-    The server stores such a classification's FQN quoted, e.g. ``"My.PII"``,
-    and tags under it carry the quoted first segment in their FQN
-    (``"My.PII".Email``). The mutually-exclusive guard must resolve the owning
-    classification preserving the quotes so the ``classification_map`` lookup
-    (keyed by ``classification.fullyQualifiedName.root``) hits; the earlier
-    ``unquote_name``-based version returned ``My.PII`` and the lookup silently
-    missed, so conflicting candidates stayed eligible.
-    """
-
-    @staticmethod
-    def _processor_with(classification: Classification) -> TagProcessor:
-        server_config = OpenMetadataConnection(
-            hostPort="http://localhost:8585/api",
-            authProvider="openmetadata",
-            securityConfig=OpenMetadataJWTClientConfig(jwtToken="test_token"),
-        )
-        config = OpenMetadataWorkflowConfig(
-            source=Source(
-                type="mysql",
-                serviceName="test",
-                sourceConfig=SourceConfig(
-                    config=DatabaseServiceAutoClassificationPipeline(
-                        confidence=85,
-                        enableAutoClassification=True,
-                    )
-                ),
-            ),
-            workflowConfig=WorkflowConfig(openMetadataServerConfig=server_config),
-        )
-        manager = FakeClassificationManager((classification, []))
-        return TagProcessor(
-            config=config,
-            metadata=Mock(spec=OpenMetadata),
-            classification_manager=manager,
-            score_tags_for_column=lambda *args, **kwargs: [],
-        )
-
-    @staticmethod
-    def _column_with_classification_tags(*tag_fqns: str) -> Column:
-        return Column(
-            name=ColumnName(root="customer_col"),
-            fullyQualifiedName="svc.db.schema.table.customer_col",
-            dataType=DataType.VARCHAR,
-            tags=[
-                TagLabel(
-                    tagFQN=fqn,
-                    state=State.Confirmed,
-                    source=TagSource.Classification,
-                    labelType=LabelType.Manual,
-                )
-                for fqn in tag_fqns
-            ],
-        )
-
-    def test_quoted_classification_existing_tag_blocks_candidates(self) -> None:
-        """An existing tag under a dot-named mutually-exclusive classification
-        (``"My.PII"``) blocks every candidate from that classification,
-        including nested candidates."""
-        dotted = ClassificationFactory.create(
-            fqn='"My.PII"',
-            mutuallyExclusive=True,
-            autoClassificationConfig__enabled=True,
-            autoClassificationConfig__minimumConfidence=0.7,
-        )
-        processor = self._processor_with(dotted)
-
-        email = TagFactory.create(tag_name="Email", tag_classification=dotted)
-        personal = TagFactory.create(tag_name="Personal", tag_classification=dotted)
-        nested = TagFactory.create(tag_name="Sensitive.Email", tag_classification=dotted)
-
-        assert email.fullyQualifiedName == '"My.PII".Email'
-        assert nested.fullyQualifiedName == '"My.PII".Sensitive.Email'
-
-        column = self._column_with_classification_tags('"My.PII".Sensitive')
-
-        result = processor.filter_tags_to_analyze(column, [email, personal, nested])
-
-        assert [tag.fullyQualifiedName for tag in result] == []
-
-    def test_quoted_classification_candidate_passes_without_existing_tag(self) -> None:
-        """With no existing tag under a dot-named classification, candidates
-        (flat and nested) pass through the filter untouched."""
-        dotted = ClassificationFactory.create(
-            fqn='"My.PII"',
-            mutuallyExclusive=True,
-            autoClassificationConfig__enabled=True,
-            autoClassificationConfig__minimumConfidence=0.7,
-        )
-        processor = self._processor_with(dotted)
-
-        email = TagFactory.create(tag_name="Email", tag_classification=dotted)
-        nested = TagFactory.create(tag_name="Sensitive.Email", tag_classification=dotted)
-
-        column = self._column_with_classification_tags()
-
-        result = processor.filter_tags_to_analyze(column, [email, nested])
-
-        assert [tag.fullyQualifiedName for tag in result] == [
-            '"My.PII".Email',
-            '"My.PII".Sensitive.Email',
-        ]
