@@ -14,7 +14,7 @@ from typing import (  # noqa: UP035
 
 if TYPE_CHECKING:
     from presidio_analyzer import RecognizerResult
-    from presidio_analyzer.nlp_engine import NlpEngine
+    from presidio_analyzer.nlp_engine import NlpArtifacts, NlpEngine
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column, DataType
@@ -174,13 +174,14 @@ class ScoreTagsForColumnService:
         self._language = language
 
     def __call__(self, column: Column, data: Sequence[Any], tags_to_analyze: List[Tag]) -> List[ScoredTag]:  # noqa: UP006
-        # Create analyzers for remaining candidate tags
+        nlp_artifacts_memo: dict[tuple[str, str], NlpArtifacts] = {}
         tag_analyzers = (
             TagAnalyzer(
                 tag=tag,
                 column=column,
                 nlp_engine=self._nlp_engine,
                 language=self._language,
+                nlp_artifacts_memo=nlp_artifacts_memo,
             )
             for tag in tags_to_analyze
         )
