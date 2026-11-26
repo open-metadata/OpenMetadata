@@ -37,7 +37,6 @@ docker-smoke:
   - '.github/workflows/ci-pr.yml'
   - '.github/workflows/ci-merge-queue.yml'
   - '.github/actions/java-docker-smoke/**'
-  - '.github/actions/cache-ui-dist/**'
   - 'docker/openmetadata-start.sh'
   - 'docker/development/Dockerfile'
   - 'docker/docker-compose-quickstart/Dockerfile'

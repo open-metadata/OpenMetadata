@@ -13,22 +13,12 @@ runs:
         java-version: "21"
         distribution: "temurin"
 
-    - name: Install antlr cli
-      shell: bash
-      run: sudo make install_antlr_cli
-
-    # Sets SKIP_UI_BUILD=true on a hit, which the skip-ui-build profile in
-    # openmetadata-ui/pom.xml reads. The smoke test never loads a page, so a
-    # stale UI bundle costs it nothing and a cold yarn build costs it minutes.
-    - name: Restore openmetadata-ui dist cache
-      uses: ./.github/actions/cache-ui-dist
-
-    - name: Build the distribution tarball
+    - name: Build the backend distribution tarball
       env:
         GITHUB_TOKEN: ${{ github.token }}
       shell: bash
       run: |
-        mvn -B -T 1C -DskipTests package -pl openmetadata-dist -am
+        mvn -B -T 1C -Dmaven.test.skip=true -DonlyBackend package -pl openmetadata-dist -am
 
     - name: Save Maven dependencies
       if: github.event_name == 'push' && steps.maven-cache.outputs.cache-hit != 'true'
