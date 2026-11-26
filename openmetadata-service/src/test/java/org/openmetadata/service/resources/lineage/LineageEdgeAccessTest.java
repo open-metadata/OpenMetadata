@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -102,6 +103,8 @@ class LineageEdgeAccessTest {
     assertEquals(Entity.TABLE, edge.from().getType());
     assertEquals(to.getId(), edge.to().getId());
     verify(tables, never()).getReferenceByName(anyString(), any());
+    verify(tables, never())
+        .getByName(any(), anyString(), any(), any(RelationIncludes.class), eq(true));
   }
 
   @Test
@@ -151,7 +154,7 @@ class LineageEdgeAccessTest {
     assertNull(contexts.get(0).getResolvedEntity());
     assertEquals(Entity.TABLE, contexts.get(0).getResource());
     verify(tables, never())
-        .getByName(any(), anyString(), any(), any(RelationIncludes.class), eq(true));
+        .getByName(any(), anyString(), any(), any(RelationIncludes.class), anyBoolean());
   }
 
   @Test
@@ -159,7 +162,7 @@ class LineageEdgeAccessTest {
     storedTable(FROM_FQN, false);
     doThrow(new EntityNotFoundException("table instance for " + TO_FQN + " not found"))
         .when(tables)
-        .getByName(isNull(), eq(TO_FQN), any(), any(RelationIncludes.class), eq(true));
+        .getByName(isNull(), eq(TO_FQN), any(), any(RelationIncludes.class), eq(false));
     doThrow(new AuthorizationException("denied")).when(authorizer).authorize(any(), any(), any());
     LineageEdgeAccess access = access(false);
 
@@ -212,6 +215,7 @@ class LineageEdgeAccessTest {
     return new LineageEnd(Entity.TABLE, fqn, Include.NON_DELETED);
   }
 
+  /** Stubs the one read made for a caller that is not an admin: from the database, not the cache. */
   private Table storedTable(String fqn, boolean deleted) {
     Table table =
         new Table()
@@ -226,7 +230,7 @@ class LineageEdgeAccessTest {
             eq(fqn),
             any(),
             argThat(LineageEdgeAccessTest::loadsDeletedRelations),
-            eq(true));
+            eq(false));
     return table;
   }
 

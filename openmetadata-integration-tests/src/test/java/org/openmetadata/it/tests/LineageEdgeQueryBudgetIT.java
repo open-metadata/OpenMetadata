@@ -47,6 +47,7 @@ class LineageEdgeQueryBudgetIT {
   private static final String STORED_EDGE_READ =
       "from entity_relationship where fromid = :fromid and toid = :toid and relation = :relation";
   private static final String TABLE_REFERENCE_BY_NAME = "from table_entity where fqnhash in (";
+  private static final String TABLE_ROW_BY_NAME = "from table_entity where fqnhash = :name";
   private static final String TAGS_BY_PREFIX =
       "where tu.targetfqnhash_lower like lower(:targetfqnhash)";
   private static final RequestOptions JSON_PATCH =
@@ -55,17 +56,20 @@ class LineageEdgeQueryBudgetIT {
       "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"budget\"}]";
 
   /**
-   * An admin is never evaluated against an end, so a named end is resolved as a reference, one
-   * query. Every other caller loads the end for its policies, and that copy also answers the name.
+   * Each named end is resolved by one query. An admin is never evaluated against an end, so the end
+   * is resolved as a reference. Every other caller loads the end's row by name for its policies,
+   * from the database rather than the entity cache, and that copy also answers the name.
    */
   enum Caller {
-    INGESTION_BOT(0),
-    ADMIN(1);
+    INGESTION_BOT(0, 1),
+    ADMIN(1, 0);
 
     private final int referenceQueriesPerNamedEnd;
+    private final int rowReadsPerNamedEnd;
 
-    Caller(int referenceQueriesPerNamedEnd) {
+    Caller(int referenceQueriesPerNamedEnd, int rowReadsPerNamedEnd) {
       this.referenceQueriesPerNamedEnd = referenceQueriesPerNamedEnd;
+      this.rowReadsPerNamedEnd = rowReadsPerNamedEnd;
     }
 
     OpenMetadataClient client() {
@@ -79,6 +83,8 @@ class LineageEdgeQueryBudgetIT {
       int storedEdgeReads,
       int fromReferences,
       int toReferences,
+      int fromRowReads,
+      int toRowReads,
       int columnTagReads,
       int statements) {}
 
@@ -196,7 +202,8 @@ class LineageEdgeQueryBudgetIT {
             edge,
             client -> send(client, HttpMethod.DELETE, path, null));
 
-    assertEquals(caller.referenceQueriesPerNamedEnd, budget.toReferences());
+    assertEquals(caller.referenceQueriesPerNamedEnd, budget.toReferences(), budget.toString());
+    assertEquals(caller.rowReadsPerNamedEnd, budget.toRowReads(), budget.toString());
   }
 
   /**
@@ -236,6 +243,8 @@ class LineageEdgeQueryBudgetIT {
   private static void assertNamedEndsResolvedOnce(Caller caller, Budget budget) {
     assertEquals(caller.referenceQueriesPerNamedEnd, budget.fromReferences(), budget.toString());
     assertEquals(caller.referenceQueriesPerNamedEnd, budget.toReferences(), budget.toString());
+    assertEquals(caller.rowReadsPerNamedEnd, budget.fromRowReads(), budget.toString());
+    assertEquals(caller.rowReadsPerNamedEnd, budget.toRowReads(), budget.toString());
   }
 
   private static void assertEdgeBody(String response) {
@@ -264,6 +273,10 @@ class LineageEdgeQueryBudgetIT {
                 Entity.getJdbi(), TABLE_REFERENCE_BY_NAME, bound(fromHash));
         SqlQueryCounter toReferences =
             SqlQueryCounter.forRequests(Entity.getJdbi(), TABLE_REFERENCE_BY_NAME, bound(toHash));
+        SqlQueryCounter fromRows =
+            SqlQueryCounter.forRequests(Entity.getJdbi(), TABLE_ROW_BY_NAME, bound(fromHash));
+        SqlQueryCounter toRows =
+            SqlQueryCounter.forRequests(Entity.getJdbi(), TABLE_ROW_BY_NAME, bound(toHash));
         SqlQueryCounter columnTags =
             SqlQueryCounter.forRequests(
                 Entity.getJdbi(), TAGS_BY_PREFIX, bound(fromHash).or(bound(toHash)))) {
@@ -273,6 +286,8 @@ class LineageEdgeQueryBudgetIT {
               edgeReads.count(),
               fromReferences.count(),
               toReferences.count(),
+              fromRows.count(),
+              toRows.count(),
               columnTags.count(),
               statements.count());
     }

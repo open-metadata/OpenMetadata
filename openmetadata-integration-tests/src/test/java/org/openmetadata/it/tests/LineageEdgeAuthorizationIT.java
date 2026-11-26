@@ -7,6 +7,7 @@ import static org.openmetadata.it.util.UriTestUtils.encodeURIComponent;
 
 import java.time.Duration;
 import java.util.List;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,10 +20,12 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
@@ -39,6 +42,8 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -181,6 +186,46 @@ public class LineageEdgeAuthorizationIT {
         null,
         null);
     assertStatus(cannotEdit, 404, HttpMethod.DELETE, sourceDeletionPath(missing), null, null);
+  }
+
+  /**
+   * A rename on another server reaches this one only through the database, and nothing evicts this
+   * server's entry for the old name. So the rename is written straight to the row here, and the old
+   * name's entry is put back before each request. A route that names an end must still answer from
+   * the database: the old name is gone for every caller, and the new name finds the edge.
+   */
+  @Test
+  void byName_renamedOnAnotherServer_oldNameIsNotFoundForEveryCaller(TestNamespace ns) {
+    Metric metric =
+        SdkClients.adminClient()
+            .metrics()
+            .create(new CreateMetric().withName(ns.prefix("before_rename")));
+    Table table =
+        createTable(ns, DatabaseSchemaTestFactory.createSimple(ns), "metric_to", List.of());
+    addEdge(metric.getEntityReference(), table.getEntityReference());
+    End tableEnd = new End(Entity.TABLE, table.getFullyQualifiedName());
+    End oldName = new End(Entity.METRIC, metric.getFullyQualifiedName());
+    End newName = new End(Entity.METRIC, ns.prefix("after_rename"));
+    String staleRow = renameInDatabaseOnly(metric, newName.fullyQualifiedName());
+    String oldNamePath = byNamePath(oldName, tableEnd);
+
+    for (OpenMetadataClient caller :
+        List.of(SdkClients.ingestionBotClient(), SdkClients.adminClient())) {
+      cacheName(oldName, staleRow);
+      assertStatus(
+          caller, 404, HttpMethod.GET, LINEAGE_PATH + "/getLineageEdge" + oldNamePath, null, null);
+      cacheName(oldName, staleRow);
+      assertStatus(caller, 404, HttpMethod.PUT, LINEAGE_PATH + oldNamePath, rewrite(), null);
+      cacheName(oldName, staleRow);
+      assertStatus(caller, 404, HttpMethod.DELETE, LINEAGE_PATH + oldNamePath, null, null);
+    }
+    assertEdgeBody(
+        send(
+            SdkClients.ingestionBotClient(),
+            HttpMethod.GET,
+            LINEAGE_PATH + "/getLineageEdge" + byNamePath(newName, tableEnd),
+            null,
+            null));
   }
 
   @Test
@@ -338,6 +383,21 @@ public class LineageEdgeAuthorizationIT {
         .withName(ns.prefix(baseName))
         .withDatabaseSchema(schema.getFullyQualifiedName())
         .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)));
+  }
+
+  /** Renames the metric's row as another server would, returning the row as it was before. */
+  private static String renameInDatabaseOnly(Metric metric, String newName) {
+    EntityDAO<Metric> metrics = Entity.getCollectionDAO().metricDAO();
+    Metric row = metrics.findEntityById(metric.getId());
+    String staleRow = JsonUtils.pojoToJson(row);
+    metrics.update(row.withName(newName).withFullyQualifiedName(newName));
+    return staleRow;
+  }
+
+  /** The entry this server's name cache keeps for {@code end} until something evicts it. */
+  private static void cacheName(End end, String row) {
+    EntityRepository.CACHE_WITH_NAME.put(
+        new ImmutablePair<>(end.type(), end.fullyQualifiedName()), row);
   }
 
   private static LineageDetails rewrite() {

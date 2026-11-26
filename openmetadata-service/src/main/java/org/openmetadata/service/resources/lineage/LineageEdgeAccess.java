@@ -36,10 +36,12 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
  * Resolves the ends a lineage route names and authorizes them, reading each end once.
  *
  * <p>A caller that is not an admin is evaluated against the end's policy attributes, so the end is
- * loaded with exactly the projection, relation include and cache the lazy authorization context
- * would use, and that copy also answers the name. An admin is never evaluated against an end, so
- * for an admin a reference is the cheaper read. Both branches still call the authorizer, so a wrong
- * admin answer can only cost a read, never skip a check.
+ * loaded with the projection and relation include the lazy authorization context would use, and
+ * that one copy both answers the name and is what the policies see. It is read from the database,
+ * never from the entity cache: a rename on another server does not evict this server's entry for
+ * the old name, so a cached copy could still answer it. An admin is never evaluated against an end,
+ * so for an admin a reference, also read from the database, is the cheaper read. Both branches
+ * still call the authorizer, so a wrong admin answer can only cost a read, never skip a check.
  */
 final class LineageEdgeAccess {
 
@@ -116,7 +118,7 @@ final class LineageEdgeAccess {
             end.fullyQualifiedName(),
             ResourceContext.authorizationFields(repository),
             RelationIncludes.fromInclude(Include.ALL),
-            true);
+            false);
     requireIncluded(end, entity);
     return new ResolvedEnd(
         entity.getEntityReference().withType(end.entityType()),

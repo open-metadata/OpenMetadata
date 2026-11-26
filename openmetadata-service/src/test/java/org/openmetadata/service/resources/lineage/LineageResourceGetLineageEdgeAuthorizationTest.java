@@ -126,10 +126,10 @@ class LineageResourceGetLineageEdgeAuthorizationTest {
     doReturn(new Fields(Set.of())).when(repository).getFields(anyString());
     doReturn(storedTable(fromRef))
         .when(repository)
-        .getByName(isNull(), eq(fromFqn), any(), any(RelationIncludes.class), eq(true));
+        .getByName(isNull(), eq(fromFqn), any(), any(RelationIncludes.class), eq(false));
     doReturn(storedTable(toRef))
         .when(repository)
-        .getByName(isNull(), eq(toFqn), any(), any(RelationIncludes.class), eq(true));
+        .getByName(isNull(), eq(toFqn), any(), any(RelationIncludes.class), eq(false));
     doReturn(fromRef).when(repository).getReferenceByName(fromFqn, Include.NON_DELETED);
     doReturn(toRef).when(repository).getReferenceByName(toFqn, Include.NON_DELETED);
     return repository;
