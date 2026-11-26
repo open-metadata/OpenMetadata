@@ -48,7 +48,7 @@ const table1 = new TableClass();
 
 test.describe('Table pagination sorting search scenarios ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await table1.create(apiContext);
@@ -818,9 +818,9 @@ test.describe('Large Table Column Search & Copy Link', () => {
     await page.getByTestId('close-button').click();
     await expect(sidePanel).not.toBeVisible();
 
-    // Verify URL reverts to base table URL
+    // The column part leaves the URL; the page the link jumped to stays.
     await expect(page).toHaveURL(
-      new RegExp(`/table/${createdTable.fullyQualifiedName}$`)
+      new RegExp(`/table/${createdTable.fullyQualifiedName}(\\?|$)`)
     );
   });
 
@@ -889,6 +889,50 @@ test.describe('Large Table Column Search & Copy Link', () => {
     await expect(page).toHaveURL(/currentPage=2/);
     await expect(pageIndicator).toContainText('Page 2 of');
     await expect(pageTwoRow).toBeVisible();
+  });
+
+  test('Opening a column link lands on the page holding the column and highlights it', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const tableFqn = String(createdTable.fullyQualifiedName);
+    const columnFqn = `${tableFqn}.${targetColumnName}`;
+    const columnsPath = `/api/v1/tables/name/${tableFqn}/columns`;
+    const requestedOffsets: string[] = [];
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.endsWith(columnsPath)) {
+        requestedOffsets.push(url.searchParams.get('offset') ?? '');
+      }
+    });
+
+    // 51 columns at 15 per page: the target sorts last (by name or position), so page 4.
+    const targetPageResponse = waitForResponseWithStatus(
+      page,
+      (response) => {
+        const url = new URL(response.url());
+
+        return (
+          url.pathname.endsWith(columnsPath) &&
+          url.searchParams.get('offset') === '45'
+        );
+      },
+      200
+    );
+    await page.goto(`/table/${columnFqn}`, { waitUntil: 'domcontentloaded' });
+    await targetPageResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    const targetRow = page.locator(`[data-row-key="${columnFqn}"]`);
+    await expect(targetRow).toHaveClass(/highlighted-row/);
+    await expect(targetRow).toBeInViewport();
+    await expect(page.getByTestId('page-indicator')).toContainText('Page 4 of');
+    await expect(page).toHaveURL(/currentPage=4/);
+    await expect(page.locator('.column-detail-panel')).toContainText(
+      targetColumnName
+    );
+    expect(requestedOffsets).not.toContain('0');
   });
 });
 

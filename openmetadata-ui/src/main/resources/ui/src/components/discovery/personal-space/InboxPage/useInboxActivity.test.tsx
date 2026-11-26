@@ -20,9 +20,16 @@ const mockGetActivityEvents = jest.fn();
 const mockGetMyActivityFeed = jest.fn();
 const mockGetFollowingActivityFeed = jest.fn();
 const mockGetMentionsActivityFeed = jest.fn();
-const mockGetUserActivity = jest.fn();
 const mockListConversations = jest.fn();
-let mockCurrentUser: { id?: string } | undefined;
+const mockGetActivityByEntityLink = jest.fn();
+const mockGetUserActivity = jest.fn();
+const mockGetUserByName = jest.fn();
+const mockListTasks = jest.fn().mockResolvedValue({ data: [] });
+
+jest.mock('rest/tasksAPI', () => ({
+  listTasks: (...args: unknown[]) => mockListTasks(...args),
+}));
+let mockCurrentUser: { id?: string; name?: string } | undefined;
 
 jest.mock('rest/activityAPI', () => ({
   getActivityEvents: (...args: unknown[]) => mockGetActivityEvents(...args),
@@ -31,7 +38,13 @@ jest.mock('rest/activityAPI', () => ({
     mockGetFollowingActivityFeed(...args),
   getMentionsActivityFeed: (...args: unknown[]) =>
     mockGetMentionsActivityFeed(...args),
+  getActivityByEntityLink: (...args: unknown[]) =>
+    mockGetActivityByEntityLink(...args),
   getUserActivity: (...args: unknown[]) => mockGetUserActivity(...args),
+}));
+
+jest.mock('rest/userAPI', () => ({
+  getUserByName: (...args: unknown[]) => mockGetUserByName(...args),
 }));
 
 jest.mock('rest/conversationsAPI', () => ({
@@ -42,6 +55,8 @@ jest.mock('hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: mockCurrentUser }),
 }));
 
+import { getTaskCommentMentions } from '../../../../utils/tasks/TaskMentions.utils';
+import { INBOX_SCOPE } from './activityScope';
 import { ActivityFilter, getDefaultInboxDateRange } from './inbox.utils';
 import {
   fetchInboxActivity,
@@ -74,18 +89,98 @@ const createWrapper = () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockListTasks.mockReset().mockResolvedValue({ data: [] });
   mockCurrentUser = { id: 'u1' };
   [
     mockGetActivityEvents,
     mockGetMyActivityFeed,
     mockGetFollowingActivityFeed,
     mockGetMentionsActivityFeed,
+    mockGetActivityByEntityLink,
     mockGetUserActivity,
   ].forEach((mock) => mock.mockResolvedValue(threeEvents));
+  mockGetUserByName.mockResolvedValue({ id: 'user-1' });
   mockListConversations.mockResolvedValue(twoThreads);
 });
 
 describe('fetchInboxActivity', () => {
+  it('keeps the time covered by cached task mentions when switching feeds', async () => {
+    const client = new QueryClient();
+    const clock = jest.spyOn(Date, 'now').mockReturnValue(1000);
+    mockListTasks.mockResolvedValue({ data: [] });
+    try {
+      const first = await fetchInboxActivity(
+        ActivityFilter.Mentions,
+        'u1',
+        100,
+        undefined,
+        INBOX_SCOPE,
+        'alice',
+        client
+      );
+      clock.mockReturnValue(2000);
+      const cached = await fetchInboxActivity(
+        ActivityFilter.All,
+        'u1',
+        100,
+        undefined,
+        INBOX_SCOPE,
+        'alice',
+        client
+      );
+
+      expect(first.taskMentionsReadAt).toBe(1000);
+      expect(cached.taskMentionsReadAt).toBe(1000);
+      expect(mockListTasks).toHaveBeenCalledTimes(1);
+    } finally {
+      clock.mockRestore();
+      client.clear();
+    }
+  });
+
+  it('caps task mentions and cuts the merged feed to their complete span', async () => {
+    mockGetActivityEvents.mockResolvedValue({
+      data: [
+        { id: 'old', timestamp: 100 },
+        { id: 'recent', timestamp: 300 },
+      ],
+    });
+    mockListConversations.mockResolvedValue({ data: [] });
+    mockListTasks
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'task',
+            updatedAt: 400,
+            comments: Array.from({ length: 110 }, (_, index) => ({
+              id: String(index),
+              createdAt: 200 + index,
+              message: '<#E::user::alice>',
+            })),
+          },
+          { id: 'older', updatedAt: 50 },
+        ],
+        paging: { after: 'history' },
+      })
+      .mockResolvedValue({ data: [] });
+    const result = await fetchInboxActivity(
+      ActivityFilter.All,
+      'u1',
+      0,
+      undefined,
+      INBOX_SCOPE,
+      'alice'
+    );
+
+    expect(result.taskMentions).toHaveLength(100);
+    expect(result.isCapped).toBe(true);
+    expect(result.cutAt).toBe(210);
+    expect(result.activities.map(({ id }) => id)).toEqual(['recent']);
+    expect(mockListTasks).toHaveBeenCalledTimes(1);
+
+    mockListTasks.mockResolvedValue({ data: [] });
+  });
+
   // "All" is everything the viewer may see: every event, every conversation.
   it('fetches every activity event and conversation for All', async () => {
     const { activities, threads } = await fetchInboxActivity(
@@ -157,6 +252,131 @@ describe('fetchInboxActivity', () => {
         userId: 'u1',
       })
     );
+  });
+
+  it.each([ActivityFilter.All, ActivityFilter.Mentions])(
+    'includes a recent task mention from an older task in %s',
+    async (filter) => {
+      const matchingComment = {
+        id: 'comment-1',
+        author: { id: 'author', type: 'user', name: 'resolver' },
+        createdAt: 200,
+        message: 'Please check <#E::user::"john.doe"|[@John](/users/john.doe)>',
+      };
+      mockListTasks
+        .mockResolvedValueOnce({
+          data: [{ id: 'newer-task', comments: [] }],
+          paging: { after: 'older-tasks' },
+        })
+        .mockResolvedValueOnce({
+          data: [
+            {
+              id: 'closed-incident',
+              status: 'Completed',
+              createdAt: 10,
+              comments: [
+                matchingComment,
+                { ...matchingComment, id: 'older', createdAt: 50 },
+                {
+                  ...matchingComment,
+                  id: 'other',
+                  message: '<#E::user::jane>',
+                },
+              ],
+            },
+          ],
+        });
+
+      const result = await fetchInboxActivity(
+        filter,
+        'u1',
+        100,
+        300,
+        INBOX_SCOPE,
+        'john.doe'
+      );
+
+      expect(mockListTasks).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          after: 'older-tasks',
+          mentionedUser: 'john.doe',
+          fields: 'about,comments',
+          updatedSince: 100,
+          sortBy: 'updatedAt',
+        })
+      );
+      expect(result.taskMentions).toEqual([
+        expect.objectContaining({
+          task: expect.objectContaining({ id: 'closed-incident' }),
+          comment: matchingComment,
+        }),
+      ]);
+    }
+  );
+
+  it.each([undefined, 1, 100])(
+    'finds mentions after permission-filtered empty pages with maxResults %s',
+    async (maxResults) => {
+      const comment = {
+        id: 'visible-mention',
+        createdAt: 200,
+        message: '<#E::user::alice>',
+      };
+      mockListTasks
+        .mockResolvedValueOnce({ data: [], paging: { after: 'second-page' } })
+        .mockResolvedValueOnce({ data: [], paging: { after: 'third-page' } })
+        .mockResolvedValueOnce({
+          data: [{ id: 'visible-task', updatedAt: 200, comments: [comment] }],
+          paging: { after: 'last-page' },
+        })
+        .mockResolvedValueOnce({ data: [] });
+
+      const mentions = await getTaskCommentMentions('alice', { maxResults });
+
+      expect(mentions).toEqual([
+        {
+          task: expect.objectContaining({ id: 'visible-task' }),
+          comment,
+        },
+      ]);
+      expect(mockListTasks).toHaveBeenCalledTimes(4);
+      expect(mockListTasks).toHaveBeenLastCalledWith(
+        expect.objectContaining({ after: 'last-page' })
+      );
+    }
+  );
+
+  it('stops reading task pages once they cannot contain newer mentions', async () => {
+    const mention = '<#E::user::alice>';
+    mockListTasks
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'updated-task',
+            updatedAt: 400,
+            comments: [{ id: 'old', createdAt: 150, message: mention }],
+          },
+        ],
+        paging: { after: 'second-page' },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'recent-mention',
+            updatedAt: 350,
+            comments: [{ id: 'recent', createdAt: 350, message: mention }],
+          },
+          { id: 'older-task', updatedAt: 300 },
+        ],
+        paging: { after: 'irrelevant-history' },
+      })
+      .mockResolvedValueOnce({ data: [] });
+
+    const mentions = await getTaskCommentMentions('alice', { maxResults: 1 });
+
+    expect(mentions.map(({ comment }) => comment.id)).toEqual(['recent']);
+    expect(mockListTasks).toHaveBeenCalledTimes(2);
   });
 
   // Regression: these were fetched with Promise.all, so a rejected conversation
@@ -370,10 +590,14 @@ describe('fetchInboxActivity', () => {
   });
 });
 
+// The viewer u1 reads another user's (u2) Inbox, as their member page shows it.
 describe('fetchInboxActivity for another user', () => {
   // Their "All" is what they did, not everything the viewer can see.
   it("fetches the user's own activity and conversations for All", async () => {
-    await fetchInboxActivity(ActivityFilter.All, 'u2', 100, 200, true);
+    await fetchInboxActivity(ActivityFilter.All, 'u1', 100, 200, {
+      type: 'inbox',
+      userId: 'u2',
+    });
 
     // A window that started long ago asks for the endpoint's 90-day max.
     expect(mockGetUserActivity).toHaveBeenCalledWith('u2', {
@@ -402,10 +626,10 @@ describe('fetchInboxActivity for another user', () => {
 
     const result = await fetchInboxActivity(
       ActivityFilter.All,
-      'u2',
+      'u1',
       startTs,
       endTs,
-      true
+      { type: 'inbox', userId: 'u2' }
     );
 
     const [, { days }] = mockGetUserActivity.mock.calls[0];
@@ -421,7 +645,10 @@ describe('fetchInboxActivity for another user', () => {
     [ActivityFilter.Following, mockGetFollowingActivityFeed],
     [ActivityFilter.Mentions, mockGetMentionsActivityFeed],
   ])('asks the %s feed for the user', async (filter, activityRequest) => {
-    await fetchInboxActivity(filter, 'u2', undefined, undefined, true);
+    await fetchInboxActivity(filter, 'u1', undefined, undefined, {
+      type: 'inbox',
+      userId: 'u2',
+    });
 
     expect(activityRequest).toHaveBeenCalledWith({
       days: 30,
@@ -630,10 +857,130 @@ describe('useInboxActivityCounts', () => {
   });
 });
 
+describe('fetchInboxActivity per scope', () => {
+  const TABLE_LINK = '<#E::table::svc.db.schema.orders>';
+  const entity = { type: 'entity' as const, entityLink: TABLE_LINK };
+
+  it('reads everything about an entity and the conversations on it and its fields', async () => {
+    await fetchInboxActivity(ActivityFilter.All, 'u1', 100, 200, entity);
+
+    // `/about` takes a look-back from now: back to the window's start (held
+    // to the endpoint's 90-day cap for this 1970 window).
+    expect(mockGetActivityByEntityLink).toHaveBeenCalledWith(TABLE_LINK, {
+      days: 90,
+      limit: 200,
+    });
+    expect(mockListConversations).toHaveBeenCalledWith({
+      entityLink: TABLE_LINK,
+      includeFields: true,
+      filterType: undefined,
+      userId: undefined,
+      limit: 100,
+      startTs: 100,
+      endTs: 200,
+    });
+    expect(mockGetActivityEvents).not.toHaveBeenCalled();
+  });
+
+  // Mentions on an entity: only what names the viewer there.
+  it("reads an entity's mentions of the viewer", async () => {
+    await fetchInboxActivity(ActivityFilter.Mentions, 'u1', 100, 200, entity);
+
+    // The window's absolute start, as the Inbox's own feeds pass it.
+    expect(mockGetMentionsActivityFeed).toHaveBeenCalledWith({
+      days: 1,
+      startTs: 100,
+      limit: 200,
+      entityLink: TABLE_LINK,
+    });
+    expect(mockListConversations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityLink: TABLE_LINK,
+        includeFields: true,
+        filterType: ConversationFilterType.Mentions,
+        userId: 'u1',
+      })
+    );
+  });
+
+  // The activity API reads a user by id; conversations have no "started by".
+  it('reads what a user did, looked up by name', async () => {
+    const { activities, threads } = await fetchInboxActivity(
+      ActivityFilter.All,
+      'u1',
+      100,
+      200,
+      { type: 'user', userName: 'harsh.vador' }
+    );
+
+    expect(mockGetUserByName).toHaveBeenCalledWith('harsh.vador');
+    expect(mockGetUserActivity).toHaveBeenCalledWith('user-1', {
+      days: 90,
+      limit: 200,
+    });
+    expect(mockListConversations).not.toHaveBeenCalled();
+    expect(activities).toHaveLength(3);
+    expect(threads).toHaveLength(0);
+  });
+
+  it('counts only the feeds an entity offers', async () => {
+    const { result } = renderHook(
+      () => useInboxActivityCounts({ startTs: 100, endTs: 200 }, entity),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() =>
+      expect(Object.keys(result.current).sort()).toEqual([
+        ActivityFilter.All,
+        ActivityFilter.Mentions,
+      ])
+    );
+
+    expect(mockGetMyActivityFeed).not.toHaveBeenCalled();
+    expect(mockGetFollowingActivityFeed).not.toHaveBeenCalled();
+  });
+});
+
+describe('task comment mentions', () => {
+  const entity = {
+    type: 'entity' as const,
+    entityLink: '<#E::table::svc.db.schema.orders>',
+  };
+
+  it.each([
+    ['the viewer', INBOX_SCOPE, 1],
+    [
+      'the viewer, as their own member page',
+      { type: 'inbox', userId: 'u1' },
+      1,
+    ],
+    ['another user', { type: 'inbox', userId: 'u2' }, 0],
+    ['an entity', entity, 0],
+  ] as const)(
+    "reads them into %s's All feed only when it is the viewer's own",
+    async (_, scope, taskReads) => {
+      mockCurrentUser = { id: 'u1', name: 'alice' };
+      const { result } = renderHook(
+        () => useInboxActivity(ActivityFilter.All, undefined, scope),
+        { wrapper: createWrapper() }
+      );
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(mockListTasks).toHaveBeenCalledTimes(taskReads);
+      expect(result.current.taskMentionsLoaded).toBe(taskReads > 0);
+    }
+  );
+});
+
 describe('scoping to another user', () => {
   it("scopes the hook's requests to the given user", async () => {
     const { result } = renderHook(
-      () => useInboxActivity(ActivityFilter.MyAssets, undefined, 'u2'),
+      () =>
+        useInboxActivity(ActivityFilter.MyAssets, undefined, {
+          type: 'inbox',
+          userId: 'u2',
+        }),
       { wrapper: createWrapper() }
     );
 
@@ -647,7 +994,11 @@ describe('scoping to another user', () => {
   // The viewer's own profile is their inbox, not a scoped view of it.
   it('keeps the inbox requests when the user is the viewer', async () => {
     const { result } = renderHook(
-      () => useInboxActivity(ActivityFilter.MyAssets, undefined, 'u1'),
+      () =>
+        useInboxActivity(ActivityFilter.MyAssets, undefined, {
+          type: 'inbox',
+          userId: 'u1',
+        }),
       { wrapper: createWrapper() }
     );
 

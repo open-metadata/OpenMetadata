@@ -24,6 +24,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import org.apache.jena.rdf.model.Model;
 import org.awaitility.Awaitility;
@@ -43,17 +44,25 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.api.rdf.RdfStatus;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.type.EntityRelationship;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.rdf.RdfLiveWrite;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
+import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.testcontainers.containers.GenericContainer;
@@ -203,6 +212,215 @@ public class RdfLiveProjectionIT {
     }
   }
 
+  /**
+   * Entity graphs are read back over RDF Thrift. Jena 6.3.0 caps a Thrift message at 100 KB, which
+   * left such a value unreadable and blocked the live write queue behind it.
+   */
+  @Test
+  void valueOverOneHundredKilobytesProjectsAndReadsBack(final TestNamespace namespace)
+      throws Exception {
+    RdfUpdater.initialize(servingConfig);
+    final var service = DatabaseServiceTestFactory.createPostgres(namespace);
+    final var schema = DatabaseSchemaTestFactory.createSimple(namespace, service);
+    final String description = "x".repeat(150_000);
+    final var table =
+        TableTestFactory.createWithDescription(
+            namespace, schema.getFullyQualifiedName(), description);
+    try (var storage = new JenaFusekiStorage(servingConfig)) {
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .untilAsserted(() -> assertHasLiteral(storage, table.getId(), description));
+    }
+    assertEquals(RdfProjectionState.READY, status());
+  }
+
+  @Test
+  void replayedRelationshipAndGlossaryRelationAdditionsDoNotResurrectDeletedEdges(
+      final TestNamespace namespace) throws Exception {
+    RdfUpdater.initialize(servingConfig);
+    final var service = DatabaseServiceTestFactory.createPostgres(namespace);
+    final var schema = DatabaseSchemaTestFactory.createSimple(namespace, service);
+    final var table = TableTestFactory.createSimple(namespace, schema.getFullyQualifiedName());
+    final var glossary = GlossaryTestFactory.createWithName(namespace, "replayReconcile");
+    final var firstTerm = GlossaryTermTestFactory.createWithName(namespace, glossary, "firstTerm");
+    final var secondTerm =
+        GlossaryTermTestFactory.createWithName(namespace, glossary, "secondTerm");
+    // Exercise canonical UUID-swapped storage (authored from the larger UUID -> smaller UUID).
+    final GlossaryTerm sourceTerm =
+        firstTerm.getId().compareTo(secondTerm.getId()) > 0 ? firstTerm : secondTerm;
+    final GlossaryTerm targetTerm =
+        sourceTerm.getId().equals(firstTerm.getId()) ? secondTerm : firstTerm;
+
+    final GlossaryTermRepository termRepository =
+        (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+    termRepository.addTermRelation(
+        sourceTerm.getId(),
+        new TermRelation().withTerm(targetTerm.getEntityReference()).withRelationType("broader"));
+
+    final String containsPredicate = "https://open-metadata.org/ontology/contains";
+    final String broaderPredicate = "http://www.w3.org/2004/02/skos/core#broader";
+    final String schemaUri = "https://open-metadata.org/entity/databaseSchema/" + schema.getId();
+    final String tableUri = "https://open-metadata.org/entity/table/" + table.getId();
+    final String sourceTermUri =
+        "https://open-metadata.org/entity/glossaryTerm/" + sourceTerm.getId();
+    final String targetTermUri =
+        "https://open-metadata.org/entity/glossaryTerm/" + targetTerm.getId();
+
+    final EntityRelationship contains =
+        new EntityRelationship()
+            .withFromId(schema.getId())
+            .withFromEntity(Entity.DATABASE_SCHEMA)
+            .withToId(table.getId())
+            .withToEntity(Entity.TABLE)
+            .withRelation(Relationship.CONTAINS.ordinal())
+            .withRelationshipType(Relationship.CONTAINS);
+    final RdfLiveWrite staleContainsAdd = RdfLiveWrite.RelationshipChange.capture(contains, false);
+    final RdfLiveWrite staleGlossaryAdd =
+        new RdfLiveWrite.GlossaryRelationChange(
+            sourceTerm.getId(), targetTerm.getId(), "broader", false);
+
+    boolean containsDeleted = false;
+    try (var storage = new JenaFusekiStorage(servingConfig)) {
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .untilAsserted(
+              () -> {
+                assertTriplePresent(storage, schemaUri, containsPredicate, tableUri, true);
+                assertTriplePresent(storage, sourceTermUri, broaderPredicate, targetTermUri, true);
+              });
+
+      // Simulate SQL deletions that bypass RDF remove hooks (e.g. bulk updates or CSV imports).
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .delete(
+              schema.getId(),
+              Entity.DATABASE_SCHEMA,
+              table.getId(),
+              Entity.TABLE,
+              Relationship.CONTAINS.ordinal());
+      containsDeleted = true;
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .delete(
+              targetTerm.getId(),
+              Entity.GLOSSARY_TERM,
+              sourceTerm.getId(),
+              Entity.GLOSSARY_TERM,
+              Relationship.RELATED_TO.ordinal());
+
+      // Replaying captured ADD commands reconciles against SQL and removes stale triples instead
+      // of resurrecting them (#36026).
+      staleContainsAdd.apply(RdfRepository.getInstance());
+      staleGlossaryAdd.apply(RdfRepository.getInstance());
+
+      assertTriplePresent(storage, schemaUri, containsPredicate, tableUri, false);
+      assertTriplePresent(storage, sourceTermUri, broaderPredicate, targetTermUri, false);
+
+      // Flipping direction (targetTerm --broader--> sourceTerm) must not be erased by a stale
+      // replay of the old (sourceTerm --broader--> targetTerm) add.
+      termRepository.addTermRelation(
+          targetTerm.getId(),
+          new TermRelation().withTerm(sourceTerm.getEntityReference()).withRelationType("broader"));
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .untilAsserted(
+              () ->
+                  assertTriplePresent(
+                      storage, targetTermUri, broaderPredicate, sourceTermUri, true));
+      staleGlossaryAdd.apply(RdfRepository.getInstance());
+      assertTriplePresent(storage, sourceTermUri, broaderPredicate, targetTermUri, false);
+      assertTriplePresent(storage, targetTermUri, broaderPredicate, sourceTermUri, true);
+      assertEquals(RdfProjectionState.READY, status());
+    } finally {
+      if (containsDeleted) {
+        // Restore CONTAINS so cascade/namespace cleanup finds the table cleanly.
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .insert(
+                schema.getId(),
+                table.getId(),
+                Entity.DATABASE_SCHEMA,
+                Entity.TABLE,
+                Relationship.CONTAINS.ordinal());
+      }
+      GlossaryTestFactory.delete(glossary);
+    }
+  }
+
+  @Test
+  void bidirectionalMetricRelatedToProjectsBothDirectionsAndReconcilesOnReplay(
+      final TestNamespace namespace) throws Exception {
+    RdfUpdater.initialize(servingConfig);
+    final Metric first =
+        SdkClients.adminClient()
+            .metrics()
+            .create(new CreateMetric().withName(namespace.prefix("rdfMetricA")));
+    namespace.trackRoot(Entity.METRIC, first);
+    final Metric second =
+        SdkClients.adminClient()
+            .metrics()
+            .create(
+                new CreateMetric()
+                    .withName(namespace.prefix("rdfMetricB"))
+                    .withRelatedMetrics(List.of(first.getFullyQualifiedName())));
+    namespace.trackRoot(Entity.METRIC, second);
+
+    final UUID smallerId =
+        first.getId().compareTo(second.getId()) < 0 ? first.getId() : second.getId();
+    final UUID largerId = smallerId.equals(first.getId()) ? second.getId() : first.getId();
+    final String relatedToPredicate = "https://open-metadata.org/ontology/relatedTo";
+    final String smallerUri = "https://open-metadata.org/entity/metric/" + smallerId;
+    final String largerUri = "https://open-metadata.org/entity/metric/" + largerId;
+
+    final EntityRelationship canonical =
+        new EntityRelationship()
+            .withFromId(smallerId)
+            .withFromEntity(Entity.METRIC)
+            .withToId(largerId)
+            .withToEntity(Entity.METRIC)
+            .withRelation(Relationship.RELATED_TO.ordinal())
+            .withRelationshipType(Relationship.RELATED_TO);
+    final EntityRelationship reversed =
+        new EntityRelationship()
+            .withFromId(largerId)
+            .withFromEntity(Entity.METRIC)
+            .withToId(smallerId)
+            .withToEntity(Entity.METRIC)
+            .withRelation(Relationship.RELATED_TO.ordinal())
+            .withRelationshipType(Relationship.RELATED_TO);
+    final RdfLiveWrite canonicalAdd = RdfLiveWrite.RelationshipChange.capture(canonical, false);
+    final RdfLiveWrite reversedAdd = RdfLiveWrite.RelationshipChange.capture(reversed, false);
+
+    try (var storage = new JenaFusekiStorage(servingConfig)) {
+      // Both directions must project even though SQL holds only the canonical (smaller -> larger)
+      // row.
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .untilAsserted(
+              () -> {
+                assertTriplePresent(storage, smallerUri, relatedToPredicate, largerUri, true);
+                assertTriplePresent(storage, largerUri, relatedToPredicate, smallerUri, true);
+              });
+
+      // Replaying both directions while the SQL row exists preserves both triples.
+      canonicalAdd.apply(RdfRepository.getInstance());
+      reversedAdd.apply(RdfRepository.getInstance());
+      assertTriplePresent(storage, smallerUri, relatedToPredicate, largerUri, true);
+      assertTriplePresent(storage, largerUri, relatedToPredicate, smallerUri, true);
+
+      // Removing the canonical SQL row directly and replaying both adds removes both triples.
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .delete(
+              smallerId, Entity.METRIC, largerId, Entity.METRIC, Relationship.RELATED_TO.ordinal());
+      canonicalAdd.apply(RdfRepository.getInstance());
+      reversedAdd.apply(RdfRepository.getInstance());
+      assertTriplePresent(storage, smallerUri, relatedToPredicate, largerUri, false);
+      assertTriplePresent(storage, largerUri, relatedToPredicate, smallerUri, false);
+      assertEquals(RdfProjectionState.READY, status());
+    }
+  }
+
   @Test
   void persistedFailureSurvivesHealthReinitialization() throws Exception {
     RdfUpdater.initialize(servingConfig);
@@ -244,6 +462,18 @@ public class RdfLiveProjectionIT {
         .withWriteMaxRetries(0);
   }
 
+  private static void assertHasLiteral(
+      final JenaFusekiStorage storage, final UUID tableId, final String value) {
+    final Model model = storage.getEntity(Entity.TABLE, tableId);
+    assertNotNull(model, "no readable RDF graph for table %s".formatted(tableId));
+    try {
+      assertTrue(
+          model.contains(null, null, value), "table %s lacks the literal".formatted(tableId));
+    } finally {
+      model.close();
+    }
+  }
+
   private static void assertHasGlossaryTerm(
       final JenaFusekiStorage storage,
       final UUID tableId,
@@ -264,5 +494,20 @@ public class RdfLiveProjectionIT {
     } finally {
       model.close();
     }
+  }
+
+  private static void assertTriplePresent(
+      final JenaFusekiStorage storage,
+      final String subjectUri,
+      final String predicateUri,
+      final String objectUri,
+      final boolean expected) {
+    final String ask =
+        String.format(
+            "ASK { GRAPH <https://open-metadata.org/graph/knowledge> { <%s> <%s> <%s> } }",
+            subjectUri, predicateUri, objectUri);
+    final boolean present =
+        JsonUtils.readTree(storage.executeSparqlQuery(ask, "json")).path("boolean").asBoolean();
+    assertEquals(expected, present, ask);
   }
 }

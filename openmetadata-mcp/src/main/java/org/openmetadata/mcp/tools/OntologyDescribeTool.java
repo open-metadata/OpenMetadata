@@ -26,9 +26,11 @@ import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
-/** Returns the canonical ontology or a focused description of one ontology resource. */
+/** Returns the canonical ontology, one of its terms, or a DESCRIBE of one graph resource. */
 public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result> {
   private static final String RESOURCE_PARAMETER = "resource";
+  private static final String TERM_PARAMETER = "term";
+  private static final String TERM_SCOPE = "term";
 
   public OntologyDescribeTool() {
     super();
@@ -47,7 +49,8 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
   /**
    * {@code truncated} / {@code byteCount} mirror {@code SparqlQueryTool.Result}. Truncating the body
    * here preserves result metadata when the full ontology exceeds the dispatch cap. Prefer
-   * {@code resource} for a focused DESCRIBE over pulling the whole document.
+   * {@code term} for one class or property of the ontology over pulling the whole document; with
+   * scope {@code term}, {@code resource} carries the term's resolved IRI.
    */
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public record Result(
@@ -65,7 +68,8 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
 
   /**
    * The bundled ontology is the same static file the unauthenticated {@code GET /v1/rdf/ontology}
-   * serves, so it needs no permission. A {@code resource} DESCRIBE reads instance data and does.
+   * serves, so it and any {@code term} cut from it need no permission. A {@code resource} DESCRIBE
+   * reads instance data and does.
    */
   @Override
   protected void authorize(
@@ -84,6 +88,7 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
       throws IOException {
     McpToolParameters parameters = McpToolParameters.from(params);
     String resource = parameters.optionalString(RESOURCE_PARAMETER);
+    String term = parameters.optionalString(TERM_PARAMETER);
     RdfSerializationFormat format =
         RdfSerializationFormat.parse(parameters.optionalString("format"));
 
@@ -93,9 +98,44 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
             RdfBody.MIN_BYTES,
             RdfBody.maxBytes());
 
+    return McpToolParameters.isBlank(term)
+        ? resourceOrFullOntology(securityContext, resource, format, maxBytes)
+        : term(requireNoResource(term, resource), format, maxBytes);
+  }
+
+  private Result resourceOrFullOntology(
+      CatalogSecurityContext securityContext,
+      String resource,
+      RdfSerializationFormat format,
+      int maxBytes) {
     return McpToolParameters.isBlank(resource)
         ? fullOntology(format, maxBytes)
         : describe(securityContext, validateResource(resource), format, maxBytes);
+  }
+
+  private static Result term(String term, RdfSerializationFormat format, int maxBytes) {
+    OntologyDocument.TermEntry entry =
+        OntologyDocument.describeTerm(term, format.externalName())
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "'term' is not declared in the OpenMetadata ontology: " + term));
+    RdfBody.Bounded body = RdfBody.bound(entry.document().body(), maxBytes);
+    return new Result(
+        TERM_SCOPE,
+        entry.iri(),
+        entry.document().format(),
+        entry.document().mediaType(),
+        body.value(),
+        body.truncated(),
+        body.byteCount());
+  }
+
+  private static String requireNoResource(String term, String resource) {
+    if (!McpToolParameters.isBlank(resource)) {
+      throw new IllegalArgumentException("Pass either 'term' or 'resource', not both");
+    }
+    return term;
   }
 
   private Result fullOntology(RdfSerializationFormat format, int maxBytes) {
