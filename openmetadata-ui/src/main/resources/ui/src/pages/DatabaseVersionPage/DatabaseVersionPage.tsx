@@ -178,7 +178,7 @@ function DatabaseVersionPage() {
         navigate(getEntityDetailsPath(EntityType.DATABASE, decodedEntityFQN));
       },
     }),
-    [decodedEntityFQN]
+    [decodedEntityFQN, tab]
   );
 
   const handleTabChange = (activeKey: string) => {

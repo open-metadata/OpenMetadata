@@ -236,7 +236,7 @@ function DatabaseSchemaVersionPage() {
         );
       },
     }),
-    [decodedEntityFQN]
+    [decodedEntityFQN, tab]
   );
 
   const handleTabChange = (activeKey: string) => {

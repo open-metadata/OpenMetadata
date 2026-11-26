@@ -250,6 +250,38 @@ describe('DatabaseVersionPage', () => {
     expect(screen.queryByText(CUSTOM_PROPERTY_TABLE)).not.toBeInTheDocument();
   });
 
+  it('should keep the current tab when switching versions', async () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <DatabaseVersionPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(DATABASE_SCHEMA_TABLE)).toBeInTheDocument();
+
+    (useParams as jest.Mock).mockReturnValue({
+      version: '1.2',
+      tab: EntityTabs.CUSTOM_PROPERTIES,
+    });
+    rerender(
+      <MemoryRouter>
+        <DatabaseVersionPage />
+      </MemoryRouter>
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: ENTITY_VERSION_TIMELINE })
+    );
+
+    expect(mockNavigate).toHaveBeenLastCalledWith(
+      expect.stringMatching(/\/custom_properties$/)
+    );
+
+    (useParams as jest.Mock).mockReturnValue({
+      version: '1.2',
+      tab: EntityTabs.SCHEMA,
+    });
+  });
+
   it('should show ErrorPlaceHolder if not have view permission', async () => {
     setMockPermissions({});
 
