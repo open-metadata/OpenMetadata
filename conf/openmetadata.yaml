@@ -702,7 +702,7 @@ llmConfiguration:
     maxTokens: ${LLM_GOOGLE_MAX_TOKENS:-4096}
   anthropic:
     apiKey: ${LLM_ANTHROPIC_API_KEY:-""}
-    modelId: ${LLM_ANTHROPIC_MODEL_ID:-"claude-3-5-sonnet-20240620"}
+    modelId: ${LLM_ANTHROPIC_MODEL_ID:-"claude-sonnet-5-5"}
     baseUrl: ${LLM_ANTHROPIC_BASE_URL:-"https://api.anthropic.com"}
     maxTokens: ${LLM_ANTHROPIC_MAX_TOKENS:-4096}
   # Vector embeddings for semantic search. Credentials reuse the provider blocks above

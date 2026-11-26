@@ -54,7 +54,7 @@
           "description": "AWS credentials configuration for Bedrock service.",
           "$ref": "../security/credentials/awsBaseConfig.json"
         },
-        "modelId": { "type": "string", "default": "anthropic.claude-3-5-sonnet-20240620-v1:0" },
+        "modelId": { "type": "string", "default": "eu.anthropic.claude-haiku-5-5" },
         "temperature": { "type": "number", "default": 0.0 },
         "maxTokens": { "type": "integer", "default": 4096 },
         "timeoutSeconds": { "type": "integer", "default": 60 }
@@ -94,7 +94,7 @@
       "javaType": "org.openmetadata.schema.configuration.LLMAnthropicConfig",
       "properties": {
         "apiKey": { "type": "string", "mask": true },
-        "modelId": { "type": "string", "default": "claude-3-5-sonnet-20240620" },
+        "modelId": { "type": "string", "default": "claude-sonnet-5-5" },
         "baseUrl": { "type": "string", "default": "https://api.anthropic.com" },
         "temperature": { "type": "number", "default": 0.0 },
         "maxTokens": { "type": "integer", "default": 4096 },
