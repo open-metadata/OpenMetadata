@@ -64,6 +64,7 @@ class ODPSConverterTest {
     assertEquals(dp.getDisplayName(), details.getName());
     assertEquals(dp.getFullyQualifiedName(), details.getProductID());
     assertEquals(dp.getDescription(), details.getDescription());
+    assertEquals(ODPSProductDetails.OdpsType.DATASET, details.getType());
   }
 
   @Test
@@ -108,6 +109,17 @@ class ODPSConverterTest {
         odps.getProduct().getSla().getDeclarative().stream()
             .anyMatch(d -> "uptime".equals(d.getDimension()) && d.getObjective() == 99.9);
     assertTrue(hasUptime);
+  }
+
+  @Test
+  void toODPS_requiresDataProductType() {
+    final DataProduct dataProduct = basicDataProduct();
+    dataProduct.setDataProductType(null);
+
+    final IllegalArgumentException exception =
+        assertThrows(IllegalArgumentException.class, () -> ODPSConverter.toODPS(dataProduct));
+
+    assertTrue(exception.getMessage().contains("dataProductType"));
   }
 
   @Test
