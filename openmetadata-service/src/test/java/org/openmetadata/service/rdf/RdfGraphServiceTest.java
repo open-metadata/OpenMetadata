@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -65,6 +66,33 @@ class RdfGraphServiceTest {
           .when(() -> Entity.getEntities(anyList(), eq(""), eq(Include.ALL)))
           .thenAnswer(invocation -> exploreEntities(invocation.getArgument(0)));
       assertEquals(expectedExploreJson(), service(repository).explore(request));
+    }
+  }
+
+  @Test
+  void exploreGroupDoesNotDependOnTheServerLocale() throws IOException {
+    final String searchIndexIri =
+        BASE_URI + "entity/searchIndex/33333333-3333-3333-3333-333333333333";
+    final RdfStorageInterface storage = mock(RdfStorageInterface.class);
+    when(storage.executeSparqlQuery(anyString(), eq(SPARQL_JSON)))
+        .thenReturn(exploreBindings().replace(TOPIC_IRI, searchIndexIri));
+    final RdfRepository repository =
+        new RdfRepository(
+            new RdfConfiguration().withEnabled(true).withBaseUri(URI.create(BASE_URI)),
+            storage,
+            null);
+    final var request = RdfGraphService.GraphRequest.from(EXPLORE_ROOT, "table", 1, null, null);
+    final Locale original = Locale.getDefault();
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+      entities.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
+      entities
+          .when(() -> Entity.getEntities(anyList(), eq(""), eq(Include.ALL)))
+          .thenAnswer(invocation -> exploreEntities(invocation.getArgument(0)));
+      final String graph = service(repository).explore(request);
+      assertTrue(graph.contains("\"group\":\"searchindex\""), graph);
+    } finally {
+      Locale.setDefault(original);
     }
   }
 

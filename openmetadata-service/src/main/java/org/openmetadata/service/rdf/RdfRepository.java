@@ -1866,7 +1866,7 @@ public class RdfRepository {
       // Convert model to requested format
       java.io.StringWriter writer = new java.io.StringWriter();
       String rdfFormat =
-          switch (format.toLowerCase()) {
+          switch (format.toLowerCase(Locale.ROOT)) {
             case "turtle", "ttl" -> "TURTLE";
             case "rdfxml", "xml" -> "RDF/XML";
             case "ntriples", "nt" -> "N-TRIPLES";
@@ -3161,7 +3161,7 @@ public class RdfRepository {
         .withId(entityUri)
         .withEntityId(extractEntityIdFromUri(entityUri))
         .withType(entityType)
-        .withGroup(entityType.toLowerCase())
+        .withGroup(entityType.toLowerCase(Locale.ROOT))
         .withTags(null);
   }
 
