@@ -177,6 +177,13 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+afterEach(() => {
+  (useParams as jest.Mock).mockReturnValue({
+    version: '0.2',
+    tab: 'apiEndpoint',
+  });
+});
+
 describe('APICollectionVersionPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -275,10 +282,5 @@ describe('APICollectionVersionPage', () => {
     expect(mockCustomPropertyTable).toHaveBeenCalledWith(
       expect.objectContaining({ hasPermission: false })
     );
-
-    (useParams as jest.Mock).mockReturnValue({
-      version: '0.2',
-      tab: 'apiEndpoint',
-    });
   });
 });

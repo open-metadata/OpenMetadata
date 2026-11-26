@@ -86,6 +86,10 @@ jest.mock(
   })
 );
 
+afterEach(() => {
+  (useParams as jest.Mock).mockReturnValue({ tab: 'tables' });
+});
+
 describe('StoredProcedureVersion tests', () => {
   it('Should render component properly if not loading', async () => {
     await act(async () => {
@@ -196,10 +200,6 @@ describe('StoredProcedureVersion ViewCustomFields permission', () => {
     (useParams as jest.Mock).mockReturnValue({
       tab: EntityTabs.CUSTOM_PROPERTIES,
     });
-  });
-
-  afterEach(() => {
-    (useParams as jest.Mock).mockReturnValue({ tab: 'tables' });
   });
 
   const mockCustomPropertyTable = jest.requireMock(

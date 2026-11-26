@@ -80,6 +80,10 @@ jest.mock(
   })
 );
 
+afterEach(() => {
+  (useParams as jest.Mock).mockReturnValue({ tab: 'topics' });
+});
+
 describe('TopicVersion tests', () => {
   it('Should render component properly if not loading', async () => {
     await act(async () => {
@@ -178,10 +182,6 @@ describe('TopicVersion tests', () => {
       (useParams as jest.Mock).mockReturnValue({
         tab: EntityTabs.CUSTOM_PROPERTIES,
       });
-    });
-
-    afterEach(() => {
-      (useParams as jest.Mock).mockReturnValue({ tab: 'topics' });
     });
 
     const mockCustomPropertyTable = jest.requireMock(

@@ -91,6 +91,10 @@ jest.mock(
 
 JSON.parse = jest.fn().mockReturnValue([]);
 
+afterEach(() => {
+  (useParams as jest.Mock).mockReturnValue({ tab: 'dashboard' });
+});
+
 describe('DashboardVersion tests', () => {
   it('Should render component properly if not loading', async () => {
     await act(async () => {
@@ -239,10 +243,6 @@ describe('DashboardVersion tests', () => {
       (useParams as jest.Mock).mockReturnValue({
         tab: EntityTabs.CUSTOM_PROPERTIES,
       });
-    });
-
-    afterEach(() => {
-      (useParams as jest.Mock).mockReturnValue({ tab: 'dashboard' });
     });
 
     const mockCustomPropertyTable = jest.requireMock(

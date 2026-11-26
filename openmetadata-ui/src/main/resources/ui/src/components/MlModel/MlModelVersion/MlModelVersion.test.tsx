@@ -78,6 +78,10 @@ jest.mock(
   })
 );
 
+afterEach(() => {
+  (useParams as jest.Mock).mockReturnValue({ tab: 'container' });
+});
+
 describe('MlModelVersion tests', () => {
   it('Should render component properly if not loading', async () => {
     await act(async () => {
@@ -195,10 +199,6 @@ describe('MlModelVersion ViewCustomFields permission', () => {
     (useParams as jest.Mock).mockReturnValue({
       tab: EntityTabs.CUSTOM_PROPERTIES,
     });
-  });
-
-  afterEach(() => {
-    (useParams as jest.Mock).mockReturnValue({ tab: 'container' });
   });
 
   const mockCustomPropertyTable = jest.requireMock(

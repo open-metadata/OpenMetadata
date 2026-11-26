@@ -85,6 +85,10 @@ jest.mock(
   })
 );
 
+afterEach(() => {
+  (useParams as jest.Mock).mockReturnValue({ tab: 'tables' });
+});
+
 describe('TableVersion tests', () => {
   beforeEach(() => {
     (VersionTable as jest.Mock).mockClear();
@@ -250,10 +254,6 @@ describe('TableVersion tests', () => {
       (useParams as jest.Mock).mockReturnValue({
         tab: EntityTabs.CUSTOM_PROPERTIES,
       });
-    });
-
-    afterEach(() => {
-      (useParams as jest.Mock).mockReturnValue({ tab: 'tables' });
     });
 
     it('should render custom properties tab when ViewCustomFields is true', async () => {

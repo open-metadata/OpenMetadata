@@ -93,6 +93,10 @@ jest.mock(
 
 JSON.parse = jest.fn().mockReturnValue([]);
 
+afterEach(() => {
+  (useParams as jest.Mock).mockReturnValue({ tab: 'pipeline' });
+});
+
 describe('PipelineVersion tests', () => {
   it('Should render component properly if not loading', async () => {
     await act(async () => {
@@ -207,10 +211,6 @@ describe('PipelineVersion ViewCustomFields permission', () => {
     (useParams as jest.Mock).mockReturnValue({
       tab: EntityTabs.CUSTOM_PROPERTIES,
     });
-  });
-
-  afterEach(() => {
-    (useParams as jest.Mock).mockReturnValue({ tab: 'pipeline' });
   });
 
   const mockCustomPropertyTable = jest.requireMock(

@@ -164,6 +164,13 @@ jest.mock(
   })
 );
 
+afterEach(() => {
+  (useParams as jest.Mock).mockReturnValue({
+    version: '1.2',
+    tab: EntityTabs.SCHEMA,
+  });
+});
+
 describe('DatabaseVersionPage', () => {
   beforeEach(() => {
     setMockPermissions();
@@ -275,11 +282,6 @@ describe('DatabaseVersionPage', () => {
     expect(mockNavigate).toHaveBeenLastCalledWith(
       expect.stringMatching(/\/custom_properties$/)
     );
-
-    (useParams as jest.Mock).mockReturnValue({
-      version: '1.2',
-      tab: EntityTabs.SCHEMA,
-    });
   });
 
   it('should show ErrorPlaceHolder if not have view permission', async () => {

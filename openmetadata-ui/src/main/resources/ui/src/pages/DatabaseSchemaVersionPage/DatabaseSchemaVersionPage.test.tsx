@@ -191,6 +191,10 @@ jest.mock('../../components/common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(() => <div>description</div>)
 );
 
+afterEach(() => {
+  (useParams as jest.Mock).mockReturnValue(MOCK_PARAMS);
+});
+
 describe('DatabaseSchemaVersionPage', () => {
   beforeEach(() => {
     setMockPermissions();
@@ -241,8 +245,6 @@ describe('DatabaseSchemaVersionPage', () => {
     expect(mockNavigate).toHaveBeenLastCalledWith(
       expect.stringMatching(/\/custom_properties$/)
     );
-
-    (useParams as jest.Mock).mockReturnValue(MOCK_PARAMS);
   });
 
   it('should show ErrorPlaceHolder if not have view permission', async () => {
