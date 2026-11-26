@@ -7,15 +7,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.VectorIndexService.LiveEntities;
 
 /**
- * The live entities as their repositories find them, soft deleted ones excluded: one query per
- * entity type and page. An id this server cannot check, of a type it has no repository for or not
- * an entity id at all, counts as live, so its chunks stay.
+ * The live entities as their tables hold them, soft deleted ones excluded: one query per entity
+ * type and page that reads each row's id without building the entity from its JSON, so a row the
+ * server could not read as an entity still counts as live and cannot fail the sweep. An id this
+ * server cannot check, of a type it has no repository for or not an entity id at all, counts as
+ * live, so its chunks stay.
  */
 public final class RepositoryLiveEntities implements LiveEntities {
 
@@ -33,8 +35,10 @@ public final class RepositoryLiveEntities implements LiveEntities {
     }
     if (Entity.hasEntityRepository(entityType)) {
       List<UUID> entityIds = new ArrayList<>(byEntityId.keySet());
-      for (EntityInterface<?> entity :
-          Entity.getEntityRepository(entityType).find(entityIds, Include.NON_DELETED)) {
+      for (EntityReference entity :
+          Entity.getEntityRepository(entityType)
+              .getDao()
+              .findReferencesByIds(entityIds, Include.NON_DELETED)) {
         live.add(byEntityId.get(entity.getId()));
       }
     } else {

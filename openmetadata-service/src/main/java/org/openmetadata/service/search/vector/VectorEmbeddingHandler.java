@@ -84,8 +84,8 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
 
   /**
    * Every hard delete prepares here, the descendants of a recursive delete included, which get no
-   * delete event. Their chunks are deleted after the delete, in batches, each after the tasks
-   * already queued for its entity: an update in flight cannot write them back.
+   * delete event. Their chunks are deleted after the delete, in batches, each after the tasks this
+   * server already queued for its entity, so none of those updates writes them back.
    */
   @Override
   public Runnable prepareHardDelete(List<? extends EntityInterface<?>> entities) {

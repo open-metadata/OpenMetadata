@@ -369,6 +369,11 @@ class VectorChunkIndexIT {
     }
 
     @Test
+    void aRestoredDescendantGetsItsChunksBack() {
+      assertARestoredDescendantGetsItsChunksBack(service);
+    }
+
+    @Test
     void theSweepRemovesTheChunksOfDeletedEntitiesOnce() throws IOException {
       assertTheSweepRemovesTheChunksOfDeletedEntitiesOnce(service);
     }
@@ -482,6 +487,11 @@ class VectorChunkIndexIT {
     }
 
     @Test
+    void aRestoredDescendantGetsItsChunksBack() {
+      assertARestoredDescendantGetsItsChunksBack(service);
+    }
+
+    @Test
     void theSweepRemovesTheChunksOfDeletedEntitiesOnce() throws IOException {
       assertTheSweepRemovesTheChunksOfDeletedEntitiesOnce(service);
     }
@@ -542,6 +552,41 @@ class VectorChunkIndexIT {
       assertEquals(Set.of(), storedChunkIds(service, live, ledger));
     } finally {
       service.deleteEntityChunks(id(ledger));
+    }
+  }
+
+  /**
+   * A restore updates each descendant back to not deleted, and for a live entity the vector handler
+   * makes this call (VectorEmbeddingHandlerTest covers that branch). The soft delete removed the
+   * chunk set, header included, so the update writes the whole set again and a kNN finds the
+   * entity once more.
+   */
+  private static void assertARestoredDescendantGetsItsChunksBack(
+      AbstractVectorIndexService service) {
+    String live = service.getChunkIndexName();
+    VectorEmbeddingHandler handler = new VectorEmbeddingHandler(service);
+    Table ledger = table("ledger", "word ".repeat(940));
+    String entityIndex = "table_search_index_restore";
+    try {
+      service.executeGenericRequest(
+          "PUT",
+          "/" + entityIndex + "/_doc/" + id(ledger) + "?refresh=true",
+          JsonUtils.pojoToJson(Map.of("name", "ledger")));
+      writeChunks(service, ledger, null);
+      handler.onEntityUpdated(
+          table("ledger", "word ".repeat(940)).withId(ledger.getId()).withDeleted(true),
+          null,
+          null);
+      assertEquals(Set.of(), storedChunkIds(service, live, ledger));
+
+      service.updateEntityEmbeddings(ledger, entityIndex);
+
+      assertEquals(3, storedChunkIds(service, live, ledger).size());
+      refresh(service, live);
+      assertTrue(parentsFound(service).contains(id(ledger)), "a kNN finds the restored entity");
+    } finally {
+      service.deleteEntityChunks(id(ledger));
+      service.executeGenericRequest("DELETE", "/" + entityIndex, null);
     }
   }
 

@@ -299,13 +299,31 @@ class VectorEmbeddingHandlerTest {
     verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
   }
 
+  /**
+   * The soft delete removed the entity's chunks, so a restore embeds it again. A restored root gets
+   * the restore event; a restored descendant gets an update with its deleted flag cleared.
+   */
   @Test
-  void testOnEntityRestoredIsNoOp() {
-    EntityInterface<?> entity = createMockEntity("table");
+  void aRestoreEmbedsTheEntityAgain() {
+    EntityInterface<?> restoredRoot = createMockEntity("table");
+    EntityInterface<?> restoredDescendant = createMockEntity("table");
 
-    handler.onEntitySoftDeletedOrRestored(entity, false, subjectContext);
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      SearchRepository searchRepository = mock(SearchRepository.class);
+      IndexMapping indexMapping = mock(IndexMapping.class);
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entityMock.when(() -> Entity.isVectorEmbeddable(any())).thenReturn(true);
+      when(searchRepository.getIndexMapping("table")).thenReturn(indexMapping);
+      when(searchRepository.getClusterAlias()).thenReturn("");
+      when(indexMapping.getIndexName("")).thenReturn("table_search_index");
 
-    verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
+      handler.onEntitySoftDeletedOrRestored(restoredRoot, false, subjectContext);
+      handler.onEntityUpdated(restoredDescendant, null, subjectContext);
+
+      verify(vectorIndexService).updateEntityEmbeddings(restoredRoot, "table_search_index");
+      verify(vectorIndexService).updateEntityEmbeddings(restoredDescendant, "table_search_index");
+      verify(vectorIndexService, never()).deleteEntityChunks(anyString());
+    }
   }
 
   @Test
