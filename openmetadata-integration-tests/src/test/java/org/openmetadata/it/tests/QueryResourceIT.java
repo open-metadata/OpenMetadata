@@ -529,7 +529,8 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   void queryCreationAllowsTableOwners(HttpMethod method, TestNamespace ns) {
     final User curator = createOwnerRestrictedCurator(ns);
     final Table owned = createTableOwnedBy(ns, "create_owned", curator);
-    final CreateQuery request = curatedQuery(ns, "owned_create", curator, owned).withOwners(null);
+    final CreateQuery request =
+        curatedQuery(ns, "owned_create_" + method.name(), curator, owned).withOwners(null);
     final Query created =
         curatorClient(curator).getHttpClient().execute(method, "/v1/queries", request, Query.class);
 
@@ -613,7 +614,7 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     final CreateQuery request =
         new CreateQuery()
             .withName(ns.prefix("service_owned_query"))
-            .withQuery("SELECT 1")
+            .withQuery("SELECT '" + ns.uniqueShortId() + "'")
             .withService(service.getFullyQualifiedName());
     final Query created = curatorClient(curator).queries().create(request);
 
