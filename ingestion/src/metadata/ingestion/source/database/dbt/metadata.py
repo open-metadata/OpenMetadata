@@ -1633,6 +1633,24 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
+    def _query_lineage_services(self, model_service: str, data_model_link: DataModelLink) -> list[str]:
+        """
+        The services the SQL's tables are looked up in: the model's own, then each one an upstream was
+        found in. catalogMapping and searchAcrossDatabases can resolve an upstream under another service,
+        and a wildcard upstream keeps the configured service's FQN while its tables can be elsewhere.
+        See ADR:2026-10-14-dbt-catalog-mapping-resolves-engine-database-names.
+        """
+        wildcard_upstreams = set(self._wildcard_upstreams(data_model_link))
+        services = [model_service]
+        for upstream in data_model_link.datamodel.upstream or []:
+            services.append(fqn.split(upstream)[0])
+            if upstream in wildcard_upstreams:
+                services.extend(
+                    fqn.split(model_str(table.fullyQualifiedName))[0]
+                    for table in self._wildcard_upstream_tables(upstream) or ()
+                )
+        return list(dict.fromkeys(services))
+
     def create_dbt_query_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[LineageRequest]]:
         """
         Method to process DBT lineage from queries
@@ -1658,21 +1676,10 @@ class DbtSource(DbtServiceSource):
                 query = f"create table {query_fqn} as {self._map_catalogs_in_sql(data_model_link.datamodel.sql.root)}"
                 connection_type = str(self.config.serviceConnection.root.config.type.value)
                 dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
-                # catalogMapping and searchAcrossDatabases can resolve an upstream under another service, so the
-                # SQL's tables are also looked up where the upstreams were found
-                # (ADR:2026-10-14-dbt-catalog-mapping-resolves-engine-database-names)
-                service_names = list(
-                    dict.fromkeys(
-                        [
-                            source_elements[0],
-                            *(fqn.split(upstream)[0] for upstream in data_model_link.datamodel.upstream or []),
-                        ]
-                    )
-                )
                 lineages = get_lineage_by_query(
                     self.metadata,
                     query=query,
-                    service_names=service_names,
+                    service_names=self._query_lineage_services(source_elements[0], data_model_link),
                     database_name=source_elements[1],
                     schema_name=source_elements[2],
                     dialect=dialect,

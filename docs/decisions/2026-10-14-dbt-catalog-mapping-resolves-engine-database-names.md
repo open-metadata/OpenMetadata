@@ -53,7 +53,9 @@ catalog spans several OpenMetadata databases; the mapping would then need a sche
 v3 (2026-11-26): swapping the catalog for its database is not enough when that database belongs to
 another service, because the lineage parser looked tables up only in the service of the model being
 processed. Query lineage now searches the model's own service first, then the service of each of
-its upstreams, read from the FQN the upstream was recorded under. Those are the services where
+its upstreams, read from the FQN the upstream was recorded under. A wildcard upstream (BigQuery
+`events_*`) keeps the configured service's FQN, so the services of the tables its expansion found
+are added after it. Those are the services where
 `catalogMapping` and `searchAcrossDatabases` found the parents, so column lineage follows table
 lineage without searching every service. The list applies to every table the SQL reads, so one that
 is not a dbt upstream and misses in the model's service is also looked up in the upstreams'
