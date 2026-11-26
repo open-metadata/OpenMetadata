@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -43,6 +44,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -61,6 +63,8 @@ import org.openmetadata.service.security.session.SessionStore;
 import org.openmetadata.service.security.session.UserSession;
 
 class WebSocketManagerTest {
+  /** The wire name the UI listens for; pinned here so a rename cannot silently break the UI. */
+  private static final String TOKEN_EXPIRED_CHANNEL = "tokenExpiredChannel";
 
   private WebSocketManager manager;
   private AuthenticationConfiguration configuredBefore;
@@ -381,6 +385,64 @@ class WebSocketManagerTest {
     assertEquals(Set.of("socket-basic"), manager.getActivityFeedEndpoints().get(userId).keySet());
   }
 
+  /**
+   * A socket opened with a provider token has no session for the sweep to re-check, so the token's
+   * expiry, stamped at the handshake, is what bounds it (#38245).
+   */
+  @Test
+  void disconnectInactiveSessions_closesASessionlessSocketOnceItsTokenHasExpired() {
+    UUID userId = UUID.randomUUID();
+    SocketIoSocket expired =
+        connectWithTokenExpiry(userId, "socket-expired", epochMillisAgo(1_000));
+    SocketIoSocket current =
+        connectWithTokenExpiry(userId, "socket-current", epochMillisAgo(-60_000));
+
+    manager.disconnectInactiveSessions(mock(SessionService.class), 0L);
+
+    verify(expired, times(1)).disconnect(true);
+    verify(current, never()).disconnect(anyBoolean());
+    assertEquals(Set.of("socket-current"), manager.getActivityFeedEndpoints().get(userId).keySet());
+  }
+
+  /** The UI reconnects after a server close only when this notice came first. */
+  @Test
+  void disconnectInactiveSessions_sendsTheTokenExpiredNoticeBeforeClosing() {
+    SocketIoSocket expired =
+        connectWithTokenExpiry(UUID.randomUUID(), "socket-expired", epochMillisAgo(1_000));
+
+    manager.disconnectInactiveSessions(mock(SessionService.class), 0L);
+
+    InOrder closing = inOrder(expired);
+    closing.verify(expired).send(TOKEN_EXPIRED_CHANNEL);
+    closing.verify(expired).disconnect(true);
+  }
+
+  /** The expiry is server-stamped; a value the server cannot read fails closed. */
+  @Test
+  void onConnection_treatsAMalformedExpiryAsExpired() {
+    UUID userId = UUID.randomUUID();
+    SocketIoSocket socket = connectWithTokenExpiry(userId, "socket-malformed", "not-a-number");
+
+    manager.disconnectInactiveSessions(mock(SessionService.class), 0L);
+
+    verify(socket, times(1)).disconnect(true);
+    assertFalse(manager.getActivityFeedEndpoints().containsKey(userId));
+  }
+
+  @Test
+  void disconnectInactiveSessions_keepsASessionBoundSocketWhoseSessionIsActive() {
+    UUID userId = UUID.randomUUID();
+    SessionService sessionService =
+        sessionServiceStoring(
+            AuthProvider.GOOGLE, sessionIssuedBy(AuthProvider.GOOGLE, "session-g", userId));
+    SocketIoSocket socket = connect(userId, "socket-session", "session-g", AuthProvider.GOOGLE);
+
+    manager.disconnectInactiveSessions(sessionService, 0L);
+
+    verify(socket, never()).disconnect(anyBoolean());
+    assertEquals(Set.of("socket-session"), manager.getActivityFeedEndpoints().get(userId).keySet());
+  }
+
   @Test
   void sendToOne_deliversLocallyAndPublishesToRelay() {
     UUID userId = UUID.randomUUID();
@@ -547,6 +609,23 @@ class WebSocketManagerTest {
     when(socket.getInitialHeaders()).thenReturn(headers);
     manager.onConnection(socket);
     return socket;
+  }
+
+  /** A sessionless socket stamped the way the handshake stamps one opened with a provider token. */
+  private SocketIoSocket connectWithTokenExpiry(UUID userId, String socketId, String expiresAt) {
+    SocketIoSocket socket = mock(SocketIoSocket.class);
+    when(socket.getId()).thenReturn(socketId);
+    Map<String, List<String>> headers = new HashMap<>();
+    headers.put("UserId", List.of(userId.toString()));
+    headers.put("AuthProvider", List.of(AuthProvider.GOOGLE.value()));
+    headers.put("TokenExpiresAt", List.of(expiresAt));
+    when(socket.getInitialHeaders()).thenReturn(headers);
+    manager.onConnection(socket);
+    return socket;
+  }
+
+  private static String epochMillisAgo(long millis) {
+    return String.valueOf(System.currentTimeMillis() - millis);
   }
 
   private SocketIoSocket trackSocket(UUID userId, String socketId, String sessionId)

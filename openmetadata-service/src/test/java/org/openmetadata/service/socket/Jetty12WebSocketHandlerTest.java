@@ -112,6 +112,24 @@ class Jetty12WebSocketHandlerTest {
         "only the validated identity may survive next to unrelated headers");
   }
 
+  /**
+   * The sweep closes a socket opened without a session once the expiry stamped here passes, so a
+   * client must not be able to send its own expiry and keep the socket open past its token (#38245).
+   */
+  @Test
+  void clientTokenExpiryHeaderIsDroppedBeforeStamping() {
+    Jetty12WebSocketHandler stamped =
+        new Jetty12WebSocketHandler(
+            mock(EngineIoServer.class), new HandshakeIdentity("user-uuid", null, null));
+    Map<String, List<String>> forged = new HashMap<>();
+    forged.put("TokenExpiresAt", List.of("99999999999999"));
+    forged.put("tokenexpiresat", List.of("99999999999998"));
+
+    stamped.onOpen(upgradeSession(Map.of(), forged));
+
+    assertEquals(List.of("UserId"), List.copyOf(stamped.getConnectionHeaders().keySet()));
+  }
+
   /** The handshake query carries the bearer token, so no log line may contain it at any level. */
   @Test
   void handshakeTokenNeverReachesTheLog() {
