@@ -14,112 +14,28 @@
  * Replaces Pagination.spec.ts › Impact Analysis: "should reset ... pagination
  * to page 1 on search change" and "... on quick filter change".
  */
-import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
-import { SCHEMA } from '../../test/browser/fixtures/hierarchy';
-import { worker } from '../../test/browser/msw';
+import {
+  lineageImpactUrl,
+  lineageTable,
+  serveLineage as serveGraph,
+} from '../../test/browser/fixtures/lineage';
 import { renderApp } from '../../test/browser/renderWithApp';
 import { scaled } from '../../test/browser/timeouts';
 
-const SOURCE_FQN = `${SCHEMA.fullyQualifiedName}.pw_source`;
-const source = {
-  id: '00000000-0000-4000-8000-0000000000f0',
-  name: 'pw_source',
-  fullyQualifiedName: SOURCE_FQN,
-  tableType: 'Regular',
-  columns: [],
-  databaseSchema: SCHEMA,
-  database: SCHEMA.database,
-  service: SCHEMA.service,
-  serviceType: 'Mysql',
-  owners: [],
-  tags: [],
-  domains: [],
-  dataProducts: [],
-  followers: [],
-  version: 0.1,
-};
-const downstream = Array.from({ length: 16 }, (_, i) => {
-  const name = `pw-table-${String(i + 1).padStart(2, '0')}`;
+const downstream = Array.from({ length: 16 }, (_, i) => ({
+  doc: lineageTable(i, `pw-table-${String(i + 1).padStart(2, '0')}`),
+  depth: 1,
+}));
 
-  return {
-    id: `00000000-0000-4000-8000-0000000001${String(i).padStart(2, '0')}`,
-    type: 'table',
-    name,
-    displayName: name,
-    fullyQualifiedName: `${SCHEMA.fullyQualifiedName}.${name}`,
-    serviceType: 'Mysql',
-  };
-});
+const serveLineage = () =>
+  serveGraph({
+    downstream,
+    facets: { serviceType: ['mysql'] },
+  }).entityCount;
 
-const serveLineage = () => {
-  const calls: URL[] = [];
-  worker.use(
-    http.get('/api/v1/tables/name/:fqn', () => HttpResponse.json(source)),
-    // The lineage map behind the impact table renders an empty scene.
-    http.get('/api/v1/lineage/scene', () =>
-      HttpResponse.json({
-        band: 'ASSET',
-        lens: 'service',
-        breadcrumb: [],
-        nodes: [],
-        edges: [],
-      })
-    ),
-    // Quick-filter options come from a search aggregation on the field.
-    http.post('/api/v1/search/aggregate', async ({ request }) => {
-      const { fieldName } = (await request.json()) as { fieldName: string };
-
-      return HttpResponse.json({
-        hits: { total: { value: 16 }, hits: [] },
-        aggregations: {
-          [`sterms#${fieldName}`]: {
-            buckets: [{ key: 'mysql', doc_count: 16 }],
-          },
-        },
-      });
-    }),
-    http.get('/api/v1/queries', () =>
-      HttpResponse.json({ data: [], paging: { total: 0 } })
-    ),
-    http.get('/api/v1/lineage/getLineageByEntityCount', ({ request }) => {
-      const url = new URL(request.url);
-      calls.push(url);
-      const from = Number(url.searchParams.get('from') ?? 0);
-      const size = Number(url.searchParams.get('size') ?? 15);
-      const nodes = Object.fromEntries([
-        [SOURCE_FQN, { entity: { ...source, type: 'table' }, nodeDepth: 0 }],
-        ...downstream
-          .slice(from, from + size)
-          .map((entity) => [
-            entity.fullyQualifiedName,
-            { entity, nodeDepth: 1, paging: {} },
-          ]),
-      ]);
-
-      return HttpResponse.json({
-        nodes,
-        upstreamEdges: {},
-        downstreamEdges: {},
-        paginationInfo: {
-          downstreamDepthInfo: [{ depth: 1, entityCount: downstream.length }],
-          upstreamDepthInfo: [],
-          maxDownstreamDepth: 1,
-          maxUpstreamDepth: 0,
-          totalDownstreamEntities: downstream.length,
-          totalUpstreamEntities: 0,
-        },
-      });
-    })
-  );
-
-  return calls;
-};
-
-const URL_IMPACT = `/table/${encodeURIComponent(
-  SOURCE_FQN
-)}/lineage?mode=impact_analysis&dir=Downstream&depth=1&pageSize=15`;
+const URL_IMPACT = lineageImpactUrl();
 
 const goToPageTwo = async (calls: URL[]) => {
   await renderApp(URL_IMPACT);
