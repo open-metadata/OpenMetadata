@@ -1,0 +1,52 @@
+#  Copyright 2026 OpenMetadata
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Shared base for the Informix usage and lineage sources.
+"""
+
+from abc import ABC
+from datetime import datetime
+
+from metadata.generated.schema.entity.services.connections.database.informixConnection import (
+    InformixConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.informix.queries import INFORMIX_SQL_STATEMENT
+from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+
+
+class InformixQueryParserSource(QueryParserSource, ABC):
+    """Reads query history from sysmaster:syssqltrace."""
+
+    sql_stmt = INFORMIX_SQL_STATEMENT
+    filters: str
+
+    @classmethod
+    def create(cls, config_dict: dict, metadata: OpenMetadata, pipeline_name: str | None = None):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        service_conn = config.serviceConnection
+        connection = service_conn.root.config if service_conn is not None else None
+        if not isinstance(connection, InformixConnection):
+            raise InvalidSourceException(f"Expected InformixConnection, but got {connection}")
+        return cls(config, metadata)
+
+    def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
+        """Seconds precision: Informix rejects a DATETIME literal with six fractional digits."""
+        return self.sql_stmt.format(
+            start_time=start_time.strftime("%Y-%m-%d %H:%M:%S"),
+            end_time=end_time.strftime("%Y-%m-%d %H:%M:%S"),
+            filters=self.get_filters(),
+            result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
+        )

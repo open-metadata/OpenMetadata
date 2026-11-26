@@ -224,3 +224,44 @@ WHERE t.tabname = :table_name
              AND LOWER(TRIM(NVL(b.name, x.name))) NOT IN
                  ({", ".join(f"'{name}'" for name in INFORMIX_DRIVER_CONVERTIBLE_EXTENDED_TYPES)}) ) )
 """
+
+# Query history for the usage and lineage workflows. syssqltrace is off by default
+# and is a fixed-size ring buffer, so it only holds what a DBA enabled tracing for
+# and the server has not yet overwritten; see Informix.md.
+#
+# sql_finishtime is a UTC epoch and sql_runtime is in seconds. sql_begintxtime is
+# not a time at all -- it is a tick counter, and reads as a date in 1970 -- so the
+# start is the finish less the runtime. A statement run outside any database
+# reports its database as the literal '<None>'. The connector's own statements
+# carry the OpenMetadata query comment and are left out.
+INFORMIX_SQL_STATEMENT = """
+SELECT FIRST {result_limit}
+    CAST(NULL AS VARCHAR(255)) AS user_name,
+    NULLIF(TRIM(sql_database), '<None>') AS database_name,
+    CAST(NULL AS VARCHAR(255)) AS schema_name,
+    CAST(NULL AS INT) AS aborted,
+    TRIM(sql_statement) AS query_text,
+    DBINFO('UTC_TO_DATETIME', sql_finishtime - CAST(sql_runtime AS INT)) AS start_time,
+    sql_runtime AS duration,
+    DBINFO('UTC_TO_DATETIME', sql_finishtime) AS end_time
+FROM sysmaster:syssqltrace
+WHERE sql_statement IS NOT NULL
+    AND sql_statement NOT LIKE '/* {{"app": "OpenMetadata", %}} */%'
+    AND sql_statement NOT LIKE '/* {{"app": "dbt", %}} */%'
+    AND LOWER(sql_statement) NOT LIKE 'set isolation%'
+    AND LOWER(sql_statement) NOT LIKE '%sysmaster%'
+    AND LOWER(sql_statement) NOT LIKE '%systables%'
+    AND LOWER(sql_statement) NOT LIKE '%syscolumns%'
+    AND LOWER(sql_statement) NOT LIKE '%sysindexes%'
+    AND LOWER(sql_statement) NOT LIKE '%sysconstraints%'
+    AND LOWER(sql_statement) NOT LIKE '%sysprocedures%'
+    AND LOWER(sql_statement) NOT LIKE '%sysdefaults%'
+    AND LOWER(sql_statement) NOT LIKE '%syssequences%'
+    AND LOWER(sql_statement) NOT LIKE 'select current_user%'
+    AND LOWER(sql_statement) NOT LIKE 'database %'
+    AND LOWER(sql_statement) NOT LIKE 'close database%'
+    AND DBINFO('UTC_TO_DATETIME', sql_finishtime) >= '{start_time}'
+    AND DBINFO('UTC_TO_DATETIME', sql_finishtime) < '{end_time}'
+    {filters}
+ORDER BY sql_finishtime DESC
+"""

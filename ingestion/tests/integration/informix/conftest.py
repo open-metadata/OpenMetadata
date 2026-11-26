@@ -119,6 +119,10 @@ CREATE VIEW lob_expr_view (id, label) AS SELECT id, TRIM(c_vchar) || '!' FROM lo
 CREATE PROCEDURE add_two(a INT, b INT) RETURNING INT;
   RETURN a + b;
 END PROCEDURE;
+-- No RETURNING clause: Informix records a procedure that returns values as a function.
+CREATE PROCEDURE noop_probe(a INT);
+  LET a = a + 1;
+END PROCEDURE;
 CREATE FUNCTION triple(a INT) RETURNING INT;
   RETURN a * 3;
 END FUNCTION;
