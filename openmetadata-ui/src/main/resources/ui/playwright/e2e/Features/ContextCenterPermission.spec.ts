@@ -136,6 +136,30 @@ const FULL_PERMISSION_RULE = buildPermissionRule(
   ['Create', 'EditAll', 'Delete', 'ViewAll']
 );
 
+// Edit and delete on contextMemory only through isOwner(), as in #38638.
+const OWNER_ONLY_MEMORY_RULES = [
+  {
+    name: `cc-permission-owner-only-base-${uuid()}`,
+    resources: ['contextMemory'],
+    operations: ['Create', 'ViewBasic'],
+    effect: 'allow',
+  },
+  {
+    name: `cc-permission-owner-only-own-${uuid()}`,
+    resources: ['contextMemory'],
+    operations: ['ViewAll', 'EditAll', 'Delete'],
+    effect: 'allow',
+    condition: 'isOwner()',
+  },
+  {
+    name: `cc-permission-owner-only-deny-${uuid()}`,
+    resources: ['contextMemory'],
+    operations: ['All'],
+    effect: 'deny',
+    condition: '!isOwner() && !noOwner()',
+  },
+];
+
 // ─── Test data ───────────────────────────────────────────────────────────────
 
 let articleEntity: KnowledgeCenterClass;
@@ -1668,7 +1692,9 @@ test.describe('Context Center Permissions', () => {
       ).toBeVisible();
     });
 
-    test('user with view-only permission who owns a memory still cannot edit or delete it', async ({
+    // OrganizationPolicy-Owner-Rule gives every owner `All` on their memory
+    // (ADR:2026-10-09-data-consumers-create-context-memories).
+    test('user with view-only permission who owns a memory can edit and delete it through the owner rule', async ({
       viewOnlyPage,
     }) => {
       await navigateToMemories(viewOnlyPage);
@@ -1680,20 +1706,137 @@ test.describe('Context Center Permissions', () => {
       );
       await ownRow.scrollIntoViewIfNeeded();
       await expect(ownRow).toBeVisible();
-      await expect(ownRow.getByTestId('edit-memory-btn')).not.toBeVisible();
+      await expect(ownRow.getByTestId('edit-memory-btn')).toBeVisible();
+      await expect(ownRow.getByTestId('manage-button')).toBeVisible();
 
       await ownRow.click();
       const dialog = viewOnlyPage.getByRole('dialog');
       await expect(dialog).toBeVisible();
       await expect(
         dialog.getByRole('button', { name: /^delete$/i })
-      ).not.toBeVisible();
+      ).toBeVisible();
       await expect(
         dialog.getByRole('button', { name: /^edit$/i })
-      ).not.toBeVisible();
+      ).toBeVisible();
       await expect(
         dialog.getByRole('button', { name: /^cancel$/i })
       ).toBeVisible();
+    });
+
+    test('owner whose memory edit and delete are allowed only by isOwner() rules can edit and delete their memory', async ({
+      browser,
+    }) => {
+      test.slow();
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
+      const ownerOnlyUser = new UserClass();
+      const memoryTitle = `CC Permission Memory Owner-Only ${uuid()}`;
+      const editedContent = `Edited by its owner ${uuid()}`;
+      let memoryId = '';
+      let ownerPage: Page | undefined;
+
+      try {
+        await ownerOnlyUser.create(apiContext, false);
+        await ownerOnlyUser.setCustomRulePolicy(
+          apiContext,
+          OWNER_ONLY_MEMORY_RULES,
+          'context-center-permission-owner-only'
+        );
+        const memory = await createMemoryViaApi(apiContext, {
+          name: `cc_permission_memory_owner_only_${uuid()}`,
+          title: memoryTitle,
+          question: 'Owned by the owner-only user',
+          answer: 'Owned by the owner-only user',
+          shareConfig: { visibility: 'Entity' },
+          owners: [{ id: ownerOnlyUser.responseData.id, type: 'user' }],
+        });
+        memoryId = memory.id;
+
+        const page = await loginAsUser(browser, ownerOnlyUser);
+        ownerPage = page;
+
+        await test.step('the resource level reports edit as conditional', async () => {
+          const { apiContext: ownerApi, afterAction: ownerAfterAction } =
+            await getApiContext(page);
+          const res = await ownerApi.get('/api/v1/permissions/contextMemory');
+          const { permissions } = await res.json();
+          await ownerAfterAction();
+
+          expect(
+            permissions.find(
+              (permission: { operation: string }) =>
+                permission.operation === 'EditAll'
+            )?.access
+          ).toMatch(/^conditional/);
+        });
+
+        await navigateToMemories(page);
+        const row = await searchAndGetMemoryRow(page, memoryTitle, memoryId);
+        await row.scrollIntoViewIfNeeded();
+
+        await expect(row.getByTestId('edit-memory-btn')).toBeVisible();
+        await expect(row.getByTestId('manage-button')).toBeVisible();
+
+        await test.step('edits the memory from its detail view', async () => {
+          await row.click();
+          const dialog = page.getByRole('dialog');
+          await expect(
+            dialog.getByRole('button', { name: /^delete$/i })
+          ).toBeVisible();
+          await dialog.getByRole('button', { name: /^edit$/i }).click();
+          await dialog
+            .getByTestId('memory-content-input')
+            .locator('textarea')
+            .fill(editedContent);
+
+          const saveResPromise = page.waitForResponse(
+            (res) =>
+              res.url().includes(`${MEMORIES_API}/${memoryId}`) &&
+              res.request().method() === 'PATCH'
+          );
+          await dialog.getByRole('button', { name: /^save/i }).click();
+          const saveRes = await saveResPromise;
+
+          expect(saveRes.status()).toBe(200);
+          await expect(dialog).not.toBeVisible();
+
+          const stored = await apiContext.get(`${MEMORIES_API}/${memoryId}`);
+
+          expect((await stored.json()).answer).toBe(editedContent);
+        });
+
+        await test.step('deletes the memory from its row', async () => {
+          await row.getByTestId('manage-button').click();
+          await page.getByTestId('delete-btn').click();
+
+          const deleteResPromise = page.waitForResponse(
+            (res) =>
+              res.url().includes(`${MEMORIES_API}/${memoryId}`) &&
+              res.request().method() === 'DELETE'
+          );
+          await page.getByTestId('confirm-button').click();
+          const deleteRes = await deleteResPromise;
+
+          expect(deleteRes.status()).toBe(200);
+          await expect(row).not.toBeVisible();
+
+          const gone = await apiContext.get(`${MEMORIES_API}/${memoryId}`);
+
+          expect(gone.status()).toBe(404);
+        });
+      } finally {
+        await ownerPage?.close();
+        if (memoryId) {
+          await apiContext
+            .delete(`${MEMORIES_API}/${memoryId}?hardDelete=true`)
+            .catch(() => undefined);
+        }
+        if (ownerOnlyUser.responseData.id) {
+          await ownerOnlyUser.delete(apiContext).catch(() => undefined);
+        }
+        await afterAction();
+      }
     });
 
     test('user with createAll permission sees Add Memory button but no row edit/delete actions or modal action buttons, and can create a memory', async ({
@@ -1811,9 +1954,10 @@ test.describe('Context Center Permissions', () => {
       await ownRow.getByTestId('edit-memory-btn').click();
       const dialog = editAllPage.getByRole('dialog');
       await expect(dialog).toBeVisible();
+      // Delete on their own memory comes from OrganizationPolicy-Owner-Rule.
       await expect(
         dialog.getByRole('button', { name: /^delete$/i })
-      ).not.toBeVisible();
+      ).toBeVisible();
       await expect(
         dialog.getByRole('button', { name: /^(save|create)/i })
       ).toBeVisible();
@@ -1859,14 +2003,15 @@ test.describe('Context Center Permissions', () => {
       );
       await ownRow.scrollIntoViewIfNeeded();
       await expect(ownRow).toBeVisible();
-      await expect(ownRow.getByTestId('edit-memory-btn')).not.toBeVisible();
+      // Edit on their own memory comes from OrganizationPolicy-Owner-Rule.
+      await expect(ownRow.getByTestId('edit-memory-btn')).toBeVisible();
 
       await ownRow.click();
       const dialog = deleteAllPage.getByRole('dialog');
       await expect(dialog).toBeVisible();
       await expect(
         dialog.getByRole('button', { name: /^edit$/i })
-      ).not.toBeVisible();
+      ).toBeVisible();
       await expect(
         dialog.getByRole('button', { name: /^delete$/i })
       ).toBeVisible();
