@@ -30,3 +30,4 @@ runs:
       with:
         name: openmetadata-service-surefire-reports
         path: openmetadata-service/target/surefire-reports/
+        retention-days: 7
