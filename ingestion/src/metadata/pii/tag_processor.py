@@ -26,11 +26,18 @@ from metadata.pii.classification_manager import (
 )
 from metadata.pii.conflict_resolver import ConflictResolver
 from metadata.pii.models import ScoredTag
+from metadata.utils.fqn import split_raw_name
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
 ScoreTagsForColumn = Callable[[Column, Sequence[Any], list[Tag]], list[ScoredTag]]
+
+
+def _classification_fqn(tag_fqn: str | None) -> str | None:
+    # Keep quotes to match stored classification FQNs.
+    parts = split_raw_name(tag_fqn) if tag_fqn else []
+    return parts[0] if len(parts) > 1 else None
 
 
 class TagProcessor(AutoClassificationProcessor):
@@ -114,37 +121,30 @@ class TagProcessor(AutoClassificationProcessor):
         """
         existing_tag_fqns = {tag.tagFQN.root for tag in (column.tags or []) if tag.tagFQN}
 
-        # Build classification lookup map
-        classification_map = {
-            classification.fullyQualifiedName.root: classification for classification in self.enabled_classifications
+        exclusive_fqns = {
+            classification.fullyQualifiedName.root
+            for classification in self.enabled_classifications
+            if classification.mutuallyExclusive
         }
+        occupied = {
+            _classification_fqn(tag.tagFQN.root)
+            for tag in (column.tags or [])
+            if tag.tagFQN and tag.source == TagSource.Classification
+        } & exclusive_fqns
 
-        # Identify mutually exclusive classifications that already have tags applied
-        mutually_exclusive_classifications_with_tags = set()
-        for existing_tag_fqn in existing_tag_fqns:
-            if "." in existing_tag_fqn:
-                classification_fqn = existing_tag_fqn.rsplit(".", 1)[0]
-                classification = classification_map.get(classification_fqn)
-                if classification and classification.mutuallyExclusive:
-                    mutually_exclusive_classifications_with_tags.add(classification_fqn)
-
-        # Filter candidate tags
         tags_to_analyze = []
         for tag in candidate_tags:
             tag_fqn = tag.fullyQualifiedName
-            # Skip already-applied tags
             if tag_fqn in existing_tag_fqns:
                 continue
 
-            # Extract classification FQN from tag
-            tag_classification_fqn = tag_fqn.rsplit(".", 1)[0] if "." in tag_fqn else ""
-
-            # Skip if tag belongs to a mutually exclusive classification
-            # that already has a tag applied
-            if tag_classification_fqn in mutually_exclusive_classifications_with_tags:
+            reference_fqn = tag.classification.fullyQualifiedName if tag.classification else None
+            tag_classification_fqn = reference_fqn or _classification_fqn(tag_fqn)
+            if tag_classification_fqn in occupied:
                 logger.debug(
-                    f"Skipping tag {tag_fqn} - mutually exclusive "
-                    f"classification {tag_classification_fqn} already has a tag applied"
+                    "Skipping tag %s because mutually exclusive classification %s already has a tag",
+                    tag_fqn,
+                    tag_classification_fqn,
                 )
                 continue
 
