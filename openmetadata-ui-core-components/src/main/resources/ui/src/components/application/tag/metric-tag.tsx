@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { CSSProperties, FC, MouseEvent } from 'react';
 import { Chart } from '../../../icons/Chart';
@@ -42,6 +43,7 @@ export const MetricTag: FC<EntityTagProps> = ({
   closeButtonTestId,
   ...otherProps
 }) => {
+  const { t } = useCoreTranslation();
   const resolvedColor = color ?? DEFAULT_TAG_COLOR;
   const tagColorStyle = { '--tag-color': resolvedColor } as CSSProperties;
 
@@ -80,6 +82,7 @@ export const MetricTag: FC<EntityTagProps> = ({
     return (
       <BadgeWithButton
         {...sharedProps}
+        buttonLabel={t('label.remove-entity', { entity: label })}
         buttonTestId={closeButtonTestId}
         className={cx(sharedProps.className, 'tag-tinted__close-icon')}
         isDisabled={disabled}
