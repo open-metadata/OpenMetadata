@@ -28,6 +28,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -492,6 +493,75 @@ class SetApprovalAssigneesImplTest {
     assertFalse(
         assigneesJson.contains("<#E::user::alice>"),
         "Requester who is also an admin must be excluded so self-approval can never happen");
+  }
+
+  @Test
+  void testSelfApprovalPrevention_eventDrivenSoleRequester_neverAssignedAndAutoApproved() {
+    // Event-driven approval whose only reviewer is the requester: the requester is never their own
+    // approver (as filer they could not resolve it), so under "none" the node approves.
+    EntityReference creatorRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+    when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
+
+    delegate.execute(execution);
+
+    assertEquals("[]", capturedVars.get("ApprovalTask_assignees"));
+    assertFalse((Boolean) capturedVars.get("hasAssignees"));
+  }
+
+  @Test
+  void testSelfApprovalPrevention_eventDrivenSoleRequester_routedToOtherAdmins() {
+    EntityReference creatorRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+    when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn(
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
+    givenAdmins("alice", "platform_admin");
+
+    delegate.execute(execution);
+
+    String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
+    assertTrue(assigneesJson.contains("platform_admin"), assigneesJson);
+    assertFalse(assigneesJson.contains("<#E::user::alice>"), assigneesJson);
+    assertTrue((Boolean) capturedVars.get("hasAssignees"));
+  }
+
+  @Test
+  void testSelfApprovalPrevention_eventDrivenSoleAdminRequester_keepsTaskOpenUnderAssignAdmins() {
+    EntityReference creatorRef =
+        new EntityReference().withType("user").withFullyQualifiedName("alice");
+    when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
+    when(execution.getVariable("global_updatedBy")).thenReturn("alice");
+    when(assigneesExpr.getValue(execution))
+        .thenReturn(
+            "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
+    givenAdmins("alice");
+
+    delegate.execute(execution);
+
+    assertEquals("[]", capturedVars.get("ApprovalTask_assignees"));
+    assertTrue(
+        (Boolean) capturedVars.get("hasAssignees"),
+        "an explicit admin fallback never turns into an automatic approval");
+  }
+
+  private void givenAdmins(String... names) {
+    UserRepository mockUserRepository = mock(UserRepository.class);
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(mockUserRepository);
+    List<User> admins = new ArrayList<>();
+    for (String name : names) {
+      admins.add(new User().withName(name).withFullyQualifiedName(name));
+    }
+    @SuppressWarnings("unchecked")
+    ResultList<User> page = mock(ResultList.class);
+    when(page.getData()).thenReturn(admins);
+    when(page.getPaging()).thenReturn(new Paging());
+    when(mockUserRepository.listAfter(isNull(), any(), any(), anyInt(), isNull())).thenReturn(page);
   }
 
   private static void injectField(Object target, String fieldName, Object value) throws Exception {

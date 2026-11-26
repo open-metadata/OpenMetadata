@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.util.TestUtils.simulateWork;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -38,6 +39,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
@@ -76,6 +78,9 @@ import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
@@ -93,6 +98,7 @@ import org.openmetadata.schema.api.data.CreateAPIEndpoint;
 import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
+import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateGlossary;
@@ -118,6 +124,7 @@ import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -135,6 +142,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.Assignees__1.EmptyAssigneeStrategy;
 import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -13329,7 +13337,9 @@ public class WorkflowDefinitionResourceIT {
             new CreateTable()
                 .withName(name + "_table")
                 .withDatabaseSchema(schema.getFullyQualifiedName())
-                .withOwners(List.of(admin.users().getByName("admin").getEntityReference()))
+                // Owned by someone other than the admin who edits it, so the approval has someone
+                // to ask besides the editor, who is never asked to approve their own edit.
+                .withOwners(List.of(SharedEntities.get().USER2_REF))
                 .withTags(
                     List.of(
                         new TagLabel()
@@ -13547,5 +13557,222 @@ public class WorkflowDefinitionResourceIT {
             ? null
             : JsonUtils.getMap(task.getPayload()).get("proposedChanges");
     return preview == null ? Map.of() : JsonUtils.getMap(preview);
+  }
+
+  /** Who an approval node asks: the contract's owners, its reviewers, or both. */
+  private enum ApproverSource {
+    OWNERS(true, false),
+    REVIEWERS(false, true),
+    OWNERS_AND_REVIEWERS(true, true);
+
+    private final boolean addOwners;
+    private final boolean addReviewers;
+
+    ApproverSource(boolean addOwners, boolean addReviewers) {
+      this.addOwners = addOwners;
+      this.addReviewers = addReviewers;
+    }
+  }
+
+  private static Stream<Arguments> approverSourcesAndEmptyAssigneeStrategies() {
+    return Stream.of(ApproverSource.values())
+        .flatMap(
+            source ->
+                Stream.of(EmptyAssigneeStrategy.values())
+                    .map(strategy -> Arguments.of(source, strategy)));
+  }
+
+  @ParameterizedTest(name = "{0} / {1}")
+  @MethodSource("approverSourcesAndEmptyAssigneeStrategies")
+  void test_editorWhoIsTheOnlyApproverIsNeverAskedToApprove(
+      ApproverSource source, EmptyAssigneeStrategy strategy, TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    User steward = createPlainUser(admin, "steward");
+    // The steward owns and reviews the contract, so every source resolves to the steward alone.
+    DataContract contract =
+        createContract(
+            ns, List.of(steward.getEntityReference()), List.of(steward.getEntityReference()));
+    String workflowName = createContractApprovalWorkflow(contract, source, strategy);
+
+    editDescriptionAs(steward, contract);
+
+    switch (strategy) {
+      case NONE -> {
+        // Nobody else can approve, so the node approves instead of asking the steward.
+        JsonNode instance = awaitOnlyInstanceEnded(admin, workflowName);
+        assertEquals(
+            WorkflowInstance.WorkflowStatus.FINISHED.value(),
+            instance.path("status").asText(),
+            instance.toString());
+        assertTrue(
+            listOpenApprovalTasks(admin, contract.getFullyQualifiedName()).getData().isEmpty(),
+            "no approval task may be opened for the steward's own edit");
+      }
+      case ASSIGN_ADMINS -> {
+        UUID adminId = admin.users().getByName("admin").getId();
+        Task task =
+            awaitOpenApprovalTaskAssignedTo(admin, contract.getFullyQualifiedName(), adminId);
+        assertFalse(assigneeNames(task).contains(steward.getName()), assigneeNames(task)::toString);
+      }
+    }
+  }
+
+  @ParameterizedTest(name = "{0} / {1}")
+  @MethodSource("approverSourcesAndEmptyAssigneeStrategies")
+  void test_editorIsLeftOffTheApprovalWhenSomeoneElseCanApprove(
+      ApproverSource source, EmptyAssigneeStrategy strategy, TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    User steward = createPlainUser(admin, "steward");
+    User colleague = createPlainUser(admin, "colleague");
+    EntityReference stewardRef = steward.getEntityReference();
+    EntityReference colleagueRef = colleague.getEntityReference();
+    // The steward stays an owner so they may edit; the colleague is reachable through each source.
+    List<EntityReference> owners =
+        source == ApproverSource.REVIEWERS
+            ? List.of(stewardRef)
+            : List.of(stewardRef, colleagueRef);
+    List<EntityReference> reviewers =
+        source == ApproverSource.OWNERS ? List.of() : List.of(stewardRef, colleagueRef);
+    DataContract contract = createContract(ns, owners, reviewers);
+    createContractApprovalWorkflow(contract, source, strategy);
+
+    editDescriptionAs(steward, contract);
+
+    Task task =
+        awaitOpenApprovalTaskAssignedTo(admin, contract.getFullyQualifiedName(), colleague.getId());
+    assertEquals(Set.of(colleague.getName()), assigneeNames(task));
+  }
+
+  private static User createPlainUser(OpenMetadataClient admin, String role) {
+    String name = "%s_%s".formatted(role, UUID.randomUUID().toString().substring(0, 8));
+    return admin
+        .users()
+        .create(
+            new CreateUser()
+                .withName(name)
+                .withEmail(name + "@example.com")
+                .withPassword("password123"));
+  }
+
+  private static DataContract createContract(
+      TestNamespace ns, List<EntityReference> owners, List<EntityReference> reviewers) {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    return SdkClients.adminClient()
+        .dataContracts()
+        .create(
+            new CreateDataContract()
+                .withName("contract_" + UUID.randomUUID().toString().substring(0, 8))
+                .withDescription("initial")
+                .withEntity(table.getEntityReference())
+                .withOwners(owners)
+                .withReviewers(reviewers));
+  }
+
+  private String createContractApprovalWorkflow(
+      DataContract contract, ApproverSource source, EmptyAssigneeStrategy strategy)
+      throws Exception {
+    ensureWorkflowEventConsumerIsActive(SdkClients.adminClient());
+    String workflowName = "editorApproval" + UUID.randomUUID().toString().substring(0, 8);
+    String onlyThisContract =
+        "{\"!=\":[{\"var\":\"fullyQualifiedName\"},\"%s\"]}"
+            .formatted(contract.getFullyQualifiedName());
+    String json =
+        """
+        {
+          "name": "%s",
+          "description": "Approval of data contract edits",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {
+              "entityTypes": ["dataContract"],
+              "events": ["Updated"],
+              "exclude": ["reviewers"],
+              "filter": %s
+            },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {"type": "startEvent", "subType": "startEvent", "name": "StartNode"},
+            {"type": "endEvent", "subType": "endEvent", "name": "EndNode"},
+            {
+              "type": "userTask",
+              "subType": "userApprovalTask",
+              "name": "EditApproval",
+              "config": {
+                "assignees": {
+                  "addOwners": %s,
+                  "addReviewers": %s,
+                  "candidates": [],
+                  "emptyAssigneeStrategy": "%s"
+                },
+                "approvalThreshold": 1,
+                "rejectionThreshold": 1
+              },
+              "input": ["relatedEntity"],
+              "inputNamespaceMap": {"relatedEntity": "global"},
+              "output": ["updatedBy"],
+              "branches": ["true", "false"]
+            }
+          ],
+          "edges": [
+            {"from": "StartNode", "to": "EditApproval"},
+            {"from": "EditApproval", "to": "EndNode", "condition": "approve"},
+            {"from": "EditApproval", "to": "EndNode", "condition": "reject"}
+          ]
+        }
+        """
+            .formatted(
+                workflowName,
+                JsonUtils.pojoToJson(Map.of("dataContract", onlyThisContract)),
+                source.addOwners,
+                source.addReviewers,
+                strategy.value());
+    JsonNode created =
+        MAPPER.readTree(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.POST,
+                    BASE_PATH,
+                    JsonUtils.readValue(json, CreateWorkflowDefinition.class),
+                    RequestOptions.builder().build()));
+    trackWorkflowFromJson(created);
+    waitForWorkflowDeployment(SdkClients.adminClient(), workflowName);
+    return workflowName;
+  }
+
+  private static void editDescriptionAs(User editor, DataContract contract) throws Exception {
+    SdkClients.createClient(editor.getName(), editor.getEmail(), new String[] {})
+        .dataContracts()
+        .patch(
+            contract.getId().toString(),
+            MAPPER.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"edited by %s\"}]"
+                    .formatted(editor.getName())));
+  }
+
+  private static Set<String> assigneeNames(Task task) {
+    return listOrEmpty(task.getAssignees()).stream()
+        .map(EntityReference::getName)
+        .collect(Collectors.toSet());
+  }
+
+  private Task awaitOpenApprovalTaskAssignedTo(
+      OpenMetadataClient client, String entityFqn, UUID assigneeId) {
+    return await("open approval task for " + entityFqn + " assigned to " + assigneeId)
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () ->
+                listOpenApprovalTasks(client, entityFqn).getData().stream()
+                    .filter(
+                        task ->
+                            listOrEmpty(task.getAssignees()).stream()
+                                .anyMatch(assignee -> assigneeId.equals(assignee.getId())))
+                    .findFirst()
+                    .orElse(null),
+            Objects::nonNull);
   }
 }
