@@ -12,26 +12,26 @@
  */
 import { APIRequestContext, expect } from '@playwright/test';
 import { get } from 'lodash';
+import { migratedTo } from '../../../constant/migration';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import {
-  LineageDataClass,
-  LineageEntityUnion,
+    LineageDataClass,
+    LineageEntityUnion
 } from '../../../support/entity/LineageDataClass';
 import {
-  getApiContext,
-  getEntityTypeSearchIndexMapping,
+    getApiContext,
+    getEntityTypeSearchIndexMapping
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-  fitToScreen,
-  openImpactAnalysisTab,
-  performZoomOut,
-  setLineageDepthAndVerify,
-  visitLineageTab,
+    fitToScreen,
+    openImpactAnalysisTab,
+    performZoomOut,
+    setLineageDepthAndVerify,
+    visitLineageTab
 } from '../../../utils/lineage';
 import { waitForSearchIndexed } from '../../../utils/polling';
 import { waitForAggregation } from '../../../utils/searchAggregation';
-import { migratedTo } from '../../../constant/migration';
 import { test } from '../../fixtures/pages';
 
 // Alias so the existing filter-config type keeps its familiar name in the
@@ -391,35 +391,27 @@ test.describe('Lineage Filters', () => {
     );
   });
 
-  test(
-    'Verify lineage filter panel toggle',
-    migratedTo.browser(
-      'src/components/LineageTable/LineageTable.browser.test.tsx'
-    ),
-    async ({ page }) => {
-      const filterBtn = page.locator('[aria-label="Filters"]');
+  test('Verify lineage filter panel toggle', async ({ page }) => {
+    const filterBtn = page.locator('[aria-label="Filters"]');
 
-      await filterBtn.click();
-      await expect(
-        page
-          .getByTestId('lineage-details')
-          .getByRole('button', { name: 'Domains' })
-      ).toBeVisible();
-      await expect(page.getByTestId('search-dropdown-Owners')).toBeVisible();
-      await expect(page.getByTestId('search-dropdown-Tier')).toBeVisible();
+    await filterBtn.click();
+    await expect(
+      page
+        .getByTestId('lineage-details')
+        .getByRole('button', { name: 'Domains' })
+    ).toBeVisible();
+    await expect(page.getByTestId('search-dropdown-Owners')).toBeVisible();
+    await expect(page.getByTestId('search-dropdown-Tier')).toBeVisible();
 
-      await filterBtn.click();
-      await expect(
-        page
-          .getByTestId('lineage-details')
-          .getByRole('button', { name: 'Domains' })
-      ).not.toBeVisible();
-      await expect(
-        page.getByTestId('search-dropdown-Owners')
-      ).not.toBeVisible();
-      await expect(page.getByTestId('search-dropdown-Tier')).not.toBeVisible();
-    }
-  );
+    await filterBtn.click();
+    await expect(
+      page
+        .getByTestId('lineage-details')
+        .getByRole('button', { name: 'Domains' })
+    ).not.toBeVisible();
+    await expect(page.getByTestId('search-dropdown-Owners')).not.toBeVisible();
+    await expect(page.getByTestId('search-dropdown-Tier')).not.toBeVisible();
+  });
 
   test(
     'Verify Impact Analysis service filter selection',

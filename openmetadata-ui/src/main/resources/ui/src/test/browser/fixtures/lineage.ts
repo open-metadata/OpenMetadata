@@ -19,10 +19,10 @@
  * matching nodes come back and the per-depth counts count only those.
  */
 import { http, HttpResponse } from 'msw';
-import { EdgeDetails } from '../../../interface/lineage.interface';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { LineagePaginationInfo } from '../../../generated/api/lineage/lineagePaginationInfo';
 import { Table } from '../../../generated/entity/data/table';
+import { EdgeDetails } from '../../../interface/lineage.interface';
 import { worker } from '../msw';
 import { SCHEMA } from './hierarchy';
 
