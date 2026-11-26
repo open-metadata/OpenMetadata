@@ -125,17 +125,17 @@ public final class SecretMapOwnership {
     private final T original;
     private final Set<String> ownedNames;
     private final Consumer<String> onFreshCreate;
-    private final Set<String> clearedSecrets;
+    private final Set<String> retiredSecrets;
 
     private WriteContext(
         T original,
         Set<String> ownedNames,
         Consumer<String> onFreshCreate,
-        Set<String> clearedSecrets) {
+        Set<String> retiredSecrets) {
       this.original = original;
       this.ownedNames = ownedNames;
       this.onFreshCreate = onFreshCreate;
-      this.clearedSecrets = clearedSecrets;
+      this.retiredSecrets = retiredSecrets;
     }
 
     static <T> WriteContext<T> untracked(T original) {
@@ -147,7 +147,7 @@ public final class SecretMapOwnership {
     }
 
     public <U> WriteContext<U> withOriginal(U convertedOriginal) {
-      return new WriteContext<>(convertedOriginal, ownedNames, onFreshCreate, clearedSecrets);
+      return new WriteContext<>(convertedOriginal, ownedNames, onFreshCreate, retiredSecrets);
     }
 
     boolean owns(String canonicalName) {
@@ -158,8 +158,13 @@ public final class SecretMapOwnership {
       onFreshCreate.accept(name);
     }
 
-    void deferFreshClear(String name) {
-      clearedSecrets.add(name);
+    /** Commit cleanup rechecks all surviving references before deleting a retired value. */
+    boolean retireIfOwned(String canonicalName) {
+      boolean owned = owns(canonicalName);
+      if (owned) {
+        retiredSecrets.add(canonicalName);
+      }
+      return owned;
     }
   }
 
@@ -185,14 +190,14 @@ public final class SecretMapOwnership {
     }
     state.owned().addAll(stored.writtenSecretsFor(input.writtenMaps()));
     scalars.addAll(stored.writtenSecretsFor(input.writtenScalars()));
-    Set<String> clearedScalars = new HashSet<>();
+    Set<String> retiredScalars = new HashSet<>();
     for (String scalar : scalars) {
-      if (context.clearedSecrets.contains(manager.canonicalSecretName(scalar))) {
-        clearedScalars.add(scalar);
+      if (context.retiredSecrets.contains(manager.canonicalSecretName(scalar))) {
+        retiredScalars.add(scalar);
       }
     }
-    scalars.removeAll(clearedScalars);
-    state.owned().addAll(clearedScalars);
+    scalars.removeAll(retiredScalars);
+    state.owned().addAll(retiredScalars);
     state.owners().put(owner, new Owner(stored.references(), scalars));
     save(stored.root(), state);
   }

@@ -1,9 +1,9 @@
 # MCP service server names are unique, and a masked value is kept only where a stored value exists
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-11 (initial); v2 2026-11-14 (checked on any server change, order included); v3 2026-11-19 (secret ids of list elements stay distinct once cleaned); v4 2026-11-23 (allocate a fresh id when another element still references a list element's default id)
+- **Revisions:** v1 2026-11-11 (initial); v2 2026-11-14 (checked on any server change, order included); v3 2026-11-19 (secret ids of list elements stay distinct once cleaned); v4 2026-11-23 (allocate a fresh id when another element still references a list element's default id); v5 2026-11-27 (stage replacements for committed fresh ids and retire them after commit)
 - **Deciders:** backend
-- **Guard:** `PasswordEntityMaskerTest.testMaskedSecretWithNoStoredValueIsRejected`, `PasswordEntityMaskerTest.testNamesSharingASecretIdKeepTheirOwnKeysWhenReordered`; `ReflectionUtilCollectionKeysTest`, `SecretMapEntriesExternalStoreTest.reorderingServersThatShareACleanedNameThenReplacingOneKeyKeepsTheOther`, `SecretMapEntriesExternalStoreTest.renamingAServerThenReusingItsOldNameInALaterSaveKeepsBothKeys`, `ListSecretReferenceAllocationTest`, `SecretsManagerNullSecretIT.renamedMcpServerKeepsItsApiKeyWhenOldNameIsReusedAndSwapped`; `McpServiceResourceIT.post_mcpServiceWithDuplicateServerNames_400`, `McpServiceResourceIT.put_renamedServerWithMaskedApiKey_400_keepsStoredKey`, `McpServiceResourceIT.put_reorderedStoredServersWithSameName_400_otherEditsStillSave`
+- **Guard:** `PasswordEntityMaskerTest.testMaskedSecretWithNoStoredValueIsRejected`, `PasswordEntityMaskerTest.testNamesSharingASecretIdKeepTheirOwnKeysWhenReordered`; `ReflectionUtilCollectionKeysTest`, `SecretMapEntriesExternalStoreTest.reorderingServersThatShareACleanedNameThenReplacingOneKeyKeepsTheOther`, `SecretMapEntriesExternalStoreTest.renamingAServerThenReusingItsOldNameInALaterSaveKeepsBothKeys`, `ListSecretReferenceAllocationTest`, `SecretsManagerNullSecretIT.renamedMcpServerKeepsItsApiKeyWhenOldNameIsReusedAndSwapped`, `SecretsManagerNullSecretIT.replacingACommittedFreshReferenceStagesItsValueUntilCommit`, `SecretsManagerNullSecretIT.clearingARenamedFreshReferenceRetainsItUntilItsLastAliasCommits`; `McpServiceResourceIT.post_mcpServiceWithDuplicateServerNames_400`, `McpServiceResourceIT.put_renamedServerWithMaskedApiKey_400_keepsStoredKey`, `McpServiceResourceIT.put_reorderedStoredServersWithSameName_400_otherEditsStillSave`
 - **Related:** open-metadata/openmetadata-collate#7962, ADR:2026-10-24-a-masked-connection-secret-is-kept-only-while-the-endpoint-is-unchanged
 
 ## Context
@@ -80,3 +80,12 @@ shifted element still referenced.
   records the actual secret id written for each plaintext slot (including fresh ids), so hard delete
   removes owned secrets while leaving user-supplied references untouched. When the database rolls
   back, its rollback callback attempts to remove each confirmed fresh creation from that transaction.
+
+## Amendment (v5, 2026-11-27)
+
+When a list slot contains a committed, ledger-owned fresh reference, stage a replacement under
+a new id. A failed entity write discards the staged value and
+preserves the committed reference and its value. Clearing or replacing an owned non-default
+reference retires it by its recorded id, including after a rename. After commit, cleanup deletes the retired value
+only when the updated ownership ledger has no remaining reference to it. Passing through a
+reference unchanged keeps its id.

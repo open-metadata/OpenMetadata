@@ -373,7 +373,7 @@ class SecretMapEntriesExternalStoreTest {
     assertEquals("new-alpha-key", storedKey(reused, "alpha"));
     assertNotEquals(storedReference(reused, "beta"), storedReference(reused, "alpha"));
 
-    // Updating the reused server reuses its own fresh secret id in place instead of spawning more.
+    // Rotate the fresh id without changing its committed value before cleanup.
     String freshRef = storedReference(reused, "alpha");
     McpConnection rotated =
         encryptMcp(
@@ -381,7 +381,13 @@ class SecretMapEntriesExternalStoreTest {
             reused);
     assertEquals("alpha-key", storedKey(rotated, "beta"));
     assertEquals("rotated-alpha-key", storedKey(rotated, "alpha"));
-    assertEquals(freshRef, storedReference(rotated, "alpha"));
+    assertNotEquals(freshRef, storedReference(rotated, "alpha"));
+    assertEquals("new-alpha-key", secretsManager.getSecretValue(freshRef));
+    ownership.clean(mcpRoot());
+    assertFalse(
+        secretsManager
+            .getSecretsMap()
+            .containsKey(freshRef.substring(SecretsManager.SECRET_FIELD_PREFIX.length())));
     assertEquals(2, secretsManager.getSecretsMap().size());
 
     ownership.removeOwner(owner, secretsManager.secretInventory(rotated, mcpRoot()));
@@ -565,7 +571,7 @@ class SecretMapEntriesExternalStoreTest {
     assertEquals("key-2", storedKeyAt(addedSecond, 1));
     String freshAtOne = storedReferenceAt(addedSecond, 1);
 
-    // Editing index 1 again reuses its fresh id without disturbing index 0.
+    // Editing index 1 again stages a replacement without disturbing either committed value.
     McpConnection editedSecond =
         encryptMcp(
             List.of(
@@ -574,7 +580,13 @@ class SecretMapEntriesExternalStoreTest {
             addedSecond);
     assertEquals("key-1", storedKeyAt(editedSecond, 0));
     assertEquals("key-3", storedKeyAt(editedSecond, 1));
-    assertEquals(freshAtOne, storedReferenceAt(editedSecond, 1));
+    assertNotEquals(freshAtOne, storedReferenceAt(editedSecond, 1));
+    assertEquals("key-2", secretsManager.getSecretValue(freshAtOne));
+    ownership.clean(mcpRoot());
+    assertFalse(
+        secretsManager
+            .getSecretsMap()
+            .containsKey(freshAtOne.substring(SecretsManager.SECRET_FIELD_PREFIX.length())));
 
     ownership.removeOwner(owner, secretsManager.secretInventory(editedSecond, mcpRoot()));
     ownership.clean(mcpRoot());

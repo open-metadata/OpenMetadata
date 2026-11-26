@@ -1281,38 +1281,8 @@ public abstract class SecretsManager {
     return false;
   }
 
-  final boolean isFreshIdFor(String candidateName, String fieldSecretId, String root) {
-    String canonCandidate = canonicalSecretName(candidateName);
-    String sep = secretsIdConfig.separator();
-    if (hasFreshSuffix(canonCandidate, canonicalSecretName(fieldSecretId) + sep)) {
-      return true;
-    }
-    if (root != null) {
-      String compactBase = buildSecretId(false, root, compactFieldTag(fieldSecretId));
-      return hasFreshSuffix(canonCandidate, canonicalSecretName(compactBase) + sep);
-    }
-    return false;
-  }
-
   final String compactFieldTag(String fieldSecretId) {
     return "f" + DigestUtils.sha256Hex(canonicalSecretName(fieldSecretId)).substring(0, 16);
-  }
-
-  private static boolean hasFreshSuffix(String canonCandidate, String canonPrefix) {
-    if (!canonCandidate.startsWith(canonPrefix)) {
-      return false;
-    }
-    String suffix = canonCandidate.substring(canonPrefix.length());
-    if (suffix.length() != SecretKeyEncoding.FIELD_KEY_LENGTH) {
-      return false;
-    }
-    for (int i = 0; i < suffix.length(); i++) {
-      char c = suffix.charAt(i);
-      if (!((c >= 'a' && c <= 'z') || (c >= '2' && c <= '7'))) {
-        return false;
-      }
-    }
-    return true;
   }
 
   private Optional<String> referencedSecretName(String fieldValue) {
@@ -1390,45 +1360,42 @@ public abstract class SecretsManager {
     }
 
     private Optional<String> selectExistingWriteId(String defaultSecretId) {
-      String savedOwnRef = savedRefAt(defaultSecretId);
-      if (isOwnedFreshId(savedOwnRef, defaultSecretId)
-          && !isReferencedByOther(savedOwnRef, defaultSecretId)) {
-        return Optional.of(savedOwnRef);
+      Optional<String> displaced = displacedReference(defaultSecretId);
+      if (displaced.isPresent()) {
+        String previous = displaced.get();
+        if (context.retireIfOwned(previous) && hasFreshSuffix(previous)) {
+          return Optional.empty();
+        }
       }
-      return isReferencedByOther(defaultSecretId, defaultSecretId)
-          ? Optional.empty()
-          : Optional.of(defaultSecretId);
+      return availableDefaultId(defaultSecretId);
+    }
+
+    private boolean hasFreshSuffix(String canonicalName) {
+      String separator = manager.getSecretsIdConfig().separator();
+      int lastSeparator = canonicalName.lastIndexOf(separator);
+      return lastSeparator >= 0
+          && SecretKeyEncoding.isFreshSuffix(
+              canonicalName.substring(lastSeparator + separator.length()));
     }
 
     private Optional<String> secretIdToDeleteOnClear(String defaultSecretId) {
-      String savedOwnRef = savedRefAt(defaultSecretId);
-      if (savedOwnRef != null) {
-        if (isOwnedFreshId(savedOwnRef, defaultSecretId)
-            && !isReferencedByOther(savedOwnRef, defaultSecretId)) {
-          context.deferFreshClear(manager.canonicalSecretName(savedOwnRef));
-        }
-        if (manager
-            .canonicalSecretName(savedOwnRef)
-            .equals(manager.canonicalSecretName(defaultSecretId))) {
-          return isReferencedByOther(defaultSecretId, defaultSecretId)
-              ? Optional.empty()
-              : Optional.of(defaultSecretId);
-        }
-        return Optional.empty();
-      }
+      Optional<String> displaced = displacedReference(defaultSecretId);
+      displaced.ifPresent(context::retireIfOwned);
+      return displaced.isPresent() ? Optional.empty() : availableDefaultId(defaultSecretId);
+    }
+
+    /** A renamed slot can still hold a reference allocated under its old name. */
+    private Optional<String> displacedReference(String defaultSecretId) {
+      String slot = manager.canonicalSecretName(defaultSecretId);
+      return Optional.ofNullable(savedRefBySlot.get(slot))
+          .map(manager::canonicalSecretName)
+          .filter(reference -> !slot.equals(reference));
+    }
+
+    private Optional<String> availableDefaultId(String defaultSecretId) {
       return isReferencedByOther(defaultSecretId, defaultSecretId)
           ? Optional.empty()
           : Optional.of(defaultSecretId);
-    }
-
-    private boolean isOwnedFreshId(String reference, String defaultSecretId) {
-      return reference != null
-          && context.owns(manager.canonicalSecretName(reference))
-          && manager.isFreshIdFor(reference, defaultSecretId, root);
-    }
-
-    private String savedRefAt(String defaultSecretId) {
-      return savedRefBySlot.get(manager.canonicalSecretName(defaultSecretId));
     }
 
     private boolean isReferencedByOther(String candidateSecretId, String currentSlot) {

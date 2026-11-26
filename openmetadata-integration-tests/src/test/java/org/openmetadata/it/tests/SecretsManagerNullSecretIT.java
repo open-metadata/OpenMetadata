@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -1008,6 +1009,110 @@ public class SecretsManagerNullSecretIT {
     Map<String, String> refs = mcpBotReferences(created.getId().toString());
     assertEquals("first-key", vault.getSecretValue(refs.get("beta")));
     assertEquals("second-key", vault.getSecretValue(refs.get("alpha")));
+  }
+
+  @Test
+  void replacingACommittedFreshReferenceStagesItsValueUntilCommit(TestNamespace ns) {
+    McpService service = createMcpWithFreshReference(ns);
+    Map<String, String> originalRefs = mcpBotReferences(service.getId().toString());
+    String previousName =
+        originalRefs.get("alpha").substring(SecretsManager.SECRET_FIELD_PREFIX.length());
+    McpService updated =
+        JsonUtils.deepCopy(service, McpService.class)
+            .withConnection(
+                mcpDirectConnection(
+                    mcpServer("beta", originalRefs.get("beta")), mcpServer("alpha", "third-key")));
+    McpServiceRepository repository =
+        (McpServiceRepository) Entity.getEntityRepository(Entity.MCP_SERVICE);
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            repository.executeInTransaction(
+                () -> {
+                  repository.storeEntity(updated, true);
+                  throw new IllegalStateException("Reject replacement before commit");
+                }));
+
+    RequestEntityCache.clear();
+    assertEquals(originalRefs, mcpBotReferences(service.getId().toString()));
+    assertEquals("second-key", vault.getSecretsMap().get(previousName));
+    assertFalse(vault.getSecretsMap().containsValue("third-key"));
+
+    repository.storeEntity(updated, true);
+    RequestEntityCache.clear();
+    Map<String, String> committedRefs = mcpBotReferences(service.getId().toString());
+    assertNotEquals(originalRefs.get("alpha"), committedRefs.get("alpha"));
+    assertEquals("third-key", vault.getSecretValue(committedRefs.get("alpha")));
+    assertEquals("first-key", vault.getSecretValue(committedRefs.get("beta")));
+    assertFalse(vault.getSecretsMap().containsKey(previousName));
+  }
+
+  @Test
+  void clearingARenamedFreshReferenceRetainsItUntilItsLastAliasCommits(TestNamespace ns) {
+    McpService service = createMcpWithFreshReference(ns);
+    Map<String, String> refs = mcpBotReferences(service.getId().toString());
+    String sharedRef = refs.get("alpha");
+    String sharedName = sharedRef.substring(SecretsManager.SECRET_FIELD_PREFIX.length());
+    McpServiceRepository repository =
+        (McpServiceRepository) Entity.getEntityRepository(Entity.MCP_SERVICE);
+    McpService renamed =
+        JsonUtils.deepCopy(service, McpService.class)
+            .withConnection(
+                mcpDirectConnection(
+                    mcpServer("beta", refs.get("beta")),
+                    mcpServer("gamma", sharedRef),
+                    mcpServer("delta", sharedRef)));
+    repository.storeEntity(renamed, true);
+    renamed.setConnection(
+        mcpDirectConnection(
+            mcpServer("beta", refs.get("beta")),
+            mcpServer("gamma", ""),
+            mcpServer("delta", sharedRef)));
+    repository.storeEntity(renamed, true);
+    assertEquals("second-key", vault.getSecretsMap().get(sharedName));
+
+    renamed.setConnection(
+        mcpDirectConnection(
+            mcpServer("beta", refs.get("beta")), mcpServer("gamma", ""), mcpServer("delta", "")));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            repository.executeInTransaction(
+                () -> {
+                  repository.storeEntity(renamed, true);
+                  throw new IllegalStateException("Reject clear before commit");
+                }));
+    assertEquals("second-key", vault.getSecretsMap().get(sharedName));
+
+    repository.storeEntity(renamed, true);
+    RequestEntityCache.clear();
+    Map<String, String> committedRefs = mcpBotReferences(service.getId().toString());
+    assertNull(committedRefs.get("delta"));
+    assertFalse(vault.getSecretsMap().containsKey(sharedName));
+    assertEquals("first-key", vault.getSecretValue(committedRefs.get("beta")));
+  }
+
+  private static McpService createMcpWithFreshReference(TestNamespace ns) {
+    String name = ns.prefix("mcp_fresh_reference");
+    McpService service =
+        SdkClients.adminClient()
+            .mcpServices()
+            .create(
+                new CreateMcpService()
+                    .withName(name)
+                    .withServiceType(McpServiceType.Mcp)
+                    .withConnection(mcpDirectConnection(mcpServer("alpha", "first-key"))));
+    ns.trackRoot(Entity.MCP_SERVICE, service);
+    String alphaRef = mcpBotReferences(service.getId().toString()).get("alpha");
+    McpService stored =
+        Entity.getCollectionDAO().mcpServiceDAO().findEntityById(service.getId(), Include.ALL);
+    stored.setConnection(
+        mcpDirectConnection(mcpServer("beta", alphaRef), mcpServer("alpha", "second-key")));
+    ((McpServiceRepository) Entity.getEntityRepository(Entity.MCP_SERVICE))
+        .storeEntity(stored, true);
+    RequestEntityCache.clear();
+    return stored;
   }
 
   private static McpConnection mcpDirectConnection(McpServerConfig... servers) {
