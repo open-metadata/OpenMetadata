@@ -88,7 +88,8 @@ const ContextCenterArticlesPage = () => {
   const { version } = useRequiredParams<{ version?: string }>();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
-  const { getResourcePermission } = usePermissionProvider();
+  const { getResourcePermission, getEntityPermissionByFqn } =
+    usePermissionProvider();
   const { getResourceLimit } = useLimitStore();
   const knowledgeCenterPageRef = useRef<KnowledgeCenterPageRef>(null);
   const knowledgePagesHierarchyRef = useRef<KnowledgePagesHierarchyRef>(null);
@@ -97,6 +98,10 @@ const ContextCenterArticlesPage = () => {
     DEFAULT_ENTITY_PERMISSION
   );
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
+  // Resource-level permission leaves isOwner()-style conditions unresolved, so the open
+  // article's header must use the entity-level one.
+  const [articlePermissions, setArticlePermissions] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [page, setPage] = useState<KnowledgeCenterPageProps>({
     data: undefined,
     rightPanel: null,
@@ -241,6 +246,20 @@ const ContextCenterArticlesPage = () => {
     fetchPermission();
   }, [fetchPermission]);
 
+  useEffect(() => {
+    let isCurrent = true;
+    setArticlePermissions(DEFAULT_ENTITY_PERMISSION);
+    if (fqn && !version) {
+      getEntityPermissionByFqn(ResourceEntity.KNOWLEDGE_PAGE, fqn)
+        .then((response) => isCurrent && setArticlePermissions(response))
+        .catch((error) => showErrorToast(error as AxiosError));
+    }
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [fqn, version, getEntityPermissionByFqn]);
+
   const renderHeader = () => {
     if (version) {
       return <ArticleVersionHeader knowledgePage={page.data} />;
@@ -257,7 +276,7 @@ const ContextCenterArticlesPage = () => {
           fetchKnowledgePageHierarchy={handleFetchKnowledgePageHierarchy}
           isRightPanelOpen={isRightPanelOpen}
           knowledgePage={page.data}
-          permissions={permissions}
+          permissions={articlePermissions}
           tabs={page.tabs}
           onFollowChange={
             page.handlers?.onFollowChange ?? (async () => undefined)
