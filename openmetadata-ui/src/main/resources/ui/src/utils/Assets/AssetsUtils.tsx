@@ -301,7 +301,6 @@ export const getEntityFqnQueryFilter = (fqns: string[]) => {
 export interface EntityIconProps {
   className?: string;
   size?: number;
-  strokeWidth?: number;
 }
 
 export const getEntityIconWithBg = (
@@ -314,11 +313,7 @@ export const getEntityIconWithBg = (
   const Icon = style?.icon;
   const { className: containerClassName, ...restContainerProps } =
     containerProps ?? {};
-  const {
-    className: iconClassName,
-    size = 14,
-    strokeWidth = 1.2,
-  } = iconProps ?? {};
+  const { className: iconClassName, size = 14 } = iconProps ?? {};
 
   return (
     <Box
@@ -338,7 +333,6 @@ export const getEntityIconWithBg = (
             iconClassName
           )}
           height={size}
-          strokeWidth={strokeWidth}
           width={size}
         />
       )}
