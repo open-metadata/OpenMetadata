@@ -152,10 +152,13 @@ def build_sample_where_clause(table: TableParameter, key_columns: list[str], sal
 def build_vertica_sample_where_clause(table: TableParameter, key_columns: list[str], salt: str, hex_nounce: str) -> str:
     """`build_sample_where_clause` for Vertica.
 
-    Vertica's `||` does not implicitly cast numeric keys to VARCHAR, so every key column is cast
-    before concatenation. The dialect is resolved through `vertica+vertica_python://` because
-    `sqlalchemy-vertica` only registers driver-qualified entry points unless the connector module
-    has already been imported.
+    Every key column is cast to VARCHAR explicitly so the hashed text does not rest on `||`
+    coercion rules and stays the text Postgres and the other sampled databases hash. An unsized
+    VARCHAR cast keeps the whole value, so long string keys are not cut to the 80-byte column
+    default (checked on Vertica 24.1).
+
+    The dialect is resolved through `vertica+vertica_python://` because `sqlalchemy-vertica` only
+    registers driver-qualified entry points unless the connector module has already been imported.
     """
     key_texts: list[ColumnElement] = [
         build_orm_col(i, c, table.database_service_type).cast(sqlalchemy.types.VARCHAR())

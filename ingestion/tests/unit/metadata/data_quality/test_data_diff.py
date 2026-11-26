@@ -370,7 +370,7 @@ class TestBuildSampleWhereClause:
                 "SUBSTRING(LOWER(CONVERT(VARCHAR(32), HASHBYTES('MD5', CAST(id AS VARCHAR(max))"
                 " + CAST([Region] AS VARCHAR(max)) + 'salt'), 2)), 1, 8) < '19999999'",
             ),
-            # Vertica's || refuses implicit int || varchar, so every key column is cast to VARCHAR
+            # Vertica casts every key column to VARCHAR so it hashes the same key text as the other databases
             (
                 build_table(DatabaseServiceType.Vertica, ("id", DataType.INT), key_columns=["id"]),
                 VERTICA_INT_KEY,
