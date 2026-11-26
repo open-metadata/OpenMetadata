@@ -121,6 +121,7 @@ import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.tasks.BulkTaskOperation;
 import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.tasks.CreateTaskComment;
 import org.openmetadata.schema.api.tasks.Payload;
@@ -173,6 +174,9 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.APIRequestMethod;
 import org.openmetadata.schema.type.ApiConnection;
+import org.openmetadata.schema.type.BulkTaskOperationParams;
+import org.openmetadata.schema.type.BulkTaskOperationResult;
+import org.openmetadata.schema.type.BulkTaskOperationType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -18504,6 +18508,44 @@ public class WorkflowDefinitionResourceIT {
             OpenMetadataException.class, () -> approveRequest(SdkClients.user1Client(), request));
     assertEquals(403, notAssigned.getStatusCode());
 
+    // Nor can the owner make themselves an approver: only an admin reassigns a status request.
+    EntityReference owner = admin.users().getByName("shared_user1").getEntityReference();
+    OpenMetadataException notReassignable =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.user1Client()
+                    .tasks()
+                    .patch(
+                        request.getId(),
+                        MAPPER.readTree(
+                            """
+                            [{"op": "add", "path": "/assignees/-",
+                              "value": {"id": "%s", "type": "user"}}]"""
+                                .formatted(owner.getId()))));
+    assertEquals(400, notReassignable.getStatusCode());
+    assertTrue(notReassignable.getMessage().contains("Only an admin can reassign"));
+    BulkTaskOperationResult bulkAssign =
+        SdkClients.user1Client()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/tasks/bulk",
+                new BulkTaskOperation()
+                    .withTaskIds(List.of(request.getId().toString()))
+                    .withOperation(BulkTaskOperationType.Assign)
+                    .withParams(
+                        new BulkTaskOperationParams()
+                            .withAssignees(List.of(owner.getFullyQualifiedName()))),
+                BulkTaskOperationResult.class);
+    assertEquals(0, bulkAssign.getSuccessful());
+    assertEquals(1, bulkAssign.getFailed());
+    assertEquals(
+        List.of(approver.getId()),
+        admin.tasks().get(request.getId().toString(), "assignees").getAssignees().stream()
+            .map(EntityReference::getId)
+            .toList());
+
     // The named approver decides it without being able to edit the domain.
     approveRequest(SdkClients.user2Client(), request);
     awaitStage(admin, domain, EntityStatus.DEPRECATED);
@@ -18535,6 +18577,38 @@ public class WorkflowDefinitionResourceIT {
         "Deprecated",
         JsonUtils.getMap(admin.tasks().get(request.getId().toString()).getPayload())
             .get("newStatus"));
+  }
+
+  @Test
+  @Order(238)
+  void test_aWithdrawnStatusRequestEndsItsRunAsCancelled(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    deployDeprecateOnRequestPlaybook(admin, ns, "withdrawnRun");
+    Domain domain = domainOwnedByUser1(admin, ns.shortPrefix("withdrawnRun"));
+    Task request = requestStatus(admin, domain, "Deprecated", "Raised by mistake");
+    Task bound =
+        await("the status request to join its workflow run")
+            .atMost(Duration.ofSeconds(60))
+            .pollInterval(Duration.ofSeconds(1))
+            .until(
+                () -> admin.tasks().get(request.getId().toString()),
+                task -> task.getWorkflowInstanceId() != null);
+    String workflowName =
+        admin.workflowDefinitions().get(bound.getWorkflowDefinitionId().toString()).getName();
+    String runId = bound.getWorkflowInstanceId().toString();
+
+    admin.tasks().close(request.getId().toString(), "Withdrawn");
+
+    // A withdrawal is a user's close: the run is cancelled, and nothing later records it as failed.
+    await("the withdrawn request's run to stay CANCELLED")
+        .during(Duration.ofSeconds(5))
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(
+            () ->
+                WorkflowInstance.WorkflowStatus.CANCELLED
+                    .value()
+                    .equals(workflowInstanceStatus(admin, workflowName, runId)));
   }
 
   private static void approveRequest(OpenMetadataClient approver, Task request) {

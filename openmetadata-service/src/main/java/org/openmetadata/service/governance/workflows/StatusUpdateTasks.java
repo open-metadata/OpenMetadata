@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
@@ -105,13 +107,33 @@ public final class StatusUpdateTasks {
    * A raised request keeps its asset, the stage it asks for and the stage it was raised from until
    * it is decided: its approvers were chosen for that move.
    */
-  public static void requireUneditedRequest(Task original, Task patched) {
+  public static void requireUneditedRequest(Task original, Task patched, boolean callerIsAdmin) {
     if (original.getType() == TaskEntityType.StatusUpdate
         && (!Objects.equals(original.getAbout(), patched.getAbout())
             || !RequestedMove.of(original).equals(RequestedMove.of(patched)))) {
       throw new BadRequestException(
           "A status request cannot be edited once raised; withdraw it and raise a new request");
     }
+    if (!assigneeIds(original).equals(assigneeIds(patched))) {
+      requireReassignableBy(original, callerIsAdmin);
+    }
+  }
+
+  /**
+   * A request's approvers are the ones its transition names; only an admin reassigns it, for
+   * example when every approver has left.
+   */
+  public static void requireReassignableBy(Task task, boolean callerIsAdmin) {
+    if (task.getType() == TaskEntityType.StatusUpdate && !callerIsAdmin) {
+      throw new BadRequestException(
+          "Only an admin can reassign a status request; its approvers come from its lifecycle");
+    }
+  }
+
+  private static Set<UUID> assigneeIds(Task task) {
+    return listOrEmpty(task.getAssignees()).stream()
+        .map(EntityReference::getId)
+        .collect(Collectors.toSet());
   }
 
   private record RequestedMove(Object newStatus, Object currentStatus) {

@@ -177,15 +177,18 @@ class StatusUpdateTasksTest {
     assertThrows(
         BadRequestException.class,
         () ->
-            StatusUpdateTasks.requireUneditedRequest(raised, raisedFrom("In Review", "Approved")));
-    assertThrows(
-        BadRequestException.class,
-        () -> StatusUpdateTasks.requireUneditedRequest(raised, raisedFrom("Approved", "Rejected")));
+            StatusUpdateTasks.requireUneditedRequest(
+                raised, raisedFrom("In Review", "Approved"), false));
     assertThrows(
         BadRequestException.class,
         () ->
             StatusUpdateTasks.requireUneditedRequest(
-                raised, raisedFrom("In Review", "Rejected").withAbout(ANA)));
+                raised, raisedFrom("Approved", "Rejected"), false));
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            StatusUpdateTasks.requireUneditedRequest(
+                raised, raisedFrom("In Review", "Rejected").withAbout(ANA), false));
   }
 
   @Test
@@ -201,7 +204,26 @@ class StatusUpdateTasksTest {
             "reason",
             "Reworded"));
 
-    assertDoesNotThrow(() -> StatusUpdateTasks.requireUneditedRequest(raised, reworded));
+    assertDoesNotThrow(() -> StatusUpdateTasks.requireUneditedRequest(raised, reworded, false));
+  }
+
+  @Test
+  void onlyAnAdminReassignsARaisedRequest() {
+    Task raised = raisedFrom("In Review", "Rejected").withAssignees(List.of(BEN));
+    Task reassigned = raisedFrom("In Review", "Rejected").withAssignees(List.of(ANA));
+    Task reordered = raisedFrom("In Review", "Rejected").withAssignees(List.of(BEN));
+
+    assertThrows(
+        BadRequestException.class,
+        () -> StatusUpdateTasks.requireUneditedRequest(raised, reassigned, false));
+    assertDoesNotThrow(() -> StatusUpdateTasks.requireUneditedRequest(raised, reassigned, true));
+    assertDoesNotThrow(() -> StatusUpdateTasks.requireUneditedRequest(raised, reordered, false));
+    assertThrows(
+        BadRequestException.class, () -> StatusUpdateTasks.requireReassignableBy(raised, false));
+    assertDoesNotThrow(
+        () ->
+            StatusUpdateTasks.requireReassignableBy(
+                new Task().withType(TaskEntityType.TierUpdate), false));
   }
 
   @Test
@@ -215,7 +237,7 @@ class StatusUpdateTasksTest {
             .withType(TaskEntityType.TierUpdate)
             .withPayload(Map.of(StatusUpdateTasks.NEW_STATUS, "Tier2"));
 
-    assertDoesNotThrow(() -> StatusUpdateTasks.requireUneditedRequest(tierTask, edited));
+    assertDoesNotThrow(() -> StatusUpdateTasks.requireUneditedRequest(tierTask, edited, false));
   }
 
   private static LifecycleTransitionApproval approval(LifecycleApproverGroup... groups) {

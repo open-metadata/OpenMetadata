@@ -1429,7 +1429,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     rejectStatusChangeToWorkflowDecision(original, patched);
     rejectAvailableTransitionsEditByNonAdmin(original, patched, callerIsAdmin);
     rejectPayloadOrAboutEditAfterOpen(original, patched);
-    StatusUpdateTasks.requireUneditedRequest(original, patched);
+    StatusUpdateTasks.requireUneditedRequest(original, patched, callerIsAdmin);
     rejectServerOpenedTaskEdit(original, patched);
     rejectWorkflowBindingEdits(original, patched);
   }
@@ -2117,6 +2117,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         requireEditableThroughApi(task);
         repository.checkPermissionsForOwnerOnlyAction(
             authorizer, securityContext, task, "reassignTask");
+        StatusUpdateTasks.requireReassignableBy(task, isAdmin(securityContext));
         List<EntityReference> newAssignees =
             params.getAssignees().stream().map(this::resolveUserOrTeam).toList();
         task.setAssignees(newAssignees);

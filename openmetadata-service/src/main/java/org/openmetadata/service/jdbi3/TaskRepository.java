@@ -77,7 +77,6 @@ import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowInstanceTerminator;
 import org.openmetadata.service.governance.workflows.WorkflowInstanceTerminator.TaskCloseRequest;
-import org.openmetadata.service.governance.workflows.WorkflowRunTermination;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -1108,24 +1107,7 @@ public class TaskRepository extends EntityRepository<Task> {
    * Close a task without applying any entity changes.
    */
   public Task closeTask(Task task, String user, String comment) {
-    Task closed = TaskWorkflowHandler.getInstance().closeTask(task, user, comment);
-    endWithdrawnStatusRequestRun(closed);
-    return closed;
-  }
-
-  // Withdrawing a status request closes its task; its workflow run then has nothing left to wait
-  // for.
-  private static void endWithdrawnStatusRequestRun(Task task) {
-    if (task != null
-        && task.getType() == TaskEntityType.StatusUpdate
-        && task.getWorkflowInstanceId() != null
-        && task.getWorkflowDefinitionId() != null) {
-      WorkflowDefinition workflow =
-          Entity.getEntity(
-              Entity.WORKFLOW_DEFINITION, task.getWorkflowDefinitionId(), "", Include.ALL);
-      WorkflowRunTermination.terminateOnceTaskCloses(
-          workflow.getName(), task.getId(), task.getWorkflowInstanceId());
-    }
+    return TaskWorkflowHandler.getInstance().closeTask(task, user, comment);
   }
 
   /**

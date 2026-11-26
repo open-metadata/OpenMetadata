@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-11-16 (initial: a `lifecycleRequest` entity field) · v2 2026-11-17 (a status update
   task instead of the field, after review) · v3 2026-11-17 (exits generalised to transitions between any stages) ·
   v4 2026-11-17 (any transition takes conditions and approvers; path steps on request; the lifecycle carries on
-  after an approved request)
+  after an approved request) · v5 2026-11-26 (a raised request is frozen and decided only by its assignees)
 - **Deciders:** Ram Narayan Balaji, Pere Miquel Brull, Adrià Manero
 - **Guard:** `WorkflowDefinitionResourceIT#test_approvedStatusRequestMovesTheAssetAndEndsItsOnboardingApproval`,
   `#test_rejectedStatusRequestLeavesTheStageAndTheOnboardingApproval`,
@@ -12,7 +12,9 @@
   `#test_secondStatusRequestWhileOneIsOpenIsRejected`, `#test_withdrawnStatusRequestCanBeRaisedAgain`,
   `#test_aTransitionIsOfferedOnlyFromItsStagesAndMovesTheAssetBackOntoThePath`,
   `#test_aStatusRequestIsOfferedAndAcceptedOnlyWhileItsConditionsHold`,
-  `#test_anApprovedRequestMovesTheAssetAndTheLifecycleCarriesOnAtOnce`, `EntityStatusWorkflowsTest`,
+  `#test_anApprovedRequestMovesTheAssetAndTheLifecycleCarriesOnAtOnce`,
+  `#test_aStatusRequestIsDecidedOnlyByTheApproversItsTransitionNames`,
+  `#test_aRaisedStatusRequestCannotBeEdited`, `StatusUpdateTasksTest`, `EntityStatusWorkflowsTest`,
   `LifecycleTransitionRulesTest`, `CreateTaskTest#aLifecycleApprovalReplacesOnlyAnEarlierApprovalOfTheSameMove`
 - **Related:** ADR:2026-11-16-requestable-stages-are-read-per-entity
 
@@ -43,7 +45,11 @@ A request is a `StatusUpdate` task on the task framework: created with `POST /v1
 the approver with governance-bot as impersonator. Creating one requires an on-request transition leaving the
 asset's current stage whose conditions hold, refuses a second open request on the asset, and assigns the
 transition's approvers (admins when no one but the requester is left). Approving re-checks the same against
-the stage the asset is in then. Withdrawing closes the task and ends its run. Once an approved request has
+the stage the asset is in then. A raised request keeps its asset, its requested stage, the stage it was
+raised from and its assignees until it is decided: a non-admin edit of any of them is refused (an admin may
+reassign it, for example when every approver has left). Only its assignees decide it, as for a workflow
+approval, and they need no edit permission on the asset. Withdrawing closes the task and ends its run, as
+closing any workflow task on a user's request does. Once an approved request has
 moved the asset, the owning lifecycle starts again through a signal of its own (`LifecycleRestart`), on the
 async executor, so its next step runs at once; only an approved request restarts it, so no chain of moves
 loops by itself.
