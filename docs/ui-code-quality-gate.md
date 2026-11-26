@@ -232,9 +232,9 @@ adds or modifies.
 >
 > Two mechanical consequences worth knowing:
 > - A PR that only **moves or reformats** code can still register those lines as new and uncovered.
-> - Coverage comes from `sonar.typescript.lcov.reportPaths` (`src/test/unit/coverage/lcov.info`), so
->   if the Jest run fails or the lcov is missing, new-code coverage reads as 0% and the gate fails.
->   Fix the test run, not the gate.
+> - Coverage comes from `sonar.typescript.lcov.reportPaths` (Jest's `src/test/unit/coverage/lcov.info`
+>   and the browser suite's `src/test/browser/coverage/lcov.info`); if either test run fails or a
+>   report is missing the nightly job fails and Slack is notified. Fix the test run, not the gate.
 
 ### New Code definition
 
