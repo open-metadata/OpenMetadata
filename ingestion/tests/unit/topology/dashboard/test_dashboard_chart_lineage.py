@@ -32,8 +32,11 @@ from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.source.dashboard.dashboard_service import (
+    DashboardServiceSource,
     DashboardServiceTopology,
 )
+from metadata.ingestion.source.dashboard.looker.metadata import LookerSource
+from metadata.ingestion.source.dashboard.metabase.metadata import MetabaseSource
 from metadata.ingestion.source.dashboard.ssrs.metadata import SsrsSource
 
 SERVICE = "dashboard_svc"
@@ -81,18 +84,22 @@ def _source(
     server: FakeServer,
     dashboard: str | None = "sales",
     override_lineage: bool = False,
-    source_class: type[SsrsSource] = SsrsSource,
-) -> SsrsSource:
+    source_class: type[DashboardServiceSource] = SsrsSource,
+    include_direct_chart_lineage: bool = True,
+) -> DashboardServiceSource:
     source = source_class.__new__(source_class)
     source.metadata = server
-    source.source_config = DashboardServiceMetadataPipeline(overrideLineage=override_lineage)
+    source.source_config = DashboardServiceMetadataPipeline(
+        overrideLineage=override_lineage,
+        includeDirectChartLineage=include_direct_chart_lineage,
+    )
     source.context = TopologyContextManager(DashboardServiceTopology())
     source.context.get().upsert("dashboard_service", SERVICE)
     source.context.get().upsert("dashboard", dashboard)
     return source
 
 
-def _drain(source: SsrsSource) -> list:
+def _drain(source: DashboardServiceSource) -> list:
     records = []
     for record in source.yield_dashboard_chart_lineage(None):
         if isinstance(record.right, Barrier):
@@ -124,6 +131,16 @@ class TestDashboardChartLineage:
         records = _drain(_source(FakeServer(_dashboard(CHARTS))))
 
         assert isinstance(records[0].right, Barrier)
+        assert _edges(records) == [
+            (f"{SERVICE}.sales", f"{SERVICE}.{chart}", LineageSource.DashboardLineage, False) for chart in CHARTS
+        ]
+
+    @pytest.mark.parametrize("source_class", [LookerSource, MetabaseSource], ids=["looker", "metabase"])
+    def test_disabling_direct_chart_lineage_keeps_every_dashboard_to_chart_edge(self, source_class):
+        records = _drain(
+            _source(FakeServer(_dashboard(CHARTS)), source_class=source_class, include_direct_chart_lineage=False)
+        )
+
         assert _edges(records) == [
             (f"{SERVICE}.sales", f"{SERVICE}.{chart}", LineageSource.DashboardLineage, False) for chart in CHARTS
         ]
