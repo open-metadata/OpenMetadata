@@ -188,7 +188,7 @@ export const getEntityByFqnUtil = (
       return getKPIByName(entityFQN);
 
     case EntityType.SEARCH_INDEX:
-      return getSearchIndexDetailsByFQN(entityFQN);
+      return getSearchIndexDetailsByFQN(entityFQN, { fields });
 
     case EntityType.APP_MARKET_PLACE_DEFINITION:
       return getMarketPlaceApplicationByFqn(entityFQN);
