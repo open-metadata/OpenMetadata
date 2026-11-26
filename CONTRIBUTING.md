@@ -2,9 +2,9 @@
 
 We ❤️ all contributions, big and small!
 
-## Ground rules for a pull request
+## Best practices for a pull request
 
-These are the things reviewers look for first, taken from [`REVIEW.md`](REVIEW.md). A PR that covers
+These are the things reviewers look for first, taken from [`REVIEW.md`](REVIEW.md). A PR that follows
 them usually gets a short, focused review.
 
 - **Explain why the change is needed.** Say what problem it solves and for whom, and where it came
@@ -32,8 +32,6 @@ them usually gets a short, focused review.
   code. It also shows whether something recently merged overlaps with your change.
 - **Show UI changes.** A UI feature needs a short screen recording (see "Creating a UI feature pull
   request" below).
-
-There is no CLA or DCO to sign.
 
 ## Before you request review
 
