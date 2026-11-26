@@ -76,6 +76,22 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
     ).toBeVisible();
   });
 
+  test('shows the open incident count rising', async ({ page }) => {
+    const groups = await openGroups(page, seed, { groupBy: 'table' });
+
+    await expect(
+      groups.getByRole('img', {
+        name: /^Open incidents: 0 on .+, 2 on .+\.$/,
+      })
+    ).toBeVisible();
+    await expect(groups.getByTestId('incident-trend-direction')).toHaveText(
+      'Rising'
+    );
+    await expect(page.getByTestId('incident-groups-rising-count')).toHaveText(
+      'Rising groups: 1'
+    );
+  });
+
   test('hides the groups a status filter rules out', async ({ page }) => {
     await openGroups(page, seed, { status: 'New' });
 

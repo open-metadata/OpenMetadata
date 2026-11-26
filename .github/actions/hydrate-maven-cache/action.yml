@@ -1,0 +1,109 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Hydrate Maven Cache
+description: >
+  Restore-only Maven repository hydration. Tries the exact Actions cache key
+  first, then falls back to the pre-baked GHCR OCI image
+  (ghcr.io/<owner>/ci-m2-cache:main) which lives outside GitHub's 10 GB Actions
+  cache budget and never gets LRU-evicted, and finally falls back to a prefix
+  Actions cache restore. Never saves a cache, so it is safe on pull_request and
+  merge_group (ADR:2026-11-11-pull-request-jobs-restore-caches-but-never-save-them,
+  ADR:2026-11-24-ci-caches-live-in-ghcr-with-actions-cache-fallback).
+
+inputs:
+  ghcr-image:
+    description: Override the GHCR m2 cache image (defaults to ghcr.io/<owner>/ci-m2-cache:main)
+    required: false
+    default: ""
+  token:
+    description: Optional registry token override (defaults to github.token for same-repo GHCR read)
+    required: false
+    default: ""
+
+outputs:
+  cache-hit:
+    description: "'true' when the exact Actions cache key matched"
+    value: ${{ steps.exact-cache.outputs.cache-hit }}
+  cache-primary-key:
+    description: Primary Actions cache key for main-only writers
+    value: ${{ steps.exact-cache.outputs.cache-primary-key }}
+  source:
+    description: Where ~/.m2 was hydrated from (actions-cache-exact, ghcr, actions-cache-prefix, or miss)
+    value: ${{ steps.report.outputs.source }}
+
+runs:
+  using: composite
+  steps:
+    - name: Restore Maven dependencies (exact Actions cache)
+      id: exact-cache
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+
+    - name: Hydrate ~/.m2/repository from GHCR pre-baked image
+      id: ghcr
+      if: steps.exact-cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        IMAGE_OVERRIDE: ${{ inputs.ghcr-image }}
+        REPO_OWNER: ${{ github.repository_owner }}
+        GHCR_TOKEN: ${{ inputs.token || github.token }}
+        GHCR_ACTOR: ${{ github.actor }}
+      run: |
+        set -euo pipefail
+        if ! command -v docker >/dev/null 2>&1; then
+          echo "hydrated=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        owner=$(printf '%s' "$REPO_OWNER" | tr '[:upper:]' '[:lower:]')
+        image="${IMAGE_OVERRIDE:-ghcr.io/${owner}/ci-m2-cache:main}"
+        if [[ -n "$GHCR_TOKEN" ]]; then
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin >/dev/null 2>&1 || true
+        fi
+        if docker pull --quiet "$image" >/dev/null 2>&1; then
+          cid=$(docker create "$image" true)
+          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true; docker rmi -f "$image" >/dev/null 2>&1 || true' EXIT
+          mkdir -p "$HOME/.m2/repository"
+          docker cp "$cid:/m2/repository/." "$HOME/.m2/repository/"
+          echo "Hydrated ~/.m2/repository from $image"
+          echo "hydrated=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "GHCR m2 cache image $image not available yet; falling back to Actions cache prefix."
+          echo "hydrated=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Restore Maven dependencies (Actions cache prefix fallback)
+      id: prefix-cache
+      if: steps.exact-cache.outputs.cache-hit != 'true' && steps.ghcr.outputs.hydrated != 'true'
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+
+    - name: Record Maven cache source
+      id: report
+      shell: bash
+      run: |
+        if [[ "${{ steps.exact-cache.outputs.cache-hit }}" == "true" ]]; then
+          source="actions-cache-exact"
+        elif [[ "${{ steps.ghcr.outputs.hydrated }}" == "true" ]]; then
+          source="ghcr"
+        elif [[ -n "${{ steps.prefix-cache.outputs.cache-matched-key }}" ]]; then
+          source="actions-cache-prefix"
+        else
+          source="miss"
+        fi
+        echo "Maven cache source: $source"
+        echo "source=$source" >> "$GITHUB_OUTPUT"

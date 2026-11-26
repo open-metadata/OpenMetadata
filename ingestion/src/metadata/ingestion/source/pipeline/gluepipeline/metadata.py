@@ -520,16 +520,30 @@ class GluepipelineSource(PipelineServiceSource):
             try:
                 runs = self.glue.get_job_runs(JobName=job)
                 runs = runs.get("JobRuns", [])
-                for attempt in runs:
-                    task_status = []
-                    task_status.append(
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=pipeline_fqn or "",
+                        error=f"Failed to get job runs for job {job}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    ),
+                    right=None,
+                )
+                continue
+
+            for attempt in runs:
+                try:
+                    completed_on = attempt.get("CompletedOn")
+                    task_status = [
                         TaskStatus(
                             name=attempt["JobName"],
                             executionStatus=STATUS_MAP.get(attempt["JobRunState"].lower(), StatusType.Pending).value,
                             startTime=Timestamp(datetime_to_timestamp(attempt["StartedOn"], milliseconds=True)),
-                            endTime=Timestamp(datetime_to_timestamp(attempt["CompletedOn"], milliseconds=True)),
+                            endTime=Timestamp(datetime_to_timestamp(completed_on, milliseconds=True))
+                            if completed_on
+                            else None,
                         )
-                    )
+                    ]
                     pipeline_status = PipelineStatus(
                         taskStatus=task_status,
                         timestamp=Timestamp(datetime_to_timestamp(attempt["StartedOn"], milliseconds=True)),
@@ -541,14 +555,15 @@ class GluepipelineSource(PipelineServiceSource):
                             pipeline_status=pipeline_status,
                         )
                     )
-            except Exception as exc:
-                yield Either(
-                    left=StackTraceError(
-                        name=pipeline_fqn,
-                        error=f"Failed to yield pipeline status for job {job}: {exc}",
-                        stackTrace=traceback.format_exc(),
+                except Exception as exc:
+                    yield Either(
+                        left=StackTraceError(
+                            name=pipeline_fqn or "",
+                            error=f"Failed to yield pipeline status for job {job}: {exc}",
+                            stackTrace=traceback.format_exc(),
+                        ),
+                        right=None,
                     )
-                )
 
     def yield_pipeline_lineage_details(self, pipeline_details: Any) -> Iterable[Either[AddLineageRequest]]:
         """

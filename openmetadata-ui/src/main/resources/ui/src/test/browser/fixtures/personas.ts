@@ -222,14 +222,22 @@ const permissionsFor = (
   })),
 });
 
+/** One entity-level permission lookup: by name (`fqn`) or by `id`. */
+export interface PermissionLookup {
+  resource: string;
+  id?: string;
+  fqn?: string;
+}
+
 /**
  * Answers every permission lookup the app makes as the persona's server would.
- * `entity` is the one the page shows: lookups by id or name evaluate the
- * persona's conditional rules against its owners at request time.
+ * `entity` resolves the entity a lookup is about: lookups by id or name
+ * evaluate the persona's conditional rules against its owners at request time.
+ * A page with one entity can ignore the lookup; a list resolves each row.
  */
 export const servePersona = (
   persona: Persona,
-  entity: () => Owned = () => ({ owners: [] })
+  entity: (lookup: PermissionLookup) => Owned = () => ({ owners: [] })
 ) => {
   worker.use(
     http.get('/api/v1/permissions', () =>
@@ -239,16 +247,28 @@ export const servePersona = (
         ),
       })
     ),
-    http.get('/api/v1/permissions/:resource/name/:fqn', ({ params }) =>
-      HttpResponse.json(
-        permissionsFor(persona, String(params.resource), entity())
-      )
-    ),
-    http.get('/api/v1/permissions/:resource/:id', ({ params }) =>
-      HttpResponse.json(
-        permissionsFor(persona, String(params.resource), entity())
-      )
-    ),
+    http.get('/api/v1/permissions/:resource/name/:fqn', ({ params }) => {
+      const resource = String(params.resource);
+
+      return HttpResponse.json(
+        permissionsFor(
+          persona,
+          resource,
+          entity({ resource, fqn: String(params.fqn) })
+        )
+      );
+    }),
+    http.get('/api/v1/permissions/:resource/:id', ({ params }) => {
+      const resource = String(params.resource);
+
+      return HttpResponse.json(
+        permissionsFor(
+          persona,
+          resource,
+          entity({ resource, id: String(params.id) })
+        )
+      );
+    }),
     http.get('/api/v1/permissions/:resource', ({ params }) =>
       HttpResponse.json(permissionsFor(persona, String(params.resource)))
     )
