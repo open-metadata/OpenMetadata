@@ -45,6 +45,8 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -219,6 +221,30 @@ class OpenMetadataApplicationAuthReloadTest {
     verify(deletedUsersSocket).disconnect(true);
     verify(presentUsersSocket, never()).disconnect(anyBoolean());
     assertEquals(Set.of(presentUser), sockets.getActivityFeedEndpoints().keySet());
+  }
+
+  /** Peers already close every socket of a user on a revoke that carries no session id. */
+  @Test
+  void publishUserAccessEnded_publishesARevokeWithoutASessionId() {
+    UUID userId = UUID.randomUUID();
+    CacheInvalidationPubSub pubSub = mock(CacheInvalidationPubSub.class);
+
+    try (MockedStatic<CacheBundle> cache = mockStatic(CacheBundle.class)) {
+      cache.when(CacheBundle::getCacheInvalidationPubSub).thenReturn(pubSub);
+
+      OpenMetadataApplication.publishUserAccessEnded(userId);
+    }
+
+    verify(pubSub).publish("session", userId, null, "revoke");
+  }
+
+  @Test
+  void publishUserAccessEnded_doesNothingWithoutRedis() {
+    try (MockedStatic<CacheBundle> cache = mockStatic(CacheBundle.class)) {
+      cache.when(CacheBundle::getCacheInvalidationPubSub).thenReturn(null);
+
+      assertDoesNotThrow(() -> OpenMetadataApplication.publishUserAccessEnded(UUID.randomUUID()));
+    }
   }
 
   private static UserSession googleSession(String sessionId, UUID userId) {

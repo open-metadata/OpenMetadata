@@ -112,10 +112,13 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       cacheInvalidationPubSub.setHandler(
           msg -> {
             try {
-              // Out-of-band signal: a session was revoked on another pod, drop any WebSocket
-              // connections this pod is holding for that user. Encoded as type=session, op=revoke,
-              // id=<userId> so it rides the existing channel without needing a second subscriber.
-              if ("session".equals(msg.type()) && "revoke".equals(msg.op()) && msg.id() != null) {
+              // Out-of-band signal: a session was revoked or a user deleted on another pod, drop
+              // the WebSocket connections this pod is holding for it. Encoded as type=session,
+              // op=revoke, id=<userId>, fqn=<sessionId> or none, so it rides the existing channel
+              // without needing a second subscriber.
+              if (CacheInvalidationPubSub.TYPE_SESSION.equals(msg.type())
+                  && CacheInvalidationPubSub.OP_REVOKE.equals(msg.op())
+                  && msg.id() != null) {
                 org.openmetadata.service.socket.WebSocketManager wsManager =
                     org.openmetadata.service.socket.WebSocketManager.getInstance();
                 if (wsManager != null) {

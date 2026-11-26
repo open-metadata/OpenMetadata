@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
@@ -30,8 +31,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.dropwizard.core.setup.Environment;
+import io.socket.engineio.server.Emitter;
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.socketio.server.SocketIoSocket;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -41,9 +48,12 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
@@ -65,6 +75,11 @@ import org.openmetadata.service.security.session.UserSession;
 class WebSocketManagerTest {
   /** The wire name the UI listens for; pinned here so a rename cannot silently break the UI. */
   private static final String TOKEN_EXPIRED_CHANNEL = "tokenExpiredChannel";
+
+  @Test
+  void tokenExpiredChannelIsTheNameTheUiListensFor() {
+    assertEquals(TOKEN_EXPIRED_CHANNEL, WebSocketManager.TOKEN_EXPIRED_CHANNEL);
+  }
 
   private WebSocketManager manager;
   private AuthenticationConfiguration configuredBefore;
@@ -417,6 +432,22 @@ class WebSocketManagerTest {
     closing.verify(expired).disconnect(true);
   }
 
+  /** The notice is best effort: a socket whose transport already failed still closes. */
+  @Test
+  void disconnectInactiveSessions_closesAnExpiredSocketEvenWhenTheNoticeCannotBeSent() {
+    UUID userId = UUID.randomUUID();
+    SocketIoSocket expired =
+        connectWithTokenExpiry(userId, "socket-expired", epochMillisAgo(1_000));
+    doThrow(new IllegalStateException("transport closed"))
+        .when(expired)
+        .send(TOKEN_EXPIRED_CHANNEL);
+
+    manager.disconnectInactiveSessions(mock(SessionService.class), 0L);
+
+    verify(expired, times(1)).disconnect(true);
+    assertFalse(manager.getActivityFeedEndpoints().containsKey(userId));
+  }
+
   /** The expiry is server-stamped; a value the server cannot read fails closed. */
   @Test
   void onConnection_treatsAMalformedExpiryAsExpired() {
@@ -427,6 +458,129 @@ class WebSocketManagerTest {
 
     verify(socket, times(1)).disconnect(true);
     assertFalse(manager.getActivityFeedEndpoints().containsKey(userId));
+  }
+
+  /** Exp is the last instant the token is valid: kept at exp, closed just after, as on REST. */
+  @Test
+  void disconnectInactiveSessions_keepsASessionlessSocketUntilItsTokenExpires() {
+    MutableClock clock = new MutableClock(Instant.parse("2026-11-26T10:00:00Z"));
+    buildManager(policy(clock, userId -> false, userId -> {}));
+    UUID userId = UUID.randomUUID();
+    SocketIoSocket socket =
+        connectWithTokenExpiry(userId, "socket-at-exp", millisOf(clock.instant()));
+
+    manager.disconnectInactiveSessions(mock(SessionService.class), 0L);
+
+    verify(socket, never()).disconnect(anyBoolean());
+
+    clock.advance(Duration.ofMillis(1));
+    manager.disconnectInactiveSessions(mock(SessionService.class), 0L);
+
+    verify(socket, times(1)).disconnect(true);
+    assertFalse(manager.getActivityFeedEndpoints().containsKey(userId));
+  }
+
+  /** An Unlimited bot token or a personal access token without exp is not bounded by expiry. */
+  @Test
+  void disconnectInactiveSessions_keepsASessionlessSocketWhoseTokenHasNoExpiry() {
+    MutableClock clock = new MutableClock(Instant.parse("2026-11-26T10:00:00Z"));
+    buildManager(policy(clock, userId -> false, userId -> {}));
+    UUID userId = UUID.randomUUID();
+    SocketIoSocket socket = connect(userId, "socket-unlimited", null, AuthProvider.GOOGLE);
+
+    clock.advance(Duration.ofDays(3650));
+    manager.disconnectInactiveSessions(mock(SessionService.class), 0L);
+
+    verify(socket, never()).disconnect(anyBoolean());
+    assertEquals(
+        Set.of("socket-unlimited"), manager.getActivityFeedEndpoints().get(userId).keySet());
+  }
+
+  /**
+   * A peer without Redis never hears of a delete, and a handshake validated just before the delete
+   * can register after it: the sweep closes every socket of a user who is gone, session or not.
+   */
+  @Test
+  void disconnectInactiveSessions_closesEverySocketOfAUserWhoIsGone() {
+    UUID goneUser = UUID.randomUUID();
+    UUID presentUser = UUID.randomUUID();
+    buildManager(policy(Clock.systemUTC(), goneUser::equals, userId -> {}));
+    SocketIoSocket sessionless = connect(goneUser, "socket-token", null, AuthProvider.GOOGLE);
+    SocketIoSocket withSession =
+        connect(goneUser, "socket-session", "session-g", AuthProvider.GOOGLE);
+    SocketIoSocket presentUsers = connect(presentUser, "socket-present", null, AuthProvider.GOOGLE);
+
+    manager.disconnectInactiveSessions(mock(SessionService.class), 60_000L);
+
+    verify(sessionless, times(1)).disconnect(true);
+    verify(withSession, times(1)).disconnect(true);
+    verify(presentUsers, never()).disconnect(anyBoolean());
+    assertEquals(Set.of(presentUser), manager.getActivityFeedEndpoints().keySet());
+  }
+
+  /** A delete revokes the user's sessions, which closes such sockets, so they cost no lookup. */
+  @Test
+  void disconnectInactiveSessions_neverLooksUpUsersWhoseSocketsAllHaveSessions() {
+    List<UUID> lookedUp = new ArrayList<>();
+    buildManager(
+        policy(
+            Clock.systemUTC(),
+            userId -> {
+              lookedUp.add(userId);
+              return false;
+            },
+            userId -> {}));
+    UUID sessionUser = UUID.randomUUID();
+    UUID tokenUser = UUID.randomUUID();
+    SessionService sessionService =
+        sessionServiceStoring(
+            AuthProvider.GOOGLE, sessionIssuedBy(AuthProvider.GOOGLE, "session-g", sessionUser));
+    connect(sessionUser, "socket-session", "session-g", AuthProvider.GOOGLE);
+    connect(tokenUser, "socket-token", null, AuthProvider.GOOGLE);
+
+    manager.disconnectInactiveSessions(sessionService, 0L);
+
+    assertEquals(List.of(tokenUser), lookedUp);
+  }
+
+  @Test
+  void endAccessForUser_closesLocalSocketsAndSignalsPeers() {
+    List<UUID> signalled = new ArrayList<>();
+    buildManager(policy(Clock.systemUTC(), userId -> false, signalled::add));
+    UUID deletedUser = UUID.randomUUID();
+    UUID otherUser = UUID.randomUUID();
+    SocketIoSocket sessionless = connect(deletedUser, "socket-token", null, AuthProvider.GOOGLE);
+    SocketIoSocket withSession =
+        connect(deletedUser, "socket-session", "session-g", AuthProvider.GOOGLE);
+    SocketIoSocket othersSocket = connect(otherUser, "socket-other", null, AuthProvider.GOOGLE);
+
+    manager.endAccessForUser(deletedUser);
+    manager.endAccessForUser(null);
+
+    verify(sessionless, times(1)).disconnect(true);
+    verify(withSession, times(1)).disconnect(true);
+    verify(othersSocket, never()).disconnect(anyBoolean());
+    assertEquals(List.of(deletedUser), signalled);
+    assertEquals(Set.of(otherUser), manager.getActivityFeedEndpoints().keySet());
+  }
+
+  /** Every per-socket entry goes with its socket, whichever side closes it. */
+  @Test
+  void disconnect_forgetsTheSocketsExpiry() throws Exception {
+    UUID userId = UUID.randomUUID();
+    SocketIoSocket closedByClient =
+        connectWithTokenExpiry(userId, "socket-client", epochMillisAgo(-60_000));
+    connectWithTokenExpiry(userId, "socket-server", epochMillisAgo(-60_000));
+
+    disconnectListenerOf(closedByClient).call();
+
+    assertFalse(tokenExpiries().isTracked("socket-client"));
+    assertTrue(tokenExpiries().isTracked("socket-server"));
+
+    manager.disconnectAllForUser(userId);
+
+    assertFalse(tokenExpiries().isTracked("socket-server"));
+    assertTrue(manager.getActivityFeedEndpoints().isEmpty());
   }
 
   @Test
@@ -609,6 +763,61 @@ class WebSocketManagerTest {
     when(socket.getInitialHeaders()).thenReturn(headers);
     manager.onConnection(socket);
     return socket;
+  }
+
+  private void buildManager(PushFeedSocketPolicy policy) {
+    WebSocketManager.WebSocketManagerBuilder.build(EngineIoServerOptions.newFromDefault(), policy);
+    manager = WebSocketManager.getInstance();
+  }
+
+  private PushFeedSocketPolicy policy(
+      Clock clock, Predicate<UUID> isUserGone, Consumer<UUID> notifyPeers) {
+    return new PushFeedSocketPolicy(
+        handshakeFilter::validatingProvider, clock, isUserGone, notifyPeers);
+  }
+
+  private static String millisOf(Instant instant) {
+    return String.valueOf(instant.toEpochMilli());
+  }
+
+  private static Emitter.Listener disconnectListenerOf(SocketIoSocket socket) {
+    ArgumentCaptor<Emitter.Listener> listener = ArgumentCaptor.forClass(Emitter.Listener.class);
+    verify(socket).on(eq("disconnect"), listener.capture());
+    return listener.getValue();
+  }
+
+  private SocketTokenExpiries tokenExpiries() throws Exception {
+    java.lang.reflect.Field field = WebSocketManager.class.getDeclaredField("socketTokenExpiries");
+    field.setAccessible(true);
+    return (SocketTokenExpiries) field.get(manager);
+  }
+
+  /** A clock the test moves by hand, so expiry is checked at exact instants. */
+  private static final class MutableClock extends Clock {
+    private Instant now;
+
+    private MutableClock(Instant now) {
+      this.now = now;
+    }
+
+    private void advance(Duration duration) {
+      now = now.plus(duration);
+    }
+
+    @Override
+    public ZoneId getZone() {
+      return ZoneOffset.UTC;
+    }
+
+    @Override
+    public Clock withZone(ZoneId zone) {
+      return this;
+    }
+
+    @Override
+    public Instant instant() {
+      return now;
+    }
   }
 
   /** A sessionless socket stamped the way the handshake stamps one opened with a provider token. */

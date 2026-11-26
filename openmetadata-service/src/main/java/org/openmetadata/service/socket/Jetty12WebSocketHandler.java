@@ -13,6 +13,12 @@
 
 package org.openmetadata.service.socket;
 
+import static org.openmetadata.service.socket.HandshakeIdentity.PROVIDER_HEADER;
+import static org.openmetadata.service.socket.HandshakeIdentity.SESSION_ID_HEADER;
+import static org.openmetadata.service.socket.HandshakeIdentity.STAMPED_HEADERS;
+import static org.openmetadata.service.socket.HandshakeIdentity.TOKEN_EXPIRES_AT_HEADER;
+import static org.openmetadata.service.socket.HandshakeIdentity.USER_ID_HEADER;
+
 import io.socket.engineio.server.EngineIoServer;
 import io.socket.engineio.server.EngineIoWebSocket;
 import java.nio.ByteBuffer;
@@ -39,10 +45,6 @@ import org.eclipse.jetty.websocket.api.exceptions.WebSocketTimeoutException;
 @Slf4j
 @WebSocket(autoDemand = true)
 public class Jetty12WebSocketHandler extends EngineIoWebSocket {
-
-  private static final String USER_ID_HEADER = "UserId";
-  private static final String SESSION_ID_HEADER = "SessionId";
-  private static final String PROVIDER_HEADER = "AuthProvider";
 
   private final EngineIoServer server;
   private final HandshakeIdentity handshakeIdentity;
@@ -133,21 +135,20 @@ public class Jetty12WebSocketHandler extends EngineIoWebSocket {
    */
   private static void stampValidatedIdentity(
       Map<String, List<String>> headers, HandshakeIdentity handshakeIdentity) {
-    headers
-        .keySet()
-        .removeIf(
-            name ->
-                USER_ID_HEADER.equalsIgnoreCase(name)
-                    || SESSION_ID_HEADER.equalsIgnoreCase(name)
-                    || PROVIDER_HEADER.equalsIgnoreCase(name));
-    if (handshakeIdentity.userId() != null && !handshakeIdentity.userId().isBlank()) {
-      headers.put(USER_ID_HEADER, List.of(handshakeIdentity.userId()));
-    }
-    if (handshakeIdentity.sessionId() != null && !handshakeIdentity.sessionId().isBlank()) {
-      headers.put(SESSION_ID_HEADER, List.of(handshakeIdentity.sessionId()));
-    }
-    if (handshakeIdentity.provider() != null && !handshakeIdentity.provider().isBlank()) {
-      headers.put(PROVIDER_HEADER, List.of(handshakeIdentity.provider()));
+    headers.keySet().removeIf(Jetty12WebSocketHandler::isStampedHeader);
+    putIfPresent(headers, USER_ID_HEADER, handshakeIdentity.userId());
+    putIfPresent(headers, SESSION_ID_HEADER, handshakeIdentity.sessionId());
+    putIfPresent(headers, PROVIDER_HEADER, handshakeIdentity.provider());
+    putIfPresent(headers, TOKEN_EXPIRES_AT_HEADER, handshakeIdentity.tokenExpiresAtHeaderValue());
+  }
+
+  private static boolean isStampedHeader(String name) {
+    return STAMPED_HEADERS.stream().anyMatch(name::equalsIgnoreCase);
+  }
+
+  private static void putIfPresent(Map<String, List<String>> headers, String name, String value) {
+    if (value != null && !value.isBlank()) {
+      headers.put(name, List.of(value));
     }
   }
 

@@ -64,6 +64,15 @@ public class CacheInvalidationPubSub {
    */
   public static final String TYPE_CREDENTIAL = "credential";
 
+  /**
+   * Non-entity signal, with {@link #OP_REVOKE}: close a user's push-feed sockets, the user id in
+   * {@code id}. With a session id in {@code fqn} only that session's sockets close (a revoked
+   * session); without one, all of them (a deleted user).
+   */
+  public static final String TYPE_SESSION = "session";
+
+  public static final String OP_REVOKE = "revoke";
+
   private final CacheConfig.Redis redisConfig;
   @Getter private final String instanceId;
   private final AtomicBoolean running = new AtomicBoolean(false);
