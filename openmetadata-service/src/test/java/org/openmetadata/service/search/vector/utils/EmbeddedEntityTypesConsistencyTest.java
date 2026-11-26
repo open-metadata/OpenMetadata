@@ -11,7 +11,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -25,10 +24,11 @@ import org.openmetadata.service.search.vector.VectorIndexService;
  * Vector search is gated in three independent places that must agree:
  *
  * <ol>
- *   <li>{@link AvailableEntityTypes#LIST} — the write path. The bulk sink and
+ *   <li>{@link EmbeddedEntityTypes#ALL} — the write path. The bulk sink and
  *       {@code VectorEmbeddingHandler} only embed types listed here.
  *   <li>The {@code dataAssetEmbeddings} parent alias in {@code indexMapping.json} — the read path.
- *       Vector and hybrid search query the alias, so a non-member index is unreachable.
+ *       Vector and hybrid search query the alias, so a non-member index is unreachable. Its
+ *       members are exactly {@link EmbeddedEntityTypes#DATA_ASSETS}.
  *   <li>The {@code fingerprint} field in each type's index mapping file — {@code
  *       OsUtils.addKnnVectorSettings} detects embedding support by its presence and skips adding
  *       the {@code embedding} knn_vector without it.
@@ -38,7 +38,7 @@ import org.openmetadata.service.search.vector.VectorIndexService;
  * embedded at write cost and never returned, and a type in (2) but not (1) makes the alias claim
  * coverage it does not have. This test pins all three.
  */
-class AvailableEntityTypesConsistencyTest {
+class EmbeddedEntityTypesConsistencyTest {
 
   private static final String[] LANGUAGES = {"en", "jp", "ko", "ru", "zh"};
 
@@ -55,14 +55,13 @@ class AvailableEntityTypesConsistencyTest {
   }
 
   @Test
-  void vectorIndexableTypesMatchTheEmbeddingsAliasExactly() {
-    Set<String> declared = new TreeSet<>(AvailableEntityTypes.SET);
-    declared.removeAll(Set.of("ontologyconcept", "ontologyproperty"));
+  void dataAssetTypesMatchTheEmbeddingsAliasExactly() {
+    Set<String> declared = new TreeSet<>(EmbeddedEntityTypes.DATA_ASSETS);
     Set<String> aliasMembers = new TreeSet<>();
     for (Map.Entry<String, IndexMapping> entry : indexMappings().entrySet()) {
       List<String> parents = entry.getValue().getParentAliases(null);
       if (parents != null && parents.contains(VectorIndexService.VECTOR_EMBEDDING_ALIAS)) {
-        aliasMembers.add(entry.getKey().toLowerCase(Locale.ROOT));
+        aliasMembers.add(entry.getKey());
       }
     }
 
@@ -70,8 +69,8 @@ class AvailableEntityTypesConsistencyTest {
     assertEquals(
         declared,
         aliasMembers,
-        "AvailableEntityTypes.LIST and the dataAssetEmbeddings members in indexMapping.json have"
-            + " drifted. Types embedded but not searchable: "
+        "EmbeddedEntityTypes.DATA_ASSETS and the dataAssetEmbeddings members in indexMapping.json"
+            + " have drifted. Types embedded but not searchable: "
             + difference(declared, aliasMembers)
             + "; types in the alias but never embedded: "
             + difference(aliasMembers, declared));
@@ -83,7 +82,8 @@ class AvailableEntityTypesConsistencyTest {
       IndexMapping mapping = indexMappings().get(type);
       assertTrue(mapping != null, type + " has no mapping");
       assertEquals(List.of("ontologyTerms"), mapping.getParentAliases(null));
-      assertTrue(AvailableEntityTypes.isVectorIndexable(type), type);
+      assertTrue(EmbeddedEntityTypes.isEmbedded(type), type);
+      assertFalse(EmbeddedEntityTypes.isDataAsset(type), type);
       for (String language : LANGUAGES) {
         try (InputStream stream =
             getClass().getResourceAsStream("/" + mapping.getIndexMappingFile(language))) {
@@ -102,7 +102,7 @@ class AvailableEntityTypesConsistencyTest {
     Map<String, IndexMapping> mappings = indexMappings();
     List<String> problems = new ArrayList<>();
 
-    for (String entityType : AvailableEntityTypes.LIST) {
+    for (String entityType : EmbeddedEntityTypes.ALL) {
       IndexMapping mapping = resolve(mappings, entityType);
       if (mapping == null) {
         problems.add(entityType + ": no entry in indexMapping.json");
@@ -136,7 +136,7 @@ class AvailableEntityTypesConsistencyTest {
     return IndexMappingLoader.getInstance().getIndexMapping();
   }
 
-  /** indexMapping.json keys are camelCase; AvailableEntityTypes is compared case-insensitively. */
+  /** indexMapping.json keys are camelCase; EmbeddedEntityTypes is compared case-insensitively. */
   private static IndexMapping resolve(Map<String, IndexMapping> mappings, String entityType) {
     IndexMapping direct = mappings.get(entityType);
     if (direct != null) {

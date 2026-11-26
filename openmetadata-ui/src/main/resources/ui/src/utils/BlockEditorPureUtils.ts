@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import githubShortcodes from 'emojibase-data/en/shortcodes/github.json';
+import emojiHexcodes from 'emojibase-data/meta/hexcodes.json';
 import { findLastIndex, isEmpty, sumBy } from 'lodash';
 import { Marked, Renderer } from 'marked';
-import Showdown from 'showdown';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import {
   getEntityDetail,
@@ -180,11 +181,25 @@ export const isHTMLString = (content: string) => {
   }
 };
 
-// Keep the existing emoji vocabulary without adding a second emoji package.
-const emojiConverter = new Showdown.Converter({
-  emoji: true,
-  literalMidWordUnderscores: true,
-});
+const shortcodeEntries: [string, string | string[]][] =
+  Object.entries(githubShortcodes);
+const emojiVariants: Record<string, Record<string, number>> = emojiHexcodes;
+
+const emojiByShortcode = new Map(
+  shortcodeEntries.flatMap(([hexcode, names]) => {
+    // Use the fully qualified sequence so text-default characters render as emoji.
+    const fullyQualified = Object.entries(emojiVariants[hexcode] ?? {}).find(
+      ([, qualification]) => qualification === 0
+    )?.[0];
+    const codepoints = (fullyQualified ?? hexcode)
+      .split('-')
+      .map((value) => parseInt(value, 16));
+    const emoji = String.fromCodePoint(...codepoints);
+    const aliases = typeof names === 'string' ? [names] : names;
+
+    return aliases.map((name) => [name, emoji] as const);
+  })
+);
 const defaultMarkdownRenderer = new Renderer();
 
 // CommonMark block parsing preserves each level of two-space-indented lists.
@@ -242,17 +257,18 @@ const markdownConverter = new Marked({
       level: 'inline',
       start: (source) => source.search(/:[a-zA-Z0-9_+-]+:/),
       tokenizer(source) {
-        const match = /^:[a-zA-Z0-9_+-]+:/.exec(source);
+        const match = /^:([a-zA-Z0-9_+-]+):/.exec(source);
 
         if (!match) {
           return undefined;
         }
 
-        // A shortcode renders as one paragraph; only its inline content is needed.
-        const html = emojiConverter.makeHtml(match[0]).slice(3, -4);
+        const [, shortcode] = match;
+
+        const html = emojiByShortcode.get(shortcode);
 
         // Unknown shortcodes can contain URL schemes; leave them to Marked's autolinker.
-        return html === match[0]
+        return html === undefined
           ? undefined
           : { type: 'emoji', raw: match[0], html };
       },

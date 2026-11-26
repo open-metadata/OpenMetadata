@@ -77,8 +77,11 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // Collate drops the navigation spec's Studio sidebar check, one more.
     // The incident spec targets the resolution editor by its accessible name.
     // Deleting the Pagination and DataProductDomainMigration tests migrated to
-    // browser tests and Java ITs removes ten more.
-    'om-playwright/no-positional-locator': 514,
+    // browser tests and Java ITs removes ten more. Picking the test type
+    // through selectTestType in the DataContracts, AddTestCaseNewFlow,
+    // Dimensionality, TableLevelTests and TestSuiteMultiPipeline specs removes
+    // five more.
+    'om-playwright/no-positional-locator': 509,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,
