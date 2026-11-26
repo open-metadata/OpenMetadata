@@ -127,8 +127,16 @@ public class OidcDiscoveryValidator {
       LOG.error("Error during discovery validation", e);
       return ValidationErrorBuilder.createFieldError(
           ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
-          "Failed to validate against discovery document: " + e.getMessage());
+          "Failed to validate against discovery document: " + reason(discoveryUri, e));
     }
+  }
+
+  /** Why the discovery check failed, readable even when the exception carries no message. */
+  static String reason(String discoveryUri, Exception e) {
+    if (e instanceof java.io.IOException) {
+      return "the discovery URL could not be reached (" + discoveryUri + ")";
+    }
+    return e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
   }
 
   private void validateScopes(

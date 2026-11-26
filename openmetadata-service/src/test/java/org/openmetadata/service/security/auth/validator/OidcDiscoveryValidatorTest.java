@@ -694,4 +694,26 @@ public class OidcDiscoveryValidatorTest {
     fieldMethod.setAccessible(true);
     return (String) fieldMethod.invoke(validator, errors);
   }
+
+  /** An unreachable discovery URL is reported as such, not as "null". */
+  @Test
+  void anUnreachableDiscoveryUrlGivesAReadableError() {
+    String discoveryUri = "https://unreachable.example/.well-known/openid-configuration";
+    try (MockedStatic<ValidationHttpUtil> http = mockStatic(ValidationHttpUtil.class)) {
+      http.when(() -> ValidationHttpUtil.safeGet(anyString()))
+          .thenThrow(new java.net.ConnectException());
+
+      FieldError error =
+          validator.validateAgainstDiscovery(
+              discoveryUri, new AuthenticationConfiguration(), new OidcClientConfig());
+
+      assertNotNull(error);
+      assertEquals(ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI, error.getField());
+      assertEquals(
+          "Failed to validate against discovery document: the discovery URL could not be reached ("
+              + discoveryUri
+              + ")",
+          error.getError());
+    }
+  }
 }
