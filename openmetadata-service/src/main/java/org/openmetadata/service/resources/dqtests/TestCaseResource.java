@@ -146,7 +146,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     // EditStatus governs the Incident Manager (test case resolution status, severity and incident
     // assignment). It is advertised separately from EditTests/EditAll so that a role can grant
     // incident management without granting edit rights on the test case itself.
-    return listOf(MetadataOperation.EDIT_STATUS);
+    // The failed-rows sample DELETE authorizes DeleteTestCaseFailedRowsSample by name, and EditAll
+    // does not subsume it (ADR:2026-11-22-deleting-a-failed-rows-sample-is-its-own-grant).
+    // Advertising it lets policies grant it on testCase and lets the permissions API evaluate it
+    // per test case, owners included.
+    return listOf(
+        MetadataOperation.EDIT_STATUS, MetadataOperation.DELETE_TEST_CASE_FAILED_ROWS_SAMPLE);
   }
 
   /**
