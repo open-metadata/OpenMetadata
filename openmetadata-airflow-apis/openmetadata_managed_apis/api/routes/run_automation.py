@@ -19,7 +19,7 @@ from flask import Blueprint, Response, request
 from markupsafe import escape
 from pydantic import ValidationError
 
-from metadata.automations.execute_runner import execute
+from metadata.automations.execute_runner import WORKFLOW_NOT_FOUND, execute
 from metadata.ingestion.api.parser import parse_automation_workflow_gracefully
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from openmetadata_managed_apis.api.response import ApiResponse
@@ -72,7 +72,13 @@ def get_fn(blueprint: Blueprint) -> Callable:
             )
 
             # Should this be triggered async?
-            execute(automation_workflow)
+            result = execute(automation_workflow)
+            if result is WORKFLOW_NOT_FOUND:
+                # The workflow was deleted between submission and lookup.
+                # Report it as gone instead of telling the caller it was triggered.
+                return ApiResponse.not_found(
+                    f"Workflow [{escape(automation_workflow.name)}] no longer exists."
+                )
 
             return ApiResponse.success(
                 {"message": f"Workflow [{escape(automation_workflow.name)}] has been triggered."}
