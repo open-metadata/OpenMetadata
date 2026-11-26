@@ -28,6 +28,10 @@ import {
 import profilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import IngestionWorkflowForm from './IngestionWorkflowForm';
 
+beforeEach(() => {
+  globalThis.HTMLElement.prototype.scrollIntoView = jest.fn();
+});
+
 const DBT_WORKFLOW_DATA = {
   name: 'dbt_agent',
   type: 'DBT',
@@ -588,6 +592,15 @@ describe('IngestionWorkflowForm collapsed section validation', () => {
     );
 
     expect(error.closest('.tw\\:hidden')).toBeNull();
+    expect(
+      container
+        .querySelector('[data-field-name="databaseFilterPattern"]')
+        ?.closest('.tw\\:hidden')
+    ).not.toBeNull();
+    expect(document.activeElement?.id).toBe('root/confidence');
+    expect(
+      jest.mocked(HTMLElement.prototype.scrollIntoView).mock.contexts[0]
+    ).toBe(document.activeElement);
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });

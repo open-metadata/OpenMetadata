@@ -12,7 +12,7 @@
  */
 import { Box, Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
+import { RegistryFieldsType, RJSFValidationError, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
 import classNames from 'classnames';
 import { capitalize, cloneDeep, isUndefined, omit, omitBy } from 'lodash';
@@ -379,6 +379,13 @@ const IngestionWorkflowForm = forwardRef<
     [onFocus, schema]
   );
 
+  const handleError = (errors: RJSFValidationError[]) => {
+    if (errors[0]) {
+      formRef.current?.focusOnError(errors[0]);
+      document.activeElement?.scrollIntoView({ block: 'center' });
+    }
+  };
+
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
       let formData = formatAdditionalProperties(cloneDeep(e.formData));
@@ -418,7 +425,6 @@ const IngestionWorkflowForm = forwardRef<
       }>
       <FormReadyNotifier onReady={onReady} />
       <Form
-        focusOnFirstError
         noHtml5Validate
         className={classNames('rjsf no-header', className)}
         customValidate={validateOwnerConfigMaps}
@@ -441,6 +447,7 @@ const IngestionWorkflowForm = forwardRef<
         validator={validator}
         widgets={widgets}
         onChange={handleOnChange}
+        onError={handleError}
         onFocus={handleFieldFocus}
         onSubmit={handleSubmit}>
         {/* When hideFooter is true, the parent card renders the footer to span full width

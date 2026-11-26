@@ -19,6 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
 import {
+  ErrorSchema,
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
@@ -130,6 +131,12 @@ const groupProperties = (
       filterPatternProperties: [],
       primaryProperties: [],
     }
+  );
+
+const hasFieldErrors = (errorSchema?: ErrorSchema): boolean =>
+  !isEmpty(errorSchema?.__errors) ||
+  Object.entries(errorSchema ?? {}).some(
+    ([key, child]) => key !== '__errors' && hasFieldErrors(child as ErrorSchema)
   );
 
 const HiddenFields = ({
@@ -521,8 +528,8 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
     <div className="tw:flex tw:flex-col tw:gap-3">
       {sections.map((section) => (
         <SectionCard
-          hasErrors={section.properties.some(
-            (p) => !isEmpty(errorSchema?.[p.name])
+          hasErrors={section.properties.some((p) =>
+            hasFieldErrors(errorSchema?.[p.name])
           )}
           isCompact={compactAdvancedSection && section.key === 'advanced'}
           key={section.key}
