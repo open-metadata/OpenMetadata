@@ -106,3 +106,29 @@ export const setScheduleTime = async (
 export const setCustomCron = async (page: Page, cron: string) => {
   await page.getByTestId('custom-cron-input').getByRole('textbox').fill(cron);
 };
+
+/**
+ * Picks an IANA zone in the timezone combobox. The list holds several hundred
+ * zones and only the typed text narrows it, so the option is awaited after
+ * typing rather than scrolled to.
+ */
+export const selectScheduleTimezone = async (page: Page, zone: string) => {
+  const input = page.getByTestId('timezone-select').getByRole('combobox');
+  const option = page.getByRole('option', { name: zone, exact: true });
+
+  // Typing the already-selected zone shows the full list by design, so the
+  // option would never narrow into view (e.g. on a retry after it was saved).
+  if ((await input.inputValue()) === zone) {
+    return;
+  }
+
+  await expect(async () => {
+    await input.fill('');
+    await input.fill(zone);
+    await expect(option).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
+
+  await option.click();
+
+  await expect(input).toHaveValue(zone);
+};

@@ -103,7 +103,7 @@ test.describe('Data Product Persona customization', () => {
     adminPage,
     userPage,
   }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
 
     let entity:
       | {

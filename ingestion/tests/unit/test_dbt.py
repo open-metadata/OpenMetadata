@@ -796,6 +796,51 @@ class DbtUnitTest(TestCase):
         }
         self.assertEqual("svc.db.sch.ORDERS", get_dbt_test_primary_table_fqn(dbt_test))
 
+    def test_dbt_relationships_test_skipped_when_tested_table_not_in_openmetadata(self):
+        """A tested model whose table is not in OpenMetadata is dropped from the upstreams,
+        leaving only the `to:` table; attaching the test there sends a column it does not
+        have and the server rejects it with "Invalid column name"."""
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.CUSTOMERS"],
+            "upstream_by_name": {"customers": "svc.db.sch.CUSTOMERS"},
+            "results": "",
+        }
+        assert get_dbt_test_primary_table_fqn(dbt_test) is None
+        assert generate_entity_link(dbt_test=dbt_test) == []
+
+    def test_dbt_relationships_test_skipped_when_tested_table_is_ambiguous(self):
+        """An unresolved tested model with several non-`to:` candidates (e.g. an ephemeral
+        model expanded into its parents) must not be attached to an arbitrary one, nor to
+        the `to:` table dbt lists first in depends_on."""
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.CUSTOMERS", "svc.db.sch.STG_A", "svc.db.sch.STG_B"],
+            "upstream_by_name": {"customers": "svc.db.sch.CUSTOMERS"},
+            "results": "",
+        }
+        assert get_dbt_test_primary_table_fqn(dbt_test) is None
+        assert generate_entity_link(dbt_test=dbt_test) == []
+
+    def test_dbt_relationships_test_skipped_when_referenced_table_is_unidentifiable(self):
+        """When the `to:` table cannot be identified (its name matches two upstreams), it
+        cannot be excluded, so falling back to depends_on[0] could land on it again."""
+        manifest_node = self._get_relationships_test_node()
+        upstream_nodes = [
+            UpstreamNode(name="customers", qualified_name="jaffle_shop.customers", fqn="svc.db.sch.CUSTOMERS"),
+            UpstreamNode(name="customers", qualified_name="raw.customers", fqn="svc.db.raw.CUSTOMERS"),
+        ]
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": [node.fqn for node in upstream_nodes],
+            "upstream_by_name": build_upstream_name_map(upstream_nodes),
+            "results": "",
+        }
+        assert get_dbt_test_primary_table_fqn(dbt_test) is None
+        assert generate_entity_link(dbt_test=dbt_test) == []
+
     def test_build_upstream_name_map_marks_duplicate_names_ambiguous(self):
         """A model and a source table can share a dbt name; the bare name must not
         silently resolve to whichever happened to be indexed last."""

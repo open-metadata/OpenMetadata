@@ -59,12 +59,12 @@
           "description": "Optional list of numeric field-based boosts applied globally."
         },
         "keywordWeight": {
-          "description": "Weight for BM25 keyword search in hybrid RRF pipeline (0.0-1.0)",
+          "description": "Weight for BM25 keyword search in hybrid search (0.0-1.0)",
           "type": "number",
           "default": 0.6
         },
         "semanticWeight": {
-          "description": "Weight for semantic vector search in hybrid RRF pipeline (0.0-1.0)",
+          "description": "Weight for semantic vector search in hybrid search (0.0-1.0)",
           "type": "number",
           "default": 0.4
         }

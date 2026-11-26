@@ -101,7 +101,7 @@ test.describe(
   },
   () => {
     test.beforeAll('setup pre-test', async ({ browser }) => {
-      test.slow();
+      test.setTimeout(test.info().timeout * 3);
       table1 = new TableClass();
       table2 = new TableClass();
       table3 = new TableClass();

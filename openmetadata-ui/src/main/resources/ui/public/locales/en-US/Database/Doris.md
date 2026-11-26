@@ -6,6 +6,16 @@ In this section, we provide guides and references to use the Doris connector.
 
 You can find further information on the Doris connector in the <a href="https://docs.open-metadata.org/connectors/database/doris" target="_blank">docs</a>.
 
+### Usage
+
+The usage workflow reads the queries Doris 4.1 or later records in `__internal_schema.audit_log`. The table holds the SQL text of every user's queries; grant the user `SELECT_PRIV` on it:
+
+```sql
+GRANT SELECT_PRIV ON internal.__internal_schema.audit_log TO '<username>'@'%';
+```
+
+Doris records queries while `enable_audit_plugin` is `true`, the default since 3.1.2. A cluster upgraded from an earlier release keeps `false`; turn it on with `SET GLOBAL enable_audit_plugin = true`. You can find more information on the usage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/usage" target="_blank">here</a>.
+
 ## Connection Details
 
 $$section

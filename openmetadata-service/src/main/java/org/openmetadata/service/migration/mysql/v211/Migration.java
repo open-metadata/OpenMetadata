@@ -18,6 +18,7 @@ import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v211.IncidentOpenIntervalMigration;
 import org.openmetadata.service.migration.utils.v211.SuggestionTaskOwnerFallbackMigration;
 
 public class Migration extends MigrationProcessImpl {
@@ -28,6 +29,11 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        "incident-open-intervals",
+        () -> IncidentOpenIntervalMigration.backfill(handle));
     runOnce(
         migrationDAO,
         getVersion(),

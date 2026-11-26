@@ -22,8 +22,4 @@ describePaginatedList({
   listPath: '/api/v1/roles',
   items: roles,
   itemLabel: (r) => r.displayName ?? r.name,
-  knownIssues: {
-    duplicateFetchOnPageChange:
-      'RolesListPage.handlePaging fetches the page and then the URL effect fetches it again',
-  },
 });

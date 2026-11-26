@@ -20,6 +20,9 @@ without needing a running OpenMetadata server.
 import datetime
 from unittest.mock import Mock, patch
 
+import pytest
+from botocore.exceptions import ClientError
+
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
 )
@@ -129,6 +132,33 @@ class TestListKeys:
         results = list(source.list_keys("bucket", "data/"))
 
         assert results == [("data/file.parquet", 0)]
+
+    @patch("metadata.ingestion.source.storage.s3.metadata.list_s3_objects")
+    def test_client_error_propagates(self, mock_list):
+        """list_keys must let list_s3_objects errors propagate instead of
+        degrading to an empty candidate list (misleading 'no files matched')."""
+        mock_list.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": "AccessDenied"}}, "ListObjectsV2"
+        )
+        source = _make_s3_source()
+        with pytest.raises(ClientError):
+            list(source.list_keys("bucket", "data/"))
+
+    @patch("metadata.ingestion.source.storage.s3.metadata.list_s3_objects")
+    def test_mid_pagination_error_propagates(self, mock_list):
+        """A mid-pagination failure must not silently truncate the key list."""
+
+        def _gen(_client, **_):
+            yield {"Key": "data/a.parquet", "Size": 1}
+            raise ClientError({"Error": {"Code": "Throttling", "Message": "Throttling"}}, "ListObjectsV2")
+
+        mock_list.side_effect = _gen
+        source = _make_s3_source()
+        collected = []
+        with pytest.raises(ClientError):
+            for key, size in source.list_keys("bucket", "data/"):
+                collected.append((key, size))
+        assert collected == [("data/a.parquet", 1)]
 
 
 class TestFetchMetric:
@@ -634,6 +664,92 @@ class TestGenerateStructuredContainersByDepth:
 
         # Only users should be discovered, _delta_log filtered
         assert source._generate_container_details.call_count == 1
+
+    @patch("metadata.ingestion.source.storage.s3.metadata.list_s3_objects")
+    def test_listing_error_records_status_failed(self, mock_list):
+        """When list_s3_objects raises (e.g. AccessDenied), the error must be
+        surfaced on ``status.failed`` instead of being silently logged —
+        otherwise the workflow reports success with a partial/empty catalog."""
+        source = _make_s3_source()
+        source.status = Mock()
+        source._generate_structured_containers_by_depth = S3Source._generate_structured_containers_by_depth.__get__(
+            source
+        )
+        source._generate_container_details = Mock()
+
+        mock_list.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": "AccessDenied"}}, "ListObjectsV2"
+        )
+
+        entry = MetadataEntry(dataPath="data/raw", structureFormat="parquet", depth=1)
+        bucket = S3BucketResponse(Name="bucket")
+
+        results = list(source._generate_structured_containers_by_depth(bucket, entry))
+
+        assert results == []
+        source.status.failed.assert_called_once()
+        # The StackTraceError must carry the entry path and the error.
+        failed_arg = source.status.failed.call_args[0][0]
+        assert failed_arg.name == "data/raw"
+        assert "AccessDenied" in failed_arg.error
+        # A listing failure must mark the listing incomplete so that container
+        # deletion is skipped (the source state is missing unlisted containers).
+        assert source._listing_incomplete is True
+
+    @patch("metadata.ingestion.source.storage.s3.metadata.list_s3_objects")
+    def test_mid_pagination_listing_error_records_status_failed(self, mock_list):
+        """A mid-pagination failure must also surface on status.failed, not
+        be swallowed after yielding partial results."""
+
+        def _gen(_client, **_):
+            yield {"Key": "data/raw/users/part.parquet"}
+            raise ClientError({"Error": {"Code": "Throttling", "Message": "Throttling"}}, "ListObjectsV2")
+
+        source = _make_s3_source()
+        source.status = Mock()
+        source._generate_structured_containers_by_depth = S3Source._generate_structured_containers_by_depth.__get__(
+            source
+        )
+        source._generate_container_details = Mock(return_value=Mock(spec=S3ContainerDetails))
+
+        mock_list.side_effect = _gen
+
+        entry = MetadataEntry(dataPath="data/raw", structureFormat="parquet", depth=1)
+        bucket = S3BucketResponse(Name="bucket")
+
+        list(source._generate_structured_containers_by_depth(bucket, entry))
+
+        source.status.failed.assert_called_once()
+        assert source._listing_incomplete is True
+
+    def test_listing_failure_skips_container_deletion(self):
+        """``mark_containers_as_deleted`` must yield nothing when an S3 listing
+        failed mid-run, otherwise live containers absent from the incomplete
+        source state would be marked deleted."""
+        source = _make_s3_source()
+        source._listing_incomplete = True
+        source.mark_containers_as_deleted = S3Source.mark_containers_as_deleted.__get__(source)
+        # If deletion were not skipped, the base implementation would be
+        # invoked; here it must never be called.
+        source.container_source_state = set()
+        source.source_config.markDeletedContainers = True
+
+        results = list(source.mark_containers_as_deleted())
+
+        assert results == []
+
+    def test_listing_complete_runs_container_deletion(self):
+        """When no listing failed, deletion must delegate to the base step."""
+        source = _make_s3_source()
+        source._listing_incomplete = False
+        with patch(
+            "metadata.ingestion.source.storage.s3.metadata.StorageServiceSource.mark_containers_as_deleted"
+        ) as base:
+            base.return_value = iter([("deleted",)])
+            source.mark_containers_as_deleted = S3Source.mark_containers_as_deleted.__get__(source)
+            results = list(source.mark_containers_as_deleted())
+        base.assert_called_once()
+        assert results == [("deleted",)]
 
 
 class TestGenerateUnstructuredContainers:

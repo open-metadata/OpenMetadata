@@ -333,7 +333,7 @@ class OmniSource(DashboardServiceSource):
     def get_dashboards_list(self) -> list[OmniDocument] | None:
         dashboards = []
         for doc in self.client.get_documents() or []:
-            if not doc.hasDashboard or doc.deleted:
+            if not (doc.hasDashboard or doc.hasApp) or doc.deleted:
                 continue
             if filter_by_dashboard(self.source_config.dashboardFilterPattern, doc.name or doc.identifier):
                 self.status.filter(doc.name or doc.identifier, "Dashboard Pattern not allowed")

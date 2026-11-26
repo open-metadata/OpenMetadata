@@ -205,6 +205,7 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
           </Badge>
         ) : (
           <BadgeWithButton
+            buttonLabel={t('label.remove-entity', { entity: item.label })}
             color="gray"
             data-testid="autocomplete-selected-item"
             key={item.id}

@@ -82,6 +82,8 @@ it('runs everything when it cannot reason about the change', () => {
     'none'
   );
   assert.equal(select(['src/test/browser/setup.ts']).mode, 'all');
+  // Docs beside the tests are not setup.
+  assert.equal(select(['src/test/browser/README.md']).mode, 'none');
   assert.equal(select(['src/styles/variables.less']).mode, 'all');
   // A stylesheet a component imports, just not one any test reaches.
   const sidebar = select(['src/Sidebar/sidebar.less'], { inCode: () => true });

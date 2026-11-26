@@ -27,7 +27,7 @@ import {
   extractDetailsFromToken,
 } from '../utils/AuthProvider.util';
 import { isDomainRestrictedUser } from '../utils/DomainRestrictionUtils';
-import { getBasePath } from '../utils/HistoryUtils';
+import { stripBasePath } from '../utils/HistoryUtils';
 import {
   clearPersonaSession,
   readPersonaSession,
@@ -45,9 +45,7 @@ const LOGIN_CALLBACK_ROUTES: ReadonlySet<string> = new Set([
 ]);
 
 const isLoginCallbackRoute = (): boolean =>
-  LOGIN_CALLBACK_ROUTES.has(
-    globalThis.location.pathname.replace(getBasePath(), '')
-  );
+  LOGIN_CALLBACK_ROUTES.has(stripBasePath(globalThis.location.pathname));
 
 type AuthState = Pick<ApplicationStore, 'isAuthenticated' | 'isAuthenticating'>;
 
