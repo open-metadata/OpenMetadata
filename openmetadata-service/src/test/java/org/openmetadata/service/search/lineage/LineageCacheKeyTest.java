@@ -15,6 +15,7 @@ package org.openmetadata.service.search.lineage;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
@@ -161,7 +162,11 @@ public class LineageCacheKeyTest {
             0,
             0,
             null,
-            null);
+            null,
+            0,
+            0,
+            null,
+            Set.of());
     LineageCacheKey key2 =
         new LineageCacheKey(
             "table1",
@@ -179,7 +184,11 @@ public class LineageCacheKeyTest {
             0,
             0,
             null,
-            null);
+            null,
+            0,
+            0,
+            null,
+            Set.of());
 
     assertNotEquals(key1, key2);
   }
@@ -203,7 +212,11 @@ public class LineageCacheKeyTest {
             0,
             0,
             null,
-            null);
+            null,
+            0,
+            0,
+            null,
+            Set.of());
     LineageCacheKey key2 =
         new LineageCacheKey(
             "table1",
@@ -221,7 +234,11 @@ public class LineageCacheKeyTest {
             0,
             0,
             null,
-            null);
+            null,
+            0,
+            0,
+            null,
+            Set.of());
 
     assertNotEquals(key1, key2);
   }
@@ -245,7 +262,11 @@ public class LineageCacheKeyTest {
             0,
             0,
             null,
-            null);
+            null,
+            0,
+            0,
+            null,
+            Set.of());
     LineageCacheKey key2 =
         new LineageCacheKey(
             "table1",
@@ -263,7 +284,11 @@ public class LineageCacheKeyTest {
             0,
             0,
             null,
-            null);
+            null,
+            0,
+            0,
+            null,
+            Set.of());
 
     assertEquals(key1, key2);
     assertEquals(key1.hashCode(), key2.hashCode());
@@ -288,7 +313,11 @@ public class LineageCacheKeyTest {
             0,
             0,
             null,
-            null);
+            null,
+            0,
+            0,
+            null,
+            Set.of());
     LineageCacheKey key2 =
         new LineageCacheKey(
             "table1",
@@ -306,7 +335,11 @@ public class LineageCacheKeyTest {
             2,
             3,
             null,
-            null);
+            null,
+            0,
+            0,
+            null,
+            Set.of());
 
     assertNotEquals(key1, key2);
   }
@@ -322,5 +355,123 @@ public class LineageCacheKeyTest {
     assertEquals(Boolean.FALSE, key.getIncludePaginationInfo());
     assertEquals(0, key.getPaginationUpstreamDepth());
     assertEquals(0, key.getPaginationDownstreamDepth());
+    assertEquals(0, key.getLayerFrom());
+    assertEquals(1000, key.getLayerSize());
+    assertNull(key.getIncludeDeleted());
+    assertTrue(key.getIncludeSourceFields().isEmpty());
+  }
+
+  @Test
+  public void testFromRequestWiresLayerFrom() {
+    SearchLineageRequest requestA =
+        new SearchLineageRequest().withFqn("table1").withUpstreamDepth(3).withLayerFrom(0);
+    SearchLineageRequest requestB =
+        new SearchLineageRequest().withFqn("table1").withUpstreamDepth(3).withLayerFrom(100);
+
+    LineageCacheKey keyA = LineageCacheKey.fromRequest(requestA);
+    LineageCacheKey keyB = LineageCacheKey.fromRequest(requestB);
+
+    assertNotEquals(keyA, keyB);
+    assertNotEquals(keyA.hashCode(), keyB.hashCode());
+  }
+
+  @Test
+  public void testFromRequestWiresLayerSize() {
+    SearchLineageRequest requestA =
+        new SearchLineageRequest().withFqn("table1").withUpstreamDepth(3).withLayerSize(100);
+    SearchLineageRequest requestB =
+        new SearchLineageRequest().withFqn("table1").withUpstreamDepth(3).withLayerSize(999);
+
+    LineageCacheKey keyA = LineageCacheKey.fromRequest(requestA);
+    LineageCacheKey keyB = LineageCacheKey.fromRequest(requestB);
+
+    assertNotEquals(keyA, keyB);
+    assertNotEquals(keyA.hashCode(), keyB.hashCode());
+  }
+
+  @Test
+  public void testFromRequestWiresIncludeDeleted() {
+    SearchLineageRequest requestA =
+        new SearchLineageRequest().withFqn("table1").withUpstreamDepth(3).withIncludeDeleted(true);
+    SearchLineageRequest requestB =
+        new SearchLineageRequest().withFqn("table1").withUpstreamDepth(3).withIncludeDeleted(false);
+
+    LineageCacheKey keyA = LineageCacheKey.fromRequest(requestA);
+    LineageCacheKey keyB = LineageCacheKey.fromRequest(requestB);
+
+    assertNotEquals(keyA, keyB);
+    assertNotEquals(keyA.hashCode(), keyB.hashCode());
+  }
+
+  @Test
+  public void testFromRequestIncludeDeletedNullDiffersFromFalse() {
+    SearchLineageRequest requestNull =
+        new SearchLineageRequest().withFqn("table1").withUpstreamDepth(3);
+    SearchLineageRequest requestFalse =
+        new SearchLineageRequest().withFqn("table1").withUpstreamDepth(3).withIncludeDeleted(false);
+
+    LineageCacheKey keyNull = LineageCacheKey.fromRequest(requestNull);
+    LineageCacheKey keyFalse = LineageCacheKey.fromRequest(requestFalse);
+
+    assertNotEquals(keyNull, keyFalse);
+    assertNotEquals(keyNull.hashCode(), keyFalse.hashCode());
+  }
+
+  @Test
+  public void testFromRequestWiresIncludeSourceFields() {
+    SearchLineageRequest requestA =
+        new SearchLineageRequest()
+            .withFqn("table1")
+            .withUpstreamDepth(3)
+            .withIncludeSourceFields(Set.of("columns"));
+    SearchLineageRequest requestB =
+        new SearchLineageRequest()
+            .withFqn("table1")
+            .withUpstreamDepth(3)
+            .withIncludeSourceFields(Set.of("columns", "tags"));
+
+    LineageCacheKey keyA = LineageCacheKey.fromRequest(requestA);
+    LineageCacheKey keyB = LineageCacheKey.fromRequest(requestB);
+
+    assertNotEquals(keyA, keyB);
+    assertNotEquals(keyA.hashCode(), keyB.hashCode());
+  }
+
+  @Test
+  public void testFromRequestIncludeSourceFieldsOrderIndependent() {
+    SearchLineageRequest requestA =
+        new SearchLineageRequest()
+            .withFqn("table1")
+            .withUpstreamDepth(3)
+            .withIncludeSourceFields(Set.of("columns", "tags"));
+    SearchLineageRequest requestB =
+        new SearchLineageRequest()
+            .withFqn("table1")
+            .withUpstreamDepth(3)
+            .withIncludeSourceFields(Set.of("tags", "columns"));
+
+    LineageCacheKey keyA = LineageCacheKey.fromRequest(requestA);
+    LineageCacheKey keyB = LineageCacheKey.fromRequest(requestB);
+
+    assertEquals(keyA, keyB);
+    assertEquals(keyA.hashCode(), keyB.hashCode());
+  }
+
+  @Test
+  public void testFromRequestSameRequestProducesEqualKeys() {
+    SearchLineageRequest request =
+        new SearchLineageRequest()
+            .withFqn("table1")
+            .withUpstreamDepth(3)
+            .withLayerFrom(10)
+            .withLayerSize(50)
+            .withIncludeDeleted(true)
+            .withIncludeSourceFields(Set.of("columns"));
+
+    LineageCacheKey key1 = LineageCacheKey.fromRequest(request);
+    LineageCacheKey key2 = LineageCacheKey.fromRequest(request);
+
+    assertEquals(key1, key2);
+    assertEquals(key1.hashCode(), key2.hashCode());
   }
 }

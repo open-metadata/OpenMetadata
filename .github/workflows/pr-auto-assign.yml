@@ -47,7 +47,7 @@ jobs:
       - name: Generate a token
         id: generate_token
         continue-on-error: true
-        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           app-id: ${{ secrets.GH_MEMBER_READ_ID }}
           private-key: ${{ secrets.GH_MEMBER_READ_SECRET }}

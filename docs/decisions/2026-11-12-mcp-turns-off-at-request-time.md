@@ -1,7 +1,7 @@
 # MCP turns off at request time, when its app is disabled or its setting is off
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-12 (initial); v2 2026-11-18 (app state read in the background, not per request)
+- **Revisions:** v1 2026-11-12 (initial); v2 2026-11-18 (app state read in the background, not per request); v3 2026-11-25 (a setting saved through the settings API applies through the watcher on every server)
 - **Deciders:** Vishnu Jain
 - **Guard:** `McpAvailabilityIT`
 - **Related:** #37687, #29201, #30041
@@ -45,3 +45,12 @@ while the app state was ignored, loses MCP on upgrade until the app is enabled. 
 must sit under `/mcp/` or check `McpAvailabilityFilter.isMcpAvailable()` itself, or it keeps
 answering while MCP is off. A server that started with MCP off only answers once it restarts with
 it on, unless its startup gate mounts MCP regardless.
+
+## Amendment
+
+v3 2026-11-25: only `/system/mcp/config` applies the setting on the saving server at once. A save
+through `PUT` or `PATCH /system/settings` applies on every server, the saving one included, when
+its settings watcher picks it up (`watchIntervalSeconds`), and a failed reload is retried and
+reported there. `MCP_CONFIGURATION` is therefore not acknowledged as a local write: before this,
+the saving server never applied it until a restart (#38674). Guard:
+`McpAvailabilityIT#readOnlySavedThroughTheSettingsApiAppliesOnThisServer`.

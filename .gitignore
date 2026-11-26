@@ -158,6 +158,13 @@ search-volume/
 
 # Nox
 ingestion/.nox/
+openmetadata-airflow-apis/.venv/
+openmetadata-airflow-apis/.nox/
+openmetadata-airflow-apis/junit/
+openmetadata-airflow-apis/ci-diagnostics/
+openmetadata-airflow-apis/ci-coverage.xml
+openmetadata-airflow-apis/*-test-exit-code.txt
+openmetadata-airflow-apis/*-test-run.log
 
 # Environment variables
 .env
