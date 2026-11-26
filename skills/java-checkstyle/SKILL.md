@@ -84,8 +84,8 @@ user decide.
   formatting rules inline in source files.
 - If Spotless keeps rewriting a change you just made, re-read the config —
   Spotless is the source of truth, not the IDE.
-- CI enforcement lives in `.github/workflows/java-checkstyle.yml`: the
-  `java-checkstyle` job runs `mvn spotless:apply` and fails (`git diff-files`)
+- CI enforcement lives in `.github/workflows/openmetadata-service-unit-tests.yml`:
+  a fail-fast Java Checkstyle step runs `mvn spotless:apply` and fails the run
   if the tree was not already formatted, posting the "Please run
   `mvn spotless:apply`" comment.
 
