@@ -266,6 +266,14 @@
           },
           "riskLevel": {
             "type": "keyword"
+          },
+          "inputSchema": {
+            "type": "object",
+            "enabled": false
+          },
+          "outputSchema": {
+            "type": "object",
+            "enabled": false
           }
         }
       },
@@ -305,6 +313,14 @@
           },
           "promptType": {
             "type": "keyword"
+          },
+          "examples": {
+            "properties": {
+              "arguments": {
+                "type": "object",
+                "enabled": false
+              }
+            }
           }
         }
       },
@@ -753,6 +769,14 @@
           },
           "affectedUserCount": {
             "type": "integer"
+          }
+        }
+      },
+      "connectionConfig": {
+        "properties": {
+          "env": {
+            "type": "object",
+            "enabled": false
           }
         }
       }

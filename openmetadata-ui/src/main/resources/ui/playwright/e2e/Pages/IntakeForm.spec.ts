@@ -1229,7 +1229,7 @@ test.describe(
       browser,
       page,
     }) => {
-      test.slow();
+      test.setTimeout(test.info().timeout * 3);
 
       const fields: IntakeRequiredField[] = [
         {

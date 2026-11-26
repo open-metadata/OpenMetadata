@@ -44,7 +44,7 @@ const test = base.extend<{
 });
 
 test.beforeAll(async ({ browser }) => {
-  test.slow();
+  test.setTimeout(test.info().timeout * 3);
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await conditionalPermissionsPrerequisites(apiContext);
@@ -52,7 +52,7 @@ test.beforeAll(async ({ browser }) => {
 });
 
 test.afterAll(async ({ browser }) => {
-  test.slow();
+  test.setTimeout(test.info().timeout * 3);
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await conditionalPermissionsCleanup(apiContext);

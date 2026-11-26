@@ -122,7 +122,7 @@ test.describe('Glossary persona customization', () => {
   test('Customize UI lists every documented Glossary Term tab including Relations Graph', async ({
     adminPage,
   }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
 
     const personaListResponse = adminPage.waitForResponse(`/api/v1/personas?*`);
     await settingClick(adminPage, GlobalSettingOptions.PERSONA);
@@ -159,7 +159,7 @@ test.describe('Glossary persona customization', () => {
   test('Customize UI lists Relations Graph at the Glossary parent level', async ({
     adminPage,
   }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
 
     const personaListResponse = adminPage.waitForResponse(`/api/v1/personas?*`);
     await settingClick(adminPage, GlobalSettingOptions.PERSONA);
@@ -197,7 +197,7 @@ test.describe('Glossary persona customization', () => {
     adminPage,
     userPage,
   }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
 
     await test.step('open Glossary Term customize UI and save without touching tabs', async () => {
       const personaListResponse =

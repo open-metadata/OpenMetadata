@@ -122,7 +122,7 @@ test.describe('Domains', () => {
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     user = new UserClass();
     domain = new Domain();
@@ -160,7 +160,7 @@ test.describe('Domains', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.delete(apiContext);
@@ -2775,7 +2775,7 @@ test.describe('Domains Rbac', () => {
     domain2 = new Domain();
     domain3 = new Domain();
     user1 = new UserClass();
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await Promise.all([
@@ -3119,7 +3119,7 @@ test.describe('Domain Tree View Functionality', () => {
   const domainDisplayName = domain.responseData.displayName;
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     subDomain = new SubDomain(domain);
@@ -3128,7 +3128,7 @@ test.describe('Domain Tree View Functionality', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await subDomain.delete(apiContext);
