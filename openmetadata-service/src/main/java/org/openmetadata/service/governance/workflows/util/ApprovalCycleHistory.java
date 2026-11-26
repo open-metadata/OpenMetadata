@@ -33,13 +33,25 @@ import org.openmetadata.service.util.EntityUtil;
  * gives the net change since that base.
  *
  * <p>The walk follows each change's previous version, one stored row at a time, rather than paging
- * the version list: that list is ordered by its extension name, which sorts 10.0 before 9.0. The
- * cap and the walk are ADR:2026-11-26-an-approval-preview-lists-the-change-since-its-cycle-began.
+ * the version list: that list is ordered by its extension name, which sorts 10.0 before 9.0. When the
+ * walk cannot reach the base, because a version row is missing or the cycle is longer than the read
+ * cap, the base version is compared with the current one instead. The cap, the walk and the
+ * comparison are ADR:2026-11-26-an-approval-preview-lists-the-change-since-its-cycle-began.
  */
 @Slf4j
 public final class ApprovalCycleHistory {
   static final int MAX_VERSIONS = 200;
   private static final double FIRST_VERSION_BASE = 0.0;
+
+  /**
+   * The changes of an approval cycle, oldest first. {@code complete} is false when part of the cycle
+   * could not be read, and the changes are then only the ones after that part.
+   */
+  public record CycleChanges(List<ChangeDescription> changes, boolean complete) {
+    public CycleChanges {
+      changes = List.copyOf(changes);
+    }
+  }
 
   /** Reads one stored version of an entity; empty when its history has no readable row for it. */
   @FunctionalInterface
@@ -68,14 +80,17 @@ public final class ApprovalCycleHistory {
     return previousVersion(entity.getVersion(), entity.getChangeDescription());
   }
 
-  /** The changes of every version of {@code current} newer than {@code base}, oldest first. */
-  public List<ChangeDescription> changesSince(EntityInterface<?> current, double base) {
+  /**
+   * The changes of every version of {@code current} newer than {@code base}, oldest first. When the
+   * walk stops short of the base, the change is the comparison of the base version with the current
+   * one; only when the base version cannot be read either are the changes the walk reached returned,
+   * marked incomplete.
+   */
+  public CycleChanges changesSince(EntityInterface<?> current, double base) {
     List<EntityInterface<?>> newestFirst = versionsNewerThan(current, base).toList();
-    warnWhenCapped(current, base, newestFirst);
-    return newestFirst.reversed().stream()
-        .map(EntityInterface::getChangeDescription)
-        .filter(Objects::nonNull)
-        .toList();
+    return reachesBase(newestFirst, base)
+        ? new CycleChanges(oldestFirst(newestFirst), true)
+        : acrossTheGap(current, base, newestFirst);
   }
 
   /** The newest version before {@code current} that a reviewer accepted. */
@@ -114,17 +129,50 @@ public final class ApprovalCycleHistory {
         : Optional.<EntityInterface<?>>empty();
   }
 
-  private static void warnWhenCapped(
+  private static boolean reachesBase(List<EntityInterface<?>> newestFirst, double base) {
+    return newestFirst.isEmpty() || previousVersion(newestFirst.getLast()) <= base;
+  }
+
+  private static List<ChangeDescription> oldestFirst(List<EntityInterface<?>> newestFirst) {
+    return newestFirst.reversed().stream()
+        .map(EntityInterface::getChangeDescription)
+        .filter(Objects::nonNull)
+        .toList();
+  }
+
+  private CycleChanges acrossTheGap(
       EntityInterface<?> current, double base, List<EntityInterface<?>> newestFirst) {
-    if (newestFirst.size() == MAX_VERSIONS && previousVersion(newestFirst.getLast()) > base) {
-      LOG.warn(
-          "[ApprovalCycleHistory] {} changed in more than {} versions since version {}; its approval"
-              + " preview lists the newest {}",
-          current.getFullyQualifiedName(),
-          MAX_VERSIONS,
-          base,
-          MAX_VERSIONS);
-    }
+    CycleChanges changes =
+        netChange(current, base)
+            .map(net -> new CycleChanges(List.of(net), true))
+            .orElseGet(() -> new CycleChanges(oldestFirst(newestFirst), false));
+    warnOfGap(current, base, newestFirst.getLast(), changes.complete());
+    return changes;
+  }
+
+  // Two rows however long the cycle: the version it began from and the current one.
+  private Optional<ChangeDescription> netChange(EntityInterface<?> current, double base) {
+    return storedVersions
+        .read(current.getId(), base)
+        .flatMap(
+            before ->
+                storedVersions
+                    .read(current.getId(), current.getVersion())
+                    .map(after -> VersionDiff.between(before, after)));
+  }
+
+  private static void warnOfGap(
+      EntityInterface<?> current, double base, EntityInterface<?> oldestRead, boolean complete) {
+    LOG.warn(
+        "[ApprovalCycleHistory] The history of {} since version {} stops at version {}, on a"
+            + " missing version or past {} versions; its approval preview {}",
+        current.getFullyQualifiedName(),
+        base,
+        oldestRead.getVersion(),
+        MAX_VERSIONS,
+        complete
+            ? "compares the base version with the current one"
+            : "lists the changes after the gap and is marked incomplete");
   }
 
   private static Optional<EntityInterface<?>> storedVersion(
@@ -134,8 +182,7 @@ public final class ApprovalCycleHistory {
       stored = Optional.of(repository.getVersion(id, Double.toString(version)));
     } catch (EntityNotFoundException | JsonParsingException unreadable) {
       LOG.warn(
-          "[ApprovalCycleHistory] Version {} of {} {} is missing or unreadable; the approval"
-              + " preview starts after it",
+          "[ApprovalCycleHistory] Version {} of {} {} is missing or unreadable",
           version,
           repository.getEntityType(),
           id,

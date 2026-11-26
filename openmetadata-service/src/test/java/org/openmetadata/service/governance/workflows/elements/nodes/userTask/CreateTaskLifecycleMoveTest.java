@@ -44,12 +44,15 @@ class CreateTaskLifecycleMoveTest {
                     "proposedChanges",
                     Map.of("entityStatus", Map.of()),
                     "proposedChangesBaseVersion",
-                    0.1),
+                    0.1,
+                    "proposedChangesIncomplete",
+                    true),
                 IN_REVIEW_TO_APPROVED,
                 () -> CreateTask.PreviewChanges.NONE));
 
     assertFalse(payload.containsKey("proposedChanges"));
     assertFalse(payload.containsKey("proposedChangesBaseVersion"));
+    assertFalse(payload.containsKey("proposedChangesIncomplete"));
     assertEquals(
         Map.of("stage", "In Review", "targetStage", "Approved"), payload.get("lifecycleMove"));
   }
@@ -86,7 +89,7 @@ class CreateTaskLifecycleMoveTest {
 
   private static CreateTask.PreviewChanges cycleOf(Domain domain) {
     return new CreateTask.PreviewChanges(
-        null, () -> new CyclePreview(0.1, List.of(domain.getChangeDescription())));
+        null, () -> new CyclePreview(0.1, List.of(domain.getChangeDescription()), true));
   }
 
   private static Domain stageChangedDomain() {

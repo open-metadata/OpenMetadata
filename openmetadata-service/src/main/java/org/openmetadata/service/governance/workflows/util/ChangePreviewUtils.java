@@ -52,9 +52,11 @@ public final class ChangePreviewUtils {
   public static final String CHANGE_REQUEST_ID_KEY = "changeRequestId";
   public static final String CHANGE_REQUEST_REVISION_KEY = "changeRequestRevision";
   public static final String PROPOSED_CHANGES_BASE_VERSION_KEY = "proposedChangesBaseVersion";
+  public static final String PROPOSED_CHANGES_INCOMPLETE_KEY = "proposedChangesIncomplete";
 
   private static final List<String> PREVIEW_STATE_KEYS =
-      List.of(PROPOSED_CHANGES_KEY, PROPOSED_CHANGES_BASE_VERSION_KEY);
+      List.of(
+          PROPOSED_CHANGES_KEY, PROPOSED_CHANGES_BASE_VERSION_KEY, PROPOSED_CHANGES_INCOMPLETE_KEY);
 
   private static final List<String> ID_KEYS =
       List.of("tagFQN", "fullyQualifiedName", "displayName", "name");
@@ -64,8 +66,13 @@ public final class ChangePreviewUtils {
 
   private ChangePreviewUtils() {}
 
-  /** The changes an approval cycle made since the version it began from, oldest first. */
-  public record CyclePreview(double baseVersion, List<ChangeDescription> changes) {
+  /**
+   * The changes an approval cycle made since the version it began from, oldest first. {@code
+   * complete} is false when part of the cycle's history could not be read, so the changes are only
+   * the ones after that part.
+   */
+  public record CyclePreview(
+      double baseVersion, List<ChangeDescription> changes, boolean complete) {
     public CyclePreview {
       changes = List.copyOf(changes);
     }
@@ -246,8 +253,9 @@ public final class ChangePreviewUtils {
   /**
    * The payload of a task in an approval cycle: its preview is the fold of every change since the
    * cycle began, replacing whatever preview the payload carried, and the payload records where the
-   * cycle began so the task that supersedes it continues from there. The cycle is read here, inside
-   * the guard, so a history that cannot be read leaves the payload as it was.
+   * cycle began so the task that supersedes it continues from there. A preview that could not read
+   * the whole cycle says so. The cycle is read here, inside the guard, so a history that cannot be
+   * read leaves the payload as it was.
    */
   public static Object withCyclePreview(
       EntityInterface<?> entity, Object existingPayload, Supplier<CyclePreview> cycle) {
@@ -260,6 +268,11 @@ public final class ChangePreviewUtils {
     Map<String, Object> updated =
         withPreview(entity, existingPayload, foldChanges(entity, cycle.changes()));
     updated.put(PROPOSED_CHANGES_BASE_VERSION_KEY, cycle.baseVersion());
+    if (cycle.complete()) {
+      updated.remove(PROPOSED_CHANGES_INCOMPLETE_KEY);
+    } else {
+      updated.put(PROPOSED_CHANGES_INCOMPLETE_KEY, true);
+    }
     return updated;
   }
 

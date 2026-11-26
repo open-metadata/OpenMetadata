@@ -67,7 +67,7 @@ public final class ApprovalGate {
   // any other field, so moving a held asset to another stage waits for approval.
   private static final Set<String> STRUCTURAL_FIELDS =
       Set.of(Entity.FIELD_NAME, Entity.FIELD_FULLY_QUALIFIED_NAME, Entity.FIELD_DELETED);
-  private static final Set<String> BOOKKEEPING_FIELDS =
+  public static final Set<String> BOOKKEEPING_FIELDS =
       Set.of(
           "version",
           "updatedAt",
@@ -202,7 +202,7 @@ public final class ApprovalGate {
    * save ignores them, and preparing a patch drops them, so planning with them would report a removal
    * the save never makes.
    */
-  private static JsonNode withoutDerivedTags(JsonNode entity) {
+  public static JsonNode withoutDerivedTags(JsonNode entity) {
     JsonNode copy = entity.deepCopy();
     dropDerivedTags(copy);
     return copy;

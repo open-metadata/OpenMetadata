@@ -94,6 +94,7 @@ import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.helper.WorkflowVariableResolver;
 import org.openmetadata.service.governance.workflows.util.ApprovalCycle;
 import org.openmetadata.service.governance.workflows.util.ApprovalCycleHistory;
+import org.openmetadata.service.governance.workflows.util.ApprovalCycleHistory.CycleChanges;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.CyclePreview;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -1282,6 +1283,7 @@ public class CreateTask implements TaskListener {
         payload == null ? new LinkedHashMap<>() : new LinkedHashMap<>(JsonUtils.getMap(payload));
     updated.remove(ChangePreviewUtils.PROPOSED_CHANGES_KEY);
     updated.remove(ChangePreviewUtils.PROPOSED_CHANGES_BASE_VERSION_KEY);
+    updated.remove(ChangePreviewUtils.PROPOSED_CHANGES_INCOMPLETE_KEY);
     updated.put(LIFECYCLE_MOVE_KEY, move);
     return updated;
   }
@@ -1357,7 +1359,8 @@ public class CreateTask implements TaskListener {
               TriggeringChange.baseVersion(current, triggeringVersion),
               carriedPayloads,
               () -> unknownBase.applyAsDouble(history, current));
-      preview = new CyclePreview(base, history.changesSince(current, base));
+      CycleChanges changes = history.changesSince(current, base);
+      preview = new CyclePreview(base, changes.changes(), changes.complete());
     }
     return preview;
   }

@@ -712,6 +712,43 @@ class ChangePreviewUtilsTest {
         new ConnectionException(new SQLException("connection refused")));
   }
 
+  // Part of the cycle could not be read, so the card must not pass the partial list off as whole.
+  @Test
+  void withCyclePreview_anIncompleteCycleIsMarked() {
+    Object result =
+        ChangePreviewUtils.withCyclePreview(
+            TERM, null, () -> new CyclePreview(0.3, List.of(descriptionEdit("old", "new")), false));
+
+    assertEquals(
+        Map.of("description", new FieldDiff(List.of("new"), List.of("old"))),
+        ChangePreviewUtils.extractProposedChanges(result));
+    assertEquals(
+        Boolean.TRUE, ((Map<?, ?>) result).get(ChangePreviewUtils.PROPOSED_CHANGES_INCOMPLETE_KEY));
+  }
+
+  @Test
+  void withCyclePreview_aCompleteCycleClearsAnEarlierMark() {
+    Map<String, Object> carried = new LinkedHashMap<>();
+    carried.put(ChangePreviewUtils.PROPOSED_CHANGES_INCOMPLETE_KEY, true);
+
+    Object result =
+        ChangePreviewUtils.withCyclePreview(TERM, carried, cycle(0.3, descriptionEdit("o", "n")));
+
+    assertFalse(
+        ((Map<?, ?>) result).containsKey(ChangePreviewUtils.PROPOSED_CHANGES_INCOMPLETE_KEY));
+  }
+
+  @Test
+  void preservePreviewState_carriesTheIncompleteMark() {
+    Map<String, Object> prior = new LinkedHashMap<>();
+    prior.put(ChangePreviewUtils.PROPOSED_CHANGES_INCOMPLETE_KEY, true);
+
+    Object result = ChangePreviewUtils.preservePreviewState(Map.of("k", "v"), prior);
+
+    assertEquals(
+        Boolean.TRUE, ((Map<?, ?>) result).get(ChangePreviewUtils.PROPOSED_CHANGES_INCOMPLETE_KEY));
+  }
+
   @Test
   void cycleBaseOf_aPayloadWithoutABaseHasNone() {
     assertEquals(OptionalDouble.empty(), ChangePreviewUtils.cycleBaseOf(null));
@@ -719,7 +756,7 @@ class ChangePreviewUtilsTest {
   }
 
   private static Supplier<CyclePreview> cycle(double base, ChangeDescription... changes) {
-    return () -> new CyclePreview(base, List.of(changes));
+    return () -> new CyclePreview(base, List.of(changes), true);
   }
 
   private static ChangeDescription tagsAdded(String tagFqn) {
