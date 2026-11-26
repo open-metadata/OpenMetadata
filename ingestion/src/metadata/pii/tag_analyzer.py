@@ -47,8 +47,7 @@ TARGET_MAP = {
 
 _NAMED_ENTITY_TYPES = frozenset({"PERSON", "LOCATION", "NRP"})
 _MIN_DISTINCT_UNCONTEXTUALIZED_NER_MATCHES = 2
-# Every tag walks the values in the same order, so an evicting LRU smaller than the value count would
-# never hit; the memo keeps the first N parses and values beyond it are parsed per tag as before.
+# Keeps the first N parses and evicts none: ADR:2026-11-26-auto-classification-memoizes-the-first-500-spacy-parses-per-column
 NLP_ARTIFACTS_MEMO_MAX_SIZE = 500
 
 
