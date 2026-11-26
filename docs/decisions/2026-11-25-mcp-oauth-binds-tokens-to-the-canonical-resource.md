@@ -5,7 +5,11 @@
 - **Deciders:** deepinsight coder
 - **Guard:** `McpResourceUriTest`, `AuthorizationHandlerTest`,
   `OAuthHttpStatelessServerTransportProviderTest`, `JWTTokenGeneratorTest`,
-  `UserSSOOAuthProviderTest`, `McpServerRequestContextTest`,
+  `UserSSOOAuthProviderTest`, `McpServerRequestContextTest`, `TokenAudienceTest`,
+  `JwtFilterTest` (`everyEntryPointOfTheApiRefusesATokenIssuedForTheMcpResource`,
+  `everyEntryPointOfTheApiStillAcceptsOpenMetadataTokensWithoutAnAudience` and the
+  `theMcpEntryPoint*` tests),
+  `SocketAddressFilterTest#realValidatorRejectsATokenIssuedForTheMcpResource`, `McpTokenAudienceIT`,
   `SsoMcpSignInChecksIT#resourceParameterIsEnforcedAcrossAuthorizeTokenAndResourceServer`
 - **Related:** #38479,
   ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path,
@@ -44,15 +48,27 @@ OIDC Bearer tokens carry the OIDC `client_id` in `aud` (validated by `ProviderTo
 - **Backward-compatible omission:** An absent `resource` parameter (`null`) remains accepted on
   `/mcp/authorize` and `/mcp/token` so legacy MCP clients keep signing in; an empty `resource=` is
   present and rejected with `invalid_target`.
-- **Audience binding and enforcement:** Minted MCP OAuth access tokens carry the canonical resource
-  URI as a single-string JWT `aud` claim via an additive `JWTTokenGenerator` overload. On `/mcp`
-  (in `OAuthHttpStatelessServerTransportProvider.authenticateRequest` and defense-in-depth in
-  `McpServer.securityContextFrom`), OpenMetadata-signed JWTs (`JwtFilter.isOpenMetadataKeyId`) that
-  carry an `aud` claim (`!jwt.getClaim("aud").isMissing()`) must match the canonical resource URI,
-  failing closed on malformed claim types (`null`, empty arrays, non-strings, null array elements)
-  or an unresolved expected resource. OpenMetadata-signed tokens without `aud` (PATs, bot tokens,
-  session tokens, and pre-upgrade 10-minute MCP tokens) and non-OpenMetadata IdP tokens keep
-  working unchanged.
+- **Audience binding:** Minted MCP OAuth access tokens carry the canonical resource URI as a
+  single-string JWT `aud` claim via an additive `JWTTokenGenerator` overload. No other token
+  OpenMetadata signs carries `aud`.
+- **One audience check, applied by every entry point:** `TokenAudience` holds the rule and
+  `JwtFilter` applies it to every OpenMetadata-signed token while verifying it, next to the issuer
+  check, so `filter`, `getCatalogSecurityContext`, `validateJwtAndGetClaims`, `verifySignatureOnly`
+  and `SocketAddressFilter.validatePrefixedTokenRequest` all enforce it. A token without `aud` is
+  accepted. A token with `aud` is accepted only when every value is text and one names the
+  resource the filter serves; otherwise it is refused with a 401 (`Token was issued for another
+  resource.`), never a 500. Identity provider tokens are not judged by it: `ProviderTokenValidator`
+  checks their `aud` against the configured client ids.
+- **What each entry point serves:** A `JwtFilter` serves the OpenMetadata API unless it is built
+  with a `TokenAudience`, and no audience names the API. So the REST filter and the push-feed
+  handshake (`SocketAddressFilter`, both the polling servlet path and the WebSocket upgrade)
+  refuse every OpenMetadata-signed token that carries `aud`, MCP access tokens included. The MCP
+  transport and `McpServer` build their filters with `McpResourceUri.tokenAudienceOf`, which reads
+  the protected resource the transport currently publishes and matches it with
+  `McpResourceUri.matches`; before the resource is published nothing matches.
+- **Tokens without `aud`:** login and session tokens, bot tokens, personal access tokens, and MCP
+  access tokens minted before audience binding keep working on REST, the push feed and `/mcp`
+  exactly as before this change.
 - **No database schema changes:** OpenMetadata hosts a single MCP protected resource per
   deployment, so `resource` is not persisted on `mcp_pending_auth_requests`,
   `oauth_authorization_codes`, or `oauth_refresh_tokens`. This avoids guarded DDL migrations across
@@ -68,6 +84,13 @@ OIDC Bearer tokens carry the OIDC `client_id` in `aud` (validated by `ProviderTo
 - Tokens minted for another MCP server (including another OpenMetadata instance sharing default
   signing keys, or an old `baseUrl`) are refused at `/mcp` with HTTP 401 and
   `WWW-Authenticate: Bearer ..., error="invalid_token"`.
+- An MCP access token no longer reaches the REST API or the push feed, which it did while it was
+  a plain `OM_USER` token. The REST half of the revocation consequence in
+  ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server now applies only to
+  MCP access tokens minted before audience binding, which expire within 10 minutes of the upgrade.
+- A new entry point that builds a `JwtFilter` gets the API rule by default and so refuses MCP
+  access tokens. A new resource OpenMetadata mints tokens for must build its filter with its own
+  `TokenAudience`, in this distribution or another one.
 - Revisit persisting `resource` per grant only if OpenMetadata ever serves multiple distinct MCP
   protected resources from one authorization server, or if strict rejection of omitted `resource`
   becomes required once legacy clients are retired.
