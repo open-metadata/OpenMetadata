@@ -8866,6 +8866,12 @@ public class WorkflowDefinitionResourceIT {
 
     awaitRequestStatus(request.get("id").asText(), "Applied");
     assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+    DataProduct applied = admin.dataProducts().get(product.getId().toString());
+    assertEquals(EntityUtil.nextVersion(product.getVersion()), applied.getVersion());
+    assertEquals(product.getUpdatedBy(), applied.getUpdatedBy());
+    assertEquals(
+        product.getDescription(),
+        admin.dataProducts().getVersion(product.getId(), product.getVersion()).getDescription());
   }
 
   @Test
@@ -8927,6 +8933,7 @@ public class WorkflowDefinitionResourceIT {
     DataProduct applied = admin.dataProducts().get(product.getId().toString(), "");
     assertEquals("held together", applied.getDescription());
     assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+    assertEquals(EntityUtil.nextVersion(product.getVersion()), applied.getVersion());
     assertEquals(
         List.of("description", INPUT_PORTS), changedFields(applied.getChangeDescription()));
   }

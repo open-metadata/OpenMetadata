@@ -1014,6 +1014,7 @@ class DbtSource(DbtServiceSource):
         """
         self.reported_unresolved_upstreams.clear()
         self.resolved_tables.clear()
+        self.wildcard_expansions.clear()
         if self.source_config.dbtConfigSource and dbt_objects.dbt_manifest:
             logger.debug("Parsing DBT Data Models")
             manifest_entities = {
@@ -1145,7 +1146,9 @@ class DbtSource(DbtServiceSource):
                         if manifest_node.meta:
                             dbt_table_tags_list.extend(self.process_dbt_meta(manifest_node.meta, table_fqn) or [])
 
-                        upstream_nodes = self.parse_upstream_nodes_with_names(manifest_entities, manifest_node)
+                        upstream_nodes = self.parse_upstream_nodes_with_names(
+                            manifest_entities, manifest_node, expand_wildcard_sources=True
+                        )
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
                             upstream_table_ids={node.fqn: node.table_id for node in upstream_nodes if node.table_id},
@@ -1218,12 +1221,16 @@ class DbtSource(DbtServiceSource):
         """
         return [node.fqn for node in self.parse_upstream_nodes_with_names(manifest_entities, dbt_node)]
 
-    def parse_upstream_nodes_with_names(self, manifest_entities, dbt_node):
+    def parse_upstream_nodes_with_names(self, manifest_entities, dbt_node, *, expand_wildcard_sources: bool = False):
         """
         Method to fetch the upstream nodes as UpstreamNode entries.
 
         The dbt names are kept alongside the FQN because the FQN is built from the model
         alias, while dbt ``ref()`` expressions carry the model name.
+
+        ``expand_wildcard_sources`` keeps a wildcard source (BigQuery ``events_*``) as an upstream,
+        so lineage reaches every table it reads; tests and exposures attach to one table and
+        leave it out.
         """
         upstream_nodes = []
         if (
@@ -1264,7 +1271,31 @@ class DbtSource(DbtServiceSource):
                     # check if the node is an ephemeral node
                     # Recursively store the upstream of the ephemeral node in the upstream list
                     if check_ephemeral_node(parent_node):
-                        upstream_nodes.extend(self.parse_upstream_nodes_with_names(manifest_entities, parent_node))
+                        upstream_nodes.extend(
+                            self.parse_upstream_nodes_with_names(
+                                manifest_entities, parent_node, expand_wildcard_sources=expand_wildcard_sources
+                            )
+                        )
+                    elif (
+                        expand_wildcard_sources
+                        and parent_resource_type == DbtCommonEnum.SOURCE.value
+                        and table_name.endswith("*")
+                        and get_table_binding_resolution(
+                            self.metadata, self.config.serviceName
+                        ).supports_wildcard_tables
+                        and (
+                            wildcard_fqn := self._build_table_fqn(
+                                get_corrected_name(parent_database),
+                                get_corrected_name(parent_schema),
+                                table_name,
+                                literal_table_name=True,
+                            )
+                        )
+                    ):
+                        # A wildcard table reads every table it matches, and no table is named with a `*`;
+                        # create_dbt_lineage expands it into one edge per match.
+                        # ADR:2026-11-03-bigquery-daily-shards-use-stable-logical-tables
+                        upstream_nodes.append(build_upstream_node(parent_node, wildcard_fqn))
                     else:
                         # check if the parent table exists in OM before adding it to the upstream list
                         table_entity = self._resolve_table(
@@ -1429,6 +1460,89 @@ class DbtSource(DbtServiceSource):
 
         return entity
 
+    @cached_property
+    def wildcard_expansions(self) -> LRUCache[tuple[Table, ...] | None]:
+        """A run's wildcard expansions, shared by the lineage stages of every model reading them."""
+        return LRUCache(RESOLVED_TABLES_CACHE_SIZE)
+
+    @staticmethod
+    def _wildcard_upstreams(data_model_link: DataModelLink) -> list[str]:
+        """
+        Upstreams kept as a wildcard to expand. A source whose identifier really contains a `*` on an
+        engine without wildcard tables resolved to its table, so it carries an id and is not one.
+        """
+        return [
+            upstream
+            for upstream in data_model_link.datamodel.upstream or []
+            if upstream not in data_model_link.upstream_table_ids
+            and len(parts := fqn.split(upstream)) == 4
+            and "*" in parts[3]
+        ]
+
+    def _overrides_lineage(self, data_model_link: DataModelLink) -> bool:
+        """
+        Whether this run may replace a model's dbt lineage. Not while a wildcard upstream's match is
+        incomplete: replacing would delete the edges it could not confirm, so the run only adds edges.
+        """
+        return bool(self.source_config.overrideLineage) and all(
+            self._wildcard_upstream_tables(upstream) is not None
+            for upstream in self._wildcard_upstreams(data_model_link)
+        )
+
+    def _wildcard_upstream_tables(self, upstream: str) -> tuple[Table, ...] | None:
+        """Every table a wildcard upstream reads, or None when the match is incomplete; once per run."""
+        try:
+            return self.wildcard_expansions.get(upstream)
+        except KeyError:
+            pass
+        tables: tuple[Table, ...] | None
+        try:
+            tables = self._resolve_wildcard_upstream(fqn.split(upstream))
+            if not tables:
+                self.status.warning(
+                    upstream,
+                    f"dbt lineage edge dropped: no table in OpenMetadata matches the wildcard source '{upstream}'",
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            tables = None
+            self.status.warning(
+                upstream, f"dbt lineage incomplete for wildcard source '{upstream}'; preserving prior lineage: {exc}"
+            )
+        self.wildcard_expansions.put(upstream, tables)
+        return tables
+
+    def _resolve_wildcard_upstream(self, parts: list[str]) -> tuple[Table, ...]:
+        """
+        Every table a wildcard upstream reads, looked up in the order every other dbt node uses: the
+        catalogMapping database in the configured service, then in any service
+        (ADR:2026-10-14-dbt-catalog-mapping-resolves-engine-database-names), then the manifest
+        database, in any service too when searchAcrossDatabases is set.
+        """
+        service_name, database, schema, table_name = parts
+        database = None if database == "*" else database
+        mapped_database = self.catalog_mapping.get(database.casefold()) if database else None
+        lookups: list[tuple[str, str | None]] = (
+            [(service_name, mapped_database), ("*", mapped_database)] if mapped_database else []
+        )
+        lookups.append((service_name, database))
+        if self.source_config.searchAcrossDatabases:
+            lookups.append(("*", database))
+        resolution = get_table_binding_resolution(self.metadata, service_name)
+        matches: tuple[Table, ...] = ()
+        for lookup_service, lookup_database in lookups:
+            matches = resolution.resolve(
+                TableReference(lookup_database, schema, table_name),
+                service_name=lookup_service,
+                lookup=TableLookup.SEARCH,
+            )
+            services = sorted({fqn.split(model_str(table.fullyQualifiedName))[0] for table in matches})
+            if len(services) > 1:
+                raise ValueError(f"its tables are ingested under several services {services}")
+            if matches:
+                break
+        return matches
+
     def create_dbt_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to process DBT lineage from upstream nodes
@@ -1436,37 +1550,33 @@ class DbtSource(DbtServiceSource):
         to_entity: Table = data_model_link.table_entity
         logger.debug(f"Processing DBT lineage for: {to_entity.fullyQualifiedName.root}")
 
-        wildcard_targets = {}
-        try:
-            for upstream in data_model_link.datamodel.upstream or []:
-                parts = fqn.split(upstream)
-                if len(parts) == 4 and "*" in parts[3]:
-                    matches = get_table_binding_resolution(self.metadata, parts[0]).resolve(
-                        TableReference(parts[1], parts[2], parts[3]), service_name=parts[0], lookup=TableLookup.SEARCH
-                    )
-                    if matches:
-                        wildcard_targets[upstream] = matches
-        except Exception as exc:
-            self.status.warning(
-                model_str(to_entity.fullyQualifiedName), f"dbt lineage incomplete; preserving prior lineage: {exc}"
-            )
-            return
+        # A wildcard upstream links only the tables its expansion finds; any other lookup would take
+        # whichever single table the pattern hits first
+        wildcard_targets = {
+            upstream: self._wildcard_upstream_tables(upstream) for upstream in self._wildcard_upstreams(data_model_link)
+        }
+        override_lineage = self._overrides_lineage(data_model_link)
 
         resolved = data_model_link.upstream_table_ids
         for upstream_node in data_model_link.datamodel.upstream or []:
             try:
                 if upstream_node in wildcard_targets:
-                    for upstream_table in wildcard_targets[upstream_node]:
+                    for upstream_table in wildcard_targets[upstream_node] or ():
                         yield Either(
                             right=OMetaLineageRequest(
                                 lineage_request=AddLineageRequest(
                                     edge=EntitiesEdge(
                                         fromEntity=EntityReference(id=upstream_table.id, type="table"),
                                         toEntity=EntityReference(id=to_entity.id, type="table"),
-                                        lineageDetails=LineageDetails(source=LineageSource.DbtLineage),
+                                        lineageDetails=LineageDetails(
+                                            source=LineageSource.DbtLineage,
+                                            sqlQuery=SqlQuery(data_model_link.datamodel.sql.root)
+                                            if data_model_link.datamodel.sql
+                                            else None,
+                                        ),
                                     )
                                 ),
-                                override_lineage=self.source_config.overrideLineage,
+                                override_lineage=override_lineage,
                             )
                         )
                     continue
@@ -1496,7 +1606,7 @@ class DbtSource(DbtServiceSource):
                     yield Either(
                         right=OMetaLineageRequest(
                             lineage_request=lineage_request,
-                            override_lineage=self.source_config.overrideLineage,
+                            override_lineage=override_lineage,
                         )
                     )
                 elif upstream_node not in self.reported_unresolved_upstreams:
@@ -1558,12 +1668,13 @@ class DbtSource(DbtServiceSource):
                     timeout_seconds=self.source_config.parsingTimeoutLimit,
                     lineage_source=LineageSource.DbtLineage,
                 )
+                override_lineage = self._overrides_lineage(data_model_link)
                 for lineage in lineages or []:
                     if lineage.right is not None:
                         yield Either(
                             right=OMetaLineageRequest(
                                 lineage_request=lineage.right,
-                                override_lineage=self.source_config.overrideLineage,
+                                override_lineage=override_lineage,
                             )
                         )
                     else:
