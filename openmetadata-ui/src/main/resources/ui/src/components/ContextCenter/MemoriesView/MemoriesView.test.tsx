@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import MemoriesView from './MemoriesView.component';
 
@@ -153,5 +153,44 @@ describe('MemoriesView', () => {
 
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
     expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+  });
+
+  it('shows edit and delete only on rows getMemoryActions allows', () => {
+    render(
+      <MemoriesView
+        data={mockMemories}
+        getMemoryActions={(memory) => ({
+          canEdit: memory.id === 'mem-1',
+          canDelete: memory.id === 'mem-2',
+        })}
+        isLoading={false}
+        onEditMemory={jest.fn()}
+      />
+    );
+
+    const editableRow = within(screen.getByTestId('memory-row-mem-1'));
+    const deletableRow = within(screen.getByTestId('memory-row-mem-2'));
+
+    expect(editableRow.getByTestId('edit-memory-btn')).toBeInTheDocument();
+    expect(editableRow.queryByTestId('manage-button')).not.toBeInTheDocument();
+    expect(deletableRow.getByTestId('manage-button')).toBeInTheDocument();
+    expect(
+      deletableRow.queryByTestId('edit-memory-btn')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows no edit or delete without getMemoryActions', () => {
+    render(
+      <MemoriesView
+        data={mockMemories}
+        isLoading={false}
+        onEditMemory={jest.fn()}
+      />
+    );
+
+    const row = within(screen.getByTestId('memory-row-mem-1'));
+
+    expect(row.queryByTestId('edit-memory-btn')).not.toBeInTheDocument();
+    expect(row.queryByTestId('manage-button')).not.toBeInTheDocument();
   });
 });
