@@ -9,6 +9,7 @@ import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
@@ -29,6 +30,9 @@ class McpAvailabilityIT extends McpTestBase {
 
   private static final String APP_PATH = "apps/name/" + McpAppConstants.MCP_APP_NAME;
   private static final String CONFIG_PATH = "system/mcp/config";
+  private static final String SETTINGS_PATH = "system/settings";
+  private static final String WRITE_TOOL = "patch_entity";
+  private static final String READ_TOOL = "search_metadata";
   private static final String PROTECTED_RESOURCE = "/.well-known/oauth-protected-resource";
   private static final List<String> GET_ROUTES =
       List.of(
@@ -79,6 +83,43 @@ class McpAvailabilityIT extends McpTestBase {
       put(CONFIG_PATH, stored, JsonNode.class);
     }
     await().atMost(SWITCH_TIMEOUT).untilAsserted(this::assertMcpAnswers);
+  }
+
+  /** An MCP change saved through the generic settings API applies on the server that saved it. */
+  @Test
+  void readOnlySavedThroughTheSettingsApiAppliesOnThisServer() throws Exception {
+    final ObjectNode stored = storedMcpConfig();
+    assertThat(toolNames()).contains(WRITE_TOOL);
+    try {
+      put(
+          SETTINGS_PATH,
+          Map.of(
+              "config_type",
+              "mcpConfiguration",
+              "config_value",
+              stored.deepCopy().put("readOnly", true)),
+          JsonNode.class);
+      await()
+          .atMost(SWITCH_TIMEOUT)
+          // The read tool proves tools/list answered, so a failed call cannot pass as "hidden".
+          .untilAsserted(
+              () -> assertThat(toolNames()).contains(READ_TOOL).doesNotContain(WRITE_TOOL));
+    } finally {
+      put(CONFIG_PATH, stored, JsonNode.class);
+    }
+    await()
+        .atMost(SWITCH_TIMEOUT)
+        .untilAsserted(() -> assertThat(toolNames()).contains(WRITE_TOOL));
+  }
+
+  private List<String> toolNames() throws Exception {
+    final JsonNode tools =
+        executeMcpRequest(McpTestUtils.createJsonRpcRequest("tools/list", Map.of()))
+            .path("result")
+            .path("tools");
+    final List<String> names = new ArrayList<>();
+    tools.forEach(tool -> names.add(tool.path("name").asText()));
+    return names;
   }
 
   // A server that never saved the setting answers 404, which means the defaults: enabled. Putting

@@ -12,7 +12,6 @@
  */
 
 import { APIRequestContext } from '@playwright/test';
-import { migratedTo } from '../../../constant/migration';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { createNewPage, getApiContext } from '../../../utils/common';
@@ -90,51 +89,6 @@ test.describe('AppMode — authz gating', () => {
       .delete(`/api/v1/users/${userB.responseData.id}/preferences/appMode`)
       .catch(() => undefined);
   });
-
-  test(
-    'User A can PUT their own preference',
-    migratedTo.javaIT('UserPreferencesIT#putPreference_appMode_persists'),
-    async () => {
-      const response = await userAApiContext.put(
-        `/api/v1/users/${userA.responseData.id}/preferences/appMode`,
-        { data: { type: 'appMode', config: { value: 'ai' } } }
-      );
-
-      expect(response.status()).toBe(200);
-    }
-  );
-
-  test(
-    'User A can DELETE their own preference',
-    migratedTo.javaIT('UserPreferencesIT#deletePreference_appMode_removes'),
-    async () => {
-      await userAApiContext.put(
-        `/api/v1/users/${userA.responseData.id}/preferences/appMode`,
-        { data: { type: 'appMode', config: { value: 'ai' } } }
-      );
-
-      const response = await userAApiContext.delete(
-        `/api/v1/users/${userA.responseData.id}/preferences/appMode`
-      );
-
-      expect(response.status()).toBe(200);
-    }
-  );
-
-  test(
-    "User A cannot PUT user B's preference",
-    migratedTo.javaIT(
-      'UserPreferencesIT#putPreference_nonAdminOtherUser_returns403'
-    ),
-    async () => {
-      const response = await userAApiContext.put(
-        `/api/v1/users/${userB.responseData.id}/preferences/appMode`,
-        { data: { type: 'appMode', config: { value: 'ai' } } }
-      );
-
-      expect(response.status()).toBe(403);
-    }
-  );
 
   test("User A cannot DELETE user B's preference", async () => {
     const response = await userAApiContext.delete(

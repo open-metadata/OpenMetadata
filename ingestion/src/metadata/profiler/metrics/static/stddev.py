@@ -17,6 +17,7 @@ Population Standard deviation Metric definition
 # pylint: disable=consider-using-f-string,duplicate-code
 
 import math
+import numbers
 from typing import TYPE_CHECKING, NamedTuple, Optional
 
 from sqlalchemy import column
@@ -168,7 +169,7 @@ class StdDev(StaticMetric):
             PandasComputation: Computation protocol with create/update/aggregate methods
         """
         return PandasComputation[SumSumSquaresCount, float | None](
-            create_accumulator=lambda: SumSumSquaresCount(0.0, 0.0, 0),
+            create_accumulator=lambda: SumSumSquaresCount(0, 0, 0),
             update_accumulator=lambda acc, df: StdDev.update_accumulator(acc, df, self.col),
             aggregate_accumulator=StdDev.aggregate_accumulator,
         )
@@ -207,8 +208,24 @@ class StdDev(StaticMetric):
             if numeric_df.empty:
                 return sum_sum_squares_count
 
-            chunk_sum = numeric_df.sum()
-            chunk_sum_squares = (numeric_df**2).sum()
+            if pd.api.types.is_integer_dtype(numeric_df) or pd.api.types.is_bool_dtype(numeric_df):
+                # Sum integers exactly: int64 squares wrap around silently for
+                # values above ~3e9, and float64 loses the low digits that the
+                # variance of large values (e.g. epoch milliseconds) needs.
+                # Python ints, so neither uint64 values nor -min of int64 can wrap
+                max_abs = max(int(numeric_df.max()), -int(numeric_df.min()))
+                if max_abs * max_abs * len(numeric_df) < 2**63:
+                    # The sum of squares fits in int64, so stay vectorized
+                    ints = numeric_df.astype("int64")
+                    chunk_sum = int(ints.sum())
+                    chunk_sum_squares = int((ints * ints).sum())
+                else:
+                    objs = numeric_df.astype(object)
+                    chunk_sum = int(objs.sum())
+                    chunk_sum_squares = int((objs * objs).sum())
+            else:
+                chunk_sum = numeric_df.sum()
+                chunk_sum_squares = (numeric_df**2).sum()
             chunk_count = len(numeric_df)
 
         else:
@@ -241,6 +258,22 @@ class StdDev(StaticMetric):
         """
         if sum_sum_squares_count.count_value == 0:
             return None
+
+        sum_value = sum_sum_squares_count.sum_value
+        sum_squares_value = sum_sum_squares_count.sum_squares_value
+        if all(
+            isinstance(value, numbers.Integral)
+            for value in (sum_value, sum_squares_value, sum_sum_squares_count.count_value)
+        ):
+            # Integer columns: compute n * sum(x²) - sum(x)² exactly, so the
+            # subtraction does not cancel out the variance of large values.
+            count = int(sum_sum_squares_count.count_value)
+            variance_numerator = count * int(sum_squares_value) - int(sum_value) ** 2
+            if variance_numerator < 0:
+                # Only possible when the sums were wrapped in int64 before they got here
+                logger.warning("Negative variance numerator (%s) encountered, returning None", variance_numerator)
+                return None
+            return math.sqrt(variance_numerator / (count * count))
 
         mean = sum_sum_squares_count.sum_value / sum_sum_squares_count.count_value
         mean_of_squares = sum_sum_squares_count.sum_squares_value / sum_sum_squares_count.count_value

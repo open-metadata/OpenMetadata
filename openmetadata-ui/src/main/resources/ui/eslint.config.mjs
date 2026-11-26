@@ -176,20 +176,6 @@ export default [
       // React hooks rules
       'react-hooks/rules-of-hooks': 'error',
 
-      // Jest rules
-      'jest/consistent-test-it': [
-        'error',
-        {
-          fn: 'it',
-          withinDescribe: 'it',
-        },
-      ],
-      'jest/no-disabled-tests': 'error',
-      // A committed `.only` silently shrinks a suite to one test. Measured
-      // backlog: 0 -> error.
-      'jest/no-focused-tests': 'error',
-      'jest-formatting/padding-around-all': 'error',
-
       // TypeScript rules
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
@@ -848,6 +834,67 @@ export default [
             'Prefer the `page` fixture (test.use({ storageState })) over browser.newPage() + manual login for single-user admin tests. For multi-user tests that need a second non-admin page, this warning is expected — no action needed.',
         },
       ],
+    },
+  },
+
+  // Unit-test JSX is deliberately simplified mock UI, not shipped UI. Applying
+  // production accessibility, rendering-cost and architecture rules here forces
+  // mocks to reproduce behavior the tests are meant to isolate.
+  {
+    files: ['src/**/*.test.{js,jsx,ts,tsx}'],
+    rules: {
+      ...Object.fromEntries(
+        Object.keys(jsxA11y.rules).map((rule) => [`jsx-a11y/${rule}`, 'off'])
+      ),
+      ...Object.fromEntries(
+        Object.keys(openMetadataImports.rules).map((rule) => [
+          `openmetadata-imports/${rule}`,
+          'off',
+        ])
+      ),
+      ...Object.fromEntries(
+        Object.keys(openMetadataPerformance.rules).map((rule) => [
+          `openmetadata-performance/${rule}`,
+          'off',
+        ])
+      ),
+      // Long fixtures and regex cases must preserve their exact input text.
+      'max-len': [
+        'error',
+        {
+          code: 200,
+          comments: 120,
+          ignoreTrailingComments: true,
+          ignoreUrls: true,
+          ignoreStrings: true,
+          ignoreTemplateLiterals: true,
+          ignoreRegExpLiterals: true,
+        },
+      ],
+      'react/no-array-index-key': 'off',
+      'react/no-unstable-nested-components': 'off',
+      'react/jsx-no-constructed-context-values': 'off',
+      'react/no-danger': 'off',
+      'sonarjs/cognitive-complexity': 'off',
+      'sonarjs/cyclomatic-complexity': 'off',
+      'sonarjs/expression-complexity': 'off',
+      'sonarjs/no-nested-functions': 'off',
+      'sonarjs/no-nested-conditional': 'off',
+      'sonarjs/no-identical-functions': 'off',
+      'openmetadata-ui-patterns/no-new-om-tokens': 'off',
+      'openmetadata-ui-patterns/deprecated-om-tokens': 'off',
+      'openmetadata-ui-patterns/no-non-adaptive-palette': 'off',
+      'jest/consistent-test-it': ['error', { fn: 'it', withinDescribe: 'it' }],
+      'jest/no-disabled-tests': 'error',
+      'jest-formatting/padding-around-all': 'error',
+      // A committed `.only` silently shrinks a suite to one test.
+      'jest/no-focused-tests': 'error',
+      'jest/valid-expect-in-promise': 'error',
+      'jest/valid-describe-callback': 'error',
+      'jest/no-done-callback': 'error',
+      'jest/no-mocks-import': 'error',
+      'jest/no-test-prefixes': 'error',
+      'jest/no-identical-title': 'error',
     },
   },
 

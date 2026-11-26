@@ -22,6 +22,8 @@ verdict cites an artifact that was checked to still exist):
 | `AGENTS.md` | Always-loaded session guidance for every harness; the pointer index to `.claude/rules/*` and skills. `CLAUDE.md` and `.github/copilot-instructions.md` are symlinks to it |
 | `ARCHITECTURE.md` | System map — modules, the request/ingestion/search paths, the invariants that hold |
 | `DEVELOPER.md` | How to build, test, and add an entity or connector (end-to-end checklists) |
+| `REVIEW.md` | The review bar every PR is held to — logic defects, test gaps, and the intent/trade-off ("is the change worth it?") framing reviewers apply |
+| `CONTRIBUTING.md` | Contributor guide — best practices for a PR (why it is needed, tests that prove it, alternatives and trade-offs), what to check before asking for review (metadata check, green CI, review-bot threads), and setup pointers |
 
 ## Backend & platform design docs (`docs/`)
 

@@ -1,5 +1,4 @@
 .DEFAULT_GOAL := help
-PY_SOURCE ?= ingestion/src
 include ingestion/Makefile
 
 .PHONY: help
@@ -309,12 +308,12 @@ build-ingestion-slim-local:  ## Builds the SLIM ingestion DEV docker operator wi
 #Upgrade release automation scripts below
 .PHONY: update_all
 update_all:  ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2
-	@echo "The release version is: $(RELEASE_VERSION)" ; \
-	$(MAKE) update_maven ; \
-	$(MAKE) update_openapi_version ; \
-	$(MAKE) update_pyproject_version ; \
-	$(MAKE) update_dockerfile_version ; \
-	$(MAKE) update_dockerfile_ri_version ; \
+	@echo "The release version is: $(RELEASE_VERSION)"
+	$(MAKE) update_maven
+	$(MAKE) update_openapi_version
+	$(MAKE) update_pyproject_version
+	$(MAKE) update_dockerfile_version
+	$(MAKE) update_dockerfile_ri_version
 #remove comment and use the below section when want to use this sub module "update_all" independently to update github actions
 #make update_all RELEASE_VERSION=2.2.2
 
@@ -333,12 +332,8 @@ update_openapi_version:  ## To update the OpenAPI version in OpenMetadataApplica
 
 .PHONY: update_pyproject_version
 update_pyproject_version: python_tools  ## To update the pyproject.toml files
-	file_paths="ingestion/pyproject.toml \
-				openmetadata-airflow-apis/pyproject.toml"; \
-	echo "Updating pyproject.toml versions to $(RELEASE_VERSION)... "; \
-	for file_path in $$file_paths; do \
-	    "$(NOX_BOOTSTRAP)/bin/python" scripts/update_version.py update_pyproject_version -f $$file_path -v $(RELEASE_VERSION) || exit $$?; \
-	done
+	"$(NOX_BOOTSTRAP)/bin/python" scripts/update_version.py update_pyproject_version \
+		-f ingestion/pyproject.toml -f openmetadata-airflow-apis/pyproject.toml -v "$(RELEASE_VERSION)"
 # Commented section for independent usage of the module update_pyproject_version independently to update github actions
 #make update_pyproject_version RELEASE_VERSION=2.2.2
 

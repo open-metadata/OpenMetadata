@@ -495,7 +495,6 @@ const TableHead = ({
               <ChevronSelectorVertical
                 className="tw:text-fg-quaternary"
                 size={12}
-                strokeWidth={3}
               />
             ))}
         </div>

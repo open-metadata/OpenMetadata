@@ -14,6 +14,8 @@ source:
       dashboardFilterPattern: {}
       chartFilterPattern: {}
       projectFilterPattern: {}
+      # Uncomment to skip direct chart lineage while keeping the lineage through each dashboard.
+      # includeDirectChartLineage: false
 sink:
   type: metadata-rest
   config: {}

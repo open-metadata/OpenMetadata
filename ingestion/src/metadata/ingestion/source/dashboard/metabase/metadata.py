@@ -403,7 +403,7 @@ class MetabaseSource(DashboardServiceSource):
             if to_fqn
             else None
         )
-        chart_entity = self._get_chart_entity(chart_details)
+        chart_entity = self._get_chart_entity(chart_details) if self.include_direct_chart_lineage else None
 
         for table in lineage_parser.source_tables:
             table_details = fqn.split_table_name(str(table))
@@ -528,7 +528,7 @@ class MetabaseSource(DashboardServiceSource):
             if to_fqn
             else None
         )
-        chart_entity = self._get_chart_entity(chart_details)
+        chart_entity = self._get_chart_entity(chart_details) if self.include_direct_chart_lineage else None
 
         for from_entity in from_tables:
             if to_entity:

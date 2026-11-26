@@ -80,7 +80,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
       onChange?: (value: string) => void;
       'data-testid'?: string;
     }) => (
-      // eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock
       <input
         data-testid={dataTestId ?? 'icon-picker-field'}
         value={value ?? ''}
@@ -156,7 +155,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
       if (fieldProp.type === FieldTypes.SWITCH) {
         return (
           <div key={fieldProp.id}>
-            {/* eslint-disable-next-line jsx-a11y/label-has-for -- test mock */}
             <label>{fieldProp.label}</label>
             <Toggle
               data-testid={testId}
@@ -171,7 +169,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
         <div key={fieldProp.id}>
           <label htmlFor={testId}>
             {fieldProp.label}
-            {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
             <input readOnly data-testid={testId} id={testId} value="" />
           </label>
         </div>

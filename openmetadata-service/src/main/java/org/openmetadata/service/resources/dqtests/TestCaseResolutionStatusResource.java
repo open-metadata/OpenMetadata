@@ -134,7 +134,11 @@ public class TestCaseResolutionStatusResource
       })
   public ResultList<TestCaseResolutionStatus> list(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Test Case ID", schema = @Schema(type = "UUID"))
+      @Parameter(
+              description =
+                  "Filter incidents by the id of their test case; with `testCaseFQN`, both must "
+                      + "name the same test case",
+              schema = @Schema(type = "UUID"))
           @QueryParam("testCaseId")
           UUID testCaseId,
       @Parameter(description = "Limit the number tests returned. (1 to 1000000, default = 10)")
@@ -238,9 +242,11 @@ public class TestCaseResolutionStatusResource
               schema = @Schema(type = "string"))
           @QueryParam("severity")
           List<String> severities) {
-    ResourceContextInterface testCaseResourceContext = getTestCaseResourceContext(testCaseFQN);
+    String listedTestCaseFQN = resolveListedTestCaseFQN(testCaseId, testCaseFQN);
+    ResourceContextInterface testCaseResourceContext =
+        getTestCaseResourceContext(listedTestCaseFQN);
     ResourceContextInterface entityResourceContext =
-        buildEntityResourceContext(testCaseFQN, testCaseId, originEntityFQN);
+        buildEntityResourceContext(listedTestCaseFQN, null, originEntityFQN);
     List<AuthRequest> requests =
         buildViewAuthRequests(testCaseResourceContext, entityResourceContext);
 
@@ -253,7 +259,7 @@ public class TestCaseResolutionStatusResource
     filter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
     filter.addQueryParam("incidentAssignee", assignee);
     filter.addQueryParam("incidentListSeverity", parseIncidentSeverities(severities));
-    filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
+    filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(listedTestCaseFQN));
     filter.addQueryParam("originEntityFQN", originEntityFQN);
     filter.addQueryParam("incidentListDomainId", resolveDomainFilterIds(domain));
     UUID testDefinitionId = resolveFilterEntityId(Entity.TEST_DEFINITION, testDefinition);
@@ -1037,6 +1043,33 @@ public class TestCaseResolutionStatusResource
             String.valueOf(Math.min((long) (page - 1) * limit, Integer.MAX_VALUE)));
   }
 
+  /**
+   * The one test case a listing is scoped to, so its filter and both authorization contexts read
+   * the same FQN. Lookups include deleted test cases: {@code include} decides whether their
+   * incidents are listed.
+   */
+  private static String resolveListedTestCaseFQN(UUID testCaseId, String testCaseFQN) {
+    if (testCaseId == null) {
+      return testCaseFQN;
+    }
+    TestCase byId = Entity.getEntity(Entity.TEST_CASE, testCaseId, "", Include.ALL);
+    if (testCaseFQN != null) {
+      requireSameTestCase(byId, testCaseFQN);
+    }
+    return byId.getFullyQualifiedName();
+  }
+
+  private static void requireSameTestCase(TestCase byId, String testCaseFQN) {
+    EntityReference byName =
+        Entity.getEntityReferenceByName(Entity.TEST_CASE, testCaseFQN, Include.ALL);
+    if (!byId.getId().equals(byName.getId())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "testCaseId '%s' and testCaseFQN '%s' name different test cases",
+              byId.getId(), testCaseFQN));
+    }
+  }
+
   protected static ResourceContextInterface buildEntityResourceContext(
       String testCaseFQN, UUID testCaseId, String originEntityFQN) {
     if (testCaseFQN != null) {
@@ -1045,6 +1078,7 @@ public class TestCaseResolutionStatusResource
           MessageParser.EntityLink.parse(testCase.getEntityLink());
       return TestCaseResourceContext.builder().entityLink(entityLink).build();
     } else if (testCaseId != null) {
+      // No OSS caller passes an id since #38642; kept because subclasses outside this repo may.
       TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "", Include.ALL);
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(testCase.getEntityLink());
