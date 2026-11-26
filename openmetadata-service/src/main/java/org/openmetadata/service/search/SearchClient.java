@@ -8,6 +8,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
@@ -19,6 +21,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.search.queries.SearchQueryDsl;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 public interface SearchClient
@@ -948,20 +951,16 @@ public interface SearchClient
           "changeDescription");
 
   Set<String> FIELDS_TO_REMOVE_WHEN_NULL =
-      Set.of(
-          "tier",
-          "certification",
-          "metricGroup",
-          "primaryEntity",
-          "sourceEntity",
-          "sourceFile",
-          "embedding",
-          "textToEmbed",
-          "textToLLMContext",
-          "fingerprint",
-          "parentId",
-          "chunkIndex",
-          "chunkCount");
+      Stream.concat(
+              Stream.of(
+                  "tier",
+                  "certification",
+                  "metricGroup",
+                  "primaryEntity",
+                  "sourceEntity",
+                  "sourceFile"),
+              VectorDocBuilder.EMBEDDING_SOURCE_FIELDS.stream())
+          .collect(Collectors.toUnmodifiableSet());
 
   String FIELDS_TO_REMOVE = "fieldsToRemove";
 

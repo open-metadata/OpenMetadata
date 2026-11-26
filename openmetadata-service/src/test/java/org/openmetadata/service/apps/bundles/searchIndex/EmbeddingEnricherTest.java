@@ -20,6 +20,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -154,7 +155,7 @@ class EmbeddingEnricherTest {
                 + "\"textToEmbed\":\"stored text\",\"chunkIndex\":0,\"chunkCount\":1,"
                 + "\"parentId\":\""
                 + tableId
-                + "\"}"),
+                + "\",\"embeddingModel\":\"three-dimensional\",\"embeddingDimension\":3}"),
         JsonUtils.readTree(enriched));
     verify(vectorService).backfillEntityChunks(table, STAGED_CHUNKS);
     verify(vectorService, never()).writeEntityChunks(any(), any(), any());
@@ -191,6 +192,33 @@ class EmbeddingEnricherTest {
 
     assertEquals("[0.1,0.2,0.3]", JsonUtils.readTree(enriched).path("embedding").toString());
     assertEquals(1, chunksWrittenTo(STAGED_CHUNKS).size());
+    verify(vectorService, never()).backfillEntityChunks(any(), any());
+  }
+
+  @Test
+  void aStoredEmbeddingOfAnotherModelOfTheSameDimensionIsRecomputed() throws Exception {
+    JsonNode otherModel = storedEmbedding("[0.5,0.6,0.7]", "another-model");
+
+    String enriched =
+        enricher.enrich(table, ENTITY_JSON, Map.of(tableId, otherModel), tracker, recreateRun());
+
+    JsonNode doc = JsonUtils.readTree(enriched);
+    assertEquals("[0.1,0.2,0.3]", doc.path("embedding").toString());
+    assertEquals(1, chunksWrittenTo(STAGED_CHUNKS).size());
+    verify(vectorService, never()).backfillEntityChunks(any(), any());
+  }
+
+  @Test
+  void aStoredEmbeddingThatRecordsNoModelIsRecomputedOnce() throws Exception {
+    JsonNode unrecorded = storedEmbeddingRecordingNoModel("[0.5,0.6,0.7]");
+
+    String enriched =
+        enricher.enrich(table, ENTITY_JSON, Map.of(tableId, unrecorded), tracker, liveRun());
+
+    JsonNode doc = JsonUtils.readTree(enriched);
+    assertEquals("[0.1,0.2,0.3]", doc.path("embedding").toString());
+    assertEquals("three-dimensional", doc.path("embeddingModel").asText());
+    assertEquals(3, doc.path("embeddingDimension").asInt());
     verify(vectorService, never()).backfillEntityChunks(any(), any());
   }
 
@@ -432,15 +460,29 @@ class EmbeddingEnricherTest {
     assertEquals(succeeded + failed, stats.getTotalRecords());
   }
 
-  /** A stored entity-doc embedding as the vector service returns it for reuse. */
+  /** A stored entity-doc embedding of the configured model, as the vector service returns it. */
   private JsonNode storedEmbedding(String vector) {
-    return JsonUtils.readTree(
-        "{\"fingerprint\":\"fp-stored\",\"embedding\":"
-            + vector
-            + ",\"textToEmbed\":\"stored text\",\"chunkIndex\":0,\"chunkCount\":1,"
-            + "\"parentId\":\""
-            + tableId
-            + "\"}");
+    return storedEmbedding(vector, embeddings.getModelId());
+  }
+
+  /** A stored entity-doc embedding that records {@code model} as the model that produced it. */
+  private JsonNode storedEmbedding(String vector, String model) {
+    ObjectNode stored = storedEmbeddingRecordingNoModel(vector);
+    return stored
+        .put("embeddingModel", model)
+        .put("embeddingDimension", JsonUtils.readTree(vector).size());
+  }
+
+  /** As a release before vectors recorded their model left it. */
+  private ObjectNode storedEmbeddingRecordingNoModel(String vector) {
+    return (ObjectNode)
+        JsonUtils.readTree(
+            "{\"fingerprint\":\"fp-stored\",\"embedding\":"
+                + vector
+                + ",\"textToEmbed\":\"stored text\",\"chunkIndex\":0,\"chunkCount\":1,"
+                + "\"parentId\":\""
+                + tableId
+                + "\"}");
   }
 
   private static EmbeddingTargets liveRun() {

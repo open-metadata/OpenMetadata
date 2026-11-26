@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -42,6 +43,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 import org.openmetadata.service.search.vector.utils.DTOs;
 import org.slf4j.LoggerFactory;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
@@ -108,6 +110,32 @@ class OpenSearchVectorServiceTest {
         "a chunk stamped before the kind existed is restamped");
   }
 
+  /**
+   * The fingerprint covers the text and not the model, so chunks made by another model, for
+   * another dimension, or before chunks recorded their model need new vectors even when the text
+   * is unchanged. ADR:2026-11-11-reindex-reuses-an-embedding-only-when-its-fingerprint-matches
+   */
+  @Test
+  void chunksOfAnotherModelOrOfNoRecordedModelAreReembedded() {
+    Table table = new Table().withId(UUID.randomUUID()).withName("orders");
+    String fingerprint = VectorDocBuilder.computeFingerprintForEntity(table);
+    int current = VectorDocBuilder.CHUNK_DOC_VERSION;
+
+    for (EmbeddingModel stored :
+        Arrays.asList(
+            new EmbeddingModel("another-model", MODEL.dimension()),
+            new EmbeddingModel(MODEL.id(), MODEL.dimension() + 1),
+            null)) {
+      assertEquals(
+          AbstractVectorIndexService.ChunkRefresh.REEMBED,
+          refresh(
+              table,
+              new AbstractVectorIndexService.ChunkHeader(
+                  fingerprint, stored, 1, current, null, null, null)),
+          "chunks made by " + stored);
+    }
+  }
+
   @Test
   void filterMetadataOnlyAppliesToMemoryChunks() {
     Table table = new Table().withId(UUID.randomUUID()).withName("orders");
@@ -119,9 +147,9 @@ class OpenSearchVectorServiceTest {
   }
 
   /**
-   * The 2-arg {@code updateEntityEmbeddings} overload (used only by the {@code reembed} CLI) must
-   * refuse ontology terms: the release-aware writer needs the published release-snapshot body,
-   * and embedding from the mutable working (draft) row would publish drafts, deprecated, and
+   * The 2-arg {@code updateEntityEmbeddings} overload must refuse ontology terms: the
+   * release-aware writer needs the published release-snapshot body, and embedding from the
+   * mutable working (draft) row would publish drafts, deprecated, and
    * not-in-active-release terms straight into the searchable ontology chunk index. Manual term
    * reindexing goes through the release-aware bulk writer (reindex), which passes the body into the
    * 3-arg overload. This is the regression for the {@code reembed} draft-leak bug.
@@ -161,6 +189,26 @@ class OpenSearchVectorServiceTest {
       logger.detachAppender(appender);
       appender.stop();
     }
+  }
+
+  /** {@code reembed} must not embed a term from its working row either. */
+  @Test
+  void reembedRefusesAnOntologyTermWithoutWritingOrEmbedding() throws Exception {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(
+        "ontologyconcept", Entity.ONTOLOGY_CONCEPT);
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    OntologyConcept term =
+        new OntologyConcept()
+            .withId(UUID.randomUUID())
+            .withName("order")
+            .withFullyQualifiedName("shop.order")
+            .withDescription("A purchase")
+            .withDeleted(false);
+
+    assertFalse(vectorService.reembedEntity(term, "entityIndex"));
+
+    verify(mockGenericClient, never()).execute(any());
+    verify(mockEmbeddingClient, never()).embed(any(String.class));
   }
 
   /** The refusal must cover both ontology term types (concept and property). */
@@ -414,8 +462,10 @@ class OpenSearchVectorServiceTest {
       org.openmetadata.schema.EntityInterface<?> entity,
       AbstractVectorIndexService.ChunkHeader header) {
     return AbstractVectorIndexService.chunkRefresh(
-        entity, VectorDocBuilder.computeFingerprintForEntity(entity), header);
+        entity, VectorDocBuilder.computeFingerprintForEntity(entity), MODEL, header);
   }
+
+  private static final EmbeddingModel MODEL = new EmbeddingModel("chunk-model", 3);
 
   /** A header stamped with the kind {@link #refreshableMemory} has. */
   private static AbstractVectorIndexService.ChunkHeader header(
@@ -430,7 +480,7 @@ class OpenSearchVectorServiceTest {
       String anchorId,
       AbstractVectorIndexService.MemoryKind kind) {
     return new AbstractVectorIndexService.ChunkHeader(
-        fingerprint, 1, docVersion, status, anchorId, kind);
+        fingerprint, MODEL, 1, docVersion, status, anchorId, kind);
   }
 
   private static final AbstractVectorIndexService.MemoryKind MEMORY_KIND =
@@ -479,6 +529,10 @@ class OpenSearchVectorServiceTest {
             + fingerprint
             + "\",\"chunkCount\":1,\"docVersion\":"
             + VectorDocBuilder.CHUNK_DOC_VERSION
+            + ",\"embeddingModel\":\""
+            + MODEL.id()
+            + "\",\"embeddingDimension\":"
+            + MODEL.dimension()
             + ",\"entityStatus\":\"Approved\",\"anchorId\":\"unanchored\""
             + ",\"memoryScope\":"
             + jsonString(ContextMemoryIndex.memoryScopeValue(memory))
@@ -498,6 +552,8 @@ class OpenSearchVectorServiceTest {
             + "_0?_source_includes=fingerprint,chunkCount,docVersion,"
             + String.join(
                 ",",
+                EmbeddingModel.ID_FIELD,
+                EmbeddingModel.DIMENSION_FIELD,
                 ContextMemoryIndex.FIELD_STATUS,
                 ContextMemoryIndex.FIELD_ANCHOR_ID,
                 ContextMemoryIndex.FIELD_MEMORY_SCOPE,
@@ -521,6 +577,8 @@ class OpenSearchVectorServiceTest {
 
     when(mockEmbeddingClient.embedQuery(any(String.class)))
         .thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    when(mockEmbeddingClient.getModelId()).thenReturn(MODEL.id());
+    when(mockEmbeddingClient.getDimension()).thenReturn(MODEL.dimension());
 
     vectorService = new OpenSearchVectorService(mockClient, mockEmbeddingClient);
   }
@@ -953,10 +1011,11 @@ class OpenSearchVectorServiceTest {
     Request embeddings = sent.getAllValues().getLast();
     assertEquals("POST", fingerprints.getMethod());
     assertEquals(
-        "/table_search_index/_mget?_source_includes=fingerprint", fingerprints.getEndpoint());
+        "/table_search_index/_mget?_source_includes=fingerprint,embeddingModel,embeddingDimension",
+        fingerprints.getEndpoint());
     assertEquals(
         "/table_search_index/_mget?_source_includes=fingerprint,embedding,textToLLMContext,"
-            + "textToEmbed,chunkIndex,chunkCount,parentId",
+            + "textToEmbed,chunkIndex,chunkCount,parentId,embeddingModel,embeddingDimension",
         embeddings.getEndpoint());
     assertEquals("{\"ids\":[\"" + textId(unchanged) + "\"]}", bodyOf(embeddings));
   }
@@ -982,6 +1041,8 @@ class OpenSearchVectorServiceTest {
     doc.put("fingerprint", VectorDocBuilder.computeFingerprintForEntity(embeddedAs));
     doc.putArray("embedding").add(0.5).add(0.25).add(0.125);
     doc.put("parentId", textId(current));
+    doc.put(EmbeddingModel.ID_FIELD, MODEL.id())
+        .put(EmbeddingModel.DIMENSION_FIELD, MODEL.dimension());
     return doc;
   }
 
@@ -1081,13 +1142,25 @@ class OpenSearchVectorServiceTest {
   }
 
   @Test
+  void chunkMappingUpgradeBody_mapsTheModelOfTheVectors() throws Exception {
+    Method method =
+        AbstractVectorIndexService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+    method.setAccessible(true);
+    JsonNode properties =
+        new ObjectMapper().readTree((String) method.invoke(vectorService)).path("properties");
+
+    assertEquals("keyword", properties.path(EmbeddingModel.ID_FIELD).path("type").asText());
+    assertEquals("integer", properties.path(EmbeddingModel.DIMENSION_FIELD).path("type").asText());
+  }
+
+  @Test
   void chunkMappingUpgradeBody_mapsTheMemoryStatusAsAKeyword() throws Exception {
     Method method =
         AbstractVectorIndexService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
     method.setAccessible(true);
     JsonNode body = new ObjectMapper().readTree((String) method.invoke(vectorService));
 
-    assertEquals(8, body.path("_meta").path("chunkDocVersion").asInt());
+    assertEquals(9, body.path("_meta").path("chunkDocVersion").asInt());
     assertEquals("keyword", body.path("properties").path("entityStatus").path("type").asText());
     assertEquals("keyword", body.path("properties").path("memoryScope").path("type").asText());
     assertEquals("keyword", body.path("properties").path("memoryType").path("type").asText());

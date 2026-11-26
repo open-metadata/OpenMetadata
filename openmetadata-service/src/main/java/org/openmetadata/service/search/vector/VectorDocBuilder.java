@@ -42,6 +42,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -56,9 +57,10 @@ public class VectorDocBuilder {
    * Bump this whenever {@link #buildDenormalizedFields} materializes a new field or changes an existing one
    * so {@code AbstractVectorIndexService} triggers an additive {@code PUT _mapping} and an
    * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
-   * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
+   * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}). Bump it
+   * too when a chunk doc gains a field the chunk index must map, like the embedding model (v9).
    */
-  public static final int CHUNK_DOC_VERSION = 8;
+  public static final int CHUNK_DOC_VERSION = 9;
 
   /**
    * Upper bound on the denormalized {@code description} copied onto each chunk doc. The full body
@@ -185,7 +187,10 @@ public class VectorDocBuilder {
           "Embedding provider unavailable; skipping chunk build for " + entity.getId());
     }
     return fromEntity(
-        entity, (index, textToEmbed) -> embeddingClient.embed(textToEmbed), ontologyBody);
+        entity,
+        (index, textToEmbed) -> embeddingClient.embed(textToEmbed),
+        EmbeddingModel.of(embeddingClient),
+        ontologyBody);
   }
 
   /**
@@ -193,15 +198,19 @@ public class VectorDocBuilder {
    * docVersion-only mapping upgrade re-materializes the denormalized fields with <b>zero</b>
    * embedding-provider cost (issue #862 versioned rollout). Callers must supply a vector for every
    * chunk index the re-chunked body produces; a missing vector throws {@link IllegalStateException}
-   * so the service layer can fall back to a full re-embed.
+   * so the service layer can fall back to a full re-embed. {@code model} is the model that produced
+   * the reused vectors.
    */
   public static List<Map<String, Object>> fromEntityReusingEmbeddings(
-      EntityInterface<?> entity, Map<Integer, float[]> reuseEmbeddings) {
-    return fromEntityReusingEmbeddings(entity, reuseEmbeddings, null);
+      EntityInterface<?> entity, Map<Integer, float[]> reuseEmbeddings, EmbeddingModel model) {
+    return fromEntityReusingEmbeddings(entity, reuseEmbeddings, model, null);
   }
 
   static List<Map<String, Object>> fromEntityReusingEmbeddings(
-      EntityInterface<?> entity, Map<Integer, float[]> reuseEmbeddings, String ontologyBody) {
+      EntityInterface<?> entity,
+      Map<Integer, float[]> reuseEmbeddings,
+      EmbeddingModel model,
+      String ontologyBody) {
     return fromEntity(
         entity,
         (index, textToEmbed) -> {
@@ -212,12 +221,16 @@ public class VectorDocBuilder {
           }
           return vector;
         },
+        model,
         ontologyBody);
   }
 
   private static List<Map<String, Object>> fromEntity(
-      EntityInterface<?> entity, ChunkEmbeddingSource embeddingSource, String ontologyBody) {
-    List<Map<String, Object>> docs = buildChunkFields(entity, embeddingSource, ontologyBody);
+      EntityInterface<?> entity,
+      ChunkEmbeddingSource embeddingSource,
+      EmbeddingModel model,
+      String ontologyBody) {
+    List<Map<String, Object>> docs = buildChunkFields(entity, embeddingSource, model, ontologyBody);
     if (entity instanceof GlossaryTerm term) {
       List<Map<String, Object>> relatedTermDocs = buildRelatedTermRefs(term);
       if (!relatedTermDocs.isEmpty()) {
@@ -254,6 +267,7 @@ public class VectorDocBuilder {
       String entityType,
       String parentId,
       String fingerprint,
+      EmbeddingModel model,
       String metaLight,
       String semanticMetaLight,
       List<String> chunks,
@@ -264,11 +278,17 @@ public class VectorDocBuilder {
   public static List<Map<String, Object>> buildChunkFields(
       EntityInterface<?> entity, EmbeddingClient embeddingClient) {
     return buildChunkFields(
-        entity, (index, textToEmbed) -> embeddingClient.embed(textToEmbed), null);
+        entity,
+        (index, textToEmbed) -> embeddingClient.embed(textToEmbed),
+        EmbeddingModel.of(embeddingClient),
+        null);
   }
 
   private static List<Map<String, Object>> buildChunkFields(
-      EntityInterface<?> entity, ChunkEmbeddingSource embeddingSource, String ontologyBody) {
+      EntityInterface<?> entity,
+      ChunkEmbeddingSource embeddingSource,
+      EmbeddingModel model,
+      String ontologyBody) {
     EntityReference reference = entity.getEntityReference();
     String entityType = reference == null ? null : reference.getType();
     final String body = ontologyBody == null ? buildBodyText(entity, entityType) : ontologyBody;
@@ -280,6 +300,7 @@ public class VectorDocBuilder {
             entityType,
             entity.getId().toString(),
             computeFingerprintForEntity(entity, body),
+            model,
             buildMetaLightText(entity, entityType),
             buildSemanticMetaLightText(entity, entityType),
             TextChunkManager.chunk(body),
@@ -313,6 +334,7 @@ public class VectorDocBuilder {
     fields.put("chunkCount", chunkCount);
     fields.put("parentId", ctx.parentId());
     fields.put("fingerprint", ctx.fingerprint());
+    ctx.model().recordOn(fields);
     return fields;
   }
 
@@ -584,8 +606,8 @@ public class VectorDocBuilder {
   }
 
   /**
-   * Generate embedding fields to merge into an entity's search index document. Returns a map with:
-   * embedding, textToLLMContext, textToEmbed, chunkIndex, chunkCount, parentId, fingerprint.
+   * Generate embedding fields to merge into an entity's search index document: the {@link
+   * #EMBEDDING_SOURCE_FIELDS}.
    *
    * <p>{@code textToLLMContext} preserves the legacy rich-context format (empty fields rendered as
    * {@code []}) and is consumed by agent tooling as LLM context. {@code textToEmbed} is
@@ -629,12 +651,16 @@ public class VectorDocBuilder {
     fields.put("chunkCount", chunkCount);
     fields.put("parentId", parentId);
     fields.put("fingerprint", fingerprint);
+    EmbeddingModel.of(embeddingClient).recordOn(fields);
 
     return fields;
   }
 
-  /** The embedding fields an entity document carries; the {@code _source} a reindex reuses. */
-  static final List<String> EMBEDDING_SOURCE_FIELDS =
+  /**
+   * The embedding fields an entity document carries, which are written, kept and removed together:
+   * the {@code _source} a reindex reuses.
+   */
+  public static final List<String> EMBEDDING_SOURCE_FIELDS =
       List.of(
           "fingerprint",
           "embedding",
@@ -642,7 +668,9 @@ public class VectorDocBuilder {
           "textToEmbed",
           "chunkIndex",
           "chunkCount",
-          "parentId");
+          "parentId",
+          EmbeddingModel.ID_FIELD,
+          EmbeddingModel.DIMENSION_FIELD);
 
   /**
    * The legacy entity-doc embedding payload extracted from a chunk document: only the embedding

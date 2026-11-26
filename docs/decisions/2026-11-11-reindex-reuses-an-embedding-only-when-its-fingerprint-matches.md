@@ -2,10 +2,12 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-11 (initial) · v2 2026-11-20 (both engines share the reuse lookup;
-  Elasticsearch embeds every chunk)
+  Elasticsearch embeds every chunk) · v3 2026-11-26 (a stored vector is reused only for the model
+  that made it; `reembed` ignores stored vectors)
 - **Deciders:** Search and AI context maintainers
 - **Guard:** `StoredEmbeddingReuseTest`, `reindexReusesOnlyStoredEmbeddingsWhoseFingerprintIsCurrent`
-  in `OpenSearchVectorServiceTest`, `StoredEmbeddingReuseIT` (both engines); live/reindex parity:
+  in `OpenSearchVectorServiceTest`, `EmbeddingModelSwitchTest`, `StoredEmbeddingReuseIT` (both
+  engines); live/reindex parity:
   `VectorDocBuilderTest` (custom properties) and
   `MetricRepositoryTest.aReindexReadKeepsEveryInputOfTheMetricEmbeddingFingerprint`
 - **Related:** open-metadata/OpenMetadata#37524, open-metadata/OpenMetadata#37522,
@@ -35,9 +37,10 @@ old embedding forever:
 
 ## Decision
 
-- **The fingerprint is the only reuse key.** A reindex copies a stored entity-doc embedding only
-  when its stored fingerprint equals the current one. `updatedAt` plays no part.
-  `StoredEmbeddingReuse` holds the rule for both engines.
+- **The fingerprint is the only key for the text.** A reindex copies a stored entity-doc embedding
+  only when its stored fingerprint equals the current one. `updatedAt` plays no part.
+  `StoredEmbeddingReuse` holds the rule for both engines. The model that made the vector is the
+  other key, a separate fact (v3).
 - **The current fingerprint is computed lazily**, only for entities that have a stored doc, so a
   first-time index does not pay for it.
 - **The live write path and the reindex must build the same fingerprint for the same entity.**
@@ -100,3 +103,35 @@ v2 (2026-11-20): both engines run one vector index service
   entity, or embeds chunk 0 only, it now makes one call per chunk, as OpenSearch does. The entity
   doc takes chunk 0's embedding from that same call.
 - **`reembed` runs on Elasticsearch.**
+
+v3 (2026-11-26): a stored vector is reused only for the model that made it.
+
+- **Every vector records its model.** Each entity doc and chunk doc with an `embedding` carries
+  `embeddingModel`, the provider's model id, and `embeddingDimension` beside it, written from the
+  client that made the vector (`EmbeddingModel`). They are mapped as `keyword` and `integer` in
+  the entity index mappings and in the chunk index, which `chunkDocVersion` 9 adds to existing
+  chunk indexes. The model is not folded into the fingerprint: the fingerprint says which text was
+  embedded and the model says what embedded it, and each is checked on its own.
+- **A stored vector is current when its fingerprint is the current text's and its recorded model
+  equals the configured model.** Two models of one dimension place the same text at unrelated
+  points, and one model id can be configured for several dimensions, so the id and the dimension
+  both count. A doc that records no model is stale. The rule applies wherever a stored vector is
+  kept instead of embedding: the reindex lookup and the splice (`StoredEmbeddingReuse`), the
+  chunk backfill, the recreate's copy of live chunks into the staged generation
+  (`ChunkHeader.holdsVectorsOf`), and the live writes. The ontology term bulk write keeps a
+  term's own vector, with its model fields, across a rewrite of unchanged text; the embedding
+  refresh that follows every term write applies the rule.
+- **`reembed` ignores stored vectors.** It embeds every entity again (`reembedEntity`) and exits
+  with 1 when any entity could not be read or re-embedded. It rewrites the live indexes in place;
+  a model of another dimension needs a reindex with recreate, since an existing vector field
+  cannot change its dimension.
+
+Consequences of v3:
+
+- **Upgrade cost.** No doc written before v3 records its model, so every embedded entity is
+  embedded once more by the first write or reindex that touches it after the upgrade: one paid
+  provider call per chunk, on both engines, the cost of embedding the whole catalog once. After
+  that, a reindex embeds only entities whose text or model changed.
+- **A switch of model costs one full embedding of the catalog**, at the next reindex or
+  `reembed`. Until then, entities not edited since the switch keep the old model's vectors and
+  are compared with the new model's queries.

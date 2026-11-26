@@ -640,6 +640,12 @@
       "fingerprint": {
         "type": "keyword"
       },
+      "embeddingModel": {
+        "type": "keyword"
+      },
+      "embeddingDimension": {
+        "type": "integer"
+      },
       "textToLLMContext": {
         "type": "text"
       },

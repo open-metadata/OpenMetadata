@@ -23,6 +23,7 @@ import org.openmetadata.service.search.vector.StoredEmbeddingReuse;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingModel;
 import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 
 /**
@@ -173,18 +174,19 @@ final class EmbeddingEnricher {
       VectorIndexService vectorService,
       String stagedChunkTarget) {
     EmbeddingClient embeddingClient = vectorService.getEmbeddingClient();
-    int dimension = embeddingClient == null ? -1 : embeddingClient.getDimension();
     Embedded embedded = Embedded.NONE;
-    if (StoredEmbeddingReuse.isSpliceable(stored, dimension)) {
+    if (embeddingClient == null) {
+      LOG.debug("No embedding client; indexing entity {} without an embedding", entity.getId());
+    } else if (StoredEmbeddingReuse.isSpliceable(stored, EmbeddingModel.of(embeddingClient))) {
       // The stored chunkIndex, chunkCount and parentId are spliced too. That is safe because the
       // fingerprint that admitted this entry covers the body text that decides the chunk count.
       doc.setAll((ObjectNode) stored);
       // Catalogs embedded before the chunk index existed have an embedding but no chunk
-      // documents. The backfill is fingerprint-guarded, so it is a no-op once they exist. Chunk
-      // documents describe committed entity state, so writing them is safe even when this run's
-      // staged entity index is never promoted.
+      // documents. The backfill checks the fingerprint and the model, so it is a no-op once they
+      // exist. Chunk documents describe committed entity state, so writing them is safe even when
+      // this run's staged entity index is never promoted.
       embedded = chunksOutcome(vectorService.backfillEntityChunks(entity, stagedChunkTarget));
-    } else if (embeddingClient != null) {
+    } else {
       embedded = embedAfresh(entity, doc, vectorService, stagedChunkTarget);
     }
     return embedded;

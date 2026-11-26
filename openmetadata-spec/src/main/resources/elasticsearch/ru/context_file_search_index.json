@@ -939,6 +939,12 @@
       "fingerprint": {
         "type": "keyword"
       },
+      "embeddingModel": {
+        "type": "keyword"
+      },
+      "embeddingDimension": {
+        "type": "integer"
+      },
       "textToEmbed": {
         "type": "text"
       },
