@@ -71,7 +71,7 @@ class MariaDBProfilerInterface(SQAProfilerInterface):
         try:
             # we patch the metrics at runtime to use the MariaDB specific functions
             # as we can't compile the query based on the dialect as it return `mysql`
-            metrics = [MARIADB_WINDOW_METRICS.get(metric.name(), metric) for metric in metrics]
+            metrics = [MARIADB_WINDOW_METRICS.get(metric.name(), metric) for metric in metrics]  # pyright: ignore[reportAssignmentType, reportCallIssue]
             row = runner.select_first_from_sample(
                 *[metric(column).fn() for metric in metrics],
             )
