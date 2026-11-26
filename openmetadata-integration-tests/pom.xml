@@ -11,15 +11,21 @@
   <packaging>jar</packaging>
   <properties>
     <maven.surefire.version>3.1.2</maven.surefire.version>
-    <maven.failsafe.version>3.1.2</maven.failsafe.version>
+    <maven.failsafe.version>3.6.1</maven.failsafe.version>
     <junit.jupiter.version>${org.junit.jupiter.version}</junit.jupiter.version>
     <junit.platform.version>${org.junit.platform.version}</junit.platform.version>
-    <dockerjava.version>3.4.2</dockerjava.version>
+    <dockerjava.version>3.7.1</dockerjava.version>
     <integrationTests.parallelStrategy>dynamic</integrationTests.parallelStrategy>
     <integrationTests.parallelism>4</integrationTests.parallelism>
     <integrationTests.maxPoolSize>16</integrationTests.maxPoolSize>
-    <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
-    <integrationTests.skipParallel>false</integrationTests.skipParallel>
+    <!-- Failsafe 3.6 (SUREFIRE-823) skips only on -DskipITs. Builds that pass just -DskipTests
+         (sonar, Collate's compatibility build, the Playwright nightly) still mean "no ITs", so
+         skipITs follows skipTests. The lane executions set <skipITs> explicitly, which overrides
+         -DskipITs, so they default to it too; each integrationTests.lane profile sets both. -->
+    <skipTests>false</skipTests>
+    <skipITs>${skipTests}</skipITs>
+    <integrationTests.skipIsolated>${skipITs}</integrationTests.skipIsolated>
+    <integrationTests.skipParallel>${skipITs}</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
     <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryExtractionRequestIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT,OntologyConcurrentHardDeleteIT,NativeOntologyEveryPackInstallIT,DataProductDeleteRaceIT,DataProductPortsAtomicityIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CredentialRevocationTwoProcessIT,RevokeWaitForPropagationIT,OpsRegenerateBotTokensIT,CsvExportMultiNodeIT,RdfDisabledMarkLifecycleIT</integrationTests.multiNodeTests>
@@ -51,7 +57,7 @@
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-compress</artifactId>
-      <version>1.27.1</version>
+      <version>1.28.0</version>
       <scope>test</scope>
     </dependency>
     <!-- SDK client -->
@@ -128,7 +134,7 @@
     <dependency>
       <groupId>io.fabric8</groupId>
       <artifactId>kubernetes-client</artifactId>
-      <version>6.12.0</version>
+      <version>${fabric8.version}</version>
       <scope>test</scope>
     </dependency>
     <!-- OMJob operator model for K8s integration tests -->
@@ -176,7 +182,7 @@
     <dependency>
       <groupId>org.awaitility</groupId>
       <artifactId>awaitility</artifactId>
-      <version>4.2.0</version>
+      <version>4.3.0</version>
       <scope>test</scope>
     </dependency>
     <!-- JWT signing -->
@@ -190,7 +196,7 @@
     <dependency>
       <groupId>com.microsoft.playwright</groupId>
       <artifactId>playwright</artifactId>
-      <version>1.49.0</version>
+      <version>1.65.1</version>
       <scope>test</scope>
     </dependency>
     <!--
@@ -230,7 +236,7 @@
     <dependency>
       <groupId>org.eclipse.parsson</groupId>
       <artifactId>parsson</artifactId>
-      <version>1.1.8</version>
+      <version>1.1.9</version>
       <scope>test</scope>
     </dependency>
     <!-- RDF support (Apache Jena) for RDF tests. Version unified with
