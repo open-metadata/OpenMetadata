@@ -4,7 +4,8 @@
 - **Revisions:** v1 2026-11-26 (initial)
 - **Deciders:** Vamsi-klu; pending agreement from yan-3005, who decided the record this supersedes
 - **Guard:** `ApprovalTaskPreviewIT`, `ApprovalCycleHistoryTest`, `ApprovalCycleTest`,
-  `ChangePreviewUtilsTest`, `TriggeringChangeTest`
+  `ChangePreviewUtilsTest`, `TriggeringChangeTest`, `VersionDiffTest`,
+  `CreateTaskTest#testAnApprovalWhoseHistoryCannotBeReadKeepsItsPayload`
 - **Related:** #35456, #29627, `ChangePreviewUtils`, `ApprovalCycleHistory`, `ApprovalCycle`,
   `CreateTask.PreviewChanges`;
   supersedes ADR:2026-11-03-an-approval-preview-opens-with-the-edit-that-started-the-cycle;
@@ -40,9 +41,20 @@ the cycle:
    payload without the key on the reentry path starts from the version before the latest change.
 4. The history is read inside a fresh read scope by following each change's recorded previous
    version, one stored row at a time, newest first, and stops at the base. It reads at most
-   `ApprovalCycleHistory.MAX_VERSIONS` = 200 versions; past that it previews the newest 200 and logs
-   a warning naming the entity and the base. The walk does not page the version list because that
-   list is ordered by extension name, which sorts version 10.0 before 9.0.
+   `ApprovalCycleHistory.MAX_VERSIONS` = 200 versions. The walk does not page the version list
+   because that list is ordered by extension name, which sorts version 10.0 before 9.0.
+5. When the walk cannot reach the base, because a version row is missing or unreadable or the cycle
+   is longer than 200 versions, the preview compares the base version with the current one instead
+   (`VersionDiff`), which needs those two rows only, and logs a warning naming the entity and the
+   base. The comparison names fields the way a change request's preview does, so a change nested
+   in a list, such as one column's tags, shows as a change to the whole list. When the base version
+   cannot be read either, the preview lists the changes after the gap and the payload records
+   `proposedChangesIncomplete: true`, which the Proposed Changes card shows as a warning. A complete
+   preview leaves the key out.
+6. The history is read when the preview is applied, inside the guard that keeps the task's payload
+   when a preview cannot be built (`EntityNotFoundException`, `IllegalArgumentException`,
+   `JsonParsingException`, `JdbiException`). A read that fails leaves the payload the task had and
+   never stops the task from opening.
 
 ## Consequences
 
@@ -52,7 +64,11 @@ the cycle:
   write, which recomputes it through the fallback in 3; a task never written again keeps its
   stored preview until it is decided.
 - Every approval task write reads the history since the base: one indexed row lookup per version
-  in the cycle. A cycle longer than 200 versions shows only its newest 200.
-- A missing or unreadable version row ends the walk; the preview lists the changes after it.
+  in the cycle, at most 200, and two more when the walk falls short of the base.
+- A cycle longer than 200 versions, or one missing a version row, still shows every change since
+  its base, in the coarser shape of a comparison. Only a cycle whose base row is gone shows part of
+  its changes, and the card says so.
+- A task whose history cannot be read at all opens with the payload it had, without a recomputed
+  preview.
 - Revisit if task reads must show changes made since the task was written, or if the version
   list gains a numeric order that makes paging it correct.
