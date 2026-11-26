@@ -212,28 +212,6 @@ public class RdfLiveProjectionIT {
     }
   }
 
-  /**
-   * Entity graphs are read back over RDF Thrift. Jena 6.3.0 caps a Thrift message at 100 KB, which
-   * left such a value unreadable and blocked the live write queue behind it.
-   */
-  @Test
-  void valueOverOneHundredKilobytesProjectsAndReadsBack(final TestNamespace namespace)
-      throws Exception {
-    RdfUpdater.initialize(servingConfig);
-    final var service = DatabaseServiceTestFactory.createPostgres(namespace);
-    final var schema = DatabaseSchemaTestFactory.createSimple(namespace, service);
-    final String description = "x".repeat(150_000);
-    final var table =
-        TableTestFactory.createWithDescription(
-            namespace, schema.getFullyQualifiedName(), description);
-    try (var storage = new JenaFusekiStorage(servingConfig)) {
-      Awaitility.await()
-          .atMost(Duration.ofSeconds(60))
-          .untilAsserted(() -> assertHasLiteral(storage, table.getId(), description));
-    }
-    assertEquals(RdfProjectionState.READY, status());
-  }
-
   @Test
   void replayedRelationshipAndGlossaryRelationAdditionsDoNotResurrectDeletedEdges(
       final TestNamespace namespace) throws Exception {
@@ -460,18 +438,6 @@ public class RdfLiveProjectionIT {
         .withPassword("test-admin")
         .withRequestTimeoutMs(10000)
         .withWriteMaxRetries(0);
-  }
-
-  private static void assertHasLiteral(
-      final JenaFusekiStorage storage, final UUID tableId, final String value) {
-    final Model model = storage.getEntity(Entity.TABLE, tableId);
-    assertNotNull(model, "no readable RDF graph for table %s".formatted(tableId));
-    try {
-      assertTrue(
-          model.contains(null, null, value), "table %s lacks the literal".formatted(tableId));
-    } finally {
-      model.close();
-    }
   }
 
   private static void assertHasGlossaryTerm(

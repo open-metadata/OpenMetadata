@@ -9,7 +9,7 @@ import org.openmetadata.service.search.SearchShardFailures;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.ErrorCause;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
-import os.org.opensearch.client.opensearch._types.ShardSearchFailure;
+import os.org.opensearch.client.opensearch._types.ShardFailure;
 import os.org.opensearch.client.opensearch._types.ShardStatistics;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
@@ -71,11 +71,11 @@ public class ShardFailureAwareOpenSearchClient extends OpenSearchClient {
     return total != null && total.value() == 0;
   }
 
-  static List<String> describe(List<ShardSearchFailure> failures) {
+  static List<String> describe(List<ShardFailure> failures) {
     return listOrEmpty(failures).stream().map(ShardFailureAwareOpenSearchClient::describe).toList();
   }
 
-  private static String describe(ShardSearchFailure failure) {
+  private static String describe(ShardFailure failure) {
     ErrorCause cause = failure.reason();
     String type = cause == null || nullOrEmpty(cause.type()) ? "unknown_error" : cause.type();
     String reason = cause == null ? null : cause.reason();

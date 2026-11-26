@@ -96,9 +96,9 @@ public class LogicOps {
 
           @Override
           public Object evaluate(
-              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data, String jsonPath)
+              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
               throws JsonLogicEvaluationException {
-            return evaluateUserInRole(evaluator, arguments, data, jsonPath, "reviewers");
+            return evaluateUserInRole(evaluator, arguments, data, "reviewers");
           }
         });
 
@@ -112,9 +112,9 @@ public class LogicOps {
 
           @Override
           public Object evaluate(
-              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data, String jsonPath)
+              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
               throws JsonLogicEvaluationException {
-            return evaluateUserInRole(evaluator, arguments, data, jsonPath, "owners");
+            return evaluateUserInRole(evaluator, arguments, data, "owners");
           }
         });
 
@@ -128,9 +128,9 @@ public class LogicOps {
 
           @Override
           public Object evaluate(
-              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data, String jsonPath)
+              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
               throws JsonLogicEvaluationException {
-            return JsonLogicUtils.evaluateIsUpdatedBefore(evaluator, arguments, data, jsonPath);
+            return JsonLogicUtils.evaluateIsUpdatedBefore(evaluator, arguments, data);
           }
         });
 
@@ -144,9 +144,9 @@ public class LogicOps {
 
           @Override
           public Object evaluate(
-              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data, String jsonPath)
+              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
               throws JsonLogicEvaluationException {
-            return JsonLogicUtils.evaluateIsUpdatedAfter(evaluator, arguments, data, jsonPath);
+            return JsonLogicUtils.evaluateIsUpdatedAfter(evaluator, arguments, data);
           }
         });
   }
