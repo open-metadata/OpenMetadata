@@ -22,6 +22,8 @@ import {
   getApiContext,
   getDescriptionBox,
   redirectToHomePage,
+  scrollIntoViewAndSettle,
+  selectOptionWithRetry,
   uuid,
 } from './common';
 import { setDomain } from './domainPicker';
@@ -369,21 +371,14 @@ const checkTeamTypeOptions = async (page: Page, type: string) => {
   }
 };
 
-export const selectTeamHierarchy = async (page: Page, index: number) => {
-  if (index > 0) {
-    const teamTypeElement = page.locator('[data-testid="team-type"]');
-    const text = await teamTypeElement.innerText();
-    checkTeamTypeOptions(page, text);
-    const childTeamType = getTeamType(text).childTeamType;
-    await page
-      .getByRole('option', { name: childTeamType, exact: true })
-      .click();
-  } else {
-    checkTeamTypeOptions(page, 'BusinessUnit');
-    await page
-      .getByRole('option', { name: 'BusinessUnit', exact: true })
-      .click();
-  }
+const getHierarchyTeamType = async (page: Page, index: number) => {
+  const parentTeamType =
+    index > 0
+      ? await page.getByTestId('team-type').innerText()
+      : 'BusinessUnit';
+  await checkTeamTypeOptions(page, parentTeamType);
+
+  return index > 0 ? getTeamType(parentTeamType).childTeamType : 'BusinessUnit';
 };
 
 export const addTeamHierarchy = async (
@@ -422,15 +417,20 @@ export const addTeamHierarchy = async (
 
   await page.fill('[data-testid="display-name"]', teamDetails.name);
   await page.fill('[data-testid="email"]', teamDetails.email);
-  await page.click('[data-testid="team-selector"]');
 
-  if (isHierarchy) {
-    await selectTeamHierarchy(page, index ?? 0);
-  } else {
-    await page
-      .getByRole('option', { name: teamDetails.teamType, exact: true })
-      .click();
-  }
+  const teamTypeTrigger = page
+    .getByTestId('team-selector')
+    .locator('button[aria-haspopup="listbox"]');
+  await scrollIntoViewAndSettle(teamTypeTrigger);
+  await teamTypeTrigger.click();
+  const teamType = isHierarchy
+    ? await getHierarchyTeamType(page, index ?? 0)
+    : teamDetails.teamType;
+  await selectOptionWithRetry(
+    teamTypeTrigger,
+    page.getByRole('option', { name: teamType, exact: true })
+  );
+  await expect(teamTypeTrigger).toContainText(teamType);
 
   // Under load ProseMirror can drop a fill, and the team is then created with
   // "No description". Re-fill until the editor holds the text.
