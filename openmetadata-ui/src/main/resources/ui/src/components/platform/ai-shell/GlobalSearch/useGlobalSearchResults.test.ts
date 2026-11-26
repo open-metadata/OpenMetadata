@@ -304,6 +304,38 @@ describe('useGlobalSearchResults', () => {
     expect(searchQuery).not.toHaveBeenCalled();
   });
 
+  it('reloads every type when leaving a tab its own filters narrowed', async () => {
+    const facets = {
+      [EntityFields.OWNERS]: [{ key: 'alice', label: 'Alice' }],
+    };
+    const onAssets: GlobalSearchQuery = {
+      ...baseParams,
+      filter: 'assets',
+      facets,
+    };
+    const { result, rerender } = renderHook(
+      (props: GlobalSearchQuery) => useGlobalSearchResults(props),
+      { initialProps: onAssets }
+    );
+    await flushDebounce();
+    (searchEntityTypeCounts as jest.Mock).mockClear();
+    // The owner filter narrowed Data assets to nothing.
+    (searchQuery as jest.Mock).mockResolvedValueOnce(hits(0, []));
+    rerender({ ...onAssets, facets: { ...facets } });
+    rerender({ ...onAssets, sort: 'updatedAt' });
+    await flushDebounce();
+
+    expect(result.current.results.assets.count).toBe(0);
+    expect(searchEntityTypeCounts).not.toHaveBeenCalled();
+
+    // Leaving the tab clears its filters; the Data assets count must recover.
+    rerender({ ...baseParams, filter: 'tasks' });
+    await flushDebounce();
+
+    expect(searchEntityTypeCounts).toHaveBeenCalled();
+    expect(result.current.results.assets.count).toBe(3);
+  });
+
   it('reports an error only when every source fails', async () => {
     (chatsSource.search as jest.Mock).mockRejectedValue(new Error('boom'));
     (searchEntityTypeCounts as jest.Mock).mockRejectedValue(new Error('boom'));

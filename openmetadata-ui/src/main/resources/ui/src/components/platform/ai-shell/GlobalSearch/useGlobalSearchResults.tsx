@@ -55,7 +55,11 @@ import {
   GlobalSearchSection,
   GlobalSearchSourceContribution,
 } from './GlobalSearch.types';
-import { getFacetQueryFilter, getPageSize } from './GlobalSearch.utils';
+import {
+  getFacetQueryFilter,
+  getPageSize,
+  hasFacetSelection,
+} from './GlobalSearch.utils';
 
 interface EntityTypeBucket {
   key: string;
@@ -390,6 +394,11 @@ const fetchAll = async (
   };
 };
 
+/** The open tab's own filters narrowed its results (sort does not change counts). */
+const hasOwnFilters = (params: GlobalSearchQuery) =>
+  hasFacetSelection(params.facets) ||
+  Boolean(params.taskStatus || params.taskType);
+
 /**
  * A failed load shows the error, not an empty state: whenever something failed
  * and what the user is looking at came back empty.
@@ -438,6 +447,10 @@ export const useGlobalSearchResults = (params: GlobalSearchQuery) => {
   // The query (and scope) every type's counts were last loaded for.
   const queryKey = [trimmed, scopeKey, sourceKey, params.retryKey].join('|');
   const loadedQueryKey = useRef('');
+  // The tab the current results were loaded for, and whether its own filters
+  // narrowed them: leaving such a tab must restore its unfiltered count.
+  const loadedFilter = useRef<GlobalSearchFilter>('all');
+  const loadedWithOwnFilters = useRef(false);
 
   useEffect(() => {
     if (!trimmed) {
@@ -453,8 +466,12 @@ export const useGlobalSearchResults = (params: GlobalSearchQuery) => {
     const controller = new AbortController();
     setIsLoading(true);
     // Back on All, every type is listed again with its All-tab page size.
+    const leavesFilteredTab =
+      loadedFilter.current !== params.filter && loadedWithOwnFilters.current;
     const isRefine =
-      loadedQueryKey.current === queryKey && params.filter !== 'all';
+      loadedQueryKey.current === queryKey &&
+      params.filter !== 'all' &&
+      !leavesFilteredTab;
     const timer = setTimeout(async () => {
       const request = { ...params, query: trimmed };
       const next = isRefine
@@ -465,6 +482,8 @@ export const useGlobalSearchResults = (params: GlobalSearchQuery) => {
       }
       loadedListKey.current = listKey;
       loadedQueryKey.current = queryKey;
+      loadedFilter.current = params.filter;
+      loadedWithOwnFilters.current = hasOwnFilters(params);
       setResults((previous) =>
         isRefine ? { ...previous, ...next.results } : next.results
       );
