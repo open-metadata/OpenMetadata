@@ -241,6 +241,11 @@ class OmniSource(DashboardServiceSource):
             if len(matches) == 1:
                 return matches[0]
             if len(matches) > 1:
+                # Only a name-index hit names a topic; an alias hit names a shared
+                # base view, so a topic spelled like its leaf must not win the tie.
+                exact = self._exact_name_match(table_ref, matches) if index is self._topic_name_index else None
+                if exact:
+                    return exact
                 logger.warning(
                     "Ambiguous tile reference %r across %d models; skipping lineage",
                     table_ref,
@@ -248,6 +253,15 @@ class OmniSource(DashboardServiceSource):
                 )
                 return None
         return None
+
+    @staticmethod
+    def _exact_name_match(table_ref: str, matches: list[OmniTopic]) -> OmniTopic | None:
+        """Pick the one same-model match whose name is spelled exactly as the reference's leaf."""
+        if len({topic.model_id for topic in matches}) != 1:
+            return None
+        leaf = table_ref.replace("__", ".").replace("/", ".").rpartition(".")[-1]
+        exact = [topic for topic in matches if topic.name == leaf]
+        return exact[0] if len(exact) == 1 else None
 
     def _get_columns(self, fields: list[OmniField]) -> list[Column]:
         columns: list[Column] = []
