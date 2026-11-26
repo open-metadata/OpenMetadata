@@ -3,6 +3,7 @@ package org.openmetadata.service.search;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -78,6 +79,41 @@ class RecreateWithEmbeddingsTest {
 
     assertEquals(Optional.of(STAGED_ONTOLOGY_CHUNKS), context.getStagedOntologyChunkIndex());
     assertTrue(context.getEntities().stream().noneMatch(type -> type.startsWith("__")));
+  }
+
+  @Test
+  void aFailureStagingTheOntologyChunkIndexForgetsTheDataAssetGenerationAlreadyStaged() {
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    when(vectorService.beginStagedChunkRecreate()).thenReturn(STAGED_CHUNKS);
+    when(vectorService.beginStagedOntologyChunkRecreate())
+        .thenThrow(new IllegalStateException("Failed to create staged chunk index"));
+    DefaultRecreateHandler handler =
+        new RecreateWithEmbeddings().withJobData(new EventPublisherJob());
+    Set<String> everyType = new HashSet<>(EmbeddedEntityTypes.ALL);
+    everyType.addAll(OntologyTermSearch.TERM_TYPES);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      assertThrows(IllegalStateException.class, () -> handler.reCreateIndexes(everyType));
+    }
+
+    verify(vectorService).clearStagedChunkState(STAGED_CHUNKS);
+  }
+
+  @Test
+  void abandoningARunForgetsBothChunkGenerationsItStaged() {
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    ReindexContext context = new ReindexContext();
+    context.setStagedChunkIndex(STAGED_CHUNKS);
+    context.setStagedOntologyChunkIndex(STAGED_ONTOLOGY_CHUNKS);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      new RecreateWithEmbeddings().abandonReindex(context);
+    }
+
+    verify(vectorService).clearStagedChunkState(STAGED_CHUNKS);
+    verify(vectorService).clearStagedChunkState(STAGED_ONTOLOGY_CHUNKS);
   }
 
   @Test

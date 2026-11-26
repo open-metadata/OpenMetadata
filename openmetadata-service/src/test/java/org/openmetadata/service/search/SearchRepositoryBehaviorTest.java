@@ -3588,6 +3588,8 @@ class SearchRepositoryBehaviorTest {
         .thenAnswer(invocation -> Set.of("existing_" + invocation.getArgument(0)));
     when(context.getParentAliases(any()))
         .thenAnswer(invocation -> List.of("parent_" + invocation.getArgument(0)));
+    when(context.getStagedChunkIndex()).thenReturn(Optional.of("chunks_g1"));
+    when(context.getStagedOntologyChunkIndex()).thenReturn(Optional.of("ontology_chunks_g1"));
 
     doReturn(true)
         .doThrow(new RuntimeException("boom"))
@@ -3606,6 +3608,9 @@ class SearchRepositoryBehaviorTest {
     assertEquals(
         Set.of("existing_table"), contextCaptor.getAllValues().get(0).getExistingAliases());
     assertEquals(Set.of("parent_table"), contextCaptor.getAllValues().get(0).getParentAliases());
+    assertEquals("chunks_g1", contextCaptor.getAllValues().get(0).getStagedChunkIndex());
+    assertEquals(
+        "ontology_chunks_g1", contextCaptor.getAllValues().get(0).getStagedOntologyChunkIndex());
     assertEquals(Entity.DOMAIN, contextCaptor.getAllValues().get(1).getEntityType());
   }
 
@@ -5001,7 +5006,8 @@ class SearchRepositoryBehaviorTest {
 
     repository.checkVectorFields();
 
-    assertEquals(Set.of(Entity.TABLE), repository.entityTypesThatCannotHoldVectors());
+    assertEquals(
+        Map.of("table_search_index", Set.of(Entity.TABLE)), repository.vectorIndexRebuilds());
     verify(searchClient, never()).readEmbeddingField("database_service_search_index");
   }
 
@@ -5016,10 +5022,11 @@ class SearchRepositoryBehaviorTest {
 
     repository.checkVectorFields();
 
-    Set<String> rebuilt = repository.entityTypesThatCannotHoldVectors();
+    Map<String, Set<String>> rebuilds = repository.vectorIndexRebuilds();
+    assertEquals(Set.of("data_asset_embeddings_chunks"), rebuilds.keySet(), "named by index");
     assertTrue(
-        rebuilt.containsAll(EmbeddedEntityTypes.DATA_ASSETS),
-        "only a recreate of every data-asset type replaces the chunk index: " + rebuilt);
+        rebuilds.get("data_asset_embeddings_chunks").containsAll(EmbeddedEntityTypes.DATA_ASSETS),
+        "only a recreate of every data-asset type replaces the chunk index: " + rebuilds);
   }
 
   @Test
@@ -5040,8 +5047,10 @@ class SearchRepositoryBehaviorTest {
     repository.checkVectorFields();
 
     assertEquals(
-        Set.of(Entity.ONTOLOGY_CONCEPT, Entity.ONTOLOGY_PROPERTY),
-        repository.entityTypesThatCannotHoldVectors(),
+        Map.of(
+            "ontology_embeddings_chunks",
+            Set.of(Entity.ONTOLOGY_CONCEPT, Entity.ONTOLOGY_PROPERTY)),
+        repository.vectorIndexRebuilds(),
         "only a recreate of both ontology term types rebuilds the ontology chunk index");
   }
 
@@ -5054,7 +5063,7 @@ class SearchRepositoryBehaviorTest {
         .thenReturn(heldAs("table_search_index", 768));
     repository.checkVectorFields();
 
-    assertTrue(repository.entityTypesThatCannotHoldVectors().isEmpty());
+    assertTrue(repository.vectorIndexRebuilds().isEmpty());
     assertTrue(repository.getVectorFieldHealth().mismatches().isEmpty());
   }
 

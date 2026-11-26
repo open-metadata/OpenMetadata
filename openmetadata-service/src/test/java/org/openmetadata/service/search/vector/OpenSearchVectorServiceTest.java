@@ -274,7 +274,7 @@ class OpenSearchVectorServiceTest {
    * The participant latch shadows the stale-null discovery cache: when both the latch and a
    * different cached discovery value are present, the latch wins. Without the latch being
    * consulted first, "discovered_gen" would have been used; confirming the latch wins proves
-   * resolveChunkSinkTarget's resolution order (stagedChunkIndex, then participant latch, then
+   * resolveChunkSinkTarget's resolution order (participant latch, then stagedChunkIndex, then
    * discovery).
    */
   @Test
@@ -354,17 +354,18 @@ class OpenSearchVectorServiceTest {
   }
 
   /**
-   * The coordinator's stagedChunkIndex takes precedence over the participant latch, so a node
-   * that is both coordinating and would carry a participant latch still mirrors into its own
-   * run-scoped generation (and promotion gating stays anchored on stagedChunkIndex).
+   * A server never joins a job it coordinates, so a participant latch on a node that still holds
+   * coordinator state belongs to the run in progress, and the coordinator state to a dead run of
+   * this node. The latch wins, so live edits reach the generation that run promotes (promotion
+   * gating stays anchored on stagedChunkIndex).
    */
   @Test
-  void coordinatorStagedChunkIndexTakesPrecedenceOverTheParticipantLatch() throws Exception {
+  void theParticipantLatchWinsOverCoordinatorStateADeadRunLeft() throws Exception {
     when(mockEmbeddingClient.isAvailable()).thenReturn(true);
     when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
     setField("chunkIndexEnsured", true);
-    setField("stagedChunkIndex", "coordinator_gen");
-    vectorService.latchParticipantStagedTarget("participant_gen");
+    setField("stagedChunkIndex", "dead_run_gen");
+    vectorService.latchParticipantStagedTarget("current_run_gen");
     mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
 
     vectorService.updateEntityEmbeddings(
@@ -372,11 +373,11 @@ class OpenSearchVectorServiceTest {
 
     List<String> bulkTargets = capturedBulkTargets();
     assertTrue(
-        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"coordinator_gen\"")),
-        "coordinator's stagedChunkIndex wins");
+        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"current_run_gen\"")),
+        "the generation of the run in progress gets the mirror");
     assertFalse(
-        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"participant_gen\"")),
-        "participant latch must not override the coordinator");
+        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"dead_run_gen\"")),
+        "a dead run's generation never does");
   }
 
   private static ContextMemory refreshableMemory() {

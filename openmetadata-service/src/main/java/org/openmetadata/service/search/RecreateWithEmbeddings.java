@@ -22,10 +22,12 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
   public ReindexContext reCreateIndexes(Set<String> entities) {
     SearchRepository searchRepository = Entity.getSearchRepository();
     searchRepository.initializeVectorSearchService();
-    String stagedChunkIndex = recreateChunkIndexIfFullRun(entities);
-    String stagedOntologyChunks = rebuildOntologyChunkIndexIfItCannotHoldVectors(entities);
+    String stagedChunkIndex = null;
+    String stagedOntologyChunks = null;
     ReindexContext context;
     try {
+      stagedChunkIndex = recreateChunkIndexIfFullRun(entities);
+      stagedOntologyChunks = rebuildOntologyChunkIndexIfItCannotHoldVectors(entities);
       context = super.reCreateIndexes(entities);
     } catch (RuntimeException e) {
       // The run dies before any type can finalize — clear the JVM's staged state so a later,
@@ -38,6 +40,18 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
     context.setStagedChunkIndex(stagedChunkIndex);
     context.setStagedOntologyChunkIndex(stagedOntologyChunks);
     return context;
+  }
+
+  /**
+   * Forgets the chunk generations this run staged on this JVM when the run fails after its indexes
+   * were recreated, so live edits stop going to them and no later run can promote them.
+   */
+  @Override
+  public void abandonReindex(ReindexContext context) {
+    if (context != null) {
+      clearStagedChunkStateQuietly(context.getStagedChunkIndex().orElse(null));
+      clearStagedChunkStateQuietly(context.getStagedOntologyChunkIndex().orElse(null));
+    }
   }
 
   private static VectorIndexService vectorService() {

@@ -2175,7 +2175,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
                 collectionDAO,
                 getCurrentServerVersion(),
                 "system",
-                searchRepository::entityTypesThatCannotHoldVectors);
+                searchRepository::vectorIndexRebuilds);
         boolean upgradeRequiresFullReindex = versionTracker.requiresFullReindexForVersionUpgrade();
         List<String> changedMappings =
             upgradeRequiresFullReindex ? List.of() : versionTracker.getChangedMappings();
