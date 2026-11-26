@@ -17,10 +17,8 @@
 #     (MySQL+Elasticsearch, PostgreSQL+OpenSearch, PostgreSQL+Elasticsearch+Redis) reusing
 #     the one pre-built reactor artifact from Stage 1 instead of compiling three times.
 #
-# Preserves the exact required status-check job names configured in GitHub's `merge-rules`
-# ruleset (`openmetadata-service-unit-tests`, `integration-tests-mysql-elasticsearch`,
-# `integration-tests-postgres-opensearch`, `integration-tests-postgres-elasticsearch-redis`)
-# plus `openmetadata-service-unit-tests-status`.
+# Required-check cutover: replace the retired Java check names with `backend-checks`.
+# ADR:2026-11-25-backend-checks-reports-native-stage-failures.
 name: Backend CI
 
 on:
@@ -158,7 +156,7 @@ jobs:
   # The openmetadata-service unit tests are mock-only and run in parallel forks
   # configured by openmetadata-service/pom.xml (unitTests.forkCount=1C); see
   # ADR:2026-11-24-service-unit-tests-are-mock-only-and-run-in-parallel-forks.
-  openmetadata-service-unit-tests:
+  backend-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     needs: changes
@@ -177,16 +175,15 @@ jobs:
         uses: ./.github/actions/hydrate-maven-cache
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: "21"
           distribution: "temurin"
 
       # Fail-fast checkstyle: if formatting fails, skip unit tests and report
       # the exact files in the summary below.
-      - name: Run Java checkstyle (fail-fast)
+      - name: "1/2: Java checkstyle"
         id: checkstyle
-        continue-on-error: true
         run: |
           mvn -B -T 1C spotless:apply
           git diff --name-only > "$RUNNER_TEMP/checkstyle-failed-files.txt"
@@ -200,24 +197,23 @@ jobs:
       # never builds the report and nothing uploads it. No apt/ANTLR install either:
       # nothing here uses them (openmetadata-spec's prepare_model_schemas.py needs
       # only stdlib python3).
-      - name: Run openmetadata-service unit tests
+      - name: "2/2: Service unit tests"
         id: unit-tests
         if: ${{ steps.checkstyle.outcome == 'success' && needs.changes.outputs.java == 'true' }}
-        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mvn -B -T 1C clean package -pl openmetadata-service -am \
             -DfailIfNoTests=false
 
-      - name: Summarize Backend CI results
+      - name: Summarize backend checks
         if: ${{ always() }}
         env:
           CHECKSTYLE_OUTCOME: ${{ steps.checkstyle.outcome }}
           UNIT_TESTS_OUTCOME: ${{ steps.unit-tests.outcome }}
         run: |
           python3 .github/scripts/summarize_surefire.py \
-            --title "Backend CI (Checkstyle + Service Unit Tests)" \
+            --title "Backend checks" \
             --checkstyle-outcome "$CHECKSTYLE_OUTCOME" \
             --checkstyle-files "$RUNNER_TEMP/checkstyle-failed-files.txt" \
             --unit-tests-outcome "$UNIT_TESTS_OUTCOME" \
@@ -233,22 +229,11 @@ jobs:
           key: ${{ steps.maven-cache.outputs.cache-primary-key }}
 
       - name: Upload surefire reports
-        if: ${{ steps.unit-tests.outcome == 'failure' && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
+        if: ${{ failure() && steps.unit-tests.outcome == 'failure' && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: openmetadata-service-surefire-reports
           path: openmetadata-service/target/surefire-reports/
-
-      - name: Enforce Backend CI outcome
-        if: ${{ steps.checkstyle.outcome == 'failure' || steps.unit-tests.outcome == 'failure' }}
-        run: |
-          if [[ "${{ steps.checkstyle.outcome }}" == "failure" ]]; then
-            echo "Failing job: Java checkstyle failed (unit tests were skipped fail-fast)." >&2
-          fi
-          if [[ "${{ steps.unit-tests.outcome }}" == "failure" ]]; then
-            echo "Failing job: openmetadata-service unit tests failed. See job summary for exact test names." >&2
-          fi
-          exit 1
 
   k8s_operator-unit-tests:
     runs-on: ubuntu-latest
@@ -267,7 +252,7 @@ jobs:
         uses: ./.github/actions/hydrate-maven-cache
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: "21"
           distribution: "temurin"
@@ -333,7 +318,7 @@ jobs:
         uses: ./.github/actions/hydrate-maven-cache
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: "21"
           distribution: "temurin"
@@ -384,7 +369,7 @@ jobs:
         uses: ./.github/actions/hydrate-maven-cache
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: "21"
           distribution: "temurin"
@@ -433,7 +418,7 @@ jobs:
         uses: ./.github/actions/hydrate-maven-cache
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -517,16 +502,16 @@ jobs:
   # `java-it-build` artifact ONLY after Stage 1 checkstyle + unit tests pass
   # (or are skipped when only IT-only paths like docker/rdf-store changed).
   # `!cancelled()` disables GitHub's implicit `success()`, which would otherwise
-  # skip Stage 2 whenever `openmetadata-service-unit-tests` is legitimately skipped
+  # skip Stage 2 whenever `backend-checks` is legitimately skipped
   # (ADR:2026-11-24-backend-ci-gates-integration-lanes-behind-unit-tests-and-builds-once).
   it-mysql-elasticsearch:
-    needs: [changes, openmetadata-service-unit-tests, integration-test-build]
+    needs: [changes, backend-checks, integration-test-build]
     if: >-
       !cancelled() &&
       github.event_name != 'pull_request' &&
       needs.changes.result == 'success' &&
       (needs.changes.outputs.backend_it == 'true' || needs.changes.outputs.backend_it_rdf == 'true' || needs.changes.outputs.mysql_oldest_nightly == 'true') &&
-      (needs.openmetadata-service-unit-tests.result == 'success' || needs.openmetadata-service-unit-tests.result == 'skipped') &&
+      (needs.backend-checks.result == 'success' || needs.backend-checks.result == 'skipped') &&
       needs.integration-test-build.result == 'success'
     permissions:
       contents: read
@@ -541,14 +526,14 @@ jobs:
       store_database_version: ${{ needs.changes.outputs.mysql_oldest_nightly == 'true' && 'oldest' || inputs.store-database-version || 'shipped' }}
 
   it-postgres-opensearch:
-    needs: [changes, openmetadata-service-unit-tests, integration-test-build]
+    needs: [changes, backend-checks, integration-test-build]
     if: >-
       !cancelled() &&
       github.event_name != 'pull_request' &&
       github.event_name != 'schedule' &&
       needs.changes.result == 'success' &&
       (needs.changes.outputs.backend_it == 'true' || needs.changes.outputs.backend_it_rdf == 'true') &&
-      (needs.openmetadata-service-unit-tests.result == 'success' || needs.openmetadata-service-unit-tests.result == 'skipped') &&
+      (needs.backend-checks.result == 'success' || needs.backend-checks.result == 'skipped') &&
       needs.integration-test-build.result == 'success'
     permissions:
       contents: read
@@ -564,14 +549,14 @@ jobs:
   # Runs the full integration test suite with the Redis cache enabled (postgres +
   # elasticsearch + redis), via -Pcache-tests (ADR:2026-10-19-the-redis-cache-lane-gates-the-merge-queue).
   it-postgres-elasticsearch-redis:
-    needs: [changes, openmetadata-service-unit-tests, integration-test-build]
+    needs: [changes, backend-checks, integration-test-build]
     if: >-
       !cancelled() &&
       github.event_name != 'pull_request' &&
       github.event_name != 'schedule' &&
       needs.changes.result == 'success' &&
       needs.changes.outputs.backend_it == 'true' &&
-      (needs.openmetadata-service-unit-tests.result == 'success' || needs.openmetadata-service-unit-tests.result == 'skipped') &&
+      (needs.backend-checks.result == 'success' || needs.backend-checks.result == 'skipped') &&
       needs.integration-test-build.result == 'success'
     permissions:
       contents: read
@@ -588,7 +573,7 @@ jobs:
   # GitHub counts the required check as passing; enforced on merge_group / push).
   integration-tests-mysql-elasticsearch:
     name: integration-tests-mysql-elasticsearch
-    needs: [changes, openmetadata-service-unit-tests, integration-test-build, it-mysql-elasticsearch]
+    needs: [changes, backend-checks, integration-test-build, it-mysql-elasticsearch]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: ${{ always() && github.event_name != 'pull_request' && (github.event_name != 'schedule' || needs.changes.outputs.mysql_oldest_nightly == 'true') }}
@@ -597,7 +582,7 @@ jobs:
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           BACKEND_CHANGED: ${{ needs.changes.outputs.backend_it == 'true' || needs.changes.outputs.backend_it_rdf == 'true' || needs.changes.outputs.mysql_oldest_nightly == 'true' }}
-          UNIT_RESULT: ${{ needs.openmetadata-service-unit-tests.result }}
+          UNIT_RESULT: ${{ needs.backend-checks.result }}
           BUILD_RESULT: ${{ needs.integration-test-build.result }}
           LANES_RESULT: ${{ needs.it-mysql-elasticsearch.result }}
         run: |
@@ -613,7 +598,7 @@ jobs:
 
   integration-tests-postgres-opensearch:
     name: integration-tests-postgres-opensearch
-    needs: [changes, openmetadata-service-unit-tests, integration-test-build, it-postgres-opensearch]
+    needs: [changes, backend-checks, integration-test-build, it-postgres-opensearch]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: ${{ always() && github.event_name != 'pull_request' && github.event_name != 'schedule' }}
@@ -622,7 +607,7 @@ jobs:
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           BACKEND_CHANGED: ${{ needs.changes.outputs.backend_it == 'true' || needs.changes.outputs.backend_it_rdf == 'true' }}
-          UNIT_RESULT: ${{ needs.openmetadata-service-unit-tests.result }}
+          UNIT_RESULT: ${{ needs.backend-checks.result }}
           BUILD_RESULT: ${{ needs.integration-test-build.result }}
           LANES_RESULT: ${{ needs.it-postgres-opensearch.result }}
         run: |
@@ -638,7 +623,7 @@ jobs:
 
   integration-tests-postgres-elasticsearch-redis:
     name: integration-tests-postgres-elasticsearch-redis
-    needs: [changes, openmetadata-service-unit-tests, integration-test-build, it-postgres-elasticsearch-redis]
+    needs: [changes, backend-checks, integration-test-build, it-postgres-elasticsearch-redis]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: ${{ always() && github.event_name != 'pull_request' && github.event_name != 'schedule' }}
@@ -647,7 +632,7 @@ jobs:
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           BACKEND_CHANGED: ${{ needs.changes.outputs.backend_it }}
-          UNIT_RESULT: ${{ needs.openmetadata-service-unit-tests.result }}
+          UNIT_RESULT: ${{ needs.backend-checks.result }}
           BUILD_RESULT: ${{ needs.integration-test-build.result }}
           LANES_RESULT: ${{ needs.it-postgres-elasticsearch-redis.result }}
         run: |
@@ -661,35 +646,25 @@ jobs:
             exit 1
           fi
 
-  # 0-runner compatibility stub so GitHub's `merge-rules` required check
-  # (`java-checkstyle`) resolves as skipped/passing on all PRs (including fork
-  # PRs, without requiring `checks: write`) until `java-checkstyle` is removed
-  # from the ruleset. Real checkstyle runs fail-fast in `openmetadata-service-unit-tests`.
-  java-checkstyle:
-    if: false
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Java checkstyle runs fail-fast inside openmetadata-service-unit-tests"
-
   # Single required-check gate for Backend unit/checkstyle/k8s/docker checks.
   # `always()` so the context reports on every PR: when the workflow is legitimately
   # skipped (draft PR / no relevant paths changed) this exits 0; otherwise every
   # triggered job must have succeeded.
-  openmetadata-service-unit-tests-status:
-    name: openmetadata-service-unit-tests-status
-    needs: [changes, openmetadata-service-unit-tests, k8s_operator-unit-tests, docker-image-smoke-test]
+  backend-checks-status:
+    name: backend-checks-status
+    needs: [changes, backend-checks, k8s_operator-unit-tests, docker-image-smoke-test]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: ${{ always() && github.event_name != 'schedule' }}
     steps:
-      - name: Verify unit test suite
+      - name: Verify backend checks, operator tests, and Docker smoke test
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           CHECKSTYLE_CHANGED: ${{ needs.changes.outputs.checkstyle }}
           JAVA_CHANGED: ${{ needs.changes.outputs.java }}
           K8S_CHANGED: ${{ needs.changes.outputs.k8s_operator }}
           DOCKER_CHANGED: ${{ needs.changes.outputs.docker }}
-          SERVICE_RESULT: ${{ needs.openmetadata-service-unit-tests.result }}
+          SERVICE_RESULT: ${{ needs.backend-checks.result }}
           K8S_RESULT: ${{ needs.k8s_operator-unit-tests.result }}
           DOCKER_RESULT: ${{ needs.docker-image-smoke-test.result }}
         run: |
@@ -723,7 +698,7 @@ jobs:
           if [[ "$JAVA_CHANGED" == "true" || "$CHECKSTYLE_CHANGED" == "true" ]]; then
             backend_changed="true"
           fi
-          check "openmetadata-service-unit-tests" "$backend_changed" "$SERVICE_RESULT"
+          check "backend-checks" "$backend_changed" "$SERVICE_RESULT"
           check "k8s_operator-unit-tests"         "$K8S_CHANGED"     "$K8S_RESULT"
           check "docker-image-smoke-test"         "$DOCKER_CHANGED"  "$DOCKER_RESULT"
           exit $fail

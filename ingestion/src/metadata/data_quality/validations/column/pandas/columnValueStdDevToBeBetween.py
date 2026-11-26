@@ -146,6 +146,11 @@ class ColumnValueStdDevToBeBetweenValidator(BaseColumnValueStdDevToBeBetweenVali
             )
 
         results_df = pd.DataFrame(results_data)
+        # Integer columns give Python int sums. Keep them as objects, so summing the
+        # "Others" dimensions cannot wrap around in int64.
+        for key in (Metrics.sum.name, SUM_SQUARES_KEY):
+            if key in results_df:
+                results_df[key] = results_df[key].astype(object)
 
         if not results_df.empty:
             results_df = calculate_impact_score_pandas(
