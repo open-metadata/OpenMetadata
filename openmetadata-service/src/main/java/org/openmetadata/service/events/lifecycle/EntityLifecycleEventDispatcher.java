@@ -475,7 +475,9 @@ public class EntityLifecycleEventDispatcher {
   /**
    * Runs {@code work} off the calling thread, after every task already queued for each of {@code
    * entities}: once per ordered lane, with the entities that lane serializes. A part that throws,
-   * or that a full lane sheds, goes to the search retry queue for each of its entities.
+   * or that a full lane sheds, goes to the search retry queue for each of its entities. Its worker
+   * reindexes the entities that still exist and removes the chunks of those that are gone,
+   * soft-deleted or no longer embedded.
    */
   public void submitInEntityOrder(
       List<EntityReference> entities, String operation, Consumer<List<EntityReference>> work) {

@@ -40,6 +40,8 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO.SearchIndexRetryRecord;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
+import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 
@@ -182,6 +184,7 @@ public class SearchIndexRetryWorker implements Managed {
       if (root != null) {
         EntityInterface<?> rootEntity = reindexEntityCascade(root);
         propagateAfterRetry(rootEntity, record.getFailureReason());
+        removeChunksUnlessEmbedded(normalize(record.getEntityId()), root.getType(), rootEntity);
         completeClaim(record);
         return;
       }
@@ -713,6 +716,32 @@ public class SearchIndexRetryWorker implements Managed {
           }
         }
       }
+    }
+    removeChunksOf(entityId, normalizedEntityType);
+  }
+
+  /**
+   * Chunk documents belong only to a live entity that is still embedded. A retry removes those of
+   * an entity that is soft-deleted, no longer embeddable, or replaced under its name by another
+   * one, so a chunk delete a full lane shed is replayed here.
+   */
+  void removeChunksUnlessEmbedded(String entityId, String entityType, EntityInterface<?> resolved) {
+    boolean embedded =
+        resolved != null
+            && entityId.equals(resolved.getId().toString())
+            && !Boolean.TRUE.equals(resolved.getDeleted())
+            && Entity.isVectorEmbeddable(resolved);
+    if (!entityId.isEmpty() && !embedded) {
+      removeChunksOf(entityId, entityType);
+    }
+  }
+
+  private void removeChunksOf(String entityId, String entityType) {
+    VectorIndexService vectorService = searchRepository.getVectorIndexService();
+    boolean embeddedType =
+        entityType.isEmpty() || AvailableEntityTypes.isVectorIndexable(entityType);
+    if (vectorService != null && embeddedType) {
+      vectorService.deleteEntityChunks(entityId);
     }
   }
 
