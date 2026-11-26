@@ -40,7 +40,7 @@ export const VersionButton = forwardRef<
       name: updatedBy,
     });
 
-    const versionText = `v${parseFloat(versionNumber).toFixed(1)}`;
+    const versionText = `v${parseFloat(toString(versionNumber)).toFixed(1)}`;
 
     return (
       <div
@@ -89,7 +89,7 @@ export const VersionButton = forwardRef<
             ) : null}
           </Typography>
           <div
-            className={classNames('text-xs font-normal break-all', {
+            className={classNames('text-xs font-normal tw:wrap-break-word', {
               'diff-description': selected,
             })}
             data-testid="version-change-description">

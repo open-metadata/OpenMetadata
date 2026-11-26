@@ -707,23 +707,30 @@ WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'DataConsumerPolicy'
   AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'DataConsumerPolicy-CreateContextMemory-Rule'), '$.rules')
   AND JSON_CONTAINS(json, JSON_OBJECT('effect', 'allow', 'operations', JSON_ARRAY('EditDescription')), '$.rules');
 
--- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
--- the result polls, the credentials) that can reach different servers, so its state lives here
--- rather than in one server's memory. pending_state holds the candidate configuration with its
--- secrets, Fernet-encrypted, and is cleared when the test completes; rows expire minutes later.
-CREATE TABLE IF NOT EXISTS sso_test_login_session (
-    test_session_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-    admin_principal VARCHAR(256) NOT NULL,
-    protocol VARCHAR(16) NOT NULL,
-    status VARCHAR(16) NOT NULL,
-    pending_state MEDIUMTEXT,
-    result MEDIUMTEXT,
-    credentials_submitted_at BIGINT,
-    expires_at BIGINT NOT NULL,
-    PRIMARY KEY (test_session_id),
-    INDEX idx_sso_test_login_session_admin (admin_principal, credentials_submitted_at),
-    INDEX idx_sso_test_login_session_expires (expires_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-- DomainOnlyAccessPolicy: deny changes to policies, roles, bots and apps, and to teams and users that
+-- are in no domain.
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(json, '$.rules', JSON_OBJECT(
+    'name', 'DomainAccessDenyAdministrationRule',
+    'description', 'Deny changing policies, roles, bots and apps, which control access, whatever their domain',
+    'effect', 'deny',
+    'resources', JSON_ARRAY('app', 'bot', 'policy', 'role'),
+    'operations', JSON_ARRAY('Create', 'Delete', 'Deploy', 'EditAll')))
+WHERE name = 'DomainOnlyAccessPolicy'
+  AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.rules'),
+    JSON_OBJECT('name', 'DomainAccessDenyAdministrationRule'));
+
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(json, '$.rules', JSON_OBJECT(
+    'name', 'DomainAccessDenyTeamAndUserRule',
+    'description', 'Deny changing teams and users that are in no domain, and bot users',
+    'effect', 'deny',
+    'resources', JSON_ARRAY('team', 'user'),
+    'operations', JSON_ARRAY('Create', 'Delete', 'EditAll'),
+    'condition', 'noDomain() || isBotUser()'))
+WHERE name = 'DomainOnlyAccessPolicy'
+  AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.rules'),
+    JSON_OBJECT('name', 'DomainAccessDenyTeamAndUserRule'));
 
 -- Settings that exist both in openmetadata.yaml/environment and in this table (security, email,
 -- base URL, SCIM, MCP, app configuration) remember the deployment values they were last
@@ -915,6 +922,30 @@ PREPARE rdf_projection_health_watermark_stmt FROM @rdf_projection_health_waterma
 EXECUTE rdf_projection_health_watermark_stmt;
 DEALLOCATE PREPARE rdf_projection_health_watermark_stmt;
 
+-- When storage maintenance last compacted the serving dataset, so a compaction that stops
+-- happening, for any reason, shows as a degraded projection instead of going unnoticed.
+SET @rdf_projection_health_compaction_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'rdf_projection_health'
+        AND column_name = 'lastCompactedAt'
+    ),
+    'SELECT 1',
+    'ALTER TABLE rdf_projection_health ADD COLUMN lastCompactedAt bigint NOT NULL DEFAULT 0'
+  )
+);
+PREPARE rdf_projection_health_compaction_stmt FROM @rdf_projection_health_compaction_ddl;
+EXECUTE rdf_projection_health_compaction_stmt;
+DEALLOCATE PREPARE rdf_projection_health_compaction_stmt;
+
+-- Transfer RDF delivery to pause-aware consumers before producing pipelineExecution payloads.
+-- Deleting first waits for an old in-flight delivery; old producers still use the enqueue guard.
+DELETE FROM rdf_live_write_guard WHERE id = 'drain';
+INSERT IGNORE INTO rdf_live_write_guard (id) VALUES ('drain-v2');
+
 -- Credential verification joins user_entity to user_tokens on (userId, tokenType) and reads token.
 -- user_tokens had only PRIMARY KEY (token), so that predicate scanned every row, refresh and
 -- email-verification tokens included. Including token makes the fingerprint read index-only.
@@ -1028,7 +1059,6 @@ CREATE TABLE IF NOT EXISTS ontology_release_member (
   payloadBytes BIGINT UNSIGNED NOT NULL,
   PRIMARY KEY (releaseId, memberKind, memberId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 
 CREATE TABLE IF NOT EXISTS ontology_release_event (
   id VARCHAR(36) NOT NULL,
@@ -1167,6 +1197,27 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
   PRIMARY KEY (conceptId, assetId),
   KEY ontology_concept_binding_asset_index (assetId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- A Context Center file's sharing as a column, so a listing counts the files everyone may see
+-- without reading each file
+-- (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+-- STORED rewrites context_file once.
+SET @context_file_visibility_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'context_file'
+        AND column_name = 'visibility'
+    ),
+    'SELECT 1',
+    'ALTER TABLE context_file ADD COLUMN visibility VARCHAR(16) GENERATED ALWAYS AS (NULLIF(json_unquote(json_extract(json, ''$.shareConfig.visibility'')), ''null'')) STORED, ADD INDEX idx_context_file_visibility (visibility)'
+  )
+);
+PREPARE context_file_visibility_stmt FROM @context_file_visibility_ddl;
+EXECUTE context_file_visibility_stmt;
+DEALLOCATE PREPARE context_file_visibility_stmt;
 
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.

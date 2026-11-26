@@ -24,6 +24,12 @@
  *  limitations under the License.
  */
 
+import APIClient from '../rest/axiosClient';
+import {
+  getSuggestionSchemaName,
+  resolveTaskFormSchema,
+  TaskFormSchema,
+} from '../rest/taskFormSchemasAPI';
 import {
   Task,
   TaskCategory,
@@ -35,13 +41,66 @@ import {
   applyTaskFormSchemaDefaults,
   getDefaultTaskFormSchema,
   getEditableTaskPayload,
+  getResolvedTaskFormSchema,
   getTaskFormHandlerConfig,
   getTaskResolutionNewValue,
   getTaskTransitionFormSchema,
   getTaskTransitionUiSchema,
+  hasRequiredTaskFormFields,
   hasTaskFormFields,
   shouldRequireTaskResolutionValue,
+  __resetTaskFormSchemaCache,
 } from './TaskFormSchemaUtils';
+
+// Mock the axios layer (used by listTaskFormSchemas, getTaskFormSchemaById,
+// getTaskFormSchemaByFqn) so the real `resolveTaskFormSchema` disambiguation
+// logic runs end-to-end without network calls. Other axios methods are
+// untouched; only `get` is exercised by the form-schema API.
+jest.mock('../rest/axiosClient', () => ({
+  __esModule: true,
+  default: { get: jest.fn() },
+}));
+
+const descriptionSuggestionSchema: TaskFormSchema = {
+  name: 'DescriptionSuggestion',
+  fullyQualifiedName: 'DescriptionSuggestion',
+  taskType: 'Suggestion',
+  taskCategory: 'MetadataUpdate',
+  formSchema: {
+    type: 'object',
+    properties: {
+      suggestedValue: { type: 'string', title: 'Suggested Description' },
+    },
+  },
+  uiSchema: { suggestedValue: { 'ui:widget': 'textarea' } },
+};
+
+const tagSuggestionSchema: TaskFormSchema = {
+  name: 'TagSuggestion',
+  fullyQualifiedName: 'TagSuggestion',
+  taskType: 'Suggestion',
+  taskCategory: 'MetadataUpdate',
+  formSchema: {
+    type: 'object',
+    properties: {
+      suggestedValue: { type: 'string', title: 'Suggested Tags (JSON)' },
+    },
+  },
+  uiSchema: { suggestedValue: { 'ui:widget': 'tagSelector' } },
+};
+
+const descriptionUpdateSchema: TaskFormSchema = {
+  name: 'DescriptionUpdate',
+  taskType: 'DescriptionUpdate',
+  taskCategory: 'MetadataUpdate',
+  formSchema: {
+    type: 'object',
+    properties: { newDescription: { type: 'string' } },
+  },
+  uiSchema: {},
+};
+
+const axiosResponse = <T>(data: T) => ({ data });
 
 describe('TaskFormSchemaUtils', () => {
   it('returns the default description update schema', () => {
@@ -127,7 +186,7 @@ describe('TaskFormSchemaUtils', () => {
       status: TaskEntityStatus.Open,
       priority: TaskPriority.Medium,
       payload: {
-        field: 'description',
+        fieldPath: 'description',
         currentValue: 'Current description',
         suggestedValue: 'Suggested description',
       },
@@ -527,8 +586,578 @@ describe('TaskFormSchemaUtils', () => {
     });
     expect(uiSchema).toMatchObject({
       comment: {
-        'ui:widget': 'textarea',
+        'ui:widget': 'richtext',
       },
+    });
+  });
+
+  describe('hasRequiredTaskFormFields', () => {
+    it('returns true when the schema declares a non-empty required array', () => {
+      expect(
+        hasRequiredTaskFormFields({
+          type: 'object',
+          required: ['targetField', 'proposedText'],
+          properties: {
+            targetField: { type: 'string' },
+            proposedText: { type: 'string' },
+          },
+        })
+      ).toBe(true);
+    });
+
+    it('returns false when the schema has properties but no required fields', () => {
+      expect(
+        hasRequiredTaskFormFields({
+          type: 'object',
+          properties: { comment: { type: 'string' } },
+        })
+      ).toBe(false);
+    });
+
+    it('returns false when the required array is empty', () => {
+      expect(
+        hasRequiredTaskFormFields({
+          type: 'object',
+          required: [],
+          properties: {},
+        })
+      ).toBe(false);
+    });
+
+    it('returns false for undefined / null schemas', () => {
+      expect(hasRequiredTaskFormFields(undefined)).toBe(false);
+      // @ts-expect-error - guarding against a null schema from a malformed binding
+      expect(hasRequiredTaskFormFields(null)).toBe(false);
+    });
+
+    // The inbox's transition guard uses this to decide whether a workflow
+    // transition must open the form modal. A `requiresComment` transition whose
+    // form only adds a comment field (the seeded DDAR `reject`) reports
+    // `requiresForm` but `requiresComment` takes precedence, so the comment
+    // modal still handles it.
+    it('returns true for a requiresComment transition whose form requires a comment', () => {
+      const formSchema = getTaskTransitionFormSchema(
+        {
+          name: 'DataAccessRequest',
+          taskType: TaskEntityType.DataAccessRequest,
+          taskCategory: TaskCategory.DataAccess,
+          formSchema: { type: 'object', properties: {} },
+          transitionForms: {
+            reject: {
+              formSchema: {
+                type: 'object',
+                required: ['comment'],
+                properties: { comment: { type: 'string' } },
+              },
+            },
+          },
+        },
+        { id: 'reject', requiresComment: true }
+      );
+
+      expect(hasRequiredTaskFormFields(formSchema)).toBe(true);
+    });
+  });
+
+  describe('tag suggestion tasks', () => {
+    const tags = [
+      {
+        tagFQN: 'Data Sensitivity.Confidential',
+        source: 'Classification',
+        labelType: 'Generated',
+        state: 'Confirmed',
+      },
+    ];
+    const tagSuggestion = {
+      type: TaskEntityType.Suggestion,
+      payload: {
+        suggestionType: 'Tag',
+        fieldPath: 'columns::address',
+        suggestedValue: JSON.stringify(tags),
+      },
+    } as unknown as Task;
+
+    // The server validates the resolve payload against TagSuggestion, whose
+    // suggestedValue is a string; an array there is rejected with a 400.
+    it('keeps suggestedValue a JSON string in the payload it resolves with', () => {
+      const payload = getEditableTaskPayload(tagSuggestion);
+
+      expect(payload.suggestedValue).toBe(JSON.stringify(tags));
+      expect(getTaskResolutionNewValue(tagSuggestion, payload)).toBe(
+        JSON.stringify(tags)
+      );
+    });
+  });
+});
+
+describe('Suggestion form schema resolution', () => {
+  beforeEach(() => {
+    __resetTaskFormSchemaCache();
+  });
+
+  const callsTo = (predicate: (url: string) => boolean) =>
+    (APIClient.get as jest.Mock).mock.calls.filter(([url]) =>
+      predicate(url as string)
+    );
+
+  const stubByUrl = (
+    responses: Array<{ match: (url: string) => boolean; data: unknown }>
+  ) => {
+    (APIClient.get as jest.Mock).mockImplementation((url: string) => {
+      const entry = responses.find((r) => r.match(url));
+
+      if (!entry) {
+        return Promise.reject(
+          new Error(`Unexpected APIClient.get url: ${url}`)
+        );
+      }
+
+      return Promise.resolve(axiosResponse(entry.data));
+    });
+  };
+
+  const isListUrl = (url: string) => url === '/taskFormSchemas';
+  const isByNameUrl = (url: string) => url.startsWith('/taskFormSchemas/name/');
+  const isByIdUrl = (url: string) =>
+    url.startsWith('/taskFormSchemas/') && !isByNameUrl(url);
+
+  describe('getSuggestionSchemaName', () => {
+    it('maps Description payload to DescriptionSuggestion', () => {
+      expect(getSuggestionSchemaName({ suggestionType: 'Description' })).toBe(
+        'DescriptionSuggestion'
+      );
+    });
+
+    it('maps Tag payload to TagSuggestion', () => {
+      expect(getSuggestionSchemaName({ suggestionType: 'Tag' })).toBe(
+        'TagSuggestion'
+      );
+    });
+
+    it('lowercases and trims the suggestion type (matching the backend)', () => {
+      expect(getSuggestionSchemaName({ suggestionType: '  TAG ' })).toBe(
+        'TagSuggestion'
+      );
+      expect(getSuggestionSchemaName({ suggestionType: 'description' })).toBe(
+        'DescriptionSuggestion'
+      );
+    });
+
+    it('returns undefined for unknown suggestion types', () => {
+      expect(
+        getSuggestionSchemaName({ suggestionType: 'Bold' })
+      ).toBeUndefined();
+    });
+
+    it('returns undefined when no suggestionType is present', () => {
+      expect(getSuggestionSchemaName({})).toBeUndefined();
+      expect(getSuggestionSchemaName(undefined)).toBeUndefined();
+    });
+  });
+
+  describe('resolveTaskFormSchema (Suggestion disambiguation)', () => {
+    it('fetches DescriptionSuggestion by FQN for a Description payload', async () => {
+      stubByUrl([{ match: isByNameUrl, data: descriptionSuggestionSchema }]);
+
+      const schema = await resolveTaskFormSchema(
+        'Suggestion',
+        'MetadataUpdate',
+        {
+          suggestionType: 'Description',
+        }
+      );
+
+      expect(schema).toEqual(descriptionSuggestionSchema);
+      expect(callsTo(isByNameUrl)).toHaveLength(1);
+      expect(callsTo(isByNameUrl)[0][0]).toBe(
+        '/taskFormSchemas/name/DescriptionSuggestion'
+      );
+      expect(callsTo(isListUrl)).toHaveLength(0);
+    });
+
+    it('fetches TagSuggestion by FQN for a Tag payload', async () => {
+      stubByUrl([{ match: isByNameUrl, data: tagSuggestionSchema }]);
+
+      const schema = await resolveTaskFormSchema(
+        'Suggestion',
+        'MetadataUpdate',
+        {
+          suggestionType: 'Tag',
+        }
+      );
+
+      expect(schema).toEqual(tagSuggestionSchema);
+      expect(callsTo(isByNameUrl)[0][0]).toBe(
+        '/taskFormSchemas/name/TagSuggestion'
+      );
+      expect(callsTo(isListUrl)).toHaveLength(0);
+    });
+
+    it('is case-insensitive on the suggestionType', async () => {
+      stubByUrl([{ match: isByNameUrl, data: tagSuggestionSchema }]);
+
+      await resolveTaskFormSchema('Suggestion', 'MetadataUpdate', {
+        suggestionType: 'TAG',
+      });
+
+      expect(callsTo(isByNameUrl)[0][0]).toBe(
+        '/taskFormSchemas/name/TagSuggestion'
+      );
+    });
+
+    it('falls back to the list query when suggestionType is missing', async () => {
+      stubByUrl([
+        { match: isListUrl, data: { data: [descriptionSuggestionSchema] } },
+      ]);
+
+      const schema = await resolveTaskFormSchema(
+        'Suggestion',
+        'MetadataUpdate',
+        {}
+      );
+
+      expect(schema).toEqual(descriptionSuggestionSchema);
+      expect(callsTo(isByNameUrl)).toHaveLength(0);
+      expect(callsTo(isListUrl)).toHaveLength(1);
+      expect(callsTo(isListUrl)[0][1]).toMatchObject({
+        params: {
+          taskType: 'Suggestion',
+          taskCategory: 'MetadataUpdate',
+          limit: 1,
+        },
+      });
+    });
+
+    it('falls back to the list query when the suggestionType is unknown', async () => {
+      stubByUrl([
+        { match: isListUrl, data: { data: [descriptionSuggestionSchema] } },
+      ]);
+
+      const schema = await resolveTaskFormSchema(
+        'Suggestion',
+        'MetadataUpdate',
+        {
+          suggestionType: 'Bold',
+        }
+      );
+
+      expect(schema).toEqual(descriptionSuggestionSchema);
+      expect(callsTo(isByNameUrl)).toHaveLength(0);
+    });
+
+    it('falls back to the list query when the FQN fetch rejects', async () => {
+      (APIClient.get as jest.Mock).mockImplementation((url: string) =>
+        isByNameUrl(url)
+          ? Promise.reject(new Error('404'))
+          : Promise.resolve(axiosResponse({ data: [tagSuggestionSchema] }))
+      );
+
+      const schema = await resolveTaskFormSchema(
+        'Suggestion',
+        'MetadataUpdate',
+        {
+          suggestionType: 'Tag',
+        }
+      );
+
+      expect(schema).toEqual(tagSuggestionSchema);
+      expect(callsTo(isListUrl)).toHaveLength(1);
+    });
+
+    it('uses the list query as-is for non-Suggestion task types', async () => {
+      stubByUrl([
+        { match: isListUrl, data: { data: [descriptionUpdateSchema] } },
+      ]);
+
+      const schema = await resolveTaskFormSchema(
+        'DescriptionUpdate',
+        'MetadataUpdate',
+        { suggestionType: 'Tag' }
+      );
+
+      expect(schema).toEqual(descriptionUpdateSchema);
+      expect(callsTo(isByNameUrl)).toHaveLength(0);
+      expect(callsTo(isListUrl)).toHaveLength(1);
+      expect(callsTo(isListUrl)[0][1]).toMatchObject({
+        params: {
+          taskType: 'DescriptionUpdate',
+          taskCategory: 'MetadataUpdate',
+          limit: 1,
+        },
+      });
+    });
+  });
+
+  describe('getResolvedTaskFormSchema', () => {
+    it('prefers the schema id stamped on the task over the list/by-fqn query', async () => {
+      stubByUrl([{ match: isByIdUrl, data: tagSuggestionSchema }]);
+
+      const schema = await getResolvedTaskFormSchema(
+        TaskEntityType.Suggestion,
+        TaskCategory.MetadataUpdate,
+        {
+          taskFormSchemaId: 'stamped-schema-id',
+          payload: { suggestionType: 'Description' },
+        }
+      );
+
+      expect(schema).toEqual(tagSuggestionSchema);
+      expect(callsTo(isByIdUrl)[0][0]).toBe(
+        '/taskFormSchemas/stamped-schema-id'
+      );
+      expect(callsTo(isByNameUrl)).toHaveLength(0);
+      expect(callsTo(isListUrl)).toHaveLength(0);
+    });
+
+    it('disambiguates Suggestion by payload.suggestionType when no id is stamped', async () => {
+      stubByUrl([{ match: isByNameUrl, data: tagSuggestionSchema }]);
+
+      const schema = await getResolvedTaskFormSchema(
+        TaskEntityType.Suggestion,
+        TaskCategory.MetadataUpdate,
+        { payload: { suggestionType: 'Tag' } }
+      );
+
+      expect(schema).toEqual(tagSuggestionSchema);
+      expect(callsTo(isByNameUrl)[0][0]).toBe(
+        '/taskFormSchemas/name/TagSuggestion'
+      );
+      expect(callsTo(isByIdUrl)).toHaveLength(0);
+    });
+
+    it('renders the TagSuggestion widget (not DescriptionSuggestion) for a tag-suggestion task', async () => {
+      stubByUrl([{ match: isByNameUrl, data: tagSuggestionSchema }]);
+
+      const schema = await getResolvedTaskFormSchema(
+        TaskEntityType.Suggestion,
+        TaskCategory.MetadataUpdate,
+        { payload: { suggestionType: 'Tag' } }
+      );
+
+      expect(schema?.name).toBe('TagSuggestion');
+      expect(schema?.uiSchema?.suggestedValue).toEqual({
+        'ui:widget': 'tagSelector',
+      });
+    });
+
+    it('renders the DescriptionSuggestion widget for a description-suggestion task', async () => {
+      stubByUrl([{ match: isByNameUrl, data: descriptionSuggestionSchema }]);
+
+      const schema = await getResolvedTaskFormSchema(
+        TaskEntityType.Suggestion,
+        TaskCategory.MetadataUpdate,
+        { payload: { suggestionType: 'Description' } }
+      );
+
+      expect(schema?.name).toBe('DescriptionSuggestion');
+      expect(schema?.uiSchema?.suggestedValue).toEqual({
+        'ui:widget': 'textarea',
+      });
+    });
+
+    it('does not share a cached schema across Description and Tag variants', async () => {
+      // First call resolves DescriptionSuggestion, second call resolves
+      // TagSuggestion. If they shared a cache entry the second call would
+      // reuse the first (wrong) schema.
+      (APIClient.get as jest.Mock)
+        .mockImplementationOnce((url: string) =>
+          isByNameUrl(url)
+            ? Promise.resolve(axiosResponse(descriptionSuggestionSchema))
+            : Promise.reject(new Error(`Unexpected url: ${url}`))
+        )
+        .mockImplementationOnce((url: string) =>
+          isByNameUrl(url)
+            ? Promise.resolve(axiosResponse(tagSuggestionSchema))
+            : Promise.reject(new Error(`Unexpected url: ${url}`))
+        );
+
+      const first = await getResolvedTaskFormSchema(
+        TaskEntityType.Suggestion,
+        TaskCategory.MetadataUpdate,
+        { payload: { suggestionType: 'Description' } }
+      );
+      const second = await getResolvedTaskFormSchema(
+        TaskEntityType.Suggestion,
+        TaskCategory.MetadataUpdate,
+        { payload: { suggestionType: 'Tag' } }
+      );
+
+      expect(first?.name).toBe('DescriptionSuggestion');
+      expect(second?.name).toBe('TagSuggestion');
+      expect(callsTo(isByNameUrl)).toHaveLength(2);
+      expect(callsTo(isByNameUrl)[0][0]).toBe(
+        '/taskFormSchemas/name/DescriptionSuggestion'
+      );
+      expect(callsTo(isByNameUrl)[1][0]).toBe(
+        '/taskFormSchemas/name/TagSuggestion'
+      );
+    });
+
+    it('does not hand a strict lookup result to a caller that allows the fallback', async () => {
+      stubByUrl([{ match: isListUrl, data: { data: [] } }]);
+
+      const strict = await getResolvedTaskFormSchema(
+        TaskEntityType.DescriptionUpdate,
+        TaskCategory.MetadataUpdate,
+        { allowFallback: false }
+      );
+      const withFallback = await getResolvedTaskFormSchema(
+        TaskEntityType.DescriptionUpdate,
+        TaskCategory.MetadataUpdate
+      );
+
+      expect(strict).toBeUndefined();
+      expect(withFallback).toEqual(
+        getDefaultTaskFormSchema(
+          TaskEntityType.DescriptionUpdate,
+          TaskCategory.MetadataUpdate
+        )
+      );
+    });
+
+    it('serves a second identical call from the cache without a new fetch', async () => {
+      stubByUrl([{ match: isByNameUrl, data: tagSuggestionSchema }]);
+
+      await getResolvedTaskFormSchema(
+        TaskEntityType.Suggestion,
+        TaskCategory.MetadataUpdate,
+        { payload: { suggestionType: 'Tag' } }
+      );
+      await getResolvedTaskFormSchema(
+        TaskEntityType.Suggestion,
+        TaskCategory.MetadataUpdate,
+        { payload: { suggestionType: 'Tag' } }
+      );
+
+      expect(callsTo(isByNameUrl)).toHaveLength(1);
+    });
+
+    it('returns a deep clone from the cache so callers cannot mutate the cached entry', async () => {
+      stubByUrl([{ match: isByNameUrl, data: tagSuggestionSchema }]);
+
+      const first = await getResolvedTaskFormSchema(
+        TaskEntityType.Suggestion,
+        TaskCategory.MetadataUpdate,
+        { payload: { suggestionType: 'Tag' } }
+      );
+
+      expect(first?.uiSchema).toBeDefined();
+
+      if (first?.uiSchema) {
+        first.uiSchema.suggestedValue = { 'ui:widget': 'textarea' };
+      }
+
+      const second = await getResolvedTaskFormSchema(
+        TaskEntityType.Suggestion,
+        TaskCategory.MetadataUpdate,
+        { payload: { suggestionType: 'Tag' } }
+      );
+
+      expect(second?.uiSchema?.suggestedValue).toEqual({
+        'ui:widget': 'tagSelector',
+      });
+    });
+
+    it('falls back to the disambiguated FQN lookup when the stamped id is absent', async () => {
+      stubByUrl([
+        { match: isByNameUrl, data: tagSuggestionSchema },
+        { match: isListUrl, data: { data: [] } },
+      ]);
+
+      const schema = await getResolvedTaskFormSchema(
+        TaskEntityType.Suggestion,
+        TaskCategory.MetadataUpdate,
+        { payload: { suggestionType: 'Tag' } }
+      );
+
+      expect(schema).toEqual(tagSuggestionSchema);
+      expect(callsTo(isByIdUrl)).toHaveLength(0);
+      expect(callsTo(isByNameUrl)).toHaveLength(1);
+    });
+
+    it('falls back to the default schema when the stamped id fetch returns 404 and the payload signals Tag', async () => {
+      // Suggestion has no built-in default, so a failed resolution returns
+      // undefined; getResolvedTaskFormSchema then falls through to
+      // getDefaultTaskFormSchema which returns undefined for Suggestion.
+      (APIClient.get as jest.Mock).mockImplementation((url: string) =>
+        Promise.reject(new Error(`Unexpected url: ${url}`))
+      );
+
+      const schema = await getResolvedTaskFormSchema(
+        TaskEntityType.Suggestion,
+        TaskCategory.MetadataUpdate,
+        {
+          taskFormSchemaId: 'gone-id',
+          payload: { suggestionType: 'Tag' },
+        }
+      );
+
+      expect(
+        getDefaultTaskFormSchema(
+          TaskEntityType.Suggestion,
+          TaskCategory.MetadataUpdate
+        )
+      ).toBeUndefined();
+      expect(schema).toBeUndefined();
+      expect(callsTo(isByIdUrl)).toHaveLength(1);
+    });
+
+    it('continues to the name lookup when the stamped id fetch rejects', async () => {
+      (APIClient.get as jest.Mock).mockImplementation((url: string) =>
+        isByNameUrl(url)
+          ? Promise.resolve(axiosResponse(tagSuggestionSchema))
+          : Promise.reject(new Error(`Unexpected url: ${url}`))
+      );
+
+      const schema = await getResolvedTaskFormSchema(
+        TaskEntityType.Suggestion,
+        TaskCategory.MetadataUpdate,
+        {
+          taskFormSchemaId: 'gone-id',
+          payload: { suggestionType: 'Tag' },
+        }
+      );
+
+      expect(schema?.name).toBe('TagSuggestion');
+      expect(callsTo(isByIdUrl)).toHaveLength(1);
+      expect(callsTo(isByNameUrl)).toHaveLength(1);
+    });
+
+    it('uses the list query for non-Suggestion tasks (no payload branching)', async () => {
+      stubByUrl([
+        { match: isListUrl, data: { data: [descriptionUpdateSchema] } },
+      ]);
+
+      const schema = await getResolvedTaskFormSchema(
+        TaskEntityType.DescriptionUpdate,
+        TaskCategory.MetadataUpdate,
+        { payload: { suggestionType: 'Tag' } }
+      );
+
+      expect(schema).toEqual(descriptionUpdateSchema);
+      expect(callsTo(isByNameUrl)).toHaveLength(0);
+      expect(callsTo(isListUrl)).toHaveLength(1);
+    });
+
+    it('keeps the backwards-compatible two-arg call shape working', async () => {
+      stubByUrl([
+        { match: isListUrl, data: { data: [descriptionUpdateSchema] } },
+      ]);
+
+      const schema = await getResolvedTaskFormSchema(
+        TaskEntityType.DescriptionUpdate,
+        TaskCategory.MetadataUpdate
+      );
+
+      expect(schema).toEqual(descriptionUpdateSchema);
+      expect(callsTo(isListUrl)).toHaveLength(1);
+      expect(callsTo(isListUrl)[0][1]).toMatchObject({
+        params: {
+          taskType: 'DescriptionUpdate',
+          taskCategory: 'MetadataUpdate',
+          limit: 1,
+        },
+      });
     });
   });
 });

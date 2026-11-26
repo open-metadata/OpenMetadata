@@ -362,6 +362,14 @@ class JSONLogicSearchClassBase {
         label: t('label.tier'),
         type: '!group',
         mode: 'some',
+        // The group keeps the `tier` key (without a `fieldName: 'tags'` alias) so a
+        // saved Tags rule — which also serializes to `{"var":"tags"}` — still loads
+        // back into the Tags field. RAQB therefore emits the group variable as
+        // `{"var":"tier"}`, which has no property on any serialized entity. The
+        // export/import pipeline (utils/queryBuilder/jsonLogicTierVar) rewrites that
+        // variable to `tags` on the way out and routes the `contains`-family rules
+        // (the only operators this multiselect exposes) back to `tier` on the way
+        // in, mirroring the Data Contract semantics builder's `tags` remap.
         defaultField: 'tagFQN',
         subfields: {
           tagFQN: {

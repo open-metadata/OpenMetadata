@@ -195,11 +195,20 @@ const IngestionWorkflowForm = forwardRef<
     useState<IngestionWorkflowData>(workflowData);
   const { t } = useTranslation();
 
-  const schema = useMemo(
-    () => getSchemaByWorkflowType(pipeLineType, serviceCategory),
+  const schema = useMemo(() => {
+    const workflowSchema = getSchemaByWorkflowType(
+      pipeLineType,
+      serviceCategory,
+      serviceData?.serviceType
+    );
 
-    [pipeLineType, serviceCategory]
-  );
+    return serviceData?.serviceType === 'BigQuery'
+      ? workflowSchema
+      : {
+          ...workflowSchema,
+          properties: omit(workflowSchema.properties, ['shardedTables']),
+        };
+  }, [pipeLineType, serviceCategory, serviceData?.serviceType]);
 
   const validator = useMemo(
     () => customizeValidator<IngestionWorkflowData>(),
@@ -312,7 +321,9 @@ const IngestionWorkflowForm = forwardRef<
       OneOfField: CoreOneOfField,
     };
 
-    const SparkAgentField = ProfilerConfigurationClassBase.getSparkAgentField();
+    const SparkAgentField = ProfilerConfigurationClassBase.getSparkAgentField(
+      serviceData?.serviceType
+    );
 
     if (
       !isUndefined(SparkAgentField) &&
@@ -326,7 +337,7 @@ const IngestionWorkflowForm = forwardRef<
     }
 
     return fields;
-  }, [pipeLineType]);
+  }, [pipeLineType, serviceData?.serviceType]);
 
   // RJSF getWidget only accepts function/forwardRef/memo widgets; React.lazy
   // widgets are objects and throw "Unsupported widget definition". Wrap each in a

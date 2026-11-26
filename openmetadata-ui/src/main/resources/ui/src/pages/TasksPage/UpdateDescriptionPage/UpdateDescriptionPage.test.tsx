@@ -174,7 +174,7 @@ describe('UpdateDescriptionPage', () => {
           'Unique identifier for the store. This column is the primary key for this table.',
         currentDescription:
           'Unique identifier for the store. This column is the primary key for this table.',
-        fieldPath: 'columns::shop_id::description',
+        fieldPath: 'columns.shop_id.description',
       },
     });
   });

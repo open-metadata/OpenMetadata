@@ -16,7 +16,7 @@ package org.openmetadata.service.alerting.definition;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import org.openmetadata.schema.api.events.AlertFilteringInput;
-import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
 

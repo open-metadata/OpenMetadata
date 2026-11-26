@@ -21,11 +21,6 @@
   }
 }
 
-.react-grid-select-dropdown {
-  width: 100%;
-  min-width: 12rem;
-}
-
 .csv-import-page-stack {
   display: flex;
   flex-direction: column;
@@ -96,26 +91,6 @@
   color: var(--tw-color-text-tertiary);
   font-size: var(--om-font-size-13);
   line-height: 18px;
-}
-
-.csv-selected-file-remove {
-  align-items: center;
-  background: transparent;
-  border: 0;
-  border-radius: var(--om-radius-md);
-  color: var(--tw-color-text-quaternary);
-  cursor: pointer;
-  display: inline-flex;
-  flex-shrink: 0;
-  height: 32px;
-  justify-content: center;
-  padding: 0;
-  width: 32px;
-
-  &:hover {
-    background: var(--tw-color-bg-secondary);
-    color: var(--tw-color-text-secondary);
-  }
 }
 
 .csv-import-processing-wrap {
@@ -588,10 +563,11 @@
     text-overflow: ellipsis;
   }
 
+  // Centred like every other cell: the preview is clamped to one line, so there is nothing to
+  // top-align.
   .rdg-cell-description {
-    align-items: flex-start;
+    align-items: center;
     overflow-wrap: anywhere;
-    padding-top: var(--om-space-8);
     white-space: normal;
     word-break: break-word;
 
@@ -663,7 +639,6 @@
   .rdg-cell-required-error,
   .rdg-row[class*='bulk-edit-op-row-'] .rdg-cell-required-error {
     box-shadow: inset 0 0 0 2px var(--tw-color-border-error) !important;
-    position: relative;
 
     &::after {
       align-items: center;
@@ -1510,6 +1485,9 @@
 }
 
 .bulk-edit-description-editor-textarea {
+  // Matches the grid's body text rather than the larger form-field default.
+  font-size: var(--tw-text-sm);
+  line-height: var(--tw-text-sm--line-height);
   background: transparent;
   border: 0;
   box-shadow: none;

@@ -10,33 +10,33 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Config, ImmutableTree } from '@react-awesome-query-builder/ui';
-import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
-import { isEmpty } from 'lodash';
 import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
-import { getJsonTreeFromQueryFilter } from '../QueryBuilderPureUtils';
 import { getExplorePath } from '../RouterUtils';
 
 // RAQB's group key for custom properties.
 const EXTENSION_FIELD = 'extension';
 
-// Extra query-string parameters describing a builder filter, for an Explore deep link.
+// The `queryFilter` param for an Explore link. Explore reads its advanced search as a root conjunction over groups,
+// so a filter from a single-group builder becomes one group under an AND root: the modal then shows that builder's
+// rules as they were, and searches with the same filter.
+// ADR:2026-11-19-explore-urls-carry-the-elasticsearch-filter-not-the-tree
+export const getExploreQueryFilterParam = (
+  queryFilter: QueryFilterInterface
+): string => JSON.stringify({ query: { bool: { must: [queryFilter.query] } } });
+
+// Extra query-string parameters describing a builder filter, for an Explore deep link: the builder's own filter opens
+// as the Advanced Search, and the filter the builder searched with (scoped to its entity type) applies as the quick
+// filter — scoping a filter can nest its group inside another, which the Advanced Search cannot show.
 export const buildExploreUrlParams = (
-  tree: unknown,
-  qFilter?: QueryFilterInterface
-): Record<string, string> => {
-  const params: Record<string, string> = {};
-
-  if (!isEmpty(tree)) {
-    params.queryFilter = JSON.stringify(tree);
-  }
-
-  if (qFilter && !isEmpty(qFilter) && qFilter.query) {
-    params.quickFilter = JSON.stringify(qFilter);
-  }
-
-  return params;
-};
+  builderFilter?: QueryFilterInterface,
+  scopedFilter: QueryFilterInterface | undefined = builderFilter
+): Record<string, string> =>
+  builderFilter?.query
+    ? {
+        queryFilter: getExploreQueryFilterParam(builderFilter),
+        quickFilter: JSON.stringify(scopedFilter),
+      }
+    : {};
 
 // Rewrites custom-property field keys into the shape Explore understands.
 // RAQB's own `JsonItem` is a union whose members disagree about `properties` and `children1`, so the walk uses a
@@ -94,22 +94,9 @@ export const withExploreFieldKeys = (
   entityType ? rewriteNode(tree, `${EXTENSION_FIELD}.`, entityType) : tree;
 
 export const getQueryBuilderExploreUrl = (
-  queryFilter: QueryFilterInterface,
-  config: Config,
-  builderTree?: ImmutableTree
-): string => {
-  const tree = QbUtils.sanitizeTree(
-    builderTree ?? QbUtils.loadTree(getJsonTreeFromQueryFilter(queryFilter)),
-    config
-  ).fixedTree;
-  // Explore reads the tree, not the Elasticsearch filter, so the field keys have to be ones Explore's own config
-  // recognises.
-  const entityType = (config.settings as { omEntityType?: string })
-    .omEntityType;
-  const jsonTree = QbUtils.getTree(tree) as unknown as TreeNode;
-  const exploreTree = withExploreFieldKeys(jsonTree, entityType);
-
-  return getExplorePath({
-    extraParameters: buildExploreUrlParams(exploreTree, queryFilter),
+  builderFilter: QueryFilterInterface,
+  scopedFilter?: QueryFilterInterface
+): string =>
+  getExplorePath({
+    extraParameters: buildExploreUrlParams(builderFilter, scopedFilter),
   });
-};

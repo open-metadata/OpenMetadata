@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
@@ -39,9 +39,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 public final class AlertConditions {
 
   public static FilteringRules validateAndBuildFilteringConditions(
-      List<String> resource,
-      CreateEventSubscription.AlertType alertType,
-      AlertFilteringInput input) {
+      List<String> resource, AlertType alertType, AlertFilteringInput input) {
     return buildFilteringConditions(resource, alertType, input, false);
   }
 
@@ -50,20 +48,17 @@ public final class AlertConditions {
    * alert saved then keeps its meaning. A new or changed definition may only use what is offered.
    */
   public static FilteringRules rebuildStoredFilteringConditions(
-      List<String> resource,
-      CreateEventSubscription.AlertType alertType,
-      AlertFilteringInput input) {
+      List<String> resource, AlertType alertType, AlertFilteringInput input) {
     return buildFilteringConditions(resource, alertType, input, true);
   }
 
   private static FilteringRules buildFilteringConditions(
       List<String> resource,
-      CreateEventSubscription.AlertType alertType,
+      AlertType alertType,
       AlertFilteringInput input,
       boolean withWhatEarlierReleasesOffered) {
     boolean compiled =
-        alertType.equals(CreateEventSubscription.AlertType.NOTIFICATION)
-            || alertType.equals(CreateEventSubscription.AlertType.OBSERVABILITY);
+        alertType.equals(AlertType.NOTIFICATION) || alertType.equals(AlertType.OBSERVABILITY);
     if (compiled) {
       SeveralSources.requireCombinable(alertType, resource);
     } else if (resource.size() != 1) {
@@ -81,7 +76,7 @@ public final class AlertConditions {
   // The text an alert with one source has always had, byte for byte.
   private static FilteringRules buildForOneSource(
       List<String> resource,
-      CreateEventSubscription.AlertType alertType,
+      AlertType alertType,
       AlertFilteringInput input,
       boolean compiled,
       boolean withWhatEarlierReleasesOffered) {
@@ -105,9 +100,7 @@ public final class AlertConditions {
   }
 
   private static List<FilterResourceDescriptor> sourcesOf(
-      List<String> names,
-      CreateEventSubscription.AlertType alertType,
-      boolean withWhatEarlierReleasesOffered) {
+      List<String> names, AlertType alertType, boolean withWhatEarlierReleasesOffered) {
     return SeveralSources.distinct(names).stream()
         .map(name -> sourceOf(name, alertType, withWhatEarlierReleasesOffered))
         .toList();
@@ -115,20 +108,18 @@ public final class AlertConditions {
 
   // Only Observability alerts have triggers; a Notification alert stores an empty list.
   private static List<EventFilterRule> triggersOf(
-      FilterResourceDescriptor source,
-      CreateEventSubscription.AlertType alertType,
-      AlertFilteringInput input) {
-    return alertType.equals(CreateEventSubscription.AlertType.OBSERVABILITY)
+      FilterResourceDescriptor source, AlertType alertType, AlertFilteringInput input) {
+    return alertType.equals(AlertType.OBSERVABILITY)
         ? buildRulesList(buildFilteringRulesMap(source.getSupportedActions()), input.getActions())
         : Collections.emptyList();
   }
 
   private static FilterResourceDescriptor sourceOf(
-      String name, CreateEventSubscription.AlertType alertType, boolean withEarlierReleases) {
+      String name, AlertType alertType, boolean withEarlierReleases) {
     FilterResourceDescriptor source;
     if (withEarlierReleases) {
       source = EventsSubscriptionRegistry.getBuildableDescriptor(alertType, name);
-    } else if (alertType.equals(CreateEventSubscription.AlertType.OBSERVABILITY)) {
+    } else if (alertType.equals(AlertType.OBSERVABILITY)) {
       source = EventsSubscriptionRegistry.getObservabilityDescriptor(name);
     } else {
       source = EventsSubscriptionRegistry.getEntityNotificationDescriptor(name);

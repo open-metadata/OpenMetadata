@@ -12,7 +12,7 @@
  */
 import {
   Column,
-  CreatedTime,
+  DateType,
   ProfileSampleType as ProfileSampleTypeIcon,
   RowCount,
   Size,
@@ -204,7 +204,7 @@ export const TableProfilerProvider = ({
               new Date(profile?.timestamp)
             ).toLocaleString(DateTime.DATETIME_MED)}`
           : undefined,
-        icon: CreatedTime,
+        icon: DateType,
       },
     ];
   }, [tableProfiler, t]);

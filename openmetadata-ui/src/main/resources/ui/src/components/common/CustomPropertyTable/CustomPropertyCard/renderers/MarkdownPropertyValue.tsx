@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
 import { FormEvent, lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
@@ -49,18 +48,13 @@ const MarkdownPropertyEdit = ({
 
   return (
     <form noValidate id={formId} onSubmit={handleSubmit}>
-      <Box direction="col" gap={2}>
-        <RichTextEditor
-          autofocus
-          className="tw:rounded-lg tw:border tw:border-primary"
-          initialValue={initialValue}
-          placeHolder={t('label.enter-property-value')}
-          onTextChange={setMarkdown}
-        />
-        <span className="tw:text-xs tw:text-tertiary">
-          {t('message.markdown-supported')}
-        </span>
-      </Box>
+      <RichTextEditor
+        autofocus
+        className="tw:rounded-lg tw:border tw:border-primary"
+        initialValue={initialValue}
+        placeHolder={t('label.enter-property-value')}
+        onTextChange={setMarkdown}
+      />
     </form>
   );
 };

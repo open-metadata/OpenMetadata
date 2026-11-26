@@ -126,6 +126,11 @@ export interface User {
      */
     isEmailVerified?: boolean;
     /**
+     * When true indicates the user is accessing the product for the first time. Turns false
+     * once the user first reaches the home page.
+     */
+    isFirstTimeUser?: boolean;
+    /**
      * Last time the user was active in the system.
      */
     lastActivityTime?: number;
@@ -355,7 +360,10 @@ export interface Idp {
      */
     entityId: string;
     /**
-     * X509 Certificate
+     * IdP signing certificate(s): a PEM certificate or concatenated PEM bundle; a single base64
+     * DER certificate is also accepted. Saving requires at least one currently valid
+     * certificate. At runtime every configured certificate is trusted, including expired and
+     * future rollover ones, so remove a retired key explicitly.
      */
     idpX509Certificate?: string;
     /**
@@ -397,7 +405,8 @@ export interface Security {
      */
     signSpMetadata?: boolean;
     /**
-     * Only accept valid signed and encrypted assertions if the relevant flags are set
+     * Enable strict SAML protocol checks and the Want Messages Signed / Want Assertions Signed
+     * policies. Require Encrypted Assertions applies independently of strict mode.
      */
     strictMode?: boolean;
     /**
@@ -409,7 +418,9 @@ export interface Security {
      */
     validateXml?: boolean;
     /**
-     * SP requires the assertion received to be encrypted.
+     * Reject plaintext assertions even when Strict Mode is off. Optional and disabled by
+     * default. Requires an SP private key and matching certificate; configure token encryption
+     * at the IdP too. Providing an SP key alone does not require encryption.
      */
     wantAssertionEncrypted?: boolean;
     /**

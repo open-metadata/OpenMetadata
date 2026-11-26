@@ -9,6 +9,7 @@ import static org.openmetadata.service.search.SearchUtils.getMaxExpansions;
 import static org.openmetadata.service.search.SearchUtils.isColumnIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataQualityIndex;
+import static org.openmetadata.service.search.SearchUtils.isOntologyIndex;
 import static org.openmetadata.service.search.SearchUtils.isServiceIndex;
 import static org.openmetadata.service.search.SearchUtils.isTimeSeriesIndex;
 
@@ -69,6 +70,7 @@ public class OpenSearchSourceBuilderFactory
   private static final String RANKING_QUERY_PREFIX = "ranking:";
 
   private final SearchSettings searchSettings;
+  private final boolean matchesPrivateFields;
 
   // Cache the expensive composite configuration
   private volatile AssetTypeConfiguration cachedCompositeConfig = null;
@@ -76,7 +78,14 @@ public class OpenSearchSourceBuilderFactory
   private static final long CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
   public OpenSearchSourceBuilderFactory(SearchSettings searchSettings) {
+    this(searchSettings, true);
+  }
+
+  /** {@code matchesPrivateFields} false keeps a free-text user search off the email fields. */
+  public OpenSearchSourceBuilderFactory(
+      SearchSettings searchSettings, boolean matchesPrivateFields) {
     this.searchSettings = searchSettings;
+    this.matchesPrivateFields = matchesPrivateFields;
   }
 
   public SearchSettings getSearchSettings() {
@@ -303,7 +312,8 @@ public class OpenSearchSourceBuilderFactory
   }
 
   public OpenSearchRequestBuilder buildUserOrTeamSearchBuilderV2(String query, int from, int size) {
-    Query queryBuilder = buildSearchQueryBuilderV2(query, UserIndex.getFields());
+    Query queryBuilder =
+        buildSearchQueryBuilderV2(query, UserIndex.getFields(matchesPrivateFields));
     return searchBuilderV2(queryBuilder, null, from, size);
   }
 
@@ -354,7 +364,7 @@ public class OpenSearchSourceBuilderFactory
       return buildDataQualitySearchBuilderV2(indexName, searchQuery, fromOffset, size, freeText);
     }
 
-    if (isDataAssetIndex(indexName)) {
+    if (isDataAssetIndex(indexName) || isOntologyIndex(indexName)) {
       return buildDataAssetSearchBuilderV2(
           indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
@@ -1347,7 +1357,7 @@ public class OpenSearchSourceBuilderFactory
             }
           });
 
-      String fuzziness = getFuzziness(query);
+      String fuzziness = getFuzziness(query, fields.keySet());
       int maxExpansions = getMaxExpansions(query);
 
       Query fuzzyQuery =

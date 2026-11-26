@@ -158,6 +158,50 @@ public class BulkDeleteStaleIT {
   }
 
   @Test
+  void test_emptySeenFqns_withAllowFlag_deletesWholeScope(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    List<String> tableFqns = createTables(ns, schemaFqn, 3);
+
+    BulkOperationResult result =
+        BulkApi.deleteStale(
+            "tables",
+            new BulkDeleteStaleRequest()
+                .withScopeFqn(schemaFqn)
+                .withScopeEntityType("databaseSchema")
+                .withSeenFqns(new ArrayList<>())
+                .withAllowEmptySeenFqns(true));
+
+    assertEquals(
+        Set.copyOf(tableFqns),
+        deletedFqns(result),
+        "a confirmed-empty listing marks every table in the scope stale");
+    for (String fqn : tableFqns) {
+      assertTrue(isDeleted(fqn), "table " + fqn + " must be soft-deleted");
+    }
+  }
+
+  @Test
+  void test_allowFlag_withSeenFqns_deletesOnlyUnseen(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    List<String> tableFqns = createTables(ns, schemaFqn, 3);
+
+    BulkOperationResult result =
+        BulkApi.deleteStale(
+            "tables",
+            new BulkDeleteStaleRequest()
+                .withScopeFqn(schemaFqn)
+                .withScopeEntityType("databaseSchema")
+                .withSeenFqns(tableFqns.subList(0, 1))
+                .withAllowEmptySeenFqns(true));
+
+    assertEquals(
+        Set.copyOf(tableFqns.subList(1, 3)),
+        deletedFqns(result),
+        "the flag must not widen deletion when the connector saw entities");
+    assertFalse(isDeleted(tableFqns.getFirst()), "the seen table must remain live");
+  }
+
+  @Test
   void test_databaseScope_spansAllSchemas(TestNamespace ns) throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schemaA = DatabaseSchemaTestFactory.createSimple(ns, service);

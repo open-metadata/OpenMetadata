@@ -15,8 +15,12 @@
 /**
  * Deprecation guard for the Less → Tailwind and raw-SVG → core-icons migrations.
  *
- * Enforces "no NEW debt": fail if a change adds a raw `.svg` under
- * `assets/svg` or a new import of one. New `.less` files are reported but do
+ * Enforces "no NEW debt": fail on added --om-* stylesheet declarations or
+ * increased references, a raw `.svg` added under `assets/svg` or a new import
+ * of one, and style debt on ADDED lines — raw Tailwind palette classes,
+ * hardcoded hex colours, and inline `style={{ … }}` (semantic tokens carry
+ * dark mode; these bypass it). A deliberate exception is suppressed with
+ * `style-guard-allow` on the line, with a reason alongside. New `.less` files are reported but do
  * NOT fail the guard while the app-mode migration still ships `.less` for the
  * AI shell. Existing usage is untouched and migrates over time. Test files may
  * import the assets they exercise.
@@ -25,6 +29,7 @@
  *   node scripts/tw-deprecation-guard.js <baseRef>    # vs a base branch (CI)
  */
 const { execSync, execFileSync } = require('child_process');
+const path = require('path');
 
 const base = process.argv[2];
 const diffArgs = base ? `${base}...HEAD` : '--cached';
@@ -88,7 +93,7 @@ function parseSvgImports(content) {
 
 function newSvgImports() {
   const hits = [];
-  for (const { before, after } of changedTsFiles()) {
+  for (const { before, after } of changedFiles(['*.ts', '*.tsx'])) {
     if (/\.(?:test|spec)\.tsx?$/.test(after)) {
       continue;
     }
@@ -106,10 +111,136 @@ function newSvgImports() {
   return hits;
 }
 
-// List of changed .ts/.tsx files, as { before, after } repo-relative paths
+const STYLE_ALLOW_TOKEN = 'style-guard-allow';
+
+// A bare token is not an exception — it needs a stated reason on the line
+// (`style-guard-allow: chart lib needs literal colours`), so reviewers can
+// tell why the added debt is deliberate.
+const STYLE_ALLOW_RE = /style-guard-allow\s*[:\-—–]\s*\S+/;
+
+const STYLE_EXEMPT_PATH =
+  /\.(?:test|spec|stories)\.tsx?$|(^|\/)src\/generated\/|(^|\/)scripts\//;
+
+// The raw-palette vocabulary is imported from the no-non-adaptive-palette
+// ESLint rule (eslint-rules/openmetadata-ui-patterns.mjs), the single source
+// for palette families/props/shades — so `tw:bg-brand-500`, `tw:text-error-600`
+// and multi-word families like `gray-blue` fail here exactly as the rule
+// recognises them. Matching mirrors the rule: take each `tw:` class token's
+// LAST variant segment (so `tw:[&_button]:bg-blue-50` and `tw:!bg-gray-100`
+// match regardless of variant syntax) and test it against the palette core.
+let PALETTE_CORE; // built in main() from the dynamic import (this file is CJS)
+
+async function loadPaletteCore() {
+  const { pathToFileURL } = require('url');
+  const rulePath = path.join(__dirname, '..', 'eslint-rules', 'openmetadata-ui-patterns.mjs');
+  const { PALETTE_FAMILIES, COLOR_PROP, SHADE } = await import(pathToFileURL(rulePath));
+  return new RegExp(
+    `^${COLOR_PROP}-(?:${PALETTE_FAMILIES.join('|')})-${SHADE}(?:/\\d{1,3})?$`
+  );
+}
+
+function hasRawPaletteClass(line) {
+  const tokens = line.match(/tw:[^\s"'\\`]+/g) || [];
+  return tokens.some((token) => {
+    const segments = token.slice(3).split(':');
+    // Strip Tailwind's important modifier in both positions (tw:!bg-x, tw:bg-x!).
+    const last = segments.pop().replace(/^!/, '').replace(/!$/, '');
+    // Mirror the ESLint rule's exemption: a `dark:` class is a deliberate
+    // dark-only override, not a bug (openmetadata-ui-patterns.mjs classify()).
+    return !segments.includes('dark') && PALETTE_CORE.test(last);
+  });
+}
+
+// A comment explaining a colour choice (e.g. "// matches brand #3E7BC2") is
+// documentation, not a rendered colour — the hex check skips comment lines.
+function isCommentLine(line) {
+  return /^\s*(\/\/|\/?\*)/.test(line);
+}
+
+const STYLE_LINE_CHECKS = [
+  {
+    name: 'raw-palette',
+    test: (line) => hasRawPaletteClass(line),
+    why: 'raw Tailwind palette class — use a semantic token (docs/colors.md; vocabulary from the no-non-adaptive-palette rule)',
+  },
+  {
+    name: 'hex-colour',
+    test: (line) =>
+      !isCommentLine(line) &&
+      /(?<!href=["'\\`])#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b(?=[^\w]|$)/.test(line),
+    why: 'hardcoded hex colour — use a semantic design token (docs/colors.md)',
+  },
+  {
+    name: 'inline-style',
+    test: (line) => /style=\{\{/.test(line),
+    why: 'inline style object — use tw: utilities or the core component prop',
+  },
+];
+
+// Style debt on ADDED lines of src .ts/.tsx. Added-lines scoping keeps the
+// backlog zero by construction: existing debt never blocks, new debt always does.
+function newStyleDebt() {
+  const out = execFileSync(
+    'git',
+    [
+      'diff',
+      ...(base ? [diffArgs] : ['--cached']),
+      '--unified=0',
+      '--',
+      ':(top)openmetadata-ui/src/main/resources/ui/src',
+    ],
+    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
+  );
+  const hits = [];
+  let file = '';
+  let line = 0;
+  for (const raw of out.split('\n')) {
+    if (raw.startsWith('+++ b/')) {
+      file = raw.slice(6);
+      continue;
+    }
+    const hunk = raw.match(/^@@ -\d+(?:,\d+)? \+(\d+)/);
+    if (hunk) {
+      line = Number(hunk[1]);
+      continue;
+    }
+    if (!raw.startsWith('+') || raw.startsWith('+++')) {
+      continue;
+    }
+    const added = raw.slice(1);
+    const current = line;
+    line += 1;
+    if (
+      !/\.tsx?$/.test(file) ||
+      STYLE_EXEMPT_PATH.test(file) ||
+      STYLE_ALLOW_RE.test(added)
+    ) {
+      continue;
+    }
+    for (const check of STYLE_LINE_CHECKS) {
+      if (check.test(added)) {
+        hits.push(`${file}:${current}  [${check.name}] ${check.why}`);
+      }
+    }
+  }
+  return hits;
+}
+
+// Changed files as { before, after } repo-relative paths
 // (they differ only for detected renames).
-function changedTsFiles() {
-  const out = sh(`git diff ${diffArgs} --diff-filter=ACMRT --name-status -- '*.ts' '*.tsx'`);
+function changedFiles(patterns) {
+  const out = execFileSync(
+    'git',
+    [
+      'diff',
+      ...(base ? [diffArgs] : ['--cached']),
+      '--diff-filter=ACMRT',
+      '--name-status',
+      '--',
+      ...patterns,
+    ],
+    { encoding: 'utf8' }
+  );
   const files = [];
   for (const line of out.split('\n')) {
     if (!line.trim()) {
@@ -158,13 +289,45 @@ function getAfterContent(path) {
   return gitShow(base ? `HEAD:${path}` : `:${path}`);
 }
 
-function main() {
+function omTokenUses(content) {
+  const text = content.replace(/\/\*[\s\S]*?\*\/|(^|\s)\/\/[^\n]*/g, '$1');
+  const uses = new Map();
+  for (const [, token] of text.matchAll(/(--om-[\w-]+)\s*:/g)) {
+    // Light and dark declarations of an existing alias are one compatibility token.
+    uses.set(`declaration ${token}`, 1);
+  }
+  for (const [, token] of text.matchAll(
+    /var\(\s*(--om-[\w-]+)\s*(?=[),\s])/g
+  )) {
+    const key = `reference ${token}`;
+    uses.set(key, (uses.get(key) || 0) + 1);
+  }
+
+  return uses;
+}
+
+function newOmTokenUses() {
+  return changedFiles(['*.less', '*.css']).flatMap(({ before, after }) => {
+    const previous = omTokenUses(getBeforeContent(before));
+
+    return [...omTokenUses(getAfterContent(after))]
+      .filter(([key, count]) => count > (previous.get(key) || 0))
+      .map(([key]) => `${after}: ${key}`);
+  });
+}
+
+async function main() {
+  PALETTE_CORE = await loadPaletteCore();
   const less = newLessFiles();
   const svgFiles = newSvgFiles();
   const svgImports = newSvgImports();
+  const omTokens = newOmTokenUses();
+  const styleDebt = newStyleDebt();
   // New `.less` files are reported but do NOT fail the guard — the app-mode
-  // migration still lands `.less` for the AI shell. New svg debt blocks.
-  const problems = svgFiles.length + svgImports.length;
+  // migration still lands `.less` for the AI shell. New SVG, token and style
+  // debt blocks.
+  const problems =
+    svgFiles.length + svgImports.length + omTokens.length + styleDebt.length;
 
   if (less.length) {
     process.stderr.write(C.gray(`\nⓘ New .less file(s) detected (allowed for now — prefer Tailwind (tw:) + UntitledUI):\n`));
@@ -178,21 +341,47 @@ function main() {
     process.stderr.write(C.red(`\n✖ New import(s) of raw .svg from assets/svg are not allowed — use @openmetadata/ui-core-components/icons:\n`));
     svgImports.forEach((h) => process.stderr.write(`    ${h.file}:  ${h.path}\n`));
   }
+  if (omTokens.length) {
+    process.stderr.write(
+      C.red(
+        '\n✖ New --om-* declarations or references are not allowed; use --tw-* theme variables:\n'
+      )
+    );
+    omTokens.forEach((hit) => process.stderr.write(`    ${hit}\n`));
+  }
+
+  if (styleDebt.length) {
+    process.stderr.write(
+      C.red(
+        `\n\u2716 New style debt on added lines (suppress a deliberate exception with \`${STYLE_ALLOW_TOKEN}\` + a reason):\n`
+      )
+    );
+    styleDebt.forEach((hit) => process.stderr.write(`    ${hit}\n`));
+  }
 
   if (problems) {
     process.stderr.write(
-      C.gray(`\nLess and raw SVG icons are deprecated. See specs/ and CLAUDE.md. Existing usage is fine; do not add more.\n`)
+      C.gray(`\nLegacy --om-* tokens and raw SVG icons are deprecated. See specs/ and AGENTS.md. Preserve existing consumers; do not add new usage.\n`)
     );
     process.exit(1);
   }
-  process.stdout.write(C.green('✔ No new raw-SVG imports.\n'));
+  process.stdout.write(C.green('✔ No new raw-SVG imports or --om-* token usage.\n'));
 }
 
 if (require.main === module) {
-  main();
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 }
 
 module.exports = {
+  loadPaletteCore,
+  setPaletteCore: (re) => {
+    PALETTE_CORE = re;
+  },
+  hasRawPaletteClass,
+  STYLE_ALLOW_RE,
   newLessFiles,
   newSvgFiles,
   newSvgImports,

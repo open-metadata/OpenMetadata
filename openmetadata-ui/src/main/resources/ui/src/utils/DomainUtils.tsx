@@ -17,11 +17,11 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
+import { Globe01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { get, isUndefined, noop } from 'lodash';
 import { Fragment, lazy, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ReactComponent as DomainIcon } from '../assets/svg/entity/domain.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import type {
@@ -32,6 +32,7 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
 import { AssetsOfEntity } from '../enums/Assets.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
@@ -58,6 +59,12 @@ const CustomPropertyTable = withSuspenseFallback(
   props: CustomPropertyProps<T>
 ) => JSX.Element;
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import(
@@ -283,8 +290,10 @@ export const getDomainDetailTabs = ({
           },
           {
             label: (
-              <TabsLabel
+              <ActivityFeedTabLabel
                 count={feedCount?.totalCount ?? 0}
+                entityType={EntityType.DOMAIN}
+                fqn={domain.fullyQualifiedName}
                 id={EntityTabs.ACTIVITY_FEED}
                 isActive={activeTab === EntityTabs.ACTIVITY_FEED}
                 name={get(
@@ -352,8 +361,7 @@ export const getDomainDetailTabs = ({
                       handleClosePanel={() => setPreviewAsset(undefined)}
                     />
                   ),
-                  minWidth: 400,
-                  flex: 0.33,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.ENTITY_SUMMARY_PANEL,
                   className:
                     'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
                 }}
@@ -409,7 +417,7 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
 
 export const getDomainIcon = (iconURL?: string) => (
   <Icon
-    fallback={<DomainIcon className="tw:text-quaternary" />}
+    fallback={<Globe01 className="tw:text-quaternary" size={24} />}
     iconValue={iconURL}
     imageClassName="tw:h-6 tw:w-6 tw:text-quaternary"
     size={24}

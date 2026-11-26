@@ -24,6 +24,7 @@ import {
 import type { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import { EXTERNAL_CATEGORY_OPTIONS } from '../../constants/Alerts.constants';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { MASKED_PASSWORD_VALUE } from '../../constants/Secrets.constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import type { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
@@ -36,9 +37,11 @@ import {
   Destination,
   SubscriptionCategory,
   SubscriptionType,
+  Type,
   type Webhook,
 } from '../../generated/events/eventSubscription';
-import type { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import type { ModifiedDestination } from '../../utils/AlertsClassBase.interface';
+import type { ModifiedWebhookConfig } from '../AlertsClassBase.interface';
 import { t } from '../i18next/LocalUtil';
 
 export const getFunctionDisplayName = (func: string): string => {
@@ -58,27 +61,6 @@ export const getFunctionDisplayName = (func: string): string => {
   };
 
   return displayNameByFunction[func] ?? '';
-};
-
-export const getAlertActionTypeDisplayName = (
-  alertActionType: SubscriptionType
-) => {
-  switch (alertActionType) {
-    case SubscriptionType.ActivityFeed:
-      return t('label.activity-feed-plural');
-    case SubscriptionType.Email:
-      return t('label.email');
-    case SubscriptionType.Webhook:
-      return t('label.webhook');
-    case SubscriptionType.Slack:
-      return t('label.slack');
-    case SubscriptionType.MSTeams:
-      return t('label.ms-team-plural');
-    case SubscriptionType.GChat:
-      return t('label.g-chat');
-    default:
-      return '';
-  }
 };
 
 export const getDisplayNameForEntities = (entity: string) => {
@@ -349,9 +331,20 @@ export const getChangeEventDataFromTypedEvent = (
   };
 };
 
+const alertStatusOf = (enabled?: boolean) => {
+  const statusKey = enabled ? 'label.enabled' : 'label.disabled';
+
+  return isUndefined(enabled) ? undefined : t(statusKey);
+};
+
 export const getDiagnosticItems = (
   diagnosticData: EventSubscriptionDiagnosticInfo | undefined
 ) => [
+  {
+    key: t('label.status'),
+    value: alertStatusOf(diagnosticData?.enabled),
+    description: t('message.alert-status-description'),
+  },
   {
     key: t('label.latest-offset'),
     value: diagnosticData?.latestOffset,
@@ -385,7 +378,7 @@ export const getDiagnosticItems = (
 ];
 
 /** Formats a diagnostic value for display: Yes/No for flags, a placeholder when unset. */
-export const formatDiagnosticValue = (value?: number | boolean) => {
+export const formatDiagnosticValue = (value?: number | boolean | string) => {
   if (isBoolean(value)) {
     return t(value ? 'label.yes' : 'label.no');
   }
@@ -438,3 +431,63 @@ export const formatEventCount = (
   count: number | undefined,
   isLowerBound?: boolean
 ): string => `${count ?? 0}${isLowerBound ? '+' : ''}`;
+
+const SECRET_AUTH_FIELDS = ['secretKey', 'clientId', 'clientSecret'];
+
+const withoutMask = (value: unknown) =>
+  value === MASKED_PASSWORD_VALUE ? '' : value;
+
+/**
+ * The webhook settings with every secret that still shows the mask emptied. A destination whose
+ * URL or token URL changes sends its secrets somewhere new, so each one must be entered again;
+ * the form then asks for every emptied field before it saves.
+ */
+export const clearMaskedSecrets = (
+  config?: ModifiedWebhookConfig
+): ModifiedWebhookConfig | undefined => {
+  if (!config) {
+    return config;
+  }
+  const authType = (config.authType ?? {}) as Record<string, unknown>;
+  const clearedAuth = Object.fromEntries(
+    SECRET_AUTH_FIELDS.filter((key) => key in authType).map((key) => [
+      key,
+      withoutMask(authType[key]),
+    ])
+  );
+
+  return {
+    ...config,
+    ...(config.endpoint !== undefined && {
+      endpoint: withoutMask(config.endpoint) as string,
+    }),
+    ...(config.headers && {
+      headers: config.headers.map((header) => ({
+        ...header,
+        value: withoutMask(header.value) as string,
+      })),
+    }),
+    ...(config.authType && {
+      authType: { ...config.authType, ...clearedAuth },
+    }),
+  };
+};
+
+/**
+ * The webhook settings once the authentication type changes. Only the new type is kept, so no
+ * credential of the old type is stored beside it. OAuth2 alone sends through a token URL, so
+ * leaving or choosing it changes where the secrets go, and every hidden value is asked for again.
+ */
+export const withAuthType = (
+  config: ModifiedWebhookConfig | undefined,
+  type: Type
+): ModifiedWebhookConfig => {
+  const previousType = (config?.authType as { type?: Type } | undefined)?.type;
+  if (previousType === type) {
+    return config ?? {};
+  }
+  const switched = { ...config, authType: { type } };
+  const changesTokenUrl = previousType === Type.Oauth2 || type === Type.Oauth2;
+
+  return changesTokenUrl ? clearMaskedSecrets(switched) ?? switched : switched;
+};

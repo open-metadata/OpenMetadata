@@ -1,6 +1,10 @@
 package org.openmetadata.service.socket;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
@@ -14,6 +18,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Claim;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;
@@ -38,6 +44,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -50,6 +57,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
+import org.openmetadata.service.security.session.SessionStore;
 import org.openmetadata.service.security.session.UserSession;
 
 @ExtendWith(MockitoExtension.class)
@@ -184,6 +192,54 @@ class SocketAddressFilterTest {
         "session-1", wrappedRequest.getHeader("SessionId"));
   }
 
+  /**
+   * WebSocketManager closes a socket that registers under a provider other than the configured one,
+   * so the stamp must name the provider whose filter validated the handshake, never the client's.
+   */
+  @Test
+  void handshakeIsStampedWithTheProviderOfTheFilterThatValidatedIt() throws Exception {
+    UUID tokenUserId = UUID.randomUUID();
+    mockRequest("userId=" + tokenUserId, "Bearer token");
+    mockTokenClaims("sam", "session-1");
+    when(jwtFilter.getProviderType()).thenReturn(AuthProvider.GOOGLE);
+    when(sessionService.getFreshSessionById("session-1"))
+        .thenReturn(Optional.of(activeSession("session-1", "sam")));
+    lenient().when(request.getHeader("AuthProvider")).thenReturn("azure");
+    lenient()
+        .when(request.getHeaders("AuthProvider"))
+        .thenReturn(java.util.Collections.enumeration(List.of("azure")));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      filter.doFilter(request, response, chain);
+    }
+
+    ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
+    verify(chain).doFilter(requestCaptor.capture(), eq(response));
+    HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
+    assertEquals(
+        List.of("google"), java.util.Collections.list(wrappedRequest.getHeaders("AuthProvider")));
+  }
+
+  /**
+   * WebSocketManager judges a registering or swept socket against this, so it names the provider
+   * of the configuration the filter validates under, and none when it has no configuration.
+   */
+  @Test
+  void validatingProviderNamesTheProviderTheFilterValidatesUnder() {
+    when(jwtFilter.getProviderType()).thenReturn(AuthProvider.GOOGLE);
+
+    assertEquals(AuthProvider.GOOGLE, filter.validatingProvider());
+
+    filter.updateConfiguration(authConfig, null);
+
+    assertNull(filter.validatingProvider());
+    assertNull(new SocketAddressFilter().validatingProvider());
+  }
+
   @Test
   void secureSocketRejectsInactiveJwtSessionWhenCookieIsMissing() throws Exception {
     UUID tokenUserId = UUID.randomUUID();
@@ -244,7 +300,7 @@ class SocketAddressFilterTest {
   void secureSocketAsksToRetryWhenTheTokenCannotBeConfirmed() throws Exception {
     mockRequest("userId=" + UUID.randomUUID(), "Bearer token");
     when(jwtFilter.verifySignatureOnly("token")).thenReturn(Map.of("sub", mock(Claim.class)));
-    when(jwtFilter.resolveUserName(any())).thenReturn("sam");
+    when(jwtFilter.resolveUserName(any(), anyString())).thenReturn("sam");
     doThrow(new CredentialUnavailableException("No read slot for sam", 2, null))
         .when(jwtFilter)
         .checkValidationsForToken(any(), eq("token"), eq("sam"), isNull());
@@ -388,7 +444,7 @@ class SocketAddressFilterTest {
     UUID tokenUserId = UUID.randomUUID();
     mockRequest("userId=" + tokenUserId, "Bearer token");
     when(jwtFilter.verifySignatureOnly("token")).thenReturn(Map.of("sub", mock(Claim.class)));
-    when(jwtFilter.resolveUserName(any())).thenReturn("sam");
+    when(jwtFilter.resolveUserName(any(), anyString())).thenReturn("sam");
     // Lenient: with the fix the wrapper never consults the client's SessionId at all.
     lenient().when(request.getHeader("SessionId")).thenReturn("attacker-session");
     lenient()
@@ -461,6 +517,46 @@ class SocketAddressFilterTest {
     verify(chain, never()).doFilter(any(), any());
   }
 
+  /**
+   * REST already rejects a session that the swapped-out provider issued; its cookie must not reopen
+   * the push feed either.
+   */
+  @Test
+  void cookieHandshakeIsRejectedWhenItsSessionsProviderIsNoLongerConfigured() {
+    String sessionId = validSessionId('p');
+    SocketAddressFilter swapped =
+        new SocketAddressFilter(
+            authConfig,
+            authorizerConfig,
+            sessionServiceConfiguredWith(
+                AuthProvider.GOOGLE, sessionIssuedBy(AuthProvider.BASIC, sessionId)));
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, sessionId)});
+
+    HandshakeRejectedException rejected =
+        assertThrows(HandshakeRejectedException.class, () -> swapped.authenticate(request));
+
+    assertEquals(HttpServletResponse.SC_UNAUTHORIZED, rejected.getStatus());
+    assertEquals("Session is no longer active", rejected.getMessage());
+  }
+
+  @Test
+  void cookieHandshakeAcceptsTheOtherNativePasswordProviderName() {
+    String sessionId = validSessionId('o');
+    SocketAddressFilter renamed =
+        new SocketAddressFilter(
+            authConfig,
+            authorizerConfig,
+            sessionServiceConfiguredWith(
+                AuthProvider.BASIC, sessionIssuedBy(AuthProvider.OPENMETADATA, sessionId)));
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, sessionId)});
+
+    HandshakeIdentity identity = renamed.authenticate(request);
+
+    assertEquals(sessionId, identity.sessionId());
+  }
+
   /** Externally-issued tokens carry no session claim and are accepted on token validity alone. */
   @Test
   void externalTokenWithoutSessionClaimIsAcceptedWithoutStoreValidation() throws Exception {
@@ -469,7 +565,7 @@ class SocketAddressFilterTest {
     UUID tokenUserId = UUID.randomUUID();
     mockRequest("userId=" + tokenUserId, "Bearer token");
     when(jwtFilter.verifySignatureOnly("token")).thenReturn(Map.of("sub", mock(Claim.class)));
-    when(jwtFilter.resolveUserName(any())).thenReturn("sam");
+    when(jwtFilter.resolveUserName(any(), anyString())).thenReturn("sam");
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock
@@ -492,9 +588,9 @@ class SocketAddressFilterTest {
   void emailFirstTokenBindsSocketToStoredUsername() throws Exception {
     when(authConfig.getEmailClaim()).thenReturn("email");
     JwtFilter emailFirstJwtFilter = spy(new JwtFilter(authConfig, authorizerConfig));
-    Claim emailClaim = mock(Claim.class);
-    when(emailClaim.asString()).thenReturn("socket.user@company.com");
-    doReturn(Map.of("email", emailClaim)).when(emailFirstJwtFilter).verifySignatureOnly("token");
+    String token =
+        JWT.create().withClaim("email", "socket.user@company.com").sign(Algorithm.none());
+    doReturn(JWT.decode(token).getClaims()).when(emailFirstJwtFilter).verifySignatureOnly(token);
     doNothing().when(emailFirstJwtFilter).checkValidationsForToken(any(), any(), any(), isNull());
     SocketAddressFilter emailFirstFilter = defaultConfigFilter();
     Field jwtFilterField = SocketAddressFilter.class.getDeclaredField("jwtFilter");
@@ -505,7 +601,7 @@ class SocketAddressFilterTest {
     UserRepository userRepository = mock(UserRepository.class);
     when(userRepository.getActiveUserByEmailForAuth(eq("socket.user@company.com"), any()))
         .thenReturn(new User().withName("socket.user_x7k2"));
-    mockRequest("userId=" + storedUserId + "&token=token", null);
+    mockRequest("userId=" + storedUserId + "&token=" + token, null);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getUserRepository).thenReturn(userRepository);
@@ -621,7 +717,7 @@ class SocketAddressFilterTest {
     when(sessionClaim.asString()).thenReturn(sessionId);
     when(jwtFilter.verifySignatureOnly("token"))
         .thenReturn(Map.of(JWTTokenGenerator.SESSION_ID_CLAIM, sessionClaim));
-    when(jwtFilter.resolveUserName(any())).thenReturn(username);
+    when(jwtFilter.resolveUserName(any(), anyString())).thenReturn(username);
   }
 
   private UserSession activeSession(String sessionId, String username) {
@@ -638,6 +734,20 @@ class SocketAddressFilterTest {
         .expiresAt(now + 60_000)
         .idleExpiresAt(now + 60_000)
         .build();
+  }
+
+  private UserSession sessionIssuedBy(AuthProvider provider, String sessionId) {
+    return activeSession(sessionId, "sam", UUID.randomUUID().toString()).toBuilder()
+        .provider(provider.value())
+        .build();
+  }
+
+  private static SessionService sessionServiceConfiguredWith(
+      AuthProvider configuredProvider, UserSession stored) {
+    SessionStore store = mock(SessionStore.class);
+    when(store.findById(stored.getId())).thenReturn(Optional.of(stored));
+    return new SessionService(
+        new AuthenticationConfiguration().withProvider(configuredProvider), store);
   }
 
   private SocketAddressFilter defaultConfigFilter() {

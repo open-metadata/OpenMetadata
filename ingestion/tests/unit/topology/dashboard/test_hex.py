@@ -383,12 +383,6 @@ class TestHexSource(TestCase):
         results = list(self.hex_source.yield_dashboard_lineage_details(SAMPLE_PROJECT))
         self.assertEqual(len(results), 0)
 
-    def test_yield_dashboard_chart(self):
-        """Test that Hex doesn't yield separate charts"""
-        # yield_dashboard_chart returns None, not an iterable
-        result = self.hex_source.yield_dashboard_chart(SAMPLE_PROJECT)
-        self.assertIsNone(result)
-
     @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
     def test_create_source(self, mock_create_connection, mock_run_test_connection):

@@ -15,6 +15,7 @@ package org.openmetadata.service.governance.approval;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
@@ -25,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -92,30 +94,157 @@ public final class MutationPlanner {
     return new ConflictSplit(applicable, gatedConflicts, dropped);
   }
 
+  /**
+   * The ops of two changes from one requester as one change. A later op on the same target wins,
+   * except that a later field change over an earlier one is replayed onto the earlier value, so a
+   * structured field such as {@code columns} keeps the edits of both.
+   */
   public static List<MutationOp> merge(List<MutationOp> prior, List<MutationOp> next) {
     Map<String, MutationOp> byTarget = new LinkedHashMap<>();
     prior.forEach(op -> byTarget.put(targetOf(op), op));
-    next.forEach(op -> byTarget.put(targetOf(op), op));
+    next.forEach(op -> byTarget.merge(targetOf(op), op, MutationPlanner::combine));
     return List.copyOf(byTarget.values());
   }
 
   /**
    * {@code ops} restated against the asset as published now: a field change whose base no longer
-   * matches the published value takes that value as its base, and one the asset already shows is
-   * left out.
+   * matches the published value takes that value as its base and has its own edits replayed onto
+   * it, and one the asset already shows is left out.
    */
   public static List<MutationOp> rebase(JsonNode current, List<MutationOp> ops) {
     List<MutationOp> rebased = new ArrayList<>();
     for (MutationOp op : ops) {
-      JsonNode published = current.get(op.getField());
+      JsonNode published = orNull(current.get(op.getField()));
+      JsonNode restated = replayed(op, published);
       if (!drifted(current, op)) {
         rebased.add(op);
-      } else if (!sameValue(published, JsonUtils.readTree(op.getValue()))) {
+      } else if (!sameValue(published, restated)) {
         rebased.add(
-            JsonUtils.deepCopy(op, MutationOp.class).withBaseValue(orNull(published).toString()));
+            JsonUtils.deepCopy(op, MutationOp.class)
+                .withBaseValue(published.toString())
+                .withValue(restated.toString()));
       }
     }
     return rebased;
+  }
+
+  private static MutationOp combine(MutationOp prior, MutationOp next) {
+    boolean bothSet = prior.getOp() == MutationOpType.SET && next.getOp() == MutationOpType.SET;
+    return bothSet
+        ? JsonUtils.deepCopy(next, MutationOp.class)
+            .withBaseValue(prior.getBaseValue())
+            .withValue(replayed(next, valueOf(prior.getValue())).toString())
+        : next;
+  }
+
+  /** The edits {@code op} makes to its base value, replayed onto {@code onto}. */
+  private static JsonNode replayed(MutationOp op, JsonNode onto) {
+    return threeWay(valueOf(op.getBaseValue()), onto, valueOf(op.getValue()));
+  }
+
+  private static JsonNode valueOf(String json) {
+    return json == null ? NullNode.getInstance() : orNull(JsonUtils.readTree(json));
+  }
+
+  /**
+   * {@code base} changed into both {@code ours} and {@code theirs}, as one value. Objects merge key
+   * by key and lists whose elements all carry an identity or a name merge element by element, so
+   * edits to different parts both survive. Wherever both sides changed the same part differently,
+   * {@code theirs} wins. Parts are compared by content, so an edit to an element's other fields,
+   * such as a tag label's state, counts as a change to that element.
+   */
+  static JsonNode threeWay(JsonNode base, JsonNode ours, JsonNode theirs) {
+    JsonNode merged = theirs;
+    if (sameContent(base, theirs)) {
+      merged = ours;
+    } else if (!sameContent(base, ours) && !sameContent(ours, theirs)) {
+      merged = mergeBothChanged(base, ours, theirs);
+    }
+    return merged;
+  }
+
+  private static JsonNode mergeBothChanged(JsonNode base, JsonNode ours, JsonNode theirs) {
+    JsonNode merged = theirs;
+    boolean sameElement = Objects.equals(identityOf(ours), identityOf(theirs));
+    if (ours.isObject() && theirs.isObject() && sameElement && (base.isObject() || base.isNull())) {
+      merged = mergeObjects(base, ours, theirs);
+    } else if (isNamedList(base) && isNamedList(ours) && isNamedList(theirs)) {
+      merged = mergeLists(base, ours, theirs);
+    }
+    return merged;
+  }
+
+  private static ObjectNode mergeObjects(JsonNode base, JsonNode ours, JsonNode theirs) {
+    ObjectNode merged = JsonNodeFactory.instance.objectNode();
+    Set<String> keys = new LinkedHashSet<>();
+    ours.fieldNames().forEachRemaining(keys::add);
+    theirs.fieldNames().forEachRemaining(keys::add);
+    for (String key : keys) {
+      JsonNode value =
+          threeWay(orNull(base.get(key)), orNull(ours.get(key)), orNull(theirs.get(key)));
+      if (!value.isNull() || (ours.has(key) && theirs.has(key))) {
+        merged.set(key, value);
+      }
+    }
+    return merged;
+  }
+
+  /**
+   * Element by element, in our order with their additions after. An element one side removed stays
+   * removed, unless we removed it and they changed it.
+   */
+  private static ArrayNode mergeLists(JsonNode base, JsonNode ours, JsonNode theirs) {
+    Map<String, JsonNode> baseByName = byName(base);
+    Map<String, JsonNode> oursByName = byName(ours);
+    Map<String, JsonNode> theirsByName = byName(theirs);
+    Set<String> names = new LinkedHashSet<>(oursByName.keySet());
+    names.addAll(theirsByName.keySet());
+    ArrayNode merged = JsonNodeFactory.instance.arrayNode();
+    for (String name : names) {
+      JsonNode element =
+          mergeElement(baseByName.get(name), oursByName.get(name), theirsByName.get(name));
+      if (element != null) {
+        merged.add(element);
+      }
+    }
+    return merged;
+  }
+
+  /** One element as merged, or null when it is removed. */
+  private static JsonNode mergeElement(JsonNode base, JsonNode ours, JsonNode theirs) {
+    JsonNode element = null;
+    if (ours != null && theirs != null) {
+      element = threeWay(orNull(base), ours, theirs);
+    } else if (base == null) {
+      element = ours != null ? ours : theirs;
+    } else if (theirs != null && !sameContent(base, theirs)) {
+      element = theirs;
+    }
+    return element;
+  }
+
+  private static boolean isNamedList(JsonNode value) {
+    boolean named = value.isNull() || value.isArray();
+    for (JsonNode element : value) {
+      named = named && nameOf(element) != null;
+    }
+    return named;
+  }
+
+  private static Map<String, JsonNode> byName(JsonNode list) {
+    Map<String, JsonNode> byName = new LinkedHashMap<>();
+    for (JsonNode element : list) {
+      byName.put(nameOf(element), element);
+    }
+    return byName;
+  }
+
+  /** An element's identity, or else its name: a column has no identity but is unique by name. */
+  private static String nameOf(JsonNode element) {
+    String identity = identityOf(element);
+    return identity != null || !element.path(REFERENCE_NAME).isTextual()
+        ? identity
+        : element.get(REFERENCE_NAME).asText();
   }
 
   public static boolean hasFieldChange(List<MutationOp> ops) {
@@ -315,6 +444,10 @@ public final class MutationPlanner {
 
   private static boolean sameValue(JsonNode left, JsonNode right) {
     return Objects.equals(normalize(left), normalize(right));
+  }
+
+  private static boolean sameContent(JsonNode left, JsonNode right) {
+    return orNull(left).equals(orNull(right));
   }
 
   private static JsonNode normalize(JsonNode value) {

@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
@@ -23,8 +25,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 
@@ -69,6 +73,24 @@ class ElasticSearchBulkSinkSimpleTest {
   }
 
   @Test
+  void testCountsSuccessfulOntologyBatch() throws Exception {
+    var entities = List.of(new OntologyConcept(), new OntologyConcept());
+    when(searchRepository.getIndexMapping(Entity.ONTOLOGY_CONCEPT)).thenReturn(indexMapping);
+    when(searchRepository.writeSpecializedIndexBatch(
+            Entity.ONTOLOGY_CONCEPT, entities, "test_index", null))
+        .thenReturn(true);
+
+    try {
+      elasticSearchBulkSink.write(entities, Map.of(ENTITY_TYPE_KEY, Entity.ONTOLOGY_CONCEPT));
+      var stats = elasticSearchBulkSink.getStats();
+      assertEquals(2, stats.getSuccessRecords());
+      assertEquals(2, stats.getTotalRecords());
+    } finally {
+      elasticSearchBulkSink.close();
+    }
+  }
+
+  @Test
   void testUpdateConfiguration() {
     elasticSearchBulkSink.updateBatchSize(20);
     assertEquals(20, elasticSearchBulkSink.getBatchSize());
@@ -93,13 +115,6 @@ class ElasticSearchBulkSinkSimpleTest {
     contextData.remove("recreateIndex");
     recreateIndex = (Boolean) contextData.getOrDefault("recreateIndex", false);
     assertEquals(false, recreateIndex);
-  }
-
-  @Test
-  void testIsVectorEmbeddingEnabledForEntity() {
-    assertEquals(false, elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("table"));
-    assertEquals(false, elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("user"));
-    assertEquals(false, elasticSearchBulkSink.isVectorEmbeddingEnabledForEntity("dashboard"));
   }
 
   /**

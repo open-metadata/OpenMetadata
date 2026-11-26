@@ -1,0 +1,58 @@
+name: Run Airflow API tests
+description: Start an OpenMetadata test stack, run the Airflow APIs suite, and report its results.
+inputs:
+  python-version:
+    description: Python interpreter for the API tests.
+    required: true
+  use-backend-image:
+    description: Use the shared backend image instead of building on this runner.
+    default: 'false'
+  collect-coverage:
+    description: Collect coverage for the nightly Sonar analysis.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Restore Maven dependencies
+      if: inputs.use-backend-image != 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+    - name: Start test environment
+      uses: ./.github/actions/setup-openmetadata-test-environment
+      with:
+        use-backend-image: ${{ inputs.use-backend-image }}
+        args: -m no-ui -i false -s ${{ inputs.use-backend-image }}
+        maven-args: -Dmaven.test.skip=true
+    - uses: ./.github/actions/setup-python
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Prepare generated models
+      run: |
+        sudo make install_antlr_cli
+        make generate ARGS=--python-only
+      shell: bash
+    - name: Run Airflow API tests
+      id: tests
+      env:
+        COLLECT_COVERAGE: ${{ inputs.collect-coverage }}
+      run: |
+        set -o pipefail
+        args=()
+        if [[ "$COLLECT_COVERAGE" == 'true' ]]; then
+          args+=(--coverage)
+        fi
+        make -C openmetadata-airflow-apis test ARGS="${args[*]}" 2>&1 | tee openmetadata-airflow-apis/airflow-apis-test-run.log
+      shell: bash
+    - name: Report test results
+      if: ${{ always() }}
+      uses: ./.github/actions/report-test-results
+      with:
+        step-outcome: ${{ steps.tests.outcome }}
+        exit-code-file: openmetadata-airflow-apis/airflow-apis-test-exit-code.txt
+        test-profile: airflow-apis
+        artifact-name: airflow-apis-test-results
+        working-directory: openmetadata-airflow-apis

@@ -1,15 +1,23 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.context.center.MemoryExtractionState.NEVER_EXTRACTED;
 import static org.openmetadata.service.jdbi3.FolderRepository.FOLDER_ENTITY;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
+import com.google.common.collect.Lists;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
@@ -18,10 +26,12 @@ import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.Folder;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -30,18 +40,31 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.cache.ListCountCache;
+import org.openmetadata.service.context.center.MemoryExtractionState;
+import org.openmetadata.service.context.center.MemorySourceLifecycle;
+import org.openmetadata.service.context.center.MemorySourceSharing;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
+import org.openmetadata.service.jdbi3.KnowledgeAssetDAOs.ContextFileDAO.FolderCount;
+import org.openmetadata.service.jdbi3.KnowledgeAssetDAOs.ContextFileDAO.FolderFile;
 import org.openmetadata.service.resources.drive.ContextFileResource;
+import org.openmetadata.service.resources.drive.ContextFileVisibility;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.RowDecisionGate;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-@Repository
+@Repository(name = "ContextFileRepository")
 public class ContextFileRepository extends EntityRepository<ContextFile> {
   public static final String CONTEXT_FILE_ENTITY = "contextFile";
+  // The folder is kept out of the stored JSON, so a patch loads it to derive the file's FQN.
+  private static final String PATCH_FIELDS = "folder";
   private static final String DUPLICATE_FILE_NAME_MESSAGE =
       "A file named '%s' already exists in this folder.";
   private static final String ARCHIVED_FILE_NAME_MESSAGE =
@@ -51,13 +74,16 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   private final ContextFileContentRepository contentRepository;
   private final CollectionDAO.ContextFileDAO contextFileDAO;
 
+  /** Files read per query while checking which ones a caller may see. */
+  private static final int VISIBILITY_READ_BATCH = 500;
+
   public ContextFileRepository(Jdbi jdbi) {
     super(
         ContextFileResource.COLLECTION_PATH,
         CONTEXT_FILE_ENTITY,
         ContextFile.class,
         jdbi.onDemand(CollectionDAO.class).contextFileDAO(),
-        "",
+        PATCH_FIELDS,
         "");
     supportsSearch = true;
     // NOTE: SearchIndexFactory registration handled by OpenMetadata core
@@ -65,6 +91,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     this.assetRepository = new AssetRepository(dao.assetDAO());
     this.contentRepository = new ContextFileContentRepository(jdbi);
     this.contextFileDAO = (CollectionDAO.ContextFileDAO) getDao();
+    fieldFetchers.put(NEVER_EXTRACTED, this::fetchAndSetNeverExtracted);
   }
 
   public AssetRepository getAssetRepository() {
@@ -73,6 +100,11 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
 
   public ContextFileContentRepository getContentRepository() {
     return contentRepository;
+  }
+
+  /** Reads the stored asset through the provider that owns its bytes, including on recovery. */
+  public CompletableFuture<InputStream> readAsset(Asset asset) {
+    return AssetServiceFactory.getService().read(asset);
   }
 
   @Override
@@ -88,6 +120,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
                   Entity.CONTEXT_MEMORY)
               .size());
     }
+    fetchAndSetNeverExtracted(List.of(file), fields);
   }
 
   @Override
@@ -96,6 +129,26 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     if (!fields.contains("memoryCount")) {
       file.setMemoryCount(null);
     }
+    if (!fields.contains(NEVER_EXTRACTED)) {
+      file.setNeverExtracted(null);
+    }
+  }
+
+  private void fetchAndSetNeverExtracted(List<ContextFile> files, EntityUtil.Fields fields) {
+    if (fields.contains(NEVER_EXTRACTED)) {
+      files.forEach(file -> file.setNeverExtracted(MemoryExtractionState.neverExtracted(file)));
+    }
+  }
+
+  /** neverExtracted is derived from the file's own state on every read that asks for it. */
+  @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of(NEVER_EXTRACTED);
+  }
+
+  @Override
+  protected List<String> getFieldsHiddenFromHistory() {
+    return List.of(NEVER_EXTRACTED);
   }
 
   @Override
@@ -120,6 +173,187 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
+  }
+
+  /**
+   * Files by id with {@code fields}, read without their extracted text: for checks over many files
+   * that never show it (e.g. counting the files a caller may see).
+   */
+  public List<ContextFile> getWithoutExtractedText(
+      List<UUID> ids, EntityUtil.Fields fields, Include include) {
+    List<ContextFile> files = contextFileDAO.findEntitiesWithoutExtractedText(ids, include);
+    setFieldsInBulk(fields, files);
+    return files;
+  }
+
+  /**
+   * How many live files in each of {@code folderIds} the caller may see. Without a rule that could
+   * refuse a file the listing allowed, files are counted by their sharing in SQL and only the Shared
+   * files the caller does not own are read; with one, every file is checked.
+   */
+  public Map<UUID, Integer> countVisibleByFolder(
+      List<UUID> folderIds,
+      SecurityContext securityContext,
+      ViewPermissionFilter rowCheck,
+      List<MetadataOperation> operations) {
+    List<String> ids = folderIds.stream().map(UUID::toString).toList();
+    return rowsMayDiffer(securityContext, operations)
+        ? countCheckedByFolder(ids, securityContext, rowCheck, operations)
+        : countSharedByFolder(ids, securityContext);
+  }
+
+  /** As {@link #countVisibleByFolder}, over the files {@code filter} lists. */
+  public int countVisible(
+      ListFilter filter,
+      SecurityContext securityContext,
+      ViewPermissionFilter rowCheck,
+      List<MetadataOperation> operations) {
+    if (rowsMayDiffer(securityContext, operations)) {
+      List<UUID> ids =
+          contextFileDAO.listKeys(filter, Integer.MAX_VALUE, true).stream()
+              .map(key -> UUID.fromString(key.id()))
+              .toList();
+      // The keys already follow the filter's include, so the read by id adds no condition.
+      return visibleIds(ids, Include.ALL, securityContext, rowCheck, operations).size();
+    }
+    String cond = filter.getConditionForEntity(contextFileDAO.getTableName());
+    Map<String, String> params = filter.getQueryParams();
+    String userId = callerId(securityContext);
+    int owns = Relationship.OWNS.ordinal();
+    List<UUID> shared =
+        contextFileDAO.listSharedFilesNotOwned(params, cond, userId, owns).stream()
+            .map(UUID::fromString)
+            .toList();
+    return contextFileDAO.countOpenFiles(params, cond)
+        + contextFileDAO.countOwnedRestrictedFiles(params, cond, userId, owns)
+        + sharedWithCaller(shared, Include.ALL, securityContext).size();
+  }
+
+  private Map<UUID, Integer> countSharedByFolder(
+      List<String> folderIds, SecurityContext securityContext) {
+    int contains = Relationship.CONTAINS.ordinal();
+    String userId = callerId(securityContext);
+    Map<UUID, Integer> counts = new HashMap<>();
+    addCounts(counts, contextFileDAO.countOpenFilesByFolder(folderIds, contains));
+    addCounts(
+        counts,
+        contextFileDAO.countOwnedRestrictedFilesByFolder(
+            folderIds, contains, userId, Relationship.OWNS.ordinal()));
+    foldersOfFilesSharedWithCaller(folderIds, userId, securityContext)
+        .forEach(folderId -> counts.merge(folderId, 1, Integer::sum));
+    return counts;
+  }
+
+  private static void addCounts(Map<UUID, Integer> counts, List<FolderCount> byFolder) {
+    byFolder.forEach(count -> counts.merge(count.folderId(), count.count(), Integer::sum));
+  }
+
+  /**
+   * The folder of each Shared file in {@code folderIds} that the caller does not own and whose
+   * sharing names them, once per file.
+   */
+  private List<UUID> foldersOfFilesSharedWithCaller(
+      List<String> folderIds, String userId, SecurityContext securityContext) {
+    List<FolderFile> shared =
+        contextFileDAO.listSharedFilesNotOwnedByFolder(
+            folderIds, Relationship.CONTAINS.ordinal(), userId, Relationship.OWNS.ordinal());
+    Set<UUID> visible =
+        sharedWithCaller(
+            shared.stream().map(FolderFile::fileId).toList(), Include.ALL, securityContext);
+    return shared.stream()
+        .filter(file -> visible.contains(file.fileId()))
+        .map(FolderFile::folderId)
+        .toList();
+  }
+
+  private Map<UUID, Integer> countCheckedByFolder(
+      List<String> folderIds,
+      SecurityContext securityContext,
+      ViewPermissionFilter rowCheck,
+      List<MetadataOperation> operations) {
+    List<CollectionDAO.EntityRelationshipObject> edges =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                folderIds, Relationship.CONTAINS.ordinal(), FOLDER_ENTITY, CONTEXT_FILE_ENTITY);
+    List<UUID> fileIds =
+        edges.stream().map(edge -> UUID.fromString(edge.getToId())).distinct().toList();
+    Set<UUID> visible =
+        visibleIds(fileIds, Include.NON_DELETED, securityContext, rowCheck, operations);
+    Map<UUID, Integer> counts = new HashMap<>();
+    edges.stream()
+        .filter(edge -> visible.contains(UUID.fromString(edge.getToId())))
+        .forEach(edge -> counts.merge(UUID.fromString(edge.getFromId()), 1, Integer::sum));
+    return counts;
+  }
+
+  /** Of {@code fileIds}, the ones the caller may read: the listing's row check, then sharing. */
+  private Set<UUID> visibleIds(
+      List<UUID> fileIds,
+      Include include,
+      SecurityContext securityContext,
+      ViewPermissionFilter rowCheck,
+      List<MetadataOperation> operations) {
+    EntityUtil.Fields fields =
+        ResourceContext.authorizationFields(
+            this, getFields(ContextFileVisibility.guardFields(null)));
+    Set<UUID> visible = new HashSet<>();
+    for (List<UUID> batch : Lists.partition(fileIds, VISIBILITY_READ_BATCH)) {
+      retainVisible(
+              getWithoutExtractedText(batch, fields, include),
+              securityContext,
+              rowCheck,
+              operations)
+          .forEach(file -> visible.add(file.getId()));
+    }
+    return visible;
+  }
+
+  /**
+   * Of {@code files}, loaded with at least their authorization fields, the ones the caller may
+   * read: the listing's row check when a rule could refuse one, then sharing.
+   */
+  public List<ContextFile> retainVisible(
+      List<ContextFile> files,
+      SecurityContext securityContext,
+      ViewPermissionFilter rowCheck,
+      List<MetadataOperation> operations) {
+    List<ContextFile> readable =
+        rowsMayDiffer(securityContext, operations)
+            ? rowCheck.retainPermitted(
+                securityContext, CONTEXT_FILE_ENTITY, this, files, operations)
+            : files;
+    return ContextFileVisibility.filterVisible(readable, securityContext);
+  }
+
+  /** Of the Shared files {@code fileIds}, the ones whose sharing names the caller. */
+  private Set<UUID> sharedWithCaller(
+      List<UUID> fileIds, Include include, SecurityContext securityContext) {
+    Set<UUID> visible = new HashSet<>();
+    for (List<UUID> batch : Lists.partition(fileIds, VISIBILITY_READ_BATCH)) {
+      ContextFileVisibility.filterVisible(
+              contextFileDAO.findEntitiesWithoutExtractedText(batch, include), securityContext)
+          .forEach(file -> visible.add(file.getId()));
+    }
+    return visible;
+  }
+
+  private static boolean rowsMayDiffer(
+      SecurityContext securityContext, List<MetadataOperation> operations) {
+    return RowDecisionGate.mayDiffer(
+        DefaultAuthorizer.getSubjectContext(securityContext), CONTEXT_FILE_ENTITY, operations);
+  }
+
+  /** The caller's user id, or an id no relationship holds when the caller is not a user. */
+  private static String callerId(SecurityContext securityContext) {
+    User user = DefaultAuthorizer.getSubjectContext(securityContext).user();
+    return user == null || user.getId() == null ? "" : user.getId().toString();
+  }
+
+  /** A context file outside a folder has its bare name, dots included, as its FQN. */
+  @Override
+  protected boolean nestsUnderUnrelatedFqns() {
+    return true;
   }
 
   @Override
@@ -167,6 +401,33 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   @Override
+  protected void storeEntityWithVersion(
+      ContextFile file, boolean update, Double expectedVersion, Long expectedUpdatedAt) {
+    if (expectedUpdatedAt == null) {
+      storeEntityWithVersion(file, update, expectedVersion);
+    } else {
+      EntityReference folder = file.getFolder();
+      file.withFolder(null);
+      try {
+        int updatedRows =
+            contextFileDAO.updateWithVersionAndTimestamp(
+                file.getId().toString(),
+                file.getFullyQualifiedName(),
+                serializeForStorage(file),
+                expectedVersion.toString(),
+                expectedUpdatedAt);
+        if (updatedRows == 0) {
+          throw new PreconditionFailedException(
+              "The entity has been modified by another user. Please refresh and retry.");
+        }
+        invalidate(file);
+      } finally {
+        file.withFolder(folder);
+      }
+    }
+  }
+
+  @Override
   public void storeRelationships(ContextFile file) {
     if (file.getFolder() != null) {
       addRelationship(
@@ -178,24 +439,33 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     }
   }
 
-  // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
-  // those fire while the file -> memory MENTIONED_IN edges still exist. postDelete runs after
-  // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
-  // nothing and orphan the pills. Both hooks hard-delete: a pill is regenerable from its source,
-  // so a deleted file must leave none behind in either form. Mirrors KnowledgePageRepository.
+  // Memory cleanup runs in these hooks while the file -> memory MENTIONED_IN edges still exist; a
+  // hard delete's cleanup() removes them before postDelete. Archiving keeps the memories, restoring
+  // brings them back, and a permanent delete releases them.
   @Override
   @Transaction
   protected void softDeleteAdditionalChildren(UUID fileId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+    memorySourceLifecycle().archiveExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
   }
 
   @Override
   @Transaction
   protected void hardDeleteAdditionalChildren(UUID fileId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+    memorySourceLifecycle().releaseExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
   }
 
-  private ContextMemoryRepository contextMemoryRepository() {
+  // Runs for a single restore and for each file of a restored folder, once the file is live again.
+  @Override
+  @Transaction
+  protected void restoreAdditionalChildren(UUID fileId, String restoredBy) {
+    memorySourceLifecycle().restoreExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+  }
+
+  private MemorySourceLifecycle memorySourceLifecycle() {
+    return new MemorySourceLifecycle(memoryRepository());
+  }
+
+  private static ContextMemoryRepository memoryRepository() {
     return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
   }
 
@@ -262,8 +532,30 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   public class ContextFileUpdater extends EntityUpdater {
+    // Captured before consolidation can rebase original or hand a pass the previous version.
+    private final ContextFile requested;
+    private final boolean wasOrgWide;
+    private boolean sharingFollowed;
+
     public ContextFileUpdater(ContextFile original, ContextFile updated, Operation operation) {
       super(original, updated, operation);
+      keepStoredContent(original, updated);
+      // Consolidated edits still need distinct timestamps for conditional processing writes.
+      if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
+        updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
+      }
+      requested = updated;
+      wasOrgWide = ContextFileVisibility.isOrgWide(original);
+    }
+
+    private static void keepStoredContent(ContextFile original, ContextFile updated) {
+      updated.setAssetId(original.getAssetId());
+      updated.setHeadContentId(original.getHeadContentId());
+    }
+
+    @Override
+    protected void resetForRetryAttempt() {
+      sharingFollowed = false;
     }
 
     @Override
@@ -277,7 +569,25 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       recordChange("extractedText", original.getExtractedText(), updated.getExtractedText());
       recordChange("pageCount", original.getPageCount(), updated.getPageCount());
       recordChange("shareConfig", original.getShareConfig(), updated.getShareConfig(), true);
+      followSharing();
       updateFolder();
+    }
+
+    /**
+     * Once per attempt, inside this write: when the file turns restricted or org-wide, its memories
+     * follow (ADR:2026-09-29-context-file-memory-reuse). Other share edits leave them as they are.
+     */
+    private void followSharing() {
+      boolean orgWide = ContextFileVisibility.isOrgWide(requested);
+      if (!sharingFollowed && orgWide != wasOrgWide) {
+        sharingFollowed = true;
+        MemorySourceSharing sharing = new MemorySourceSharing(memoryRepository());
+        if (orgWide) {
+          sharing.followSourceOpening(requested);
+        } else {
+          sharing.followSourceRestriction(requested);
+        }
+      }
     }
 
     private void updateFolder() {
@@ -518,14 +828,24 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   private void deleteAsset(String assetId) {
-    AssetService assetService = AssetServiceFactory.getService();
     Asset asset = null;
     try {
       asset = assetRepository.getById(assetId);
     } catch (Exception ignored) {
       // If the asset metadata is already gone, continue deleting any remaining references.
     }
-    if (asset != null && assetService != null) {
+    if (asset != null) {
+      deleteAsset(asset);
+    } else {
+      assetRepository.delete(assetId);
+    }
+  }
+
+  /** Collate overrides this to retain shared chat assets and select their original store. */
+  public void deleteAsset(Asset asset) {
+    AssetService assetService = AssetServiceFactory.getService();
+    String assetId = asset.getId();
+    if (assetService != null) {
       try {
         assetService
             .delete(asset)

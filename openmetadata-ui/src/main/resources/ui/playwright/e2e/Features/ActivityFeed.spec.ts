@@ -613,7 +613,7 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   test.beforeAll(
     'Setup entity and seeded conversation',
     async ({ browser }) => {
-      test.slow(true);
+      test.setTimeout(test.info().timeout * 3);
 
       adminUser = new UserClass();
       entity = new TableClass();
@@ -933,7 +933,7 @@ test.describe('ActivityFeed: conversation actions on the Activity tab', () => {
   });
 
   test.beforeAll('Setup entity and conversation', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     owner = new UserClass();
     entity = new TableClass();

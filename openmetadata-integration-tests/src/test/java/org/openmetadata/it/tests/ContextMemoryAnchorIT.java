@@ -140,7 +140,7 @@ public class ContextMemoryAnchorIT {
   }
 
   @Test
-  void searchOnlyReturnsUnanchoredEntityMemoriesToNonOwners(TestNamespace ns) {
+  void contextCenterSearchListsReadableAnchoredMemoriesAndCountsBeforePaging(TestNamespace ns) {
     Table anchor = ShortStackFactory.table(ns);
     String query = "anchorcheck" + UUID.randomUUID().toString().substring(0, 8);
     ContextMemory anchored =
@@ -167,7 +167,21 @@ public class ContextMemoryAnchorIT {
                         .containsAll(List.of(anchored.getId(), unanchored.getId()))));
 
     assertEquals(anchored.getId(), reader.get(anchored.getId().toString()).getId());
-    assertEquals(List.of(unanchored.getId()), ids(reader.list(params)));
+    assertEquals(
+        Set.of(anchored.getId(), unanchored.getId()), new HashSet<>(ids(reader.list(params))));
+    ContextMemoryService blocked = memoriesAs(createUser(ns, denyTableView(ns), null));
+    assertEquals(List.of(unanchored.getId()), ids(blocked.list(params)));
+    ListParams first =
+        new ListParams().setLimit(1).addQueryParam("q", query).addQueryParam("offset", "0");
+    ListParams second =
+        new ListParams().setLimit(1).addQueryParam("q", query).addQueryParam("offset", "1");
+    ListResponse<ContextMemory> firstPage = reader.list(first);
+    ListResponse<ContextMemory> secondPage = reader.list(second);
+    assertEquals(2, firstPage.getPaging().getTotal());
+    assertEquals(2, secondPage.getPaging().getTotal());
+    Set<UUID> pagedIds = new HashSet<>(ids(firstPage));
+    pagedIds.addAll(ids(secondPage));
+    assertEquals(Set.of(anchored.getId(), unanchored.getId()), pagedIds);
     assertTrue(
         readerClient
             .search()
@@ -186,8 +200,9 @@ public class ContextMemoryAnchorIT {
 
   /**
    * A search that pins the anchor it asks about returns that anchor's memories to its readers,
-   * exactly as REST does (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). Free text that
-   * pins nothing keeps the conservative rule above.
+   * exactly as REST does (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). A search of the
+   * memory index alone does so without the pin, as the Context Center listing does; a search over
+   * several indexes still needs it (ADR:2026-11-12-context-center-authorizes-memory-anchors-before-paging).
    */
   @Test
   void aSearchPinnedToAnAnchor_agreesWithRestOnItsMemories(TestNamespace ns) {
@@ -226,9 +241,26 @@ public class ContextMemoryAnchorIT {
     assertTrue(searchHits(clientOf(blocked), query, pinned).isEmpty());
     assertEquals(1, countedHits(clientOf(reader), query, pinned), "counts agree with the hits");
     assertEquals(0, countedHits(clientOf(blocked), query, pinned));
-    assertTrue(
-        searchHits(clientOf(reader), query, null).isEmpty(),
-        "free text that pins no anchor keeps anchored memories owner-only");
+    // A search of the memory index alone checks its matches' anchors, as the Context Center
+    // listing does, so free text without a pin finds them too (#36435).
+    assertEquals(
+        Set.of(shown.getId()),
+        searchHits(clientOf(reader), query, null),
+        "a memory-only search admits the anchored memories its reader may read, unpinned");
+    assertTrue(searchHits(clientOf(blocked), query, null).isEmpty());
+    assertEquals(1, countedHits(clientOf(reader), query, null), "counts agree with the hits");
+    assertEquals(
+        1,
+        countedHits(clientOf(reader), Entity.CONTEXT_MEMORY, query, null),
+        "the entity type names the same memory-only search");
+    assertEquals(0, countedHits(clientOf(blocked), query, null));
+    // The query matches these memories only, so the totals on "all" count them alone.
+    assertFalse(
+        searchHits(clientOf(reader), "all", query, null).contains(shown.getId()),
+        "a search over several indexes keeps the pinned-anchor rule");
+    assertEquals(0, countedHits(clientOf(reader), "all", query, null));
+    assertTrue(searchHits(clientOf(reader), "all", query, pinned).contains(shown.getId()));
+    assertEquals(1, countedHits(clientOf(reader), "all", query, pinned));
   }
 
   /** A file anchor is read by the file's own sharing too, in a pinned search as in REST. */
@@ -280,7 +312,7 @@ public class ContextMemoryAnchorIT {
   }
 
   @Test
-  void fileExtractedMemoriesRemainAnchoredInSearch(TestNamespace ns) {
+  void contextCenterListsExtractedMemoriesToReadersOfTheirFile(TestNamespace ns) {
     ContextFile file =
         ns.trackRoot(
             Entity.CONTEXT_FILE,
@@ -306,7 +338,7 @@ public class ContextMemoryAnchorIT {
         .ignoreExceptions()
         .untilAsserted(
             () -> assertTrue(ids(adminMemories().list(params)).contains(extracted.getId())));
-    assertFalse(ids(readerMemories.list(params)).contains(extracted.getId()));
+    assertTrue(ids(readerMemories.list(params)).contains(extracted.getId()));
   }
 
   @Test
@@ -370,7 +402,8 @@ public class ContextMemoryAnchorIT {
               assertFalse(ids(adminMemories().list(params)).contains(owned.getId()));
               assertTrue(ids(ownerMemories.list(invalidatedParams)).contains(owned.getId()));
               assertTrue(ids(adminMemories().list(invalidatedParams)).contains(owned.getId()));
-              assertFalse(ids(anchorViewer.list(invalidatedParams)).contains(owned.getId()));
+              assertEquals(owned.getId(), anchorViewer.get(owned.getId().toString()).getId());
+              assertTrue(ids(anchorViewer.list(invalidatedParams)).contains(owned.getId()));
             });
   }
 
@@ -496,12 +529,18 @@ public class ContextMemoryAnchorIT {
 
   /** The documents {@code /v1/search/entityTypeCounts} counts for {@code client}. */
   private static long countedHits(OpenMetadataClient client, String query, String queryFilter) {
+    return countedHits(client, "context_memory_search_index", query, queryFilter);
+  }
+
+  /** The documents {@code /v1/search/entityTypeCounts} on {@code index} counts for {@code client}. */
+  private static long countedHits(
+      OpenMetadataClient client, String index, String query, String queryFilter) {
     String response =
         client
             .search()
             .entityTypeCounts()
             .query(query)
-            .index("context_memory_search_index")
+            .index(index)
             .queryFilter(queryFilter)
             .execute();
     return JsonUtils.readTree(response).path("hits").path("total").path("value").asLong();
@@ -509,8 +548,13 @@ public class ContextMemoryAnchorIT {
 
   /** The memory ids {@code /v1/search/query} returns to {@code client}. */
   private static Set<UUID> searchHits(OpenMetadataClient client, String query, String queryFilter) {
-    SearchAPI.SearchBuilder search =
-        client.search().query(query).index("context_memory_search_index").size(100);
+    return searchHits(client, "context_memory_search_index", query, queryFilter);
+  }
+
+  /** The ids {@code /v1/search/query} on {@code index} returns to {@code client}. */
+  private static Set<UUID> searchHits(
+      OpenMetadataClient client, String index, String query, String queryFilter) {
+    SearchAPI.SearchBuilder search = client.search().query(query).index(index).size(100);
     if (queryFilter != null) {
       search.queryFilter(queryFilter);
     }

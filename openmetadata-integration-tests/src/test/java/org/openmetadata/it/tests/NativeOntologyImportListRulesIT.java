@@ -30,7 +30,8 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 @ExtendWith(TestNamespaceExtension.class)
 public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
   private static final String HEADER =
-      "kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy";
+      "kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,superProperties,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy";
+  private static final int LABEL = 2;
   private static final int PROPERTY_KIND = 8;
   private static final int ENUM_VALUES = 11;
   private static final int PROPERTY_CHAIN = 16;
@@ -91,11 +92,13 @@ public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
     final var request =
         csv(
             property(iri(ns, "tier"), "DATA", ENUM_VALUES, "\"\"\"Gold\"\"\";\"\"\"Silver\"\"\""),
+            property(iri(ns, "a"), "OBJECT", LABEL, "a"),
+            property(iri(ns, "b"), "OBJECT", LABEL, "b"),
             property(iri(ns, "path"), "OBJECT", PROPERTY_CHAIN, iri(ns, "a") + ";" + iri(ns, "b")));
 
     final var preview = client.ontologies().previewImport(ontology.getId(), request);
 
-    assertEquals(2, preview.getSummary().getCounts().getNewProperties());
+    assertEquals(4, preview.getSummary().getCounts().getNewProperties());
     final var draft =
         ns.trackRoot(
             "ontologyChangeSet",
@@ -154,7 +157,7 @@ public class NativeOntologyImportListRulesIT extends BaseOntologyApprovalIT {
   }
 
   private static String property(String iri, String kind, int column, String cell) {
-    final var cells = new ArrayList<>(Collections.nCopies(27, ""));
+    final var cells = new ArrayList<>(Collections.nCopies(28, ""));
     cells.set(0, "PROPERTY");
     cells.set(1, iri);
     cells.set(PROPERTY_KIND, kind);

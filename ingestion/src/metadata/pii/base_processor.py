@@ -34,6 +34,7 @@ from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
+from metadata.pii.model_loading import ClassificationModelLoadError
 from metadata.sampler.entity_adapters import adapter_for
 from metadata.sampler.models import SamplerResponse
 from metadata.utils.logger import profiler_logger
@@ -63,12 +64,27 @@ class AutoClassificationProcessor(Processor, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
+        self.model_load_failure: ClassificationModelLoadError | None = None
 
         # Init and type the source config
         self.source_config: DatabaseServiceAutoClassificationPipeline = cast(
             DatabaseServiceAutoClassificationPipeline,  # noqa: TC006
             self.config.source.sourceConfig.config,
         )  # Used to satisfy type checked
+
+    def disable_classification(self, failure: ClassificationModelLoadError) -> None:
+        """Retain one sanitized diagnostic, including when there are no records."""
+        if self.model_load_failure is not None:
+            return
+        self.model_load_failure = failure
+        self.status.failed(
+            StackTraceError(
+                name=self.name,
+                error=f"{failure} Classification is disabled for this run. "
+                "Records forwarded to the sink are not completed classifications.",
+                stackTrace="".join(traceback.format_tb(failure.__traceback__)),
+            )
+        )
 
     @abstractmethod
     def create_column_tag_labels(self, column: Column, sample_data: Sequence[Any]) -> Sequence[TagLabel]:
@@ -151,6 +167,49 @@ class AutoClassificationProcessor(Processor, ABC):
             if column:
                 yield column, idx
 
+    @classmethod
+    def _log_unmapped_sample_fields(
+        cls,
+        entity_fqn: str,
+        columns: list[Column],
+        sampled_columns: Sequence[ColumnName] | None,
+        classifier_columns: Sequence[tuple[Column, int | None]],
+    ) -> None:
+        """Warn when sampled fields cannot be matched to metadata columns.
+
+        A custom sample query can return aliased fields. Their values never reach a
+        recognizer. While the sample has fields, only columns mapped to a sample field
+        are classified, and every other column is skipped, including classification by its
+        name or metadata. Columns are classified without sample data only when the
+        sample has no fields at all. Field and column names are logged, sampled values
+        are not.
+        """
+        if not sampled_columns:
+            return
+
+        mapped_indexes = {sample_index for _, sample_index in classifier_columns}
+        unmapped_fields = [model_str(field) for idx, field in enumerate(sampled_columns) if idx not in mapped_indexes]
+        if not unmapped_fields:
+            return
+
+        sampled_leaves = {id(leaf) for column, _ in classifier_columns for leaf in cls._iter_leaf_columns(column)}
+        column_fqn_prefix = f"{entity_fqn}."
+        unsampled_columns = [
+            model_str(leaf.fullyQualifiedName).removeprefix(column_fqn_prefix)
+            if leaf.fullyQualifiedName
+            else model_str(leaf.name)
+            for column in columns
+            for leaf in cls._iter_leaf_columns(column)
+            if id(leaf) not in sampled_leaves
+        ]
+        logger.warning(
+            "Auto Classification for [%s]: sampled fields %s do not match any column and were not analyzed."
+            " Metadata columns not covered by mapped sample fields (skipped, not classified): %s",
+            entity_fqn,
+            unmapped_fields,
+            unsampled_columns,
+        )
+
     @staticmethod
     def _iter_leaf_columns(column: Column, max_depth: int = MAX_COLUMN_NESTING_DEPTH) -> Iterator[Column]:
         """Iterate leaves without following cyclic or pathologically deep schemas."""
@@ -190,6 +249,10 @@ class AutoClassificationProcessor(Processor, ABC):
         if not self.source_config.enableAutoClassification:
             return Either(right=record, left=None)
 
+        if self.model_load_failure is not None:
+            record.column_tags = []
+            return self._forward_record(record)
+
         entity = record.entity
         columns = self._get_entity_columns(entity)
 
@@ -199,8 +262,11 @@ class AutoClassificationProcessor(Processor, ABC):
         column_tags = []
         table_data = record.sample_data.data if record.sample_data else None
         table_data_columns = table_data.columns if table_data is not None else None
+        classifier_columns = list(self._get_classifier_columns(columns, table_data_columns))
+        entity_fqn = entity.fullyQualifiedName.root if entity.fullyQualifiedName else type(entity).__name__
+        self._log_unmapped_sample_fields(entity_fqn, columns, table_data_columns, classifier_columns)
 
-        for column, sample_index in self._get_classifier_columns(columns, table_data_columns):
+        for column, sample_index in classifier_columns:
             try:
                 column_sample_data = (
                     [row[sample_index] for row in table_data.rows or []]
@@ -214,6 +280,10 @@ class AutoClassificationProcessor(Processor, ABC):
                 for tag in tags:
                     column_tag = ColumnTag(column_fqn=column.fullyQualifiedName.root, tag_label=tag)
                     column_tags.append(column_tag)
+            except ClassificationModelLoadError as err:
+                self.disable_classification(err)
+                column_tags = []
+                break
             except Exception as err:
                 self.status.failed(
                     StackTraceError(
@@ -225,9 +295,29 @@ class AutoClassificationProcessor(Processor, ABC):
 
         record.column_tags = column_tags
 
+        return self._forward_record(record)
+
+    @staticmethod
+    def _forward_record(record: SamplerResponse) -> Either[SamplerResponse]:
         # Free the sample data rows now that classification is done.
         # The sink only needs them if store=True.
         if record.sample_data and not record.sample_data.store:
             record.sample_data.data = None
 
         return Either(right=record, left=None)
+
+
+class UnavailableClassificationProcessor(AutoClassificationProcessor):
+    """Preserve sampling and the classification summary after initialization fails."""
+
+    def __init__(
+        self,
+        config: OpenMetadataWorkflowConfig,
+        metadata: OpenMetadata,
+        failure: ClassificationModelLoadError,
+    ):
+        super().__init__(config=config, metadata=metadata)
+        self.disable_classification(failure)
+
+    def create_column_tag_labels(self, column: Column, sample_data: Sequence[Any]) -> Sequence[TagLabel]:
+        raise AssertionError("Unavailable classification must bypass tagging")

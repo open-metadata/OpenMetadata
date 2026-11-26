@@ -208,7 +208,7 @@ export interface TestServiceConnectionRequest {
  * Drive Connection.
  */
 export interface RequestConnection {
-    config?: any[] | boolean | number | null | Connection | string;
+    config?: any[] | boolean | number | null | AirflowConnectionObject | string;
 }
 
 /**
@@ -501,7 +501,7 @@ export interface RequestConnection {
  *
  * Custom Drive Connection to build a source that is not supported.
  */
-export interface Connection {
+export interface AirflowConnectionObject {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -742,7 +742,8 @@ export interface Connection {
      *
      * Address for your running Lightdash instance
      *
-     * Host and Port of the MicroStrategy instance.
+     * Host and Port of the MicroStrategy instance, without the Library path, such as
+     * `https://host:port`.
      *
      * Host and Port of the Qlik Cloud instance.
      *
@@ -915,7 +916,9 @@ export interface Connection {
      */
     s3StagingDir?: string;
     /**
-     * Athena workgroup.
+     * Athena workgroup that runs the ingestion queries and whose query history usage and
+     * lineage read. When empty, queries run in the default workgroup and query history is read
+     * from every enabled workgroup.
      */
     workgroup?: string;
     /**
@@ -1536,6 +1539,10 @@ export interface Connection {
     salesforceApiVersion?: string;
     /**
      * Domain of Salesforce instance
+     *
+     * Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for
+     * `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain:
+     * Salesforce rejects `login` and `test`.
      */
     salesforceDomain?: string;
     /**
@@ -1696,6 +1703,11 @@ export interface Connection {
      */
     configSource?: DataLakeConfigurationSource;
     /**
+     * Escape character for CSV and TSV files. Defaults to backslash. Set to an empty string for
+     * files that use doubled quotes and literal backslashes.
+     */
+    csvEscapeChar?: string;
+    /**
      * Prefix of the data source.
      */
     prefix?: string;
@@ -1773,7 +1785,8 @@ export interface Connection {
     /**
      * Specifies additional data needed by a logon mechanism, such as a secure token,
      * Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon
-     * mechanism.
+     * mechanism. The entire value is protected as a secret, including non-secret names. Secret
+     * references must resolve to the entire LOGDATA value.
      */
     logdata?: string;
     /**
@@ -2045,10 +2058,16 @@ export interface Connection {
      */
     spaceUUID?: string;
     /**
+     * Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`.
+     * Change it only when the Library app is deployed under another name, for example
+     * `MicroStrategyLibrary2`.
+     */
+    libraryPath?: string;
+    /**
      * Login Mode for Microstrategy's REST API connection. You can authenticate with one of the
-     * following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be
-     * `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to
-     * authenticate through loginMode `8`.
+     * following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default
+     * will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed
+     * to authenticate through loginMode `8`.
      */
     loginMode?: string;
     /**
@@ -2061,6 +2080,16 @@ export interface Connection {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
+    /**
+     * Ingest every workbook and data model in the Sigma organization. By default, Sigma's API
+     * lists only the workbooks and data models that the owner of the client credentials can
+     * access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the
+     * workbook and data model listings, and excludeExplorations=true to the workbook listing so
+     * that private custom views are not ingested. The client credentials must belong to a user
+     * with the Admin account type: Sigma documents skipPermissionCheck as available only to
+     * admins.
+     */
+    listAllAssets?: boolean;
     /**
      * ThoughtSpot authentication configuration
      *
@@ -2107,7 +2136,7 @@ export interface Connection {
      *
      * Confluent Redpanda Consumer Config
      */
-    consumerConfig?: { [key: string]: any };
+    consumerConfig?: ConsumerConfig;
     /**
      * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
      * connection.
@@ -2131,7 +2160,7 @@ export interface Connection {
      *
      * Confluent Redpanda Schema Registry Config.
      */
-    schemaRegistryConfig?: { [key: string]: any };
+    schemaRegistryConfig?: SchemaRegistryConfig;
     /**
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
@@ -2230,7 +2259,7 @@ export interface Connection {
     /**
      * Underlying storage connection
      */
-    packageConnection?: S3Connection | string;
+    packageConnection?: S3ConnectionClass | string;
     /**
      * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
      * local_kafka
@@ -2286,7 +2315,7 @@ export interface Connection {
      */
     uiHostPort?: string;
     /**
-     * Event broker configuration. Choose between Kafka and Kinesis.
+     * Event broker configuration. Choose between Kafka, Kinesis and NATS.
      */
     brokerConfig?: BrokerConfiguration;
     /**
@@ -2401,7 +2430,9 @@ export interface Connection {
     mlModelFilterPattern?: FilterPattern;
     /**
      * Mlflow Model registry backend. E.g.,
-     * mysql+pymysql://mlflow:password@localhost:3307/experiments
+     * mysql+pymysql://mlflow:password@localhost:3307/experiments. The entire URI is protected
+     * as a secret, including URIs without credentials. Secret references must resolve to the
+     * entire URI.
      */
     registryUri?: string;
     /**
@@ -2933,6 +2964,9 @@ export enum AuthProvider {
  *
  * Access Token Auth Credentials
  *
+ * Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT
+ * with the secret and signs in as the given Tableau user.
+ *
  * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
  * SAP S/4HANA Cloud.
  *
@@ -3015,6 +3049,8 @@ export interface AuthenticationType {
      * Service Principal Application ID created in your Databricks Account Console for OAuth
      * Machine-to-Machine authentication.
      *
+     * Client ID of the Tableau connected app.
+     *
      * OAuth 2.0 client ID registered in SAP.
      */
     clientId?: string;
@@ -3079,10 +3115,18 @@ export interface AuthenticationType {
      */
     hostPort?: string;
     /**
+     * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+     * is 'validate'.
+     */
+    sslConfig?: ConsumerConfigSSLClass;
+    /**
      * Username for authenticating with Dremio Software. This user should have appropriate
      * permissions to access metadata.
      *
      * Username to access the service.
+     *
+     * Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud
+     * this is the user's email address.
      *
      * Username to authenticate with SAP S/4HANA.
      *
@@ -3095,6 +3139,13 @@ export interface AuthenticationType {
      * SFTP username
      */
     username?: string;
+    /**
+     * How the certificate of the Dremio server is checked when Host and Port is an https URL.
+     * 'no-ssl' checks it against the trusted authorities of the system, 'ignore' does not check
+     * it (self-signed certificate), 'validate' checks it against the CA Certificate of the SSL
+     * Config.
+     */
+    verifySSL?: VerifySSL;
     /**
      * PEM-encoded X.509 certificate uploaded to the application's Certificates & secrets page
      * in Microsoft Entra ID. It may be followed by its issuing certificate chain.
@@ -3123,6 +3174,14 @@ export interface AuthenticationType {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
+    /**
+     * ID of the connected app secret.
+     */
+    secretId?: string;
+    /**
+     * Value of the connected app secret.
+     */
+    secretValue?: string;
     /**
      * Authentication type identifier.
      */
@@ -3279,9 +3338,9 @@ export interface AWSCredentials {
 /**
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface AzureCredentials {
     /**
@@ -3476,6 +3535,76 @@ export enum CloudRegion {
 }
 
 /**
+ * Client SSL configuration
+ *
+ * SSL Configuration details for DB2 connection. Provide CA certificate for server
+ * validation, and optionally client certificate and key for mutual TLS authentication.
+ *
+ * SSL Configuration details.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
+ * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+ * is 'validate'.
+ *
+ * SSL Configuration details. Provide the CA certificate to validate the Informix server
+ * certificate. Paste the PEM content directly or upload the certificate file.
+ *
+ * CA certificate, client certificate, and private key for SSL validation. Required when
+ * verifySSL is 'validate'.
+ *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
+ * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * connection.
+ *
+ * TLS/SSL configuration for secure NATS connections.
+ *
+ * SSL Configuration for Prefect API connection.
+ *
+ * SSL Configuration for OpenMetadata Server
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface ConsumerConfigSSLClass {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ *
+ * Client SSL verification.
+ *
+ * How the certificate of the Dremio server is checked when Host and Port is an https URL.
+ * 'no-ssl' checks it against the trusted authorities of the system, 'ignore' does not check
+ * it (self-signed certificate), 'validate' checks it against the CA Certificate of the SSL
+ * Config.
+ *
+ * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
+ * validation, 'validate' to verify against a CA certificate.
+ *
+ * Flag to verify SSL Certificate for OpenMetadata Server.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
+}
+
+/**
  * Choose how to authenticate with SAP SuccessFactors OData API.
  *
  * Authentication type to connect to SAP SuccessFactors.
@@ -3564,11 +3693,13 @@ export enum AuthenticationEnum {
 }
 
 /**
- * Event broker configuration. Choose between Kafka and Kinesis.
+ * Event broker configuration. Choose between Kafka, Kinesis and NATS.
  *
  * Kafka broker configuration for OpenLineage events.
  *
  * AWS Kinesis Data Streams configuration for OpenLineage events.
+ *
+ * NATS JetStream configuration for OpenLineage events.
  */
 export interface BrokerConfiguration {
     /**
@@ -3583,12 +3714,17 @@ export interface BrokerConfiguration {
      * Initial Kafka consumer offset.
      *
      * Initial Kinesis shard iterator type.
+     *
+     * Where a new durable consumer starts reading.
      */
     consumerOffsets?: InitialConsumerOffsets;
     /**
      * Max allowed wait time.
      *
      * Poll interval in seconds.
+     *
+     * Max allowed wait time for a single fetch, in seconds. Must be positive: the run ends once
+     * it has waited out sessionTimeout, and a zero wait would never advance that.
      */
     poolTimeout?: number;
     /**
@@ -3603,6 +3739,8 @@ export interface BrokerConfiguration {
      * Max allowed inactivity time.
      *
      * Max inactivity timeout in seconds.
+     *
+     * Max allowed inactivity time before the run ends, in seconds.
      */
     sessionTimeout?: number;
     /**
@@ -3619,19 +3757,97 @@ export interface BrokerConfiguration {
     awsConfig?: AWSCredentials;
     /**
      * Kinesis Data Stream name.
+     *
+     * JetStream stream holding the OpenLineage events.
      */
     streamName?: string;
+    /**
+     * How long JetStream waits for an acknowledgement before redelivering an event, in seconds.
+     */
+    ackWait?: number;
+    /**
+     * Additional NATS client configuration options. See https://nats-io.github.io/nats.py/
+     */
+    additionalConfig?: { [key: string]: any };
+    /**
+     * NATS authentication method. Leave empty for anonymous authentication.
+     */
+    authType?: BrokerConfigurationAuthenticationType;
+    /**
+     * Number of events fetched per request.
+     */
+    batchSize?: number;
+    /**
+     * Durable JetStream consumer name. Reusing it resumes where the previous run stopped.
+     */
+    durableConsumerName?: string;
+    /**
+     * How many times JetStream redelivers an event that is never acknowledged, before it gives
+     * up. Keeps an event that ingestion cannot process from being retried on every run.
+     */
+    maxDeliver?: number;
+    /**
+     * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
+     */
+    natsServers?: string;
+    /**
+     * Subject to consume from the stream. Defaults to all subjects of the stream.
+     */
+    subject?: string;
+    /**
+     * TLS/SSL configuration for secure NATS connections.
+     */
+    tlsConfig?: ConsumerConfigSSLClass;
+}
+
+/**
+ * NATS authentication method. Leave empty for anonymous authentication.
+ *
+ * Username and password authentication for NATS.
+ *
+ * Token-based authentication for NATS.
+ *
+ * NKey seed authentication for NATS.
+ *
+ * Decentralized authentication with the contents of a NATS .creds file (user JWT and NKey
+ * seed).
+ */
+export interface BrokerConfigurationAuthenticationType {
+    /**
+     * Password for NATS authentication.
+     */
+    password?: string;
+    /**
+     * Username for NATS authentication.
+     */
+    username?: string;
+    /**
+     * Token for NATS authentication.
+     */
+    token?: string;
+    /**
+     * NKey seed for NATS authentication.
+     */
+    nkeySeed?: string;
+    /**
+     * Contents of the .creds file, including the user JWT and the NKey seed.
+     */
+    credentials?: string;
 }
 
 /**
  * Initial Kafka consumer offset.
  *
  * Initial Kinesis shard iterator type.
+ *
+ * Where a new durable consumer starts reading.
  */
 export enum InitialConsumerOffsets {
+    All = "all",
     Earliest = "earliest",
     InitialConsumerOffsetsLATEST = "LATEST",
     Latest = "latest",
+    New = "new",
     TrimHorizon = "TRIM_HORIZON",
 }
 
@@ -3683,52 +3899,6 @@ export enum KafkaSecurityProtocol {
 }
 
 /**
- * Client SSL configuration
- *
- * SSL Configuration details for DB2 connection. Provide CA certificate for server
- * validation, and optionally client certificate and key for mutual TLS authentication.
- *
- * SSL Configuration details.
- *
- * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
- * client certificate, and private key for mutual TLS authentication.
- *
- * SSL Configuration details. Provide the CA certificate to validate the Informix server
- * certificate. Paste the PEM content directly or upload the certificate file.
- *
- * CA certificate, client certificate, and private key for SSL validation. Required when
- * verifySSL is 'validate'.
- *
- * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
- * connection.
- *
- * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
- * connection.
- *
- * TLS/SSL configuration for secure NATS connections.
- *
- * SSL Configuration for Prefect API connection.
- *
- * SSL Configuration for OpenMetadata Server
- *
- * OpenMetadata Client configured to validate SSL certificates.
- */
-export interface ConsumerConfigSSLClass {
-    /**
-     * The CA certificate used for SSL validation.
-     */
-    caCertificate?: string;
-    /**
-     * The SSL certificate used for client authentication.
-     */
-    sslCertificate?: string;
-    /**
-     * The private key associated with the SSL certificate.
-     */
-    sslKey?: string;
-}
-
-/**
  * Qlik Authentication Certificate By Values
  *
  * Qlik Authentication Certificate File Path
@@ -3772,9 +3942,9 @@ export enum CloudProvider {
  *
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface DataLakeConfigurationSource {
     securityConfig?: SecurityConfigClass;
@@ -3807,9 +3977,9 @@ export interface DataLakeConfigurationSource {
 /**
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  *
  * GCP Credentials
  *
@@ -3980,7 +4150,7 @@ export interface AirflowConnectionConnection {
     /**
      * Service Type
      */
-    type?: ConnectionType;
+    type?: S3Type;
     /**
      * Database of the data source.
      *
@@ -4295,6 +4465,9 @@ export enum ConnectionScheme {
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
  *
+ * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+ * is 'validate'.
+ *
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.
  *
@@ -4351,7 +4524,7 @@ export enum SSLMode {
  *
  * Service type.
  */
-export enum ConnectionType {
+export enum S3Type {
     Backend = "Backend",
     MatillionDPC = "MatillionDPC",
     MatillionETL = "MatillionETL",
@@ -4363,19 +4536,49 @@ export enum ConnectionType {
 }
 
 /**
- * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ * Confluent Kafka Consumer Config. From
+ * https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
  *
- * Client SSL verification.
- *
- * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
- * validation, 'validate' to verify against a CA certificate.
- *
- * Flag to verify SSL Certificate for OpenMetadata Server.
+ * Confluent Redpanda Consumer Config
  */
-export enum VerifySSL {
-    Ignore = "ignore",
-    NoSSL = "no-ssl",
-    Validate = "validate",
+export interface ConsumerConfig {
+    /**
+     * Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.
+     */
+    "sasl.oauthbearer.assertion.private.key.passphrase"?: string;
+    /**
+     * PEM private key used to sign the OAUTHBEARER JWT assertion.
+     */
+    "sasl.oauthbearer.assertion.private.key.pem"?: string;
+    /**
+     * Client secret for the OAUTHBEARER (OIDC) token request.
+     */
+    "sasl.oauthbearer.client.secret"?: string;
+    /**
+     * SASL/OAUTHBEARER configuration string, which can carry a client secret.
+     */
+    "sasl.oauthbearer.config"?: string;
+    /**
+     * SASL password.
+     */
+    "sasl.password"?: string;
+    /**
+     * Passphrase of the client's private key.
+     */
+    "ssl.key.password"?: string;
+    /**
+     * Client's private key as a PEM string.
+     */
+    "ssl.key.pem"?: string;
+    /**
+     * Password of the client keystore (PKCS#12).
+     */
+    "ssl.keystore.password"?: string;
+    /**
+     * Password of the truststore.
+     */
+    "ssl.truststore.password"?: string;
+    [property: string]: any;
 }
 
 /**
@@ -4393,9 +4596,9 @@ export enum VerifySSL {
  *
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface PurpleGCPCredentials {
     /**
@@ -4865,9 +5068,11 @@ export interface OracleConnectionType {
 
 /**
  * S3 Connection.
+ *
+ * ADLS Connection.
  */
-export interface S3Connection {
-    awsConfig: AWSCredentials;
+export interface S3ConnectionClass {
+    awsConfig?: AWSCredentials;
     /**
      * Bucket Names of the data source.
      */
@@ -4888,14 +5093,25 @@ export interface S3Connection {
      * Service Type
      */
     type?: S3ConnectionType;
+    /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
+    /**
+     * Azure Credentials
+     */
+    credentials?: AzureCredentials;
 }
 
 /**
  * Service Type
  *
  * S3 service type
+ *
+ * ADLS service type
  */
 export enum S3ConnectionType {
+    Adls = "ADLS",
     S3 = "S3",
 }
 
@@ -4980,6 +5196,28 @@ export interface PolicyAgentConfig {
 export enum RunMode {
     Batch = "batch",
     Stream = "stream",
+}
+
+/**
+ * Confluent Kafka Schema Registry Config. From
+ * https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient
+ *
+ * Confluent Redpanda Schema Registry Config.
+ */
+export interface SchemaRegistryConfig {
+    /**
+     * Schema Registry credentials in the form of username:password.
+     */
+    "basic.auth.user.info"?: string;
+    /**
+     * Client secret for the Schema Registry OAuth token request.
+     */
+    "bearer.auth.client.secret"?: string;
+    /**
+     * Static bearer token for the Schema Registry.
+     */
+    "bearer.auth.token"?: string;
+    [property: string]: any;
 }
 
 /**
@@ -5121,6 +5359,9 @@ export enum SpaceType {
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
+ *
+ * The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL
+ * is 'validate'.
  *
  * SSL Configuration details. Provide the CA certificate to validate the Informix server
  * certificate. Paste the PEM content directly or upload the certificate file.

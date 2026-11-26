@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -53,7 +54,6 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -356,9 +356,11 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
               <Tabs.List
                 actions={
                   isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
+                    <ButtonUtility
+                      data-testid="tab-expand-button"
+                      icon={isTabExpanded ? Collapse : Expand}
+                      size="lg"
+                      tooltip={
                         isTabExpanded ? t('label.collapse') : t('label.expand')
                       }
                       onClick={toggleTabExpanded}

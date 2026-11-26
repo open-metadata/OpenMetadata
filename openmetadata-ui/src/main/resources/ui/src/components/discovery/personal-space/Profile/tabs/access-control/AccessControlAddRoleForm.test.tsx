@@ -43,6 +43,8 @@ jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () =>
 
 // Mock core-ui components with native HTML to avoid react-aria provider requirements
 jest.mock('@openmetadata/ui-core-components', () => ({
+  // The unsaved-changes popover only opens on a dirty exit.
+  ConfirmPopover: () => null,
   Box: ({
     children,
     ...props
@@ -145,9 +147,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }) => <span>{children}</span>,
 }));
 
-import { getPolicies } from '../../../../../../rest/rolesAPIV1';
+import { addRole, getPolicies } from '../../../../../../rest/rolesAPIV1';
 import AccessControlAddRoleForm from './AccessControlAddRoleForm';
 
+// The unsaved-changes guard is covered by SettingsFormLayout.test.tsx and the
+// Playwright specs; here Cancel simply leaves.
 const mockOnNavigate = jest.fn();
 
 const renderComponent = () =>
@@ -201,6 +205,29 @@ describe('AccessControlAddRoleForm', () => {
     screen.getByTestId('cancel-btn').click();
 
     expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'roles' });
+  });
+
+  it('opens the new role detail after creating it', async () => {
+    (addRole as jest.Mock).mockResolvedValue({
+      name: 'DataSteward',
+      fullyQualifiedName: 'DataSteward',
+      displayName: 'Data Steward',
+    });
+    renderComponent();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('submit-btn')).toBeInTheDocument()
+    );
+
+    screen.getByTestId('submit-btn').click();
+
+    await waitFor(() =>
+      expect(mockOnNavigate).toHaveBeenCalledWith({
+        type: 'roles-detail',
+        fqn: 'DataSteward',
+        name: 'Data Steward',
+      })
+    );
   });
 
   it('shows rich text editor for description', async () => {

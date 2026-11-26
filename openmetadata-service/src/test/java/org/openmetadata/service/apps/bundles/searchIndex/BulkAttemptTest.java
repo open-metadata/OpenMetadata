@@ -88,6 +88,26 @@ class BulkAttemptTest {
     assertTrue(counted.next().bulkAlreadyCounted());
   }
 
+  @Test
+  void partialRetriesDoNotCountTheSameBulkAgain() {
+    final BulkCircuitBreaker breaker = new BulkCircuitBreaker(2, 5000, 1000);
+    final RuntimeException failure = new RuntimeException("cluster unavailable");
+    final BulkAttempt<String> first =
+        BulkAttempt.first(List.of("a", "b"), 7L, new BulkRetryPolicy(3, 100, 1_000, 60_000));
+    final BulkAttempt<String> uncountedSubset = first.nextWith(List.of("b"));
+    breaker.recordBulkFailure(failure, uncountedSubset.bulkAlreadyCounted());
+    final BulkAttempt<String> countedSubset =
+        uncountedSubset.nextAfterFailure(failure).nextWith(List.of("b"));
+    breaker.recordBulkFailure(failure, countedSubset.bulkAlreadyCounted());
+
+    assertEquals(BulkCircuitBreaker.State.CLOSED, breaker.getState());
+    assertEquals(List.of("b"), countedSubset.operations());
+    assertEquals(first.deadlineMillis(), countedSubset.deadlineMillis());
+    assertEquals(first.executionId(), countedSubset.executionId());
+    breaker.recordBulkFailure(failure, false);
+    assertEquals(BulkCircuitBreaker.State.OPEN, breaker.getState());
+  }
+
   private static DeadlineTimeoutException poolWaitTimeout() {
     return DeadlineTimeoutException.from(
         Deadline.fromUnixMilliseconds(System.currentTimeMillis() - 100));

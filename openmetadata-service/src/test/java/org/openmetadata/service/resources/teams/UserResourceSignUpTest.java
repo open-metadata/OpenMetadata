@@ -20,7 +20,9 @@ import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.security.CatalogPrincipal;
 
@@ -53,6 +55,26 @@ class UserResourceSignUpTest {
     when(principal.getName()).thenReturn("jane");
 
     assertFalse(UserResource.isOwnSignUp(callerWith(principal), user("jane", "jane@example.com")));
+  }
+
+  @Test
+  void aSignUpOutsideTheRegistrationDomainsIsRefused() {
+    AuthorizerConfiguration authorizer =
+        new AuthorizerConfiguration().withAllowedEmailRegistrationDomains(Set.of("example.com"));
+
+    assertFalse(UserResource.isRegistrationAllowed(user("jane", "jane@other.org"), authorizer));
+    assertTrue(UserResource.isRegistrationAllowed(user("jane", "jane@Example.com"), authorizer));
+  }
+
+  @Test
+  void anyDomainMaySignUpWhenRegistrationIsUnrestricted() {
+    assertTrue(
+        UserResource.isRegistrationAllowed(
+            user("jane", "jane@other.org"),
+            new AuthorizerConfiguration().withAllowedEmailRegistrationDomains(Set.of("all"))));
+    assertTrue(
+        UserResource.isRegistrationAllowed(
+            user("jane", "jane@other.org"), new AuthorizerConfiguration()));
   }
 
   private static SecurityContext callerWith(Principal principal) {

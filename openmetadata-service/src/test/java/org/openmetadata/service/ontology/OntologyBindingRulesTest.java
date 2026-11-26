@@ -85,7 +85,7 @@ class OntologyBindingRulesTest {
   }
 
   @Test
-  void propertyMustBeDataAndInTheSameOntologyWithAnApplicableDomain() {
+  void propertyMustBeDataOrObjectAndInTheSameOntologyWithAnApplicableDomain() {
     final var owner = new EntityReference().withId(UUID.randomUUID());
     final var concept = new OntologyConcept().withOntology(owner).withIri(URI.create("urn:Child"));
     final var property =
@@ -96,9 +96,12 @@ class OntologyBindingRulesTest {
     final var ancestors = Set.of("urn:Child", "urn:Parent");
     assertTrue(OntologyBindingRules.isApplicable(concept, property, ancestors));
     assertFalse(OntologyBindingRules.isApplicable(concept, property, Set.of("urn:Child")));
-    assertFalse(
+    assertTrue(
         OntologyBindingRules.isApplicable(
             concept, property.withKind(OntologyPropertyKind.OBJECT), ancestors));
+    assertFalse(
+        OntologyBindingRules.isApplicable(
+            concept, property.withKind(OntologyPropertyKind.ANNOTATION), ancestors));
     assertFalse(
         OntologyBindingRules.isApplicable(
             concept,

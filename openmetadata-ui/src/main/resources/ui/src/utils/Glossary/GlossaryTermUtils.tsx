@@ -19,6 +19,7 @@ import type {
   ExtentionEntitiesKeys,
 } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import type { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
@@ -29,6 +30,12 @@ const TabsLabel = withSuspenseFallback(
   lazy(() => import('../../components/common/TabsLabel/TabsLabel.component'))
 );
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import(
@@ -178,19 +185,17 @@ export const getGlossaryTermDetailPageTabs = (
         firstPanel={{
           className: 'glossary-term-resizable-panel-container',
           children: (
-            <>
-              <AssetsTabs
-                addDisabledMessage={assetsAddDisabledMessage}
-                assetCount={assetCount}
-                entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
-                isSummaryPanelOpen={Boolean(previewAsset)}
-                permissions={assetPermissions}
-                ref={assetTabRef}
-                onAddAsset={() => setAssetModalVisible(true)}
-                onAssetClick={handleAssetClick}
-                onRemoveAsset={handleAssetSave}
-              />
-            </>
+            <AssetsTabs
+              addDisabledMessage={assetsAddDisabledMessage}
+              assetCount={assetCount}
+              entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
+              isSummaryPanelOpen={Boolean(previewAsset)}
+              permissions={assetPermissions}
+              ref={assetTabRef}
+              onAddAsset={() => setAssetModalVisible(true)}
+              onAssetClick={handleAssetClick}
+              onRemoveAsset={handleAssetSave}
+            />
           ),
           flex: 0.7,
           minWidth: 700,
@@ -213,10 +218,10 @@ export const getGlossaryTermDetailPageTabs = (
               panelPath="glossary-term-assets-tab"
             />
           ),
+          ...COMMON_RESIZABLE_PANEL_CONFIG.ENTITY_SUMMARY_PANEL,
           className:
             'entity-summary-resizable-right-panel-container glossary-term-resizable-panel-container',
           flex: 0.3,
-          minWidth: 400,
           wrapInCard: false,
         }}
       />
@@ -225,8 +230,9 @@ export const getGlossaryTermDetailPageTabs = (
 
   const buildActivityFeedTab = (): TabProps => ({
     label: (
-      <TabsLabel
+      <ActivityFeedTabLabel
         count={feedCount.totalCount}
+        entityType={EntityType.GLOSSARY_TERM}
         id={EntityTabs.ACTIVITY_FEED}
         isActive={activeTab === EntityTabs.ACTIVITY_FEED}
         name={

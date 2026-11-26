@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonProps } from '@openmetadata/ui-core-components';
+import { ButtonUtilityProps } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 
 export interface InlineEditProps {
@@ -21,6 +21,6 @@ export interface InlineEditProps {
   onSave: () => void | Promise<void>;
   direction?: 'horizontal' | 'vertical';
   isLoading?: boolean;
-  cancelButtonProps?: ButtonProps;
-  saveButtonProps?: ButtonProps;
+  cancelButtonProps?: ButtonUtilityProps;
+  saveButtonProps?: ButtonUtilityProps;
 }

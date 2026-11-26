@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CheckCircle02 } from '@openmetadata/ui-core-components/icons';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ReactComponent as IconSuccessBadge } from '../../../../assets/svg/success-badge.svg';
 import {
   ErrorSource,
   ScheduleTimeline,
@@ -47,8 +47,8 @@ jest.mock('../../../../utils/StringUtils', () => ({
   formatJsonString: jest.fn().mockReturnValue('logs'),
 }));
 
-jest.mock('../../../common/CopyToClipboardButton/CopyToClipboardButton', () =>
-  jest.fn().mockReturnValue(<>CopyToClipboardButton</>)
+jest.mock('../../../common/CopyButton/CopyButton', () =>
+  jest.fn().mockReturnValue(<>CopyButton</>)
 );
 
 jest.mock('../../../../utils/ApplicationUtils', () => ({
@@ -79,7 +79,7 @@ jest.mock('../../../../constants/constants', () => ({
     height: 14,
   },
   STATUS_ICON: {
-    success: IconSuccessBadge,
+    success: CheckCircle02,
   },
 }));
 

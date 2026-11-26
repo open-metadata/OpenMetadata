@@ -26,6 +26,8 @@ public final class OntologyBindingRules {
   private static final int MAX_PATH_DEPTH = 32;
   private static final int MAX_SEGMENT_LENGTH = 256;
   private static final long MAX_REVISION = 9_007_199_254_740_991L;
+  private static final Set<OntologyPropertyKind> BINDABLE_KINDS =
+      Set.of(OntologyPropertyKind.DATA, OntologyPropertyKind.OBJECT);
 
   private OntologyBindingRules() {}
 
@@ -107,10 +109,14 @@ public final class OntologyBindingRules {
     return selected instanceof Column column ? column : null;
   }
 
+  /**
+   * A DATA property binds the column that holds its values. An OBJECT property binds a foreign-key
+   * column that refers to the target concept's identifier column, which SQL generation joins on.
+   */
   public static boolean isApplicable(
       final OntologyConcept concept, final OntologyProperty property, final Set<String> ancestors) {
     return !Boolean.TRUE.equals(property.getDeleted())
-        && property.getKind() == OntologyPropertyKind.DATA
+        && BINDABLE_KINDS.contains(property.getKind())
         && concept.getOntology().getId().equals(property.getOntology().getId())
         && listOrEmpty(property.getDomain()).stream()
             .anyMatch(iri -> ancestors.contains(iri.toString()));

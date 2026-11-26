@@ -172,6 +172,22 @@ describe('DynamicHeightWidget', () => {
   });
 
   describe('Edge Cases', () => {
+    it('ignores sub-pixel height changes', () => {
+      render(
+        <DynamicHeightWidget
+          widget={mockWidget}
+          onHeightChange={mockOnHeightChange}>
+          <div>Test Content</div>
+        </DynamicHeightWidget>
+      );
+
+      const resizeCallback = (global.ResizeObserver as jest.Mock).mock
+        .calls[0][0];
+      resizeCallback([{ contentRect: { height: 448.3 } }]); // rounds to 4 grid units, same as initial
+
+      expect(mockOnHeightChange).not.toHaveBeenCalled();
+    });
+
     it('handles zero height correctly', () => {
       render(
         <DynamicHeightWidget

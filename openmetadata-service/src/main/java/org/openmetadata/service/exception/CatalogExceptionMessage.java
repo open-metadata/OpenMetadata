@@ -86,6 +86,9 @@ public final class CatalogExceptionMessage {
       "Self Signup can only create user for self. Only Admin can create other users.";
   public static final String SELF_SIGNUP_DISABLED_MESSAGE =
       "Self Signup is not enabled. Please contact your Administrator for assistance with account creation";
+  public static final String SELF_SIGNUP_DOMAIN_NOT_ALLOWED = "SELF_SIGNUP_DOMAIN_NOT_ALLOWED";
+  public static final String SELF_SIGNUP_DOMAIN_NOT_ALLOWED_MESSAGE =
+      "Self Signup is not allowed for this email domain. Please contact your Administrator for assistance with account creation";
 
   public static final String NOT_IMPLEMENTED_METHOD = "Method not implemented.";
 
@@ -407,6 +410,13 @@ public final class CatalogExceptionMessage {
 
   public static String systemEntityDeleteNotAllowed(String name, String entityType) {
     return String.format("System entity [%s] of type %s can not be deleted.", name, entityType);
+  }
+
+  public static String reservedRoleName(String name) {
+    return String.format(
+        "Role name [%s] is reserved: Admin is the administrator flag on a user or bot, not a role."
+            + " Choose another name.",
+        name);
   }
 
   public static String systemEntityRenameNotAllowed(String name, String entityType) {

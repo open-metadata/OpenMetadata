@@ -227,7 +227,10 @@ describe('AccessControlPolicyDetail', () => {
     fireEvent.click(screen.getByTestId('delete-policy-popover-confirm'));
 
     await waitFor(() =>
-      expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'policies' })
+      expect(mockOnNavigate).toHaveBeenCalledWith(
+        { type: 'policies' },
+        { replace: true }
+      )
     );
 
     expect(deleteEntity).toHaveBeenCalledWith(
@@ -304,5 +307,49 @@ describe('AccessControlPolicyDetail', () => {
 
     expect(screen.getByTestId('remove-entity-popover')).toBeInTheDocument();
     expect(screen.getByTestId('remove-DataSteward')).toBeInTheDocument();
+  });
+
+  it('keeps the delete-rule popover open and the rule listed when the delete fails', async () => {
+    const { patchPolicy } = jest.requireMock(
+      '../../../../../../rest/rolesAPIV1'
+    );
+    (patchPolicy as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    renderComponent();
+
+    fireEvent.click(await screen.findByTestId('delete-rule-AllowViewRule'));
+    fireEvent.click(await screen.findByTestId('delete-rule-popover-confirm'));
+
+    await waitFor(() => expect(patchPolicy).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByTestId('delete-rule-popover-confirm')).toBeEnabled()
+    );
+
+    expect(screen.getByTestId('delete-rule-popover')).toBeInTheDocument();
+    expect(screen.getByTestId('rule-AllowViewRule')).toBeInTheDocument();
+  });
+
+  it('closes the delete-rule popover once the rule is deleted', async () => {
+    const { patchPolicy } = jest.requireMock(
+      '../../../../../../rest/rolesAPIV1'
+    );
+    (patchPolicy as jest.Mock).mockResolvedValueOnce({
+      ...mockPolicy,
+      rules: [],
+    });
+    renderComponent();
+
+    fireEvent.click(await screen.findByTestId('delete-rule-AllowViewRule'));
+    fireEvent.click(await screen.findByTestId('delete-rule-popover-confirm'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-rule-popover')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(patchPolicy).toHaveBeenCalledWith(
+      [{ op: 'remove', path: '/rules/0' }],
+      'policy-1'
+    );
   });
 });

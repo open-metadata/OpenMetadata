@@ -411,6 +411,16 @@ describe('EntityUtilClassBase', () => {
       });
     });
 
+    it('should return full FQN for WORKSHEET (nested under its spreadsheet)', () => {
+      const fqn = 'service.directory.spreadsheet.worksheet';
+      const result = entityUtil.getFqnParts(fqn, EntityType.WORKSHEET);
+
+      expect(result).toEqual({
+        entityFqn: fqn,
+        columnFqn: undefined,
+      });
+    });
+
     it('should return original FQN if parts are insufficient for TABLE', () => {
       const fqn = 'service.database.schema';
       const result = entityUtil.getFqnParts(fqn, EntityType.TABLE);
@@ -431,6 +441,24 @@ describe('EntityUtilClassBase', () => {
 
     it('should not contain Collate-only types absent from the enum', () => {
       expect(entityUtil.getEntityTypes()).not.toContain('aiAutomation');
+    });
+  });
+
+  describe('hasEntityLink', () => {
+    it('knows the types getEntityLink routes, the table included', () => {
+      expect(entityUtil.hasEntityLink(EntityType.TABLE)).toBe(true);
+      expect(entityUtil.hasEntityLink(EntityType.DASHBOARD)).toBe(true);
+      expect(entityUtil.hasEntityLink(EntityType.GLOSSARY_TERM)).toBe(true);
+    });
+
+    // getEntityLink sends any other type to a table page that does not exist.
+    it('does not claim a route for a type that falls back to a table', () => {
+      expect(entityUtil.hasEntityLink('contextFile')).toBe(false);
+      expect(entityUtil.hasEntityLink(EntityType.QUERY)).toBe(false);
+      expect(entityUtil.hasEntityLink('constructor')).toBe(false);
+      expect(entityUtil.hasEntityLink(EntityType.INGESTION_PIPELINE)).toBe(
+        false
+      );
     });
   });
 

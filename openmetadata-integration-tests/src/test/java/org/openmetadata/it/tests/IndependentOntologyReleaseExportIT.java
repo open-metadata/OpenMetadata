@@ -36,8 +36,6 @@ import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyConceptType;
-import org.openmetadata.schema.type.OntologyExpression;
-import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.schema.type.OntologyLiteral;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.RelationProvenance;
@@ -46,16 +44,12 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
-import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.ontology.NativeOntologyCsvCodec;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
 
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
-public class IndependentOntologyReleaseExportIT extends BaseOntologyApprovalIT {
-  private static final URI CUSTOMER = URI.create("https://example.org/model/Customer");
-  private static final URI PARTY = URI.create("https://example.org/model/Party");
-  private static final URI KNOWS = URI.create("https://example.org/model/knows");
-
+public class IndependentOntologyReleaseExportIT extends OntologyReleaseExportSupport {
   @Test
   void structuralGateProtectsDeclarationsAndReportsTheFrozenModelAfterDeletion(TestNamespace ns) {
     var client = SdkClients.adminClient();
@@ -285,39 +279,24 @@ public class IndependentOntologyReleaseExportIT extends BaseOntologyApprovalIT {
             .getStatusCode());
   }
 
-  private static CreateOntologyProperty property(Ontology ontology) {
-    return new CreateOntologyProperty()
-        .withName("knows")
-        .withIri(KNOWS)
-        .withKind(OntologyPropertyKind.OBJECT)
-        .withDomain(List.of(CUSTOMER))
-        .withRange(List.of(PARTY))
-        .withOntology(ontology.getFullyQualifiedName());
-  }
+  @Test
+  void anExportCarriesOnlyTheReleasesOntology(TestNamespace ns) {
+    var client = SdkClients.adminClient();
+    Ontology current = createOntology(ns, "scopeCurrent");
+    declareClass(current, "Customer", CUSTOMER);
+    Ontology other = createOntology(ns, "scopeOther");
+    declareClass(other, "Party", PARTY);
+    OntologyRelease release = capture(current);
+    capture(other);
 
-  private static CreateOntologyAxiom axiom(Ontology ontology) {
-    return new CreateOntologyAxiom()
-        .withName("customer-is-party")
-        .withDisplayName("Customer is a party")
-        .withDescription("Every customer is a party")
-        .withOntology(ontology.getFullyQualifiedName())
-        .withAxiomType(OntologyAxiomType.SUBCLASS_OF)
-        .withSubjectIri(CUSTOMER)
-        .withProvenance(RelationProvenance.MANUAL)
-        .withExpressions(
-            List.of(
-                new OntologyExpression()
-                    .withKind(OntologyExpressionKind.NAMED_CLASS)
-                    .withClassIri(PARTY)));
-  }
-
-  private static String export(OpenMetadataClient client, UUID releaseId, String format) {
-    return client
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.GET,
-            "/v1/ontologyReleases/" + releaseId + "/export?format=" + format,
-            null,
-            RequestOptions.builder().header("Accept", "*/*").build());
+    for (String format : List.of("turtle", "skos", "skos-xl")) {
+      Model model = parseTurtle(export(client, release.getId(), format));
+      assertTrue(model.containsResource(model.createResource(CUSTOMER.toString())), format);
+      assertFalse(model.containsResource(model.createResource(PARTY.toString())), format);
+    }
+    var csv = NativeOntologyCsvCodec.read(export(client, release.getId(), "csv"));
+    assertEquals(
+        List.of(CUSTOMER.toString()),
+        csv.concepts().stream().map(c -> c.getIri().toString()).toList());
   }
 }

@@ -55,6 +55,7 @@ import org.openmetadata.schema.entity.datacontract.SlaValidation;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
@@ -78,6 +79,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.datacontract.odcs.ODCSPreservedFields;
 import org.openmetadata.service.datacontract.sla.ContractSlaValidator;
 import org.openmetadata.service.datacontract.sla.TableRefreshHistoryLoader;
 import org.openmetadata.service.events.ChangeEvents;
@@ -102,9 +104,9 @@ import org.openmetadata.service.util.ValidatorUtil;
 public class DataContractRepository extends EntityRepository<DataContract> {
 
   private static final String DATA_CONTRACT_UPDATE_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions,odcsPreservedFields";
   private static final String DATA_CONTRACT_PATCH_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions,odcsPreservedFields";
 
   public static final String RESULT_EXTENSION = "dataContract.dataContractResult";
   public static final String RESULT_SCHEMA = "dataContractResult";
@@ -527,9 +529,11 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       }
     }
     if (!nullOrEmpty(dataContract.getReviewers())) {
-      for (EntityReference reviewer : dataContract.getReviewers()) {
-        Entity.getEntityReferenceById(reviewer.getType(), reviewer.getId(), Include.NON_DELETED);
-      }
+      List<EntityReference> reviewersToValidate =
+          dataContract.getReviewers().stream()
+              .map(ref -> JsonUtils.deepCopy(ref, EntityReference.class))
+              .collect(Collectors.toList());
+      EntityRepository.validateReviewers(reviewersToValidate);
     }
   }
 
@@ -1480,7 +1484,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   public DataContractResult updateContractDQResults(
-      EntityReference contractReference, TestSuite testSuite) {
+      EntityReference contractReference, TestSuite testSuite, PipelineStatusType pipelineState) {
     DataContract dataContract =
         Entity.getEntity(contractReference, "entity,owners,reviewers", Include.NON_DELETED);
     if (dataContract == null) {
@@ -1497,11 +1501,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     // Get the latest result or throw if none exists
     DataContractResult result = getLatestResult(dataContract);
-    QualityValidation validation = validateDQ(testSuite);
-
-    result.withQualityValidation(validation);
-
-    compileResult(result, ContractExecutionStatus.Success);
+    applyDQPipelineOutcome(result, testSuite, pipelineState);
     // Update the last result in the data contract
     addContractResult(dataContract, result);
 
@@ -1519,6 +1519,26 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
 
     return result;
+  }
+
+  void applyDQPipelineOutcome(
+      DataContractResult result, TestSuite testSuite, PipelineStatusType pipelineState) {
+    if (didPipelineAbort(pipelineState)) {
+      // The test suite summary may carry results from an earlier run, so it is not trusted here.
+      result.withResult(
+          "DQ validation pipeline ended with status "
+              + pipelineState
+              + " before recording test results");
+      compileResult(result, ContractExecutionStatus.Aborted);
+    } else {
+      result.withQualityValidation(validateDQ(testSuite));
+      compileResult(result, ContractExecutionStatus.Success);
+    }
+  }
+
+  static boolean didPipelineAbort(PipelineStatusType pipelineState) {
+    return pipelineState == PipelineStatusType.FAILED
+        || pipelineState == PipelineStatusType.PARTIAL_SUCCESS;
   }
 
   public DataContractResult getLatestResult(DataContract dataContract) {
@@ -1578,6 +1598,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       preserveUnspecifiedODCSPassthrough();
+      updated.setOdcsPreservedFields(
+          ODCSPreservedFields.bindNativeCustomProperties(
+              updated.getOdcsPreservedFields(), updated.getExtension()));
       compareAndUpdate(
           "latestResult",
           () ->
@@ -1609,6 +1632,13 @@ public class DataContractRepository extends EntityRepository<DataContract> {
                   "odcsElementExtensions",
                   original.getOdcsElementExtensions(),
                   updated.getOdcsElementExtensions()));
+      compareAndUpdate(
+          "odcsPreservedFields",
+          () ->
+              recordChange(
+                  "odcsPreservedFields",
+                  original.getOdcsPreservedFields(),
+                  updated.getOdcsPreservedFields()));
       // Preserve immutable creation fields
       updated.setCreatedAt(original.getCreatedAt());
       updated.setCreatedBy(original.getCreatedBy());
@@ -1626,6 +1656,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       if (operation.isPut()) {
         if (updated.getOdcsQualityRules() == null) {
           updated.setOdcsQualityRules(original.getOdcsQualityRules());
+        }
+        if (updated.getOdcsPreservedFields() == null) {
+          updated.setOdcsPreservedFields(original.getOdcsPreservedFields());
         }
         if (updated.getOdcsElementExtensions() == null) {
           updated.setOdcsElementExtensions(original.getOdcsElementExtensions());
@@ -1723,7 +1756,11 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   public DataContract getEffectiveDataContract(EntityInterface<?> entity) {
-    DataContract entityContract = getEntityDataContractSafely(entity);
+    return getEffectiveDataContract(entity, getEntityDataContractSafely(entity));
+  }
+
+  public DataContract getEffectiveDataContract(
+      EntityInterface<?> entity, DataContract entityContract) {
     DataContract parentContract = getInheritableContract(entity);
     return parentContract == null
         ? entityContract

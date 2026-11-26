@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
+import { AxiosError, AxiosResponse } from 'axios';
 import { OntologyConceptType } from '../generated/api/data/createOntologyConcept';
+import { Kind } from '../generated/api/data/nativeOntologyDataGraphPageRequest';
+import {
+  Format,
+  type NativeOntologyImportSummary,
+} from '../generated/api/data/nativeOntologyImportSummary';
 import { Operation } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
+import { Direction } from '../generated/api/data/ontologyConceptQuery';
 import { AssetType } from '../generated/api/data/updateOntologyConceptBinding';
 import { OntologyChangeSetState } from '../generated/entity/data/ontologyChangeSet';
 import APIClient from './axiosClient';
@@ -23,14 +30,18 @@ import {
   createOntology,
   createOntologyConcept,
   deleteOntologyConceptBinding,
+  exportOntologyRelease,
+  generateOntologyConceptQuery,
   generateOntologyDomainDraft,
   generateOntologySparql,
+  getNativeOntologyDataGraphPage,
   getOntologyBulkTemplate,
   getOntologyByName,
   getOntologyChangeSet,
   getOntologyConceptBindings,
   getOntologyRelease,
   getOntologyReleaseReview,
+  getOntologyReleaseReviews,
   getOntologyReleaseValidation,
   getRdfEntityDiff,
   installOntologyPack,
@@ -46,6 +57,7 @@ import {
   patchOntologyConcept,
   putOntologyConceptBinding,
   releaseOntologyEditLock,
+  reviewNativeOntologyPack,
   submitOntologyBulkOperation,
   suggestOntologyMappings,
   suggestOntologyRelationships,
@@ -66,6 +78,33 @@ const mockedApiClient = APIClient as jest.Mocked<typeof APIClient>;
 describe('ontologyAPI', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+  });
+
+  it('reads the bounded library summary without requesting draft operations', async () => {
+    const response: NativeOntologyImportSummary = {
+      detectedFormat: Format.Turtle,
+      counts: {
+        newConcepts: 1,
+        updatedConcepts: 0,
+        newProperties: 0,
+        updatedProperties: 0,
+        newRelations: 0,
+        newMappings: 0,
+        skippedDefinitions: 0,
+        skippedRelations: 0,
+      },
+      items: [],
+    };
+    const request = { moduleIds: ['ssn'] };
+    mockedApiClient.post.mockResolvedValue({ data: response });
+
+    await expect(
+      reviewNativeOntologyPack('ontology-id', 'sosa-ssn', request)
+    ).resolves.toEqual(response);
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontologies/ontology-id/library/sosa-ssn/summary',
+      request
+    );
   });
 
   it.each([
@@ -100,6 +139,50 @@ describe('ontologyAPI', () => {
       { propertyId: 'name', columnPath: ['customer_name'], state: 'resolved' },
     ],
   };
+
+  it('posts the search-around hops to the concept query and returns the generated SQL', async () => {
+    const signal = new AbortController().signal;
+    const hops = [
+      {
+        property: 'part-of',
+        target: 'customer',
+        direction: Direction.Outgoing,
+      },
+    ];
+    const body = {
+      hops: [{ ...hops[0], label: 'part of' }],
+      sql: 'SELECT t1.name\nFROM payments.transfers t0\nLIMIT 50',
+    };
+    mockedApiClient.post.mockResolvedValueOnce({ data: body });
+
+    expect(await generateOntologyConceptQuery('concept/id', hops, signal)).toBe(
+      body
+    );
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontologyConcepts/concept%2Fid/query',
+      { hops },
+      { signal }
+    );
+  });
+
+  it('posts one graph page selection to the ontology and returns the page body', async () => {
+    const signal = new AbortController().signal;
+    const request = {
+      loaded: [],
+      page: { kind: Kind.Clusters, limit: 12, offset: 0 },
+    };
+    const body = { clusters: [], contextFull: false, loaded: [] };
+    mockedApiClient.post.mockResolvedValueOnce({ data: body });
+
+    expect(
+      await getNativeOntologyDataGraphPage('ontology/id', request, signal)
+    ).toBe(body);
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontologies/ontology%2Fid/dataGraph/pages',
+      request,
+      { signal }
+    );
+  });
 
   it('collects bindings through empty pages and preserves the starting revision', async () => {
     const signal = new AbortController().signal;
@@ -425,14 +508,14 @@ describe('ontologyAPI', () => {
     mockedApiClient.get.mockResolvedValue(jobs);
 
     const submitResult = await submitOntologyBulkOperation(request);
-    const jobsResult = await listOntologyBulkJobs(25);
+    const jobsResult = await listOntologyBulkJobs('glossary-id', 25);
 
     expect(mockedApiClient.post).toHaveBeenCalledWith(
       '/ontology/bulk',
       request
     );
     expect(mockedApiClient.get).toHaveBeenCalledWith('/ontology/bulk/jobs', {
-      params: { limit: 25 },
+      params: { glossaryId: 'glossary-id', limit: 25 },
     });
     expect(submitResult).toEqual(submission.data);
     expect(jobsResult).toEqual(jobs.data);
@@ -648,5 +731,38 @@ describe('ontologyAPI', () => {
       request
     );
     expect(result).toEqual(response.data);
+  });
+});
+
+it('hands a gated export refusal back with its JSON report parsed from the text body', async () => {
+  const report = { valid: false, shacl: { violationCount: 1 } };
+  (APIClient.get as jest.Mock).mockRejectedValueOnce(
+    new AxiosError('blocked', 'ERR_BAD_REQUEST', undefined, undefined, {
+      data: JSON.stringify(report),
+      status: 422,
+    } as AxiosResponse)
+  );
+
+  const refusal = await exportOntologyRelease('release-id', 'turtle', {
+    shaclGate: true,
+  }).catch((error: AxiosError) => error);
+
+  expect((refusal as AxiosError).response?.data).toEqual(report);
+});
+
+it('reads a bounded review page with the server total and after cursor', async () => {
+  const response = { data: [], paging: { total: 42, after: 'next' } };
+  (APIClient.get as jest.Mock).mockResolvedValueOnce({ data: response });
+  const signal = new AbortController().signal;
+
+  await expect(
+    getOntologyReleaseReviews(
+      { view: 'pending', limit: 1, after: 'current' },
+      signal
+    )
+  ).resolves.toEqual(response);
+  expect(APIClient.get).toHaveBeenLastCalledWith('/ontologies/reviews', {
+    params: { view: 'pending', limit: 1, after: 'current' },
+    signal,
   });
 });

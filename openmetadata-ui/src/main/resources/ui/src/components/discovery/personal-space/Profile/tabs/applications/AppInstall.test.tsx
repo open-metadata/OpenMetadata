@@ -176,6 +176,7 @@ describe('AppInstall', () => {
         appSchedule: {
           scheduleTimeline: ScheduleTimeline.Custom,
           cronExpression: '0 0 * * *',
+          timezone: expect.any(String),
         },
       })
     );
@@ -232,6 +233,21 @@ describe('AppInstall', () => {
 
     expect(screen.getByTestId('pick-schedule')).toBeInTheDocument();
     expect(screen.queryByTestId('config-form')).not.toBeInTheDocument();
+  });
+
+  it('centres the schedule step at half width, as the schedule edit page does', async () => {
+    jest
+      .spyOn(applicationsClassBase, 'importSchema')
+      .mockRejectedValue(new Error('no schema'));
+    await renderInstall();
+
+    fireEvent.click(screen.getByTestId('next-button'));
+
+    expect(screen.getByTestId('install-schedule-step')).toHaveClass(
+      'tw:mx-auto',
+      'tw:max-w-[50%]'
+    );
+    expect(screen.getByTestId('app-install')).not.toHaveClass('tw:max-w-[50%]');
   });
 
   it('reports a marketplace fetch failure with its own error', async () => {

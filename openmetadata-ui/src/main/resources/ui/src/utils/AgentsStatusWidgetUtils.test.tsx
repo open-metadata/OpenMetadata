@@ -12,6 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { AgentStatus } from '../enums/ServiceInsights.enum';
 import {
   AppRunRecord,
   Status,
@@ -31,6 +32,8 @@ import {
 } from '../rest/applicationAPI';
 import {
   automationRunToAppRunRecord,
+  getAgentStatusLabelFromStatus,
+  getAgentStatusSummary,
   getAutomationTemplate,
 } from './AgentsStatusWidgetPureUtils';
 import {
@@ -292,5 +295,26 @@ describe('getFormattedAgentsListFromAgentsLiveInfo', () => {
 
   it('reports an empty list when a frame reports no agents at all', () => {
     expect(getFormattedAgentsListFromAgentsLiveInfo([], [])).toEqual([]);
+  });
+});
+
+describe('stopped agent runs', () => {
+  it.each([PipelineState.Stopped, Status.Stopped])(
+    'labels a %s run as Stopped, not Pending',
+    (status) => {
+      expect(getAgentStatusLabelFromStatus(status)).toBe(AgentStatus.Stopped);
+    }
+  );
+
+  it('counts a stopped run under Stopped in the summary', () => {
+    const summary = getAgentStatusSummary([
+      { agentType: PipelineType.Metadata, status: AgentStatus.Stopped },
+      { agentType: PipelineType.Usage, status: AgentStatus.Pending },
+    ] as Parameters<typeof getAgentStatusSummary>[0]);
+
+    expect(summary).toEqual({
+      [AgentStatus.Stopped]: 1,
+      [AgentStatus.Pending]: 1,
+    });
   });
 });
