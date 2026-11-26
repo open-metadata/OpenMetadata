@@ -17,7 +17,7 @@ what maintainers ask for before they engage.
 1. **First-time contributors: wait for "Approve and run".** GitHub holds workflow runs on a first
    PR from a new contributor until a maintainer approves them. There is nothing for you to fix; ask
    in Slack `#contributor` if it sits. No label is involved
-   (ADR:2026-10-14-pr-code-never-runs-on-pull-request-target).
+   (ADR:2026-11-10-pr-jobs-never-receive-credentials).
 2. **`Validate PR Metadata`** (`.github/workflows/pr-metadata-validation.yml`). A hard gate. The PR
    links a GitHub issue (`Fixes #NNNN` in the body or title; the house title convention is
    `Fixes NNNN: <short explanation>`), the issue has a description, and the issue is in the
@@ -37,9 +37,10 @@ what maintainers ask for before they engage.
    `Changes requested` verdict as a blocker. Resolve or answer each thread before asking a
    maintainer to look — "check the bot reviews" is the most common maintainer reply.
 
-**Advisory, not gating, but read them:** the Collate CI result posted on the PR (red means the
-change breaks `openmetadata-collate`; see `REVIEW.md` → "Collate builds against OpenMetadata
-`main`") and `harness-integrity` (warnings only).
+**Advisory, not gating, but read them:** `Compatibility checks`, the status Collate CI posts on the
+PR from the `openmetadata-collate` repository (there is no workflow for it in this repository). Red
+means the change breaks Collate; see `REVIEW.md` → "Collate builds against OpenMetadata `main`".
+Also `harness-integrity`, which only warns.
 
 **Not run on the PR at all:** the Java integration tests and Playwright run in the **merge queue**,
 and SonarCloud runs on `main` and nightly. A green PR has not run them — run the impacted ones
