@@ -485,10 +485,15 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
         );
         onUpdated?.();
       } else {
-        const name = (title.trim() || memory.trim())
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .slice(0, 64);
+        // Use a RegExp constructor for Unicode property escapes with the ES6 TS target.
+        const nonNameCharacters = new RegExp('[^\\p{L}\\p{N}\\p{M}]+', 'gu');
+        const name = Array.from(
+          (title.trim() || memory.trim())
+            .toLowerCase()
+            .replace(nonNameCharacters, '-')
+        )
+          .slice(0, 64)
+          .join('');
 
         await createContextMemory({
           name,
