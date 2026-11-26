@@ -33,6 +33,11 @@ push would cancel. Python had already moved to event-owned entrypoints (`ci-pr.y
   `.github/actions/ci-status-gate` composite. A selected job must succeed and an unselected one
   must be skipped, and the expectations must name every dependency. It runs on every non-draft PR because a job skipped by `if` reports success.
   Draft PRs skip all UI jobs.
+- Every UI job sets up through `setup-ui`, which restores the installed `node_modules` of the UI and
+  core components (keyed on Node, OS/arch, and both `package.json` and `yarn.lock` files) and core
+  components' built `dist` (keyed on core sources). A hit skips `yarn install` and the core build,
+  about a minute per job; a miss installs as before. Only runs on main save these caches; pull
+  requests and queue entries only restore, so they never add entries to the shared cache budget.
 - `ui-browser-tests.yml` keeps its 6-hourly and manual full run on main. Merge-queue entries
   publish the impact map from `ci-merge-queue.yml` runs, so the map lookup queries both workflows.
 - Until the `merge-rules` ruleset requires `ui-tests-status`, both entrypoints also report it as
@@ -40,10 +45,11 @@ push would cancel. Python had already moved to event-owned entrypoints (`ci-pr.y
 
 ## Consequences
 A UI pull request takes checkstyle time (5–13 minutes on recent runs) plus browser selection, its
-slowest shard (up to about 12 minutes) and the report: about 30 minutes at worst, and a lint
-failure costs one runner. A queue entry also waits for lint before its tests start, so its failures arrive in two rounds at most. Every UI job pays
-its own setup through `setup-ui`. Browser tests and the core-components tests become merge-blocking for the first time;
-the ruleset never required them. A queue entry's impact map counts only when the whole
-`ci-merge-queue` run passed. Dispatching an entrypoint by hand runs every UI job. Backend joins
-the same entrypoints separately, coordinated with its owners and the ruleset change. Python's
-gates can move onto `ci-status-gate` the same way.
+slowest shard (up to about 12 minutes) and the report: about 30 minutes at worst, and a lint failure
+costs one runner. A queue entry also waits for lint before its tests start, so its failures arrive
+in two rounds at most. Every UI job pays its own setup, about 30 seconds when the dependency caches
+hit. Browser tests and the core-components tests become merge-blocking for the first time; the
+ruleset never required them. A queue entry's impact map counts only when the whole `ci-merge-queue`
+run passed. Dispatching an entrypoint by hand runs every UI job. Backend joins the same entrypoints
+separately, coordinated with its owners and the ruleset change. Python's gates can move onto
+`ci-status-gate` the same way.

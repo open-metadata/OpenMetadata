@@ -11,16 +11,37 @@
 
 name: UI setup
 description: >-
-  Node, the cached ANTLR CLI and the UI's yarn dependencies, the setup every UI
-  job shares. The yarn cache is restore-only; populate-playwright-caches.yml
-  saves main's copy.
+  Node, the cached ANTLR CLI and the UI's installed dependencies, the setup every
+  UI job shares. The installed node_modules of the UI and core components, and
+  core components' built dist, come from caches that only runs on main save, so
+  most jobs skip `yarn install` and the core build. A lockfile or package.json
+  change misses the node_modules cache and installs as before; a core-components
+  source change misses only the dist cache and rebuilds core (about 10 s).
 runs:
   using: composite
   steps:
     - uses: actions/setup-node@v5
       with:
         node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
+    # Keyed on everything that decides what `yarn install` produces. Pull
+    # requests and queue entries only restore: saving there would put a copy per
+    # ref against the shared cache budget and evict main's entries.
+    - name: Cache keys
+      id: keys
+      shell: bash
+      run: |
+        echo "deps=ui-node-modules-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/.nvmrc', 'openmetadata-ui/src/main/resources/ui/package.json', 'openmetadata-ui/src/main/resources/ui/yarn.lock', 'openmetadata-ui-core-components/src/main/resources/ui/package.json', 'openmetadata-ui-core-components/src/main/resources/ui/yarn.lock') }}" >> "$GITHUB_OUTPUT"
+        echo "dist=ui-core-dist-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/.nvmrc', 'openmetadata-ui-core-components/src/main/resources/ui/package.json', 'openmetadata-ui-core-components/src/main/resources/ui/yarn.lock', 'openmetadata-ui-core-components/src/main/resources/ui/src/**', 'openmetadata-ui-core-components/src/main/resources/ui/*.ts', 'openmetadata-ui-core-components/src/main/resources/ui/*.json') }}" >> "$GITHUB_OUTPUT"
+    - name: Restore installed UI dependencies
+      id: deps
+      uses: actions/cache/restore@v6
+      with:
+        path: |
+          openmetadata-ui/src/main/resources/ui/node_modules
+          openmetadata-ui-core-components/src/main/resources/ui/node_modules
+        key: ${{ steps.keys.outputs.deps }}
     - name: Restore Yarn dependencies
+      if: steps.deps.outputs.cache-hit != 'true'
       uses: actions/cache/restore@v6
       with:
         path: ~/.cache/yarn
@@ -66,6 +87,7 @@ runs:
         echo "$HOME/.cache/antlr-cli" >> "$GITHUB_PATH"
         "$HOME/.cache/antlr-cli/antlr4" 2>&1 | grep -q 'Version 4.9.2'
     - name: Install Yarn packages
+      if: steps.deps.outputs.cache-hit != 'true'
       shell: bash
       working-directory: openmetadata-ui/src/main/resources/ui
       # The registry occasionally answers 502; retry rather than fail the job.
@@ -76,3 +98,39 @@ runs:
           sleep 15
         done
         exit 1
+    # The install above builds core components and generates the ANTLR parser;
+    # with restored node_modules, restore core's dist (or build it) and
+    # generate the parser here instead.
+    - name: Restore core components dist
+      id: dist
+      if: steps.deps.outputs.cache-hit == 'true'
+      uses: actions/cache/restore@v6
+      with:
+        path: openmetadata-ui-core-components/src/main/resources/ui/dist
+        key: ${{ steps.keys.outputs.dist }}
+    - name: Build core components
+      if: steps.deps.outputs.cache-hit == 'true' && steps.dist.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: openmetadata-ui-core-components/src/main/resources/ui
+      run: yarn build
+    - name: Generate the ANTLR parser
+      if: steps.deps.outputs.cache-hit == 'true'
+      shell: bash
+      working-directory: openmetadata-ui/src/main/resources/ui
+      run: yarn run build-check
+    - name: Save installed UI dependencies
+      if: steps.deps.outputs.cache-hit != 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      continue-on-error: true
+      uses: actions/cache/save@v6
+      with:
+        path: |
+          openmetadata-ui/src/main/resources/ui/node_modules
+          openmetadata-ui-core-components/src/main/resources/ui/node_modules
+        key: ${{ steps.keys.outputs.deps }}
+    - name: Save core components dist
+      if: steps.dist.outputs.cache-hit != 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      continue-on-error: true
+      uses: actions/cache/save@v6
+      with:
+        path: openmetadata-ui-core-components/src/main/resources/ui/dist
+        key: ${{ steps.keys.outputs.dist }}
