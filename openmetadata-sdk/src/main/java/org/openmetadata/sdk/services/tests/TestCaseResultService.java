@@ -2,8 +2,6 @@ package org.openmetadata.sdk.services.tests;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +14,6 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
-import org.openmetadata.sdk.network.OpenMetadataHttpClient;
 import org.openmetadata.sdk.network.RequestOptions;
 
 /**
@@ -29,7 +26,6 @@ public class TestCaseResultService {
   private static final String BASE_PATH = "/v1/dataQuality/testCases/testCaseResults";
   private static final TypeReference<ResultList<TestCaseResult>> TEST_CASE_RESULT_LIST_TYPE =
       new TypeReference<>() {};
-  private static final ObjectMapper OBJECT_MAPPER = OpenMetadataHttpClient.createObjectMapper();
   private final HttpClient httpClient;
 
   public TestCaseResultService(HttpClient httpClient) {
@@ -101,16 +97,23 @@ public class TestCaseResultService {
   }
 
   /**
-   * Get latest test case results from search.
+   * Get the latest test case result from search.
    *
    * @param params Search parameters
-   * @return List of latest test case results
+   * @return The latest matching test case result as a single-element list, or an empty list when
+   *     nothing matches
    */
   public ListResponse<TestCaseResult> searchLatest(ListParams params) throws OpenMetadataException {
-    String responseJson =
-        httpClient.executeForString(
-            HttpMethod.GET, BASE_PATH + "/search/latest", null, toRequestOptions(params));
-    return parseLatestResponse(responseJson);
+    TestCaseResult latest =
+        httpClient.execute(
+            HttpMethod.GET,
+            BASE_PATH + "/search/latest",
+            null,
+            TestCaseResult.class,
+            toRequestOptions(params));
+    return latest == null
+        ? new ListResponse<>(Collections.emptyList())
+        : new ListResponse<>(List.of(latest), new AllModels.Paging().withTotal(1));
   }
 
   // ===================================================================
@@ -162,47 +165,6 @@ public class TestCaseResultService {
       return null;
     }
     return RequestOptions.builder().queryParams(queryParams).build();
-  }
-
-  private static ListResponse<TestCaseResult> parseLatestResponse(String responseJson)
-      throws OpenMetadataException {
-    if (responseJson == null || responseJson.isBlank()) {
-      return new ListResponse<>(Collections.emptyList());
-    }
-    try {
-      JsonNode root = OBJECT_MAPPER.readTree(responseJson);
-      if (root == null || root.isNull() || root.isMissingNode()) {
-        return new ListResponse<>(Collections.emptyList());
-      }
-      if (!root.isObject()) {
-        throw new OpenMetadataException(
-            "Failed to parse response: unexpected payload shape for latest test case result");
-      }
-      if (root.has("data") || root.has("paging")) {
-        ResultList<TestCaseResult> resultList =
-            OBJECT_MAPPER.readerFor(TEST_CASE_RESULT_LIST_TYPE).readValue(root);
-        return new ListResponse<>(resultList);
-      }
-      if (root.isEmpty()) {
-        return new ListResponse<>(Collections.emptyList());
-      }
-      TestCaseResult single = OBJECT_MAPPER.treeToValue(root, TestCaseResult.class);
-      if (isEmptyTestCaseResult(single)) {
-        throw new OpenMetadataException(
-            "Failed to parse response: unexpected payload shape for latest test case result");
-      }
-      return new ListResponse<>(List.of(single), new AllModels.Paging().withTotal(1));
-    } catch (IOException e) {
-      throw new OpenMetadataException("Failed to parse response: " + e.getMessage(), e);
-    }
-  }
-
-  private static boolean isEmptyTestCaseResult(TestCaseResult result) {
-    return result == null
-        || (result.getTimestamp() == null
-            && result.getId() == null
-            && result.getTestCaseFQN() == null
-            && result.getTestCaseStatus() == null);
   }
 
   // ===================================================================

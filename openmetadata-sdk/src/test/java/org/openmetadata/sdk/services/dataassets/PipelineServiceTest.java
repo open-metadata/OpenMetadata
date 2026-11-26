@@ -5,19 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,7 +18,6 @@ import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -35,6 +26,9 @@ import org.openmetadata.sdk.fluent.wrappers.FluentPipeline;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.OpenMetadataHttpClient;
+import org.openmetadata.sdk.testing.EmbeddedHttpServer;
+import org.openmetadata.sdk.testing.EmbeddedHttpServer.ReceivedRequest;
+import org.openmetadata.sdk.testing.EmbeddedHttpServer.StubResponse;
 
 /**
  * Exercises {@link PipelineService#listPipelineStatuses} through a real {@link
@@ -47,21 +41,16 @@ class PipelineServiceTest {
   private static final UUID EXECUTED_BY_ID =
       UUID.fromString("00000000-0000-0000-0000-000000000101");
 
-  private HttpServer server;
-  private final List<ReceivedRequest> received = new CopyOnWriteArrayList<>();
-  private volatile Function<ReceivedRequest, StubResponse> responder =
-      req -> StubResponse.json(200, "{\"data\":[],\"paging\":{\"total\":0}}");
+  private EmbeddedHttpServer server;
 
   @BeforeEach
   void startServer() throws IOException {
-    server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-    server.createContext("/api/v1/pipelines", this::handleExchange);
-    server.start();
+    server = EmbeddedHttpServer.start("/v1/pipelines");
   }
 
   @AfterEach
   void stopServer() {
-    server.stop(0);
+    server.close();
   }
 
   @Test
@@ -107,18 +96,18 @@ class PipelineServiceTest {
         }
         """
             .formatted(EXECUTED_BY_ID);
-    responder = req -> StubResponse.json(200, body);
+    server.respond(200, body);
 
     ListResponse<PipelineStatus> response =
         newService().listPipelineStatuses("svc.\"my pipeline\"", 1000L, 2000L, null);
 
-    assertEquals(1, received.size());
-    ReceivedRequest request = received.getFirst();
+    assertEquals(1, server.requests().size());
+    ReceivedRequest request = server.requests().getFirst();
     assertEquals("GET", request.method());
     assertTrue(
         request.rawPath().startsWith("/api/v1/pipelines/") && request.rawPath().endsWith("/status"),
         request.rawPath());
-    Map<String, String> queryParams = parseQuery(request.rawQuery());
+    Map<String, String> queryParams = request.query();
     assertEquals("1000", queryParams.get("startTs"));
     assertEquals("2000", queryParams.get("endTs"));
 
@@ -156,25 +145,22 @@ class PipelineServiceTest {
   void listPipelineStatusesReadsEveryPageOfTheRange() {
     String firstPageBody = buildStatusPageJson(0, PAGE_SIZE, "cursor-page-2", PAGE_SIZE + 3);
     String secondPageBody = buildStatusPageJson(PAGE_SIZE, 3, "cursor-end", PAGE_SIZE + 3);
-    responder =
-        req -> {
-          Map<String, String> query = parseQuery(req.rawQuery());
-          if ("cursor-page-2".equals(query.get("after"))) {
-            return StubResponse.json(200, secondPageBody);
-          }
-          return StubResponse.json(200, firstPageBody);
-        };
+    server.respondWith(
+        request ->
+            "cursor-page-2".equals(request.query().get("after"))
+                ? StubResponse.json(200, secondPageBody)
+                : StubResponse.json(200, firstPageBody));
 
     ListResponse<PipelineStatus> response =
         newService().listPipelineStatuses("service.pipeline", 1L, 2L);
 
-    assertEquals(2, received.size());
+    List<ReceivedRequest> requests = server.requests();
+    assertEquals(2, requests.size());
     assertEquals(
-        Map.of("startTs", "1", "endTs", "2", "limit", "1000"),
-        parseQuery(received.get(0).rawQuery()));
+        Map.of("startTs", "1", "endTs", "2", "limit", "1000"), requests.getFirst().query());
     assertEquals(
         Map.of("startTs", "1", "endTs", "2", "limit", "1000", "after", "cursor-page-2"),
-        parseQuery(received.get(1).rawQuery()));
+        requests.get(1).query());
 
     assertEquals(PAGE_SIZE + 3, response.getData().size());
     long expectedTimestamp = 0;
@@ -187,12 +173,12 @@ class PipelineServiceTest {
   @Test
   void listPipelineStatusesStopsWhenAFullPageHasNoCursor() {
     String fullPageBody = buildStatusPageJson(0, PAGE_SIZE, null, PAGE_SIZE);
-    responder = req -> StubResponse.json(200, fullPageBody);
+    server.respond(200, fullPageBody);
 
     ListResponse<PipelineStatus> response =
         newService().listPipelineStatuses("service.pipeline", 1L, 2L);
 
-    assertEquals(1, received.size());
+    assertEquals(1, server.requests().size());
     assertEquals(PAGE_SIZE, response.getData().size());
     for (PipelineStatus status : response.getData()) {
       assertEquals(StatusType.Successful, status.getExecutionStatus());
@@ -202,39 +188,39 @@ class PipelineServiceTest {
   @Test
   void listPipelineStatusesStopsOnBlankOrRepeatingCursor() {
     String blankCursorPage = buildStatusPageJson(0, PAGE_SIZE, "   ", PAGE_SIZE);
-    responder = req -> StubResponse.json(200, blankCursorPage);
+    server.respond(200, blankCursorPage);
 
     ListResponse<PipelineStatus> blankResponse =
         newService().listPipelineStatuses("service.pipeline", 1L, 2L);
-    assertEquals(1, received.size());
+    assertEquals(1, server.requests().size());
     assertEquals(PAGE_SIZE, blankResponse.getData().size());
 
-    received.clear();
+    server.clearRequests();
     String repeatingCursorPage = buildStatusPageJson(0, PAGE_SIZE, "same-cursor", PAGE_SIZE * 2);
-    responder = req -> StubResponse.json(200, repeatingCursorPage);
+    server.respond(200, repeatingCursorPage);
 
     ListResponse<PipelineStatus> repeatingResponse =
         newService().listPipelineStatuses("service.pipeline", 1L, 2L);
-    assertEquals(2, received.size());
+    assertEquals(2, server.requests().size());
     assertEquals(PAGE_SIZE * 2, repeatingResponse.getData().size());
   }
 
   @Test
   void listPipelineStatusesHandlesEmptyDataAndEmptyBodyResponses() {
-    responder = req -> StubResponse.json(200, "{\"data\":[],\"paging\":{\"total\":0}}");
+    server.respond(200, "{\"data\":[],\"paging\":{\"total\":0}}");
     ListResponse<PipelineStatus> emptyData =
         newService().listPipelineStatuses("service.pipeline", 1L, 2L);
     assertTrue(emptyData.getData().isEmpty());
     assertEquals(0, emptyData.getTotal());
 
-    responder = req -> StubResponse.empty(204);
+    server.respondNoContent();
     ListResponse<PipelineStatus> noContent =
         newService().listPipelineStatuses("service.pipeline", 1L, 2L);
     assertNotNull(noContent.getData());
     assertTrue(noContent.getData().isEmpty());
     assertEquals(0, noContent.getTotal());
 
-    responder = req -> StubResponse.json(200, "{\"data\":null,\"paging\":{}}");
+    server.respond(200, "{\"data\":null,\"paging\":{}}");
     ListResponse<PipelineStatus> nullDataAndTotal =
         newService().listPipelineStatuses("service.pipeline", 1L, 2L, new ListParams().setLimit(5));
     assertNotNull(nullDataAndTotal.getData());
@@ -244,28 +230,28 @@ class PipelineServiceTest {
 
   @Test
   void listPipelineStatusesPropagatesHttpErrorsAndMalformedJson() {
-    responder = req -> StubResponse.json(403, "{\"code\":403,\"message\":\"Access denied\"}");
+    server.respond(403, "{\"code\":403,\"message\":\"Access denied\"}");
     ForbiddenException forbidden =
         assertThrows(
             ForbiddenException.class,
             () -> newService().listPipelineStatuses("service.pipeline", 1L, 2L));
     assertTrue(forbidden.getMessage().contains("Access denied"));
 
-    responder = req -> StubResponse.json(404, "{\"code\":404,\"message\":\"Pipeline not found\"}");
+    server.respond(404, "{\"code\":404,\"message\":\"Pipeline not found\"}");
     ApiException notFound =
         assertThrows(
             ApiException.class,
             () -> newService().listPipelineStatuses("service.pipeline", 1L, 2L));
     assertEquals(404, notFound.getStatusCode());
 
-    responder = req -> StubResponse.json(500, "{\"code\":500,\"message\":\"Server failure\"}");
+    server.respond(500, "{\"code\":500,\"message\":\"Server failure\"}");
     ApiException serverError =
         assertThrows(
             ApiException.class,
             () -> newService().listPipelineStatuses("service.pipeline", 1L, 2L));
     assertEquals(500, serverError.getStatusCode());
 
-    responder = req -> StubResponse.json(200, "{not-valid-json");
+    server.respond(200, "{not-valid-json");
     assertThrows(
         OpenMetadataException.class,
         () -> newService().listPipelineStatuses("service.pipeline", 1L, 2L));
@@ -286,9 +272,8 @@ class PipelineServiceTest {
           "paging": {"total": 1}
         }
         """;
-    responder = req -> StubResponse.json(200, body);
-    OpenMetadataClient client =
-        new OpenMetadataClient(OpenMetadataConfig.builder().baseUrl(baseUrl()).build());
+    server.respond(200, body);
+    OpenMetadataClient client = server.client();
     Pipeline pipeline = new Pipeline().withFullyQualifiedName("service.pipeline");
 
     ListResponse<PipelineStatus> wrapperResponse =
@@ -320,33 +305,7 @@ class PipelineServiceTest {
   }
 
   private PipelineService newService() {
-    return new PipelineService(
-        new OpenMetadataHttpClient(OpenMetadataConfig.builder().baseUrl(baseUrl()).build()));
-  }
-
-  private String baseUrl() {
-    return "http://127.0.0.1:" + server.getAddress().getPort() + "/api";
-  }
-
-  private void handleExchange(HttpExchange exchange) throws IOException {
-    ReceivedRequest request =
-        new ReceivedRequest(
-            exchange.getRequestMethod(),
-            exchange.getRequestURI().getRawPath(),
-            exchange.getRequestURI().getRawQuery());
-    received.add(request);
-    StubResponse response = responder.apply(request);
-    if (response.status() == 204 || response.body() == null) {
-      exchange.sendResponseHeaders(response.status(), -1);
-      exchange.close();
-      return;
-    }
-    byte[] bytes = response.body().getBytes(StandardCharsets.UTF_8);
-    exchange.getResponseHeaders().add("Content-Type", "application/json");
-    exchange.sendResponseHeaders(response.status(), bytes.length);
-    try (OutputStream out = exchange.getResponseBody()) {
-      out.write(bytes);
-    }
+    return new PipelineService(server.httpClient());
   }
 
   private static String buildStatusPageJson(int start, int count, String after, int total) {
@@ -363,31 +322,5 @@ class PipelineServiceTest {
     }
     sb.append("}}");
     return sb.toString();
-  }
-
-  private static Map<String, String> parseQuery(String rawQuery) {
-    Map<String, String> result = new LinkedHashMap<>();
-    if (rawQuery == null || rawQuery.isEmpty()) {
-      return result;
-    }
-    for (String pair : rawQuery.split("&")) {
-      int idx = pair.indexOf('=');
-      if (idx >= 0) {
-        result.put(pair.substring(0, idx), pair.substring(idx + 1));
-      }
-    }
-    return result;
-  }
-
-  private record ReceivedRequest(String method, String rawPath, String rawQuery) {}
-
-  private record StubResponse(int status, String body) {
-    static StubResponse json(int status, String body) {
-      return new StubResponse(status, body);
-    }
-
-    static StubResponse empty(int status) {
-      return new StubResponse(status, null);
-    }
   }
 }

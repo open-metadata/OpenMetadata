@@ -5,19 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,13 +21,14 @@ import org.openmetadata.schema.tests.type.TestCaseIncidentGroup;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.OpenMetadataHttpClient;
+import org.openmetadata.sdk.testing.EmbeddedHttpServer;
+import org.openmetadata.sdk.testing.EmbeddedHttpServer.ReceivedRequest;
 
 /**
  * Exercises {@link TestCaseResolutionStatusService} list endpoints through a real {@link
@@ -49,32 +42,28 @@ class TestCaseResolutionStatusServiceTest {
   private static final UUID ASSIGNEE_ID = UUID.fromString("00000000-0000-0000-0000-000000000204");
   private static final UUID TABLE_ID = UUID.fromString("00000000-0000-0000-0000-000000000205");
 
-  private HttpServer server;
-  private final List<ReceivedRequest> received = new CopyOnWriteArrayList<>();
-  private volatile Function<ReceivedRequest, StubResponse> responder =
-      req -> StubResponse.json(200, "{\"data\":[],\"paging\":{\"total\":0}}");
+  private EmbeddedHttpServer server;
 
   @BeforeEach
   void startServer() throws IOException {
-    server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-    server.createContext("/api/v1/dataQuality/testCases/testCaseIncidentStatus", this::handle);
-    server.start();
+    server = EmbeddedHttpServer.start("/v1/dataQuality/testCases/testCaseIncidentStatus");
   }
 
   @AfterEach
   void stopServer() {
-    server.stop(0);
+    server.close();
   }
 
   @Test
   void listAndListWithParamsReturnTypedResolutionStatuses() {
-    responder = req -> StubResponse.json(200, resolutionStatusListJson());
+    server.respond(200, resolutionStatusListJson());
 
     ListResponse<TestCaseResolutionStatus> noParamsResponse = newService().list();
     assertEquals(1, noParamsResponse.getData().size());
     assertResolutionStatus(noParamsResponse);
     assertEquals(
-        "/api/v1/dataQuality/testCases/testCaseIncidentStatus", received.getFirst().rawPath());
+        "/api/v1/dataQuality/testCases/testCaseIncidentStatus",
+        server.requests().getFirst().rawPath());
 
     ListParams params =
         new ListParams()
@@ -85,11 +74,11 @@ class TestCaseResolutionStatusServiceTest {
 
     assertEquals(1, withParamsResponse.getData().size());
     assertResolutionStatus(withParamsResponse);
-    ReceivedRequest secondRequest = received.get(1);
+    ReceivedRequest secondRequest = server.requests().get(1);
     assertTrue(
         secondRequest.rawQuery().contains("svc.db.") && !secondRequest.rawQuery().contains(" "),
         "Query parameters must be URL-encoded on the wire: " + secondRequest.rawQuery());
-    Map<String, String> decodedQuery = parseDecodedQuery(secondRequest.rawQuery());
+    Map<String, String> decodedQuery = secondRequest.query();
     assertEquals("10", decodedQuery.get("limit"));
     assertEquals("true", decodedQuery.get("latest"));
     assertEquals("svc.db.\"orders & returns\"=1", decodedQuery.get("testCaseFQN"));
@@ -97,7 +86,7 @@ class TestCaseResolutionStatusServiceTest {
 
   @Test
   void searchListReturnsTypedResolutionStatusesAndEncodesSpecialChars() {
-    responder = req -> StubResponse.json(200, resolutionStatusListJson());
+    server.respond(200, resolutionStatusListJson());
 
     ListParams params =
         new ListParams()
@@ -106,11 +95,11 @@ class TestCaseResolutionStatusServiceTest {
             .addFilter("testCaseFQN", "svc.db.tbl.tc#1");
     ListResponse<TestCaseResolutionStatus> response = newService().searchList(params);
 
-    assertEquals(1, received.size());
-    ReceivedRequest request = received.getFirst();
+    assertEquals(1, server.requests().size());
+    ReceivedRequest request = server.requests().getFirst();
     assertEquals(
         "/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list", request.rawPath());
-    Map<String, String> decodedQuery = parseDecodedQuery(request.rawQuery());
+    Map<String, String> decodedQuery = request.query();
     assertEquals("25", decodedQuery.get("limit"));
     assertEquals("row count & null + check", decodedQuery.get("q"));
     assertEquals("svc.db.tbl.tc#1", decodedQuery.get("testCaseFQN"));
@@ -150,7 +139,7 @@ class TestCaseResolutionStatusServiceTest {
         }
         """
             .formatted(TABLE_ID, ASSIGNEE_ID);
-    responder = req -> StubResponse.json(200, body);
+    server.respond(200, body);
 
     Map<String, String> params = new LinkedHashMap<>();
     params.put("groupBy", "table");
@@ -159,11 +148,11 @@ class TestCaseResolutionStatusServiceTest {
 
     ListResponse<TestCaseIncidentGroup> response = newService().listIncidentGroups(params);
 
-    assertEquals(1, received.size());
-    ReceivedRequest request = received.getFirst();
+    assertEquals(1, server.requests().size());
+    ReceivedRequest request = server.requests().getFirst();
     assertEquals(
         "/api/v1/dataQuality/testCases/testCaseIncidentStatus/incidentGroups", request.rawPath());
-    Map<String, String> decodedQuery = parseDecodedQuery(request.rawQuery());
+    Map<String, String> decodedQuery = request.query();
     assertEquals("table", decodedQuery.get("groupBy"));
     assertEquals("orders & sales", decodedQuery.get("q"));
     assertTrue(!decodedQuery.containsKey("ignoredNull"));
@@ -193,27 +182,27 @@ class TestCaseResolutionStatusServiceTest {
 
   @Test
   void handlesEmptyResponsesNoContentAndErrors() {
-    responder = req -> StubResponse.json(200, "{\"data\":[],\"paging\":{\"total\":0}}");
+    server.respond(200, "{\"data\":[],\"paging\":{\"total\":0}}");
     ListResponse<TestCaseResolutionStatus> emptyList = newService().list();
     assertTrue(emptyList.getData().isEmpty());
     assertEquals(0, emptyList.getTotal());
 
-    responder = req -> StubResponse.empty(204);
+    server.respondNoContent();
     ListResponse<TestCaseIncidentGroup> emptyGroups =
         newService().listIncidentGroups(Map.of("groupBy", "table"));
     assertNotNull(emptyGroups.getData());
     assertTrue(emptyGroups.getData().isEmpty());
     assertEquals(0, emptyGroups.getTotal());
 
-    responder = req -> StubResponse.json(403, "{\"code\":403,\"message\":\"Forbidden\"}");
+    server.respond(403, "{\"code\":403,\"message\":\"Forbidden\"}");
     assertThrows(ForbiddenException.class, () -> newService().searchList(new ListParams()));
 
-    responder = req -> StubResponse.json(500, "{\"code\":500,\"message\":\"Internal error\"}");
+    server.respond(500, "{\"code\":500,\"message\":\"Internal error\"}");
     ApiException apiException =
         assertThrows(ApiException.class, () -> newService().listIncidentGroups(null));
     assertEquals(500, apiException.getStatusCode());
 
-    responder = req -> StubResponse.json(200, "not-json");
+    server.respond(200, "not-json");
     assertThrows(OpenMetadataException.class, () -> newService().list());
   }
 
@@ -272,60 +261,6 @@ class TestCaseResolutionStatusServiceTest {
   }
 
   private TestCaseResolutionStatusService newService() {
-    return new TestCaseResolutionStatusService(
-        new OpenMetadataHttpClient(OpenMetadataConfig.builder().baseUrl(baseUrl()).build()));
-  }
-
-  private String baseUrl() {
-    return "http://127.0.0.1:" + server.getAddress().getPort() + "/api";
-  }
-
-  private void handle(HttpExchange exchange) throws IOException {
-    ReceivedRequest request =
-        new ReceivedRequest(
-            exchange.getRequestMethod(),
-            exchange.getRequestURI().getRawPath(),
-            exchange.getRequestURI().getRawQuery());
-    received.add(request);
-    StubResponse response = responder.apply(request);
-    if (response.status() == 204 || response.body() == null) {
-      exchange.sendResponseHeaders(response.status(), -1);
-      exchange.close();
-      return;
-    }
-    byte[] bytes = response.body().getBytes(StandardCharsets.UTF_8);
-    exchange.getResponseHeaders().add("Content-Type", "application/json");
-    exchange.sendResponseHeaders(response.status(), bytes.length);
-    try (OutputStream out = exchange.getResponseBody()) {
-      out.write(bytes);
-    }
-  }
-
-  private static Map<String, String> parseDecodedQuery(String rawQuery) {
-    Map<String, String> result = new LinkedHashMap<>();
-    if (rawQuery == null || rawQuery.isEmpty()) {
-      return result;
-    }
-    for (String pair : rawQuery.split("&")) {
-      int idx = pair.indexOf('=');
-      if (idx >= 0) {
-        String key = URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8);
-        String value = URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8);
-        result.put(key, value);
-      }
-    }
-    return result;
-  }
-
-  private record ReceivedRequest(String method, String rawPath, String rawQuery) {}
-
-  private record StubResponse(int status, String body) {
-    static StubResponse json(int status, String body) {
-      return new StubResponse(status, body);
-    }
-
-    static StubResponse empty(int status) {
-      return new StubResponse(status, null);
-    }
+    return new TestCaseResolutionStatusService(server.httpClient());
   }
 }

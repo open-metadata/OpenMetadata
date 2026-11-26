@@ -12,25 +12,19 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
-import org.openmetadata.sdk.network.OpenMetadataHttpClient;
+import org.openmetadata.sdk.testing.EmbeddedHttpServer;
 
 class BaseResourceTest {
 
@@ -140,28 +134,10 @@ class BaseResourceTest {
           }
         }
         """;
-    AtomicReference<String> capturedQuery = new AtomicReference<>();
-    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-    server.createContext(
-        "/api/v1/test-entities",
-        exchange -> {
-          capturedQuery.set(exchange.getRequestURI().getRawQuery());
-          byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-          exchange.getResponseHeaders().add("Content-Type", "application/json");
-          exchange.sendResponseHeaders(200, bytes.length);
-          try (OutputStream out = exchange.getResponseBody()) {
-            out.write(bytes);
-          }
-        });
-    server.start();
-    try {
-      OpenMetadataHttpClient realClient =
-          new OpenMetadataHttpClient(
-              OpenMetadataConfig.builder()
-                  .baseUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/api")
-                  .build());
+    try (EmbeddedHttpServer server = EmbeddedHttpServer.start("/v1/test-entities")) {
+      server.respond(200, body);
       BaseResource<TestEntity> realResource =
-          new BaseResource<TestEntity>(realClient, "/v1/test-entities") {
+          new BaseResource<TestEntity>(server.httpClient(), "/v1/test-entities") {
             @Override
             protected Class<TestEntity> getEntityClass() {
               return TestEntity.class;
@@ -170,7 +146,7 @@ class BaseResourceTest {
 
       ListResponse<TestEntity> response = realResource.list(new ListParams().setLimit(25));
 
-      assertEquals("limit=25", capturedQuery.get());
+      assertEquals("limit=25", server.requests().getLast().rawQuery());
       assertNotNull(response);
       assertEquals(2, response.getTotal());
       assertEquals("next-cursor", response.getPaging().getAfter());
@@ -187,10 +163,8 @@ class BaseResourceTest {
       assertEquals("entity-10", defaultListResponse.getData().getFirst().getId());
 
       ListResponse<TestEntity> nullParamsResponse = realResource.list(null);
-      assertNull(capturedQuery.get());
+      assertNull(server.requests().getLast().rawQuery());
       assertEquals("entity-11", nullParamsResponse.getData().getLast().getId());
-    } finally {
-      server.stop(0);
     }
   }
 
