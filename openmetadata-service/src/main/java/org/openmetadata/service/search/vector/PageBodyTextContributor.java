@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Page;
@@ -64,17 +65,34 @@ public final class PageBodyTextContributor implements VectorBodyTextContributor 
    * ADR:2026-11-26-mcp-article-passages-match-indexed-chunks
    */
   public static List<String> readableArticlePassages(Page page, List<String> passages) {
+    return matchedArticlePassages(page, passages).map(ArticlePassage::render).toList();
+  }
+
+  /** The first readable body in search order, suitable for a budgeted context excerpt. */
+  public static String firstReadableArticleBody(Page page, List<String> passages) {
+    return matchedArticlePassages(page, passages)
+        .map(ArticlePassage::body)
+        .findFirst()
+        .orElse(null);
+  }
+
+  private static Stream<ArticlePassage> matchedArticlePassages(Page page, List<String> passages) {
     String description = page.getDescription();
-    List<String> matching = List.of();
-    if (!passages.isEmpty() && !nullOrEmpty(description) && !description.isBlank()) {
+    Stream<ArticlePassage> matching = Stream.empty();
+    if (!nullOrEmpty(passages) && !nullOrEmpty(description) && !description.isBlank()) {
       ArticleChunks chunks = articleChunks(page);
       matching =
           passages.stream()
-              .map(passage -> renderArticlePassage(passage, chunks))
-              .filter(Objects::nonNull)
-              .toList();
+              .map(passage -> matchArticlePassage(passage, chunks))
+              .filter(Objects::nonNull);
     }
     return matching;
+  }
+
+  private record ArticlePassage(String header, String body, String footer) {
+    String render() {
+      return PromptText.forContentRead(header) + body + footer;
+    }
   }
 
   private record ArticleChunks(List<String> indexed, List<String> imageFree, List<String> labels) {}
@@ -91,8 +109,8 @@ public final class PageBodyTextContributor implements VectorBodyTextContributor 
     return new ArticleChunks(indexed, imageFree, labels);
   }
 
-  private static String renderArticlePassage(String passage, ArticleChunks chunks) {
-    String rendered = null;
+  private static ArticlePassage matchArticlePassage(String passage, ArticleChunks chunks) {
+    ArticlePassage match = null;
     Matcher footer = CHUNK_FOOTER.matcher(passage);
     if (footer.find()) {
       long ordinal =
@@ -110,16 +128,16 @@ public final class PageBodyTextContributor implements VectorBodyTextContributor 
           String imageFree = chunks.imageFree().get(index);
           String body = imageFree.substring(Math.min(label.length(), imageFree.length()));
           String header = passage.substring(0, footer.start() - chunk.length()) + label;
-          rendered = renderReadableBody(header, body, passage.substring(footer.start()));
+          match = readablePassage(header, body, passage.substring(footer.start()));
         }
       }
     }
-    return rendered;
+    return match;
   }
 
-  private static String renderReadableBody(String header, String body, String footer) {
+  private static ArticlePassage readablePassage(String header, String body, String footer) {
     String readable = PromptText.forArticleRead(body);
-    return readable.isEmpty() ? null : PromptText.forContentRead(header) + readable + footer;
+    return readable.isEmpty() ? null : new ArticlePassage(header, readable, footer);
   }
 
   static String extractBodyText(EntityInterface<?> entity) {

@@ -4,7 +4,8 @@
 - **Revisions:** v1 2026-11-26 (initial)
 - **Deciders:** OpenMetadata MCP and Search maintainers
 - **Guard:** `PageBodyTextContributorTest` checks stored chunk matching and compatibility.
-  `GetEntityToolTest` checks fallback using hits built by `VectorDocBuilder`.
+  `GetEntityToolTest` and `AIContextBuilderTest` check content and context fallback using hits
+  built by `VectorDocBuilder`.
 - **Related:** #38450, #38489, #38883,
   ADR:2026-11-20-elasticsearch-and-opensearch-share-one-vector-index-service
 
@@ -29,10 +30,14 @@ instead of the article's text. Stored chunks can also lag behind edits to the pa
   yields no readable hits, `get_entity_details(include=["content"])` returns the cleaned full
   article. It returns empty content when that article consists entirely of images removed by the
   cleaner.
+- `AIContextBuilder` cleans linked articles before applying the knowledge budget. For a
+  query-relevant excerpt it requests up to three ranked hits in one lookup and excerpts the first
+  readable article body without its index framing. With no readable hit it uses the structural
+  preview of the cleaned article within the same budget.
 
 ## Consequences
 
-The reader works with documents already stored in this format and uses the page and hits already
-fetched by MCP. It spends local CPU and memory re-chunking an article when search returns hits.
+The reader works with documents already stored in this format. It spends local CPU and memory
+re-chunking an article when search returns hits.
 Changes to the framing or chunk boundaries need coordinated updates to the writer, reader, and
 regression tests, with a rollout that accounts for existing indexed documents.

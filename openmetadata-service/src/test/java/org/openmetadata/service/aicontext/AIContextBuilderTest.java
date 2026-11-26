@@ -18,11 +18,14 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.SecurityContext;
@@ -34,6 +37,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
@@ -80,6 +85,8 @@ import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.PageBodyTextContributor;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -273,11 +280,12 @@ class AIContextBuilderTest {
   }
 
   @Test
-  void applyKnowledgeBudget_excerptsAnOversizedItemWithThePassageMostRelevantToTheQuery() {
-    KnowledgeItem article = knowledgeItem("article", "z".repeat(4000));
-    UUID articleId = UUID.randomUUID();
+  void applyKnowledgeBudget_usesTheTopIndexedPassageForGlossaryTerms() {
+    KnowledgeItem term =
+        knowledgeItem("refunds", "z".repeat(4000)).withType(KnowledgeItem.Type.GLOSSARY_TERM);
+    UUID termId = UUID.randomUUID();
     VectorIndexService vectorService = mock(VectorIndexService.class);
-    when(vectorService.searchChunksByParent(articleId.toString(), "refund window", 1, null))
+    when(vectorService.searchChunksByParent(termId.toString(), "refund window", 1, null))
         .thenReturn(List.of("Refunds are accepted within 30 days."));
     SearchRepository searchRepository = mock(SearchRepository.class);
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
@@ -286,16 +294,83 @@ class AIContextBuilderTest {
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
       entity
-          .when(() -> Entity.getEntityReferenceByName("page", "kb.article", Include.NON_DELETED))
-          .thenReturn(new EntityReference().withId(articleId));
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      Entity.GLOSSARY_TERM, term.getFullyQualifiedName(), Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(termId));
+
+      new AIContextBuilder("table", "svc.db.sch.orders")
+          .withQuery("refund window")
+          .applyKnowledgeBudget(new AIContext().withGlossaryTerms(List.of(term)));
+    }
+
+    assertEquals("Refunds are accepted within 30 days.", term.getContent());
+    assertTrue(term.getContentTruncated());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void applyKnowledgeBudget_skipsImageOnlyArticleHits(boolean hasReadableHit) {
+    String lead = "Start with policy.";
+    String answer = "Refunds are accepted within 30 days.";
+    String diagram = "<img src=\"data:image/png;base64,AAAA\">";
+    // The labels and prose fill chunk 1, leaving the diagram by itself in chunk 2.
+    Page page =
+        new Page()
+            .withId(UUID.randomUUID())
+            .withName("article")
+            .withFullyQualifiedName("kb.article")
+            .withDescription(lead + "\n\n" + answer + " " + "detail ".repeat(368) + diagram);
+    EntityReference reference = new EntityReference().withType(Entity.PAGE).withId(page.getId());
+    Page indexedPage = spy(page);
+    when(indexedPage.getEntityReference()).thenReturn(reference);
+    PageBodyTextContributor.INSTANCE.register();
+    List<Map<String, Object>> chunks =
+        VectorDocBuilder.fromEntityReusingEmbeddings(
+            indexedPage, Map.of(0, new float[] {1}, 1, new float[] {1}));
+    assertEquals(2, chunks.size());
+    String imageHit = (String) chunks.getLast().get("textToLLMContext");
+    assertTrue(imageHit.contains(diagram));
+    assertFalse(imageHit.contains(answer));
+    List<String> hits =
+        hasReadableHit
+            ? List.of(imageHit, (String) chunks.getFirst().get("textToLLMContext"))
+            : List.of(imageHit);
+    KnowledgeItem article =
+        knowledgeItem(page.getName(), PromptText.forArticleRead(page.getDescription()))
+            .withId(page.getId());
+
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(vectorService.searchChunksByParent(
+            eq(page.getId().toString()), eq("refund window"), anyInt(), isNull()))
+        .thenAnswer(invocation -> hits.stream().limit(invocation.<Integer>getArgument(2)).toList());
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entity
+          .when(() -> Entity.getEntity(Entity.PAGE, page.getId(), "", Include.NON_DELETED))
+          .thenReturn(page);
 
       new AIContextBuilder("table", "svc.db.sch.orders")
           .withQuery("refund window")
           .applyKnowledgeBudget(new AIContext().withArticles(List.of(article)));
     }
 
-    assertEquals("Refunds are accepted within 30 days.", article.getContent());
+    String excerpt = article.getContent();
     assertTrue(article.getContentTruncated());
+    assertTrue(excerpt.length() <= AIContextBuilder.EXCERPT_CHARS);
+    assertFalse(excerpt.contains("base64"));
+    assertFalse(excerpt.contains("chunk 2/2"));
+    if (hasReadableHit) {
+      assertTrue(excerpt.startsWith(lead));
+      assertTrue(excerpt.contains(answer));
+    } else {
+      assertEquals(lead, excerpt);
+    }
   }
 
   @Test
