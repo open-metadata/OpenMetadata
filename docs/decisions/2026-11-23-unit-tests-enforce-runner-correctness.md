@@ -21,22 +21,18 @@ Keep type checking, hook correctness, unused-variable checks, and general
 correctness rules active in tests. Allow CommonJS imports where Jest factories
 need to load mocked modules after their mocks are installed.
 
-Exclude production accessibility, rendering-cost, and complexity rules from unit
-tests. OSS also excludes production architecture and design-token rules there.
+Exclude production accessibility, rendering-cost, complexity, import-layer and
+design-token rules from unit tests.
 Keep those checks unchanged on production files. Remove unused inline directives;
 keep active exceptions rather than silently weakening their underlying rules.
 
-Enable measured, zero-backlog Jest correctness rules as errors. In Collate,
-`no-use-before-define` and `no-extra-arguments` are errors specifically in unit
-tests after clearing their test backlog; their production severity is unchanged.
+Enable measured, zero-backlog Jest correctness rules as errors.
 
 Do not enable every recommended rule blindly. `no-conditional-expect` flags
 legitimate table-driven branches, `no-standalone-expect` flags assertion helpers,
 and `valid-expect` flags OSS assertions attached before fake timers or deferred
-requests are advanced and awaited afterward. Collate has no such `valid-expect`
-backlog and enables it. Collate's assertion-presence check recognizes `expect*`
-helpers; queries need explicit assertions. OSS still has assertion-free tests
-to repair before enabling that check.
+requests are advanced and awaited afterward. Assertion-free tests must be
+repaired before enabling the assertion-presence check.
 
 ## Consequences
 

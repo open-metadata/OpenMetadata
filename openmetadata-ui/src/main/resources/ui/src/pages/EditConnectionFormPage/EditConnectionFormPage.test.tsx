@@ -96,7 +96,6 @@ jest.mock(
         return (
           <div>
             <div>ConnectionConfigForm</div>
-
             <input
               data-testid="connection-field"
               type="text"

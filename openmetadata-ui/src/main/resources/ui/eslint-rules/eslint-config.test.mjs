@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { ESLint } from 'eslint';
 
@@ -157,4 +158,26 @@ test('reports stale disable directives as errors in unit tests', async () => {
         message.includes('Unused eslint-disable')
     )
   );
+});
+
+test('keeps bulk suppressions aligned with enabled error rules', async () => {
+  // The CLI rejects stale bulk entries even when lint reports no findings.
+  const suppressions = JSON.parse(
+    await readFile(
+      new URL('../eslint-suppressions.json', import.meta.url),
+      'utf8'
+    )
+  );
+
+  for (const [filePath, rules] of Object.entries(suppressions)) {
+    const config = await eslint.calculateConfigForFile(filePath);
+
+    for (const ruleId of Object.keys(rules)) {
+      assert.equal(
+        config?.rules[ruleId]?.[0],
+        2,
+        `${filePath} retains a bulk suppression for inactive error rule ${ruleId}`
+      );
+    }
+  }
 });

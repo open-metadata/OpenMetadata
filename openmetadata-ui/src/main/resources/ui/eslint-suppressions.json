@@ -823,11 +823,6 @@
       "count": 1
     }
   },
-  "src/components/Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget.test.tsx": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 2
-    }
-  },
   "src/components/Database/RetentionPeriod/RetentionPeriod.component.tsx": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
       "count": 1
@@ -898,19 +893,9 @@
       "count": 1
     }
   },
-  "src/components/common/Table/TableV2Utils.test.ts": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 2
-    }
-  },
   "src/components/observability/IncidentManager/IncidentGroups/IncidentGroups.constants.ts": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
       "count": 4
-    }
-  },
-  "src/constants/Color.constants.test.ts": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 1
     }
   },
   "src/constants/Color.constants.ts": {
@@ -923,17 +908,7 @@
       "count": 2
     }
   },
-  "src/hooks/insights/useDataInsightChartColors.test.tsx": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 4
-    }
-  },
   "src/hooks/insights/useDataInsightChartColors.ts": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 1
-    }
-  },
-  "src/hooks/useWorkflowEdgeManagement.test.ts": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
       "count": 1
     }
@@ -966,16 +941,6 @@
   "src/utils/WorkflowEdgeTheme.ts": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
       "count": 1
-    }
-  },
-  "src/utils/WorkflowSerializer.test.ts": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 3
-    }
-  },
-  "src/utils/common/layout.utils.test.ts": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 5
     }
   },
   "src/utils/common/layout.utils.ts": {

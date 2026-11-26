@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { IncidentTimeMetricsType } from '../enums/DataQuality.enum';
 import { EntityType } from '../enums/entity.enum';
 import { TestCaseType } from '../enums/TestSuite.enum';

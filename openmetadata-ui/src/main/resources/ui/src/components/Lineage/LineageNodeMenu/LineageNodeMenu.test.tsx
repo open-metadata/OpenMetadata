@@ -69,7 +69,6 @@ describe('LineageNodeMenu', () => {
     const onParentClick = jest.fn();
     render(
       // stand-in for the ReactFlow node's click handler
-
       <div onClick={onParentClick}>
         <LineageNodeMenu {...props} />
       </div>

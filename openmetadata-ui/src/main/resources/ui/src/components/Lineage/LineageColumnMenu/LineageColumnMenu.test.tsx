@@ -68,7 +68,6 @@ describe('LineageColumnMenu', () => {
     const onParentMouseDown = jest.fn();
     render(
       // stand-in for the column row, which selects the column on click
-
       <div onClick={onParentClick} onMouseDown={onParentMouseDown}>
         <LineageColumnMenu {...props} />
       </div>
