@@ -61,8 +61,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
-import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.search.vector.utils.DTOs;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.LoggerFactory;
 
@@ -857,7 +857,7 @@ class ElasticSearchVectorServiceTest {
     answerByEndpointContaining(freshInstallRules());
     String staged = vectorService.beginStagedChunkRecreate();
 
-    AvailableEntityTypes.SET.forEach(
+    EmbeddedEntityTypes.ALL.forEach(
         type -> vectorService.markEntityTypeReindexed(type, !"table".equals(type), staged));
 
     assertEquals(0, sentCount("POST", "/_aliases"), "no alias swap");
@@ -899,7 +899,7 @@ class ElasticSearchVectorServiceTest {
   private static final String LIVE_DOC = "/data_asset_embeddings_chunks/_doc/";
 
   private void promoteEveryEntityIndex(String staged) {
-    AvailableEntityTypes.SET.forEach(
+    EmbeddedEntityTypes.ALL.forEach(
         type -> vectorService.markEntityTypeReindexed(type, true, staged));
   }
 

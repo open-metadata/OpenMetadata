@@ -11,16 +11,6 @@
  *  limitations under the License.
  */
 
-/*
- * These rules are disabled for this test file only: the JSX below is throwaway
- * mock markup for `@openmetadata/ui-core-components`. The mocks intentionally
- * expose accessible names via label nesting (which the tests query by role and
- * text); adding htmlFor/id pairs would require unique per-instance ids and
- * aria-label would override those nesting-based names, breaking assertions.
- */
-/* eslint-disable jsx-a11y/label-has-for */
-/* eslint-disable jsx-a11y/control-has-associated-label */
-
 import {
   act,
   fireEvent,
@@ -167,7 +157,6 @@ jest.mock(
     __esModule: true,
     default: ({ markdown }: { markdown?: string }) => (
       <div
-        // eslint-disable-next-line react/no-danger -- test fixture markup
         dangerouslySetInnerHTML={{ __html: markdown ?? '' }}
         data-testid="field-doc-preview"
       />

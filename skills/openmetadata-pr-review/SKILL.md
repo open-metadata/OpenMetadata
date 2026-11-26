@@ -133,7 +133,7 @@ gh api repos/$REPO/contents/<path/to/test_file>?ref=$HEAD --jq '.content' | base
 | `openmetadata-ui/src/main/resources/ui/playwright/**` | `.claude/rules/frontend-playwright.md` |
 | `ingestion/src/**/*.py` | `.claude/rules/python-ingestion.md` (+ the `connector-standards` skill for connector PRs) |
 | `openmetadata-spec/**` or any `generated/**` | `.claude/rules/schema-first.md` |
-| `bootstrap/sql/**` | `.claude/rules/migrations.md` |
+| `bootstrap/sql/**` or `.../service/migration/**` | `.claude/rules/migrations.md` |
 
 The high-signal checks, distilled — use these to decide *which* rule to open, not as a replacement for it:
 

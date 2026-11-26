@@ -57,6 +57,7 @@ import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import { getOwnHandler } from './RecordUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
+import { defaultFields as SearchIndexFields } from './SearchIndexUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
 import { showErrorToast } from './ToastUtils';
@@ -298,7 +299,7 @@ export const fetchEntityDetail = (
         .catch(handleError);
     },
     [EntityType.SEARCH_INDEX]: () => {
-      getSearchIndexDetailsByFQN(entityFQN)
+      getSearchIndexDetailsByFQN(entityFQN, { fields: SearchIndexFields })
         .then(applyEntityData)
         .catch(handleError);
     },

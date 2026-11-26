@@ -51,6 +51,7 @@ import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/entityCountLineageRequest';
+import type { LineageTimeRange } from '../../../hooks/lineage/types';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { useLineageStore } from '../../../hooks/useLineageStore';
@@ -184,6 +185,14 @@ const CustomControls: FC<{
       });
     },
     [setSelectedQuickFilters, onPageReset]
+  );
+
+  const handleTimeFilterChange = useCallback(
+    (range: LineageTimeRange) => {
+      onPageReset?.();
+      setTimeFilter(range);
+    },
+    [setTimeFilter, onPageReset]
   );
 
   // Initialize quick filters on component mount
@@ -552,7 +561,7 @@ const CustomControls: FC<{
           <LineageTimeFilter
             endTime={timeFilter?.endTime}
             startTime={timeFilter?.startTime}
-            onChange={setTimeFilter}
+            onChange={handleTimeFilterChange}
           />
 
           <ButtonUtility

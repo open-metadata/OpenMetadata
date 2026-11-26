@@ -53,6 +53,23 @@ export const PERSISTENT_EMPTY_TREE_SETTINGS = {
   removeEmptyRulesOnLoad: false,
 };
 
+/**
+ * Drop-in for the deprecated `QbUtils.checkTree`: same fix-up options (taken
+ * from the config's `*OnLoad` settings, which `sanitizeTree` would otherwise
+ * default to `true`), without `checkTree`'s console.warn of every validation
+ * error — a seeded rule with no value yet is expected, not a fault.
+ */
+export const sanitizeQueryBuilderTree = (
+  tree: ImmutableTree,
+  config: Config
+): ImmutableTree =>
+  QbUtils.sanitizeTree(tree, config, {
+    removeEmptyGroups: config.settings.removeEmptyGroupsOnLoad,
+    removeIncompleteRules: config.settings.removeIncompleteRulesOnLoad,
+    removeEmptyRules: config.settings.removeEmptyRulesOnLoad,
+    forceFix: false,
+  }).fixedTree;
+
 // `group -> group -> rule`.
 export const getEmptyJsonTree = (
   defaultField: string = EntityFields.OWNERS
@@ -205,7 +222,7 @@ export const loadQueryBuilderTree = ({
   subField,
 }: LoadTreeOptions): ImmutableTree => {
   const emptyTree = () =>
-    QbUtils.checkTree(
+    sanitizeQueryBuilderTree(
       QbUtils.loadTree(
         getEmptyQueryBuilderTree({
           outputType,
@@ -218,7 +235,7 @@ export const loadQueryBuilderTree = ({
     );
 
   if (tree) {
-    return QbUtils.checkTree(QbUtils.loadTree(tree), config);
+    return sanitizeQueryBuilderTree(QbUtils.loadTree(tree), config);
   }
 
   if (isEmpty(value)) {
@@ -277,7 +294,7 @@ export const loadExploreQueryFilter = (
     queryFilter,
     config.fields
   );
-  const tree = QbUtils.checkTree(
+  const tree = sanitizeQueryBuilderTree(
     QbUtils.loadTree(isEmpty(jsonTree) ? getEmptyJsonTree() : jsonTree),
     config
   );
