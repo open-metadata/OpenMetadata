@@ -107,7 +107,6 @@ class ServiceUtilClassBase {
     DriveServiceType.SharePoint,
     DatabaseServiceType.Informix,
     DatabaseServiceType.ServiceNow,
-    DatabaseServiceType.Dremio,
     MetadataServiceType.Collibra,
     PipelineServiceType.Mulesoft,
     DatabaseServiceType.MicrosoftFabric,

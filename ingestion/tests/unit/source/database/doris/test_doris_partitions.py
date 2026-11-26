@@ -460,5 +460,5 @@ def test_lost_connection_does_not_fail_the_next_tables(failing_statement, failin
     doris_source.engine.connect.return_value = connection
 
     assert doris_source.get_table_partition_details(failing_table, "om_verify", inspector=None) == (False, None)
-    columns, _ = doris_source._get_columns("t_range_int", "om_verify")
+    columns = doris_source._get_columns("t_range_int", "om_verify")
     assert [column["name"] for column in columns] == ["id", "v"]

@@ -569,7 +569,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         testCaseResults.stream().map(ResultSummary::getTestCaseName).distinct().toList();
     TestCaseRepository testCaseRepository =
         (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
-    return testCaseRepository.findByNames(testCaseFqns, ALL).stream()
+    return testCaseRepository.findByNames(testCaseFqns, Include.NON_DELETED).stream()
         .collect(
             Collectors.toMap(
                 TestCase::getFullyQualifiedName,

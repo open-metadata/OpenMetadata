@@ -189,11 +189,13 @@ export const buildCreateAppRequest = ({
   app,
   configuration,
   cron,
+  timezone,
   ingestionRunner,
 }: {
   app: AppMarketPlaceDefinition;
   configuration?: Record<string, unknown>;
   cron?: string;
+  timezone?: string;
   ingestionRunner?: EntityReference;
 }): CreateAppRequest => ({
   name: app.fullyQualifiedName ?? app.name,
@@ -206,6 +208,7 @@ export const buildCreateAppRequest = ({
         ? ScheduleTimeline.None
         : ScheduleTimeline.Custom,
       ...(cron ? { cronExpression: cron } : {}),
+      ...(cron && timezone ? { timezone } : {}),
     },
   }),
   // Only External apps that opt in may carry an ingestion runner.

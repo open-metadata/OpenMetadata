@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-24 (initial)
 - **Deciders:** @TeddyCr
-- **Guard:** `IngestionPipelineRepositoryTest`, `DataContractPipelineTokenRefreshTest`, `TestSuiteResourceIT`, `LogicalTestSuitePipelineMigrationTest`
+- **Guard:** `IngestionPipelineRepositoryTest`, `DataContractPipelineTokenRefreshTest`, `TestSuiteResourceIT`, `LogicalTestSuitePipelineMigrationIT`
 - **Related:** PR #38523; ADR:2026-11-24-a-test-suites-table-association-is-immutable
 
 ## Context

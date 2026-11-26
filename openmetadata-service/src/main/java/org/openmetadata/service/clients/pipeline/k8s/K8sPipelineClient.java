@@ -1720,6 +1720,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
     if (k8sConfig.getFsGroup() != null) {
       context.setFsGroup(k8sConfig.getFsGroup());
     }
+    context.setSeccompProfile(k8sConfig.getSeccomp());
     return context;
   }
 
@@ -1728,6 +1729,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
         .runAsNonRoot(k8sConfig.isRunAsNonRoot())
         .runAsUser(k8sConfig.getRunAsUser())
         .allowPrivilegeEscalation(false)
+        .seccompProfile(k8sConfig.getSeccomp())
         .readOnlyRootFilesystem(false) // Ingestion may need to write temp files
         .capabilities(new V1Capabilities().drop(List.of("ALL")));
   }
