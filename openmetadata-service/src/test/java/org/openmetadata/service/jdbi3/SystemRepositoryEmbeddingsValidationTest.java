@@ -9,6 +9,9 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
@@ -103,6 +106,28 @@ class SystemRepositoryEmbeddingsValidationTest {
 
       assertFalse(result.getPassed());
       assertTrue(result.getMessage().contains("deploymentName: vectors"), result.getMessage());
+    }
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"  "})
+  void reportsMissingEndpointForAnEmbeddingDeployment(String endpoint) {
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withOpenai(new LLMOpenAIConfig().withEndpoint(endpoint))
+            .withEmbeddings(
+                new LLMEmbeddingsConfig()
+                    .withProvider(LLMEmbeddingsConfig.Provider.OPENAI)
+                    .withOpenai(new LLMOpenAIEmbeddingConfig().withDeploymentName("vectors")));
+    try (MockedStatic<LlmConfigHolder> holder = mockStatic(LlmConfigHolder.class)) {
+      holder.when(LlmConfigHolder::get).thenReturn(config);
+
+      StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
+
+      assertFalse(result.getPassed());
+      assertTrue(result.getMessage().contains("LLM_OPENAI_ENDPOINT"), result.getMessage());
+      assertFalse(result.getMessage().contains("api.openai.com"), result.getMessage());
     }
   }
 

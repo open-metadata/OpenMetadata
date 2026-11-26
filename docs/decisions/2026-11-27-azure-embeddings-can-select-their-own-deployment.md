@@ -12,7 +12,7 @@ Azure puts the deployment name in the request URL. Chat and embedding models can
 
 ## Decision
 
-For an Azure endpoint, embedding requests use `llmConfiguration.embeddings.openai.deploymentName` when set. A missing or blank value falls back to `llmConfiguration.openai.deploymentName`. Chat continues to use the latter. Setup validation reports the deployment used for embeddings.
+For an Azure endpoint, embedding requests use `llmConfiguration.embeddings.openai.deploymentName` when set. A missing or blank value falls back to `llmConfiguration.openai.deploymentName`. Chat continues to use the latter. An explicit embedding deployment requires a nonblank `llmConfiguration.openai.endpoint` (`LLM_OPENAI_ENDPOINT`). The client rejects this incomplete configuration before opening a connection, and setup validation identifies the missing endpoint. For valid Azure configurations, validation reports the deployment used for embeddings.
 
 ## Consequences
 

@@ -30,6 +30,8 @@ import javax.net.ssl.SSLSession;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.configuration.LLMOpenAIConfig;
@@ -243,6 +245,20 @@ class OpenAIEmbeddingClientTest {
       exchange.sendResponseHeaders(accepted ? 200 : 400, body.length);
       exchange.getResponseBody().write(body);
     }
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"  "})
+  void rejectsEmbeddingDeploymentWithoutEndpoint(String endpoint) {
+    LLMConfiguration config = buildConfig("test-key", "text-embedding-3-small", 1);
+    config.getOpenai().setEndpoint(endpoint);
+    config.getEmbeddings().getOpenai().setDeploymentName("vectors");
+
+    IllegalArgumentException error =
+        assertThrows(IllegalArgumentException.class, () -> new OpenAIEmbeddingClient(config));
+
+    assertTrue(error.getMessage().contains("LLM_OPENAI_ENDPOINT"), error.getMessage());
   }
 
   @Test

@@ -34,6 +34,7 @@ public final class OpenAIEmbeddingClient extends EmbeddingClient {
     LLMOpenAIEmbeddingConfig embeddingCfg =
         config.getEmbeddings() != null ? config.getEmbeddings().getOpenai() : null;
     LLMOpenAIConfig openaiCfg = config.getOpenai();
+    String deploymentName = azureDeploymentName(openaiCfg, embeddingCfg);
     if (embeddingCfg == null || openaiCfg == null) {
       throw new IllegalArgumentException("OpenAI configuration is required");
     }
@@ -53,7 +54,6 @@ public final class OpenAIEmbeddingClient extends EmbeddingClient {
     this.dimension = embeddingCfg.getEmbeddingDimension();
 
     String endpoint = openaiCfg.getEndpoint();
-    String deploymentName = azureDeploymentName(openaiCfg, embeddingCfg);
     this.isAzure = deploymentName != null;
     if (isAzure && StringUtils.isBlank(openaiCfg.getApiVersion())) {
       throw new IllegalArgumentException(
@@ -110,8 +110,14 @@ public final class OpenAIEmbeddingClient extends EmbeddingClient {
   /** The deployment used by embedding requests and reported by setup validation. */
   public static String azureDeploymentName(
       LLMOpenAIConfig openai, LLMOpenAIEmbeddingConfig embeddings) {
-    return openai != null && embeddings != null && StringUtils.isNotBlank(openai.getEndpoint())
-        ? StringUtils.firstNonBlank(embeddings.getDeploymentName(), openai.getDeploymentName())
+    boolean hasEndpoint = openai != null && StringUtils.isNotBlank(openai.getEndpoint());
+    String override = embeddings == null ? null : embeddings.getDeploymentName();
+    if (StringUtils.isNotBlank(override) && !hasEndpoint) {
+      throw new IllegalArgumentException(
+          "Set llmConfiguration.openai.endpoint (LLM_OPENAI_ENDPOINT) when configuring an Azure embedding deployment.");
+    }
+    return hasEndpoint && embeddings != null
+        ? StringUtils.firstNonBlank(override, openai.getDeploymentName())
         : null;
   }
 
