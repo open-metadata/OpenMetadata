@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.sdk.exception.SearchException;
 import os.org.opensearch.client.json.JsonpMapper;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
-import os.org.opensearch.client.opensearch._types.ShardSearchFailure;
+import os.org.opensearch.client.opensearch._types.ShardFailure;
 import os.org.opensearch.client.opensearch._types.ShardStatistics;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
@@ -126,11 +126,11 @@ class ShardFailureAwareOpenSearchClientTest {
   }
 
   private static ShardStatistics shards(int total, int successful, int failed) {
-    List<ShardSearchFailure> failures =
+    List<ShardFailure> failures =
         IntStream.range(0, failed)
             .mapToObj(
                 shard ->
-                    ShardSearchFailure.of(
+                    ShardFailure.of(
                         f ->
                             f.index(INDEX)
                                 .shard(shard)

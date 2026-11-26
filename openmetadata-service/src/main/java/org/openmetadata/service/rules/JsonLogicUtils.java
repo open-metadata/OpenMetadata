@@ -15,15 +15,11 @@ import org.openmetadata.service.Entity;
 public class JsonLogicUtils {
 
   public static @NotNull Object evaluateUserInRole(
-      JsonLogicEvaluator evaluator,
-      JsonLogicArray arguments,
-      Object data,
-      String jsonPath,
-      String role)
+      JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data, String role)
       throws JsonLogicEvaluationException {
     if (arguments.size() != 1) return false;
 
-    Object resolvedArg = evaluator.evaluate(arguments.getFirst(), data, jsonPath + "[0]");
+    Object resolvedArg = evaluator.evaluate(arguments.getFirst(), data);
     if (!(resolvedArg instanceof String updatedBy)) return false;
 
     if (!(data instanceof Map<?, ?> entityMap)) return false;
@@ -65,11 +61,11 @@ public class JsonLogicUtils {
   }
 
   public static @NotNull Object evaluateIsUpdatedBefore(
-      JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data, String jsonPath)
+      JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
       throws JsonLogicEvaluationException {
     if (arguments.size() != 1) return false;
 
-    Object timestampObj = evaluator.evaluate(arguments.getFirst(), data, jsonPath + "[0]");
+    Object timestampObj = evaluator.evaluate(arguments.getFirst(), data);
     if (timestampObj == null) return false;
 
     // Get updatedAt from entity data
@@ -91,11 +87,11 @@ public class JsonLogicUtils {
   }
 
   public static @NotNull Object evaluateIsUpdatedAfter(
-      JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data, String jsonPath)
+      JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
       throws JsonLogicEvaluationException {
     if (arguments.size() != 1) return false;
 
-    Object timestampObj = evaluator.evaluate(arguments.getFirst(), data, jsonPath + "[0]");
+    Object timestampObj = evaluator.evaluate(arguments.getFirst(), data);
     if (timestampObj == null) return false;
 
     // Get updatedAt from entity data
