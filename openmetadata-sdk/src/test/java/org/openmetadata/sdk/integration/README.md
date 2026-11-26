@@ -16,17 +16,17 @@ See examples:
 - `DatabaseServiceMockTest.java` - Mock tests for DatabaseService operations
 - `OMMockTest.java` - Mock tests for the OM wrapper
 
-### Integration Tests (In openmetadata-service)
-Real integration tests that require a running server should be placed in the `openmetadata-service` module where they can:
-- Use `EntityResourceTest` as a base class
+### Integration Tests (In openmetadata-integration-tests)
+Real integration tests that require a running server should be placed in the `openmetadata-integration-tests` module where they can:
+- Use `BaseEntityIT` as a base class
 - Have access to the full test infrastructure
 - Run against a real database and search engine
 - Test end-to-end workflows
 
-To enable these tests for running in openmetadata-service:
-1. Move the `.java.disabled` files to `openmetadata-service/src/test/java/org/openmetadata/service/resources/`
-2. Extend `EntityResourceTest` instead of `BaseSDKTest`
-3. Use the test infrastructure provided by openmetadata-service
+To enable these tests for running in openmetadata-integration-tests:
+1. Move the `.java.disabled` files to `openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/`
+2. Extend `BaseEntityIT` instead of `BaseSDKTest`
+3. Use the test infrastructure provided by openmetadata-integration-tests
 
 ## Running Mock Tests
 

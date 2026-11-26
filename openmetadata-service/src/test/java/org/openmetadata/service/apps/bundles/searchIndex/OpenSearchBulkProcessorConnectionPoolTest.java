@@ -298,6 +298,78 @@ class OpenSearchBulkProcessorConnectionPoolTest {
     }
   }
 
+  @Test
+  void itemsRejectedForIndexingCapacityAreReSentInsteadOfRecordedAsFailed() throws Exception {
+    BulkCircuitBreaker breaker = new BulkCircuitBreaker(5, 30_000, 10_000);
+    try (FakeSearchCluster cluster = FakeSearchCluster.start(20);
+        ProcessorRun run =
+            ProcessorRun.start(
+                cluster.configuration(searchType(), 20, 5), 2, breaker, retries(5, 50))) {
+      // HTTP 200 with every item carrying its own 429: the request reached the cluster, but it had
+      // no indexing-pressure budget left for the documents.
+      cluster.rejectItemsInNextBulks(2);
+      run.index(2);
+
+      assertTrue(run.processor().flushAndWait(30, TimeUnit.SECONDS));
+      assertEquals(2, cluster.rejectedItems());
+      assertEquals(
+          0,
+          run.failed().get(),
+          "an item the cluster had no capacity for is not a document that failed to index");
+      assertEquals(2, run.succeeded().get());
+      assertEquals(2, cluster.indexedDocuments());
+    }
+  }
+
+  @Test
+  void itemsStillRejectedWhenTheRetryBudgetRunsOutAreRecordedAsFailed() throws Exception {
+    BulkCircuitBreaker breaker = new BulkCircuitBreaker(5, 30_000, 10_000);
+    try (FakeSearchCluster cluster = FakeSearchCluster.start(20);
+        ProcessorRun run =
+            ProcessorRun.start(
+                cluster.configuration(searchType(), 20, 5), 2, breaker, retries(2, 50))) {
+      cluster.rejectItemsInNextBulks(Integer.MAX_VALUE);
+      run.index(1);
+
+      assertTrue(run.processor().flushAndWait(30, TimeUnit.SECONDS));
+      assertEquals(1, run.failed().get(), "a run must still end when the cluster never recovers");
+      assertEquals(0, cluster.indexedDocuments());
+      assertEquals(3, cluster.rejectedItems(), "the first send plus two retries");
+    }
+  }
+
+  @Test
+  void closingWhileItemsAwaitAReSendCountsEachDocumentOnce() throws Exception {
+    BulkCircuitBreaker breaker = new BulkCircuitBreaker(5, 30_000, 10_000);
+    try (FakeSearchCluster cluster = FakeSearchCluster.start(3_000);
+        ProcessorRun run =
+            ProcessorRun.start(
+                cluster.configuration(searchType(), 20, 5),
+                new BulkProcessorSettings(2, 1_048_576L, 2, 60_000L, retries(5, 50)),
+                breaker)) {
+      // One bulk that settles both ways: the cluster writes the second document and turns the
+      // first away for capacity. awaitClose shuts the scheduler down while that bulk is still on
+      // the wire, so the re-send the first item needs is refused the moment the response lands.
+      cluster.rejectFirstItemInNextBulks(1);
+      run.index(2);
+
+      assertFalse(run.processor().awaitClose(1, TimeUnit.SECONDS));
+
+      await()
+          .atMost(Duration.ofSeconds(10))
+          .untilAsserted(
+              () -> {
+                assertEquals(
+                    1,
+                    run.failed().get(),
+                    "only the item awaiting a re-send fails, succeeded=" + run.succeeded().get());
+                assertEquals(1, run.succeeded().get(), "the item the cluster wrote succeeds");
+              });
+      assertEquals(1, cluster.indexedDocuments());
+      assertEquals(1, cluster.rejectedItems());
+    }
+  }
+
   private static BulkRetryPolicy retries(int maxRetries, long initialBackoffMillis) {
     return new BulkRetryPolicy(maxRetries, initialBackoffMillis, 1_000L);
   }

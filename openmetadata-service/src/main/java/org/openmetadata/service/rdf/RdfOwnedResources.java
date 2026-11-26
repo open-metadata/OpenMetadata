@@ -1,5 +1,8 @@
 package org.openmetadata.service.rdf;
 
+import static org.openmetadata.service.rdf.translator.RdfConceptBindingMapper.BOUND_ASSET;
+import static org.openmetadata.service.rdf.translator.RdfConceptBindingMapper.BOUND_COLUMN;
+
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
@@ -26,6 +29,13 @@ public final class RdfOwnedResources {
   private static final Node HAS_CONSTRAINT = NodeFactory.createURI(OM_NS + "hasConstraint");
   private static final Node HAS_QUALITY_MEASUREMENT =
       NodeFactory.createURI("http://www.w3.org/ns/dqv#hasQualityMeasurement");
+  private static final Node HAS_CONSTRAINT_MEMBER =
+      NodeFactory.createURI(OM_NS + "hasConstraintMember");
+  private static final Node HAS_CONSTRAINED_COLUMN =
+      NodeFactory.createURI(OM_NS + "hasConstrainedColumn");
+  private static final Node HAS_TEST_RESULT = NodeFactory.createURI(OM_NS + "hasTestResult");
+  private static final Node HAS_RESULT_VALUE = NodeFactory.createURI(OM_NS + "hasResultValue");
+  private static final Node HAS_OPEN_INCIDENT = NodeFactory.createURI(OM_NS + "hasOpenIncident");
 
   private RdfOwnedResources() {}
 
@@ -55,6 +65,18 @@ public final class RdfOwnedResources {
           ?subject ?p ?o
         }
         UNION {
+          ?entity <https://open-metadata.org/ontology/hasOpenIncident> ?subject .
+          ?subject ?p ?o
+        }
+        UNION {
+          ?entity <https://open-metadata.org/ontology/hasTestResult> ?result .
+          { ?result ?p ?o . BIND(?result AS ?subject) }
+          UNION {
+            ?result <https://open-metadata.org/ontology/hasResultValue> ?subject .
+            ?subject ?p ?o
+          }
+        }
+        UNION {
           ?entity <https://open-metadata.org/ontology/hasColumn> ?topColumn .
           ?topColumn (<https://open-metadata.org/ontology/hasChildColumn>)* ?column .
           { ?column ?p ?o . BIND(?column AS ?subject) }
@@ -77,7 +99,43 @@ public final class RdfOwnedResources {
                  || (isIRI(?o) && STRSTARTS(STR(?o), CONCAT(STR(?entity), "/list/"))))
           BIND(?entity AS ?subject)
         }
+        UNION {
+          ?entity <https://open-metadata.org/ontology/hasConstraint> ?ownedConstraint .
+          ?ownedConstraint (<https://open-metadata.org/ontology/hasConstraintMember>
+                            |<https://open-metadata.org/ontology/hasConstrainedColumn>) ?subject .
+          ?subject ?p ?o
+        }
         """;
+  }
+
+  /**
+   * Matches the concept binding edges into {@code ?entity} and into its columns, binding each as
+   * {@code ?subject ?p ?o}. Their subjects are ontology terms the entity does not own, so only these
+   * edges belong to it, never the terms' other triples.
+   */
+  public static String incomingBindingTriplesPattern() {
+    return """
+        {
+          ?subject <%1$s> ?entity .
+          BIND(<%1$s> AS ?p)
+          BIND(?entity AS ?o)
+        }
+        UNION {
+          ?entity <https://open-metadata.org/ontology/hasColumn> ?boundTopColumn .
+          ?boundTopColumn (<https://open-metadata.org/ontology/hasChildColumn>)* ?o .
+          ?subject <%2$s> ?o .
+          BIND(<%2$s> AS ?p)
+        }
+        """
+        .formatted(BOUND_ASSET, BOUND_COLUMN);
+  }
+
+  /** Whether {@code triple} of the entity's projection is one of its incoming binding edges. */
+  public static boolean isIncomingBinding(
+      final Triple triple, final Node entity, final Set<Node> ownedSubjects) {
+    final String predicate = triple.getPredicate().getURI();
+    return (BOUND_ASSET.equals(predicate) && entity.equals(triple.getObject()))
+        || (BOUND_COLUMN.equals(predicate) && ownedSubjects.contains(triple.getObject()));
   }
 
   /** Names cell {@code index} of the list {@code ownerUri} holds under {@code predicateUri}. */
@@ -107,6 +165,8 @@ public final class RdfOwnedResources {
     }
     owned.addAll(objects(graph, entity, HAS_CONSTRAINT));
     owned.addAll(objects(graph, entity, HAS_QUALITY_MEASUREMENT));
+    owned.addAll(testResults(graph, entity));
+    owned.addAll(objects(graph, entity, HAS_OPEN_INCIDENT));
     final Set<Node> columns =
         descendants(graph, objects(graph, entity, HAS_COLUMN), HAS_CHILD_COLUMN);
     owned.addAll(columns);
@@ -114,6 +174,27 @@ public final class RdfOwnedResources {
       owned.addAll(objects(graph, column, HAS_QUALITY_MEASUREMENT));
     }
     owned.addAll(listCells(graph, entity));
+    owned.addAll(constraintParts(graph, entity));
+    return owned;
+  }
+
+  /**
+   * A constraint's members and the table's own columns it names, including a name the table has no
+   * column for, so no write leaves their triples behind.
+   */
+  private static Set<Node> constraintParts(final Graph graph, final Node entity) {
+    final Set<Node> parts = new HashSet<>();
+    for (Node constraint : objects(graph, entity, HAS_CONSTRAINT)) {
+      parts.addAll(objects(graph, constraint, HAS_CONSTRAINT_MEMBER));
+      parts.addAll(objects(graph, constraint, HAS_CONSTRAINED_COLUMN));
+    }
+    return parts;
+  }
+
+  private static Set<Node> testResults(final Graph graph, final Node entity) {
+    final Set<Node> results = objects(graph, entity, HAS_TEST_RESULT);
+    final Set<Node> owned = new HashSet<>(results);
+    results.forEach(result -> owned.addAll(objects(graph, result, HAS_RESULT_VALUE)));
     return owned;
   }
 

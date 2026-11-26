@@ -116,7 +116,7 @@ class RdfToolDescriptionVocabularyTest {
         .contains("Admin only")
         .doesNotContainIgnoringCase("bot");
     assertThat(tools.get("ontology_describe").description())
-        .contains("no 'resource') is open to every caller");
+        .contains("no 'resource') is open to every caller", "and so is a 'term'");
   }
 
   @Test

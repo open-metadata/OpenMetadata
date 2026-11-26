@@ -19,6 +19,8 @@ from pydantic import BaseModel
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityLineage import LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -43,3 +45,13 @@ class OMetaLineageRequest(BaseModel):
     lineage_request: LineageRequest
     entity_fqn: str | None = None
     entity: type[T] | None = None
+
+
+class OMetaDeleteLineageBySource(BaseModel):
+    """
+    Drops the upstream lineage one source drew into an entity. An override otherwise only clears old
+    edges while writing a new one, so an entity whose source now declares no upstream keeps them all.
+    """
+
+    entity: EntityReference
+    source: LineageSource

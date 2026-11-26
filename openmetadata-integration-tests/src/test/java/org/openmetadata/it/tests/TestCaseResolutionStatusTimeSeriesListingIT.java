@@ -117,7 +117,8 @@ public class TestCaseResolutionStatusTimeSeriesListingIT {
         null,
         null,
         timestamp,
-        recordId.toString());
+        recordId.toString(),
+        false);
     Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS)
         .addRelationship(
             fixture.testCase().getId(),

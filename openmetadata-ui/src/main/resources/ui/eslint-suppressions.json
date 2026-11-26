@@ -112,11 +112,6 @@
       "count": 3
     }
   },
-  "playwright/e2e/Features/DataProductDomainMigration.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 5
-    }
-  },
   "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
@@ -204,7 +199,7 @@
   },
   "playwright/e2e/Features/IncidentManager.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 8
+      "count": 4
     }
   },
   "playwright/e2e/Features/IngestionListNameSorting.spec.ts": {
@@ -225,11 +220,6 @@
   "playwright/e2e/Features/OnlineUsers.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
-    }
-  },
-  "playwright/e2e/Features/Pagination.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 5
     }
   },
   "playwright/e2e/Features/Permissions/DataProductPermissions.spec.ts": {

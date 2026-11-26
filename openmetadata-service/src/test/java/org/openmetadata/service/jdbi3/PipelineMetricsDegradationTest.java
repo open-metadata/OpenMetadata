@@ -3,7 +3,6 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -12,6 +11,7 @@ import java.sql.SQLException;
 import org.jdbi.v3.core.ConnectionException;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.type.PipelineMetrics;
 import org.openmetadata.service.Entity;
 
@@ -24,22 +24,21 @@ class PipelineMetricsDegradationTest {
 
   @Test
   void aDatabaseFailureDegradesToUnavailableMetrics() {
-    CollectionDAO collectionDAO = mock(CollectionDAO.class);
-    CollectionDAO.EntityExtensionTimeSeriesDAO timeSeriesDAO =
+    final CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    final CollectionDAO.EntityExtensionTimeSeriesDAO timeSeriesDAO =
         mock(CollectionDAO.EntityExtensionTimeSeriesDAO.class);
     when(collectionDAO.entityExtensionTimeSeriesDao()).thenReturn(timeSeriesDAO);
     when(timeSeriesDAO.getPipelineMetricsData(
             any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
-            any()))
+            any(), any()))
         .thenThrow(new ConnectionException(new SQLException("Connection refused")));
 
-    try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+    // Calling the real registerEntity while stubbing it can pollute the shared registry.
+    try (final MockedStatic<Entity> entities = mockStatic(Entity.class)) {
       entities.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
-      entities
-          .when(() -> Entity.registerEntity(any(), any(), any(PipelineRepository.class)))
-          .thenAnswer(call -> null);
+      entities.when(() -> Entity.getEntityFields(Pipeline.class)).thenCallRealMethod();
 
-      PipelineMetrics metrics =
+      final PipelineMetrics metrics =
           new PipelineRepository()
               .getPipelineMetrics(null, null, null, null, null, null, null, null, null);
 

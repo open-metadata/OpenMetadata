@@ -56,7 +56,12 @@ class MaintenanceUpdateDroppedConnectionTest {
   void aClearDroppedBeforeItsAnswerIsSentOnceMore() {
     dropsLeft = 1;
 
-    storage().executeMaintenanceUpdate("CLEAR ALL", BUDGET);
+    JenaFusekiStorage storage = storage();
+    try {
+      storage.executeMaintenanceUpdate("CLEAR ALL", BUDGET);
+    } finally {
+      storage.close();
+    }
 
     assertEquals(2, updates.get());
   }
@@ -65,8 +70,13 @@ class MaintenanceUpdateDroppedConnectionTest {
   void aClearDroppedTwiceFailsAfterOneResend() {
     dropsLeft = 2;
 
-    assertThrows(
-        RuntimeException.class, () -> storage().executeMaintenanceUpdate("CLEAR ALL", BUDGET));
+    JenaFusekiStorage storage = storage();
+    try {
+      assertThrows(
+          RuntimeException.class, () -> storage.executeMaintenanceUpdate("CLEAR ALL", BUDGET));
+    } finally {
+      storage.close();
+    }
 
     assertEquals(2, updates.get());
   }
@@ -95,11 +105,17 @@ class MaintenanceUpdateDroppedConnectionTest {
         delayMs -> {});
   }
 
-  /** Closing an exchange without a response closes the connection the client sent it on. */
+  /**
+   * Draining the request body and closing non-dropped setup exchanges prevents the JDK stub from
+   * silently aborting a pooled keep-alive socket after loadOntology(), which would otherwise drop
+   * the first CLEAR before handle() counts it.
+   */
   private void handle(final HttpExchange exchange) throws IOException {
+    exchange.getRequestBody().readAllBytes();
     if (isUpdate(exchange) && updates.incrementAndGet() > 0 && dropsLeft > 0) {
       dropsLeft--;
     } else {
+      exchange.getResponseHeaders().set("Connection", "close");
       exchange.sendResponseHeaders(200, -1);
     }
     exchange.close();

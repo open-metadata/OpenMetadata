@@ -13,17 +13,26 @@
 Validator for column value rule library SQL expression
 """
 
+from typing import Any
+
 from metadata.data_quality.validations.mixins.rule_library_threshold_mixin import (
     RuleLibraryThresholdMixin,
 )
 from metadata.data_quality.validations.models import (
     RuleLibrarySqlExpressionRuntimeParameters,
 )
-from metadata.data_quality.validations.utils import render_sql_expression
+from metadata.data_quality.validations.utils import (
+    extract_rule_library_raw_user_params,
+    extract_rule_library_user_params,
+    get_template_variables,
+    get_test_definition_param_types,
+    render_sql_expression,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.generated.schema.tests.testDefinition import TestDataType
 from metadata.utils.entity_link import get_column_name_or_none, get_table_fqn
 from metadata.utils.logger import test_suite_logger
 
@@ -48,19 +57,31 @@ class ColumnRuleLibrarySqlExpressionValidator(RuleLibraryThresholdMixin):
 
     runtime_params: RuleLibrarySqlExpressionRuntimeParameters
 
-    def _get_user_params(self) -> dict[str, str]:
-        """Extract user-defined parameters from test case parameterValues.
+    def _get_parameter_types(self) -> dict[str, TestDataType]:
+        """Map declared parameter names to their TestDataType from the test definition."""
+        runtime_params = getattr(self, "runtime_params", None)
+        test_definition = getattr(runtime_params, "test_definition", None) if runtime_params is not None else None
+        return get_test_definition_param_types(test_definition)
+
+    def _get_raw_user_params(self) -> dict[str, str]:
+        """Extract raw string user-defined parameters without type coercion."""
+        return extract_rule_library_raw_user_params(self.test_case.parameterValues, RESERVED_PARAMS)
+
+    def _get_user_params(self, only_params: set[str] | None = None) -> dict[str, Any]:
+        """Extract and coerce user-defined parameters from test case parameterValues.
+
+        Args:
+            only_params: Optional subset of parameter names to extract and coerce
 
         Returns:
-            Dict mapping parameter names to their values
+            Dict mapping parameter names to their typed values
         """
-        params = {}
-        if self.test_case.parameterValues:
-            for param in self.test_case.parameterValues:
-                if param.name and param.value and param.name not in RESERVED_PARAMS:  # noqa: SIM102
-                    if not param.name.endswith("RuntimeParameters"):
-                        params[param.name] = param.value
-        return params
+        return extract_rule_library_user_params(
+            self.test_case.parameterValues,
+            RESERVED_PARAMS,
+            self._get_parameter_types(),
+            only_params=only_params,
+        )
 
     def compile_sql_expression(self, column_name: str, table_name: str) -> str:
         """Compile SQL expression template using Jinja2.
@@ -84,11 +105,12 @@ class ColumnRuleLibrarySqlExpressionValidator(RuleLibraryThresholdMixin):
         if not sql_template:
             raise ValueError("Test definition does not have sqlExpression defined")
 
-        params = {
+        referenced_vars = get_template_variables(sql_template.root)
+        params: dict[str, Any] = {
             "column_name": column_name,
             "table_name": table_name,
         }
-        params.update(self._get_user_params())
+        params.update(self._get_user_params(only_params=referenced_vars))
 
         return render_sql_expression(sql_template.root, params)
 

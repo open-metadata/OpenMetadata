@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.openmetadata.mcp.util.McpParams;
 
-final class McpToolParameters {
+public final class McpToolParameters {
 
   private final Map<String, Object> values;
 
@@ -27,7 +27,7 @@ final class McpToolParameters {
     this.values = Objects.requireNonNull(values);
   }
 
-  static McpToolParameters from(Map<String, Object> values) {
+  public static McpToolParameters from(Map<String, Object> values) {
     return new McpToolParameters(values);
   }
 
@@ -39,12 +39,12 @@ final class McpToolParameters {
     return value;
   }
 
-  String optionalString(String key) {
+  public String optionalString(String key) {
     Object value = values.get(key);
     return value instanceof String text ? text : null;
   }
 
-  int integer(String key, int defaultValue) {
+  public int integer(String key, int defaultValue) {
     return McpParams.getInt(values, key, defaultValue);
   }
 
@@ -52,7 +52,7 @@ final class McpToolParameters {
     return McpParams.getBoolean(values, key, false);
   }
 
-  static boolean isBlank(String value) {
+  public static boolean isBlank(String value) {
     return nullOrEmpty(value) || value.isBlank();
   }
 }

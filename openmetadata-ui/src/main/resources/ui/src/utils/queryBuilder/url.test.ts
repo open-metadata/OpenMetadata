@@ -10,9 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
-import { SearchIndex } from '../../enums/search.enum';
-import advancedSearchClassBase from '../AdvancedSearchClassBase';
 import {
   buildExploreUrlParams,
   getQueryBuilderExploreUrl,
@@ -20,10 +17,6 @@ import {
 } from './url';
 
 type QueryFilter = Parameters<typeof getQueryBuilderExploreUrl>[0];
-
-jest.mock('../AdvancedSearchClassBase', () =>
-  jest.requireActual('../AdvancedSearchClassBase')
-);
 
 jest.mock('../RouterUtils', () => ({
   getExplorePath: jest.fn(
@@ -33,108 +26,55 @@ jest.mock('../RouterUtils', () => ({
 }));
 
 describe('buildExploreUrlParams', () => {
-  const mockTree = { id: 'root', type: 'group', children1: {} };
-  const mockQFilter: QueryFilter = {
+  const builderFilter: QueryFilter = {
     query: {
       bool: {
         must: [{ term: { 'owner.displayName.keyword': 'admin' } }],
       },
     },
   };
+  const scopedFilter: QueryFilter = {
+    query: {
+      bool: {
+        must: [
+          builderFilter.query as never,
+          { bool: { must: [{ term: { 'entityType.keyword': 'table' } }] } },
+        ],
+      },
+    },
+  };
 
-  it('should return empty object when both tree and qFilter are empty', () => {
-    const result = buildExploreUrlParams({}, undefined);
+  it('opens the builder filter as one Advanced Search group', () => {
+    const result = buildExploreUrlParams(builderFilter, scopedFilter);
 
-    expect(result).toEqual({});
-  });
-
-  it('should return only queryFilter when tree is provided but qFilter is empty', () => {
-    const result = buildExploreUrlParams(mockTree, undefined);
-
-    expect(result).toEqual({
-      queryFilter: JSON.stringify(mockTree),
-    });
-    expect(result.quickFilter).toBeUndefined();
-  });
-
-  it('should return only quickFilter when qFilter has query but tree is empty', () => {
-    const result = buildExploreUrlParams({}, mockQFilter);
-
-    expect(result).toEqual({
-      quickFilter: JSON.stringify(mockQFilter),
-    });
-    expect(result.queryFilter).toBeUndefined();
-  });
-
-  it('should return both queryFilter and quickFilter when both are provided', () => {
-    const result = buildExploreUrlParams(mockTree, mockQFilter);
-
-    expect(result).toEqual({
-      queryFilter: JSON.stringify(mockTree),
-      quickFilter: JSON.stringify(mockQFilter),
+    expect(JSON.parse(result.queryFilter)).toEqual({
+      query: { bool: { must: [builderFilter.query] } },
     });
   });
 
-  it('should not include quickFilter when qFilter exists but has no query property', () => {
-    const qFilterWithoutQuery = {
-      someOtherProp: 'value',
-    } as unknown as QueryFilter;
-    const result = buildExploreUrlParams(mockTree, qFilterWithoutQuery);
-
-    expect(result).toEqual({
-      queryFilter: JSON.stringify(mockTree),
-    });
-    expect(result.quickFilter).toBeUndefined();
+  it('applies the scoped filter as the quick filter', () => {
+    expect(
+      JSON.parse(buildExploreUrlParams(builderFilter, scopedFilter).quickFilter)
+    ).toEqual(scopedFilter);
   });
 
-  it('should handle null tree gracefully', () => {
-    const result = buildExploreUrlParams(null, mockQFilter);
-
-    expect(result).toEqual({
-      quickFilter: JSON.stringify(mockQFilter),
-    });
+  it('applies the builder filter itself when it is not scoped', () => {
+    expect(
+      JSON.parse(buildExploreUrlParams(builderFilter).quickFilter)
+    ).toEqual(builderFilter);
   });
 
-  it('should return valid JSON strings', () => {
-    const result = buildExploreUrlParams(mockTree, mockQFilter);
-
-    expect(() => JSON.parse(result.queryFilter as string)).not.toThrow();
-    expect(() => JSON.parse(result.quickFilter as string)).not.toThrow();
+  it.each([
+    ['no filter', undefined],
+    ['a filter with no query', {} as QueryFilter],
+  ])('carries nothing for %s', (_name, filter) => {
+    expect(buildExploreUrlParams(filter)).toEqual({});
   });
 
-  it('should produce params that can be URL encoded with proper separators', () => {
-    const result = buildExploreUrlParams(mockTree, mockQFilter);
+  it('never carries a builder tree', () => {
+    const { queryFilter } = buildExploreUrlParams(builderFilter, scopedFilter);
 
-    const allParams = { mode: 'edit', ...result };
-    const queryString = new URLSearchParams(allParams).toString();
-
-    expect(queryString).toContain('mode=edit');
-    expect(queryString).toContain('&');
-    expect(queryString).toContain('queryFilter=');
-    expect(queryString).toContain('quickFilter=');
-
-    const decoded = new URLSearchParams(queryString);
-
-    expect(decoded.get('mode')).toBe('edit');
-    expect(JSON.parse(decoded.get('queryFilter') as string)).toEqual(mockTree);
-    expect(JSON.parse(decoded.get('quickFilter') as string)).toEqual(
-      mockQFilter
-    );
-  });
-
-  it('should work correctly when only queryFilter is present with other params', () => {
-    const result = buildExploreUrlParams(mockTree, undefined);
-
-    const allParams = { mode: 'view', ...result };
-    const queryString = new URLSearchParams(allParams).toString();
-
-    expect(queryString).toContain('mode=view');
-    expect(queryString).toContain('queryFilter=');
-    expect(queryString).not.toContain('quickFilter=');
-
-    const ampersandCount = (queryString.match(/&/g) || []).length;
-
-    expect(ampersandCount).toBe(1);
+    expect(queryFilter).not.toContain('children1');
   });
 });
 
@@ -189,9 +129,6 @@ describe('withExploreFieldKeys', () => {
 });
 
 describe('getQueryBuilderExploreUrl', () => {
-  const config = () =>
-    advancedSearchClassBase.getQbConfigs([SearchIndex.TABLE], {});
-
   const ownerFilter = {
     query: {
       bool: {
@@ -206,42 +143,18 @@ describe('getQueryBuilderExploreUrl', () => {
     },
   } as unknown as QueryFilter;
 
-  it('should put the tree in the queryFilter param', () => {
-    const url = getQueryBuilderExploreUrl(ownerFilter, config());
-
-    expect(url).toContain('queryFilter=');
-    expect(decodeURIComponent(url)).toContain('owners.displayName.keyword');
-  });
-
-  it('should also carry the elasticsearch filter as quickFilter', () => {
-    expect(getQueryBuilderExploreUrl(ownerFilter, config())).toContain(
-      'quickFilter='
-    );
-  });
-
-  it('should rewrite pinned custom-property keys for Explore', () => {
-    const cfg = config();
-    const pinned = {
-      ...cfg,
-      settings: { ...cfg.settings, omEntityType: 'table' },
-    } as ReturnType<typeof config>;
-    const cpFilter = {
-      query: {
-        bool: {
-          must: [
-            {
-              bool: {
-                must: [{ term: { 'extension.testCp.keyword': 'x' } }],
-              },
-            },
-          ],
-        },
-      },
+  it('links Explore with the builder filter and the filter it searched with', () => {
+    const scoped = {
+      query: { bool: { must: [ownerFilter.query, { term: { x: 'y' } }] } },
     } as unknown as QueryFilter;
+    const params = new URLSearchParams(
+      getQueryBuilderExploreUrl(ownerFilter, scoped).split('?')[1]
+    );
 
-    const url = decodeURIComponent(getQueryBuilderExploreUrl(cpFilter, pinned));
-
-    expect(url).not.toContain('"field":"extension.testCp.keyword"');
+    expect(JSON.parse(params.get('queryFilter') ?? '')).toEqual({
+      query: { bool: { must: [ownerFilter.query] } },
+    });
+    expect(JSON.parse(params.get('quickFilter') ?? '')).toEqual(scoped);
   });
 });
 
@@ -284,93 +197,5 @@ describe('withExploreFieldKeys – nodes without children', () => {
     const node = { id: 'root', type: 'group' };
 
     expect(withExploreFieldKeys(node, 'table')).toEqual(node);
-  });
-});
-
-describe('buildExploreUrlParams – omitted filter', () => {
-  it('should omit quickFilter when no filter is passed at all', () => {
-    expect(buildExploreUrlParams({ id: 'root' })).toEqual({
-      queryFilter: JSON.stringify({ id: 'root' }),
-    });
-  });
-});
-
-describe("getQueryBuilderExploreUrl – the builder's own tree", () => {
-  // A custom property is emitted as a nested `customPropertiesTyped` clause,
-  // which cannot be read back into a rule. Rebuilding the tree from the
-  // Elasticsearch filter therefore dropped the condition, and the link opened
-  // Explore showing only the entity-type clause — no way to see or edit what
-  // was actually filtered.
-  const config = {
-    ...advancedSearchClassBase.getQbConfigs([SearchIndex.TABLE]),
-    settings: {
-      ...advancedSearchClassBase.getQbConfigs([SearchIndex.TABLE]).settings,
-      omEntityType: 'table',
-    },
-    fields: {
-      ...advancedSearchClassBase.getQbConfigs([SearchIndex.TABLE]).fields,
-      extension: {
-        label: 'Custom Properties',
-        type: '!group',
-        subfields: {
-          'testCp.rows.name': {
-            label: 'testCp - name',
-            type: 'text',
-            valueSources: ['value'],
-          },
-        },
-      },
-    },
-  } as never;
-
-  const builderTree = QbUtils.loadTree({
-    id: 'root',
-    type: 'group',
-    properties: { conjunction: 'AND' },
-    children1: [
-      {
-        id: 'r1',
-        type: 'rule',
-        properties: {
-          field: 'extension.testCp.rows.name',
-          operator: 'equal',
-          value: ['anuj'],
-          valueSrc: ['value'],
-        },
-      },
-    ],
-  } as never);
-
-  // the nested clause the filter carries, which cannot be reversed
-  const nestedFilter = {
-    query: {
-      bool: {
-        must: [
-          {
-            nested: {
-              path: 'customPropertiesTyped',
-              query: { bool: { must: [] } },
-            },
-          },
-        ],
-      },
-    },
-  } as never;
-
-  it('should carry the custom-property condition into the Explore link', () => {
-    const url = decodeURIComponent(
-      getQueryBuilderExploreUrl(nestedFilter, config, builderTree)
-    );
-
-    // rewritten for Explore, which keys custom properties by entity type
-    expect(url).toContain('extension.table.testCp.rows.name');
-  });
-
-  it('should lose it when no tree is given, which is why one is', () => {
-    const url = decodeURIComponent(
-      getQueryBuilderExploreUrl(nestedFilter, config)
-    );
-
-    expect(url).not.toContain('testCp');
   });
 });
