@@ -77,6 +77,19 @@ describe('TaskFormDesignerUtils', () => {
     }
   );
 
+  it('saves a JSON field as an object even when it arrives with a string schema type', () => {
+    const { formSchema } = buildDesignerSchema([
+      { ...createEmptyDesignerField(), name: 'payload', type: 'json' },
+    ]);
+
+    expect(formSchema.properties).toEqual({
+      payload: expect.objectContaining({
+        type: 'object',
+        additionalProperties: true,
+      }),
+    });
+  });
+
   it('builds schemas from designer fields while preserving ui metadata', () => {
     const { formSchema, uiSchema } = buildDesignerSchema(
       [
