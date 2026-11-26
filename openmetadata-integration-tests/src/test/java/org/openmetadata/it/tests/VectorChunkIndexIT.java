@@ -30,6 +30,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.hc.core5.http.HttpHost;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
@@ -37,17 +38,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.AbstractVectorIndexService;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorIndexService.ChunkSetsBounded;
+import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorSearchParameters;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.opensearch.testcontainers.OpensearchContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.utility.DockerImageName;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
@@ -62,6 +68,17 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
 class VectorChunkIndexIT {
 
   private static final String QUESTION = "which table holds online orders";
+  private static final Logger LOG = LoggerFactory.getLogger(VectorChunkIndexIT.class);
+  private static final int CASCADE_SIZE = 200;
+  // OrderedLaneExecutor runs at most 32 lanes.
+  private static final int MAX_LANES = 32;
+
+  // A server registers each entity type as its repository starts, and the vector handler skips an
+  // entity whose type it cannot read. This JVM starts no repository, so the table type is
+  // registered here.
+  static {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(Entity.TABLE, Entity.TABLE);
+  }
 
   /** Returns one vector for any text and counts the texts it is asked to embed. */
   private static final class CountingProvider extends EmbeddingClient {
@@ -338,6 +355,22 @@ class VectorChunkIndexIT {
     void theHealRemovesTheChunksNoHeaderCounts() throws IOException {
       assertTheHealRemovesTheChunksNoHeaderCounts(service);
     }
+
+    @Test
+    void aDescendantOfAHardDeleteLosesItsChunks() {
+      assertADescendantOfAHardDeleteLosesItsChunks(service);
+    }
+
+    @Test
+    void aDescendantOfASoftDeleteLosesItsChunks() {
+      assertADescendantOfASoftDeleteLosesItsChunks(service);
+    }
+
+    @Test
+    void aCascadeDeletesItsDescendantsChunksInAFewRequestsPerLane() {
+      assertACascadeDeletesItsDescendantsChunksInAFewRequestsPerLane(
+          service, countedService, requests);
+    }
   }
 
   @Nested
@@ -430,6 +463,120 @@ class VectorChunkIndexIT {
     void theHealRemovesTheChunksNoHeaderCounts() throws IOException {
       assertTheHealRemovesTheChunksNoHeaderCounts(service);
     }
+
+    @Test
+    void aDescendantOfAHardDeleteLosesItsChunks() {
+      assertADescendantOfAHardDeleteLosesItsChunks(service);
+    }
+
+    @Test
+    void aDescendantOfASoftDeleteLosesItsChunks() {
+      assertADescendantOfASoftDeleteLosesItsChunks(service);
+    }
+
+    @Test
+    void aCascadeDeletesItsDescendantsChunksInAFewRequestsPerLane() {
+      assertACascadeDeletesItsDescendantsChunksInAFewRequestsPerLane(
+          service, countedService, requests);
+    }
+  }
+
+  /**
+   * A recursive hard delete sends its descendants no delete event: the delete of their ancestor
+   * removes their entity documents by query. Each descendant is still prepared for the hard delete
+   * while its rows exist, and that is where the vector handler removes its chunks, after the delete
+   * and off the calling thread.
+   */
+  private static void assertADescendantOfAHardDeleteLosesItsChunks(
+      AbstractVectorIndexService service) {
+    String live = service.getChunkIndexName();
+    VectorEmbeddingHandler handler = new VectorEmbeddingHandler(service);
+    Table orders = table("orders", "Orders placed online");
+    Table ledger = table("ledger", "word ".repeat(940));
+    try {
+      writeChunks(service, orders, null);
+      writeChunks(service, ledger, null);
+      assertEquals(3, storedChunkIds(service, live, ledger).size());
+
+      handler.prepareHardDelete(orders).run();
+      handler.prepareHardDelete(ledger).run();
+
+      awaitNoChunks(service, live, List.of(orders, ledger));
+    } finally {
+      service.deleteEntityChunks(id(orders));
+      service.deleteEntityChunks(id(ledger));
+    }
+  }
+
+  /**
+   * A recursive soft delete updates each descendant to deleted, in bulk, and sends it no soft
+   * delete event. A kNN reads only chunks marked not deleted, and a chunk keeps the flag it was
+   * written with, so the update itself must remove the descendant's chunks.
+   */
+  private static void assertADescendantOfASoftDeleteLosesItsChunks(
+      AbstractVectorIndexService service) {
+    String live = service.getChunkIndexName();
+    VectorEmbeddingHandler handler = new VectorEmbeddingHandler(service);
+    Table ledger = table("ledger", "word ".repeat(940));
+    try {
+      writeChunks(service, ledger, null);
+      assertEquals(3, storedChunkIds(service, live, ledger).size());
+
+      handler.onEntityUpdated(
+          table("ledger", "word ".repeat(940)).withId(ledger.getId()).withDeleted(true),
+          null,
+          null);
+
+      assertEquals(Set.of(), storedChunkIds(service, live, ledger));
+    } finally {
+      service.deleteEntityChunks(id(ledger));
+    }
+  }
+
+  /**
+   * A level of a recursive delete is prepared together. Its chunk sets are deleted in one task per
+   * ordered lane, each reading all its headers in one request and deleting in two bulks, so the
+   * requests grow with the lanes, not with the descendants.
+   */
+  private static void assertACascadeDeletesItsDescendantsChunksInAFewRequestsPerLane(
+      AbstractVectorIndexService service,
+      AbstractVectorIndexService countedService,
+      RequestLog requests) {
+    String live = service.getChunkIndexName();
+    VectorEmbeddingHandler handler = new VectorEmbeddingHandler(countedService);
+    List<Table> tables =
+        IntStream.range(0, CASCADE_SIZE)
+            .mapToObj(
+                i -> table("t" + i, i % 2 == 0 ? "Orders placed online" : "word ".repeat(940)))
+            .toList();
+    try {
+      tables.forEach(table -> writeChunks(service, table, null));
+      requests.clear();
+
+      handler.prepareHardDelete(tables).run();
+
+      awaitNoChunks(service, live, tables);
+      long headerReads = requests.headerReadsOf(live);
+      long sent = requests.countTo(live);
+      LOG.info(
+          "Deleting the chunks of {} descendants sent {} requests, {} header reads",
+          CASCADE_SIZE,
+          sent,
+          headerReads);
+      assertTrue(headerReads <= MAX_LANES, "one header read per lane at most: " + headerReads);
+      assertTrue(sent <= 3L * MAX_LANES, "three requests per lane at most: " + requests);
+    } finally {
+      requests.clear();
+      service.deleteEntitiesChunks(tables.stream().map(VectorChunkIndexIT::id).toList());
+    }
+  }
+
+  private static void awaitNoChunks(
+      AbstractVectorIndexService service, String index, List<Table> parents) {
+    Awaitility.await("the chunks of " + ids(parents) + " are deleted")
+        .atMost(Duration.ofSeconds(20))
+        .pollInterval(Duration.ofMillis(200))
+        .until(() -> parents.stream().allMatch(t -> storedChunkIds(service, index, t).isEmpty()));
   }
 
   /**

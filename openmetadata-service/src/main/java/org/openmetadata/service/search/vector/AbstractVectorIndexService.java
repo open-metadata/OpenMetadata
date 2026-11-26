@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
@@ -101,6 +102,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   @Getter private final EmbeddingClient embeddingClient;
   private final Function<VectorSearchParameters, Set<String>> readableAnchors;
   private final Clock clock;
+  private final ChunkSetsDelete chunkSetsDelete = new ChunkSetsDelete(new ChunkDeleteRequests());
 
   protected AbstractVectorIndexService(
       EmbeddingClient embeddingClient,
@@ -626,27 +628,43 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    */
   @Override
   public void deleteEntityChunks(String parentId) {
-    String live = getChunkIndexName();
-    Optional<Exception> liveFailure = deleteChunksFrom(live, parentId);
-    String staged = resolveChunkSinkTarget();
-    if (staged != null && deleteChunksFrom(staged, parentId).isPresent()) {
-      blockPromotionForMissedDelete(staged);
-    }
-    if (liveFailure.isPresent()) {
+    Exception failure = deleteEntitiesChunks(List.of(parentId)).get(parentId);
+    if (failure != null) {
       throw new IllegalStateException(
-          "Could not delete the chunks of " + parentId + " from " + live, liveFailure.get());
+          "Could not delete the chunks of " + parentId + " from " + getChunkIndexName(), failure);
     }
   }
 
-  private Optional<Exception> deleteChunksFrom(String indexName, String parentId) {
-    Optional<Exception> failure = Optional.empty();
-    try {
-      replaceChunks(indexName, parentId, List.of(), readStoredChunks(indexName, parentId));
-    } catch (IOException | RuntimeException e) {
-      LOG.debug("Failed to delete chunks for {} from {}: {}", parentId, indexName, e.getMessage());
-      failure = Optional.of(e);
+  /**
+   * The same deletes as {@link #deleteEntityChunks}, a batch of parents at a time. See {@link
+   * ChunkSetsDelete}.
+   */
+  @Override
+  public Map<String, Exception> deleteEntitiesChunks(List<String> parentIds) {
+    String live = getChunkIndexName();
+    Map<String, Exception> liveFailures = chunkSetsDelete.delete(live, parentIds);
+    String staged = resolveChunkSinkTarget();
+    if (staged != null) {
+      Map<String, Exception> stagedFailures = chunkSetsDelete.delete(staged, parentIds);
+      if (!stagedFailures.isEmpty()) {
+        logMissedDeletes(staged, stagedFailures);
+        blockPromotionForMissedDelete(staged);
+      }
     }
-    return failure;
+    if (!liveFailures.isEmpty()) {
+      logMissedDeletes(live, liveFailures);
+    }
+    return liveFailures;
+  }
+
+  private static void logMissedDeletes(String indexName, Map<String, Exception> failures) {
+    Map.Entry<String, Exception> first = failures.entrySet().iterator().next();
+    LOG.debug(
+        "Failed to delete the chunks of {} parents from {}, {} first: {}",
+        failures.size(),
+        indexName,
+        first.getKey(),
+        first.getValue().getMessage());
   }
 
   /**
@@ -1562,6 +1580,19 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     return response;
   }
 
+  /** The batched delete's requests, retried as every by-id chunk request is. */
+  private final class ChunkDeleteRequests implements ChunkSetsDelete.Requests {
+    @Override
+    public Map<String, StoredChunks> readHeaders(String index, List<String> parentIds) {
+      return readStoredChunks(index, parentIds);
+    }
+
+    @Override
+    public List<JsonNode> bulk(String index, String body) {
+      return bulkItems(sendBulk(index, "a batch of chunk sets", new StringBuilder(body)));
+    }
+  }
+
   private ObjectNode chunkMeta() {
     return MAPPER.createObjectNode().put("chunkDocVersion", VectorDocBuilder.CHUNK_DOC_VERSION);
   }
@@ -1945,12 +1976,22 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * chunks behind and report success.
    */
   private StoredChunks readStoredChunks(String indexName, String parentId) {
-    JsonNode doc =
+    return readStoredChunks(indexName, List.of(parentId)).get(parentId);
+  }
+
+  /** One realtime multi-get of the headers of {@code parentIds}, as above. */
+  private Map<String, StoredChunks> readStoredChunks(String indexName, List<String> parentIds) {
+    JsonNode docs =
         sendChunkRequest(
             "/" + indexName + "/_mget",
-            storedChunksRequest(parentId),
-            response -> readHeaderDoc(indexName, response));
-    return isMissingIndex(doc) ? StoredChunks.NONE : storedChunks(doc);
+            storedChunksRequest(parentIds),
+            response -> readHeaderDocs(indexName, response));
+    Map<String, StoredChunks> stored = new LinkedHashMap<>();
+    for (int i = 0; i < parentIds.size(); i++) {
+      JsonNode doc = docs.path(i);
+      stored.put(parentIds.get(i), isMissingIndex(doc) ? StoredChunks.NONE : storedChunks(doc));
+    }
+    return stored;
   }
 
   private static StoredChunks storedChunks(JsonNode doc) {
@@ -1958,10 +1999,13 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     return new StoredChunks(header, header == null ? null : DocVersion.of(doc));
   }
 
-  private static String storedChunksRequest(String parentId) {
+  private static String storedChunksRequest(List<String> parentIds) {
     ObjectNode body = MAPPER.createObjectNode();
-    ObjectNode header = body.putArray("docs").addObject().put("_id", parentId + "_0");
-    header.putObject("_source").set("includes", MAPPER.valueToTree(CHUNK_HEADER_FIELDS));
+    ArrayNode docs = body.putArray("docs");
+    for (String parentId : parentIds) {
+      ObjectNode header = docs.addObject().put("_id", parentId + "_0");
+      header.putObject("_source").set("includes", MAPPER.valueToTree(CHUNK_HEADER_FIELDS));
+    }
     return body.toString();
   }
 
@@ -1969,15 +2013,17 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     return INDEX_NOT_FOUND.equals(doc.path("error").path("type").asText());
   }
 
-  // A shard that cannot answer for the document reports it on the document, inside a 200.
-  private static JsonNode readHeaderDoc(String indexName, JsonNode response) {
-    JsonNode doc = response.path("docs").path(0);
-    if (!isMissingIndex(doc) && !doc.path("found").isBoolean()) {
-      throw new TransientChunkRequestException(
-          "Could not read chunk " + doc.path("_id").asText() + " in " + indexName + ": " + doc,
-          null);
+  // A shard that cannot answer for a document reports it on the document, inside a 200.
+  private static JsonNode readHeaderDocs(String indexName, JsonNode response) {
+    JsonNode docs = response.path("docs");
+    for (JsonNode doc : docs) {
+      if (!isMissingIndex(doc) && !doc.path("found").isBoolean()) {
+        throw new TransientChunkRequestException(
+            "Could not read chunk " + doc.path("_id").asText() + " in " + indexName + ": " + doc,
+            null);
+      }
     }
-    return doc;
+    return docs;
   }
 
   private static ChunkHeader chunkHeader(JsonNode doc) {
@@ -2173,7 +2219,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   }
 
   /** {@code expected} null deletes whatever is stored; a version deletes only that version. */
-  private static void appendChunkDelete(
+  static void appendChunkDelete(
       StringBuilder bulk, String indexName, String id, DocVersion expected) {
     ObjectNode meta = chunkActionMeta(indexName, id, expected);
     ObjectNode action = MAPPER.createObjectNode();
@@ -2189,7 +2235,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     return meta;
   }
 
-  private static void appendChunkDeletes(
+  static void appendChunkDeletes(
       StringBuilder bulk, String indexName, String parentId, int fromIndex, int toExclusive) {
     for (int i = fromIndex; i < toExclusive; i++) {
       appendChunkDelete(bulk, indexName, parentId + "_" + i, null);

@@ -14,13 +14,18 @@
 package org.openmetadata.service.events.lifecycle;
 
 import io.micrometer.core.instrument.Metrics;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -144,6 +149,20 @@ public final class OrderedLaneExecutor implements AutoCloseable {
   }
 
   /**
+   * Submits one task per lane, built from the ids of {@code entityIds} that lane serializes, so each
+   * entity's part runs after every task already queued for it and a batch costs at most one task per
+   * lane. Like {@link #submit}, it never blocks: a full lane sheds its task.
+   */
+  public void submitPerLane(
+      Collection<UUID> entityIds, Function<List<UUID>, OrderedTask> taskForLane) {
+    Map<Integer, List<UUID>> idsByLane = new TreeMap<>();
+    for (UUID entityId : entityIds) {
+      idsByLane.computeIfAbsent(laneFor(entityId), lane -> new ArrayList<>()).add(entityId);
+    }
+    idsByLane.forEach((lane, ids) -> submitToLane(lane, taskForLane.apply(List.copyOf(ids))));
+  }
+
+  /**
    * Non-blocking enqueue: try to {@code execute} (which {@code offer()}s onto the bounded queue),
    * and on {@link RejectedExecutionException} (queue full or lane shutting down) shed the task to the
    * durable outbox instead of blocking or running it inline ahead of queued work.
@@ -184,7 +203,7 @@ public final class OrderedLaneExecutor implements AutoCloseable {
    * bounded run, never a wait) rather than being lost.
    */
   private void shedToOutbox(int lane, OrderedTask task) {
-    if (task instanceof OrderedLaneTask) {
+    if (carriesLocator(task)) {
       Metrics.counter(SHED_METRIC).increment();
       LOG.warn("Ordered lane {} full; shedding task to durable retry outbox", lane);
       handleLaneFailure(task, new LaneOverflowShedException(lane));
@@ -192,6 +211,10 @@ public final class OrderedLaneExecutor implements AutoCloseable {
       LOG.warn("Ordered lane {} full and task has no locator; running inline once", lane);
       runSafely(task);
     }
+  }
+
+  private static boolean carriesLocator(OrderedTask task) {
+    return task instanceof OrderedLaneTask || task instanceof OrderedLaneBatchTask;
   }
 
   private void runSafely(OrderedTask task) {
@@ -254,7 +277,7 @@ public final class OrderedLaneExecutor implements AutoCloseable {
   }
 
   private void shedDroppedTask(OrderedTask task) {
-    if (task instanceof OrderedLaneTask) {
+    if (carriesLocator(task)) {
       handleLaneFailure(task, new LaneOverflowShedException(LANE_UNKNOWN));
     } else {
       runDroppedInline(task);

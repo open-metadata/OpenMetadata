@@ -61,6 +61,13 @@ public interface VectorIndexService {
   void deleteEntityChunks(String parentId);
 
   /**
+   * {@link #deleteEntityChunks} for many parents, in a few requests per batch rather than a few per
+   * parent. Returns, for each parent whose chunks the live index may still hold, why; the caller
+   * retries those.
+   */
+  Map<String, Exception> deleteEntitiesChunks(List<String> parentIds);
+
+  /**
    * Removes, once per chunk index, the chunk documents no chunk header counts, which chunk sets
    * written before the header was a conditional write can hold, and records on the index that it
    * holds none. Returns what was removed, or empty when the index already carried the record or

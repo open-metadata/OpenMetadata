@@ -124,6 +124,15 @@ public interface EntityLifecycleEventHandler {
   }
 
   /**
+   * {@link #prepareHardDelete(EntityInterface)} for entities of one type deleted together, such as a
+   * level of a recursive delete. A handler that cleans up many entities in one request overrides
+   * it. By default each entity is prepared on its own, and one that fails does not stop the others.
+   */
+  default Runnable prepareHardDelete(List<? extends EntityInterface<?>> entities) {
+    return EntityLifecycleEventDispatcher.prepareEachHardDelete(this, entities);
+  }
+
+  /**
    * Called after an entity is soft deleted or restored.
    */
   default void onEntitySoftDeletedOrRestored(
