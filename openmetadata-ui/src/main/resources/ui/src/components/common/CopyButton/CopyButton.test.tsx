@@ -126,8 +126,7 @@ describe('CopyButton', () => {
   it('does not let the click reach a clickable parent row', async () => {
     const onRowClick = jest.fn();
     render(
-      // A clickable table row; the a11y rules do not apply to this test fixture.
-      // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+      // Use a clickable parent to catch row-navigation regressions.
       <div onClick={onRowClick}>
         <CopyButton value="row-link" />
       </div>

@@ -156,7 +156,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
         onChange?: (v: string) => void;
       }) => (
         <div>
-          {/* eslint-disable-next-line jsx-a11y/label-has-for -- test mock */}
           {label && <label htmlFor={id}>{label}</label>}
           <input
             aria-label={label}

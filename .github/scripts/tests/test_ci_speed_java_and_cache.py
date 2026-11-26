@@ -21,8 +21,10 @@ local composite action or reusable workflow. Writers stay on push / schedule
 from __future__ import annotations
 
 import importlib.util
+import os
 import re
 import shlex
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -486,7 +488,7 @@ def index_of(steps: list[dict], predicate) -> int:
 
 
 MAVEN_JOBS = [
-    "openmetadata-service-unit-tests",
+    "backend-checks",
     "k8s_operator-unit-tests",
     "docker-image-smoke-test",
     "maven-sonarcloud-ci",
@@ -561,19 +563,23 @@ def test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests
     ):
         job = jobs[profile_job]
         assert job["uses"] == "./.github/workflows/java-integration-lanes-reusable.yml"
-        assert "openmetadata-service-unit-tests" in job["needs"]
+        assert "backend-checks" in job["needs"]
         assert "integration-test-build" in job["needs"]
         assert excludes_pull_request(job["if"])
         # `!cancelled()` overrides GitHub's implicit `success()`, so IT-only paths
         # (where unit tests are legitimately skipped) still run Stage 2.
         assert "!cancelled()" in job["if"]
         assert "needs.changes.result == 'success'" in job["if"]
+        assert (
+            "(needs.backend-checks.result == 'success' || needs.backend-checks.result == 'skipped')"
+            in job["if"]
+        )
         assert job["with"]["artifact_name"] == "java-it-build-${{ github.run_id }}"
 
     # Required status check job names stay top-level so merge-rules matches them.
     for required_check in (
-        "openmetadata-service-unit-tests",
-        "openmetadata-service-unit-tests-status",
+        "backend-checks",
+        "backend-checks-status",
         "integration-tests-mysql-elasticsearch",
         "integration-tests-postgres-opensearch",
         "integration-tests-postgres-elasticsearch-redis",
@@ -597,7 +603,7 @@ def mvn_command(steps: list[dict]) -> list[str]:
 
 def test_service_unit_tests_run_in_one_jvm_without_jacoco() -> None:
     steps = steps_of(
-        "openmetadata-service-unit-tests.yml", "openmetadata-service-unit-tests"
+        "openmetadata-service-unit-tests.yml", "backend-checks"
     )
     command = mvn_command(steps)
     # Tests share static registries (Entity's repository map); split across forks
@@ -615,7 +621,7 @@ def test_service_unit_tests_run_in_one_jvm_without_jacoco() -> None:
 
 def test_service_unit_tests_skip_the_unused_apt_and_antlr_installs() -> None:
     steps = steps_of(
-        "openmetadata-service-unit-tests.yml", "openmetadata-service-unit-tests"
+        "openmetadata-service-unit-tests.yml", "backend-checks"
     )
     scripts = " ".join(s.get("run", "") for s in steps)
     assert "apt-get" not in scripts
@@ -623,20 +629,20 @@ def test_service_unit_tests_skip_the_unused_apt_and_antlr_installs() -> None:
 
 
 # ---------------------------------------------------------------------------
-# O-4: unified fail-fast checkstyle + unit tests with structured summary, and
-# zero-runner `java-checkstyle` stub inside Backend CI until ruleset drops it.
+# O-4: one combined Java check with native stage failures and a structured summary.
 # ---------------------------------------------------------------------------
 
 
 def test_java_checkstyle_is_unified_fail_fast_in_backend_job() -> None:
     assert not (WORKFLOWS / "java-checkstyle.yml").exists()
-    stub_job = load(WORKFLOWS / "openmetadata-service-unit-tests.yml")["jobs"][
-        "java-checkstyle"
-    ]
-    assert stub_job.get("if") == "false"
+    jobs = load(WORKFLOWS / "openmetadata-service-unit-tests.yml")["jobs"]
+    assert "java-checkstyle" not in jobs
+    assert "openmetadata-service-unit-tests" not in jobs
+    assert "openmetadata-service-unit-tests-status" not in jobs
+    assert "backend-checks" in jobs["backend-checks-status"]["needs"]
 
     steps = steps_of(
-        "openmetadata-service-unit-tests.yml", "openmetadata-service-unit-tests"
+        "openmetadata-service-unit-tests.yml", "backend-checks"
     )
     checkstyle = index_of(steps, lambda s: s.get("id") == "checkstyle")
     unit_tests = index_of(steps, lambda s: s.get("id") == "unit-tests")
@@ -646,6 +652,54 @@ def test_java_checkstyle_is_unified_fail_fast_in_backend_job() -> None:
     assert checkstyle < unit_tests < summarize
     assert "spotless:apply" in steps[checkstyle]["run"]
     assert "steps.checkstyle.outcome == 'success'" in steps[unit_tests]["if"]
+    for index in (checkstyle, unit_tests):
+        assert steps[index].get("continue-on-error", "false") == "false"
+    assert "always()" in steps[summarize]["if"]
+    reports = next(
+        s for s in steps if s.get("uses", "").startswith("actions/upload-artifact@")
+    )
+    assert "failure()" in reports["if"]
+    assert "steps.unit-tests.outcome == 'failure'" in reports["if"]
+    assert not any(s.get("name") == "Enforce Backend CI outcome" for s in steps)
+
+
+@pytest.mark.parametrize(
+    "gate",
+    [
+        "integration-tests-mysql-elasticsearch",
+        "integration-tests-postgres-opensearch",
+        "integration-tests-postgres-elasticsearch-redis",
+    ],
+)
+@pytest.mark.parametrize(
+    ("backend_result", "lane_result", "exit_code"),
+    [
+        ("success", "success", 0),
+        ("skipped", "success", 0),
+        ("failure", "skipped", 1),
+        ("cancelled", "skipped", 1),
+    ],
+)
+def test_integration_gate_enforces_backend_result(
+    gate, backend_result, lane_result, exit_code
+):
+    step = steps_of("openmetadata-service-unit-tests.yml", gate)[0]
+    assert step["env"]["UNIT_RESULT"] == "${{ needs.backend-checks.result }}"
+    result = subprocess.run(
+        ["bash", "-e", "-c", step["run"]],
+        env={
+            **os.environ,
+            "CHANGES_RESULT": "success",
+            "BACKEND_CHANGED": "true",
+            "UNIT_RESULT": backend_result,
+            "BUILD_RESULT": "success",
+            "LANES_RESULT": lane_result,
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == exit_code, result.stdout + result.stderr
 
 
 def test_ghcr_cache_pulls_authenticate_with_github_token() -> None:

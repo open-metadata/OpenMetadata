@@ -2182,14 +2182,14 @@ export interface GlobalSettings {
      */
     highlightFields?: string[];
     /**
-     * Weight for BM25 keyword search in hybrid RRF pipeline (0.0-1.0)
+     * Weight for BM25 keyword search in hybrid search (0.0-1.0)
      */
     keywordWeight?:     number;
     maxAggregateSize?:  number;
     maxAnalyzedOffset?: number;
     maxResultHits?:     number;
     /**
-     * Weight for semantic vector search in hybrid RRF pipeline (0.0-1.0)
+     * Weight for semantic vector search in hybrid search (0.0-1.0)
      */
     semanticWeight?: number;
     /**
@@ -2612,7 +2612,7 @@ export interface NaturalLanguageSearch {
      */
     hybridSearch?: HybridSearch;
     /**
-     * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
+     * Weight for BM25 keyword search results in hybrid search (0.0-1.0)
      */
     keywordWeight?: number;
     /**
@@ -2630,7 +2630,7 @@ export interface NaturalLanguageSearch {
      */
     semanticSearchEnabled?: boolean;
     /**
-     * Weight for semantic vector search results in hybrid RRF pipeline (0.0-1.0)
+     * Weight for semantic vector search results in hybrid search (0.0-1.0)
      */
     semanticWeight?: number;
 }
@@ -2683,11 +2683,12 @@ export interface HybridSearch {
      */
     maxQueryTerms?: number;
     /**
-     * Pagination depth used by the hybrid query for RRF normalization.
+     * Number of documents each leg of a hybrid search retrieves before the legs are fused.
      */
     paginationDepth?: number;
     /**
-     * Name of the OpenSearch search pipeline used to normalize hybrid (BM25 + KNN) scores.
+     * Ignored. Hybrid search no longer uses an OpenSearch search pipeline; the key is kept so
+     * that configuration files that still set it keep loading.
      */
     searchPipeline?: string;
     /**

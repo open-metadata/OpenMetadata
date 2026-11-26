@@ -958,7 +958,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = PipelineMetrics.class)))
+                    schema = @Schema(implementation = PipelineMetrics.class))),
+        @ApiResponse(responseCode = "403", description = "Caller is not allowed to view pipelines")
       })
   public Response getPipelineMetrics(
       @Context UriInfo uriInfo,
@@ -1005,21 +1006,11 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-
-    try {
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(""));
-      PipelineMetrics metrics =
-          repository.getPipelineMetrics(
-              query, service, serviceType, status, domain, owner, tier, startTs, endTs);
-      return Response.ok(metrics).build();
-    } catch (Exception e) {
-      PipelineMetrics emptyMetrics =
-          new PipelineMetrics()
-              .withTotalPipelines(0)
-              .withDataAvailable(false)
-              .withErrorMessage(e.getMessage());
-      return Response.ok(emptyMetrics).build();
-    }
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+    PipelineMetrics metrics =
+        repository.getPipelineMetrics(
+            query, service, serviceType, status, domain, owner, tier, startTs, endTs);
+    return Response.ok(metrics).build();
   }
 
   @GET

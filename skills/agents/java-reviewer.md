@@ -33,7 +33,7 @@ OpenMetadata backend uses:
 |--------|-------|--------|
 | Method length | **15 lines max** (excluding blank lines and braces) | Break into smaller methods with descriptive names |
 | Cyclomatic complexity | **10 max** | Extract conditions into well-named private methods |
-| Nesting depth | **3 levels max** | Use early returns, extract methods, or invert conditions |
+| Nesting depth | **3 levels max** | Extract methods or invert conditions (see `.claude/rules/java.md`; early returns are forbidden by the one-return rule) |
 | Parameter count | **5 max** | Introduce a parameter object or builder |
 | Boolean expression terms | **3 max** | Extract into a named method like `isEligibleForRetry()` |
 

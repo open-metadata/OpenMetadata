@@ -19825,6 +19825,12 @@
                       "default": true,
                       "title": "Supports Metadata Extraction"
                     },
+                    "supportsUsageExtraction": {
+                      "description": "Supports Usage Extraction.",
+                      "type": "boolean",
+                      "default": true,
+                      "title": "Supports Usage Extraction"
+                    },
                     "supportsDBTExtraction": {
                       "description": "Supports DBT Extraction.",
                       "type": "boolean",
@@ -58389,6 +58395,12 @@
                       "type": "boolean",
                       "default": true,
                       "title": "Supports Metadata Extraction"
+                    },
+                    "supportsUsageExtraction": {
+                      "description": "Supports Usage Extraction.",
+                      "type": "boolean",
+                      "default": true,
+                      "title": "Supports Usage Extraction"
                     },
                     "supportsDBTExtraction": {
                       "description": "Supports DBT Extraction.",

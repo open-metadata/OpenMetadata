@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-23 (initial)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `OntologyTermSearchIT`, `OntologyTermIndexTest`, `AvailableEntityTypesConsistencyTest`
+- **Guard:** `OntologyTermSearchIT`, `OntologyTermIndexTest`, `EmbeddedEntityTypesConsistencyTest`
 - **Related:** ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release, ADR:2026-10-19-native-concept-bindings-remain-operational-metadata
 
 ## Context

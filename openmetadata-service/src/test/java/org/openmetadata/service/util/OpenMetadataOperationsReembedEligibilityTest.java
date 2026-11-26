@@ -37,7 +37,7 @@ class OpenMetadataOperationsReembedEligibilityTest {
   @Test
   void isReembedableEntityTypeIsCaseInsensitiveForTerms() {
     // OntologyTermSearch.isTerm uses equalsIgnoreCase; the CLI relies on the same casing
-    // AvailableEntityTypes.LIST declares, but guard against a caller passing a variant.
+    // EmbeddedEntityTypes.ALL declares, but guard against a caller passing a variant.
     assertFalse(OpenMetadataOperations.isReembedableEntityType("OntologyConcept"));
     assertFalse(OpenMetadataOperations.isReembedableEntityType("ONTOLOGYPROPERTY"));
   }

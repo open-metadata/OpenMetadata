@@ -193,6 +193,8 @@ interface RequirementLabels {
   profiler: string;
 }
 
+const OPEN_LISTBOX_TRIGGER = '[aria-haspopup="listbox"][aria-expanded="true"]';
+
 const getScrollParent = (node: HTMLElement | null): HTMLElement | null => {
   let parent = node?.parentElement ?? null;
   while (parent) {
@@ -216,12 +218,19 @@ const getScrollParent = (node: HTMLElement | null): HTMLElement | null => {
  * shared with the form, and scrolling a container that holds an open field
  * popover makes react-aria dismiss it (overlays close when a trigger ancestor
  * scrolls). Scrolling only the nearest scroll parent keeps the popover open.
+ * When the doc panel is not its own scroller, that parent is the container
+ * shared with the form (e.g. app configuration), so the scroll is skipped
+ * while a field's listbox is open there.
  */
 const scrollDocElementIntoView = (
   element: HTMLElement,
   alignToStart: boolean
 ): void => {
   const scrollParent = getScrollParent(element);
+  if ((scrollParent ?? document).querySelector(OPEN_LISTBOX_TRIGGER)) {
+    return;
+  }
+
   if (!scrollParent) {
     element.scrollIntoView({
       block: alignToStart ? 'start' : 'center',

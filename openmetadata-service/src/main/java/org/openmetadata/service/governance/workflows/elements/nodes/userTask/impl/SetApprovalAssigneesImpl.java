@@ -37,7 +37,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -209,11 +208,11 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       // (DAR, GlossaryApproval, RequestApproval) publish the requester as `taskUpdatedBy`; entity
       // workflows (glossary term / tag approval, certification changes, …) publish it as the
       // global `updatedBy`. Both are checked because each variable is authoritative for its own
-      // workflow family — reading only one silently leaves the other's requester on the list. A
-      // non-workflow-managed task under the "none" strategy keeps the requester when no one else is
-      // available, so the task stays actionable; "assignAdmins" and "wait" have a fallback of their
-      // own below, and workflow-managed tasks rely on it too. A change request is never given back
-      // to its requester.
+      // workflow family — reading only one silently leaves the other's requester on the list. The
+      // requester is never given back their own approval, even when no one else is left: the task
+      // would be filed by them, and TaskAuthorPolicy denies a filer ResolveTask, so only an admin
+      // could act on it. An emptied list goes to the empty-assignee strategy below instead.
+      // ADR:2026-11-25-an-approval-never-goes-to-its-requester
       // A stored definition may carry the key with a null value; it means the default, none.
       final EmptyAssigneeStrategy emptyAssigneeStrategy =
           Optional.ofNullable(assigneesConfig.get("emptyAssigneeStrategy"))
@@ -221,16 +220,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
               .map(EmptyAssigneeStrategy::fromValue)
               .orElse(NONE);
       final boolean assignAdmins = emptyAssigneeStrategy == ASSIGN_ADMINS;
-      List<String> preRemovalAssignees = new ArrayList<>(assigneeList);
-      boolean removedRequester = assigneeList.removeAll(requesterEntityLinks);
-      boolean reviewsChangeRequest = ChangeRequestRun.from(varHandler).isPresent();
-      if (removedRequester
-          && assigneeList.isEmpty()
-          && !workflowManagedTask
-          && !reviewsChangeRequest
-          && emptyAssigneeStrategy == NONE) {
-        assigneeList.addAll(preRemovalAssignees);
-      }
+      assigneeList.removeAll(requesterEntityLinks);
 
       // Empty-assignee strategy: when nothing resolved (no reviewers/owners, or the only
       // assignee was the requester and was stripped above), apply the node's configured

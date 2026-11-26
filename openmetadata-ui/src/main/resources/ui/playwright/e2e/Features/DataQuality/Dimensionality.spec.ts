@@ -25,6 +25,7 @@ import {
   expectFormHint,
   ObservabilityFeature,
   selectAddObservabilityFeature,
+  selectTestType,
 } from '../../../utils/dataQuality';
 import {
   submitTestCaseForm,
@@ -132,12 +133,9 @@ test(
         NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name
       );
 
-      await chooseSelectOption(
-        page.getByTestId('test-type'),
-        page
-          .getByRole('option')
-          .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.label })
-          .first()
+      await selectTestType(
+        page,
+        NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.label
       );
 
       await submitTestCaseForm(page);

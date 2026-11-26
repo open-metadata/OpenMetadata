@@ -69,24 +69,12 @@ public class LoginAttemptCache {
   }
 
   public void recordFailedLogin(String username) {
-    increment(attemptsCache, username);
+    attemptsCache.asMap().merge(cacheKey(username), 1, Integer::sum);
   }
 
   /** A failed login for an identity the provider doesn't know; locks it out like a real one. */
   public void recordFailedUnknownLogin(String username) {
-    increment(unknownAttemptsCache, username);
-  }
-
-  private static void increment(LoadingCache<String, Integer> counter, String username) {
-    String key = cacheKey(username);
-    int attempts;
-    try {
-      attempts = counter.get(key);
-    } catch (ExecutionException e) {
-      attempts = 0;
-    }
-    attempts++;
-    counter.put(key, attempts);
+    unknownAttemptsCache.asMap().merge(cacheKey(username), 1, Integer::sum);
   }
 
   public boolean isLoginBlocked(String username) {

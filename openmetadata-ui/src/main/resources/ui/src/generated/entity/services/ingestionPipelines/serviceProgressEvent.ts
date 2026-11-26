@@ -1409,6 +1409,14 @@ export interface Pipeline {
      */
     includeDataModels?: boolean;
     /**
+     * Optional configuration to toggle direct lineage from a chart's upstream sources to the
+     * chart, such as Looker Explore to Chart and Metabase Table to Chart. When disabled, the
+     * charts are not looked up for this lineage and no direct edges are written, while the
+     * lineage from those sources to the dashboard and the Dashboard to Chart lineage are still
+     * created.
+     */
+    includeDirectChartLineage?: boolean;
+    /**
      * Optional Configuration to include/exclude draft dashboards. By default it will include
      * draft dashboards
      */

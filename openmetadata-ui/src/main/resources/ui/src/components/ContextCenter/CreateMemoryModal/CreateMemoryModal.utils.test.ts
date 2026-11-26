@@ -17,10 +17,14 @@ import {
   MemoryType,
   ShareVisibility,
 } from '../../../generated/entity/context/contextMemory';
-import { updateContextMemory } from '../../../rest/contextMemoryAPI';
+import {
+  createContextMemory,
+  updateContextMemory,
+} from '../../../rest/contextMemoryAPI';
 import {
   getLinkedAssetPath,
   getQueryTableFqn,
+  submitMemoryCreate,
   submitMemoryUpdate,
 } from './CreateMemoryModal.utils';
 
@@ -58,6 +62,36 @@ const patchedPaths = () =>
   (updateContextMemory as jest.Mock).mock.calls[0][1].map(
     (operation: { path: string }) => operation.path
   );
+
+describe('submitMemoryCreate', () => {
+  it.each([
+    ['我的-你好', 'memory text', '我的-你好'],
+    ['東京の記録', 'memory text', '東京の記録'],
+    ['Hello 世界 42', 'memory text', 'hello-世界-42'],
+    ['', '你好 World', '你好-world'],
+    ['  Sales Orders 42!  ', 'memory text', 'sales-orders-42-'],
+    ['𠮷'.repeat(65), 'memory text', '𠮷'.repeat(64)],
+  ])('preserves the memory name for title %s', async (title, memory, name) => {
+    const onCreated = jest.fn();
+
+    await submitMemoryCreate({
+      title,
+      memory,
+      memoryTypeValue: undefined,
+      visibility: ShareVisibility.Private,
+      selectedTags: [],
+      primaryEntity: undefined,
+      relatedEntities: [],
+      t: (key: string) => key,
+      onCreated,
+    });
+
+    expect(createContextMemory).toHaveBeenLastCalledWith(
+      expect.objectContaining({ name, question: memory.trim() })
+    );
+    expect(onCreated).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('getLinkedAssetPath', () => {
   const query = {

@@ -377,7 +377,6 @@ function renderDestinationRows(
             destinationsWithStatus={destinationsWithStatus}
             id={index}
             isDestinationStatusLoading={false}
-            // eslint-disable-next-line react/no-array-index-key -- form array rows keyed by position in tests
             key={index}
             remove={jest.fn()}
             selectorKey={index}

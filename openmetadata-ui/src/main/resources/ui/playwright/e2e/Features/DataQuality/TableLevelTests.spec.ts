@@ -589,20 +589,12 @@ test.describe(
           .locator('input')
           .fill(testCase.name);
 
-        await page.click('[id="root\\/testType"]');
-        await page.fill(
-          '[id="root\\/testType"]',
-          'Compare 2 tables for differences'
-        );
-
+        // The table2 param field mounts once the type is picked and loads its
+        // table list, so register the wait before the pick.
         const tableListSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=table*`
         );
-        await page
-          .getByRole('option')
-          .filter({ hasText: 'Compare 2 tables for differences' })
-          .first()
-          .click();
+        await selectTestType(page, 'Compare 2 tables for differences');
         await tableListSearchResponse;
 
         const table2KeyColumnsInput = page.locator(

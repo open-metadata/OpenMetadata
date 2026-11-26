@@ -272,9 +272,9 @@ const LinkedAssetsReadOnly: FC<{
 };
 
 const VISIBILITY_ICON_MAP = {
-  Share07: <Share07 size={12} strokeWidth={2} />,
-  Database01: <Database01 size={12} strokeWidth={2} />,
-  FileLock02: <FileLock02 size={12} strokeWidth={2} />,
+  Share07: <Share07 size={12} />,
+  Database01: <Database01 size={12} />,
+  FileLock02: <FileLock02 size={12} />,
 };
 
 const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
@@ -287,11 +287,7 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
 }) => (
   <div className="tw:flex tw:items-center tw:gap-3 tw:pt-5 tw:pb-4 tw:shrink-0 tw:px-6">
     <div className="tw:flex tw:items-center tw:justify-center tw:w-10 tw:h-10 tw:rounded-lg tw:bg-utility-brand-50 tw:border tw:border-utility-indigo-100 tw:shrink-0">
-      <Lightbulb03
-        className="tw:text-utility-brand-700"
-        size={20}
-        strokeWidth={1.5}
-      />
+      <Lightbulb03 className="tw:text-utility-brand-700" size={20} />
     </div>
     <div className="tw:flex tw:flex-col tw:gap-0.5 tw:flex-1">
       <div className="tw:max-w-112">
@@ -323,7 +319,6 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
           <FileLock02
             className="tw:shrink-0 tw:text-utility-gray-400"
             size={12}
-            strokeWidth={2}
           />
           <Typography className="tw:text-quaternary" size="text-xs">
             {t('label.extracted-from')}
@@ -363,7 +358,6 @@ const ReadOnlyBanner: FC<ReadOnlyBannerProps> = ({
       <Lock01
         className="tw:shrink-0 tw:text-fg-warning-primary tw:mt-0.5"
         size={16}
-        strokeWidth={2}
       />
       <div className="tw:flex tw:flex-col">
         <Typography
@@ -1352,7 +1346,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               <InfoCircle
                                 className="tw:text-utility-gray-400 tw:cursor-pointer"
                                 size={14}
-                                strokeWidth={2}
                               />
                             </TooltipTrigger>
                           </Tooltip>

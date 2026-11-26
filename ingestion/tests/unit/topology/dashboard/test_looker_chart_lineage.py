@@ -13,11 +13,13 @@ Tests for Looker explore → dashboard and explore → chart lineage
 """
 
 import uuid
+from copy import deepcopy
 from unittest.mock import MagicMock, patch
 
 import pytest
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
 from looker_sdk.sdk.api40.models import DashboardElement, Query
+from pydantic import ValidationError
 
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -82,7 +84,7 @@ MOCK_CHART_ID = uuid.uuid4()
 MOCK_EXPLORE = DashboardDataModel(
     id=MOCK_EXPLORE_ID,
     name="model_view",
-    fullyQualifiedName="test_looker.model_view",
+    fullyQualifiedName="test_looker.model.model_view",
     service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
     dataModelType="LookMlExplore",
     serviceType="Looker",
@@ -120,16 +122,27 @@ MOCK_LOOKER_DASHBOARD = LookerDashboard(
 
 
 @pytest.fixture
-def looker_source():
+def create_looker_source():
     with patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"):
-        config = OpenMetadataWorkflowConfig.model_validate(MOCK_LOOKER_CONFIG)
-        source = LookerSource.create(
-            MOCK_LOOKER_CONFIG["source"],
-            OpenMetadata(config.workflowConfig.openMetadataServerConfig),
-        )
-        source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
-        source.context.get().__dict__["dashboard"] = "1"
-        return source
+
+        def create_source(source_config_overrides):
+            config_dict = deepcopy(MOCK_LOOKER_CONFIG)
+            config_dict["source"]["sourceConfig"]["config"].update(source_config_overrides)
+            config = OpenMetadataWorkflowConfig.model_validate(config_dict)
+            source = LookerSource.create(
+                config_dict["source"],
+                OpenMetadata(config.workflowConfig.openMetadataServerConfig),
+            )
+            source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+            source.context.get().__dict__["dashboard"] = "1"
+            return source
+
+        yield create_source
+
+
+@pytest.fixture
+def looker_source(create_looker_source):
+    return create_looker_source({})
 
 
 class TestGetChartSourceMapping:
@@ -202,6 +215,68 @@ class TestGetChartSourceMapping:
 
 
 class TestYieldDashboardLineageDetails:
+    @pytest.mark.parametrize(
+        ("source_config", "expected_chart_lookups"),
+        [
+            ({}, 2),
+            ({"includeDirectChartLineage": True}, 2),
+            ({"includeDirectChartLineage": False}, 0),
+            ({"includeDirectChartLineage": None}, 2),
+        ],
+        ids=["omitted", "enabled", "disabled", "null"],
+    )
+    def test_direct_chart_lineage_option(self, create_looker_source, source_config, expected_chart_lookups):
+        source = create_looker_source(source_config)
+        second_chart = Chart(
+            id=uuid.uuid4(),
+            name="chart_id2",
+            fullyQualifiedName="test_looker.chart_id2",
+            service=MOCK_CHART_ENTITY.service,
+        )
+        dashboard = LookerDashboard(
+            id="1",
+            title="Dashboard 1",
+            dashboard_elements=[
+                *MOCK_DASHBOARD_ELEMENTS,
+                DashboardElement(id="chart_id2", query=Query(model="model", view="view")),
+            ],
+        )
+        entities_by_name = {
+            (Dashboard, "test_looker.1"): MOCK_DASHBOARD_ENTITY,
+            (DashboardDataModel, "test_looker.model.model_view"): MOCK_EXPLORE,
+            (Chart, "test_looker.chart_id1"): MOCK_CHART_ENTITY,
+            (Chart, "test_looker.chart_id2"): second_chart,
+        }
+
+        def find_entity(entity, fqn):
+            return entities_by_name[entity, fqn]
+
+        with patch.object(OpenMetadata, "get_by_name", side_effect=find_entity) as get_by_name:
+            results = list(source.yield_dashboard_lineage_details(dashboard))
+
+        assert not [result.left for result in results if result.left]
+        expected_targets = [("dashboard", MOCK_DASHBOARD_ID)]
+        if expected_chart_lookups:
+            expected_targets += [("chart", MOCK_CHART_ID), ("chart", second_chart.id.root)]
+        assert [
+            (
+                result.right.edge.fromEntity.type,
+                result.right.edge.fromEntity.id.root,
+                result.right.edge.toEntity.type,
+                result.right.edge.toEntity.id.root,
+                result.right.edge.lineageDetails.source,
+            )
+            for result in results
+        ] == [
+            ("dashboardDataModel", MOCK_EXPLORE_ID, entity_type, entity_id, LineageSource.DashboardLineage)
+            for entity_type, entity_id in expected_targets
+        ]
+        assert sum(call.kwargs["entity"] is Chart for call in get_by_name.call_args_list) == expected_chart_lookups
+
+    def test_invalid_direct_chart_lineage_option_is_rejected(self, create_looker_source):
+        with pytest.raises(ValidationError, match="includeDirectChartLineage"):
+            create_looker_source({"includeDirectChartLineage": "not a boolean"})
+
     def test_explore_to_dashboard_lineage_is_created(self, looker_source):
         with (
             patch.object(
@@ -281,7 +356,10 @@ class TestYieldDashboardLineageDetails:
         lineage_results = [r for r in results if r and r.right]
         assert len(lineage_results) == 0
 
-    def test_no_dashboard_lineage_when_dashboard_not_found(self, looker_source):
+    @pytest.mark.parametrize("include_direct_chart_lineage", [True, False])
+    def test_no_dashboard_lineage_when_dashboard_not_found(self, create_looker_source, include_direct_chart_lineage):
+        source = create_looker_source({"includeDirectChartLineage": include_direct_chart_lineage})
+
         def get_by_name_side_effect(entity, fqn):
             if entity is Dashboard:
                 return None  # dashboard not found
@@ -292,15 +370,14 @@ class TestYieldDashboardLineageDetails:
             return None
 
         with patch.object(OpenMetadata, "get_by_name", side_effect=get_by_name_side_effect):
-            results = list(looker_source.yield_dashboard_lineage_details(MOCK_LOOKER_DASHBOARD))
+            results = list(source.yield_dashboard_lineage_details(MOCK_LOOKER_DASHBOARD))
 
         edges = [r.right.edge for r in results if r and r.right]
         explore_to_dashboard = [e for e in edges if e.toEntity.type == "dashboard"]
         assert len(explore_to_dashboard) == 0
 
-        # Chart lineage still works even if dashboard not found
         explore_to_chart = [e for e in edges if e.toEntity.type == "chart"]
-        assert len(explore_to_chart) == 1
+        assert len(explore_to_chart) == (1 if include_direct_chart_lineage else 0)
 
     def test_explore_cached_takes_precedence_over_api(self, looker_source):
         cached_explore = DashboardDataModel(
