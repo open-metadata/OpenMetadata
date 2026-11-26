@@ -1344,7 +1344,7 @@ class LineageRepositoryTest {
   }
 
   /**
-   * The decision table for the pipeline a write carries, against the row it replaces. The check is
+   * The decision table for the pipeline a PATCH carries, against the row it replaces. The check is
    * offered null when nothing needs it.
    */
   @Test
@@ -1455,6 +1455,81 @@ class LineageRepositoryTest {
 
     assertEquals(List.of(hidden), offered);
     verify(relationshipDAO, never()).insert(any(), any(), any(), any(), anyInt(), any());
+  }
+
+  /**
+   * A PUT checks the pipeline it newly links before it looks up the ends or the pipeline, so a
+   * caller the check refuses gets that denial even when none of them exist.
+   */
+  @Test
+  void testAddLineage_DeniedPipeline_IsRefusedBeforeAnythingIsLookedUp() {
+    CollectionDAO.EntityRelationshipDAO relationshipDAO = stubRelationshipDAO();
+    EntityReference missingFrom =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
+    EntityReference missingTo =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
+    EntityReference missingPipeline = pipelineReference();
+    List.of(missingFrom, missingTo, missingPipeline).forEach(LineageRepositoryTest::stubMissing);
+    List<EntityReference> offered = new ArrayList<>();
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            new LineageRepository()
+                .addLineage(
+                    edgeWithPipeline(missingFrom, missingTo, missingPipeline),
+                    "user",
+                    pipeline -> {
+                      offered.add(pipeline);
+                      throw new IllegalStateException("denied");
+                    }));
+
+    assertEquals(List.of(missingPipeline), offered);
+    verify(relationshipDAO, never()).insert(any(), any(), any(), any(), anyInt(), any());
+  }
+
+  /** A pipeline the check lets through is then resolved, so one that is not there is a 404. */
+  @Test
+  void testAddLineage_AllowedPipelineThatIsMissing_IsNotFound() {
+    CollectionDAO.EntityRelationshipDAO relationshipDAO = stubRelationshipDAO();
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq("table"), eq(fromEntityId), any()))
+        .thenReturn(fromEntity);
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq("table"), eq(toEntityId), any()))
+        .thenReturn(toEntity);
+    EntityReference missingPipeline = pipelineReference();
+    stubMissing(missingPipeline);
+    List<EntityReference> offered = new ArrayList<>();
+
+    assertThrows(
+        EntityNotFoundException.class,
+        () ->
+            new LineageRepository()
+                .addLineage(
+                    edgeWithPipeline(fromEntity, toEntity, missingPipeline), "user", offered::add));
+
+    assertEquals(List.of(missingPipeline), offered);
+    verify(relationshipDAO, never()).insert(any(), any(), any(), any(), anyInt(), any());
+  }
+
+  private static void stubMissing(EntityReference reference) {
+    mockedEntity
+        .when(
+            () ->
+                Entity.getEntityReferenceById(
+                    reference.getType(), reference.getId(), Include.NON_DELETED))
+        .thenThrow(EntityNotFoundException.byMessage("missing " + reference.getId()));
+  }
+
+  private static AddLineage edgeWithPipeline(
+      EntityReference from, EntityReference to, EntityReference pipeline) {
+    return new AddLineage()
+        .withEdge(
+            new EntitiesEdge()
+                .withFromEntity(from)
+                .withToEntity(to)
+                .withLineageDetails(new LineageDetails().withPipeline(pipeline)));
   }
 
   private static CollectionDAO.EntityRelationshipDAO stubRelationshipDAO() {

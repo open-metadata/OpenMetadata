@@ -237,18 +237,25 @@ public class LineageRepository {
 
   /**
    * Writes an edge, passing {@code authorizeNewlyLinkedPipeline} the pipeline the write newly links
-   * to it, or null when there is none to check.
+   * to it, or null when there is none to check. That check runs first, on the pipeline as
+   * requested and against the row the write replaces, before the ends or the pipeline are looked
+   * up: a caller it refuses gets the same denial whether or not they exist. The pipeline is then
+   * resolved by the same id, so the one written is the one checked or one the row already carried.
    */
   @Transaction
   public void addLineage(
       AddLineage addLineage,
       String updatedBy,
       Consumer<EntityReference> authorizeNewlyLinkedPipeline) {
-    // Validate from entity
     LineageDetails lineageDetails =
         addLineage.getEdge().getLineageDetails() != null
             ? addLineage.getEdge().getLineageDetails()
             : new LineageDetails();
+    LineageDetails priorDetails = getReplacedDetails(addLineage.getEdge());
+    authorizeNewlyLinkedPipeline.accept(
+        newlyLinkedEdgePipeline(lineageDetails.getPipeline(), priorDetails));
+
+    // Validate from entity
     EntityReference from =
         Entity.getEntityReferenceById(
             addLineage.getEdge().getFromEntity().getType(),
@@ -262,15 +269,8 @@ public class LineageRepository {
             addLineage.getEdge().getToEntity().getId(),
             Include.NON_DELETED);
 
-    CollectionDAO.EntityRelationshipObject existingRecord =
-        dao.relationshipDAO().getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
-    LineageDetails priorDetails =
-        nullOrEmpty(existingRecord)
-            ? null
-            : JsonUtils.readValue(existingRecord.getJson(), LineageDetails.class);
     boolean relationAlreadyExists = priorDetails != null;
-
-    linkEdgePipeline(lineageDetails, priorDetails, authorizeNewlyLinkedPipeline);
+    resolveLinkedPipeline(lineageDetails, priorDetails);
 
     applyTemporalFields(lineageDetails, priorDetails, updatedBy, System.currentTimeMillis());
     preserveAssetEdges(lineageDetails, priorDetails);
@@ -316,6 +316,19 @@ public class LineageRepository {
 
     // build Extended Lineage
     buildExtendedLineage(from, to, lineageDetails, priorDetails, relationAlreadyExists);
+  }
+
+  /** The stored details of the edge a write replaces, or null when it writes a new edge. */
+  private LineageDetails getReplacedDetails(EntitiesEdge edge) {
+    CollectionDAO.EntityRelationshipObject existingRecord =
+        dao.relationshipDAO()
+            .getRecord(
+                edge.getFromEntity().getId(),
+                edge.getToEntity().getId(),
+                Relationship.UPSTREAM.ordinal());
+    return nullOrEmpty(existingRecord)
+        ? null
+        : JsonUtils.readValue(existingRecord.getJson(), LineageDetails.class);
   }
 
   @Transaction
@@ -786,19 +799,24 @@ public class LineageRepository {
   }
 
   /**
-   * Resolves the pipeline a write carries against the row it replaces, then hands the one it newly
-   * links to {@code authorizeNewlyLinkedPipeline}. Both decisions read that same row, so the
-   * pipeline written is the one checked, or one the row already carried.
+   * The PATCH rule: resolves the patched pipeline against the row the patch is about to replace,
+   * then hands the one it newly links to {@code authorizeNewlyLinkedPipeline}. Both decisions read
+   * that same row, so the pipeline written is the one checked, or one the row already carried. A PUT
+   * checks before it resolves instead; see {@link #addLineage(AddLineage, String, Consumer)}.
    */
   private static void linkEdgePipeline(
       LineageDetails incoming,
       LineageDetails prior,
       Consumer<EntityReference> authorizeNewlyLinkedPipeline) {
+    resolveLinkedPipeline(incoming, prior);
+    authorizeNewlyLinkedPipeline.accept(newlyLinkedEdgePipeline(incoming.getPipeline(), prior));
+  }
+
+  private static void resolveLinkedPipeline(LineageDetails incoming, LineageDetails prior) {
     if (incoming.getPipeline() != null) {
       EntityReference stored = prior == null ? null : prior.getPipeline();
       incoming.withPipeline(resolveEdgePipeline(incoming.getPipeline(), stored));
     }
-    authorizeNewlyLinkedPipeline.accept(newlyLinkedEdgePipeline(incoming.getPipeline(), prior));
   }
 
   /**

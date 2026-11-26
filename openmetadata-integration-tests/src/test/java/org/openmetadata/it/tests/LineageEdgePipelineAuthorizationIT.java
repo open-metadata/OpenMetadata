@@ -17,6 +17,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
@@ -71,6 +73,19 @@ public class LineageEdgePipelineAuthorizationIT {
 
   private record EdgeTables(Table from, Table to) {}
 
+  /** The two PUT routes, which must answer a newly linked pipeline the same way. */
+  enum PutRoute {
+    BY_ID,
+    BY_NAME;
+
+    void put(OpenMetadataClient client, EdgeTables edge, LineageDetails details) {
+      switch (this) {
+        case BY_ID -> putEdgeById(client, edge, details);
+        case BY_NAME -> putEdge(client, edge, details);
+      }
+    }
+  }
+
   @AfterEach
   void removeFixtures() {
     while (!fixtureCleanups.isEmpty()) {
@@ -118,45 +133,49 @@ public class LineageEdgePipelineAuthorizationIT {
     assertEdgeAbsent(edge);
   }
 
-  @Test
-  void putById_linkingPipelineCallerCannotViewIsForbidden(TestNamespace ns) {
+  /**
+   * A PUT checks the pipeline it newly links before looking it up, so a caller who may not view
+   * pipelines is refused alike for one that exists, one that is soft-deleted and one that was never
+   * created, and cannot tell them apart. Nothing is written.
+   */
+  @ParameterizedTest
+  @EnumSource(PutRoute.class)
+  void put_pipelineCallerCannotView_isForbiddenWhetherOrNotItExists(
+      PutRoute route, TestNamespace ns) {
     EdgeTables edge = createEdgeTables(ns);
-    Pipeline hidden = createPipeline(ns, "hidden");
     OpenMetadataClient caller =
         clientForPrincipalWithRules(
-            ns, "nopipeid", List.of(allowEditLineageOnTables(ns), denyViewingPipelines(ns)));
-    AddLineage addLineage =
-        new AddLineage()
-            .withEdge(
-                new EntitiesEdge()
-                    .withFromEntity(edge.from().getEntityReference())
-                    .withToEntity(edge.to().getEntityReference())
-                    .withLineageDetails(new LineageDetails().withPipeline(ref(hidden))));
+            ns,
+            "hidepipe" + route.ordinal(),
+            List.of(allowEditLineageOnTables(ns), denyViewingPipelines(ns)));
+    List<EntityReference> pipelines =
+        List.of(ref(createPipeline(ns, "live")), softDeletedPipeline(ns), missingPipeline());
 
-    assertThrows(
-        ForbiddenException.class,
-        () -> caller.getHttpClient().executeForString(HttpMethod.PUT, LINEAGE_PATH, addLineage));
+    for (EntityReference pipeline : pipelines) {
+      assertThrows(
+          ForbiddenException.class,
+          () -> route.put(caller, edge, new LineageDetails().withPipeline(pipeline)),
+          route + " linking " + pipeline.getId());
+    }
     assertEdgeAbsent(edge);
   }
 
-  /**
-   * The pipeline is resolved before it is authorized, from the row the write replaces, so a pipeline
-   * that does not exist is reported as missing even to a caller who could not view it.
-   */
-  @Test
-  void linkingMissingPipelineIsNotFound(TestNamespace ns) {
+  /** Only a caller who may view pipelines learns that one it newly links is not there. */
+  @ParameterizedTest
+  @EnumSource(PutRoute.class)
+  void put_pipelineCallerCanViewButIsGone_isNotFound(PutRoute route, TestNamespace ns) {
     EdgeTables edge = createEdgeTables(ns);
     OpenMetadataClient caller =
         clientForPrincipalWithRules(
-            ns, "missingpipe", List.of(allowEditLineageOnTables(ns), denyViewingPipelines(ns)));
-    EntityReference missing =
-        new EntityReference().withId(UUID.randomUUID()).withType(Entity.PIPELINE);
+            ns, "seepipe" + route.ordinal(), List.of(allowEditLineageOnTables(ns)));
 
-    OpenMetadataException notFound =
-        assertThrows(
-            OpenMetadataException.class,
-            () -> putEdge(caller, edge, new LineageDetails().withPipeline(missing)));
-    assertEquals(404, notFound.getStatusCode(), notFound.getMessage());
+    for (EntityReference pipeline : List.of(softDeletedPipeline(ns), missingPipeline())) {
+      OpenMetadataException notFound =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> route.put(caller, edge, new LineageDetails().withPipeline(pipeline)));
+      assertEquals(404, notFound.getStatusCode(), route + ": " + notFound.getMessage());
+    }
     assertEdgeAbsent(edge);
   }
 
@@ -253,6 +272,16 @@ public class LineageEdgePipelineAuthorizationIT {
                 .withService(service.getFullyQualifiedName()));
   }
 
+  private static EntityReference softDeletedPipeline(TestNamespace ns) {
+    Pipeline pipeline = createPipeline(ns, "deleted");
+    SdkClients.adminClient().pipelines().delete(pipeline.getId());
+    return ref(pipeline);
+  }
+
+  private static EntityReference missingPipeline() {
+    return new EntityReference().withId(UUID.randomUUID()).withType(Entity.PIPELINE);
+  }
+
   private static EntityReference ref(Pipeline pipeline) {
     return new EntityReference().withId(pipeline.getId()).withType(Entity.PIPELINE);
   }
@@ -347,6 +376,18 @@ public class LineageEdgePipelineAuthorizationIT {
         [{"op":"add","path":"/pipeline","value":{"id":"%s","type":"%s"}}]
         """
         .formatted(pipeline.getId(), pipeline.getType());
+  }
+
+  private static void putEdgeById(
+      OpenMetadataClient client, EdgeTables edge, LineageDetails details) {
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(edge.from().getEntityReference())
+                    .withToEntity(edge.to().getEntityReference())
+                    .withLineageDetails(details));
+    client.getHttpClient().executeForString(HttpMethod.PUT, LINEAGE_PATH, addLineage);
   }
 
   private static void putEdge(OpenMetadataClient client, EdgeTables edge, LineageDetails details) {

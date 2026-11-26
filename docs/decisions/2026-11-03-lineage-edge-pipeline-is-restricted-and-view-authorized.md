@@ -4,8 +4,8 @@
 - **Revisions:** v1 2026-11-03 (initial); v2 2026-11-03 (type predicate extracted to
   `LineageEdgePipeline` so the cleanup migration shares it without initializing the search client;
   PATCH authorizes the pipeline it resolves from the row it is about to write); v3 2026-11-26 (PUT
-  and OpenLineage authorize the newly linked pipeline inside the repository, from the row they
-  replace, as PATCH does; a missing newly linked pipeline is 404 before 403)
+  and OpenLineage run the check inside the repository, on the one read of the row they replace,
+  still before the pipeline or the ends are looked up)
 - **Deciders:** harshsoni2024
 - **Guard:** `LineageEdgePipelineAuthorizationIT`, `LineageRepositoryTest`
 - **Related:** scanner finding ANT-2026-RL0ZDKB8 (open-metadata/openmetadata-collate#7797),
@@ -58,23 +58,26 @@ and deny/domain rules. All four lineage write routes and the OpenLineage ingest 
   `upstreamLineage.pipeline.connection` to the search excluded-fields list would harden a future
   schema change). These are tracked separately.
 
-## Amendment: 2026-11-26, every write checks the pipeline against the row it replaces
+## Amendment: 2026-11-26, PUT checks the pipeline on the row it replaces, read once
 
-PUT (by id and by name) and the OpenLineage ingest endpoint now authorize the pipeline the way PATCH
-already did. `LineageRepository.addLineage(AddLineage, String, Consumer<EntityReference>)` resolves
-the requested pipeline against the stored row the write replaces, then passes the one it newly links
-to the caller's `VIEW_BASIC` check, before anything is written. The resources no longer read the
-stored edge themselves, so a write reads it once, and the pipeline written is always the one checked
-or one the replaced row already carried. `LineageRepository.newlyLinkedEdgePipeline` stays the single
-decision; `linkEdgePipeline` is the one place that applies it, for PUT, PATCH and OpenLineage alike.
+PUT (by id and by name) and the OpenLineage ingest endpoint used to read the stored edge in the
+resource to run this check, and the repository then read it again to write the edge. The check now
+runs inside `LineageRepository.addLineage(AddLineage, String, Consumer<EntityReference>)`, on its
+one read of the row the write replaces. It still runs first, on the pipeline as requested, before
+the ends or the pipeline are looked up, as it did in the resources. So a caller denied view on
+pipelines gets 403 whether the pipeline exists, is soft-deleted or never existed, and nothing is
+written; only a caller allowed to view it learns that it is gone (404). The pipeline is then
+resolved by the id that was checked, so a concurrent write cannot swap in a different one.
+
+PATCH keeps the v2 order: `linkEdgePipeline` resolves the patched pipeline from the row it is about
+to write, then checks the one it newly links. A PATCH naming a pipeline that does not exist is
+therefore 404 for every caller, as it was before this amendment.
+`LineageRepository.newlyLinkedEdgePipeline` stays the single decision for both.
 
 Consequences:
 
-- **A missing pipeline is 404 before 403.** The pipeline is resolved before it is authorized, so a
-  newly linked pipeline id that does not exist now answers 404 where a caller denied view on
-  pipelines used to get 403. That tells a caller who already holds the id whether it exists, the same
-  answer the by-name lineage routes already give about an edge's ends. An existing pipeline the caller
-  cannot view is still 403, and nothing is written in either case.
+- **Every route answers a pipeline as it did before.** The amendment only removes the second read
+  of the stored edge.
 - **The two-argument `addLineage` runs no pipeline check.** Its callers link no pipeline (the MCP
   lineage tool) or do not act for a REST principal. A new caller that links a pipeline on behalf of a
   principal must use the three-argument form.

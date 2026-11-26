@@ -157,7 +157,8 @@ public class LineageResource {
    * already carry is checked: ingestion re-sends the stored one on every write, and it may have
    * been deleted since. Any type other than a pipeline or stored procedure is refused by the
    * repository with a 400, so it is not authorized here. Every write runs this from inside the
-   * repository, against the resolved pipeline and the row it is about to replace.
+   * repository, against the row it is about to replace: a PUT before it looks the pipeline up, a
+   * PATCH once it has resolved it.
    */
   private void authorizeNewlyLinkedEdgePipeline(
       SecurityContext securityContext, EntityReference pipeline) {
