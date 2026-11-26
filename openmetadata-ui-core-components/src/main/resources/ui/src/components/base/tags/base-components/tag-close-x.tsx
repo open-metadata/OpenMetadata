@@ -34,10 +34,7 @@ export const TagCloseX = ({
       )}
       slot="remove"
       {...otherProps}>
-      <XClose
-        className={cx('tw:transition-inherit-all', styles[size].icon)}
-        strokeWidth="3"
-      />
+      <XClose className={cx('tw:transition-inherit-all', styles[size].icon)} />
     </AriaButton>
   );
 };

@@ -48,6 +48,10 @@ print(json.dumps({
     "rss_mb": peak_rss_mb(),
     "modules": len(sys.modules),
     "metadata_modules": sum(1 for name in sys.modules if name.startswith("metadata")),
+    "optional_modules": [
+        name for name in ("teradatasqlalchemy", "teradatasql", "pandas", "pyarrow")
+        if name in sys.modules
+    ],
 }))
 """
 
@@ -77,4 +81,10 @@ def test_import_metadata_module_count_under_ceiling(import_cost):
     assert modules < MAX_TOTAL_MODULES, (
         f"`import metadata` loaded {modules} modules ({import_cost['metadata_modules']} "
         f"of them metadata.*), ceiling {MAX_TOTAL_MODULES}. Make the new import lazy."
+    )
+
+
+def test_import_metadata_keeps_optional_dependencies_lazy(import_cost):
+    assert not import_cost["optional_modules"], (
+        f"`import metadata` eagerly loaded optional dependencies: {import_cost['optional_modules']}"
     )

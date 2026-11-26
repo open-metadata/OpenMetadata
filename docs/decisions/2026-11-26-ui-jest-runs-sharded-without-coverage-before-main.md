@@ -5,7 +5,8 @@
 - **Deciders:** Chirag Madlani
 - **Guard:** reviewer; `yarn-coverage.yml` (the required `ui-coverage` job fails unless every shard succeeds or the run is skipped)
 - **Related:** ADR:2026-11-11-python-ci-selects-workloads-by-event,
-  ADR:2026-11-23-browser-tests-run-by-impact-on-pull-requests-and-in-full-in-the-merge-queue
+  ADR:2026-11-23-browser-tests-run-by-impact-on-pull-requests-and-in-full-in-the-merge-queue,
+  ADR:2026-11-25-ui-sonar-coverage-is-jest-plus-the-browser-suite-from-one-nightly-run
 
 ## Context
 `ui-coverage-tests` ran the whole Jest suite (2,218 files) with `--coverage` on one runner: about
@@ -31,6 +32,6 @@ query-builder warning repeated 43,701 times.
 PR feedback from Jest drops from about 16 minutes to setup plus a quarter of an uninstrumented run,
 at the cost of three more runners' setup time. A coverage drop is not visible before merge. Adding a
 coverage gate back means collecting coverage per shard, merging it, and comparing against main.
-Post that result from a separate `workflow_run` workflow, as the browser tests do, because PR jobs
-have a read-only token. If main's locale files ever drift, only the next PR that touches a locale
-file or `yarn.lock` reports it.
+Report it in the job summary and fail the check; PR jobs post no comments
+(ADR:2026-11-10-pr-jobs-never-receive-credentials). If main's locale files ever drift, only the
+next PR that touches a locale file or `yarn.lock` reports it.

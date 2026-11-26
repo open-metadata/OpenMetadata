@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { CSSProperties, FC, MouseEvent } from 'react';
 import { AutomatedTag } from '../../../icons/AutomatedTag';
@@ -47,6 +48,7 @@ export const AutoClassificationTag: FC<
   closeButtonTestId,
   ...otherProps
 }) => {
+  const { t } = useCoreTranslation();
   const tagColorStyle = {
     '--tag-color': AUTO_CLASSIFICATION_TAG_COLOR,
   } as CSSProperties;
@@ -83,6 +85,7 @@ export const AutoClassificationTag: FC<
     return (
       <BadgeWithButton
         {...sharedProps}
+        buttonLabel={t('label.remove-entity', { entity: label })}
         buttonTestId={closeButtonTestId}
         className={cx(sharedProps.className, 'tag-tinted__close-icon')}
         isDisabled={disabled}
