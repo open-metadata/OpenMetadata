@@ -15,8 +15,9 @@ package org.openmetadata.service.search.vector;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
-import java.util.function.Predicate;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.QuickLink;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.aicontext.PromptText;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
 import org.openmetadata.service.search.vector.VectorDocBuilder.BodyTextExtractor;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
@@ -42,7 +44,7 @@ public final class PageBodyTextContributor implements VectorBodyTextContributor 
   private static final String DESCRIPTION = "description";
   private static final String CONTEXT_SEPARATOR = " | ";
   private static final Pattern CHUNK_FOOTER =
-      Pattern.compile(" \\| chunk ([1-9][0-9]{0,9})/([1-9][0-9]{0,9})\\z");
+      Pattern.compile(" \\| chunk (\\p{Nd}{1,10})/\\p{Nd}{1,10}\\z");
 
   private PageBodyTextContributor() {}
 
@@ -57,57 +59,79 @@ public final class PageBodyTextContributor implements VectorBodyTextContributor 
   }
 
   /**
-   * Tests the article body within each hit. Match the chunk suffix against the current page so
+   * Renders hits with readable article text. Match the chunk suffix against the current page so
    * pipes in the metadata or prose can't be mistaken for the start of the chunk.
    */
-  public static List<String> filterArticlePassages(
-      Page page, List<String> passages, Predicate<String> includeBody) {
+  public static List<String> readableArticlePassages(Page page, List<String> passages) {
     String description = page.getDescription();
     List<String> matching = List.of();
     if (!passages.isEmpty() && !nullOrEmpty(description) && !description.isBlank()) {
-      List<String> titleAndLabel = titleParts(page);
-      titleAndLabel.add(DESCRIPTION + ":");
-      List<String> labelChunks = TextChunkManager.chunk(String.join("; ", titleAndLabel));
-      List<String> pageChunks = TextChunkManager.chunk(extractBodyText(page));
+      ArticleChunks chunks = articleChunks(page);
       matching =
           passages.stream()
-              .filter(passage -> matchesBody(passage, pageChunks, labelChunks, includeBody))
+              .map(passage -> renderArticlePassage(passage, chunks))
+              .filter(Objects::nonNull)
               .toList();
     }
     return matching;
   }
 
-  private static boolean matchesBody(
-      String passage,
-      List<String> pageChunks,
-      List<String> labelChunks,
-      Predicate<String> includeBody) {
-    boolean included = false;
+  private record ArticleChunks(List<String> indexed, List<String> imageFree, List<String> labels) {}
+
+  private static ArticleChunks articleChunks(Page page) {
+    String source = extractBodyText(page);
+    List<String> indexed = TextChunkManager.chunk(source);
+    int descriptionStart = source.length() - page.getDescription().strip().length();
+    BitSet images = PromptText.inlineImagePositions(source, descriptionStart);
+    List<String> imageFree = images.isEmpty() ? indexed : TextChunkManager.chunk(source, images);
+    List<String> titleAndLabel = titleParts(page);
+    titleAndLabel.add(DESCRIPTION + ":");
+    List<String> labels = TextChunkManager.chunk(String.join("; ", titleAndLabel));
+    return new ArticleChunks(indexed, imageFree, labels);
+  }
+
+  private static String renderArticlePassage(String passage, ArticleChunks chunks) {
+    String rendered = null;
     Matcher footer = CHUNK_FOOTER.matcher(passage);
-    if (footer.find() && Long.parseLong(footer.group(2)) == pageChunks.size()) {
-      long ordinal = Long.parseLong(footer.group(1));
-      if (ordinal >= labelChunks.size() && ordinal <= pageChunks.size()) {
-        String chunk = pageChunks.get((int) ordinal - 1);
+    if (footer.find()) {
+      long ordinal =
+          footer
+              .group(1)
+              .codePoints()
+              .asLongStream()
+              .reduce(0, (value, digit) -> value * 10 + Character.digit((int) digit, 10));
+      if (ordinal >= chunks.labels().size() && ordinal <= chunks.indexed().size()) {
+        int index = (int) ordinal - 1;
+        String chunk = chunks.indexed().get(index);
         String suffix = CONTEXT_SEPARATOR + chunk;
         if (passage.regionMatches(footer.start() - suffix.length(), suffix, 0, suffix.length())) {
-          int labels = ordinal == labelChunks.size() ? labelChunks.getLast().length() : 0;
-          included = includeBody.test(chunk.substring(labels).stripLeading());
+          String label = ordinal == chunks.labels().size() ? chunks.labels().getLast() + " " : "";
+          String imageFree = chunks.imageFree().get(index);
+          String body = imageFree.substring(Math.min(label.length(), imageFree.length()));
+          String header = passage.substring(0, footer.start() - chunk.length()) + label;
+          rendered = renderReadableBody(header, body, passage.substring(footer.start()));
         }
       }
     }
-    return included;
+    return rendered;
+  }
+
+  private static String renderReadableBody(String header, String body, String footer) {
+    String readable = PromptText.forArticleRead(body);
+    return readable.isEmpty() ? null : PromptText.forContentRead(header) + readable + footer;
   }
 
   static String extractBodyText(EntityInterface<?> entity) {
-    if (!(entity instanceof Page page)) {
-      return null;
+    String body = null;
+    if (entity instanceof Page page) {
+      List<String> parts = titleParts(page);
+      appendIfPresent(parts, DESCRIPTION, page.getDescription());
+      if (page.getPageType() == PageType.QUICK_LINK) {
+        appendIfPresent(parts, "url", extractQuickLinkUrl(page));
+      }
+      body = String.join("; ", parts);
     }
-    List<String> parts = titleParts(page);
-    appendIfPresent(parts, DESCRIPTION, page.getDescription());
-    if (page.getPageType() == PageType.QUICK_LINK) {
-      appendIfPresent(parts, "url", extractQuickLinkUrl(page));
-    }
-    return parts.isEmpty() ? "" : String.join("; ", parts);
+    return body;
   }
 
   private static List<String> titleParts(Page page) {

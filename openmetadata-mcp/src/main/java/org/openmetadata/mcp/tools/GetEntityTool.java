@@ -15,8 +15,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Element;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.EntityInterface;
@@ -446,9 +444,11 @@ public class GetEntityTool implements McpTool {
   }
 
   private static String fullKnowledgeText(EntityInterface<?> entity) {
-    String body = AIContextBuilder.fullContentOf(entity);
-    boolean emptyArticle = entity instanceof Page page && isArticle(page) && !hasArticleText(body);
-    return body == null || emptyArticle ? "" : body;
+    String body =
+        entity instanceof Page page && isArticle(page)
+            ? PromptText.forArticleRead(page.getDescription())
+            : AIContextBuilder.fullContentOf(entity);
+    return body == null ? "" : body;
   }
 
   private static boolean masksTestCaseContent(IncludeContext ctx) {
@@ -474,35 +474,16 @@ public class GetEntityTool implements McpTool {
   }
 
   private static List<String> readablePassages(Page page, List<String> passages) {
-    List<String> readable =
-        isArticle(page)
-            ? PageBodyTextContributor.filterArticlePassages(
-                page, passages, body -> hasArticleText(PromptText.forContentRead(body)))
-            : passages;
-    return readable.stream()
-        .map(PromptText::forContentRead)
-        .filter(passage -> !nullOrEmpty(passage) && !passage.isBlank())
-        .toList();
+    return isArticle(page)
+        ? PageBodyTextContributor.readableArticlePassages(page, passages)
+        : passages.stream()
+            .map(PromptText::forContentRead)
+            .filter(passage -> !nullOrEmpty(passage) && !passage.isBlank())
+            .toList();
   }
 
   private static boolean isArticle(Page page) {
     return page.getPageType() != PageType.QUICK_LINK;
-  }
-
-  private static boolean hasArticleText(String content) {
-    boolean readable =
-        !nullOrEmpty(content)
-            && content
-                .codePoints()
-                .anyMatch(c -> !Character.isWhitespace(c) && !Character.isSpaceChar(c));
-    if (readable && content.indexOf('<') >= 0) {
-      Element body = Jsoup.parseBodyFragment(content).body();
-      // Unknown tags can be literal type notation in the decoded article text.
-      readable =
-          !body.text().isBlank()
-              || body.getAllElements().stream().anyMatch(element -> !element.tag().isKnownTag());
-    }
-    return readable;
   }
 
   private static Object renderText(IncludeContext ctx, String text) {

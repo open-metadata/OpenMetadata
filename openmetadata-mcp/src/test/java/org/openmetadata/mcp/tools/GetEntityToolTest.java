@@ -273,6 +273,51 @@ class GetEntityToolTest {
         .containsExactlyEntriesOf(Map.of("content", ""));
   }
 
+  @ParameterizedTest
+  @ValueSource(ints = {4, 4000})
+  void contentQueryDropsImageAttributesSplitIntoAnotherChunk(int imageSize) throws Exception {
+    String lead = "meaningful ".repeat(375);
+    Page page =
+        new Page()
+            .withId(UUID.randomUUID())
+            .withName("Illustration")
+            .withFullyQualifiedName("Knowledge.Illustration")
+            .withDescription(
+                "<p>"
+                    + lead
+                    + "</p> <p><img src=\"data:image/png;base64,"
+                    + "A".repeat(imageSize)
+                    + "\" width=\"240\" alt=\"Diagram caption\" /></p>");
+    List<String> chunks = indexedArticleChunks(page);
+    assertThat(chunks.getLast()).contains("width=\"240\"").doesNotContain("<img", "meaningful");
+
+    Map<String, Object> fallback = queryArticle(page, List.of(chunks.getLast()), "json");
+    assertThat((String) fallback.get("content"))
+        .contains("meaningful")
+        .doesNotContain("base64", "width=", "Diagram caption");
+
+    Map<String, Object> content = queryArticle(page, chunks, "markdown");
+    assertThat((String) content.get("content"))
+        .contains("meaningful", "chunk 1/2")
+        .doesNotContain("base64", "width=", "chunk 2/2");
+  }
+
+  @Test
+  void contentQueryPreservesLiteralHtmlInCode() throws Exception {
+    Page page =
+        new Page()
+            .withId(UUID.randomUUID())
+            .withName("Example")
+            .withFullyQualifiedName("Knowledge.Example")
+            .withDescription("<p><code>&lt;div&gt;</code></p>");
+
+    assertThat(queryArticle(page, indexedArticleChunks(page), "markdown").get("content"))
+        .asString()
+        .contains("<code><div></code>", "chunk 1/1");
+    assertThat(queryArticle(page, List.of(), "json"))
+        .containsExactlyEntriesOf(Map.of("content", "<p><code><div></code></p>"));
+  }
+
   private Map<String, Object> queryArticle(Page page, List<String> matches, String format)
       throws Exception {
     String fqn = page.getFullyQualifiedName();

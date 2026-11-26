@@ -153,7 +153,7 @@ class PageBodyTextContributorTest {
   }
 
   @Test
-  void filterArticlePassagesUsesDescriptionAfterTitleSpanningMultipleChunks() {
+  void readableArticlePassagesUsesDescriptionAfterTitleSpanningMultipleChunks() {
     Page page =
         basePage()
             .withDisplayName("Heading ".repeat(379) + "Revenue | Reporting")
@@ -162,13 +162,11 @@ class PageBodyTextContributorTest {
     List<String> chunks = indexedPassages(page);
 
     assertEquals(
-        List.of(chunks.getLast()),
-        PageBodyTextContributor.filterArticlePassages(
-            page, chunks, "Read this | This is part of the body."::equals));
+        List.of(chunks.getLast()), PageBodyTextContributor.readableArticlePassages(page, chunks));
   }
 
   @Test
-  void filterArticlePassagesRejectsStaleAndMalformedHits() {
+  void readableArticlePassagesRejectsStaleAndMalformedHits() {
     Page page = basePage().withDescription("Before the edit");
     String oldPassage = indexedPassages(page).getFirst();
     page.withDescription("After the edit");
@@ -176,8 +174,17 @@ class PageBodyTextContributorTest {
     List<String> hits = List.of(oldPassage, "missing footer", currentPassage);
 
     assertEquals(
-        List.of(currentPassage),
-        PageBodyTextContributor.filterArticlePassages(page, hits, body -> !body.isEmpty()));
+        List.of(currentPassage), PageBodyTextContributor.readableArticlePassages(page, hits));
+  }
+
+  @Test
+  void readableArticlePassagesKeepsUnchangedChunkAfterAppendWithLocalizedFooter() {
+    String firstBody = "word ".repeat(377).stripTrailing();
+    Page page = basePage().withDescription(firstBody);
+    String hit = indexedPassages(page).getFirst().replace(" | chunk 1/1", " | chunk ١/١");
+    page.withDescription(firstBody + " appended prose");
+
+    assertEquals(List.of(hit), PageBodyTextContributor.readableArticlePassages(page, List.of(hit)));
   }
 
   private static List<String> indexedPassages(Page page) {

@@ -12,8 +12,11 @@
  */
 package org.openmetadata.service.aicontext;
 
+import java.util.BitSet;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.text.StringEscapeUtils;
+import org.jsoup.Jsoup;
 import org.openmetadata.service.util.DescriptionSanitizer;
 import org.owasp.html.HtmlPolicyBuilder;
 import org.owasp.html.PolicyFactory;
@@ -130,7 +133,37 @@ public final class PromptText {
    * double-encoded stays encoded and no markup is rebuilt from it.
    */
   public static String forContentRead(String richText) {
-    final String decoded = StringEscapeUtils.unescapeHtml4(forPrompt(richText));
+    return stripDecodedImages(StringEscapeUtils.unescapeHtml4(forPrompt(richText)));
+  }
+
+  /** Keeps the usual rich-text output when the article contains visible text. */
+  public static String forArticleRead(String richText) {
+    String html = forPrompt(richText);
+    String rendered = stripDecodedImages(StringEscapeUtils.unescapeHtml4(html));
+    // Inspect the encoded markup so literal examples such as &lt;div&gt; count as text.
+    String plain =
+        html != null && hasHtmlTag(html)
+            ? stripDecodedImages(Jsoup.parseBodyFragment(html).body().text())
+            : rendered;
+    boolean readable =
+        plain != null
+            && plain
+                .codePoints()
+                .anyMatch(c -> !Character.isWhitespace(c) && !Character.isSpaceChar(c));
+    return readable ? rendered : "";
+  }
+
+  /** Image spans in the source can cross word-based index chunk boundaries. */
+  public static BitSet inlineImagePositions(String source, int start) {
+    BitSet positions = new BitSet();
+    Matcher images = DECODED_IMAGE.matcher(source).region(start, source.length());
+    while (images.find()) {
+      positions.set(images.start(), images.end());
+    }
+    return positions;
+  }
+
+  private static String stripDecodedImages(String decoded) {
     return decoded == null ? null : DECODED_IMAGE.matcher(decoded).replaceAll("");
   }
 
