@@ -7,7 +7,7 @@ catalogue lookup that restores Informix's large-object types.
 import json
 import os
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -26,7 +26,10 @@ from metadata.generated.schema.entity.services.connections.database.informixConn
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.security.ssl.verifySSLConfig import SslMode
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.informix.connection import (
@@ -35,6 +38,7 @@ from metadata.ingestion.source.database.informix.connection import (
     get_connection_url,
 )
 from metadata.ingestion.source.database.informix.dialect import (
+    _SSL_CONTEXT_LOCK,
     INFORMIX_JDBC_JARS_ENV,
     TRUSTSTORE_PASSWORD,
     InformixDialect,
@@ -51,6 +55,7 @@ from metadata.ingestion.source.database.informix.queries import (
     INFORMIX_GET_DRIVER_UNFRIENDLY_COLUMNS,
 )
 from metadata.ingestion.source.database.informix.usage import InformixUsageSource
+from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.profiler.interface.sqlalchemy.informix.profiler_interface import (
@@ -303,6 +308,12 @@ class TestTrustServerCertificate:
         trusting.assert_not_called()
         assert base_connect.call_args.kwargs == {"url": "jdbc:x"}
 
+    def test_a_verifying_handshake_waits_for_a_trusting_one(self):
+        """A trusting connect swaps the JVM default; a verifying one inside that window would trust anything."""
+        with patch.object(DefaultDialect, "connect", side_effect=lambda *_, **__: _SSL_CONTEXT_LOCK.locked()):
+            assert InformixDialect().connect(url="jdbc:informix-sqli://h:1/db:SSLCONNECTION=true") is True
+            assert InformixDialect().connect(url="jdbc:informix-sqli://h:1/db:INFORMIXSERVER=x") is False
+
 
 ROUTINE_ROWS = [
     # (name, isproc, procid, paramtypes) as INFORMIX_GET_STORED_PROCEDURES returns them.
@@ -385,12 +396,23 @@ class TestQueryHistory:
         )
         assert "FROM sysmaster:syssqltrace" in sql
         assert "SELECT FIRST 1000" in sql
-        # Informix rejects a DATETIME literal carrying six fractional digits.
-        assert ">= '2026-11-01 00:00:00'" in sql
-        assert "< '2026-11-02 00:00:00'" in sql
         assert """'/* {"app": "OpenMetadata", %} */%'""" in sql
         # A tick counter, not a time: it reads as a date in 1970.
         assert "sql_begintxtime" not in sql
+
+    def test_window_is_compared_as_utc_epochs(self):
+        """sql_finishtime is a UTC epoch; DBINFO('utc_to_datetime') would answer in the
+        server's time zone and shift the window by its offset."""
+        source = query_parser(InformixUsageSource)
+        naive = source.get_sql_statement(datetime(2026, 11, 1), datetime(2026, 11, 2))
+        aware = source.get_sql_statement(
+            datetime(2026, 11, 1, 1, tzinfo=timezone(timedelta(hours=1))),
+            datetime(2026, 11, 2, tzinfo=timezone.utc),
+        )
+        assert "sql_finishtime >= 1793491200" in naive
+        assert "sql_finishtime < 1793577600" in naive
+        assert aware == naive
+        assert "utc_to_datetime" not in naive.lower()
 
     def test_filter_condition_is_appended(self):
         source = query_parser(InformixLineageSource)
@@ -399,14 +421,26 @@ class TestQueryHistory:
         assert "LIKE '%insert%into%select%'" in sql
         assert "AND (sql_database = 'stores')" in sql
 
-    def test_usage_drops_the_database_qualifier(self):
-        """database:owner.table is Informix-only syntax the SQL parser cannot read."""
+    def test_usage_rewrites_the_database_qualifier(self):
+        """database:owner.table is Informix-only; written database.owner.table the parser
+        resolves it, database included."""
         source = query_parser(InformixUsageSource)
         with patch.object(UsageSource, "format_query", side_effect=lambda query: query):
             assert (
                 source.format_query("SELECT * FROM stores:informix.customer JOIN informix.orders ON 1=1")
-                == "SELECT * FROM informix.customer JOIN informix.orders ON 1=1"
+                == "SELECT * FROM stores.informix.customer JOIN informix.orders ON 1=1"
             )
+
+    def test_lineage_rewrites_the_database_qualifier(self):
+        source = query_parser(InformixLineageSource)
+        traced = TableQuery(
+            query="INSERT INTO stores:informix.target SELECT * FROM other:informix.source", serviceName="svc"
+        )
+        with patch.object(LineageSource, "yield_table_query", return_value=iter([traced])):
+            (table_query,) = source.yield_table_query()
+        parser = LineageParser(table_query.query, Dialect.ANSI)
+        assert [str(table) for table in parser.source_tables] == ["other.informix.source"]
+        assert [str(table) for table in parser.target_tables] == ["stores.informix.target"]
 
     def test_sources_reject_foreign_connection_config(self):
         cockroach = {

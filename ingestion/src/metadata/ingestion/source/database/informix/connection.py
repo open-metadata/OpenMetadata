@@ -56,6 +56,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 # The driver has one SSL switch and verifies the server against a Java truststore.
+# How each sslMode maps onto it: ADR:2026-11-26-informix-overloads-keep-the-oldest-bare-name-and-ssl-modes-map-to-one-driver-switch
 # Without a CA certificate it verifies against the JVM's default one.
 _SSL_VERIFY_MODES = {SslMode.verify_ca, SslMode.verify_full}
 # Encrypted without verifying the certificate. The driver has no opportunistic
@@ -73,6 +74,11 @@ def _ssl_params(connection: InformixConnectionConfig) -> dict[str, str]:
     if connection.sslMode not in _SSL_VERIFY_MODES | _SSL_UNVERIFIED_MODES:
         return {}
     params = {"SSLCONNECTION": "true"}
+    if connection.sslMode == SslMode.verify_full:
+        logger.warning(
+            "Informix sslMode 'verify-full' verifies the certificate chain like 'verify-ca': "
+            "the JDBC driver does not match the server host name."
+        )
     ca_certificate = connection.sslConfig.root.caCertificate if connection.sslConfig else None
     if connection.sslMode in _SSL_VERIFY_MODES and ca_certificate:
         params["SSL_TRUSTSTORE"] = build_truststore(ca_certificate.get_secret_value())

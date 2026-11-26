@@ -12,8 +12,12 @@
 Informix lineage source.
 """
 
+from collections.abc import Iterator
+
+from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.informix.query_parser import (
     InformixQueryParserSource,
+    normalise_table_references,
 )
 from metadata.ingestion.source.database.lineage_source import LineageSource
 
@@ -29,3 +33,8 @@ class InformixLineageSource(InformixQueryParserSource, LineageSource):
             OR LOWER(sql_statement) LIKE '%merge%'
         )
     """
+
+    def yield_table_query(self) -> Iterator[TableQuery]:
+        for table_query in super().yield_table_query():
+            table_query.query = normalise_table_references(table_query.query)
+            yield table_query

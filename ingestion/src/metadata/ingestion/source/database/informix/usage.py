@@ -12,16 +12,11 @@
 Informix usage source.
 """
 
-import re
-
 from metadata.ingestion.source.database.informix.query_parser import (
     InformixQueryParserSource,
+    normalise_table_references,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
-
-# Informix qualifies a table as database:owner.table. The SQL parser does not know
-# the "database:" prefix, so it is dropped and the table resolves as owner.table.
-INFORMIX_DATABASE_PREFIX = re.compile(r"\b[A-Za-z_]\w*:(\w+\.\w+)\b")
 
 
 class InformixUsageSource(InformixQueryParserSource, UsageSource):
@@ -32,4 +27,4 @@ class InformixUsageSource(InformixQueryParserSource, UsageSource):
     """
 
     def format_query(self, query: str) -> str:
-        return INFORMIX_DATABASE_PREFIX.sub(r"\1", super().format_query(query))
+        return normalise_table_references(super().format_query(query))

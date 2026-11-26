@@ -269,6 +269,7 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
         # overload (lowest procid, so the oldest) keeps the bare name -- the FQN the
         # routine had before any overload existed, which its descriptions, tags and
         # owners hang off -- and only the later ones carry their signature.
+        # ADR:2026-11-26-informix-overloads-keep-the-oldest-bare-name-and-ssl-modes-map-to-one-driver-switch
         overloaded = {name for name, count in Counter(row[0] for row in rows).items() if count > 1}
         # Named before filtering, so excluding one overload never renames another.
         first_overload = {}

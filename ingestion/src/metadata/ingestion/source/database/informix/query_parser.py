@@ -12,6 +12,8 @@
 Shared base for the Informix usage and lineage sources.
 """
 
+import calendar
+import re
 from abc import ABC
 from datetime import datetime
 
@@ -25,6 +27,15 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.informix.queries import INFORMIX_SQL_STATEMENT
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+
+# Informix names a table in another database database:owner.table, which the SQL
+# parser misreads as a table called after the database. Written
+# database.owner.table it resolves, database included.
+INFORMIX_DATABASE_QUALIFIER = re.compile(r"\b([A-Za-z_]\w*):(\w+\.\w+)\b")
+
+
+def normalise_table_references(query: str) -> str:
+    return INFORMIX_DATABASE_QUALIFIER.sub(r"\1.\2", query)
 
 
 class InformixQueryParserSource(QueryParserSource, ABC):
@@ -43,10 +54,11 @@ class InformixQueryParserSource(QueryParserSource, ABC):
         return cls(config, metadata)
 
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
-        """Seconds precision: Informix rejects a DATETIME literal with six fractional digits."""
+        """The window as UTC epochs, which is what sql_finishtime holds. A naive
+        datetime is UTC, as get_start_and_end builds it."""
         return self.sql_stmt.format(
-            start_time=start_time.strftime("%Y-%m-%d %H:%M:%S"),
-            end_time=end_time.strftime("%Y-%m-%d %H:%M:%S"),
+            start_time=calendar.timegm(start_time.utctimetuple()),
+            end_time=calendar.timegm(end_time.utctimetuple()),
             filters=self.get_filters(),
             result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
         )

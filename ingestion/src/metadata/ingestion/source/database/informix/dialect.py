@@ -184,8 +184,9 @@ def _trusting_any_server_certificate() -> Iterator[None]:
     sslMode require means encrypted but unverified. The driver has no switch for
     that and verifies against the JVM default SSLContext, so it is swapped for
     one that trusts any certificate for the duration of the connect and put back
-    after, keeping every other TLS client in the JVM verifying. The lock stops a
-    concurrent connect seeing either context by accident.
+    after. Every Informix SSL connect takes the same lock, so a verifying one
+    never handshakes inside that window; a TLS client of another library in the
+    same JVM is not covered by it.
     """
     _start_jvm()
 
@@ -421,10 +422,13 @@ class InformixDialect(  # pyright: ignore[reportIncompatibleMethodOverride, repo
     def connect(self, *cargs, trust_server_certificate: bool = False, **cparams):
         """trust_server_certificate comes from the connection arguments of an
         sslMode that encrypts without verifying; see connection.py."""
-        if not trust_server_certificate:
-            return super().connect(*cargs, **cparams)
-        with _trusting_any_server_certificate():
-            return super().connect(*cargs, **cparams)
+        if trust_server_certificate:
+            with _trusting_any_server_certificate():
+                return super().connect(*cargs, **cparams)
+        if "SSLCONNECTION=TRUE" in str(cparams.get("url", "")).upper():
+            with _SSL_CONTEXT_LOCK:
+                return super().connect(*cargs, **cparams)
+        return super().connect(*cargs, **cparams)
 
     def create_connect_args(self, url: URL) -> tuple[list, dict]:
         """Informix separates URL properties with ':' and then ';', not '?' and
