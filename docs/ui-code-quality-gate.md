@@ -243,12 +243,18 @@ project settings, not on the gate.
 
 ### Branch protection
 
-Mark these checks required on `main`:
+Mark `ui-tests-status` (from `ci-pr.yml` and `ci-merge-queue.yml`) required on `main`. It passes
+only when every selected UI job passed:
 
-| Required check | Enforces |
+| Job | Enforces |
 |---|---|
-| `ui-checkstyle` | lint (incl. SonarJS + jsx-a11y), prettier, licence, i18n, `tw-audit`, `tw-guard` |
-| `ui-coverage` | Jest run completed |
+| `ui checkstyle` (`ui-checkstyle.yml`) | lint (incl. SonarJS + jsx-a11y), prettier, licence, i18n, `tw-audit`, `tw-guard`, bundle budget, knip |
+| `ui unit tests` (`ui-unit-tests.yml`) | Jest, in four shards |
+| `ui browser tests` (`ui-browser-tests.yml`) | browser tests selected by impact |
+
+On pull requests the two test jobs start only after checkstyle passes. Until the ruleset switches
+to `ui-tests-status`, the entrypoints also report it under the old names `ui-checkstyle` and
+`ui-coverage`.
 
 Do not require `ui-sonar-gate` or SonarCloud's PR check. PR jobs do not receive Sonar credentials,
 including same-repository PRs, under ADR:2026-11-10-pr-jobs-never-receive-credentials.

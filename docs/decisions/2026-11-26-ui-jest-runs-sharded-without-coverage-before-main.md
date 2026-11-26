@@ -1,7 +1,7 @@
 # UI Jest runs sharded without coverage on pull requests and in the merge queue
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-26 (initial)
+- **Revisions:** v1 2026-11-26 (initial); v2 2026-11-26 (`yarn-coverage.yml` became the reusable `ui-unit-tests.yml`, gated by `ui-tests-status`)
 - **Deciders:** Chirag Madlani
 - **Guard:** reviewer; `yarn-coverage.yml` (the required `ui-coverage` job fails unless every shard succeeds or the run is skipped)
 - **Related:** ADR:2026-11-11-python-ci-selects-workloads-by-event,
@@ -35,3 +35,9 @@ coverage gate back means collecting coverage per shard, merging it, and comparin
 Report it in the job summary and fail the check; PR jobs post no comments
 (ADR:2026-11-10-pr-jobs-never-receive-credentials). If main's locale files ever drift, only the
 next PR that touches a locale file or `yarn.lock` reports it.
+
+## Amendment v2 (2026-11-26)
+`yarn-coverage.yml` is now the reusable `ui-unit-tests.yml`, called from `ci-pr.yml` and
+`ci-merge-queue.yml`. Its shard results feed `ui-tests-status` instead of `ui-coverage`, under
+ADR:2026-11-26-ui-ci-runs-from-the-event-entrypoints-behind-one-required-check. The rest of this
+record is unchanged.

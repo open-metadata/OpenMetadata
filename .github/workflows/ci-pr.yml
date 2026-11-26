@@ -26,7 +26,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   plan:
-    name: Select Python workloads
+    name: Select workloads
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     outputs:
@@ -36,6 +36,8 @@ jobs:
       python: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' }}
       airflow-apis: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.airflow-apis == 'true' }}
       static: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' || steps.filter.outputs.airflow-apis == 'true' || steps.filter.outputs.static == 'true' }}
+      ui: ${{ github.event_name == 'workflow_dispatch' || steps.ui-filter.outputs.ui == 'true' }}
+      ui-unit: ${{ github.event_name == 'workflow_dispatch' || steps.ui-filter.outputs.ui-unit == 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -44,6 +46,7 @@ jobs:
           fetch-depth: 1
           sparse-checkout: |
             .github/python-ci/paths.yml
+            .github/ui-ci/paths.yml
             ingestion/pyproject.toml
             scripts/python_ci.py
             scripts/prepare_classification_models.py
@@ -53,6 +56,11 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         with:
           filters: .github/python-ci/paths.yml
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+        id: ui-filter
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          filters: .github/ui-ci/paths.yml
       - name: Read Python versions
         id: versions
         run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
@@ -183,3 +191,72 @@ jobs:
               $needs[$job.key].result == $job.value)
           '
         shell: bash
+
+  # UI: checkstyle first; Jest and browser tests start only once it passes, so
+  # a lint failure does not spend the test runners. Each is a reusable workflow
+  # shared with ci-merge-queue.yml.
+  ui-lint:
+    name: ui checkstyle
+    needs: plan
+    if: ${{ needs.plan.outputs.ui == 'true' }}
+    uses: ./.github/workflows/ui-checkstyle.yml
+
+  ui-unit:
+    name: ui unit tests
+    needs: [plan, ui-lint]
+    if: ${{ needs.plan.outputs.ui-unit == 'true' && needs.ui-lint.result == 'success' }}
+    uses: ./.github/workflows/ui-unit-tests.yml
+
+  ui-browser:
+    name: ui browser tests
+    needs: [plan, ui-lint]
+    if: ${{ needs.plan.outputs.ui == 'true' && needs.ui-lint.result == 'success' }}
+    permissions:
+      contents: read
+      # Downloads the impact map from earlier runs.
+      actions: read
+    uses: ./.github/workflows/ui-browser-tests.yml
+
+  # Required check for the UI. Like py-tests-status it must run on every
+  # non-draft PR: a job skipped by `if` reports success.
+  ui-tests-status:
+    name: ui-tests-status
+    needs: [plan, ui-lint, ui-unit, ui-browser]
+    if: ${{ always() && !github.event.pull_request.draft }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/actions/ci-status-gate
+      - uses: ./.github/actions/ci-status-gate
+        with:
+          needs: ${{ toJSON(needs) }}
+          expected: |
+            {
+              "plan": "success",
+              "ui-lint": "${{ needs.plan.outputs.ui == 'true' && 'success' || 'skipped' }}",
+              "ui-unit": "${{ needs.plan.outputs.ui-unit == 'true' && 'success' || 'skipped' }}",
+              "ui-browser": "${{ needs.plan.outputs.ui == 'true' && 'success' || 'skipped' }}"
+            }
+
+  # TEMPORARY: the merge-rules ruleset still requires these two names. Remove
+  # both once it requires ui-tests-status instead.
+  ui-checkstyle:
+    name: ui-checkstyle
+    needs: ui-tests-status
+    if: ${{ always() && !github.event.pull_request.draft }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - run: test "${{ needs.ui-tests-status.result }}" = success
+
+  ui-coverage:
+    name: ui-coverage
+    needs: ui-tests-status
+    if: ${{ always() && !github.event.pull_request.draft }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - run: test "${{ needs.ui-tests-status.result }}" = success

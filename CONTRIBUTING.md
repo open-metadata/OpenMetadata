@@ -56,8 +56,8 @@ in the PR template for you. You will check the CI and bot items below on the PR 
 3. **Get the PR checks green.** Which checks run depends on the paths you touched:
    - **Backend:** `backend-checks` (spotless formatting and the Java unit tests).
    - **Python:** `py-checkstyle` (ruff) and `py-tests-status` (unit tests and static checks).
-   - **UI:** `ui-checkstyle` (ESLint, Prettier, organize-imports), `browser tests + coverage`, and
-     `ui-coverage` (Jest).
+   - **UI:** `ui-tests-status`, which needs `ui checkstyle` (ESLint, Prettier, organize-imports and
+     the other UI checks) and, once checkstyle passes, `ui unit tests` (Jest) and `ui browser tests`.
    - **Other:** `validate-json-yaml`, `generate-types` (regenerate after any schema change), and
      `docker-image-smoke-test`.
 
@@ -84,7 +84,7 @@ A quick list to run through before you ask for a review:
 - [ ] One change per PR, rebased on `main`
 - [ ] Linked issue with a description, in the **Shipping** project with its fields set
 - [ ] PR checks green for the paths you touched — `backend-checks`, `py-checkstyle` /
-      `py-tests-status`, `ui-checkstyle`, `browser tests + coverage`, `ui-coverage`,
+      `py-tests-status`, `ui-tests-status`,
       `validate-json-yaml`, `generate-types`, `docker-image-smoke-test`
 - [ ] Impacted integration tests and Playwright specs run locally and recorded in the PR
 - [ ] Every Gitar / Greptile / Copilot thread resolved or answered

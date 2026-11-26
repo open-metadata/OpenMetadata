@@ -116,11 +116,16 @@ def test_connectors_reject_invalid_configuration(defaults, selected):
         ("ci-pr.yml", "python", "gate"),
         ("ci-pr.yml", "py-tests-status", None),
         ("ci-merge-queue.yml", "py-tests-status", None),
+        ("ci-status-gate", None, None),
     ]
 )
 def gate(request):
     name, job, step_id = request.param
-    steps = workflow(name)["jobs"][job]["steps"]
+    if job is None:
+        action = yaml.load((ROOT / ".github/actions" / name / "action.yml").read_text(), Loader=yaml.BaseLoader)
+        steps = action["runs"]["steps"]
+    else:
+        steps = workflow(name)["jobs"][job]["steps"]
     script = next(step for step in steps if step_id is None or step.get("id") == step_id)["run"]
 
     def invoke(needs, expected):
@@ -159,6 +164,14 @@ def test_gate_rejects_unexpected_results_and_dependencies(gate):
     assert gate({"a": {"result": "success"}}, {}).returncode != 0
     assert gate({}, {}).returncode != 0
     assert gate({"a": {"result": "success"}, "omitted-job": {"result": "failure"}}, {"a": "success"}).returncode != 0
+
+
+@pytest.mark.parametrize("name", ["ci-pr.yml", "ci-merge-queue.yml"])
+def test_ui_status_expects_a_result_for_every_dependency(name):
+    job = workflow(name)["jobs"]["ui-tests-status"]
+    gate_step = next(step for step in job["steps"] if step.get("uses") == "./.github/actions/ci-status-gate")
+    expected = re.sub(r"\$\{\{.*?\}\}", "success", gate_step["with"]["expected"])
+    assert set(json.loads(expected)) == set(job["needs"])
 
 
 def test_nightly_gate_requires_every_dependency_to_succeed():
