@@ -103,17 +103,46 @@ class VectorChunkIndexIT {
     private static final Pattern BULK_INDEX = Pattern.compile("\"_index\":\"([^\"]+)\"");
     private final List<String> sent = new CopyOnWriteArrayList<>();
     private volatile String unreadableHeaderIndex;
+    private final AtomicInteger throttledHeaderReads = new AtomicInteger();
+    private volatile Runnable beforeNextBulk;
 
     void record(String method, String endpoint, String body) {
       sent.add(method + " " + endpoint + " -> " + target(endpoint, body));
     }
 
-    boolean failsHeaderRead(String endpoint, String body) {
+    /** The status to answer instead of the cluster, or 0 to send the request on. */
+    int injectedStatus(String endpoint, String body) {
+      runWriterBeforeABulk(endpoint);
       String index = unreadableHeaderIndex;
       boolean headerRead =
           endpoint.contains("/_mget") && body != null && body.contains("_0\"")
               || endpoint.contains("/_doc/") && endpoint.contains("_0?");
-      return index != null && endpoint.startsWith("/" + index + "/") && headerRead;
+      boolean persistent = index != null && endpoint.startsWith("/" + index + "/") && headerRead;
+      boolean throttled =
+          headerRead && throttledHeaderReads.getAndUpdate(n -> Math.max(0, n - 1)) > 0;
+      return persistent ? 503 : throttled ? 429 : 0;
+    }
+
+    private void runWriterBeforeABulk(String endpoint) {
+      Runnable writer = beforeNextBulk;
+      if (writer != null && endpoint.equals("/_bulk")) {
+        beforeNextBulk = null;
+        writer.run();
+      }
+    }
+
+    void throttleNextHeaderReads(int times) {
+      throttledHeaderReads.set(times);
+    }
+
+    void beforeNextBulk(Runnable writer) {
+      beforeNextBulk = writer;
+    }
+
+    long headerReadsOf(String index) {
+      return sent.stream()
+          .filter(request -> request.startsWith("POST /" + index + "/_mget"))
+          .count();
     }
 
     void failHeaderReadsOf(String index) {
@@ -164,21 +193,22 @@ class VectorChunkIndexIT {
     protected RawResponse performRequest(String method, String endpoint, String body)
         throws IOException {
       requests.record(method, endpoint, body);
-      return requests.failsHeaderRead(endpoint, body)
-          ? unavailable()
+      int injected = requests.injectedStatus(endpoint, body);
+      return injected > 0
+          ? injectedResponse(injected)
           : super.performRequest(method, endpoint, body);
     }
 
     // The response record's constructor is protected, so a subclass outside its package builds it
     // reflectively.
-    private static RawResponse unavailable() throws IOException {
+    private static RawResponse injectedResponse(int status) throws IOException {
       try {
         Constructor<RawResponse> constructor =
             RawResponse.class.getDeclaredConstructor(int.class, String.class);
         constructor.setAccessible(true);
-        return constructor.newInstance(503, "{\"error\":\"unavailable\"}");
+        return constructor.newInstance(status, "{\"error\":\"injected\"}");
       } catch (ReflectiveOperationException e) {
-        throw new IOException("Could not build a 503 response", e);
+        throw new IOException("Could not build a " + status + " response", e);
       }
     }
   }
@@ -196,21 +226,22 @@ class VectorChunkIndexIT {
     protected RawResponse performRequest(String method, String endpoint, String body)
         throws IOException {
       requests.record(method, endpoint, body);
-      return requests.failsHeaderRead(endpoint, body)
-          ? unavailable()
+      int injected = requests.injectedStatus(endpoint, body);
+      return injected > 0
+          ? injectedResponse(injected)
           : super.performRequest(method, endpoint, body);
     }
 
     // The response record's constructor is protected, so a subclass outside its package builds it
     // reflectively.
-    private static RawResponse unavailable() throws IOException {
+    private static RawResponse injectedResponse(int status) throws IOException {
       try {
         Constructor<RawResponse> constructor =
             RawResponse.class.getDeclaredConstructor(int.class, String.class);
         constructor.setAccessible(true);
-        return constructor.newInstance(503, "{\"error\":\"unavailable\"}");
+        return constructor.newInstance(status, "{\"error\":\"injected\"}");
       } catch (ReflectiveOperationException e) {
-        throw new IOException("Could not build a 503 response", e);
+        throw new IOException("Could not build a " + status + " response", e);
       }
     }
   }
@@ -290,6 +321,21 @@ class VectorChunkIndexIT {
     void aDeleteThatCannotReadTheHeaderFailsAndKeepsEveryChunk() {
       assertADeleteThatCannotReadTheHeaderFailsAndKeepsEveryChunk(countedService, requests);
     }
+
+    @Test
+    void aDeleteRetriesAHeaderReadTheClusterThrottledOnce() {
+      assertADeleteRetriesAHeaderReadTheClusterThrottledOnce(countedService, requests);
+    }
+
+    @Test
+    void writersRacingOnOneEntityKeepTheBound() {
+      assertWritersRacingOnOneEntityKeepTheBound(countedService, requests);
+    }
+
+    @Test
+    void theHealRemovesTheChunksNoHeaderCounts() {
+      assertTheHealRemovesTheChunksNoHeaderCounts(service);
+    }
   }
 
   @Nested
@@ -366,6 +412,21 @@ class VectorChunkIndexIT {
     @Test
     void aDeleteThatCannotReadTheHeaderFailsAndKeepsEveryChunk() {
       assertADeleteThatCannotReadTheHeaderFailsAndKeepsEveryChunk(countedService, requests);
+    }
+
+    @Test
+    void aDeleteRetriesAHeaderReadTheClusterThrottledOnce() {
+      assertADeleteRetriesAHeaderReadTheClusterThrottledOnce(countedService, requests);
+    }
+
+    @Test
+    void writersRacingOnOneEntityKeepTheBound() {
+      assertWritersRacingOnOneEntityKeepTheBound(countedService, requests);
+    }
+
+    @Test
+    void theHealRemovesTheChunksNoHeaderCounts() {
+      assertTheHealRemovesTheChunksNoHeaderCounts(service);
     }
   }
 
@@ -654,6 +715,129 @@ class VectorChunkIndexIT {
       refresh(service, live);
       service.deleteEntityChunks(id(ledger));
     }
+  }
+
+  /**
+   * A header read the cluster answers once with a 429 is retried: the delete removes every chunk,
+   * at the cost of one more read.
+   */
+  private static void assertADeleteRetriesAHeaderReadTheClusterThrottledOnce(
+      AbstractVectorIndexService service, RequestLog requests) {
+    String live = service.getChunkIndexName();
+    Table ledger = table("ledger", "word ".repeat(940));
+    try {
+      writeChunks(service, ledger, null);
+      assertEquals(3, storedChunkIds(service, live, ledger).size());
+      requests.clear();
+      requests.throttleNextHeaderReads(1);
+
+      service.deleteEntityChunks(id(ledger));
+
+      assertEquals(2, requests.headerReadsOf(live), "the throttled read, then its retry");
+      assertEquals(Set.of(), storedChunkIds(service, live, ledger));
+    } finally {
+      requests.throttleNextHeaderReads(0);
+      service.deleteEntityChunks(id(ledger));
+    }
+  }
+
+  /**
+   * One writer shrinks an entity to two chunks while another grows it to five. Chunk 0 is written
+   * only over the version each writer read, so the one that loses reads the other's header and
+   * applies its set over it: the entity ends with one whole set and nothing past its count.
+   */
+  private static void assertWritersRacingOnOneEntityKeepTheBound(
+      AbstractVectorIndexService service, RequestLog requests) {
+    String live = service.getChunkIndexName();
+    Table orders = table("orders", "word ".repeat(940));
+    List<Map<String, Object>> five =
+        VectorDocBuilder.fromEntity(
+            table("orders", "word ".repeat(1700)).withId(orders.getId()),
+            service.getEmbeddingClient());
+    List<Map<String, Object>> two =
+        VectorDocBuilder.fromEntity(
+            table("orders", "word ".repeat(500)).withId(orders.getId()),
+            service.getEmbeddingClient());
+    try {
+      writeChunks(service, orders, null);
+      assertEquals(5, five.size(), "the longer text spans five chunks");
+      assertEquals(2, two.size(), "the shorter text spans two chunks");
+      requests.beforeNextBulk(() -> assertTrue(service.writeEntityChunks(id(orders), five, null)));
+
+      assertTrue(service.writeEntityChunks(id(orders), two, null));
+
+      assertEquals(
+          Set.of(id(orders) + "_0", id(orders) + "_1"), storedChunkIds(service, live, orders));
+      service.deleteEntityChunks(id(orders));
+      assertEquals(Set.of(), storedChunkIds(service, live, orders));
+    } finally {
+      requests.beforeNextBulk(null);
+      service.deleteEntityChunks(id(orders));
+    }
+  }
+
+  /**
+   * Chunk sets written before chunk 0 was a conditional write can hold chunks no header counts: past
+   * a header, or with no chunk 0 at all. The heal removes them once and records it on the index,
+   * keeping the rest of the index's metadata. A mapping update replaces the metadata whole, which
+   * is how the record is cleared here to stand for an index written by an earlier release.
+   */
+  private static void assertTheHealRemovesTheChunksNoHeaderCounts(
+      AbstractVectorIndexService service) {
+    String live = service.getChunkIndexName();
+    Table orders = table("orders", "word ".repeat(500));
+    Table refunds = table("refunds", "Refunds issued");
+    try {
+      writeChunks(service, orders, null);
+      String target = liveTarget(service);
+      int docVersion = chunkIndexMeta(service, target).path("chunkDocVersion").asInt();
+      putMeta(service, target, "{\"chunkDocVersion\":" + docVersion + "}");
+      assertFalse(
+          chunkIndexMeta(service, target).has("chunkSetsBounded"), "_meta is replaced whole");
+      storeLegacyChunk(service, live, orders, 4);
+      storeLegacyChunk(service, live, refunds, 2);
+      refresh(service, live);
+
+      service.removeChunksNoHeaderCounts();
+
+      assertEquals(
+          Set.of(id(orders) + "_0", id(orders) + "_1"), storedChunkIds(service, live, orders));
+      assertEquals(Set.of(), storedChunkIds(service, live, refunds));
+      JsonNode meta = chunkIndexMeta(service, target);
+      assertTrue(meta.path("chunkSetsBounded").asBoolean(false), meta::toString);
+      assertEquals(docVersion, meta.path("chunkDocVersion").asInt(), meta::toString);
+    } finally {
+      service.deleteEntityChunks(id(orders));
+      service.deleteEntityChunks(id(refunds));
+    }
+  }
+
+  private static void storeLegacyChunk(
+      AbstractVectorIndexService service, String index, Table parent, int chunkIndex) {
+    service.executeGenericRequest(
+        "PUT",
+        "/" + index + "/_doc/" + id(parent) + "_" + chunkIndex,
+        JsonUtils.pojoToJson(
+            Map.of(
+                "parentId", id(parent), "chunkIndex", chunkIndex, "chunkCount", chunkIndex + 1)));
+  }
+
+  private static String liveTarget(AbstractVectorIndexService service) {
+    String base = service.getChunkIndexName();
+    return JsonUtils.readTree(service.executeGenericRequest("GET", "/" + base + "/_alias", null))
+        .fieldNames()
+        .next();
+  }
+
+  private static JsonNode chunkIndexMeta(AbstractVectorIndexService service, String index) {
+    return JsonUtils.readTree(service.executeGenericRequest("GET", "/" + index + "/_mapping", null))
+        .path(index)
+        .path("mappings")
+        .path("_meta");
+  }
+
+  private static void putMeta(AbstractVectorIndexService service, String index, String meta) {
+    service.executeGenericRequest("PUT", "/" + index + "/_mapping", "{\"_meta\":" + meta + "}");
   }
 
   private static void refreshInterval(

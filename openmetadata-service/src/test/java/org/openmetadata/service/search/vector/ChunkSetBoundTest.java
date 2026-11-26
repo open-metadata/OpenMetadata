@@ -2,9 +2,14 @@ package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -12,26 +17,36 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.Predicate;
+import org.apache.commons.lang3.function.FailableRunnable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.OntologyChunkIndex;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 /**
  * Chunk 0's {@code chunkCount} bounds every chunk id stored for a parent. These scenarios run the
- * shared write and delete code against an in-memory cluster whose delete-by-query, like a real
- * one, sees only refreshed documents, and they never refresh between steps: the by-id bound alone
- * must reach what a failed write left behind.
+ * shared write and delete code against an in-memory cluster whose searches, like a real one's, see
+ * only refreshed documents, and they never refresh between steps: the by-id bound alone must reach
+ * what a failed write left behind. Chunk 0 is written over the version read, so racing writers
+ * keep the bound, and a one-time heal removes the chunks older writes left past it.
  */
 class ChunkSetBoundTest {
 
@@ -126,29 +141,6 @@ class ChunkSetBoundTest {
     assertEquals(2, cluster.bulkRequests - requestsBefore, "the chunks, then the header");
   }
 
-  @ParameterizedTest(name = "into {0}")
-  @ValueSource(strings = {LIVE, STAGED})
-  void aDeleteRemovesChunksAHeaderThatIsBehindDoesNotCover(String target) {
-    service.latchParticipantStagedTarget(STAGED);
-    assertTrue(write(target, chunks(1)));
-    cluster.storeRefreshed(target, parentId + "_1", Map.of("parentId", parentId, "chunkIndex", 1));
-    cluster.storeRefreshed(target, parentId + "_4", Map.of("parentId", parentId, "chunkIndex", 4));
-
-    service.deleteEntityChunks(parentId);
-
-    assertEquals(Set.of(), cluster.chunkIds(target, parentId));
-  }
-
-  @Test
-  void aDeleteRemovesAChunkSetStoredWithoutItsHeader() {
-    cluster.storeRefreshed(LIVE, parentId + "_1", Map.of("parentId", parentId, "chunkIndex", 1));
-    cluster.storeRefreshed(LIVE, parentId + "_2", Map.of("parentId", parentId, "chunkIndex", 2));
-
-    service.deleteEntityChunks(parentId);
-
-    assertEquals(Set.of(), cluster.chunkIds(LIVE, parentId));
-  }
-
   @ParameterizedTest(name = "{0} chunks")
   @ValueSource(ints = {0, 1, 3})
   void aDeleteSendsOneReadAndOneDeletePerRequestTheBoundNeedsAndNoQuery(int chunkCount) {
@@ -202,16 +194,248 @@ class ChunkSetBoundTest {
   }
 
   @Test
-  void aStagedGenerationProbeThatFailedIsAskedAgainByTheNextDelete() {
+  void aFailedGenerationProbeHidesTheGenerationOnlyForItsBackoff() throws InterruptedException {
     givenTheLiveChunkIndexExists();
     cluster.stageGeneration(STAGED);
     assertTrue(write(STAGED, chunks(1)));
     cluster.failNextGenerationProbe();
     service.deleteEntityChunks(UUID.randomUUID().toString());
+    Thread.sleep(2_100);
 
     service.deleteEntityChunks(parentId);
 
     assertEquals(Set.of(), cluster.chunkIds(STAGED, parentId));
+  }
+
+  @Test
+  void aDeleteRetriesAHeaderReadTheClusterThrottledOnce() {
+    givenTheLiveChunkIndexExists();
+    assertTrue(write(LIVE, chunks(3)));
+    cluster.refreshAll(LIVE);
+    cluster.failNextReadsOf(LIVE, 429, 1);
+
+    service.deleteEntityChunks(parentId);
+
+    assertEquals(Set.of(), cluster.chunkIds(LIVE, parentId));
+  }
+
+  @Test
+  void aStagedDeleteRetriesAHeaderReadAndLeavesTheGenerationPromotable() {
+    service.latchParticipantStagedTarget(STAGED);
+    assertTrue(write(STAGED, chunks(3)));
+    cluster.failNextReadsOf(STAGED, 503, 1);
+
+    service.deleteEntityChunks(parentId);
+
+    assertEquals(Set.of(), cluster.chunkIds(STAGED, parentId));
+    assertFalse(cluster.flaggedIncomplete(STAGED), "one 503 no longer flags the generation");
+  }
+
+  @Test
+  void aWriteRetriesABulkWhoseItemsTheClusterRejectedOnce() {
+    givenTheLiveChunkIndexExists();
+    assertTrue(write(LIVE, chunks(3)));
+    cluster.rejectNextBulks(429, 1);
+
+    assertTrue(write(LIVE, chunks(2)), "one rejected bulk is retried");
+
+    assertEquals(Set.of(parentId + "_0", parentId + "_1"), cluster.chunkIds(LIVE, parentId));
+  }
+
+  @Test
+  void aWriteRetriesAHeaderReadThatGotNoResponse() {
+    givenTheLiveChunkIndexExists();
+    cluster.failNextReadsOf(LIVE, 0, 1);
+
+    assertTrue(write(LIVE, chunks(2)), "a read with no response is retried");
+
+    assertEquals(Set.of(parentId + "_0", parentId + "_1"), cluster.chunkIds(LIVE, parentId));
+  }
+
+  @Test
+  void writersRacingOnOneEntityLeaveNoChunkPastTheHeader() {
+    givenTheLiveChunkIndexExists();
+    assertTrue(write(LIVE, chunks(3)));
+    List<Map<String, Object>> five = chunks(5);
+    List<Map<String, Object>> two = chunks(2);
+    cluster.beforeNextBulk(() -> assertTrue(write(LIVE, five)));
+
+    assertTrue(write(LIVE, two));
+
+    assertEquals(Set.of(parentId + "_0", parentId + "_1"), cluster.chunkIds(LIVE, parentId));
+    assertEquals(2, cluster.header(LIVE, parentId).path("chunkCount").asInt());
+  }
+
+  @Test
+  void aDeleteRacingAWriteThatGrewTheSetLeavesNoChunk() {
+    givenTheLiveChunkIndexExists();
+    assertTrue(write(LIVE, chunks(1)));
+    List<Map<String, Object>> three = chunks(3);
+    cluster.beforeNextBulk(() -> assertTrue(write(LIVE, three)));
+
+    service.deleteEntityChunks(parentId);
+
+    assertEquals(Set.of(), cluster.chunkIds(LIVE, parentId));
+  }
+
+  @Test
+  void aFailedGenerationProbeIsNotRepeatedByEveryDelete() {
+    givenTheLiveChunkIndexExists();
+    cluster.failGenerationProbes(true);
+
+    service.deleteEntityChunks(parentId);
+    service.deleteEntityChunks(UUID.randomUUID().toString());
+    service.deleteEntityChunks(UUID.randomUUID().toString());
+
+    assertEquals(1, cluster.generationProbes, "one probe while the probe keeps failing");
+  }
+
+  @Test
+  void anUnreadableOntologyHeaderStillRefreshesTheTermEmbedding() {
+    OntologyConcept concept = ontologyConcept();
+    String termIndex = "ontology_concept_search_index";
+    cluster.storeRefreshed(OntologyChunkIndex.name(), "other_0", Map.of("parentId", "other"));
+    cluster.failReadsOf(OntologyChunkIndex.name(), 503);
+
+    try (MockedStatic<OntologyTermSearch> terms =
+        mockStatic(OntologyTermSearch.class, CALLS_REAL_METHODS)) {
+      terms
+          .when(() -> OntologyTermSearch.writeCurrentEmbedding(any(), any(), any()))
+          .thenAnswer(
+              invocation -> {
+                invocation.<FailableRunnable<?>>getArgument(2).run();
+                return null;
+              });
+      service.updateEntityEmbeddings(concept, termIndex, "Customer: A person who buys");
+    }
+
+    assertEquals(
+        List.of("/" + termIndex + "/_update/" + concept.getId() + "?retry_on_conflict=3"),
+        cluster.updates,
+        "the term document gets its embedding");
+  }
+
+  private OntologyConcept ontologyConcept() {
+    OntologyConcept concept =
+        spy(
+            new OntologyConcept()
+                .withId(UUID.randomUUID())
+                .withName("Customer")
+                .withDescription("A person who buys"));
+    doReturn(
+            new EntityReference()
+                .withId(concept.getId())
+                .withName("Customer")
+                .withType(Entity.ONTOLOGY_CONCEPT))
+        .when(concept)
+        .getEntityReference();
+    return concept;
+  }
+
+  @Test
+  void aHeaderReadTheClusterKeepsRefusingIsTriedFourTimes() {
+    givenTheLiveChunkIndexExists();
+    assertTrue(write(LIVE, chunks(3)));
+    cluster.failReadsOf(LIVE, 503);
+    int readsBefore = cluster.headerReads;
+
+    assertThrows(IllegalStateException.class, () -> service.deleteEntityChunks(parentId));
+
+    assertEquals(4, cluster.headerReads - readsBefore, "the first read and three retries");
+    cluster.acceptAllReads();
+    assertEquals(3, cluster.chunkIds(LIVE, parentId).size(), "nothing is deleted");
+  }
+
+  @Test
+  void theHealRemovesChunksPastTheirHeader() {
+    givenTheLiveChunkIndexExists();
+    assertTrue(write(LIVE, chunks(2)));
+    cluster.storeRefreshed(LIVE, parentId + "_4", Map.of("parentId", parentId, "chunkIndex", 4));
+    String behind = UUID.randomUUID().toString();
+    cluster.storeRefreshed(LIVE, behind + "_0", Map.of("parentId", behind, "chunkCount", 1));
+    cluster.storeRefreshed(LIVE, behind + "_1", Map.of("parentId", behind, "chunkIndex", 1));
+    cluster.refreshAll(LIVE);
+
+    service.removeChunksNoHeaderCounts();
+
+    assertEquals(Set.of(parentId + "_0", parentId + "_1"), cluster.chunkIds(LIVE, parentId));
+    assertEquals(Set.of(behind + "_0"), cluster.chunkIds(LIVE, behind));
+    assertTrue(cluster.meta(LIVE).path("chunkSetsBounded").asBoolean(), "the heal is recorded");
+  }
+
+  @Test
+  void aDeleteRemovesChunksStoredWithoutAHeader() {
+    cluster.storeRefreshed(LIVE, parentId + "_2", Map.of("parentId", parentId, "chunkIndex", 2));
+    String noChunkZero = UUID.randomUUID().toString();
+    cluster.storeRefreshed(LIVE, noChunkZero + "_1", Map.of("parentId", noChunkZero));
+    cluster.storeRefreshed(LIVE, noChunkZero + "_2", Map.of("parentId", noChunkZero));
+
+    service.deleteEntityChunks(parentId);
+    service.removeChunksNoHeaderCounts();
+
+    assertEquals(Set.of(), cluster.chunkIds(LIVE, parentId));
+    assertEquals(Set.of(), cluster.chunkIds(LIVE, noChunkZero));
+  }
+
+  @Test
+  void theHealKeepsAChunkAWriterRewroteAfterItWasListed() {
+    givenTheLiveChunkIndexExists();
+    assertTrue(write(LIVE, chunks(1)));
+    cluster.storeRefreshed(LIVE, parentId + "_3", Map.of("parentId", parentId, "chunkIndex", 3));
+    cluster.refreshAll(LIVE);
+    List<Map<String, Object>> five = chunks(5);
+    cluster.beforeNextBulk(() -> assertTrue(write(LIVE, five)));
+
+    service.removeChunksNoHeaderCounts();
+
+    assertEquals(5, cluster.chunkIds(LIVE, parentId).size(), "the new set keeps its chunk 3");
+    assertEquals(5, cluster.header(LIVE, parentId).path("chunkCount").asInt());
+  }
+
+  @Test
+  void theHealRunsOncePerIndex() {
+    givenTheLiveChunkIndexExists();
+    service.removeChunksNoHeaderCounts();
+    int aggregationsBefore = cluster.aggregations;
+
+    service.removeChunksNoHeaderCounts();
+
+    assertEquals(0, cluster.aggregations - aggregationsBefore);
+  }
+
+  @Test
+  void aChunkIndexCreatedEmptyIsNeverHealed() {
+    assertTrue(write(LIVE, chunks(2)));
+
+    service.removeChunksNoHeaderCounts();
+
+    assertEquals(0, cluster.aggregations, "an index created empty is recorded as healed");
+  }
+
+  @Test
+  void aHealThatFailsIsNotRecordedAndTheNextStartHeals() {
+    givenTheLiveChunkIndexExists();
+    cluster.storeRefreshed(LIVE, parentId + "_2", Map.of("parentId", parentId, "chunkIndex", 2));
+    cluster.failSearches(true);
+    service.removeChunksNoHeaderCounts();
+    assertFalse(cluster.meta(LIVE).path("chunkSetsBounded").asBoolean(false));
+    cluster.failSearches(false);
+
+    service.removeChunksNoHeaderCounts();
+
+    assertEquals(Set.of(), cluster.chunkIds(LIVE, parentId));
+  }
+
+  @Test
+  void aMappingUpgradeKeepsTheRecordOfTheHeal() {
+    givenTheLiveChunkIndexExists();
+    cluster.storeMeta(LIVE, Map.of("chunkDocVersion", 0, "chunkSetsBounded", true));
+
+    assertTrue(write(LIVE, chunks(1)));
+
+    assertTrue(cluster.meta(LIVE).path("chunkSetsBounded").asBoolean(false));
+    assertEquals(
+        VectorDocBuilder.CHUNK_DOC_VERSION, cluster.meta(LIVE).path("chunkDocVersion").asInt());
   }
 
   private void givenTheLiveChunkIndexExists() {
@@ -309,28 +533,47 @@ class ChunkSetBoundTest {
   }
 
   /**
-   * Documents by index and id. A by-id read sees every write, as a realtime GET does; a
-   * delete-by-query sees only documents stored as refreshed. A rejected header write is a chunk 0
-   * that carries a fingerprint. An index exists once it is created or written to; a delete sent to
-   * one that does not fails, as on a real cluster.
+   * Documents by index and id, each with the sequence number its last write gave it. A by-id read
+   * sees every write, as a realtime GET does; a search, an aggregation or a delete-by-query sees
+   * only documents stored as refreshed. A bulk honours {@code create} and {@code if_seq_no} and
+   * reports each item as a real cluster does. A rejected header write is a chunk 0 that carries a
+   * fingerprint. An index exists once it is created or written to; a delete sent to one that does
+   * not fails, as on a real cluster. Faults can be queued: reads or bulks the cluster answers with
+   * an error status or not at all, and a writer that runs just before the next bulk.
    */
   private static final class FakeCluster {
     private static final String DOC = "/_doc/";
+    private static final String MGET = "/_mget";
+    private static final String SEARCH = "/_search";
+    private static final String GENERATIONS = LIVE + "_g*";
+    private static final int NO_RESPONSE = 0;
     private final Map<String, Map<String, JsonNode>> indices = new HashMap<>();
+    private final Map<String, Long> seqNos = new HashMap<>();
+    private final Map<String, JsonNode> metas = new HashMap<>();
     private final Set<String> existing = new HashSet<>();
     private final Set<String> refreshed = new HashSet<>();
-    private static final String MGET = "/_mget";
-    private static final String GENERATIONS = LIVE + "_g*";
     private final Set<String> generations = new HashSet<>();
-    private final Set<String> flagged = new HashSet<>();
+    private final List<String> updates = new ArrayList<>();
+    private long lastSeqNo;
     private int requestsToMissingIndices;
     private Predicate<String> rejectHeaderIndex = index -> false;
     private Predicate<String> unreadableIndex = index -> false;
     private int unreadableStatus;
+    private String faultyReadIndex;
+    private int faultyReads;
+    private int faultyReadStatus;
+    private int rejectedBulks;
+    private int rejectedBulkStatus;
+    private boolean generationProbesFail;
     private boolean failNextGenerationProbe;
+    private Runnable beforeNextBulk;
     private int bulkRequests;
     private int requests;
     private int deletesByQuery;
+    private int generationProbes;
+    private int aggregations;
+    private int headerReads;
+    private boolean searchesFail;
 
     void rejectHeaderWritesTo(String index) {
       rejectHeaderIndex = index::equals;
@@ -340,7 +583,7 @@ class ChunkSetBoundTest {
       rejectHeaderIndex = index -> false;
     }
 
-    /** Header reads of {@code index} answer {@code status}, as a cluster under load does. */
+    /** Every header read of {@code index} answers {@code status}, as a cluster under load does. */
     void failReadsOf(String index, int status) {
       unreadableIndex = index::equals;
       unreadableStatus = status;
@@ -348,6 +591,24 @@ class ChunkSetBoundTest {
 
     void acceptAllReads() {
       unreadableIndex = index -> false;
+    }
+
+    /** The next {@code times} reads of {@code index} answer {@code status}, or nothing for 0. */
+    void failNextReadsOf(String index, int status, int times) {
+      faultyReadIndex = index;
+      faultyReadStatus = status;
+      faultyReads = times;
+    }
+
+    /** The next {@code times} bulks have every item rejected with {@code status}. */
+    void rejectNextBulks(int status, int times) {
+      rejectedBulkStatus = status;
+      rejectedBulks = times;
+    }
+
+    /** Runs {@code writer} once, just before the next bulk is applied. */
+    void beforeNextBulk(Runnable writer) {
+      beforeNextBulk = writer;
     }
 
     /** A bare generation index, found by the probe for un-promoted generations. */
@@ -360,14 +621,34 @@ class ChunkSetBoundTest {
       failNextGenerationProbe = true;
     }
 
+    void failGenerationProbes(boolean failing) {
+      generationProbesFail = failing;
+    }
+
+    void failSearches(boolean failing) {
+      searchesFail = failing;
+    }
+
+    void storeMeta(String index, Map<String, Object> meta) {
+      metas.put(index, MAPPER.valueToTree(meta));
+    }
+
     boolean flaggedIncomplete(String index) {
-      return flagged.contains(index);
+      return meta(index).path("incompleteChunkWrites").asBoolean(false);
+    }
+
+    JsonNode meta(String index) {
+      return metas.getOrDefault(index, MAPPER.createObjectNode());
     }
 
     void storeRefreshed(String index, String id, Map<String, Object> source) {
       existing.add(index);
-      docs(index).put(id, MAPPER.valueToTree(source));
+      put(index, id, MAPPER.valueToTree(source));
       refreshed.add(index + DOC + id);
+    }
+
+    void refreshAll(String index) {
+      docs(index).keySet().forEach(id -> refreshed.add(index + DOC + id));
     }
 
     Set<String> chunkIds(String index, String parentId) {
@@ -389,27 +670,67 @@ class ChunkSetBoundTest {
     AbstractVectorIndexService.RawResponse handle(String method, String endpoint, String body)
         throws IOException {
       requests++;
-      AbstractVectorIndexService.RawResponse response = ok("{}");
       String index = endpoint.substring(1).split("[/?]")[0];
-      boolean wholeIndex = endpoint.indexOf('/', 1) < 0;
+      boolean wholeIndex = endpoint.indexOf('/', 1) < 0 && !index.startsWith("_");
+      AbstractVectorIndexService.RawResponse response;
       if (GENERATIONS.equals(index)) {
         response = probeGenerations();
-      } else if (wholeIndex && "PUT".equals(method)) {
+      } else if (wholeIndex) {
+        response = indexRequest(method, index, body);
+      } else if (endpoint.endsWith("/_alias") || endpoint.endsWith("/_mapping")) {
+        response = metadataRequest(method, endpoint, index, body);
+      } else {
+        response = documentRequest(method, endpoint, index, body);
+      }
+      return response;
+    }
+
+    private AbstractVectorIndexService.RawResponse indexRequest(
+        String method, String index, String body) throws IOException {
+      AbstractVectorIndexService.RawResponse response = ok("{}");
+      if ("PUT".equals(method)) {
         existing.add(index);
-      } else if (wholeIndex && "HEAD".equals(method)) {
+        metas.put(index, MAPPER.readTree(body).path("mappings").path("_meta"));
+      } else if ("HEAD".equals(method)) {
         response =
             new AbstractVectorIndexService.RawResponse(existing.contains(index) ? 200 : 404, null);
-      } else if (endpoint.endsWith("/_alias")) {
+      }
+      return response;
+    }
+
+    private AbstractVectorIndexService.RawResponse metadataRequest(
+        String method, String endpoint, String index, String body) throws IOException {
+      AbstractVectorIndexService.RawResponse response;
+      ObjectNode answer = MAPPER.createObjectNode();
+      if (!existing.contains(index)) {
         response = new AbstractVectorIndexService.RawResponse(404, "{\"status\":404}");
-      } else if (endpoint.endsWith("/_mapping") && "PUT".equals(method)) {
-        recordMeta(index, body);
-      } else if (endpoint.equals("/_bulk")) {
+      } else if (endpoint.endsWith("/_alias")) {
+        answer.putObject(index).putObject("aliases");
+        response = ok(answer.toString());
+      } else if ("PUT".equals(method)) {
+        metas.put(index, MAPPER.readTree(body).path("_meta"));
+        response = ok("{}");
+      } else {
+        answer.putObject(index).putObject("mappings").set("_meta", meta(index));
+        response = ok(answer.toString());
+      }
+      return response;
+    }
+
+    private AbstractVectorIndexService.RawResponse documentRequest(
+        String method, String endpoint, String index, String body) throws IOException {
+      AbstractVectorIndexService.RawResponse response = ok("{}");
+      if (endpoint.equals("/_bulk")) {
         response = bulk(body);
       } else if (endpoint.contains("/_delete_by_query")) {
         deletesByQuery++;
         response = deleteByQuery(index, body);
       } else if (endpoint.startsWith("/" + index + MGET)) {
         response = multiGet(index, body);
+      } else if (endpoint.contains(SEARCH)) {
+        response = search(index, body);
+      } else if (endpoint.contains("/_update/")) {
+        updates.add(endpoint);
       } else if (endpoint.contains(DOC)) {
         response = getById(method, endpoint);
       }
@@ -417,8 +738,9 @@ class ChunkSetBoundTest {
     }
 
     private AbstractVectorIndexService.RawResponse probeGenerations() {
+      generationProbes++;
       AbstractVectorIndexService.RawResponse response;
-      if (failNextGenerationProbe) {
+      if (failNextGenerationProbe || generationProbesFail) {
         failNextGenerationProbe = false;
         response = new AbstractVectorIndexService.RawResponse(503, "{\"status\":503}");
       } else {
@@ -429,19 +751,17 @@ class ChunkSetBoundTest {
       return response;
     }
 
-    private void recordMeta(String index, String body) throws IOException {
-      if (MAPPER.readTree(body).path("_meta").path("incompleteChunkWrites").asBoolean(false)) {
-        flagged.add(index);
-      }
-    }
-
     // A realtime multi-get, answering each id on its own, as both engines do: an index that
     // does not exist is an error on every doc, not a 404 of the request.
     private AbstractVectorIndexService.RawResponse multiGet(String index, String body)
         throws IOException {
       AbstractVectorIndexService.RawResponse response;
-      if (unreadableIndex.test(index)) {
-        response = unreadable();
+      headerReads++;
+      if (faultyReads > 0 && index.equals(faultyReadIndex)) {
+        faultyReads--;
+        response = failure(faultyReadStatus);
+      } else if (unreadableIndex.test(index)) {
+        response = failure(unreadableStatus);
       } else {
         ArrayNode docs = MAPPER.createArrayNode();
         JsonNode request = MAPPER.readTree(body);
@@ -463,21 +783,25 @@ class ChunkSetBoundTest {
       } else if (source == null) {
         doc.put("found", false);
       } else {
+        doc.put("_seq_no", seqNos.get(index + DOC + id)).put("_primary_term", 1);
         doc.put("found", true).set("_source", source);
       }
       return doc;
     }
 
-    private AbstractVectorIndexService.RawResponse unreadable() {
-      return new AbstractVectorIndexService.RawResponse(
-          unreadableStatus, "{\"status\":" + unreadableStatus + "}");
+    private static AbstractVectorIndexService.RawResponse failure(int status) throws IOException {
+      if (status == NO_RESPONSE) {
+        throw new IOException("Connection reset");
+      }
+      return new AbstractVectorIndexService.RawResponse(status, "{\"status\":" + status + "}");
     }
 
-    private AbstractVectorIndexService.RawResponse getById(String method, String endpoint) {
+    private AbstractVectorIndexService.RawResponse getById(String method, String endpoint)
+        throws IOException {
       String index = endpoint.substring(1, endpoint.indexOf(DOC));
       String id = endpoint.substring(endpoint.indexOf(DOC) + DOC.length(), endpoint.indexOf('?'));
       return unreadableIndex.test(index) && id.endsWith("_0") && "GET".equals(method)
-          ? unreadable()
+          ? failure(unreadableStatus)
           : storedById(method, index, id);
     }
 
@@ -494,40 +818,84 @@ class ChunkSetBoundTest {
     }
 
     private AbstractVectorIndexService.RawResponse bulk(String body) throws IOException {
+      if (beforeNextBulk != null) {
+        Runnable concurrentWriter = beforeNextBulk;
+        beforeNextBulk = null;
+        concurrentWriter.run();
+      }
       bulkRequests++;
-      boolean errors = false;
+      boolean rejected = rejectedBulks > 0;
+      rejectedBulks = rejected ? rejectedBulks - 1 : 0;
+      ArrayNode items = MAPPER.createArrayNode();
       String[] lines = body.split("\n");
       for (int i = 0; i < lines.length; i++) {
         JsonNode action = MAPPER.readTree(lines[i]);
-        if (action.has("delete")) {
-          errors |= !remove(action.path("delete"));
-        } else {
-          JsonNode meta = action.path("index");
-          JsonNode source = MAPPER.readTree(lines[++i]);
-          errors |= !index(meta, source);
-        }
+        String name = action.fieldNames().next();
+        JsonNode source = "delete".equals(name) ? null : MAPPER.readTree(lines[++i]);
+        ObjectNode item =
+            rejected ? error(rejectedBulkStatus, "es_rejected_execution_exception") : null;
+        item = item == null ? apply(name, action.path(name), source) : item;
+        items.addObject().set(name, item);
       }
-      return ok("{\"errors\":" + errors + ",\"items\":[]}");
+      boolean errors = false;
+      for (JsonNode item : items) {
+        errors |= item.elements().next().has("error");
+      }
+      ObjectNode result = MAPPER.createObjectNode().put("errors", errors);
+      result.set("items", items);
+      return ok(result.toString());
     }
 
-    private boolean index(JsonNode meta, JsonNode source) {
+    private ObjectNode apply(String action, JsonNode meta, JsonNode source) {
       String index = meta.path("_index").asText();
       String id = meta.path("_id").asText();
-      boolean rejected =
-          rejectHeaderIndex.test(index) && id.endsWith("_0") && source.has("fingerprint");
-      if (!rejected) {
-        existing.add(index);
-        docs(index).put(id, source);
-        refreshed.remove(index + DOC + id);
+      String key = index + DOC + id;
+      boolean stored = docs(index).containsKey(id);
+      boolean conflict =
+          "create".equals(action) && stored
+              || meta.has("if_seq_no")
+                  && (!stored || meta.path("if_seq_no").asLong() != seqNos.get(key));
+      ObjectNode item;
+      if ("delete".equals(action) && !existsOrCount(index)) {
+        item = error(404, "index_not_found_exception");
+      } else if (conflict) {
+        item = error(409, "version_conflict_engine_exception");
+      } else if ("delete".equals(action)) {
+        docs(index).remove(id);
+        item = MAPPER.createObjectNode().put("status", stored ? 200 : 404);
+      } else {
+        item = write(index, id, source);
       }
-      return !rejected;
+      return item.put("_index", index).put("_id", id);
     }
 
-    private boolean remove(JsonNode meta) {
-      String index = meta.path("_index").asText();
-      boolean found = existsOrCount(index);
-      docs(index).remove(meta.path("_id").asText());
-      return found;
+    private ObjectNode write(String index, String id, JsonNode source) {
+      ObjectNode item;
+      if (rejectHeaderIndex.test(index) && id.endsWith("_0") && source.has("fingerprint")) {
+        item = error(400, "document_parsing_exception");
+      } else {
+        existing.add(index);
+        put(index, id, source);
+        refreshed.remove(index + DOC + id);
+        item =
+            MAPPER
+                .createObjectNode()
+                .put("status", 201)
+                .put("_seq_no", seqNos.get(index + DOC + id))
+                .put("_primary_term", 1);
+      }
+      return item;
+    }
+
+    private void put(String index, String id, JsonNode source) {
+      docs(index).put(id, source);
+      seqNos.put(index + DOC + id, ++lastSeqNo);
+    }
+
+    private static ObjectNode error(int status, String type) {
+      ObjectNode item = MAPPER.createObjectNode().put("status", status);
+      item.putObject("error").put("type", type).put("reason", type);
+      return item;
     }
 
     private boolean existsOrCount(String index) {
@@ -536,6 +904,107 @@ class ChunkSetBoundTest {
         requestsToMissingIndices++;
       }
       return found;
+    }
+
+    private AbstractVectorIndexService.RawResponse search(String index, String body)
+        throws IOException {
+      JsonNode request = MAPPER.readTree(body);
+      JsonNode composite = request.path("aggs").path("parents").path("composite");
+      AbstractVectorIndexService.RawResponse response;
+      if (searchesFail) {
+        response = failure(503);
+      } else if (composite.isMissingNode()) {
+        response = ok(searchHits(index, request.path("query").path("bool")).toString());
+      } else {
+        response = ok(compositePage(index, composite).toString());
+      }
+      return response;
+    }
+
+    // Only the shapes the chunk code sends: a parent's chunks other than the ids it excludes.
+    private ObjectNode searchHits(String index, JsonNode bool) {
+      String parentId = bool.path("filter").path(0).path("term").path("parentId").asText();
+      Set<String> excluded = new HashSet<>();
+      bool.path("must_not")
+          .path(0)
+          .path("ids")
+          .path("values")
+          .forEach(id -> excluded.add(id.asText()));
+      ArrayNode hits = MAPPER.createArrayNode();
+      refreshedDocs(index)
+          .forEach(
+              (id, source) -> {
+                if (parentId.equals(source.path("parentId").asText()) && !excluded.contains(id)) {
+                  ObjectNode hit = hits.addObject().put("_id", id);
+                  hit.put("_seq_no", seqNos.get(index + DOC + id)).put("_primary_term", 1);
+                  hit.putObject("_source").set("chunkIndex", source.path("chunkIndex"));
+                }
+              });
+      ObjectNode result = MAPPER.createObjectNode();
+      result.putObject("hits").set("hits", hits);
+      return result;
+    }
+
+    private ObjectNode compositePage(String index, JsonNode composite) {
+      aggregations++;
+      String after = composite.path("after").path("parentId").asText("");
+      int size = composite.path("size").asInt();
+      Map<String, List<JsonNode>> byParent = new TreeMap<>();
+      refreshedDocs(index)
+          .values()
+          .forEach(
+              source -> {
+                String parent = source.path("parentId").asText();
+                if (parent.compareTo(after) > 0) {
+                  byParent.computeIfAbsent(parent, ignored -> new ArrayList<>()).add(source);
+                }
+              });
+      ArrayNode buckets = MAPPER.createArrayNode();
+      byParent.entrySet().stream()
+          .limit(size)
+          .forEach(e -> buckets.add(bucket(e.getKey(), e.getValue())));
+      ObjectNode parents = MAPPER.createObjectNode();
+      parents.set("buckets", buckets);
+      if (!buckets.isEmpty()) {
+        parents
+            .putObject("after_key")
+            .set("parentId", buckets.get(buckets.size() - 1).path("key").path("parentId"));
+      }
+      ObjectNode result = MAPPER.createObjectNode();
+      result.putObject("aggregations").set("parents", parents);
+      return result;
+    }
+
+    private static ObjectNode bucket(String parentId, List<JsonNode> sources) {
+      ObjectNode bucket = MAPPER.createObjectNode().put("doc_count", sources.size());
+      bucket.putObject("key").put("parentId", parentId);
+      Integer maxIndex = null;
+      Integer headerCount = null;
+      int headers = 0;
+      for (JsonNode source : sources) {
+        int chunkIndex = source.path("chunkIndex").asInt();
+        maxIndex = maxIndex == null ? chunkIndex : Math.max(maxIndex, chunkIndex);
+        if (chunkIndex == 0) {
+          headers++;
+          headerCount = source.path("chunkCount").asInt();
+        }
+      }
+      bucket.putObject("maxIndex").put("value", maxIndex);
+      ObjectNode header = bucket.putObject("header").put("doc_count", headers);
+      header.putObject("count").put("value", headerCount);
+      return bucket;
+    }
+
+    private Map<String, JsonNode> refreshedDocs(String index) {
+      Map<String, JsonNode> visible = new TreeMap<>();
+      docs(index)
+          .forEach(
+              (id, source) -> {
+                if (refreshed.contains(index + DOC + id)) {
+                  visible.put(id, source);
+                }
+              });
+      return visible;
     }
 
     private AbstractVectorIndexService.RawResponse deleteByQuery(String index, String body)

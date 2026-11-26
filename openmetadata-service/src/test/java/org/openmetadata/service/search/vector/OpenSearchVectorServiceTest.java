@@ -506,7 +506,7 @@ class OpenSearchVectorServiceTest {
             ContextMemoryIndex.FIELD_MEMORY_TYPE,
             ContextMemoryIndex.FIELD_PINNED),
         MAPPER.convertValue(docs.path(0).path("_source").path("includes"), List.class));
-    assertEquals(memory.getId() + "_1", docs.path(1).path("_id").asText());
+    assertEquals(1, docs.size(), "only chunk 0 is read");
   }
 
   /** Answers every request, the chunk read among them, as an index storing nothing does. */
@@ -1057,9 +1057,11 @@ class OpenSearchVectorServiceTest {
 
   @Test
   void chunkMappingUpgradeBody_omitsKnnVectorButAddsDenormalizedFields() throws Exception {
-    Method m = AbstractVectorIndexService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+    Method m =
+        AbstractVectorIndexService.class.getDeclaredMethod(
+            "buildChunkMappingUpgradeBody", JsonNode.class);
     m.setAccessible(true);
-    String body = (String) m.invoke(vectorService);
+    String body = (String) m.invoke(vectorService, MAPPER.createObjectNode());
 
     // The unchanged embedding knn_vector must NOT be re-declared: PUT _mapping is atomic and some
     // OpenSearch versions reject re-declaring an existing knn_vector, which would fail the whole
@@ -1091,9 +1093,12 @@ class OpenSearchVectorServiceTest {
   @Test
   void chunkMappingUpgradeBody_mapsTheMemoryStatusAsAKeyword() throws Exception {
     Method method =
-        AbstractVectorIndexService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+        AbstractVectorIndexService.class.getDeclaredMethod(
+            "buildChunkMappingUpgradeBody", JsonNode.class);
     method.setAccessible(true);
-    JsonNode body = new ObjectMapper().readTree((String) method.invoke(vectorService));
+    JsonNode body =
+        new ObjectMapper()
+            .readTree((String) method.invoke(vectorService, MAPPER.createObjectNode()));
 
     assertEquals(8, body.path("_meta").path("chunkDocVersion").asInt());
     assertEquals("keyword", body.path("properties").path("entityStatus").path("type").asText());

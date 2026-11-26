@@ -719,7 +719,11 @@ class ElasticSearchVectorServiceTest {
     assertTrue(
         VectorDocBuilder.fromEntity(table, mockEmbeddingClient).size() > 1,
         "the entity spans several chunks");
-    Response ok = response(200, "{\"errors\":false,\"items\":[]}");
+    Response ok =
+        response(
+            200,
+            "{\"errors\":false,\"items\":[{\"index\":{\"status\":201,\"_seq_no\":1,"
+                + "\"_primary_term\":1}}]}");
     Response noAlias = response(404, "{\"status\":404}");
     Response nothingStored = nothingStored();
     Response rejected =
@@ -752,15 +756,18 @@ class ElasticSearchVectorServiceTest {
         bulks.add(bodyText(request));
       }
     }
-    assertEquals(2, bulks.size(), "the reservation, then the rejected bulk that stops the write");
+    assertEquals(
+        5, bulks.size(), "the reservation, then the rejected bulk, tried four times, stops it");
     assertTrue(bulks.getFirst().contains("\"_id\":\"" + parentId + "_0\""), bulks::toString);
     assertFalse(
         bulks.getFirst().contains("\"fingerprint\""),
         "the reservation raises the count without marking the set current");
-    assertTrue(bulks.get(1).contains("\"_id\":\"" + parentId + "_1\""), bulks::toString);
-    assertFalse(
-        bulks.get(1).contains("\"_id\":\"" + parentId + "_0\""),
-        "the header is not written beside the rejected chunk");
+    for (String rejectedBulk : bulks.subList(1, bulks.size())) {
+      assertTrue(rejectedBulk.contains("\"_id\":\"" + parentId + "_1\""), bulks::toString);
+      assertFalse(
+          rejectedBulk.contains("\"_id\":\"" + parentId + "_0\""),
+          "the header is not written beside the rejected chunk");
+    }
   }
 
   @Test

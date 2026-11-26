@@ -34,7 +34,15 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
       throw e;
     }
     context.setStagedChunkIndex(stagedChunkIndex);
+    awaitStagedGenerationDiscovery(stagedChunkIndex);
     return context;
+  }
+
+  private static void awaitStagedGenerationDiscovery(String stagedChunkIndex) {
+    VectorIndexService vectorService = vectorService();
+    if (stagedChunkIndex != null && vectorService != null) {
+      vectorService.awaitStagedGenerationDiscovery(stagedChunkIndex);
+    }
   }
 
   private static VectorIndexService vectorService() {

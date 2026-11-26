@@ -1001,6 +1001,9 @@ public class SearchRepository {
 
       vectorServiceInitialized = true;
       this.vectorServiceInitError = null;
+      Thread.ofVirtual()
+          .name("vector-chunk-heal")
+          .start(vectorIndexService::removeChunksNoHeaderCounts);
 
       LOG.info(
           "Vector search service initialized with provider={}, dimension={}",

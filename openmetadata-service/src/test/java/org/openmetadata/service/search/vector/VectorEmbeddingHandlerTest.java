@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -21,6 +22,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -184,6 +186,21 @@ class VectorEmbeddingHandlerTest {
 
     assertFalse(handler.getSupportedEntityTypes().contains(Entity.USER));
     verify(vectorIndexService, never()).deleteEntityChunks(anyString());
+  }
+
+  /** Nothing else retries a live delete, so one the cluster refused goes to the retry queue. */
+  @Test
+  void aChunkDeleteTheClusterRefusedIsQueuedForTheRetryWorker() {
+    EntityInterface<?> table = createMockEntity("table");
+    String tableId = table.getId().toString();
+    IllegalStateException refused = new IllegalStateException("429 after retries");
+    doThrow(refused).when(vectorIndexService).deleteEntityChunks(tableId);
+
+    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
+      handler.onEntityDeleted(table, subjectContext);
+
+      queue.verify(() -> SearchIndexRetryQueue.enqueue(table, "deleteEntityChunks", refused));
+    }
   }
 
   @Test

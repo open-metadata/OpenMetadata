@@ -6,13 +6,18 @@
   blocks it; the header's count bounds every stored chunk id); v3 2026-11-23 (the Revisit clause
   is resolved by a kNN query clause hook; fusing the two legs stays out of OpenMetadata); v4
   2026-11-24 (ontology terms keep the engine split of their own record); v5 2026-11-26 (the RRF
-  search pipeline is gone); v6 2026-11-26 (a delete trusts the header's bound; a header that
-  cannot be read fails the write or delete; an unrecorded staged delete is read from any failed
-  partition, also at the end of the job)
+  search pipeline is gone); v6 2026-11-26 (a delete trusts the header's bound; chunk 0 is a
+  conditional write, and a heal removes once the chunks no header counts; by-id chunk requests
+  retry a busy cluster; a header that cannot be read fails the write or delete, and a live delete
+  the cluster refuses goes to the search retry queue; an unrecorded staged delete is read from any
+  failed partition, also at the end of the job; a run waits out the generation lookup's cache)
 - **Deciders:** Search and AI context maintainers
 - **Guard:** `VectorChunkIndexIT` (each scenario on a real cluster of each engine),
   `ChunkSetBoundTest` (trims and deletes after a write that stopped part way, the requests a
-  delete sends, a header that cannot be read), `DistributedIndexingStrategyTest` and
+  delete sends, a header that cannot be read, the request retry, racing writers, the heal),
+  `SearchIndexRetryWorkerTest` and `VectorEmbeddingHandlerTest` (a live delete the cluster
+  refused is replayed), `RecreateWithEmbeddingsTest` (the wait before the first read),
+  `DistributedIndexingStrategyTest` and
   `DistributedSearchIndexExecutorTest` (an unrecorded staged delete keeps the live chunks),
   `ElasticSearchVectorServiceTest` (the Elasticsearch dialect and the promotion rule),
   `EmbeddingEnricherTest` (the reindex embedding step and its retry), `DefaultRecreateHandlerTest`
@@ -107,12 +112,15 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   reads that error from any of the job's failed partitions and counts the type as keeping its
   live chunks. Keeping live chunks wins over a later promotion of the same type, so no callback
   can undo it. The type's entity index still promotes its partial data, and the run ends with
-  errors. Three narrow windows remain, in which the deleted entity's chunks stay in the generation
-  until the next full recreate: a delete that fails after the coordinator reads the flag; a node
-  that misses a delete after its last partition and still cannot save the flag when it leaves the
-  run, which it logs as an error; and a node that has not joined the run, which finds the
-  generation through a probe cached for 15 seconds and so misses a generation created within
-  that time. A probe that fails is not cached, so it hides nothing beyond its own request.
+  errors. A node that has not joined the run finds the generation through a lookup it keeps for
+  15 seconds, so the run waits that long after creating the generation before it reads its first
+  entity: an entity changed on a node that still misses the generation is read by the run after
+  the change, from the database. A lookup that fails keeps the last answer for 2 seconds and is
+  then tried again, so an outage adds no lookup to every chunk write or delete. Narrow windows
+  remain, in which the deleted entity's chunks stay in the generation until the next full
+  recreate: a delete that fails after the coordinator reads the flag; a node that misses a delete
+  after its last partition and still cannot save the flag when it leaves the run, which it logs
+  as an error; and a node whose lookup keeps failing past the wait while its deletes succeed.
 - **A live edit refreshes the entity document even when its chunk write fails.** Chunk 0
   carries the header the next update compares against, so it is written in its own request
   after every other chunk and delete succeeded. A failed write leaves the old header, and the
@@ -122,23 +130,50 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   that adds ids past the count first writes chunk 0 with the new count and no fingerprint. A
   write that then stops part way leaves a header that covers every id it wrote and that no
   update reads as current. Only a write that grows the set pays that extra request.
+- **Chunk 0 is written and deleted only over the version that was read**: `if_seq_no` and
+  `if_primary_term` from the multi-get, or `create` when there was no chunk 0. A writer or delete
+  that finds chunk 0 changed reads it again and applies its set over the new header, up to three
+  times. Nothing serializes writes to one entity across nodes, or between the reindex sink and a
+  live edit, so without this a writer that shrank the set after another grew it would lower the
+  count below ids the other wrote, and the delete would never reach them.
 - **A delete removes every chunk of the entity**, in the live index and in a staged generation,
   by id up to the header's count: the chunks past chunk 0, then chunk 0, so a delete that stops
   part way keeps the count for its retry. Ids are deleted in real time, so writes no refresh has
   made searchable go too. The header is the whole truth, so a delete sends no delete-by-query:
-  every write keeps every chunk id below the count, and a query reaches only refreshed chunks, so
-  it never covered writes that raced each other. One realtime multi-get reads the header and
-  whether chunk 1 exists. Chunk 1 stored while no header counts it marks a chunk set written
-  before the header bounded the ids; only such a set is also removed by query, by a delete or by
-  the next write. A delete costs that one read for an entity with no chunks, plus one bulk for an
-  entity with one chunk and two for more. It sends nothing to a chunk index that does not exist
-  yet.
-- **A header that cannot be read is not a missing one.** When the cluster does not answer the
-  read, or answers it with an error for the document, after the request retry policy
-  (`vector-index-request`), the write or delete fails instead: a write would lower the bound, and
-  a delete would leave behind the chunks no refresh has made searchable and report success. A
-  failed write is a miss as above, a live edit still refreshes the entity document, and a delete
-  that misses the live index throws to its caller once it has tried the staged generation.
+  every write keeps every chunk id below the count. One realtime multi-get reads the header. A
+  delete costs that one read for an entity with no chunks, plus one bulk for an entity with one
+  chunk and two for more. It sends nothing to a chunk index that does not exist yet. A write that
+  began before a delete and ends after it still brings the entity's chunks back.
+- **Chunks no header counts are removed once per chunk index.** Writes from before chunk 0 was
+  conditional could leave chunks past their header or with no chunk 0 at all: a bulk that stopped
+  part way, a header read taken for a missing one, two writers racing. On OpenSearch, data written
+  by 2.1 can hold them; Elasticsearch had no chunk index then. The server starts a heal in the
+  background (`removeChunksNoHeaderCounts`). It pages the parents of the live data-asset chunk
+  index through a composite aggregation that compares each parent's highest chunk and chunk count
+  with its header. For a parent with chunks its header does not count, it lists them, reads the
+  header after, in real time, and deletes only those past it, each at the version listed, so a
+  chunk a writer rewrote meanwhile stays. It then sets `_meta.chunkSetsBounded` on the index. An
+  index created empty, a staged generation among them, starts with it, and a mapping update keeps
+  it. A heal that fails leaves it unset, and the next start tries again.
+- **By-id chunk requests retry a busy or briefly unavailable cluster.** The header read, the
+  chunk bulks and the heal's requests go through their own retry policy, `vector-chunk-request`:
+  a 429, 502, 503 or 504, a request that got no response, an error for the document in a
+  multi-get, or a bulk item the cluster turned away for capacity
+  (ADR:2026-11-24-bulk-items-rejected-for-capacity-are-re-sent) is sent again, up to four
+  attempts, after about 0.2, 0.4 and 0.8 seconds with jitter, as the live bulk policy does. Every
+  one of these requests is by id, so sending it again is safe. Elasticsearch's HTTP client also
+  re-sends a 429 or 503 response once, a second later; the OpenSearch transport turns that off,
+  so there a lone 429 reaches this policy. Neither re-sends a 502 or 504, a rejected bulk item or
+  a POST that got no response. Other vector requests keep `vector-index-request`, which retries
+  only a closed segment.
+- **A header that cannot be read is not a missing one.** When the read still fails after those
+  retries, the write or delete fails instead: a write would lower the bound, and a delete would
+  leave behind the chunks no refresh has made searchable and report success. A failed write is a
+  miss as above, and a live edit of a data asset or an ontology term still refreshes its entity
+  document. A staged delete flags its generation. A delete that misses the live index throws to
+  its handler once it has tried the staged generation, and the handler puts the entity on the
+  search retry queue: the search retry worker removes the chunks of an entity that is gone,
+  soft-deleted or no longer embeddable, with the queue's own retries and backoff.
 - **Ontology terms keep the layout their own record gives them.**
   ADR:2026-11-23-ontology-terms-have-dedicated-search-indexes keeps their chunks in
   `ontology_embeddings_chunks` on OpenSearch and their vectors on the term documents on
@@ -159,6 +194,10 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   generation promoted with misses lacks those entities' passages; the run's vector failures and
   each node's summary warning name how many. A rebuild is kept from going live only by a missed
   delete or by an entity index that kept its live index.
+- **The heal reads the whole chunk index once.** The first start after the upgrade sends one
+  aggregation request per 500 parents, in the background, and three requests for each parent it
+  heals. Every node that starts before the index records the heal runs it; the deletes are
+  conditional, so concurrent runs only repeat work.
 - **Upgrade cost on Elasticsearch.** No chunk documents exist before this change. The first
   Search Indexing run after the upgrade creates the chunk index and embeds every chunk of each
   vector-indexable entity it covers, one provider call per chunk. That includes entities whose

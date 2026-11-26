@@ -52,8 +52,18 @@ public interface VectorIndexService {
     updateEntityEmbeddings(entity, indexName);
   }
 
-  /** Remove all chunk documents for the given parent entity (hard/soft delete cleanup). */
+  /**
+   * Remove all chunk documents for the given parent entity (hard/soft delete cleanup). Throws when
+   * the live index could not be cleared, so the caller can retry the delete.
+   */
   void deleteEntityChunks(String parentId);
+
+  /**
+   * Removes, once per chunk index, the chunk documents no chunk header counts, which chunk sets
+   * written before the header was a conditional write can hold. Runs in the background at startup
+   * and logs a failure, which the next start retries.
+   */
+  void removeChunksNoHeaderCounts();
 
   /**
    * Strip the embedding fields from an entity document. Entity-doc embedding writes are partial
@@ -114,6 +124,13 @@ public interface VectorIndexService {
    * generation, or null when nothing was staged and the run reindexes in place.
    */
   String beginStagedChunkRecreate();
+
+  /**
+   * Waits until every node's cached lookup of the staged generation, see {@link
+   * #beginStagedChunkRecreate}, has expired, so a node outside the run can no longer miss {@code
+   * generation}. The run calls it before it reads its first entity.
+   */
+  void awaitStagedGenerationDiscovery(String generation);
 
   /** Forgets {@code generation} as this node's staged recreate, without touching the index. */
   void clearStagedChunkState(String generation);

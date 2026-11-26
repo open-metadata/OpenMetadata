@@ -5,7 +5,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
@@ -27,12 +26,14 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkRetryPolicy;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.OntologyChunkIndex;
 import org.openmetadata.service.search.OntologyTermSearch;
@@ -65,6 +66,19 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
                       error instanceof UncheckedIOException
                           && error.getCause() instanceof ClosedSegmentException)
               .build());
+  // By-id chunk reads and bulks are idempotent, so what a busy or briefly unavailable cluster
+  // answers is retried with a growing, jittered pause: about 0.2 s, 0.4 s and 0.8 s.
+  private static final Retry CHUNK_REQUEST_RETRY =
+      Retry.of(
+          "vector-chunk-request",
+          RetryConfig.custom()
+              .maxAttempts(4)
+              .intervalFunction(IntervalFunction.ofExponentialRandomBackoff(200, 2, 0.5))
+              .retryExceptions(TransientChunkRequestException.class)
+              .build());
+  private static final Set<Integer> TRANSIENT_STATUSES = Set.of(429, 502, 503, 504);
+  private static final int CONFLICT_STATUS = 409;
+  private static final int HEADER_WRITE_ATTEMPTS = 3;
   private static final int OVER_FETCH_MULTIPLIER = 2;
   private static final long UNKNOWN_COUNT = -1L;
   private static final String FINGERPRINT_FIELD = "fingerprint";
@@ -185,6 +199,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   private static final String CHUNK_INDEX_BASE = "data_asset_embeddings_chunks";
   private static final String INCOMPLETE_CHUNK_WRITES = "incompleteChunkWrites";
+  // Set on a chunk index that holds no chunk its header does not count: one created empty, or one
+  // removeChunksNoHeaderCounts has gone through.
+  private static final String CHUNK_SETS_BOUNDED = "chunkSetsBounded";
   private volatile boolean chunkIndexEnsured = false;
   private volatile boolean ontologyChunkIndexEnsured;
 
@@ -385,19 +402,26 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     }
   }
 
+  /**
+   * Like a data asset's, a term's header that cannot be read leaves its chunks for the next update
+   * and still refreshes a stale embedding on its term document.
+   */
   private void refreshOntologyChunksAndEntityDoc(
       EntityInterface<?> entity, String entityIndexName, String ontologyBody, String fingerprint)
       throws IOException {
     String parentId = entity.getId().toString();
     String chunkIndexName = ontologyChunkWriteTarget();
     boolean entityDocStale = !fingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
-    ChunkHeader header = readStoredChunks(chunkIndexName, parentId).header();
-    ChunkRefresh refresh = chunkRefresh(entity, fingerprint, header);
+    Optional<StoredChunks> stored = readChunksForAnEdit(chunkIndexName, parentId);
+    ChunkRefresh refresh =
+        stored
+            .map(chunks -> chunkRefresh(entity, fingerprint, chunks.header()))
+            .orElse(ChunkRefresh.NONE);
     if (entityDocStale || refresh != ChunkRefresh.NONE) {
       List<Map<String, Object>> chunkDocs =
           refresh == ChunkRefresh.RESTAMP
               ? rebuildChunksReusingEmbeddings(
-                  entity, chunkIndexName, parentId, header, ontologyBody)
+                  entity, chunkIndexName, parentId, stored.get().header(), ontologyBody)
               : VectorDocBuilder.fromEntity(entity, embeddingClient, ontologyBody);
       OntologyTermSearch.writeCurrentEmbedding(
           entity.getEntityReference(),
@@ -415,9 +439,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       throws IOException {
     String parentId = entity.getId().toString();
     String chunkIndexName = ontologyChunkWriteTarget();
-    StoredChunks stored = readStoredChunks(chunkIndexName, parentId);
-    if (chunkRefresh(entity, fingerprint, stored.header()) != ChunkRefresh.NONE) {
-      replaceChunks(chunkIndexName, parentId, chunkDocs, stored);
+    Optional<StoredChunks> stored = readChunksForAnEdit(chunkIndexName, parentId);
+    if (stored.isPresent()
+        && chunkRefresh(entity, fingerprint, stored.get().header()) != ChunkRefresh.NONE) {
+      writeLiveChunks(chunkIndexName, parentId, chunkDocs, stored.get());
     }
     if (!chunkDocs.isEmpty()) {
       partialUpdateEntity(
@@ -474,7 +499,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       boolean entityDocStale)
       throws IOException {
     String parentId = entity.getId().toString();
-    Optional<StoredChunks> stored = readLiveChunksForAnEdit(parentId);
+    Optional<StoredChunks> stored = readChunksForAnEdit(getChunkIndexName(), parentId);
     if (stored.isPresent()) {
       refreshReadableChunksAndEntityDoc(
           entity, entityIndexName, currentFingerprint, entityDocStale, stored.get());
@@ -483,10 +508,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     }
   }
 
-  private Optional<StoredChunks> readLiveChunksForAnEdit(String parentId) {
+  private Optional<StoredChunks> readChunksForAnEdit(String indexName, String parentId) {
     Optional<StoredChunks> stored;
     try {
-      stored = Optional.of(readStoredChunks(getChunkIndexName(), parentId));
+      stored = Optional.of(readStoredChunks(indexName, parentId));
     } catch (RuntimeException e) {
       LOG.warn(
           "Could not read the chunk header of {}; refreshing only its entity embedding: {}",
@@ -590,7 +615,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   @Override
   public void deleteEntityChunks(String parentId) {
     String live = getChunkIndexName();
-    Optional<RuntimeException> liveFailure = deleteChunksFrom(live, parentId);
+    Optional<Exception> liveFailure = deleteChunksFrom(live, parentId);
     String staged = resolveChunkSinkTarget();
     if (staged != null && deleteChunksFrom(staged, parentId).isPresent()) {
       blockPromotionForMissedDelete(staged);
@@ -601,11 +626,11 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     }
   }
 
-  private Optional<RuntimeException> deleteChunksFrom(String indexName, String parentId) {
-    Optional<RuntimeException> failure = Optional.empty();
+  private Optional<Exception> deleteChunksFrom(String indexName, String parentId) {
+    Optional<Exception> failure = Optional.empty();
     try {
-      removeChunkSet(indexName, parentId, readStoredChunks(indexName, parentId));
-    } catch (RuntimeException e) {
+      replaceChunks(indexName, parentId, List.of(), readStoredChunks(indexName, parentId));
+    } catch (IOException | RuntimeException e) {
       LOG.debug("Failed to delete chunks for {} from {}: {}", parentId, indexName, e.getMessage());
       failure = Optional.of(e);
     }
@@ -661,6 +686,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   private final Object stagedChunkLock = new Object();
   private volatile String stagedChunkIndex;
+  private volatile long stagedChunkIndexCreatedAt;
   private static final Set<String> DATA_ASSET_TYPES_LOWERCASE =
       EmbeddedEntityTypes.DATA_ASSETS.stream()
           .map(type -> type.toLowerCase(Locale.ROOT))
@@ -735,6 +761,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
         throw new RuntimeException("Failed to create staged chunk index " + generation, e);
       }
       stagedChunkIndex = generation;
+      stagedChunkIndexCreatedAt = System.currentTimeMillis();
       stagedExpectedTypes = DATA_ASSET_TYPES_LOWERCASE;
       stagedFinalizedTypes.clear();
       stagedKeptLiveTypes.clear();
@@ -1004,8 +1031,44 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   }
 
   private static final long SINK_TARGET_CACHE_MS = 15_000;
+  private static final long FAILED_PROBE_BACKOFF_MS = 2_000;
+  private static final long DISCOVERY_MARGIN_MS = 1_000;
   private volatile String cachedSinkTarget;
   private volatile long cachedSinkTargetAt;
+
+  /**
+   * A node outside the run finds the staged generation through {@link #probedSinkTarget}, whose
+   * answer it keeps for {@value SINK_TARGET_CACHE_MS} ms, so a node that looked just before the
+   * generation was created misses it for up to that long. Waiting that long before the run reads
+   * its first entity closes the gap: an entity deleted or edited while some node still misses the
+   * generation is read by the run after that change, from the database.
+   */
+  @Override
+  public void awaitStagedGenerationDiscovery(String generation) {
+    long remainingMs =
+        generation != null && generation.equals(stagedChunkIndex)
+            ? stagedChunkIndexCreatedAt
+                + SINK_TARGET_CACHE_MS
+                + DISCOVERY_MARGIN_MS
+                - System.currentTimeMillis()
+            : 0;
+    if (remainingMs > 0) {
+      LOG.info(
+          "Waiting {} ms before the reindex reads entities, so every node's lookup finds {}",
+          remainingMs,
+          generation);
+      sleepUninterrupted(remainingMs);
+    }
+  }
+
+  private static void sleepUninterrupted(long millis) {
+    try {
+      Thread.sleep(millis);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.warn("Interrupted while waiting for the staged chunk generation to be found");
+    }
+  }
 
   /**
    * Resolves the staged chunk target for the live-edit mirror ({@link #mirrorToStagedGeneration})
@@ -1022,9 +1085,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    *       cached a stale {@code null} on a participant JVM (see fd054753fa).
    *   <li>Best-effort cluster-state probe ({@link #findActiveStagedGeneration}) with a short
    *       JVM-local cache that may hold {@code null} when no un-promoted {@code *_g*} index exists.
-   *       A probe that fails is not cached: the last answer stands and the next chunk write or
-   *       delete asks again, so one failed probe cannot hide a generation for the whole cache
-   *       window. Reached only before a participant latches (startup race) or on a JVM with no run
+   *       A probe that fails keeps the last answer for {@value FAILED_PROBE_BACKOFF_MS} ms, not
+   *       for the whole cache window, and an outage does not add a lookup to every chunk write or
+   *       delete. Reached only before a participant latches (startup race) or on a JVM with no run
    *       context.
    * </ol>
    *
@@ -1049,9 +1112,11 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
         cachedSinkTarget = findActiveStagedGeneration();
         cachedSinkTargetAt = now;
       } catch (IOException | RuntimeException e) {
+        cachedSinkTargetAt = now - SINK_TARGET_CACHE_MS + FAILED_PROBE_BACKOFF_MS;
         LOG.warn(
-            "Could not look up a staged chunk generation; the next chunk write or delete asks "
-                + "again: {}",
+            "Could not look up a staged chunk generation; the last answer stands and the lookup "
+                + "is tried again in {} ms: {}",
+            FAILED_PROBE_BACKOFF_MS,
             e.getMessage());
       }
     }
@@ -1347,7 +1412,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       JsonNode mappings = MAPPER.readTree(mappingJson).path(indexName).path("mappings");
       int existingVersion = mappings.path("_meta").path("chunkDocVersion").asInt(0);
       if (existingVersion < VectorDocBuilder.CHUNK_DOC_VERSION) {
-        executeGenericRequest("PUT", "/" + indexName + "/_mapping", buildChunkMappingUpgradeBody());
+        executeGenericRequest(
+            "PUT", "/" + indexName + "/_mapping", buildChunkMappingUpgradeBody(mappings));
         LOG.info(
             "Upgraded chunk index {} mapping chunkDocVersion {} -> {} (denormalized fields "
                 + "backfill on next Search Reindex)",
@@ -1370,7 +1436,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private String buildChunkIndexMapping(boolean withSearchAlias) {
     var mappings = MAPPER.createObjectNode().put("dynamic", false);
     mappings.set("properties", buildChunkProperties());
-    mappings.set("_meta", chunkMeta());
+    mappings.set("_meta", chunkMeta().put(CHUNK_SETS_BOUNDED, true));
     var root = chunkIndexSettings();
     root.set("mappings", mappings);
     // Staged generations are created bare: attaching the search alias before promotion would make
@@ -1404,13 +1470,77 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * the backfill such a query loses those memories' vector hits and never gains a wrong one. Weigh
    * that before making any future field a filter depends on.
    */
-  private String buildChunkMappingUpgradeBody() {
+  private String buildChunkMappingUpgradeBody(JsonNode mappings) {
     ObjectNode properties = buildChunkProperties();
     properties.remove("embedding");
     var body = MAPPER.createObjectNode();
     body.set("properties", properties);
-    body.set("_meta", chunkMeta());
+    body.set("_meta", existingMeta(mappings).setAll(chunkMeta()));
     return body.toString();
+  }
+
+  // A mapping update replaces _meta whole, so an update keeps the entries it does not change.
+  private static ObjectNode existingMeta(JsonNode mappings) {
+    JsonNode meta = mappings.path("_meta");
+    return meta.isObject() ? ((ObjectNode) meta).deepCopy() : MAPPER.createObjectNode();
+  }
+
+  /**
+   * Brings the live chunk index under the header's bound, for chunk sets written before chunk 0
+   * became a conditional write, then records on the index that it holds no chunk its header does
+   * not count. An index created empty starts with that record, so this runs once per index. The
+   * server starts it in the background; a failure leaves the record unset, so the next start tries
+   * again. See {@link ChunkSetHeal}.
+   */
+  @Override
+  public void removeChunksNoHeaderCounts() {
+    String base = getChunkIndexName();
+    try {
+      ensureChunkIndex();
+      String target = resolveLiveChunkTargetStrict(base);
+      if (target != null
+          && !chunkIndexMappings(target).path("_meta").path(CHUNK_SETS_BOUNDED).asBoolean(false)) {
+        int healed = new ChunkSetHeal(new HealRequests()).healParentsOf(target);
+        recordChunkSetsBounded(target);
+        LOG.info(
+            "Chunk index {} holds no chunk its header does not count ({} healed)", target, healed);
+      }
+    } catch (IOException | RuntimeException e) {
+      LOG.warn(
+          "Could not remove the chunks no header counts from {}; the next start tries again: {}",
+          base,
+          e.getMessage());
+    }
+  }
+
+  private JsonNode chunkIndexMappings(String indexName) throws IOException {
+    String mappingJson = executeGenericRequest("GET", "/" + indexName + "/_mapping", null);
+    return MAPPER.readTree(mappingJson).path(indexName).path("mappings");
+  }
+
+  private void recordChunkSetsBounded(String indexName) throws IOException {
+    ObjectNode body = MAPPER.createObjectNode();
+    body.set("_meta", existingMeta(chunkIndexMappings(indexName)).put(CHUNK_SETS_BOUNDED, true));
+    executeGenericRequest("PUT", "/" + indexName + "/_mapping", body.toString());
+  }
+
+  /** The heal's requests, retried as every by-id chunk request is. */
+  private final class HealRequests implements ChunkSetHeal.Requests {
+    @Override
+    public JsonNode search(String index, String body) {
+      return sendChunkRequest("/" + index + "/_search", body, UnaryOperator.identity());
+    }
+
+    @Override
+    public int headerCount(String index, String parentId) {
+      return readStoredChunks(index, parentId).count();
+    }
+
+    @Override
+    public void deleteUnlessRewritten(
+        String index, String parentId, Map<String, DocVersion> chunks) {
+      deleteChunksUnlessRewritten(index, parentId, chunks);
+    }
   }
 
   private ObjectNode chunkMeta() {
@@ -1768,71 +1898,65 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     return header != null && header.docVersion() < VectorDocBuilder.CHUNK_DOC_VERSION;
   }
 
+  /** The version a document was read at, so a write can refuse to replace a newer one. */
+  record DocVersion(long seqNo, long primaryTerm) {
+    static DocVersion of(JsonNode doc) {
+      return new DocVersion(doc.path("_seq_no").asLong(), doc.path("_primary_term").asLong());
+    }
+  }
+
   /**
-   * What an index stores for one parent, read in real time: chunk 0's header, and whether chunk 1
-   * exists. {@link #NONE} when the index does not exist, so it stores nothing.
+   * What an index stores for one parent, read in real time: chunk 0's header and the version it
+   * was read at. {@link #NONE} when the index does not exist, so it stores nothing.
    */
-  record StoredChunks(ChunkHeader header, boolean chunkOneStored) {
-    static final StoredChunks NONE = new StoredChunks(null, false);
+  record StoredChunks(ChunkHeader header, DocVersion headerVersion) {
+    static final StoredChunks NONE = new StoredChunks(null, null);
 
     /** The header's bound: every chunk id the parent has is below it. */
     int count() {
       return header == null ? 0 : header.chunkCount();
     }
-
-    /**
-     * Chunk 1 is stored although no header counts it. No write since the header bounded the ids
-     * leaves this; a chunk set written before then can, so it is removed by query too.
-     */
-    boolean storedPastTheHeader() {
-      return chunkOneStored && count() <= 1;
-    }
   }
 
   /**
-   * One realtime multi-get of chunk 0's header fields and of chunk 1's existence. It sees writes no
-   * refresh has made searchable. A request the cluster does not answer, or a document it reports
-   * an error for, throws after the request retry policy, so no caller mistakes a header it could
-   * not read for a missing one: a write would lower the bound, and a delete would leave chunks
-   * behind and report success.
+   * One realtime multi-get of chunk 0's header fields. It sees writes no refresh has made
+   * searchable. A read the cluster answers as busy or unavailable, or not at all, or with an error
+   * for the document, is retried; one that still fails throws, so no caller mistakes a header it
+   * could not read for a missing one: a write would lower the bound, and a delete would leave
+   * chunks behind and report success.
    */
   private StoredChunks readStoredChunks(String indexName, String parentId) {
-    String response =
-        executeGenericRequest("POST", "/" + indexName + "/_mget", storedChunksRequest(parentId));
-    JsonNode docs = readResponse(indexName, parentId, response).path("docs");
-    return isMissingIndex(docs.path(0))
-        ? StoredChunks.NONE
-        : new StoredChunks(
-            chunkHeader(requireRead(indexName, docs.path(0))),
-            requireRead(indexName, docs.path(1)).path("found").asBoolean());
+    JsonNode doc =
+        sendChunkRequest(
+            "/" + indexName + "/_mget",
+            storedChunksRequest(parentId),
+            response -> readHeaderDoc(indexName, response));
+    return isMissingIndex(doc) ? StoredChunks.NONE : storedChunks(doc);
+  }
+
+  private static StoredChunks storedChunks(JsonNode doc) {
+    ChunkHeader header = chunkHeader(doc);
+    return new StoredChunks(header, header == null ? null : DocVersion.of(doc));
   }
 
   private static String storedChunksRequest(String parentId) {
     ObjectNode body = MAPPER.createObjectNode();
-    ArrayNode docs = body.putArray("docs");
-    ObjectNode header = docs.addObject().put("_id", parentId + "_0");
+    ObjectNode header = body.putArray("docs").addObject().put("_id", parentId + "_0");
     header.putObject("_source").set("includes", MAPPER.valueToTree(CHUNK_HEADER_FIELDS));
-    docs.addObject().put("_id", parentId + "_1").put("_source", false);
     return body.toString();
-  }
-
-  private static JsonNode readResponse(String indexName, String parentId, String response) {
-    try {
-      return MAPPER.readTree(response);
-    } catch (IOException e) {
-      throw new IllegalStateException(
-          "Unparseable chunk read for " + parentId + " in " + indexName, e);
-    }
   }
 
   private static boolean isMissingIndex(JsonNode doc) {
     return INDEX_NOT_FOUND.equals(doc.path("error").path("type").asText());
   }
 
-  private static JsonNode requireRead(String indexName, JsonNode doc) {
-    if (!doc.path("found").isBoolean()) {
-      throw new IllegalStateException(
-          "Could not read chunk " + doc.path("_id").asText() + " in " + indexName + ": " + doc);
+  // A shard that cannot answer for the document reports it on the document, inside a 200.
+  private static JsonNode readHeaderDoc(String indexName, JsonNode response) {
+    JsonNode doc = response.path("docs").path(0);
+    if (!isMissingIndex(doc) && !doc.path("found").isBoolean()) {
+      throw new TransientChunkRequestException(
+          "Could not read chunk " + doc.path("_id").asText() + " in " + indexName + ": " + doc,
+          null);
     }
     return doc;
   }
@@ -1866,20 +1990,45 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   /**
    * Overwrites chunk ids {@code 0..N-1} and deletes the trailing stale ids {@code N..count-1} left
-   * behind by a shrinking body. Deletes are by id, so they do not depend on search visibility of
-   * prior writes. An empty set removes the parent's chunks.
+   * behind by a shrinking body; an empty set removes the parent's chunks. Deletes are by id, so they
+   * do not depend on search visibility of prior writes. Chunk 0 is written or deleted only over the
+   * version that was read, so of two writers racing on one parent the later one reads the header
+   * the other left and applies its set over it, and no write lowers the bound below ids another
+   * wrote.
    */
   private void replaceChunks(
+      String indexName, String parentId, List<Map<String, Object>> chunkDocs, StoredChunks stored)
+      throws IOException {
+    StoredChunks current = stored;
+    boolean replaced = false;
+    for (int attempt = 1; !replaced; attempt++) {
+      try {
+        replaceChunksOver(indexName, parentId, chunkDocs, current);
+        replaced = true;
+      } catch (ChunkHeaderConflictException conflict) {
+        current = rereadAfterConflict(indexName, parentId, attempt, conflict);
+      }
+    }
+  }
+
+  private void replaceChunksOver(
       String indexName, String parentId, List<Map<String, Object>> chunkDocs, StoredChunks stored)
       throws IOException {
     if (chunkDocs.isEmpty()) {
       removeChunkSet(indexName, parentId, stored);
     } else {
-      if (stored.storedPastTheHeader()) {
-        healChunksPastTheHeader(indexName, parentId);
-      }
-      writeChunkBulk(indexName, parentId, chunkDocs, stored.count());
+      writeChunkSet(indexName, parentId, chunkDocs, stored);
     }
+  }
+
+  private StoredChunks rereadAfterConflict(
+      String indexName, String parentId, int attempt, ChunkHeaderConflictException conflict) {
+    if (attempt >= HEADER_WRITE_ATTEMPTS) {
+      throw new IllegalStateException(
+          "Chunk 0 of " + parentId + " in " + indexName + " changed under " + attempt + " writes",
+          conflict);
+    }
+    return readStoredChunks(indexName, parentId);
   }
 
   /**
@@ -1891,23 +2040,21 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * at or past it may be stored. A write that adds ids past the bound first raises it, see {@link
    * #reserveChunkIds}.
    */
-  private void writeChunkBulk(
-      String indexName, String parentId, List<Map<String, Object>> chunkDocs, int previousCount)
+  private void writeChunkSet(
+      String indexName, String parentId, List<Map<String, Object>> chunkDocs, StoredChunks stored)
       throws IOException {
-    if (chunkDocs.size() > Math.max(previousCount, 1)) {
-      reserveChunkIds(indexName, parentId, chunkDocs.getFirst());
+    DocVersion headerVersion = stored.headerVersion();
+    if (chunkDocs.size() > Math.max(stored.count(), 1)) {
+      headerVersion = reserveChunkIds(indexName, parentId, chunkDocs.getFirst(), headerVersion);
     }
     StringBuilder bodyChunks = new StringBuilder();
     for (int i = 1; i < chunkDocs.size(); i++) {
-      appendChunkIndex(bodyChunks, indexName, parentId, i, chunkDocs.get(i));
+      appendChunkIndex(
+          bodyChunks, indexName, parentId + "_" + i, chunkDocs.get(i), WriteCondition.ANY);
     }
-    appendChunkDeletes(bodyChunks, indexName, parentId, chunkDocs.size(), previousCount);
+    appendChunkDeletes(bodyChunks, indexName, parentId, chunkDocs.size(), stored.count());
     sendChunkBulk(indexName, parentId, bodyChunks);
-    if (!chunkDocs.isEmpty()) {
-      StringBuilder header = new StringBuilder();
-      appendChunkIndex(header, indexName, parentId, 0, chunkDocs.getFirst());
-      sendChunkBulk(indexName, parentId, header);
-    }
+    writeHeader(indexName, parentId, chunkDocs.getFirst(), headerVersion);
   }
 
   /**
@@ -1916,164 +2063,201 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * later trim or delete reaches them, and that no update reads as current, so the next one writes
    * the set again.
    */
-  private void reserveChunkIds(String indexName, String parentId, Map<String, Object> header)
+  private DocVersion reserveChunkIds(
+      String indexName, String parentId, Map<String, Object> header, DocVersion expected)
       throws IOException {
     Map<String, Object> pending = new LinkedHashMap<>(header);
     pending.remove(FINGERPRINT_FIELD);
+    return writeHeader(indexName, parentId, pending, expected);
+  }
+
+  /** Writes chunk 0 over {@code expected}, or as a new document when there was none. */
+  private DocVersion writeHeader(
+      String indexName, String parentId, Map<String, Object> header, DocVersion expected)
+      throws IOException {
     StringBuilder bulk = new StringBuilder();
-    appendChunkIndex(bulk, indexName, parentId, 0, pending);
-    sendChunkBulk(indexName, parentId, bulk);
+    appendChunkIndex(bulk, indexName, parentId + "_0", header, WriteCondition.over(expected));
+    return DocVersion.of(sendHeaderBulk(indexName, parentId, bulk));
   }
 
   /**
    * Deletes every chunk of a parent, by id up to the header's bound: the chunks past chunk 0, then
    * chunk 0, so a delete that stops part way keeps the header and its bound for the retry. Ids are
-   * deleted in real time, so writes no refresh has made searchable go too. Only a chunk set stored
-   * past its header, which predates the bound, is also deleted by query.
+   * deleted in real time, so writes no refresh has made searchable go too.
    */
   private void removeChunkSet(String indexName, String parentId, StoredChunks stored) {
     StringBuilder trailing = new StringBuilder();
     appendChunkDeletes(trailing, indexName, parentId, 1, stored.count());
     sendChunkBulk(indexName, parentId, trailing);
-    if (stored.storedPastTheHeader()) {
-      deleteTrailingChunksByQuery(indexName, parentId);
-    }
     if (stored.header() != null) {
       StringBuilder header = new StringBuilder();
-      appendChunkDeletes(header, indexName, parentId, 0, 1);
-      sendChunkBulk(indexName, parentId, header);
+      appendChunkDelete(header, indexName, parentId + "_0", stored.headerVersion());
+      sendHeaderBulk(indexName, parentId, header);
     }
   }
 
-  /** Deletes the parent's chunks other than chunk 0 that a refreshed search can see. */
-  private void deleteTrailingChunksByQuery(String indexName, String parentId) {
-    ObjectNode bool = MAPPER.createObjectNode();
-    bool.putArray("filter").addObject().putObject("term").put(PARENT_ID_FIELD, parentId);
-    bool.putArray("must_not").addObject().putObject("ids").putArray("values").add(parentId + "_0");
-    ObjectNode body = MAPPER.createObjectNode();
-    body.putObject("query").set("bool", bool);
-    String response =
-        executeGenericRequest(
-            "POST", "/" + indexName + "/_delete_by_query?conflicts=proceed", body.toString());
-    failOnDeleteByQueryFailures(indexName, parentId, response);
-  }
+  /** What a chunk write may replace: anything, nothing, or one version of the document. */
+  private record WriteCondition(String action, DocVersion version) {
+    static final WriteCondition ANY = new WriteCondition("index", null);
 
-  private void failOnDeleteByQueryFailures(String indexName, String parentId, String response) {
-    JsonNode failures;
-    try {
-      failures = MAPPER.readTree(response).path("failures");
-    } catch (IOException e) {
-      throw new IllegalStateException(
-          "Chunk delete for " + parentId + " in " + indexName + " returned an unparseable response",
-          e);
-    }
-    if (!failures.isEmpty()) {
-      throw new IllegalStateException(
-          "Chunk delete for " + parentId + " in " + indexName + " had failures: " + failures);
+    /** A write over the version read, or of a new document when none was stored. */
+    static WriteCondition over(DocVersion version) {
+      return new WriteCondition(version == null ? "create" : "index", version);
     }
   }
 
   private static void appendChunkIndex(
-      StringBuilder bulk, String indexName, String parentId, int index, Map<String, Object> doc)
+      StringBuilder bulk,
+      String indexName,
+      String id,
+      Map<String, Object> doc,
+      WriteCondition condition)
       throws IOException {
-    bulk.append("{\"index\":{\"_index\":\"")
-        .append(indexName)
-        .append("\",\"_id\":\"")
-        .append(parentId)
-        .append('_')
-        .append(index)
-        .append("\"}}\n")
-        .append(MAPPER.writeValueAsString(doc))
-        .append('\n');
+    ObjectNode meta = chunkActionMeta(indexName, id, condition.version());
+    ObjectNode action = MAPPER.createObjectNode();
+    action.set(condition.action(), meta);
+    bulk.append(action.toString()).append('\n');
+    bulk.append(MAPPER.writeValueAsString(doc)).append('\n');
   }
 
-  private void sendChunkBulk(String indexName, String parentId, StringBuilder bulk) {
-    if (!bulk.isEmpty()) {
-      String response = executeGenericRequest("POST", "/_bulk", bulk.toString());
-      failOnBulkItemErrors(indexName, parentId, response);
-    }
+  /** {@code expected} null deletes whatever is stored; a version deletes only that version. */
+  private static void appendChunkDelete(
+      StringBuilder bulk, String indexName, String id, DocVersion expected) {
+    ObjectNode meta = chunkActionMeta(indexName, id, expected);
+    ObjectNode action = MAPPER.createObjectNode();
+    action.set("delete", meta);
+    bulk.append(action.toString()).append('\n');
   }
 
-  /**
-   * The bulk API reports per-item failures (rejected executions under load, mapping conflicts) as
-   * HTTP 200 with {@code errors:true} — exactly the failure class a heavy reindex produces.
-   * Silently accepting them would leave holes with no log trail; throwing surfaces the failure to
-   * the callers' catch-and-log so a partially-written entity is at least visible in the logs.
-   */
-  private void failOnBulkItemErrors(String indexName, String parentId, String response) {
-    try {
-      JsonNode root = MAPPER.readTree(response);
-      if (root.path("errors").asBoolean(false)) {
-        throw new IllegalStateException(
-            "Bulk chunk write for "
-                + parentId
-                + " into "
-                + indexName
-                + " had item failures: "
-                + firstBulkItemErrors(root));
-      }
-    } catch (IllegalStateException e) {
-      throw e;
-    } catch (Exception parseFailure) {
-      // Conservative: an unparseable 200 could be hiding item failures, and in a staged
-      // generation silently accepting it becomes a chunk drop at promotion.
-      throw new IllegalStateException(
-          "Bulk chunk write for "
-              + parentId
-              + " into "
-              + indexName
-              + " returned an unparseable response",
-          parseFailure);
+  private static ObjectNode chunkActionMeta(String indexName, String id, DocVersion expected) {
+    ObjectNode meta = MAPPER.createObjectNode().put("_index", indexName).put("_id", id);
+    if (expected != null) {
+      meta.put("if_seq_no", expected.seqNo()).put("if_primary_term", expected.primaryTerm());
     }
-  }
-
-  private static StringBuilder firstBulkItemErrors(JsonNode root) {
-    StringBuilder reasons = new StringBuilder();
-    int reported = 0;
-    for (JsonNode item : root.path("items")) {
-      // replaceChunks emits index AND delete actions (trailing-chunk cleanup); create for
-      // completeness — each item is keyed by whichever action it was.
-      for (String action : BULK_ACTIONS) {
-        JsonNode error = item.path(action).path("error");
-        if (!error.isMissingNode() && reported < 3) {
-          reasons.append(action).append(' ');
-          reasons.append(error.path("type").asText("?")).append(": ");
-          reasons.append(error.path("reason").asText("?")).append("; ");
-          reported++;
-        }
-      }
-    }
-    return reasons;
-  }
-
-  private static final List<String> BULK_ACTIONS = List.of("index", "delete", "create");
-
-  /**
-   * A write over a chunk set stored past its header, which only a write from before {@link
-   * #reserveChunkIds} can leave, first removes it by query. Best effort: the write that follows
-   * covers the ids it writes either way.
-   */
-  private void healChunksPastTheHeader(String indexName, String parentId) {
-    try {
-      LOG.warn("Healing chunk docs of parent {} stored past their header", parentId);
-      deleteTrailingChunksByQuery(indexName, parentId);
-    } catch (RuntimeException e) {
-      LOG.warn("Could not heal the chunk docs of {}: {}", parentId, e.getMessage());
-    }
+    return meta;
   }
 
   private static void appendChunkDeletes(
       StringBuilder bulk, String indexName, String parentId, int fromIndex, int toExclusive) {
     for (int i = fromIndex; i < toExclusive; i++) {
-      bulk.append("{\"delete\":{\"_index\":\"")
-          .append(indexName)
-          .append("\",\"_id\":\"")
-          .append(parentId)
-          .append('_')
-          .append(i)
-          .append("\"}}\n");
+      appendChunkDelete(bulk, indexName, parentId + "_" + i, null);
     }
   }
+
+  private void sendChunkBulk(String indexName, String parentId, StringBuilder bulk) {
+    if (!bulk.isEmpty()) {
+      failOnItemErrors(indexName, parentId, bulkItems(sendBulk(indexName, parentId, bulk)));
+    }
+  }
+
+  /** The one item of a chunk 0 write or delete, which a newer version of chunk 0 refuses. */
+  private JsonNode sendHeaderBulk(String indexName, String parentId, StringBuilder bulk) {
+    List<JsonNode> items = bulkItems(sendBulk(indexName, parentId, bulk));
+    if (items.isEmpty()) {
+      throw new IllegalStateException(
+          "Chunk 0 write for " + parentId + " into " + indexName + " was answered with no item");
+    }
+    JsonNode item = items.getFirst();
+    if (item.path("status").asInt() == CONFLICT_STATUS) {
+      throw new ChunkHeaderConflictException(
+          "Chunk 0 of " + parentId + " in " + indexName + " changed since it was read");
+    }
+    failOnItemErrors(indexName, parentId, List.of(item));
+    return item;
+  }
+
+  /**
+   * Deletes {@code chunks} by id, each only at the version it was read at: a chunk written since
+   * then belongs to a newer set and stays.
+   */
+  private void deleteChunksUnlessRewritten(
+      String indexName, String parentId, Map<String, DocVersion> chunks) {
+    StringBuilder bulk = new StringBuilder();
+    chunks.forEach((id, version) -> appendChunkDelete(bulk, indexName, id, version));
+    List<JsonNode> failures =
+        bulkItems(sendBulk(indexName, parentId, bulk)).stream()
+            .filter(item -> item.path("status").asInt() != CONFLICT_STATUS)
+            .toList();
+    failOnItemErrors(indexName, parentId, failures);
+  }
+
+  private JsonNode sendBulk(String indexName, String parentId, StringBuilder bulk) {
+    return sendChunkRequest(
+        "/_bulk", bulk.toString(), response -> retryRejectedItems(indexName, parentId, response));
+  }
+
+  /**
+   * The bulk API reports per-item failures (rejected executions under load, mapping conflicts) as
+   * HTTP 200 with {@code errors:true}, exactly the failure class a heavy reindex produces. An item
+   * the cluster turned away for capacity is retried with the whole bulk, which is by id and so safe
+   * to send again. ADR:2026-11-24-bulk-items-rejected-for-capacity-are-re-sent
+   */
+  private static JsonNode retryRejectedItems(String indexName, String parentId, JsonNode response) {
+    boolean rejected =
+        bulkItems(response).stream()
+            .anyMatch(
+                item ->
+                    BulkRetryPolicy.isCapacityRejection(
+                        item.path("status").asInt(), item.path("error").toString()));
+    if (rejected) {
+      throw new TransientChunkRequestException(
+          "Bulk chunk write for "
+              + parentId
+              + " into "
+              + indexName
+              + " had rejected items: "
+              + firstBulkItemErrors(bulkItems(response)),
+          null);
+    }
+    return response;
+  }
+
+  private static List<JsonNode> bulkItems(JsonNode response) {
+    List<JsonNode> items = new ArrayList<>();
+    for (JsonNode item : response.path("items")) {
+      BULK_ACTIONS.stream()
+          .map(item::path)
+          .filter(JsonNode::isObject)
+          .findFirst()
+          .ifPresent(items::add);
+    }
+    return items;
+  }
+
+  /**
+   * Silently accepting item failures would leave holes with no log trail; throwing surfaces them to
+   * the callers' catch-and-log so a partially-written entity is at least visible in the logs.
+   */
+  private static void failOnItemErrors(String indexName, String parentId, List<JsonNode> items) {
+    if (items.stream().anyMatch(item -> item.has("error"))) {
+      throw new IllegalStateException(
+          "Bulk chunk write for "
+              + parentId
+              + " into "
+              + indexName
+              + " had item failures: "
+              + firstBulkItemErrors(items));
+    }
+  }
+
+  private static StringBuilder firstBulkItemErrors(List<JsonNode> items) {
+    StringBuilder reasons = new StringBuilder();
+    items.stream()
+        .filter(item -> item.has("error"))
+        .limit(3)
+        .forEach(
+            item ->
+                reasons
+                    .append(item.path("status").asInt())
+                    .append(' ')
+                    .append(item.path("error").path("type").asText("?"))
+                    .append(": ")
+                    .append(item.path("error").path("reason").asText("?"))
+                    .append("; "));
+    return reasons;
+  }
+
+  private static final List<String> BULK_ACTIONS = List.of("index", "delete", "create");
 
   @Override
   @SuppressWarnings("unchecked")
@@ -2445,6 +2629,59 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     }
   }
 
+  /**
+   * Sends one by-id chunk request (a multi-get, a bulk or a search) and retries what a busy or
+   * briefly unavailable cluster answers: 429, 502, 503 and 504, no response at all, and whatever
+   * {@code accept} finds transient in the answer. These requests are idempotent, so sending one
+   * again is safe. A request still failing after the last attempt throws.
+   */
+  private JsonNode sendChunkRequest(String endpoint, String body, UnaryOperator<JsonNode> accept) {
+    return CHUNK_REQUEST_RETRY.executeSupplier(
+        () -> accept.apply(chunkRequestAttempt(endpoint, body)));
+  }
+
+  private JsonNode chunkRequestAttempt(String endpoint, String body) {
+    RawResponse response = performChunkRequest(endpoint, body);
+    String answer = bodyOrEmptyObject(response);
+    String failure =
+        engineName() + " chunk request " + endpoint + " answered " + response.status() + ": ";
+    if (isTransient(response)) {
+      throw new TransientChunkRequestException(failure + answer, null);
+    }
+    if (response.status() >= 400) {
+      throw new IllegalStateException(failure + answer);
+    }
+    return parseChunkResponse(endpoint, answer);
+  }
+
+  private RawResponse performChunkRequest(String endpoint, String body) {
+    RawResponse response;
+    try {
+      response = performRequest("POST", endpoint, body);
+    } catch (IOException e) {
+      throw new TransientChunkRequestException(
+          engineName() + " chunk request " + endpoint + " got no response", e);
+    }
+    return response;
+  }
+
+  private static boolean isTransient(RawResponse response) {
+    return TRANSIENT_STATUSES.contains(response.status())
+        || response.status() >= 500
+            && bodyOrEmptyObject(response).contains(ALREADY_CLOSED_EXCEPTION);
+  }
+
+  private static JsonNode parseChunkResponse(String endpoint, String answer) {
+    try {
+      return MAPPER.readTree(answer);
+    } catch (IOException e) {
+      // Conservative: an unparseable 200 could be hiding item failures, and in a staged
+      // generation silently accepting it becomes a chunk drop at promotion.
+      throw new IllegalStateException(
+          "Chunk request " + endpoint + " got an unparseable answer", e);
+    }
+  }
+
   @Override
   public String executeGenericRequest(String method, String endpoint, String body) {
     try {
@@ -2488,6 +2725,20 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   private static final class ClosedSegmentException extends IOException {
     private ClosedSegmentException(String message) {
+      super(message);
+    }
+  }
+
+  /** A chunk request the cluster did not answer, or answered as too busy or unavailable. */
+  private static final class TransientChunkRequestException extends RuntimeException {
+    private TransientChunkRequestException(String message, Throwable cause) {
+      super(message, cause);
+    }
+  }
+
+  /** Chunk 0 changed since it was read: another writer or delete went first. */
+  private static final class ChunkHeaderConflictException extends RuntimeException {
+    private ChunkHeaderConflictException(String message) {
       super(message);
     }
   }
