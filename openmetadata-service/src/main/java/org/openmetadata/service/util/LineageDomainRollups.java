@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.EntityCacheBypass;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -109,6 +110,9 @@ public final class LineageDomainRollups {
    */
   public static void move(final List<DomainMove> moves) {
     final Map<UUID, DomainMove> moved = changedMoves(moves);
+    if (!moved.isEmpty()) {
+      LineageDomainCoordinator.lockDomainMoves();
+    }
     final DomainPairTally tally = new DomainPairTally();
     // Ceiling: the lineage rows of one chunk of moved entities are held at once, so a hub with
     // very many edges is read whole; page its edges if that outgrows memory.
@@ -136,17 +140,24 @@ public final class LineageDomainRollups {
     return details == null ? new LineageDetails() : details;
   }
 
-  /** Domains in effect (own, else inherited) per entity; ids that no longer exist are absent. */
+  /**
+   * Domains in effect (own, else inherited) per entity; ids that no longer exist are absent. Read
+   * from the database: a cache can still hold a parent's domains for a moment after the write that
+   * replaced them commits, and what is read inside a write must not reach a cache either.
+   */
   public static Map<UUID, List<EntityReference>> domainsHeldBy(
       final Collection<EntityReference> entities) {
     final Map<UUID, List<EntityReference>> held = new HashMap<>();
-    entities.stream()
-        .filter(entity -> hasDomains(entity.getType()))
-        .collect(groupingBy(EntityReference::getType, mapping(EntityReference::getId, toSet())))
-        .forEach(
-            (type, ids) ->
-                Lists.partition(List.copyOf(ids), READ_CHUNK)
-                    .forEach(chunk -> readDomains(type, chunk, held)));
+    try (FreshReadScope.Handle freshRead = FreshReadScope.enter();
+        EntityCacheBypass.Handle cacheBypass = EntityCacheBypass.skip()) {
+      entities.stream()
+          .filter(entity -> hasDomains(entity.getType()))
+          .collect(groupingBy(EntityReference::getType, mapping(EntityReference::getId, toSet())))
+          .forEach(
+              (type, ids) ->
+                  Lists.partition(List.copyOf(ids), READ_CHUNK)
+                      .forEach(chunk -> readDomains(type, chunk, held)));
+    }
     return held;
   }
 
@@ -237,7 +248,7 @@ public final class LineageDomainRollups {
     if (assetEdges > 0) {
       storeRollup(from, to, details.withAssetEdges(assetEdges));
     } else if (stored != null && details.getSource() == LineageDetails.Source.CHILD_ASSETS) {
-      deleteRollup(from, to, details);
+      deleteRollup(from, to);
     } else if (stored != null && details.getAssetEdges() != null) {
       storeRollup(from, to, details.withAssetEdges(null));
     }
@@ -253,13 +264,12 @@ public final class LineageDomainRollups {
             Entity.DOMAIN,
             UPSTREAM,
             JsonUtils.pojoToJson(details));
-    LineageUtil.addLineageToSearch(from, to, details);
+    LineageUtil.syncLineageEdgeToSearch(from, to);
   }
 
-  private static void deleteRollup(
-      final EntityReference from, final EntityReference to, final LineageDetails details) {
+  private static void deleteRollup(final EntityReference from, final EntityReference to) {
     relationships().delete(from.getId(), Entity.DOMAIN, to.getId(), Entity.DOMAIN, UPSTREAM);
-    LineageUtil.deleteLineageFromSearch(from, to, details);
+    LineageUtil.syncLineageEdgeToSearch(from, to);
   }
 
   // Only the domain lists outlive the chunk; the entities read for them are dropped with it.

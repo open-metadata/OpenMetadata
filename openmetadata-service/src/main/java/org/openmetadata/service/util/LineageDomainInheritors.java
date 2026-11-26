@@ -32,7 +32,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.cache.EntityCacheBypass;
 import org.openmetadata.service.util.LineageDomainRollups.DomainMove;
 
 /**
@@ -71,8 +70,14 @@ public final class LineageDomainInheritors {
     this.before = before;
   }
 
-  /** Reads, before the containers' domains are written, the domains their descendants hold. */
+  /**
+   * Reads, before the containers' domains are written, the domains their descendants hold. It holds
+   * the domain move lock first, so no lineage write changes what it reads before the write commits.
+   */
   public static LineageDomainInheritors of(final Collection<EntityReference> containers) {
+    if (!containers.isEmpty()) {
+      LineageDomainCoordinator.lockDomainMoves();
+    }
     return of(
         containers,
         MAX_REPROJECTED,
@@ -88,7 +93,7 @@ public final class LineageDomainInheritors {
     final List<EntityReference> found =
         descendantsWithLineage(containers, cap, inheritingTypesOf, descendantIds);
     return movesInTheWrite(containers, found, cap)
-        ? new LineageDomainInheritors(found, domainsReadFresh(found))
+        ? new LineageDomainInheritors(found, LineageDomainRollups.domainsHeldBy(found))
         : NONE;
   }
 
@@ -122,7 +127,7 @@ public final class LineageDomainInheritors {
   /** Each descendant's move from the domains read before the write to the ones it holds now. */
   public List<DomainMove> moves() {
     final Map<UUID, List<EntityReference>> after =
-        inheritors.isEmpty() ? Map.of() : domainsReadFresh(inheritors);
+        inheritors.isEmpty() ? Map.of() : LineageDomainRollups.domainsHeldBy(inheritors);
     return inheritors.stream()
         .map(
             entity ->
@@ -255,16 +260,6 @@ public final class LineageDomainInheritors {
         ? named.toList()
         : Stream.concat(named, Entity.getEntityReferencesByIds(type, unnamed, Include.ALL).stream())
             .toList();
-  }
-
-  // In the write's transaction a cached parent still holds the domains being replaced, and what is
-  // read here is not committed yet, so it must not reach a cache either.
-  private static Map<UUID, List<EntityReference>> domainsReadFresh(
-      final List<EntityReference> entities) {
-    try (FreshReadScope.Handle freshRead = FreshReadScope.enter();
-        EntityCacheBypass.Handle cacheBypass = EntityCacheBypass.skip()) {
-      return LineageDomainRollups.domainsHeldBy(entities);
-    }
   }
 
   private static void warnNotReprojected(

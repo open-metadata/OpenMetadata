@@ -80,6 +80,9 @@ public interface CoreRelationshipDAOs {
   @CreateSqlObject
   CustomPropertyReferenceDAO customPropertyReferenceDAO();
 
+  @CreateSqlObject
+  DomainLineageGuardDAO domainLineageGuardDAO();
+
   interface EntityExtensionDAO {
     @ConnectionAwareSqlUpdate(
         value =
@@ -2525,5 +2528,19 @@ public interface CoreRelationshipDAOs {
                   "relation"
                 })
             List<FieldRelationship> values);
+  }
+
+  /**
+   * Rows every domain lineage rollup writer locks before it reads or writes one, so writers of a
+   * domain pair serialize even before its rollup row exists. Inside a transaction the lock is held
+   * until it ends. Null means the row is missing.
+   * ADR:2026-11-26-domain-lineage-rollup-writers-lock-guard-rows-in-one-order
+   */
+  interface DomainLineageGuardDAO {
+    @SqlQuery("SELECT id FROM domain_lineage_guard WHERE id = :id FOR UPDATE")
+    String lockExclusive(@Bind("id") String id);
+
+    @SqlQuery("SELECT id FROM domain_lineage_guard WHERE id = :id FOR SHARE")
+    String lockShared(@Bind("id") String id);
   }
 }

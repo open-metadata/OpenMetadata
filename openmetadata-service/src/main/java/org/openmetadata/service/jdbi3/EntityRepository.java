@@ -306,6 +306,7 @@ import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.LifeCycles;
+import org.openmetadata.service.util.LineageDomainCoordinator;
 import org.openmetadata.service.util.LineageDomainInheritors;
 import org.openmetadata.service.util.LineageDomainRollups;
 import org.openmetadata.service.util.LineageDomainRollups.DomainMove;
@@ -4694,8 +4695,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Store the row, extension, and relationship rewrites in one atomic transaction. The cache
     // invalidations issued here are recorded and drained once the transaction ends so no Redis
     // round trip runs while the handle is held.
+    boolean movesDomains = domainMoves.stream().anyMatch(DomainMove::changes);
     flushInOneTransaction(
         () -> {
+          if (movesDomains) {
+            LineageDomainCoordinator.lockDomainMoves();
+          }
           LineageDomainInheritors inheritors = LineageDomainInheritors.ofMoved(domainMoves);
           storeVersions(previousVersions);
           updateMany(updatedEntities);
@@ -6589,7 +6594,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       ThreadLocal.withInitial(() -> Boolean.FALSE);
 
   /** {@code true} when this call opened the outermost boundary and therefore owns the retry. */
-  private static boolean enterRetryableBoundary() {
+  static boolean enterRetryableBoundary() {
     if (Boolean.TRUE.equals(RETRYABLE_BOUNDARY_OPEN.get())) {
       return false;
     }
@@ -11608,9 +11613,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       String writer = updated.getUpdatedBy();
       UpdaterSnapshot snapshot = snapshotUpdaterState();
       boolean[] firstAttempt = {true};
+      boolean movesDomains = movesOwnDomains(importMode);
       flushInOneTransaction(
           List.of(original),
           () -> {
+            if (movesDomains) {
+              LineageDomainCoordinator.lockDomainMoves();
+            }
             restoreUpdaterState(snapshot, !firstAttempt[0]);
             firstAttempt[0] = false;
             flushUpdateBody(useOptimisticStore || useOptimisticLocking, importMode);
@@ -11621,6 +11630,33 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           invalidateCachesAfterStore();
         }
       }
+    }
+
+    /**
+     * Whether this write replaces the entity's own domains, so it moves domain lineage rollups. It is
+     * decided before the transaction opens, by the rule {@link #updateDomains()} or {@link
+     * #updateDomainsForImport()} applies, so the domain move lock can be the transaction's first
+     * statement: on MySQL a REPEATABLE READ snapshot taken before the lock would hide the lineage
+     * writes that committed while the write waited for it. A write this misses still takes the lock
+     * when it moves rollups, later in its transaction.
+     * ADR:2026-11-26-domain-lineage-rollup-writers-lock-guard-rows-in-one-order
+     */
+    private boolean movesOwnDomains(final boolean importMode) {
+      final List<EntityReference> written = supportsDomains ? domainsWritten(importMode) : null;
+      return written != null && !ownDomainIds(original.getDomains()).equals(ownDomainIds(written));
+    }
+
+    private List<EntityReference> domainsWritten(final boolean importMode) {
+      return importMode
+          ? getEntityReferences(updated.getDomains())
+          : writtenDomains(original, updated, operation, updatedByBot());
+    }
+
+    private static Set<UUID> ownDomainIds(final List<EntityReference> domains) {
+      return listOrEmpty(domains).stream()
+          .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+          .map(EntityReference::getId)
+          .collect(Collectors.toSet());
     }
 
     // Runs before any write, and before consolidation rebases `original` onto the pre-session
@@ -12615,6 +12651,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                         original.getEntityReference(),
                         domainsInEffect(original, ownBefore),
                         domainsInEffect(updated, ownAfter)))));
+        LineageDomainCoordinator.reach(
+            LineageDomainCoordinator.Stage.DOMAIN_ROLLUPS_MOVED, original.getId());
       }
     }
 

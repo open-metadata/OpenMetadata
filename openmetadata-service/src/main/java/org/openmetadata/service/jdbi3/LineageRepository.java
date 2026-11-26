@@ -91,6 +91,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.CSVExportException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.EntityCacheBypass;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.lineage.LineageEdgePipeline;
@@ -104,7 +105,10 @@ import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.ChildFieldResolver;
+import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.LineageDomainCoordinator;
+import org.openmetadata.service.util.LineageDomainRollups.DomainPair;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.RestUtil;
 
@@ -226,22 +230,32 @@ public class LineageRepository {
 
   @Transaction
   public void addLineage(AddLineage addLineage, String updatedBy) {
-    // Validate from entity
-    LineageDetails lineageDetails =
-        addLineage.getEdge().getLineageDetails() != null
-            ? addLineage.getEdge().getLineageDetails()
-            : new LineageDetails();
+    EntitiesEdge requested = addLineage.getEdge();
+    LineageWriteTransaction.run(
+        () -> {
+          addLineageLocked(requested, updatedBy);
+          return null;
+        });
+  }
+
+  /**
+   * Takes the edge's locks before it reads anything, and works on a copy of the requested details,
+   * so a deadlock replay starts from the request again.
+   */
+  private void addLineageLocked(EntitiesEdge requested, String updatedBy) {
+    lockEdgeWrite(requested.getFromEntity(), requested.getToEntity());
+    LineageDetails lineageDetails = requestedDetails(requested.getLineageDetails());
     EntityReference from =
         Entity.getEntityReferenceById(
-            addLineage.getEdge().getFromEntity().getType(),
-            addLineage.getEdge().getFromEntity().getId(),
+            requested.getFromEntity().getType(),
+            requested.getFromEntity().getId(),
             Include.NON_DELETED);
 
     // Validate to entity
     EntityReference to =
         Entity.getEntityReferenceById(
-            addLineage.getEdge().getToEntity().getType(),
-            addLineage.getEdge().getToEntity().getId(),
+            requested.getToEntity().getType(),
+            requested.getToEntity().getId(),
             Include.NON_DELETED);
 
     CollectionDAO.EntityRelationshipObject existingRecord =
@@ -278,10 +292,7 @@ public class LineageRepository {
     // Direct invalidation of cached lineage rooted at either endpoint of the new edge.
     // Other roots that transitively contain these endpoints fall through to the TTL backstop —
     // see CachedLineage class doc for the design rationale.
-    var cachedLineage = org.openmetadata.service.cache.CacheBundle.getCachedLineage();
-    if (cachedLineage != null) {
-      cachedLineage.invalidateEdge(from.getId(), to.getId());
-    }
+    invalidateCachedEdgeAfterCommit(from, to);
 
     Optional<EventType> eventType = decideEventType(priorDetails, lineageDetails);
     if (eventType.isPresent()) {
@@ -302,6 +313,19 @@ public class LineageRepository {
 
     // build Extended Lineage
     buildExtendedLineage(from, to, lineageDetails, priorDetails, relationAlreadyExists);
+  }
+
+  private static LineageDetails requestedDetails(final LineageDetails requested) {
+    return requested == null ? new LineageDetails() : copyKeepingNulls(requested);
+  }
+
+  // A JSON round trip fills a field left null with its default: null column lineage, which keeps
+  // the stored one, would come back empty and clear it.
+  private static LineageDetails copyKeepingNulls(final LineageDetails requested) {
+    final LineageDetails copy = JsonUtils.deepCopy(requested, LineageDetails.class);
+    return copy.withSource(requested.getSource())
+        .withColumnsLineage(
+            requested.getColumnsLineage() == null ? null : copy.getColumnsLineage());
   }
 
   @Transaction
@@ -342,9 +366,8 @@ public class LineageRepository {
             && Entity.entityHasField(to.getType(), FIELD_DATA_PRODUCTS);
 
     String fields = getExtendedLineageFields(addService, addDomain, addDataProduct);
-    EntityInterface<?> fromEntity =
-        Entity.getEntity(from.getType(), from.getId(), fields, Include.ALL);
-    EntityInterface<?> toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
+    EntityInterface<?> fromEntity = readFresh(from, fields);
+    EntityInterface<?> toEntity = readFresh(to, fields);
 
     addServiceLineage(fromEntity, toEntity, lineageDetails, priorDetails, childRelationExists);
     addDomainLineage(fromEntity, toEntity, lineageDetails, childRelationExists);
@@ -508,6 +531,7 @@ public class LineageRepository {
 
     List<EntityReference> fromDomains = listOrEmpty(fromEntity.getDomains());
     List<EntityReference> toDomains = listOrEmpty(toEntity.getDomains());
+    lockDomainPairsRead(fromEntity, fromDomains, toDomains);
 
     for (EntityReference fromDomain : fromDomains) {
       for (EntityReference toDomain : toDomains) {
@@ -645,6 +669,16 @@ public class LineageRepository {
 
   private void addLineageToSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    if (isDomainPair(fromEntity, toEntity)) {
+      LineageUtil.syncLineageEdgeToSearch(fromEntity, toEntity);
+    } else {
+      LineageUtil.runAfterCommit(
+          () -> writeLineageToSearch(fromEntity, toEntity, lineageDetails), toEntity);
+    }
+  }
+
+  private void writeLineageToSearch(
+      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
     IndexMapping destinationIndexMapping =
         Entity.getSearchRepository().getIndexMapping(toEntity.getType());
     String destinationIndexName =
@@ -659,6 +693,69 @@ public class LineageRepository {
 
   private void invalidateLineageCacheForEdge(EntityReference from, EntityReference to) {
     LineageUtil.invalidateLineageCaches(from, to);
+  }
+
+  /**
+   * Locks for a write to {@code from -> to}. A rollup written directly (an edge between two domains)
+   * also takes its pair's stripe, the lock the rollup writers of that pair hold.
+   */
+  private static void lockEdgeWrite(EntityReference from, EntityReference to) {
+    LineageDomainCoordinator.lockEdgeWrite(from.getId(), to.getId());
+    if (isDomainPair(from, to)) {
+      LineageDomainCoordinator.lockDomainPairs(List.of(new DomainPair(from.getId(), to.getId())));
+    }
+  }
+
+  /** Locks the pairs an edge between these ends counts into, before their rollups are read. */
+  private static void lockDomainPairsRead(
+      EntityInterface<?> fromEntity,
+      List<EntityReference> fromDomains,
+      List<EntityReference> toDomains) {
+    LineageDomainCoordinator.lockDomainPairs(domainPairs(fromDomains, toDomains));
+    LineageDomainCoordinator.reach(
+        LineageDomainCoordinator.Stage.LINEAGE_DOMAINS_READ, fromEntity.getId());
+  }
+
+  private static boolean isDomainPair(EntityReference from, EntityReference to) {
+    return Entity.DOMAIN.equals(from.getType()) && Entity.DOMAIN.equals(to.getType());
+  }
+
+  /** The distinct pairs of different domains an edge between these ends counts into. */
+  private static List<DomainPair> domainPairs(
+      List<EntityReference> fromDomains, List<EntityReference> toDomains) {
+    List<DomainPair> pairs = new ArrayList<>();
+    for (EntityReference fromDomain : fromDomains) {
+      for (EntityReference toDomain : toDomains) {
+        if (fromDomain != null
+            && toDomain != null
+            && !fromDomain.getId().equals(toDomain.getId())) {
+          pairs.add(new DomainPair(fromDomain.getId(), toDomain.getId()));
+        }
+      }
+    }
+    return pairs;
+  }
+
+  /**
+   * An end's domains are read from the database: under the lock, a domain write that just committed
+   * may not have evicted the cached copy yet, and what is read in this transaction must not be cached.
+   */
+  private static EntityInterface<?> readFresh(EntityReference ref, String fields) {
+    try (FreshReadScope.Handle freshRead = FreshReadScope.enter();
+        EntityCacheBypass.Handle cacheBypass = EntityCacheBypass.skip()) {
+      return Entity.getEntity(ref.getType(), ref.getId(), fields, Include.ALL);
+    }
+  }
+
+  private static void invalidateCachedEdgeAfterCommit(EntityReference from, EntityReference to) {
+    LineageUtil.runAfterCommit(
+        () -> {
+          var cachedLineage = org.openmetadata.service.cache.CacheBundle.getCachedLineage();
+          if (cachedLineage != null) {
+            cachedLineage.invalidateEdge(from.getId(), to.getId());
+          }
+        },
+        to);
   }
 
   public static RelationshipRef buildEntityRefLineage(EntityReference entityRef) {
@@ -1310,47 +1407,21 @@ public class LineageRepository {
       String fromEntity, String fromFQN, String toEntity, String toFQN, String deletedBy) {
     EntityReference from = Entity.getEntityReferenceByName(fromEntity, fromFQN, Include.ALL);
     EntityReference to = Entity.getEntityReferenceByName(toEntity, toFQN, Include.ALL);
-    CollectionDAO.EntityRelationshipObject relationshipObject =
-        dao.relationshipDAO().getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
-    // Finally, delete lineage relationship
-    if (!nullOrEmpty(relationshipObject)) {
-      // Finally, delete lineage relationship
-      boolean result =
-          deleteLineageRelationshipWithRetry(from.getId(), from.getType(), to.getId(), to.getType())
-              > 0;
-      LineageDetails lineageDetails =
-          JsonUtils.readValue(relationshipObject.getJson(), LineageDetails.class);
-      deleteLineageFromSearch(from, to, lineageDetails);
-
-      // Remove lineage from RDF
-      if (RdfUpdater.isEnabled()) {
-        EntityRelationship lineageRelationship =
-            new EntityRelationship()
-                .withFromEntity(from.getType())
-                .withFromId(from.getId())
-                .withToEntity(to.getType())
-                .withToId(to.getId())
-                .withRelationshipType(Relationship.UPSTREAM);
-        RdfUpdater.removeRelationship(lineageRelationship);
-      }
-
-      if (result) {
-        cleanUpExtendedLineage(from, to, lineageDetails);
-        // Direct invalidation of cached lineage rooted at either endpoint of the removed edge.
-        var cachedLineage = org.openmetadata.service.cache.CacheBundle.getCachedLineage();
-        if (cachedLineage != null) {
-          cachedLineage.invalidateEdge(from.getId(), to.getId());
-        }
-        emitLineageChangeEvent(
-            EventType.ENTITY_LINEAGE_DELETED, from, to, lineageDetails, deletedBy);
-      }
-      return result;
-    }
-    return false;
+    return deleteEdge(from, to, deletedBy);
   }
 
   @Transaction
   public void deleteLineageBySource(UUID toId, String toEntity, String source, String deletedBy) {
+    LineageWriteTransaction.run(
+        () -> {
+          deleteLineageBySourceLocked(toId, toEntity, source, deletedBy);
+          return null;
+        });
+  }
+
+  private void deleteLineageBySourceLocked(
+      UUID toId, String toEntity, String source, String deletedBy) {
+    LineageDomainCoordinator.lockLineageWrites();
     List<CollectionDAO.EntityRelationshipObject> relations;
     if (source.equals(LineageDetails.Source.PIPELINE_LINEAGE.value())
         || source.equals(LineageDetails.Source.OPEN_LINEAGE.value())) {
@@ -1386,15 +1457,22 @@ public class LineageRepository {
     // Validate to entity
     EntityReference to =
         Entity.getEntityReferenceById(toEntity, UUID.fromString(toId), Include.ALL);
+    return deleteEdge(from, to, deletedBy);
+  }
 
+  private boolean deleteEdge(EntityReference from, EntityReference to, String deletedBy) {
+    return LineageWriteTransaction.run(() -> deleteEdgeLocked(from, to, deletedBy));
+  }
+
+  private boolean deleteEdgeLocked(EntityReference from, EntityReference to, String deletedBy) {
+    lockEdgeWrite(from, to);
     CollectionDAO.EntityRelationshipObject relationshipObject =
         dao.relationshipDAO().getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
 
     if (!nullOrEmpty(relationshipObject)) {
       // Finally, delete lineage relationship
       boolean result =
-          deleteLineageRelationshipWithRetry(from.getId(), from.getType(), to.getId(), to.getType())
-              > 0;
+          deleteLineageRelationship(from.getId(), from.getType(), to.getId(), to.getType()) > 0;
       LineageDetails lineageDetails =
           JsonUtils.readValue(relationshipObject.getJson(), LineageDetails.class);
       deleteLineageFromSearch(from, to, lineageDetails);
@@ -1414,10 +1492,7 @@ public class LineageRepository {
       if (result) {
         cleanUpExtendedLineage(from, to, lineageDetails);
         // Direct invalidation of cached lineage rooted at either endpoint of the removed edge.
-        var cachedLineage = org.openmetadata.service.cache.CacheBundle.getCachedLineage();
-        if (cachedLineage != null) {
-          cachedLineage.invalidateEdge(from.getId(), to.getId());
-        }
+        invalidateCachedEdgeAfterCommit(from, to);
         emitLineageChangeEvent(
             EventType.ENTITY_LINEAGE_DELETED, from, to, lineageDetails, deletedBy);
       }
@@ -1434,9 +1509,8 @@ public class LineageRepository {
         hasField(from, FIELD_DATA_PRODUCTS) && hasField(to, FIELD_DATA_PRODUCTS);
 
     String fields = getExtendedLineageFields(addService, addDomain, addDataProduct);
-    EntityInterface<?> fromEntity =
-        Entity.getEntity(from.getType(), from.getId(), fields, Include.ALL);
-    EntityInterface<?> toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
+    EntityInterface<?> fromEntity = readFresh(from, fields);
+    EntityInterface<?> toEntity = readFresh(to, fields);
 
     cleanUpServiceLineage(fromEntity, toEntity, lineageDetails);
     cleanupListLineage(fromEntity, toEntity, FIELD_DOMAINS, EntityInterface<?>::getDomains);
@@ -1502,6 +1576,9 @@ public class LineageRepository {
 
     List<EntityReference> fromRefs = listOrEmpty(getter.apply(fromEntity));
     List<EntityReference> toRefs = listOrEmpty(getter.apply(toEntity));
+    if (FIELD_DOMAINS.equals(field)) {
+      lockDomainPairsRead(fromEntity, fromRefs, toRefs);
+    }
 
     for (EntityReference fromRef : fromRefs) {
       for (EntityReference toRef : toRefs) {
@@ -1541,8 +1618,7 @@ public class LineageRepository {
     LineageDetails lineageDetails = JsonUtils.readValue(relation.getJson(), LineageDetails.class);
     final int assetEdges = nullOrDefault(lineageDetails.getAssetEdges(), 0);
     if (assetEdges - 1 < 1) {
-      deleteLineageRelationshipWithRetry(
-          fromRef.getId(), fromRef.getType(), toRef.getId(), toRef.getType());
+      deleteLineageRelationship(fromRef.getId(), fromRef.getType(), toRef.getId(), toRef.getType());
       deleteLineageFromSearch(fromRef, toRef, lineageDetails);
     } else {
       lineageDetails.withAssetEdges(assetEdges - 1);
@@ -1570,12 +1646,12 @@ public class LineageRepository {
     }
   }
 
-  private int deleteLineageRelationshipWithRetry(
+  // The enclosing lineage write retries a deadlock as a whole; retrying one statement of a
+  // transaction the database already rolled back would commit a fragment of it.
+  private int deleteLineageRelationship(
       UUID fromId, String fromEntity, UUID toId, String toEntity) {
-    return DeadlockRetry.execute(
-        () ->
-            dao.relationshipDAO()
-                .delete(fromId, fromEntity, toId, toEntity, Relationship.UPSTREAM.ordinal()));
+    return dao.relationshipDAO()
+        .delete(fromId, fromEntity, toId, toEntity, Relationship.UPSTREAM.ordinal());
   }
 
   private void processDeletedRelations(
@@ -1607,6 +1683,14 @@ public class LineageRepository {
 
   private void deleteLineageFromSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    if (isDomainPair(fromEntity, toEntity)) {
+      LineageUtil.syncLineageEdgeToSearch(fromEntity, toEntity);
+    } else {
+      LineageUtil.runAfterCommit(() -> removeLineageFromSearch(fromEntity, toEntity), toEntity);
+    }
+  }
+
+  private void removeLineageFromSearch(EntityReference fromEntity, EntityReference toEntity) {
     String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
     try {
       searchClient.updateChildren(
@@ -1793,6 +1877,29 @@ public class LineageRepository {
       JsonPatch patch,
       String updatedBy,
       Consumer<EntityReference> authorizeNewlyLinkedPipeline) {
+    return LineageWriteTransaction.run(
+        () ->
+            patchLineageEdgeLocked(
+                fromEntity,
+                fromId,
+                toEntity,
+                toId,
+                patch,
+                updatedBy,
+                authorizeNewlyLinkedPipeline));
+  }
+
+  private Response patchLineageEdgeLocked(
+      String fromEntity,
+      UUID fromId,
+      String toEntity,
+      UUID toId,
+      JsonPatch patch,
+      String updatedBy,
+      Consumer<EntityReference> authorizeNewlyLinkedPipeline) {
+    lockEdgeWrite(
+        new EntityReference().withId(fromId).withType(fromEntity),
+        new EntityReference().withId(toId).withType(toEntity));
     EntityReference from = Entity.getEntityReferenceById(fromEntity, fromId, Include.NON_DELETED);
     EntityReference to = Entity.getEntityReferenceById(toEntity, toId, Include.NON_DELETED);
     String json = dao.relationshipDAO().getRelation(fromId, toId, Relationship.UPSTREAM.ordinal());

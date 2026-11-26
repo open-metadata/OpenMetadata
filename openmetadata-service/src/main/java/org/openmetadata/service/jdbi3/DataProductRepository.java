@@ -95,6 +95,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.EntityWithType;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.IntakeFormValidator;
+import org.openmetadata.service.util.LineageDomainCoordinator;
 import org.openmetadata.service.util.LineageDomainInheritors;
 import org.openmetadata.service.util.LineageDomainRollups;
 import org.openmetadata.service.util.LineageDomainRollups.DomainMove;
@@ -262,6 +263,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
    */
   public void detachFromDeletingDomains(
       UUID dataProductId, List<UUID> deletingDomainIds, String updatedBy) {
+    // Before the domains are read, so no lineage write counts under the ones being removed.
+    LineageDomainCoordinator.lockDomainMoves();
     DataProduct original = loadForDomainDetach(dataProductId);
     List<EntityReference> originalDomains = listOrEmpty(original.getDomains());
     removeDomainContainment(dataProductId, deletingDomainIds);

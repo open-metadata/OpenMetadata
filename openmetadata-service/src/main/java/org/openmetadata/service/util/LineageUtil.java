@@ -8,6 +8,7 @@ import static org.openmetadata.service.jdbi3.LineageRepository.getDocumentUnique
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,6 +37,8 @@ import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.lineage.LineageSceneCache;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.openmetadata.service.search.SearchRepository;
 
 @Slf4j
 public class LineageUtil {
@@ -52,6 +55,10 @@ public class LineageUtil {
       new ThreadLocal<>();
 
   private static final String ROOT_ID_FIELD = "id";
+  private static final String UPSTREAM_LINEAGE_DOC_UNIQUE_ID = "upstreamLineage.docUniqueId";
+  // A sync writes again only after a later commit changed the row; more than this means one keeps
+  // landing, and its own sync writes the newer row.
+  private static final int MAX_EDGE_SYNC_WRITES = 3;
 
   /** Source fields a lineage root lookup reads: the root's identity and the FQN keying the hits. */
   public static final List<String> ROOT_SOURCE_FIELDS =
@@ -135,6 +142,117 @@ public class LineageUtil {
       deferred.add(new DeferredLineageEsWrite(esWrite, toEntity));
     } else {
       esWrite.run();
+    }
+  }
+
+  /**
+   * Runs {@code searchWrite} after the open deferral scope's transaction commits, or now when none
+   * is open. {@code toEntity} is the entity whose document is enqueued for a retry if it fails.
+   */
+  public static void runAfterCommit(Runnable searchWrite, EntityReference toEntity) {
+    deferOrRun(searchWrite, toEntity);
+  }
+
+  /**
+   * Runs captured lineage search writes, enqueuing the document of any that fails to the search
+   * index retry queue: the database rows they mirror are already committed.
+   */
+  public static void runDeferred(List<DeferredLineageEsWrite> writes) {
+    for (DeferredLineageEsWrite write : writes) {
+      try {
+        write.run();
+      } catch (RuntimeException e) {
+        enqueueRetry(write.toEntity(), e);
+      }
+    }
+  }
+
+  private static void enqueueRetry(EntityReference toEntity, RuntimeException failure) {
+    LOG.warn("Deferred lineage search write failed for {}; enqueuing retry", toEntity, failure);
+    if (toEntity != null) {
+      SearchIndexRetryQueue.enqueue(
+          toEntity.getId() == null ? null : toEntity.getId().toString(),
+          toEntity.getFullyQualifiedName(),
+          toEntity.getType(),
+          SearchIndexRetryQueue.failureReason("lineage", failure));
+    }
+  }
+
+  /**
+   * Makes the search copy of the edge {@code from -> to} match the stored row, reading the row when
+   * the write runs, after commit, never the value the writer's transaction computed. Two rollup
+   * writers commit in lock order, but their syncs can still interleave as read A, read B, write B,
+   * write A, which leaves A's older read in search. So each sync reads the row again after its
+   * write and writes again while it differs: the last sync to write then read a row no later commit
+   * changed. Both writes are synchronous, so they land in the order they are made.
+   * ADR:2026-11-26-domain-lineage-rollup-writers-lock-guard-rows-in-one-order
+   */
+  public static void syncLineageEdgeToSearch(EntityReference from, EntityReference to) {
+    deferOrRun(() -> syncOrEnqueueRetry(from, to), to);
+  }
+
+  // The row is committed whatever search does, so a failed sync must not fail the write that made
+  // it: a write path that runs it inline would report the stored change as failed.
+  private static void syncOrEnqueueRetry(EntityReference from, EntityReference to) {
+    try {
+      writeStoredEdgeToSearch(from, to);
+    } catch (RuntimeException e) {
+      enqueueRetry(to, e);
+    }
+  }
+
+  private static void writeStoredEdgeToSearch(EntityReference from, EntityReference to) {
+    String written;
+    String stored = storedEdgeJson(from, to);
+    int writes = 0;
+    do {
+      writeEdgeToSearch(from, to, stored);
+      written = stored;
+      stored = storedEdgeJson(from, to);
+      writes++;
+    } while (!Objects.equals(written, stored) && writes < MAX_EDGE_SYNC_WRITES);
+    invalidateLineageCaches(from, to);
+  }
+
+  /** The stored row's lineage json, or null when no row exists. */
+  private static String storedEdgeJson(EntityReference from, EntityReference to) {
+    CollectionDAO.EntityRelationshipObject stored =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
+    return stored == null ? null : stored.getJson();
+  }
+
+  private static void writeEdgeToSearch(
+      EntityReference from, EntityReference to, String storedJson) {
+    if (storedJson == null) {
+      removeLineageFromSearchNow(from, to);
+    } else {
+      doAddLineageToSearch(from, to, LineageDomainRollups.detailsOf(storedJson));
+    }
+  }
+
+  // The synchronous form of doDeleteLineageFromSearch, on the index the add writes to: that one
+  // starts a background task over every index, which a later add on the same document could
+  // precede.
+  private static void removeLineageFromSearchNow(EntityReference from, EntityReference to) {
+    String uniqueValue = getDocumentUniqueId(from, to);
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    String indexName =
+        searchRepository.getWriteIndexName(searchRepository.getIndexMapping(to.getType()));
+    try {
+      searchRepository
+          .getSearchClient()
+          .updateChildren(
+              List.of(indexName),
+              UPSTREAM_LINEAGE_DOC_UNIQUE_ID,
+              List.of(uniqueValue),
+              new ImmutablePair<>(
+                  REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
+    } catch (IOException e) {
+      throw new SearchException(
+          String.format(
+              "Could not remove lineage edge %s from search: %s", uniqueValue, e.getMessage()));
     }
   }
 

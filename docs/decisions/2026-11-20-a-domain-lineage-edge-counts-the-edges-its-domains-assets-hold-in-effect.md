@@ -5,7 +5,8 @@
   inheritors in the write's transaction); v3 2026-11-25 (review: lineage ends are every
   domain-bearing type, discovery counts distinct ids under a cap, a rollup write invalidates the
   lineage caches, and a manual row keeps its source when its last asset edge leaves); v4 2026-11-26
-  (the repair and the Postgres prefix indexes move to the unreleased 2.1.2)
+  (the repair and the Postgres prefix indexes move to the unreleased 2.1.2); v5 2026-11-26 (rollup
+  writers serialize on guard rows)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `DomainLineageRefcountIT`, `DomainLineageInheritanceIT`, `DomainLineageRebuildIT`,
   `LineageDomainRollupsTest`, `LineageDomainInheritorsTest`, `MigrationArchitectureTest`
@@ -86,12 +87,12 @@ rollup divergence, needs the same change in `LineageRepository`.
   two moved ends counts once. It runs on the updater's baseline pass, in the CSV batch flush and in
   a data product's domain move (containers can be its assets).
 - **In the same transaction, not after commit.** The rollups commit with the domain rows they
-  follow. That does not isolate them from other rollup writers: every writer (`LineageRepository`
-  on an edge write or delete, the move) reads the rollup row without a lock and writes it back with
-  an upsert, so an edge write racing a container's move can overwrite the move's delta with a count
-  it read before the move, and it counts its new edge under the domains it read. The rebuild is the
-  backstop; making it exact would need `SELECT … FOR UPDATE` in every writer, which this does not
-  add. A post-commit job would be worse, even moving only the edges it snapshotted in the
+  follow. Until v5 that did not isolate them from other rollup writers: every writer
+  (`LineageRepository` on an edge write or delete, the move) read the rollup row without a lock and
+  wrote it back with an upsert, so an edge write racing a container's move could overwrite the
+  move's delta with a count it read before the move. The writers now serialize on guard rows
+  (ADR:2026-11-26-domain-lineage-rollup-writers-lock-guard-rows-in-one-order). A post-commit job
+  would be worse, even moving only the edges it snapshotted in the
   transaction: counts stop at zero (`LineageRepository` skips the decrement of a missing row, the
   move deletes a row at 0), so an edge deleted between commit and job loses its decrement on the
   new pair and the job's increment then leaves a count no edge stands for; and two jobs whose edges
@@ -156,3 +157,10 @@ rollup divergence, needs the same change in `LineageRepository`.
   (`DomainLineageDiscoveryIndexes`), which checks `pg_index.indisvalid` first and rebuilds an
   invalid one, per ADR:2026-10-22-guarded-index-ddl-runs-from-a-java-data-migration. Discovery
   runs only on a server that has run 2.1.2, so the index exists before any query uses it.
+
+## Amendment — 2026-11-26: rollup writers serialize
+
+A domain write that moves rollups and a lineage edge write no longer race: they lock rows of
+`domain_lineage_guard` in one order, so a count is never written from a read the other writer has
+since changed, including when the pair's rollup row does not exist yet. The rule, its isolation
+level and its cost are ADR:2026-11-26-domain-lineage-rollup-writers-lock-guard-rows-in-one-order.
