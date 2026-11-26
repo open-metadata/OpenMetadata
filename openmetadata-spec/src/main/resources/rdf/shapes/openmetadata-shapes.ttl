@@ -96,7 +96,7 @@ om:ColumnShape a sh:NodeShape ;
     sh:property [
         sh:path om:constraint ;
         sh:datatype xsd:string ;
-        sh:in ("NULL" "NOT_NULL" "UNIQUE" "PRIMARY_KEY") ;
+        sh:in ("NULL" "NOT_NULL" "UNIQUE" "NOT_NULL_UNIQUE" "PRIMARY_KEY") ;
         sh:message "Column constraint must be one of the allowed values"@en ;
     ] .
 

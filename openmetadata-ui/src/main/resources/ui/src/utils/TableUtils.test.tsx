@@ -2780,9 +2780,9 @@ describe('getConstraintIcon', () => {
       </>
     );
 
-    expect(screen.getByTestId('constraint-icon-not-null-unique')).toHaveAccessibleName(
-      'label.not-null + label.unique'
-    );
+    expect(
+      screen.getByTestId('constraint-icon-not-null-unique')
+    ).toHaveAccessibleName('label.not-null-unique');
   });
 
   it('preserves a column constraint alongside composite membership', () => {

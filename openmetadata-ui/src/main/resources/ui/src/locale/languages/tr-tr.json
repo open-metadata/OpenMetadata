@@ -2540,6 +2540,7 @@
     "not-linked-to-any-data-asset": "Hiçbir veri varlığına bağlı değil",
     "not-mapped": "Eşlenmedi",
     "not-null": "Boş Değil",
+    "not-null-unique": "Boş Değil + Benzersiz",
     "not-processed": "İşlenmedi",
     "not-ran": "Çalıştırılmadı",
     "not-run": "Çalıştırılmaz",

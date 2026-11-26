@@ -117,7 +117,7 @@ const CONSTRAINT_ICON_CONFIG: Record<string, ConstraintIconConfig> = {
     dataTestId: 'not-null',
   },
   [ConstraintTypes.NOT_NULL_UNIQUE]: {
-    getTitle: () => `${t('label.not-null')} + ${t('label.unique')}`,
+    getTitle: () => t('label.not-null-unique'),
     icon: ConstraintUnique,
     deletedIcon: ConstraintUniqueRemoved,
     dataTestId: 'not-null-unique',

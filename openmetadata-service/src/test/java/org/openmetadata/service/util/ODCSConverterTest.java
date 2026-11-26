@@ -1128,10 +1128,7 @@ class ODCSConverterTest {
     contract.setEntityStatus(EntityStatus.APPROVED);
 
     EntityReference entity =
-        new EntityReference()
-            .withId(UUID.randomUUID())
-            .withType("table")
-            .withName("orders");
+        new EntityReference().withId(UUID.randomUUID()).withType("table").withName("orders");
     contract.setEntity(entity);
     contract.setSchema(
         List.of(
@@ -1148,8 +1145,7 @@ class ODCSConverterTest {
 
     DataContract reimported = ODCSConverter.fromODCS(exported, entity);
     assertEquals(1, reimported.getSchema().size());
-    assertEquals(
-        ColumnConstraint.NOT_NULL_UNIQUE, reimported.getSchema().get(0).getConstraint());
+    assertEquals(ColumnConstraint.NOT_NULL_UNIQUE, reimported.getSchema().get(0).getConstraint());
   }
 
   @Test

@@ -107,7 +107,9 @@ CREATE TABLE {SECOND_SCHEMA}.orders (
     code NVARCHAR(20) NOT NULL,
     region NVARCHAR(20) NOT NULL,
     ref NVARCHAR(20) NOT NULL,
+    alt_code NVARCHAR(20) NULL,
     CONSTRAINT uq_orders_code UNIQUE (code),
+    CONSTRAINT uq_orders_alt_code UNIQUE (alt_code),
     CONSTRAINT uq_orders_region_ref UNIQUE (region, ref)
 );
 GO

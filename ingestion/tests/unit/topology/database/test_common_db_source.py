@@ -944,11 +944,7 @@ def test_non_null_unique_foreign_key_is_one_to_one(foreign_constraint, expected)
     from metadata.utils.constraints import get_relationship_type
 
     fk = {"constrained_columns": ["target_id"], "referred_columns": ["id"]}
-    source_columns = [
-        Column(name="target_id", dataType=DataType.INT, constraint=foreign_constraint)
-    ]
-    target_columns = [
-        Column(name="id", dataType=DataType.INT, constraint=Constraint.PRIMARY_KEY)
-    ]
+    source_columns = [Column(name="target_id", dataType=DataType.INT, constraint=foreign_constraint)]
+    target_columns = [Column(name="id", dataType=DataType.INT, constraint=Constraint.PRIMARY_KEY)]
 
     assert get_relationship_type(fk, target_columns, source_columns) == expected

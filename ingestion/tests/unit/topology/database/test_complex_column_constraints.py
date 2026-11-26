@@ -69,18 +69,19 @@ def test_single_column_unique_constraint_preserves_nullability():
         "nullable": True,
     }
 
-    assert SqlColumnHandlerMixin._get_column_constraints(
-        required_unique, set(), {"uniq_not_null"}
-    ) == Constraint.NOT_NULL_UNIQUE
-    assert SqlColumnHandlerMixin._get_column_constraints(
-        nullable_unique, set(), {"uniq_nullable"}
-    ) == Constraint.UNIQUE
-    assert SqlColumnHandlerMixin._get_column_constraints(
-        {"name": "plain_not_null", "nullable": False}, set(), set()
-    ) == Constraint.NOT_NULL
+    assert (
+        SqlColumnHandlerMixin._get_column_constraints(required_unique, set(), {"uniq_not_null"})
+        == Constraint.NOT_NULL_UNIQUE
+    )
+    assert SqlColumnHandlerMixin._get_column_constraints(nullable_unique, set(), {"uniq_nullable"}) == Constraint.UNIQUE
+    assert (
+        SqlColumnHandlerMixin._get_column_constraints({"name": "plain_not_null", "nullable": False}, set(), set())
+        == Constraint.NOT_NULL
+    )
 
 
 def test_primary_key_precedence_remains_unchanged():
-    assert SqlColumnHandlerMixin._get_column_constraints(
-        {"name": "id", "nullable": False}, {"id"}, {"id"}
-    ) == Constraint.PRIMARY_KEY
+    assert (
+        SqlColumnHandlerMixin._get_column_constraints({"name": "id", "nullable": False}, {"id"}, {"id"})
+        == Constraint.PRIMARY_KEY
+    )
