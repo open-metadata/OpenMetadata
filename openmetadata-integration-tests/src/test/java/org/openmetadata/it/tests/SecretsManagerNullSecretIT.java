@@ -1048,8 +1048,10 @@ public class SecretsManagerNullSecretIT {
     assertFalse(vault.getSecretsMap().containsKey(previousName));
   }
 
-  @Test
-  void clearingARenamedFreshReferenceRetainsItUntilItsLastAliasCommits(TestNamespace ns) {
+  @ParameterizedTest
+  @ValueSource(strings = {"", "omit", "replace"})
+  void clearingARenamedFreshReferenceRetainsItUntilItsLastAliasCommits(
+      String change, TestNamespace ns) {
     McpService service = createMcpWithFreshReference(ns);
     Map<String, String> refs = mcpBotReferences(service.getId().toString());
     String sharedRef = refs.get("alpha");
@@ -1072,9 +1074,20 @@ public class SecretsManagerNullSecretIT {
     repository.storeEntity(renamed, true);
     assertEquals("second-key", vault.getSecretsMap().get(sharedName));
 
+    String externalName = "operator-managed/" + service.getId();
+    String externalRef = SecretsManager.SECRET_FIELD_PREFIX + externalName;
+    vault.upsertSecret(externalName, "operator-test-value");
+    String replacement =
+        switch (change) {
+          case "omit" -> null;
+          case "replace" -> externalRef;
+          default -> "";
+        };
     renamed.setConnection(
         mcpDirectConnection(
-            mcpServer("beta", refs.get("beta")), mcpServer("gamma", ""), mcpServer("delta", "")));
+            mcpServer("beta", refs.get("beta")),
+            mcpServer("gamma", ""),
+            mcpServer("delta", replacement)));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -1083,14 +1096,20 @@ public class SecretsManagerNullSecretIT {
                   repository.storeEntity(renamed, true);
                   throw new IllegalStateException("Reject clear before commit");
                 }));
+    RequestEntityCache.clear();
+    assertEquals(sharedRef, mcpBotReferences(service.getId().toString()).get("delta"));
     assertEquals("second-key", vault.getSecretsMap().get(sharedName));
 
     repository.storeEntity(renamed, true);
     RequestEntityCache.clear();
     Map<String, String> committedRefs = mcpBotReferences(service.getId().toString());
-    assertNull(committedRefs.get("delta"));
+    assertEquals("replace".equals(change) ? externalRef : null, committedRefs.get("delta"));
     assertFalse(vault.getSecretsMap().containsKey(sharedName));
     assertEquals("first-key", vault.getSecretValue(committedRefs.get("beta")));
+    SdkClients.adminClient()
+        .mcpServices()
+        .delete(service.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    assertEquals("operator-test-value", vault.getSecretsMap().get(externalName));
   }
 
   private static McpService createMcpWithFreshReference(TestNamespace ns) {

@@ -304,6 +304,8 @@ class SecretMapEntriesExternalStoreTest {
     assertEquals(2, secretsManager.getSecretsMap().size());
 
     McpConnection updated = encryptMcp(List.of(created.getServers().getFirst()), created);
+    ownership.clean(mcpRoot());
+    assertEquals(2, secretsManager.getSecretsMap().size());
     ownership.removeOwner(owner, secretsManager.secretInventory(updated, mcpRoot()));
     ownership.clean(mcpRoot());
 
@@ -418,6 +420,34 @@ class SecretMapEntriesExternalStoreTest {
     ownership.removeOwner(owner, secretsManager.secretInventory(cleared, mcpRoot()));
     ownership.clean(mcpRoot());
     assertEquals(Map.of(freshName, "external-key"), secretsManager.getSecretsMap());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void legacyGeneratedScalarsSurviveUntilTheLastReferencingOwnerReleasesThem(boolean compact) {
+    String originalSlot = mcpRoot() + "/servers/alpha/apikey";
+    String base =
+        compact ? mcpRoot() + "/" + secretsManager.compactFieldTag(originalSlot) : originalSlot;
+    String name = base + "/" + SecretKeyEncoding.freshSuffix();
+    String reference = SecretsManager.SECRET_FIELD_PREFIX + name;
+    secretsManager.upsertSecret(name, "synthetic-legacy-value");
+    McpConnection original =
+        new McpConnection().withServers(List.of(mcpServer("renamed", reference)));
+    McpConnection plaintext =
+        new McpConnection().withServers(List.of(mcpServer("renamed", "synthetic-legacy-value")));
+    SecretInventory saved = secretsManager.secretInventory(original, mcpRoot());
+    // Prior ledgers kept a generated key written by this owner in its scalar list.
+    ownership.recordWrite(owner, null, secretsManager.secretInventory(plaintext, mcpRoot()), saved);
+    UUID aliasOwner = UUID.randomUUID();
+    ownership.recordWrite(aliasOwner, null, saved, saved);
+
+    encryptMcp(List.of(mcpServer("renamed", null)), original);
+    ownership.clean(mcpRoot());
+    assertEquals("synthetic-legacy-value", secretsManager.getSecretValue(reference));
+
+    ownership.removeOwner(aliasOwner, saved);
+    ownership.clean(mcpRoot());
+    assertFalse(secretsManager.getSecretsMap().containsKey(name));
   }
 
   @ParameterizedTest

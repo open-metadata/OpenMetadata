@@ -125,21 +125,21 @@ public final class SecretMapOwnership {
     private final T original;
     private final Set<String> ownedNames;
     private final Consumer<String> onFreshCreate;
-    private final Set<String> retiredSecrets;
+    private final Set<String> createdNames;
 
     private WriteContext(
         T original,
         Set<String> ownedNames,
         Consumer<String> onFreshCreate,
-        Set<String> retiredSecrets) {
+        Set<String> createdNames) {
       this.original = original;
       this.ownedNames = ownedNames;
       this.onFreshCreate = onFreshCreate;
-      this.retiredSecrets = retiredSecrets;
+      this.createdNames = createdNames;
     }
 
     static <T> WriteContext<T> untracked(T original) {
-      return new WriteContext<>(original, Set.of(), name -> {}, Set.of());
+      return new WriteContext<>(original, Set.of(), name -> {}, new HashSet<>());
     }
 
     public T original() {
@@ -147,7 +147,7 @@ public final class SecretMapOwnership {
     }
 
     public <U> WriteContext<U> withOriginal(U convertedOriginal) {
-      return new WriteContext<>(convertedOriginal, ownedNames, onFreshCreate, retiredSecrets);
+      return new WriteContext<>(convertedOriginal, ownedNames, onFreshCreate, createdNames);
     }
 
     boolean owns(String canonicalName) {
@@ -156,15 +156,7 @@ public final class SecretMapOwnership {
 
     void freshCreated(String name) {
       onFreshCreate.accept(name);
-    }
-
-    /** Commit cleanup rechecks all surviving references before deleting a retired value. */
-    boolean retireIfOwned(String canonicalName) {
-      boolean owned = owns(canonicalName);
-      if (owned) {
-        retiredSecrets.add(canonicalName);
-      }
-      return owned;
+      createdNames.add(name);
     }
   }
 
@@ -190,14 +182,27 @@ public final class SecretMapOwnership {
     }
     state.owned().addAll(stored.writtenSecretsFor(input.writtenMaps()));
     scalars.addAll(stored.writtenSecretsFor(input.writtenScalars()));
-    Set<String> retiredScalars = new HashSet<>();
-    for (String scalar : scalars) {
-      if (context.retiredSecrets.contains(manager.canonicalSecretName(scalar))) {
-        retiredScalars.add(scalar);
+    // Generated scalar keys use the same post-commit reference cleanup as map entries. Older
+    // ledgers kept them among the owner's deterministic scalars until hard deletion.
+    Set<String> generatedNames = new HashSet<>();
+    context.createdNames.forEach(name -> generatedNames.add(manager.canonicalSecretName(name)));
+    if (original != null) {
+      original
+          .referencesBySlot()
+          .forEach(
+              (slot, ref) -> {
+                if (manager.isGeneratedListReference(original.root(), slot, ref)) {
+                  generatedNames.add(manager.canonicalSecretName(ref));
+                }
+              });
+    }
+    for (var iterator = scalars.iterator(); iterator.hasNext(); ) {
+      String name = iterator.next();
+      if (generatedNames.contains(manager.canonicalSecretName(name))) {
+        state.owned().add(name);
+        iterator.remove();
       }
     }
-    scalars.removeAll(retiredScalars);
-    state.owned().addAll(retiredScalars);
     state.owners().put(owner, new Owner(stored.references(), scalars));
     save(stored.root(), state);
   }

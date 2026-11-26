@@ -62,6 +62,7 @@ import org.openmetadata.service.util.ReflectionUtil;
 @Slf4j
 public abstract class SecretsManager {
   public static final String SECRET_FIELD_PREFIX = "secret:";
+  private static final Pattern COMPACT_FIELD_TAG = Pattern.compile("f[0-9a-f]{16}");
 
   public record SecretsConfig(
       String clusterName, String prefix, List<String> tags, Parameters parameters) {}
@@ -1285,6 +1286,25 @@ public abstract class SecretsManager {
     return "f" + DigestUtils.sha256Hex(canonicalSecretName(fieldSecretId)).substring(0, 16);
   }
 
+  /** Recognizes a generated id after a rename. Ownership is checked separately against the ledger. */
+  final boolean isGeneratedListReference(String root, String slot, String ref) {
+    String separator = secretsIdConfig.separator();
+    String canonical = canonicalSecretName(ref);
+    String namespace = canonicalSecretName(root) + separator;
+    String fieldSlot = canonicalSecretName(slot);
+    int last = canonical.lastIndexOf(separator);
+    if (!canonical.startsWith(namespace)
+        || canonical.equals(fieldSlot)
+        || last < namespace.length()
+        || !SecretKeyEncoding.isFreshSuffix(canonical.substring(last + separator.length()))) {
+      return false;
+    }
+    String base = canonical.substring(0, last);
+    int field = fieldSlot.lastIndexOf(separator);
+    return (field >= 0 && base.endsWith(fieldSlot.substring(field)))
+        || COMPACT_FIELD_TAG.matcher(base.substring(namespace.length())).matches();
+  }
+
   private Optional<String> referencedSecretName(String fieldValue) {
     String value = Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue;
     return value != null && Boolean.TRUE.equals(isSecret(value))
@@ -1360,28 +1380,20 @@ public abstract class SecretsManager {
     }
 
     private Optional<String> selectExistingWriteId(String defaultSecretId) {
-      Optional<String> displaced = displacedReference(defaultSecretId);
-      if (displaced.isPresent()) {
-        String previous = displaced.get();
-        if (context.retireIfOwned(previous) && hasFreshSuffix(previous)) {
-          return Optional.empty();
-        }
+      Optional<String> previous = displacedReference(defaultSecretId);
+      if (previous
+          .filter(context::owns)
+          .filter(ref -> manager.isGeneratedListReference(root, defaultSecretId, ref))
+          .isPresent()) {
+        return Optional.empty();
       }
       return availableDefaultId(defaultSecretId);
     }
 
-    private boolean hasFreshSuffix(String canonicalName) {
-      String separator = manager.getSecretsIdConfig().separator();
-      int lastSeparator = canonicalName.lastIndexOf(separator);
-      return lastSeparator >= 0
-          && SecretKeyEncoding.isFreshSuffix(
-              canonicalName.substring(lastSeparator + separator.length()));
-    }
-
     private Optional<String> secretIdToDeleteOnClear(String defaultSecretId) {
-      Optional<String> displaced = displacedReference(defaultSecretId);
-      displaced.ifPresent(context::retireIfOwned);
-      return displaced.isPresent() ? Optional.empty() : availableDefaultId(defaultSecretId);
+      return displacedReference(defaultSecretId).isPresent()
+          ? Optional.empty()
+          : availableDefaultId(defaultSecretId);
     }
 
     /** A renamed slot can still hold a reference allocated under its old name. */

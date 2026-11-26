@@ -85,7 +85,7 @@ shifted element still referenced.
 
 When a list slot contains a committed, ledger-owned fresh reference, stage a replacement under
 a new id. A failed entity write discards the staged value and
-preserves the committed reference and its value. Clearing or replacing an owned non-default
-reference retires it by its recorded id, including after a rename. After commit, cleanup deletes the retired value
-only when the updated ownership ledger has no remaining reference to it. Passing through a
-reference unchanged keeps its id.
+preserves the committed reference and its value. The ledger records generated keys for reference-based
+cleanup, including keys written before this change. Whether an edit clears, omits or replaces
+a renamed key, cleanup checks all remaining references after commit before deleting its value.
+Passing through a reference unchanged keeps its id.
