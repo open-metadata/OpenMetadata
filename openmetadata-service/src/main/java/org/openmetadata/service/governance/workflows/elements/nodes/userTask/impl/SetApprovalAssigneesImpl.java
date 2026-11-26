@@ -160,15 +160,13 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       // (DAR, GlossaryApproval, RequestApproval) publish the requester as `taskUpdatedBy`; entity
       // workflows (glossary term / tag approval, certification changes, …) publish it as the
       // global `updatedBy`. Both are checked because each variable is authoritative for its own
-      // workflow family — reading only one silently leaves the other's requester on the list. For
-      // non-workflow-managed tasks only, keep the requester when no one else is available so the
-      // task stays actionable; workflow-managed tasks rely on the admin fallback below instead.
+      // workflow family — reading only one silently leaves the other's requester on the list. The
+      // requester is never given back their own approval, even when no one else is left: the task
+      // would be filed by them, and TaskAuthorPolicy denies a filer ResolveTask, so only an admin
+      // could act on it. An emptied list goes to the empty-assignee strategy below instead.
+      // ADR:2026-11-25-an-approval-never-goes-to-its-requester
       Set<String> requesterEntityLinks = resolveRequesterEntityLinks(varHandler, execution);
-      List<String> preRemovalAssignees = new ArrayList<>(assigneeList);
-      boolean removedRequester = assigneeList.removeAll(requesterEntityLinks);
-      if (removedRequester && assigneeList.isEmpty() && !workflowManagedTask) {
-        assigneeList.addAll(preRemovalAssignees);
-      }
+      assigneeList.removeAll(requesterEntityLinks);
 
       // Empty-assignee strategy: when nothing resolved (no reviewers/owners, or the only
       // assignee was the requester and was stripped above), apply the node's configured
@@ -176,7 +174,8 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       // self-approval can never happen. NONE keeps the default behavior.
       String emptyAssigneeStrategy =
           String.valueOf(assigneesConfig.getOrDefault("emptyAssigneeStrategy", "none"));
-      if (assigneeList.isEmpty() && "assignAdmins".equals(emptyAssigneeStrategy)) {
+      boolean assignAdmins = "assignAdmins".equals(emptyAssigneeStrategy);
+      if (assigneeList.isEmpty() && assignAdmins) {
         List<String> admins = resolveAdminAssignees();
         admins.removeAll(requesterEntityLinks);
         assigneeList.addAll(admins);
@@ -192,7 +191,9 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       execution.setVariable(
           assigneesVarNameExpr.getValue(execution).toString(), JsonUtils.pojoToJson(assigneeList));
 
-      boolean hasAssignees = workflowManagedTask || !assigneeList.isEmpty();
+      // An explicit admin fallback must never turn into implicit approval when no eligible
+      // admin remains (for example, the requester is the sole admin). Keep an open task.
+      boolean hasAssignees = workflowManagedTask || assignAdmins || !assigneeList.isEmpty();
       execution.setVariable("hasAssignees", hasAssignees);
 
       LOG.debug(
