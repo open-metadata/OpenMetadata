@@ -992,4 +992,85 @@ describe('BulkEditEntity', () => {
       expect(triggerExport).toHaveBeenCalled();
     });
   });
+
+  describe('Abort Reason Banner', () => {
+    const abortedValidationData: CSVImportResult = {
+      status: Status.Aborted,
+      abortReason: 'CSV file contains invalid data',
+      numberOfRowsProcessed: 0,
+    };
+
+    it('shows an error banner with the abort reason when validationData is aborted at the edit step', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        validationData: abortedValidationData,
+      });
+
+      expect(screen.getByTestId('bulk-edit-abort-reason')).toBeInTheDocument();
+      expect(screen.getByTestId('banner-message')).toHaveTextContent(
+        'CSV file contains invalid data'
+      );
+      expect(screen.getByTestId('banner-type')).toHaveTextContent('error');
+      expect(screen.getByTestId('banner-loading')).toHaveTextContent('false');
+    });
+
+    it('keeps the edit grid mounted alongside the abort banner', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        validationData: abortedValidationData,
+      });
+
+      expect(screen.getByTestId('data-grid')).toBeInTheDocument();
+      expect(screen.getByTestId('bulk-edit-abort-reason')).toBeInTheDocument();
+    });
+
+    it('keeps the cancel and next footer buttons enabled after an abort', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        validationData: abortedValidationData,
+        changedCellCount: 1,
+        changedCellKeysByRowId: { '0': ['col1'] },
+        changedRowCount: 1,
+      });
+
+      expect(
+        screen.getByRole('button', { name: 'label.cancel' })
+      ).not.toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: 'label.next' })
+      ).not.toBeDisabled();
+    });
+
+    it('hides the abort banner while a new validation is in progress', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        isValidating: true,
+        validationData: abortedValidationData,
+        changedCellCount: 1,
+        changedCellKeysByRowId: { '0': ['col1'] },
+        changedRowCount: 1,
+      });
+
+      expect(
+        screen.queryByTestId('bulk-edit-abort-reason')
+      ).not.toBeInTheDocument();
+    });
+
+    it('renders both the job and abort banners when an active job overlaps an abort reason', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        activeAsyncImportJob: {
+          jobId: 'test-job-123',
+          message: 'Processing...',
+          type: 'onValidate',
+        },
+        validationData: abortedValidationData,
+      });
+
+      const banners = screen.getAllByTestId('banner');
+
+      expect(banners).toHaveLength(2);
+      expect(screen.getByTestId('bulk-edit-abort-reason')).toBeInTheDocument();
+    });
+  });
 });

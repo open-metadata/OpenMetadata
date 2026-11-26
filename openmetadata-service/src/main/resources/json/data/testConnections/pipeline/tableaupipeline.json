@@ -8,7 +8,8 @@
            "description": "List all the Tableau Prep flows available to the user",
            "errorMessage": "Failed to fetch pipelines, please validate the credentials or validate if user has access to fetch Tableau Prep flows",
            "shortCircuit": true,
-           "mandatory": true
+           "mandatory": true,
+           "category": "ConnectionGate"
        },
        {
            "name": "GetRuns",

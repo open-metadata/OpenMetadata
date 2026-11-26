@@ -759,11 +759,10 @@ test.describe('Profile — Personal space permissions', PROFILE_TAGS, () => {
     // otherwise leak into browser.newPage().
     const { page, afterAction } = await performUserLogin(browser, denyUser);
 
-    // Scope the placeholder lookup: the "/" home route resolves to the gated
-    // /my-data page, so with the Profile modal open BOTH the page background and
-    // the modal dialog render a permission-error-placeholder. Default to the
-    // page for the routed steps (single placeholder); the modal step passes the
-    // dialog to disambiguate.
+    // Scope the placeholder lookup: with the Profile modal open over the gated
+    // inbox, BOTH the page background and the modal dialog render a
+    // permission-error-placeholder. Default to the page for the routed step
+    // (single placeholder); the modal step passes the dialog to disambiguate.
     //
     // The gate is a lazy chunk that renders a loader until its USER permission
     // fetch settles; on a contended runner that fetch can start seconds late,
@@ -776,16 +775,10 @@ test.describe('Profile — Personal space permissions', PROFILE_TAGS, () => {
     };
 
     try {
-      // Inbox and My Data are routed pages gated by the same PersonalSpaceGate.
-      for (const route of [
-        PERSONAL_SPACE_ROUTES.INBOX,
-        PERSONAL_SPACE_ROUTES.MY_DATA,
-      ]) {
-        await test.step(`${route} shows the permission error`, async () => {
-          await gotoPersonalSpace(page, route);
-          await expectGateError();
-        });
-      }
+      await test.step('Inbox shows the permission error', async () => {
+        await gotoPersonalSpace(page, PERSONAL_SPACE_ROUTES.INBOX);
+        await expectGateError();
+      });
 
       // Profile is modal-only; the gate replaces its content with the error.
       await test.step('Profile modal shows the permission error', async () => {
@@ -877,6 +870,8 @@ test.describe('Profile — Profile security', PROFILE_TAGS, () => {
 
     await test.step('Cancelling discards what was typed', async () => {
       await page.getByTestId('cancel-change-password-button').click();
+      await expect(page.getByTestId('unsaved-changes-popover')).toBeVisible();
+      await page.getByTestId('unsaved-changes-popover-confirm').click();
       await openChangePasswordForm(page);
       await expect(
         page.getByTestId('new-password-input').locator('input')

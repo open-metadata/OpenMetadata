@@ -431,6 +431,9 @@ export const installVisualData = async (
     if (
       path === 'users/loggedInUser' ||
       path === 'users/name/admin' ||
+      // Fixture entities record `visual_admin` as their updater; user cards
+      // resolve that login, so it is served as the same administrator.
+      path === 'users/name/visual_admin' ||
       path === 'users/00000000-0000-4000-8000-000000000999'
     ) {
       // Visual rendering must not depend on live account data or user-repository
@@ -1016,6 +1019,33 @@ export const installVisualData = async (
     }
     if (path === 'glossaryTerms/relationTypes/usage') {
       await route.fulfill({ json: [] });
+
+      return;
+    }
+    if (path === 'glossaryTerms/ontology/summary') {
+      // The read-only Ontology Explorer header reads these counts. The visual
+      // corpus has no term-to-term relations, so every term is isolated.
+      const terms =
+        state === 'empty'
+          ? []
+          : VISUAL_ENTITIES.filter(({ type }) => type === 'glossaryTerm').map(
+              ({ entity }) => entity
+            );
+      await route.fulfill({
+        json: {
+          totalTerms: terms.length,
+          totalRelations: 0,
+          isolatedTerms: terms.length,
+          connectedPercentage: 0,
+          isolatedPreview: terms.slice(0, 5).map((term) => ({
+            id: term.id,
+            name: term.name,
+            displayName: term.displayName,
+            fullyQualifiedName: term.fullyQualifiedName,
+          })),
+          paging: { total: terms.length },
+        },
+      });
 
       return;
     }
@@ -2003,7 +2033,7 @@ export const installVisualData = async (
     // Otherwise a typo such as user/columns looks like a valid empty table.
     const isColumnRead =
       childPath === 'columns' &&
-      ['tables', 'dashboard/datamodels'].includes(collection);
+      ['tables', 'dashboard/datamodels', 'topics'].includes(collection);
     const isSampleRead =
       childPath === 'sampleData' &&
       ['tables', 'topics', 'searchIndexes', 'containers'].includes(collection);
@@ -2185,7 +2215,12 @@ export const installVisualData = async (
       if (childPath === 'columns') {
         await route.fulfill({
           json: pageOf(
-            state === 'empty' ? [] : ((selected.columns ?? []) as unknown[])
+            state === 'empty'
+              ? []
+              : ((selected.columns ??
+                  (selected.messageSchema as { schemaFields?: unknown[] })
+                    ?.schemaFields ??
+                  []) as unknown[])
           ),
         });
 

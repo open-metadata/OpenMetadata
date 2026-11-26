@@ -13,7 +13,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
@@ -23,8 +23,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,13 +42,14 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.ApprovedGlossaryTermGuard.HeldTerm;
 import org.openmetadata.service.jdbi3.ApprovedGlossaryTermGuard.TaggedEntity;
+import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
- * The guard judges each target on its own: the term lookup and {@code tag_usage} are the
- * boundaries, so they are the only things stubbed.
+ * The guard judges each target on its own and holds back what it would not show: the term lookup
+ * and {@code tag_usage} are the boundaries, so they are the only things stubbed.
  */
 class ApprovedGlossaryTermGuardTest {
 
@@ -61,6 +64,8 @@ class ApprovedGlossaryTermGuardTest {
       new GlossaryTerm()
           .withFullyQualifiedName("Glossary.Customer")
           .withEntityStatus(EntityStatus.APPROVED);
+  private static final String DEPRECATED_HASH =
+      FullyQualifiedName.buildHash(DEPRECATED.getFullyQualifiedName());
 
   private MockedStatic<Entity> entity;
   private CollectionDAO.TagUsageDAO tagUsageDAO;
@@ -87,35 +92,31 @@ class ApprovedGlossaryTermGuardTest {
 
   @Test
   void aTermHeldOnOneColumnIsNewOnAnother() {
-    Map<String, String> rejections =
-        ApprovedGlossaryTermGuard.rejectionsByTarget(
+    Map<String, Set<String>> held =
+        ApprovedGlossaryTermGuard.heldTermHashesByTarget(
             Map.of(COLUMN_A, List.of(label(DEPRECATED)), COLUMN_B, List.of(label(DEPRECATED))),
             Map.of(COLUMN_A, List.of(label(DEPRECATED))));
 
-    assertEquals(
-        Map.of(
-            COLUMN_B,
-            CatalogExceptionMessage.glossaryTermNotApproved(
-                DEPRECATED.getFullyQualifiedName(), EntityStatus.DEPRECATED)),
-        rejections);
+    assertEquals(Map.of(COLUMN_B, Set.of(DEPRECATED_HASH)), held);
   }
 
   @Test
   void aTermTheTargetOnlyInheritsIsNewOnIt() {
     TagLabel inherited = label(DEPRECATED).withLabelType(LabelType.DERIVED);
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            ApprovedGlossaryTermGuard.checkNewlyApplied(
-                Map.of(COLUMN_A, List.of(label(DEPRECATED))),
-                Map.of(COLUMN_A, List.of(inherited))));
+    assertEquals(
+        Map.of(COLUMN_A, Set.of(DEPRECATED_HASH)),
+        ApprovedGlossaryTermGuard.heldTermHashesByTarget(
+            Map.of(COLUMN_A, List.of(label(DEPRECATED))), Map.of(COLUMN_A, List.of(inherited))));
   }
 
   @Test
   void aTermHeldInTheLoadedStateNeedsNoStoredRead() {
-    ApprovedGlossaryTermGuard.checkNewlyApplied(
-        Map.of(COLUMN_A, List.of(label(DEPRECATED))), Map.of(COLUMN_A, List.of(label(DEPRECATED))));
+    assertTrue(
+        ApprovedGlossaryTermGuard.heldTermHashesByTarget(
+                Map.of(COLUMN_A, List.of(label(DEPRECATED))),
+                Map.of(COLUMN_A, List.of(label(DEPRECATED))))
+            .isEmpty());
 
     verify(tagUsageDAO, never()).getTagsByTargetFQNHashes(anyList());
   }
@@ -125,14 +126,49 @@ class ApprovedGlossaryTermGuardTest {
     when(tagUsageDAO.getTagsByTargetFQNHashes(List.of(FullyQualifiedName.buildHash(COLUMN_A))))
         .thenReturn(Map.of(FullyQualifiedName.buildHash(COLUMN_A), List.of(label(DEPRECATED))));
 
-    ApprovedGlossaryTermGuard.checkNewlyApplied(
-        Map.of(COLUMN_A, List.of(label(DEPRECATED))), Map.of());
+    assertTrue(
+        ApprovedGlossaryTermGuard.heldTermHashesByTarget(
+                Map.of(COLUMN_A, List.of(label(DEPRECATED))), Map.of())
+            .isEmpty());
+  }
+
+  // Every write runs the guard, so an edit that keeps its terms must cost nothing.
+  @Test
+  void anEditApplyingNoNewTermLooksNothingUp() {
+    List<TagLabel> held = List.of(label(DEPRECATED), label(APPROVED));
+
+    ApprovedGlossaryTermGuard.heldTermHashesByTarget(
+        Map.of(TABLE_FQN, held, COLUMN_A, held), Map.of(TABLE_FQN, held, COLUMN_A, held));
+
+    entity.verify(
+        () ->
+            Entity.getEntityByNames(
+                eq(Entity.GLOSSARY_TERM), anyList(), eq(""), eq(Include.NON_DELETED)),
+        never());
+    verify(tagUsageDAO, never()).getTagsByTargetFQNHashes(anyList());
   }
 
   @Test
-  void approvedTermsNeverReadStoredTags() {
-    ApprovedGlossaryTermGuard.checkNewlyApplied(
-        Map.of(COLUMN_A, List.of(label(APPROVED))), Map.of());
+  void onlyTheNewlyAppliedTermIsLookedUp() {
+    ApprovedGlossaryTermGuard.heldTermHashesByTarget(
+        Map.of(COLUMN_A, List.of(label(DEPRECATED), label(APPROVED))),
+        Map.of(COLUMN_A, List.of(label(DEPRECATED))));
+
+    entity.verify(
+        () ->
+            Entity.getEntityByNames(
+                Entity.GLOSSARY_TERM,
+                List.of(APPROVED.getFullyQualifiedName()),
+                "",
+                Include.NON_DELETED));
+  }
+
+  @Test
+  void approvedTermsAreNeverHeldAndReadNoStoredTags() {
+    assertTrue(
+        ApprovedGlossaryTermGuard.heldTermHashesByTarget(
+                Map.of(COLUMN_A, List.of(label(APPROVED))), Map.of())
+            .isEmpty());
 
     verify(tagUsageDAO, never()).getTagsByTargetFQNHashes(anyList());
   }
@@ -157,9 +193,6 @@ class ApprovedGlossaryTermGuardTest {
             .withTags(List.of(label(APPROVED)))
             .withColumns(List.of(parent));
 
-    Map<String, List<TagLabel>> tagsByTarget =
-        ApprovedGlossaryTermGuard.tagsByTarget(table, columnsOf(table));
-
     assertEquals(
         Map.of(
             TABLE_FQN,
@@ -168,12 +201,64 @@ class ApprovedGlossaryTermGuardTest {
             List.of(),
             COLUMN_B + ".cents",
             List.of(label(DEPRECATED))),
-        tagsByTarget);
+        ApprovedGlossaryTermGuard.tagsByTarget(table, columnsOf(table)));
+  }
+
+  /** The held term leaves the entity, so the write neither stores nor answers with it. */
+  @Test
+  void anUnapprovedTermIsTakenOutOfTheWriteAndReturned() {
+    Table stored =
+        new Table()
+            .withFullyQualifiedName(TABLE_FQN)
+            .withColumns(List.of(column("id", COLUMN_A, List.of())));
+    Table updated =
+        new Table()
+            .withFullyQualifiedName(TABLE_FQN)
+            .withTags(List.of(label(APPROVED), label(DEPRECATED)))
+            .withColumns(
+                List.of(column("id", COLUMN_A, List.of(label(DEPRECATED), label(APPROVED)))));
+
+    List<HeldTerm> held = hold(updated, stored);
+
+    assertEquals(
+        List.of(
+            new HeldTerm(TABLE_FQN, label(DEPRECATED)), new HeldTerm(COLUMN_A, label(DEPRECATED))),
+        held);
+    assertEquals(List.of(label(APPROVED)), updated.getTags());
+    assertEquals(List.of(label(APPROVED)), updated.getColumns().getFirst().getTags());
+  }
+
+  @Test
+  void aCreateHoldsEveryUnapprovedTerm() {
+    Table created =
+        new Table()
+            .withFullyQualifiedName(TABLE_FQN)
+            .withColumns(List.of(column("id", COLUMN_A, List.of(label(DEPRECATED)))));
+
+    List<HeldTerm> held =
+        ApprovedGlossaryTermGuard.holdNewlyApplied(
+            new TaggedEntity(created, columnsOf(created)), null);
+
+    assertEquals(List.of(new HeldTerm(COLUMN_A, label(DEPRECATED))), held);
+    assertTrue(created.getColumns().getFirst().getTags().isEmpty());
+  }
+
+  /** A held list a field exposes read-only is replaced, not edited in place. */
+  @Test
+  void aReadOnlyTagListIsReplaced() {
+    Table updated =
+        new Table()
+            .withFullyQualifiedName(TABLE_FQN)
+            .withColumns(List.of(column("id", COLUMN_A, List.of(label(DEPRECATED)))));
+
+    hold(updated, new Table().withFullyQualifiedName(TABLE_FQN));
+
+    assertTrue(updated.getColumns().getFirst().getTags().isEmpty());
   }
 
   /** A move rewrites field FQNs before their stored labels are re-keyed. */
   @Test
-  void aMovedFieldIsKeyedByItsStoredFqn() {
+  void aMovedFieldKeepsTheTermItHolds() {
     String movedTable = "svc.db.other.orders";
     Table stored =
         new Table()
@@ -184,31 +269,18 @@ class ApprovedGlossaryTermGuardTest {
             .withFullyQualifiedName(movedTable)
             .withColumns(
                 List.of(
-                    column("id", movedTable + ".id", List.of(label(DEPRECATED))),
+                    column("id", movedTable + ".id", mutable(label(DEPRECATED))),
                     column("total", movedTable + ".total", List.of())));
 
-    Map<String, List<TagLabel>> requested =
-        ApprovedGlossaryTermGuard.tagsByStoredTarget(
-            new TaggedEntity(moved, columnsOf(moved)), new TaggedEntity(stored, columnsOf(stored)));
-
-    assertEquals(
-        Map.of(
-            TABLE_FQN,
-            List.of(),
-            COLUMN_A,
-            List.of(label(DEPRECATED)),
-            movedTable + ".total",
-            List.of()),
-        requested);
-    ApprovedGlossaryTermGuard.checkNewlyApplied(
-        requested, ApprovedGlossaryTermGuard.tagsByTarget(stored, columnsOf(stored)));
+    assertTrue(hold(moved, stored).isEmpty());
+    assertEquals(List.of(label(DEPRECATED)), moved.getColumns().getFirst().getTags());
   }
 
   /** A request and a response field can share a name; each keeps its own target. */
   @Test
   void sameNamedFieldsInDifferentContainersStayApart() {
     String endpoint = "svc.collection.orders";
-    Column request = column("id", endpoint + ".requestSchema.id", List.of(label(DEPRECATED)));
+    Column request = column("id", endpoint + ".requestSchema.id", mutable(label(DEPRECATED)));
     Column response = column("id", endpoint + ".responseSchema.id", List.of());
     TaggedEntity stored =
         new TaggedEntity(
@@ -224,13 +296,9 @@ class ApprovedGlossaryTermGuardTest {
                 "requestSchema.schemaFields", List.of(request),
                 "responseSchema.schemaFields", List.of(response)));
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            ApprovedGlossaryTermGuard.checkNewlyApplied(
-                ApprovedGlossaryTermGuard.tagsByStoredTarget(updated, stored),
-                ApprovedGlossaryTermGuard.tagsByTarget(
-                    stored.entity(), stored.fieldsByContainer())));
+    assertEquals(
+        List.of(new HeldTerm(request.getFullyQualifiedName(), label(DEPRECATED))),
+        ApprovedGlossaryTermGuard.holdNewlyApplied(updated, stored));
   }
 
   /** A term is judged by its hash, so quoting a segment that needs none changes nothing. */
@@ -238,13 +306,14 @@ class ApprovedGlossaryTermGuardTest {
   void aQuotedTermFqnIsTheSameTerm() {
     TagLabel quoted = label(DEPRECATED).withTagFQN("Glossary.\"Revenue\"");
 
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            ApprovedGlossaryTermGuard.checkNewlyApplied(
-                Map.of(COLUMN_B, List.of(quoted)), Map.of()));
-    ApprovedGlossaryTermGuard.checkNewlyApplied(
-        Map.of(COLUMN_A, List.of(quoted)), Map.of(COLUMN_A, List.of(label(DEPRECATED))));
+    assertEquals(
+        Map.of(COLUMN_B, Set.of(DEPRECATED_HASH)),
+        ApprovedGlossaryTermGuard.heldTermHashesByTarget(
+            Map.of(COLUMN_B, List.of(quoted)), Map.of()));
+    assertTrue(
+        ApprovedGlossaryTermGuard.heldTermHashesByTarget(
+                Map.of(COLUMN_A, List.of(quoted)), Map.of(COLUMN_A, List.of(label(DEPRECATED))))
+            .isEmpty());
   }
 
   /** Columns match ignoring case, so a re-ingest that changes a name's case keeps its terms. */
@@ -257,13 +326,33 @@ class ApprovedGlossaryTermGuardTest {
     Table renamed =
         new Table()
             .withFullyQualifiedName(TABLE_FQN)
-            .withColumns(List.of(column("id", COLUMN_A, List.of(label(DEPRECATED)))));
+            .withColumns(List.of(column("id", COLUMN_A, mutable(label(DEPRECATED)))));
 
-    ApprovedGlossaryTermGuard.checkNewlyApplied(
-        ApprovedGlossaryTermGuard.tagsByStoredTarget(
-            new TaggedEntity(renamed, columnsOf(renamed)),
-            new TaggedEntity(stored, columnsOf(stored))),
-        ApprovedGlossaryTermGuard.tagsByTarget(stored, columnsOf(stored)));
+    assertTrue(hold(renamed, stored).isEmpty());
+  }
+
+  @Test
+  void takeTermsRemovesOnlyTheNamedTerms() {
+    List<TagLabel> tags = mutable(label(DEPRECATED), label(APPROVED));
+
+    assertEquals(
+        List.of(label(DEPRECATED)),
+        ApprovedGlossaryTermGuard.takeTerms(tags, Set.of(DEPRECATED_HASH)));
+    assertEquals(List.of(label(APPROVED)), tags);
+  }
+
+  /** Queries spell the stored states and label types out; they must match the enums' ordinals. */
+  @Test
+  void storedStatesMatchTheEnums() {
+    assertEquals(
+        TagLabel.State.values().length,
+        TagUsageDAO.PENDING_STATE,
+        "pending is a storage state one past the API's, so no client can send it");
+  }
+
+  private static List<HeldTerm> hold(Table updated, Table stored) {
+    return ApprovedGlossaryTermGuard.holdNewlyApplied(
+        new TaggedEntity(updated, columnsOf(updated)), new TaggedEntity(stored, columnsOf(stored)));
   }
 
   private static Map<String, List<? extends FieldInterface>> columnsOf(Table table) {
@@ -276,6 +365,10 @@ class ApprovedGlossaryTermGuardTest {
         .withDataType(ColumnDataType.INT)
         .withFullyQualifiedName(fqn)
         .withTags(tags);
+  }
+
+  private static List<TagLabel> mutable(TagLabel... labels) {
+    return new ArrayList<>(List.of(labels));
   }
 
   private static TagLabel label(GlossaryTerm term) {

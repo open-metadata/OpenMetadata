@@ -39,8 +39,18 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestResultValue;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TableConstraint.ConstraintType;
+import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
@@ -59,17 +69,28 @@ class RdfOwnedResourcesTest {
   static void registerEntityTypes() {
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", "table");
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("topic", "topic");
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("testcase", "testCase");
   }
 
   @Test
   void walkingTheProjectionFindsWhatTheStoreScopeMatches() {
     final UUID tableId = UUID.randomUUID();
+    final Column zip =
+        column("svc.db.schema.orders.customer.address.zip")
+            .withProfile(new ColumnProfile().withNullCount(2.0));
     final Table table =
         new Table()
             .withId(tableId)
             .withName("orders")
             .withFullyQualifiedName("svc.db.schema.orders")
             .withExtension(Map.of("costCenter", "finance", "tier", 2))
+            .withProfile(new TableProfile().withRowCount(100.0))
+            .withTableConstraints(
+                List.of(
+                    new TableConstraint()
+                        .withConstraintType(ConstraintType.FOREIGN_KEY)
+                        .withColumns(List.of("id"))
+                        .withReferredColumns(List.of("svc.db.schema.customers.id"))))
             .withColumns(
                 List.of(
                     column("svc.db.schema.orders.id"),
@@ -79,10 +100,7 @@ class RdfOwnedResourcesTest {
                             List.of(
                                 column("svc.db.schema.orders.customer.address")
                                     .withDataType(ColumnDataType.STRUCT)
-                                    .withChildren(
-                                        List.of(
-                                            column(
-                                                "svc.db.schema.orders.customer.address.zip")))))));
+                                    .withChildren(List.of(zip))))));
     final UUID topicId = UUID.randomUUID();
     final Topic topic =
         new Topic()
@@ -91,9 +109,44 @@ class RdfOwnedResourcesTest {
             .withFullyQualifiedName("kafka.events")
             .withCleanupPolicies(List.of(CleanupPolicy.DELETE, CleanupPolicy.COMPACT));
 
-    // The extension, its two properties, and four columns at three levels of nesting.
-    assertWalkMatchesStoreScope(BASE + "entity/table/" + tableId, translator.toRdf(table), 7);
+    // The extension and its two properties, four columns, and one constraint with its one member.
+    // Profiles are facts on the table and its columns, not resources of their own.
+    final Model projection = translator.toRdf(table);
+    final String tableUri = BASE + "entity/table/" + tableId;
+    assertWalkMatchesStoreScope(tableUri, projection, 9);
+    assertFalse(
+        storeScopeSubjects(tableUri, projection)
+            .contains(
+                NodeFactory.createURI(RdfUtils.columnUri(BASE, "svc.db.schema.customers.id"))));
     assertWalkMatchesStoreScope(BASE + "entity/topic/" + topicId, translator.toRdf(topic), 2);
+  }
+
+  @Test
+  void aTestCaseOwnsItsLatestResultWithItsValuesAndItsOpenIncident() {
+    final UUID testCaseId = UUID.randomUUID();
+    final TestCase testCase =
+        new TestCase()
+            .withId(testCaseId)
+            .withName("id_not_null")
+            .withFullyQualifiedName("svc.db.schema.orders.id.id_not_null")
+            .withEntityLink("<#E::table::svc.db.schema.orders::columns::id>")
+            .withEntityFQN("svc.db.schema.orders.id")
+            .withTestCaseResult(
+                new TestCaseResult()
+                    .withTimestamp(1000L)
+                    .withTestCaseStatus(TestCaseStatus.Failed)
+                    .withTestResultValue(
+                        List.of(
+                            new TestResultValue().withName("nullCount").withValue("2"),
+                            new TestResultValue().withName("rowCount").withValue("9"))))
+            .withIncidentStatus(
+                new TestCaseResolutionStatus()
+                    .withTimestamp(1000L)
+                    .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New));
+
+    // The latest result, its two observed values and the open incident.
+    assertWalkMatchesStoreScope(
+        BASE + "entity/testCase/" + testCaseId, translator.toRdf(testCase), 4);
   }
 
   @Test

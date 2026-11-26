@@ -610,18 +610,6 @@ public class TagLabelUtil {
         .collect(Collectors.toCollection(HashSet::new));
   }
 
-  /**
-   * Only an Approved glossary term can be applied to a data asset, whichever API applies it: the UI
-   * offers no other. Rejects every term in {@code termFqns} that is not Approved, whatever an asset
-   * already holds; {@code ApprovedGlossaryTermGuard} narrows a write
-   * to the terms it newly applies before calling this.
-   */
-  public static void checkGlossaryTermsApproved(Set<String> termFqns) {
-    unapprovedGlossaryTerms(termFqns).stream()
-        .findFirst()
-        .ifPresent(TagLabelUtil::rejectUnapprovedTerm);
-  }
-
   /** The terms among {@code termFqns} that are not Approved, looked up in one batch. */
   public static List<GlossaryTerm> unapprovedGlossaryTerms(Set<String> termFqns) {
     return termFqns.isEmpty()
@@ -629,15 +617,6 @@ public class TagLabelUtil {
         : getGlossaryTerms(List.copyOf(termFqns)).stream()
             .filter(term -> !isApproved(term))
             .toList();
-  }
-
-  public static String unapprovedTermMessage(GlossaryTerm term) {
-    return CatalogExceptionMessage.glossaryTermNotApproved(
-        term.getFullyQualifiedName(), term.getEntityStatus());
-  }
-
-  private static void rejectUnapprovedTerm(GlossaryTerm term) {
-    throw new IllegalArgumentException(unapprovedTermMessage(term));
   }
 
   // A term without a stage predates the glossary approval lifecycle; the UI treats it as Approved.

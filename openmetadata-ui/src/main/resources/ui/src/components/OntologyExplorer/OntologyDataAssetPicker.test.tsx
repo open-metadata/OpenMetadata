@@ -480,7 +480,7 @@ describe('OntologyDataAssetPicker', () => {
     (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 
-  it('lines the checkbox up with the type tile and keeps the select-all bar on the card surface in AI mode', async () => {
+  it('lines the checkbox up with the type tile and keeps scope tabs, filters and select-all in one toolbar row in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     render(
       <OntologyDataAssetPicker
@@ -499,16 +499,15 @@ describe('OntologyDataAssetPicker', () => {
     const box = Array.from(option.children).find(
       (child) => child.tagName === 'DIV'
     );
-    let selectAllBar = screen.getByRole('checkbox', {
-      name: 'label.select-all-lowercase',
-    }).parentElement;
-    while (selectAllBar && !selectAllBar.className.includes('tw:border-b')) {
-      selectAllBar = selectAllBar.parentElement;
-    }
+    const toolbar = screen.getByRole('tablist').closest('.tw\\:flex-wrap');
 
     expect(box).toHaveClass('tw:mt-1.5');
-    expect(selectAllBar).toHaveClass('tw:px-3.5');
-    expect(selectAllBar).not.toHaveClass('tw:bg-secondary_alt');
+    expect(toolbar).toContainElement(
+      screen.getByTestId('ontology-data-asset-service-filter')
+    );
+    expect(toolbar).toContainElement(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
 
     (useIsAiMode as jest.Mock).mockReturnValue(false);
   });

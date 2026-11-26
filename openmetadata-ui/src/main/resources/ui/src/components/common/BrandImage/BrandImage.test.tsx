@@ -13,6 +13,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 
 jest.mock('../../../hooks/useApplicationStore');
+const mockUseResolvedTheme = jest.fn();
+jest.mock('../../../context/UntitledUIThemeProvider/theme-provider', () => ({
+  useResolvedTheme: () => mockUseResolvedTheme(),
+}));
 jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
   getMonogram: jest.fn().mockReturnValue({
     src: '/default-monogram.svg',
@@ -32,6 +36,7 @@ const mockUseApplicationStore = useApplicationStore as jest.MockedFunction<
 describe('Test Brand Logo', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseResolvedTheme.mockReturnValue('light');
     mockUseApplicationStore.mockReturnValue({
       applicationConfig: {
         customLogoConfig: {
@@ -356,5 +361,75 @@ describe('Test Brand Logo', () => {
     expect(image).toBeInTheDocument();
     expect(image).toHaveAttribute('src', prioritySrc);
     expect(image).not.toHaveAttribute('src', 'https://custom-logo.png');
+  });
+
+  describe('dark mode variants', () => {
+    const darkConfig = {
+      customLogoUrlPath: 'https://custom-logo.png',
+      customLogoDarkUrlPath: 'https://custom-logo-dark.png',
+      customMonogramUrlPath: 'https://custom-monogram.png',
+      customMonogramDarkUrlPath: 'https://custom-monogram-dark.png',
+    };
+
+    it('uses the dark logo and monogram when the dark theme is active', () => {
+      mockUseResolvedTheme.mockReturnValue('dark');
+      mockUseApplicationStore.mockReturnValue({
+        applicationConfig: { customLogoConfig: darkConfig },
+      });
+
+      render(
+        <>
+          <BrandImage dataTestId="logo" height={30} width={30} />
+          <BrandImage isMonoGram dataTestId="mono" height={30} width={30} />
+        </>
+      );
+
+      expect(screen.getByTestId('logo')).toHaveAttribute(
+        'src',
+        'https://custom-logo-dark.png'
+      );
+      expect(screen.getByTestId('mono')).toHaveAttribute(
+        'src',
+        'https://custom-monogram-dark.png'
+      );
+    });
+
+    it('keeps the light logo in the light theme even when a dark one is set', () => {
+      mockUseApplicationStore.mockReturnValue({
+        applicationConfig: { customLogoConfig: darkConfig },
+      });
+
+      render(<BrandImage dataTestId="logo" height={30} width={30} />);
+
+      expect(screen.getByTestId('logo')).toHaveAttribute(
+        'src',
+        'https://custom-logo.png'
+      );
+    });
+
+    it('falls back to the light logo in dark mode when no dark logo is set', () => {
+      mockUseResolvedTheme.mockReturnValue('dark');
+
+      render(
+        <BrandImage isMonoGram dataTestId="mono" height={30} width={30} />
+      );
+
+      expect(screen.getByTestId('mono')).toHaveAttribute(
+        'src',
+        'https://custom-monogram.png'
+      );
+    });
+
+    it('falls back to the default logo in dark mode when nothing is set', () => {
+      mockUseResolvedTheme.mockReturnValue('dark');
+      mockUseApplicationStore.mockReturnValue({ applicationConfig: {} });
+
+      render(<BrandImage dataTestId="logo" height={30} width={30} />);
+
+      expect(screen.getByTestId('logo')).toHaveAttribute(
+        'src',
+        '/default-logo.svg'
+      );
+    });
   });
 });

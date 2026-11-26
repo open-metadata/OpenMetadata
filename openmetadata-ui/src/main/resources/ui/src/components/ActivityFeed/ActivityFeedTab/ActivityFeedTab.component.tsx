@@ -57,8 +57,10 @@ import { Conversation } from '../../../generated/entity/feed/conversation';
 import { ConversationFilterType } from '../../../generated/type/conversationFilterType';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useElementInView } from '../../../hooks/useElementInView';
+import { useEntityFeedLink } from '../../../hooks/useEntityFeedLink';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getEntityActivityByFqn } from '../../../rest/activityAPI';
@@ -95,6 +97,9 @@ import {
 } from './ActivityFeedTab.interface';
 import { isListLoadFailed } from './ActivityFeedTab.utils';
 
+const ActivityFeedEntityTab = withSuspenseFallback(
+  lazy(() => import('../../activity-feed/ActivityFeed/ActivityFeedEntityTab'))
+);
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
     import('../../Entity/Task/TaskTab/TaskTabNew.component').then((m) => ({
@@ -479,7 +484,7 @@ const ActivityFeedTabRightPanel = ({
   );
 };
 
-export const ActivityFeedTab = ({
+const ClassicActivityFeedTab = ({
   owners = [],
   columns,
   entityType,
@@ -542,6 +547,7 @@ export const ActivityFeedTab = ({
     userId,
     selectedActivity,
     setActiveActivity,
+    refreshActivityFeed,
   } = useActivityFeedProvider();
 
   const isUserEntity = useMemo(
@@ -576,6 +582,9 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = useCallback(
     (subTab: string) => {
+      if (subTab === activeTab) {
+        return;
+      }
       setIsFirstLoad(true);
       navigate(
         entityUtilClassBase.getEntityLink(
@@ -586,11 +595,22 @@ export const ActivityFeedTab = ({
         ),
         { replace: true }
       );
+      refreshActivityFeed([]);
       setActiveThread();
       setActiveTask();
+      setActiveActivity(undefined);
       setIsFullWidth(false);
     },
-    [entityType, fqn, navigate, setActiveThread, setActiveTask]
+    [
+      activeTab,
+      entityType,
+      fqn,
+      navigate,
+      refreshActivityFeed,
+      setActiveThread,
+      setActiveTask,
+      setActiveActivity,
+    ]
   );
 
   const placeholderText = useMemo(() => {
@@ -1184,5 +1204,25 @@ export const ActivityFeedTab = ({
         />
       )}
     </div>
+  );
+};
+
+/**
+ * An entity page's Activity Feeds & Tasks tab: in AI mode, where the new Inbox
+ * lives, the Inbox's Activity and Tasks for the entity; the existing tab
+ * otherwise, and always on a user's profile.
+ */
+export const ActivityFeedTab = (props: ActivityFeedTabProps) => {
+  const isAiMode = useIsAiMode();
+  const entityLink = useEntityFeedLink(props.entityType, props.urlFqn);
+
+  return isAiMode && entityLink ? (
+    <ActivityFeedEntityTab
+      entityLink={entityLink}
+      onFeedUpdate={props.onFeedUpdate}
+      onUpdateEntityDetails={props.onUpdateEntityDetails}
+    />
+  ) : (
+    <ClassicActivityFeedTab {...props} />
   );
 };

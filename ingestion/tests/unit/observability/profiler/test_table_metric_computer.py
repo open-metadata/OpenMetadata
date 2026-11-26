@@ -18,11 +18,13 @@ and verifies all new dialect-to-class factory registrations.
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from sqlalchemy import Column, Integer, String, create_engine, text
+from sqlalchemy import Column, Integer, String, create_engine, event, text
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import DeclarativeBase, Session
 from sqlalchemy.pool import StaticPool
 
 from metadata.generated.schema.entity.data.table import TableType
+from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.orm.functions.table_metric_computer import (
     BaseTableMetricComputer,
     CockroachTableMetricComputer,
@@ -877,6 +879,52 @@ class TestImpalaTableMetricComputer:
 
     def test_impala_registration(self):
         assert table_metric_computer_factory._constructs[Dialects.Impala] is ImpalaTableMetricComputer
+
+
+@pytest.mark.parametrize("table_type", [TableType.Regular, TableType.View], ids=["partitioned-table", "view"])
+def test_impala4_counts_source_rows_without_table_stats(table_type):
+    engine = create_engine("sqlite://", poolclass=StaticPool)
+    try:
+        with engine.begin() as connection:
+            connection.execute(text("ATTACH ':memory:' AS test_schema"))
+            if table_type == TableType.View:
+                connection.execute(text("CREATE TABLE test_schema.source_rows (id INTEGER, name VARCHAR(256))"))
+                connection.execute(text("CREATE VIEW test_schema.test_table AS SELECT * FROM test_schema.source_rows"))
+                source = "source_rows"
+            else:
+                MockModel.__table__.create(connection)
+                source = "test_table"
+            connection.execute(
+                text(f"INSERT INTO test_schema.{source} (id, name) VALUES (:id, :name)"),
+                [{"id": index, "name": f"row-{index}"} for index in range(9)],
+            )
+
+        @event.listens_for(engine, "before_cursor_execute", retval=True)
+        def impala_stats_boundary(connection, cursor, statement, parameters, context, executemany):
+            # SQLite executes aggregates; this boundary models Impala-only SHOW behavior.
+            if statement.startswith("SHOW TABLE STATS"):
+                if table_type == TableType.View:
+                    raise ProgrammingError(statement, parameters, Exception("SHOW TABLE STATS not supported for views"))
+                return (
+                    "SELECT 4 AS \"#Rows\", 'partition-1' AS partition_name "
+                    "UNION ALL SELECT 4, 'partition-2' UNION ALL SELECT 1, 'partition-3' "
+                    "UNION ALL SELECT 9, 'Total'",
+                    (),
+                )
+            return statement, parameters
+
+        with Session(engine) as session:
+            runner = QueryRunner(session=session, dataset=MockModel, raw_dataset=MockModel)
+            computer = table_metric_computer_factory.construct(
+                Dialects.Impala4,
+                runner=runner,
+                metrics=[RowCount],
+                conn_config=None,
+                entity=Mock(tableType=table_type),
+            )
+            assert computer.compute().rowCount == 9
+    finally:
+        engine.dispose()
 
 
 class TestDatabricksTableMetricComputer:

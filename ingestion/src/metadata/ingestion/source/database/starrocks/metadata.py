@@ -52,7 +52,6 @@ from metadata.ingestion.source.database.starrocks.queries import (
     STARROCKS_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 RELKIND_MAP = {
     "TABLE": TableType.Regular,
@@ -206,14 +205,6 @@ class StarRocksSource(CommonDbSourceService):
     Implements the necessary methods to extract
     Database metadata from StarRocks Source
     """
-
-    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
-        self.ssl_manager = None
-        service_connection = config.serviceConnection.root.config
-        self.ssl_manager: SSLManager = check_ssl_and_init(service_connection)
-        if self.ssl_manager:
-            service_connection = self.ssl_manager.setup_ssl(service_connection)
-        super().__init__(config, metadata)
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):

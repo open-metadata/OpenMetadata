@@ -14,10 +14,20 @@ import { Node } from 'reactflow';
 import { EntityType } from '../../../enums/entity.enum';
 import { LineageNodeType } from '../../../interface/lineage.interface';
 
-// Only these carry columns that getEntityChildrenAndLabel can flatten.
+/**
+ * A metric has no columns: it is its own single column-lineage endpoint, keyed
+ * by its FQN (see getMetricEntityChildren), so a column edit connects to the
+ * metric itself.
+ */
+export const isSelfColumnEndpoint = (entityType?: string) =>
+  entityType === EntityType.METRIC;
+
+// Tables and data models carry columns the popover loads; a metric is a column
+// endpoint itself.
 const COLUMN_CAPABLE_ENTITY_TYPES = new Set<string>([
   EntityType.TABLE,
   EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.METRIC,
 ]);
 
 const isColumnTargetCandidate = (
@@ -31,7 +41,8 @@ const isColumnTargetCandidate = (
 
 /**
  * The canvas nodes a column edit can connect to, as dragging between column
- * handles allowed: column-carrying, persisted, and not the node being edited.
+ * handles allowed: column-carrying or a column endpoint themselves, persisted,
+ * and not the node being edited.
  */
 export const getCanvasColumnAssets = (
   nodes: Node[] = [],

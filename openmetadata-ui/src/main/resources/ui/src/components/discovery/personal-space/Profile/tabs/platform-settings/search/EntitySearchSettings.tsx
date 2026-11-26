@@ -148,8 +148,12 @@ const EntitySearchSettings = ({
   }, []);
   useEffect(() => {
     if (!entityType) {
-      // A stale or mistyped link: back to the entity list.
-      onNavigate({ type: 'page', page: 'search', isEditing: false });
+      // A stale or mistyped link: back to the entity list, replacing it so
+      // Back does not land on it again.
+      onNavigate(
+        { type: 'page', page: 'search', isEditing: false },
+        { replace: true }
+      );
 
       return;
     }
@@ -362,7 +366,7 @@ const EntitySearchSettings = ({
                 data-testid="add-field-btn"
                 iconLeading={Plus}
                 isDisabled={unselectedFields.length === 0}
-                size="sm">
+                size="xs">
                 {t('label.add')}
               </Button>
               <Dropdown.Popover className="tw:w-max tw:min-w-56">
@@ -462,7 +466,7 @@ const EntitySearchSettings = ({
               data-testid="add-term-boost-btn"
               iconLeading={Plus}
               isDisabled={showNewTermBoost}
-              size="sm"
+              size="xs"
               onPress={() => setShowNewTermBoost(true)}>
               {t('label.add')}
             </Button>
@@ -497,7 +501,7 @@ const EntitySearchSettings = ({
                 color="secondary"
                 data-testid="add-field-value-boost-btn"
                 iconLeading={Plus}
-                size="sm"
+                size="xs"
                 onPress={() => openFieldValueBoostForm()}>
                 {t('label.add')}
               </Button>

@@ -29,11 +29,7 @@ import {
   SelectItemType,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import {
-  Copy01,
-  Plus,
-  RefreshCw01,
-} from '@openmetadata/ui-core-components/icons';
+import { Plus, RefreshCw01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compact, debounce, isUndefined, trim } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -62,7 +58,8 @@ import { getAllPersonas } from '../../../../rest/PersonaAPI';
 import { searchRoles } from '../../../../rest/rolesAPIV1';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
+import CopyButton from '../../../common/CopyButton/CopyButton';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
@@ -223,9 +220,8 @@ const CreateUser = ({
       props: { inputDataTestId: 'password' },
       rules: {
         required: t('label.field-required', { field: t('label.password') }),
-        // passwordRegex is global; a fresh instance avoids lastIndex carry-over.
         pattern: {
-          value: new RegExp(passwordRegex.source),
+          value: passwordRegex,
           message: t('message.password-error-message'),
         },
       },
@@ -254,14 +250,6 @@ const CreateUser = ({
       setIsPasswordGenerating(false);
     }
   }, []);
-
-  const handleCopyPassword = async () => {
-    if (!generatedPassword) {
-      return;
-    }
-    await navigator.clipboard.writeText(generatedPassword);
-    showSuccessToast(t('message.copied-to-clipboard'));
-  };
 
   const fetchRoleOptions = useCallback(
     async (searchText = '') => {
@@ -452,13 +440,14 @@ const CreateUser = ({
                     tooltip={String(t('label.regenerate'))}
                     onClick={generateRandomPassword}
                   />
-                  <ButtonUtility
+                  <CopyButton
+                    className="tw:mr-1"
                     color="tertiary"
-                    data-testid="copy-password"
-                    icon={Copy01}
+                    isDisabled={!generatedPassword}
                     size="sm"
+                    testId="copy-password"
                     tooltip={String(t('label.copy'))}
-                    onClick={handleCopyPassword}
+                    value={generatedPassword}
                   />
                 </Box>
               }

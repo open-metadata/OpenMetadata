@@ -15,7 +15,7 @@ package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proc
  * contribute additive fields to the {@link EnrichmentTarget#entityMap()} and never read each
  * other's output, so failures in one step do not corrupt sibling steps' work. The {@link
  * EnrichmentPipeline} wraps each {@link #apply(EnrichmentTarget)} invocation in try/catch — a step
- * that throws produces no fields on the snapshot but does not abort the entity's enrichment.
+ * that throws normally does not abort the entity's enrichment. Required steps reject the snapshot.
  */
 public interface EnrichmentStep {
 
@@ -26,6 +26,11 @@ public interface EnrichmentStep {
    */
   String name();
 
+  /** Whether failure makes the entire snapshot invalid rather than merely incomplete. */
+  default boolean required() {
+    return false;
+  }
+
   /**
    * Apply this step's enrichment to {@code target.entityMap()}. Implementations are additive
    * only: they may put new keys, but must never read keys written by sibling steps and must
@@ -35,7 +40,8 @@ public interface EnrichmentStep {
    * {@link EnrichmentTarget#context()}. Reading passthrough fields seeded into
    * {@link EnrichmentTarget#entityMap()} by {@code buildTarget} (e.g. {@code extension}) is
    * allowed — those are not sibling contributions. Exceptions are caught by the pipeline;
-   * implementations are not expected to swallow them.
+   * implementations are not expected to swallow them. A required step failure is propagated after
+   * recording its failure statistics.
    */
   void apply(EnrichmentTarget target);
 }

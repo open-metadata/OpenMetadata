@@ -43,6 +43,7 @@ import {
   buildEntityFieldGroups,
   getGitSinkTriggerNodeConfig,
   getTriggerDataAssets,
+  isIncidentSettingsWorkflow,
   validateWorkflowConfig,
   withExtensionPrefix,
 } from '../../../utils/WorkflowConfigUtils';
@@ -55,6 +56,16 @@ import {
 import { FormActionButtons } from './forms/FormActionButtons';
 import { WorkflowConfigFormV1 } from './forms/WorkflowConfigFormV1';
 
+// An unset flag means on, matching the workflow definition's default.
+const resolveAutoAssignOwners = (
+  node: Node,
+  workflowDefinition: NodeConfigSidebarProps['workflowDefinition']
+): boolean =>
+  node.data?.autoAssignOwners ??
+  (node.data?.config as NodeConfig | undefined)?.autoAssignOwners ??
+  workflowDefinition?.config?.autoAssignOwners ??
+  true;
+
 const computeStartNodeConfig = (
   node: Node,
   workflowDefinition: NodeConfigSidebarProps['workflowDefinition'],
@@ -62,7 +73,12 @@ const computeStartNodeConfig = (
   localName: string | null,
   localDescription: string | null
 ): NodeConfig => {
-  const baseConfig = getInitialNodeConfig(node, workflowDefinition, null);
+  const baseConfig: NodeConfig = {
+    ...getInitialNodeConfig(node, workflowDefinition, null),
+    ...(isIncidentSettingsWorkflow(workflowDefinition) && {
+      autoAssignOwners: resolveAutoAssignOwners(node, workflowDefinition),
+    }),
+  };
 
   if (workflowMetadata) {
     const configWithMetadata = {
@@ -119,7 +135,9 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     allowFullStartNodeConfiguration,
     allowStartNodeFilterScheduleAndBatchEdit,
     allowScheduledTrigger,
+    isNoOp,
   } = useWorkflowModeContext();
+  const isIncidentWorkflow = isIncidentSettingsWorkflow(workflowDefinition);
   const [isUpdating, setIsUpdating] = useState(false);
   const [backendConfig, setBackendConfig] = useState(() =>
     getBackendConfig(node)
@@ -446,7 +464,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       const isTriggerNode = isStartNode(node);
 
       // OSS keeps the description editable; name and trigger type are locked in the form.
-      if (isTriggerNode) {
+      if (isTriggerNode && !isNoOp) {
         updateWorkflowMetadata();
       }
 
@@ -469,6 +487,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     }
   }, [
     node,
+    isNoOp,
     updateWorkflowMetadata,
     buildTriggerConfiguration,
     buildTaskConfiguration,
@@ -481,8 +500,10 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   }, [onClose]);
 
   const isWorkflowConfigValid = useMemo(
-    () => validateWorkflowConfig(effectiveConfig, isStartNode(node)),
-    [effectiveConfig, node]
+    () =>
+      (isNoOp && isIncidentWorkflow) ||
+      validateWorkflowConfig(effectiveConfig, isStartNode(node)),
+    [effectiveConfig, node, isNoOp, isIncidentWorkflow]
   );
 
   const renderFormContent = () => {
@@ -506,6 +527,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
         handleEventTypeChange={handleEventTypeChange}
         removeDataAssetFilter={removeDataAssetFilter}
         removeFromArray={removeFromArray}
+        showAutoAssignOwners={isIncidentWorkflow}
         updateConfig={updateConfig}
         onUpdateDataAssetFilter={updateDataAssetFilter}
       />

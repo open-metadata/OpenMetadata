@@ -38,12 +38,22 @@ const assetCard = (page: Page, asset: LinkableAsset) =>
 const assetSelectionModal = (page: Page) =>
   page.getByTestId('asset-selection-modal');
 
-// The Assets tab searches the linked assets by search document id, which is the only
-// search request on the metric page that carries an `ids` query.
-const isLinkedAssetsSearch = (response: Response) =>
+// The metric Assets tab and Add-Assets picker search via POST /search/query, so the
+// filter and search text live in the request body, not the URL.
+const isSearchPost = (response: Response) =>
   response.url().includes('/api/v1/search/query') &&
-  decodeURIComponent(response.url()).includes('"ids"') &&
+  response.request().method() === 'POST' &&
   response.status() === 200;
+
+// The Assets tab searches the linked assets by search document id, which is the only
+// search request on the metric page whose filter carries an `ids` query.
+const isLinkedAssetsSearch = (response: Response) =>
+  isSearchPost(response) &&
+  (response.request().postDataJSON()?.queryFilter ?? '').includes('"ids"');
+
+const isPickerSearch = (name: string) => (response: Response) =>
+  isSearchPost(response) &&
+  (response.request().postDataJSON()?.query ?? '').includes(name);
 
 const linkAssets = async (
   apiContext: APIRequestContext,
@@ -76,7 +86,9 @@ const openAssetsTab = async (page: Page, metric: MetricClass) => {
 };
 
 const selectAssetInPicker = async (page: Page, asset: LinkableAsset) => {
-  const searchResponse = page.waitForResponse('/api/v1/search/query?*');
+  const searchResponse = page.waitForResponse(
+    isPickerSearch(asset.entityResponseData.name)
+  );
   await assetSelectionModal(page)
     .getByTestId('searchbar')
     .fill(asset.entityResponseData.name);
@@ -178,7 +190,9 @@ test.describe(
         await page.getByTestId('metric-add-assets-button').click();
         await expect(assetSelectionModal(page)).toBeVisible();
 
-        const searchResponse = page.waitForResponse('/api/v1/search/query?*');
+        const searchResponse = page.waitForResponse(
+          isPickerSearch(table.entityResponseData.name)
+        );
         await assetSelectionModal(page)
           .getByTestId('searchbar')
           .fill(table.entityResponseData.name);

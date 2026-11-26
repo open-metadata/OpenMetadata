@@ -33,4 +33,9 @@ public record VectorSearchParameters(
     return new VectorSearchParameters(
         query, filters, size, from, k, threshold, preference, subjectContext, queryFilter);
   }
+
+  VectorSearchParameters withFilters(Map<String, List<String>> filters) {
+    return new VectorSearchParameters(
+        query, filters, size, from, k, threshold, preference, subjectContext, queryFilter);
+  }
 }

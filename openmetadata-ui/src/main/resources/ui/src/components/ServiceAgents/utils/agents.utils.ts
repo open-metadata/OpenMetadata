@@ -193,6 +193,7 @@ export const STATUS_PILL_META: Record<AgentStatus, PillMeta> = {
   running: { color: 'brand', pulse: true },
   success: { color: 'success' },
   failed: { color: 'error' },
+  stopped: { color: 'warning' },
   queued: { color: 'gray' },
   none: { color: 'gray' },
 };
@@ -244,10 +245,13 @@ export const RUN_DOT_CLASS: Record<string, string> = {
   skipped: 'tw:bg-utility-gray-300',
 };
 
+const IDLE_ICON_CLASS = 'tw:text-fg-quaternary';
+
 export const AGENT_ICON_CLASS: Record<AgentStatus, string> = {
   running: 'tw:text-fg-brand-primary',
   failed: 'tw:text-fg-error-primary',
   success: 'tw:text-fg-success-primary',
-  queued: 'tw:text-fg-quaternary',
-  none: 'tw:text-fg-quaternary',
+  stopped: IDLE_ICON_CLASS,
+  queued: IDLE_ICON_CLASS,
+  none: IDLE_ICON_CLASS,
 };

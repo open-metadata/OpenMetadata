@@ -67,6 +67,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../hooks/useAppMode';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   ContentChangeState,
@@ -128,6 +129,13 @@ const ContextCenterArticlesPage = () => {
     DEFAULT_ENTITY_PERMISSION
   );
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
+  // Resource-level permission leaves isOwner()-style conditions unresolved, so the open
+  // article's header must use the entity-level one (shares the detail body's cached query).
+  const { permissions: articlePermissions } = useEntityPermissions(
+    ResourceEntity.KNOWLEDGE_PAGE,
+    fqn,
+    { enabled: Boolean(fqn) && !version }
+  );
   const [page, setPage] = useState<KnowledgeCenterPageProps>({
     data: undefined,
     rightPanel: null,
@@ -349,7 +357,7 @@ const ContextCenterArticlesPage = () => {
           fetchKnowledgePageHierarchy={handleFetchKnowledgePageHierarchy}
           isRightPanelOpen={isRightPanelOpen}
           knowledgePage={page.data}
-          permissions={permissions}
+          permissions={articlePermissions}
           tabs={page.tabs}
           onFollowChange={
             page.handlers?.onFollowChange ?? (async () => undefined)
@@ -543,7 +551,6 @@ const ContextCenterArticlesPage = () => {
 
   const renderCenterPanel = () => (
     <ReflexElement
-      propagateDimensions
       className={classNames('center-panel', {
         'has-sidebar': leftSidebar,
       })}
@@ -626,7 +633,6 @@ const ContextCenterArticlesPage = () => {
       </ReflexSplitter>
 
       <ReflexElement
-        propagateDimensions
         className={classNames('right-panel', {
           'right-panel-collapsed': !rightSidebar,
         })}

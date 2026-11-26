@@ -40,7 +40,9 @@ import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload'
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getFeedChangeFieldLabel } from '../../../../utils/FeedUtilsPure';
 import Fqn from '../../../../utils/Fqn';
+import { isTagsTaskType } from '../../../../utils/TaskActionUtils';
 import { parseTaskFieldPath } from '../../../../utils/TaskFieldPathUtils';
+import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
 import {
   getMetadataCompletionInstruction,
   getMetadataCompletionPayload,
@@ -429,22 +431,25 @@ const getResolutionRows = (task: Task, t: Translate): TaskDetailRow[] => {
 
   // Who resolved it reads in the line under the title ("Rejected by … on …"),
   // so the rows keep only when and why.
-  return [
-    ...textRow(
-      'resolvedOn',
-      'calendar',
-      t('label.resolved-on'),
-      resolution.resolvedOn
-    ),
-    ...(resolution.hasResolution
-      ? textRow(
-          'resolutionComment',
-          'type',
-          t(resolution.commentLabelKey),
-          resolution.comment
-        )
-      : []),
-  ];
+  const rows = textRow(
+    'resolvedOn',
+    'calendar',
+    t('label.resolved-on'),
+    resolution.resolvedOn
+  );
+  if (resolution.hasResolution) {
+    rows.push({
+      key: 'resolutionComment',
+      icon: 'type',
+      label: t(resolution.commentLabelKey),
+      value: {
+        kind: resolution.comment === NO_DATA_PLACEHOLDER ? 'text' : 'richText',
+        text: resolution.comment,
+      },
+    });
+  }
+
+  return rows;
 };
 
 const describeIncident = (
@@ -548,6 +553,37 @@ const describeDescriptionUpdate = (
   };
 };
 
+// A tag suggestion holds its tags as a JSON string; show them as a tags change.
+const getSuggestionBody = (
+  task: Task,
+  payload: Partial<SuggestionPayload>,
+  t: Translate
+): Partial<TaskDetailDescriptor> => {
+  if (isTagsTaskType(task)) {
+    // Approving adds the suggested tags to the current ones; list only what it adds.
+    const { currentTags, suggestedTags } = getNormalizedTaskPayload(task);
+    const current = new Set(tagNames(currentTags));
+    const after = tagNames(suggestedTags).filter((fqn) => !current.has(fqn));
+
+    return after.length
+      ? {
+          change: {
+            labelKey: 'label.tag-plural',
+            before: [],
+            after,
+            isText: false,
+          },
+        }
+      : {};
+  }
+
+  return payload.suggestedValue
+    ? {
+        callout: { label: t('label.suggestion'), text: payload.suggestedValue },
+      }
+    : {};
+};
+
 const describeSuggestion = (
   task: Task,
   t: Translate
@@ -571,9 +607,7 @@ const describeSuggestion = (
         getSourceLabel(t, payload.source)
       ),
     ],
-    callout: payload.suggestedValue
-      ? { label: t('label.suggestion'), text: payload.suggestedValue }
-      : undefined,
+    ...getSuggestionBody(task, payload, t),
   };
 };
 
@@ -810,14 +844,19 @@ export const deriveTaskAboutEntity = (
   const typed = (entity ?? {}) as EntityWithContext;
   const columns = typed.columns;
   const tags = typed.tags ?? [];
+  const isPiiSensitive = (tagList: TagLabel[] = []) =>
+    tagList.some((tag) => tag.tagFQN === PII_SENSITIVE_TAG);
+  const isEntityPii = isPiiSensitive(tags);
+  const piiColumnCount = isEntityPii
+    ? columns?.length
+    : columns?.filter((column) => isPiiSensitive(column.tags)).length;
 
   return {
     entity,
     tier: tags.find((tag) => tag.tagFQN?.startsWith(TIER_TAG_PREFIX)),
     columnCount: columns?.length,
-    piiColumnCount: columns?.filter((column) =>
-      (column.tags ?? []).some((tag) => tag.tagFQN === PII_SENSITIVE_TAG)
-    ).length,
+    piiColumnCount,
+    isPii: isEntityPii || Boolean(piiColumnCount),
     downstreamCount,
     weeklyQueryCount: typed.usageSummary?.weeklyStats?.count,
     ownerCount: typed.owners?.length,

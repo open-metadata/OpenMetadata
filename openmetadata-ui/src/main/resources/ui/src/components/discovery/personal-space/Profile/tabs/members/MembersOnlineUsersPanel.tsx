@@ -13,6 +13,7 @@
 
 import {
   Box,
+  PaginationCardWithControls,
   Select,
   TableCard,
   Typography,
@@ -40,16 +41,18 @@ import {
   OnlineUsersQueryParams,
 } from '../../../../../../rest/userAPI';
 import { formatDateTime } from '../../../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
-import NextPrevious from '../../../../../common/NextPrevious/NextPrevious';
-import type { PagingHandlerParams } from '../../../../../common/NextPrevious/NextPrevious.interface';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
+import {
+  PageCursor,
+  useCursorPageJump,
+} from '../../../../../../hooks/paging/useCursorPageJump';
 import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
+import { getUserIdentifier } from '../../../../../../utils/UsersPureUtils';
 import { DEFAULT_TIME_WINDOW, TIME_WINDOW_OPTIONS } from './Members.constants';
 import type { MembersSubPanelProps } from './Members.types';
 import { formatOnlineStatus } from './Members.utils';
@@ -89,52 +92,91 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     [savePageSize, setHashPage]
   );
 
+  const listParams = useMemo<OnlineUsersQueryParams>(
+    () => ({
+      // 0 means "All time" — a valid server value; `|| undefined` dropped it
+      // and the backend silently fell back to its 5-minute default.
+      timeWindow,
+      fields: USER_FIELDS,
+      limit: pageSize,
+    }),
+    [timeWindow, pageSize]
+  );
+  const fetchPaging = useCallback(
+    // A walk keeps only the cursors, so it skips the row fields.
+    async (after: string) =>
+      (await getOnlineUsers({ ...listParams, fields: undefined, after }))
+        .paging,
+    [listParams]
+  );
+  const {
+    cursorFor,
+    remember: rememberPage,
+    reset: resetPages,
+  } = useCursorPageJump(fetchPaging);
+
+  // Only the latest list or search load may fill the table: the pager stays
+  // clickable while a page loads.
+  const latestLoadIdRef = useRef(0);
+
   const fetchOnlineUsers = useCallback(
-    async (params?: { after?: string; before?: string }) => {
+    async (params?: PageCursor, page = INITIAL_PAGING_VALUE) => {
+      const loadId = ++latestLoadIdRef.current;
       setLoading(true);
 
       try {
-        const queryParams: OnlineUsersQueryParams = {
-          // 0 means "All time" — a valid server value; `|| undefined` dropped it
-          // and the backend silently fell back to its 5-minute default.
-          timeWindow,
-          fields: USER_FIELDS,
-          limit: pageSize,
-          ...params,
-        };
-
-        const response = await getOnlineUsers(queryParams);
+        const response = await getOnlineUsers({ ...listParams, ...params });
+        if (loadId !== latestLoadIdRef.current) {
+          return;
+        }
+        // Page 1 is a fresh load (window, size, search cleared), so older
+        // cursors may no longer line up.
+        if (page === INITIAL_PAGING_VALUE) {
+          resetPages();
+        }
+        rememberPage(page, response.paging);
 
         setUsers(response.data);
         setPaging(response.paging);
       } catch (error) {
-        showErrorToast(error as AxiosError);
-        setUsers([]);
+        if (loadId === latestLoadIdRef.current) {
+          showErrorToast(error as AxiosError);
+          setUsers([]);
+        }
       } finally {
-        setLoading(false);
+        if (loadId === latestLoadIdRef.current) {
+          setLoading(false);
+        }
       }
     },
-    [timeWindow, pageSize, setPaging]
+    [listParams, rememberPage, resetPages, setPaging]
   );
 
-  const handlePageNavigation = ({
-    currentPage: newPage,
-    cursorType,
-  }: PagingHandlerParams) => {
-    const cursor = cursorType && paging[cursorType];
-
+  const handlePageNavigation = async (newPage: number) => {
     // Search results are filtered client-side into a single page.
-    if (searchText || !cursorType || !cursor) {
+    if (searchText) {
       return;
     }
+    let cursor: PageCursor | undefined;
+    try {
+      cursor = await cursorFor(newPage, currentPage);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
 
+      return;
+    }
+    if (!cursor) {
+      return;
+    }
     handlePageChange(newPage);
-    void fetchOnlineUsers({ [cursorType]: cursor });
+    void fetchOnlineUsers(cursor, newPage);
   };
 
   const handleSearch = useCallback(
     async (query: string) => {
       setSearchText(query);
+      // Drops a page jump still walking, so it cannot replace the results.
+      resetPages();
 
       if (!query.trim()) {
         handlePageChange(INITIAL_PAGING_VALUE);
@@ -143,6 +185,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         return;
       }
 
+      const loadId = ++latestLoadIdRef.current;
       setLoading(true);
 
       try {
@@ -153,6 +196,9 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
           pageNumber: INITIAL_PAGING_VALUE,
           queryFilter: getTermQuery({ isBot: 'false' }),
         });
+        if (loadId !== latestLoadIdRef.current) {
+          return;
+        }
 
         const now = Date.now();
         const windowMs = timeWindow * 60 * 1000;
@@ -173,13 +219,24 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         });
         handlePageChange(INITIAL_PAGING_VALUE);
       } catch (error) {
-        showErrorToast(error as AxiosError);
-        setUsers([]);
+        if (loadId === latestLoadIdRef.current) {
+          showErrorToast(error as AxiosError);
+          setUsers([]);
+        }
       } finally {
-        setLoading(false);
+        if (loadId === latestLoadIdRef.current) {
+          setLoading(false);
+        }
       }
     },
-    [timeWindow, pageSize, setPaging, handlePageChange, fetchOnlineUsers]
+    [
+      timeWindow,
+      pageSize,
+      setPaging,
+      handlePageChange,
+      fetchOnlineUsers,
+      resetPages,
+    ]
   );
 
   const handleTimeWindowChange = useCallback((key: string | number | null) => {
@@ -209,21 +266,21 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
   const columns = useMemo(
     (): ColumnsType<User> => [
       {
-        title: t('label.username'),
+        title: t('label.name'),
         dataIndex: 'name',
-        key: 'username',
+        key: 'name',
         ellipsis: true,
         render: (_: string, record: User) => (
           <UserNameCell goTo={goTo} record={record} />
         ),
       },
       {
-        title: t('label.name'),
-        dataIndex: 'displayName',
-        key: 'name',
+        title: t('label.email'),
+        dataIndex: 'email',
+        key: 'email',
         ellipsis: true,
         render: (_: string, record: User) => (
-          <Typography size="text-sm">{getEntityName(record)}</Typography>
+          <Typography size="text-sm">{getUserIdentifier(record)}</Typography>
         ),
       },
       {
@@ -344,15 +401,15 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         />
 
         {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={loading}
-            isNumberBased={Boolean(searchText)}
+          <PaginationCardWithControls
+            // Same compact pager as the Teams list.
+            minimal
+            page={currentPage}
             pageSize={pageSize}
             pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
-            paging={paging}
-            pagingHandler={handlePageNavigation}
-            onShowSizeChange={handlePageSizeChange}
+            total={Math.max(1, Math.ceil((paging.total ?? 0) / pageSize))}
+            onPageChange={handlePageNavigation}
+            onPageSizeChange={handlePageSizeChange}
           />
         )}
       </TableCard.Root>

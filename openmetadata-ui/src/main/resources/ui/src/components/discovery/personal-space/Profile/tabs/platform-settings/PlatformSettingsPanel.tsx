@@ -10,6 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  settingsHashOptions,
+  SettingsNavigateOptions,
+} from '../../../../../../utils/SettingsHistory.utils';
 
 import { Box, Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Hint, Sliders02 } from '@openmetadata/ui-core-components/icons';
@@ -52,6 +56,7 @@ import {
   getPageHeader,
   getVisiblePlatformSettingsPages,
   hashSubPathToView,
+  toSettingsHistoryView,
   viewToSubPath,
 } from './PlatformSettings.utils';
 import PlatformSettingsLanding from './PlatformSettingsLanding';
@@ -183,10 +188,22 @@ const PlatformSettingsPanel = ({
     [activePageId]
   );
 
+  // Opening a view pushes so Back returns to it; leaving an editor (Save or
+  // Cancel) replaces, so Back never reopens a submitted form
+  // (ADR:2026-11-12-settings-modal-views-push-history-only-when-the-user-opens-them).
   const onNavigate = useCallback(
-    (next: PlatformSettingsView) =>
-      setHash(PLATFORM_SETTINGS_HASH_TAB, viewToSubPath(next)),
-    [setHash]
+    (next: PlatformSettingsView, options?: SettingsNavigateOptions) =>
+      setHash(
+        PLATFORM_SETTINGS_HASH_TAB,
+        viewToSubPath(next),
+        undefined,
+        settingsHashOptions(
+          toSettingsHistoryView(view),
+          toSettingsHistoryView(next),
+          options
+        )
+      ),
+    [setHash, view]
   );
 
   useEffect(() => {

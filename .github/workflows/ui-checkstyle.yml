@@ -65,7 +65,7 @@ jobs:
   checkstyle:
     needs: check-changes
     if: needs.check-changes.outputs.ui-changed == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
@@ -87,6 +87,8 @@ jobs:
       tw_audit_changed_files: ${{ steps.tw_audit.outputs.changed_files }}
       tw_guard_result: ${{ steps.tw_guard.outcome }}
       tw_guard_changed_files: ${{ steps.tw_guard.outputs.changed_files }}
+      knip_result: ${{ steps.knip.outcome }}
+      knip_changed_files: ${{ steps.knip.outputs.changed_files }}
       bundle_build_result: ${{ steps.bundle_build.outcome }}
       bundle_build_changed_files: ${{ steps.bundle_build.outputs.changed_files }}
       bundle_budget_result: ${{ steps.bundle_budget.outcome }}
@@ -568,6 +570,23 @@ jobs:
           fi
           cat /tmp/bundle-runtime.out
 
+      # Zero-backlog gate: unused files reachable from no entry point. The
+      # backlog was cleared in #37253; this keeps it at zero. Deliberate keeps
+      # (Collate compat forwards/consumers) are documented in knip.jsonc.
+      - name: Unused files (knip)
+        id: knip
+        continue-on-error: true
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          if ! yarn --silent knip:files > /tmp/knip.out 2>&1; then
+            cat /tmp/knip.out
+            OUT=$(grep -E '^src/' /tmp/knip.out | head -30 | sed 's/^/  - `/; s/[[:space:]]*$/`/')
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$OUT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
       - name: Antd + Less Deprecation Guard (no new debt)
         id: tw_guard
         if: steps.changed-ui-files.outputs.any_changed == 'true'
@@ -670,6 +689,12 @@ jobs:
                 result:  '${{ needs.checkstyle.outputs.tw_guard_result }}',
                 files:   ${{ toJSON(needs.checkstyle.outputs.tw_guard_changed_files) }} || '',
               },
+              {
+                name:    'Unused files (knip)',
+                reason:  'A src file is reachable from no entry point (zero-backlog gate; deliberate keeps are documented in knip.jsonc). Delete the file or document the keep.',
+                result:  '${{ needs.checkstyle.outputs.knip_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.knip_changed_files) }} || '',
+              },
             ];
 
             const failures = checks.filter(c => c.result === 'failure');
@@ -762,6 +787,7 @@ jobs:
              [ "${{ needs.checkstyle.outputs.lint_core_components_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.tw_audit_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.tw_guard_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.knip_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.bundle_build_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.bundle_budget_result }}" = 'failure' ]; then
             echo "One or more checks failed."

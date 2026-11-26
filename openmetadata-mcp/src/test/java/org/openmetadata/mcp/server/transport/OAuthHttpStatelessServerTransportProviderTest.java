@@ -20,11 +20,14 @@ import static org.mockito.Mockito.when;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
@@ -35,6 +38,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -60,6 +64,7 @@ import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -606,6 +611,11 @@ class OAuthHttpStatelessServerTransportProviderTest {
 
   /** The real {@link JwtFilter} reads the local signing key from the generator at construction. */
   private static void initializeJwtTokenGenerator() throws Exception {
+    initializeJwtTokenGenerator(AuthenticationConfiguration.TokenValidationAlgorithm.RS_256);
+  }
+
+  private static void initializeJwtTokenGenerator(
+      AuthenticationConfiguration.TokenValidationAlgorithm providerAlgorithm) throws Exception {
     JWTTokenConfiguration tokenConfiguration = new JWTTokenConfiguration();
     tokenConfiguration.setJwtissuer("open-metadata.org");
     tokenConfiguration.setKeyId("test-key");
@@ -613,10 +623,92 @@ class OAuthHttpStatelessServerTransportProviderTest {
     tokenConfiguration.setRsapublicKeyFilePath(resourceFilePath("public_key.der"));
     JWTTokenGenerator.getInstance()
         .init(
-            new AuthenticationConfiguration()
-                .withTokenValidationAlgorithm(
-                    AuthenticationConfiguration.TokenValidationAlgorithm.RS_256),
+            new AuthenticationConfiguration().withTokenValidationAlgorithm(providerAlgorithm),
             tokenConfiguration);
+  }
+
+  // ── OpenID discovery ──────────────────────────────────────────────────────
+
+  /**
+   * An MCP client takes the signing algorithm from discovery and checks the server's tokens
+   * against it. The server signs them with its own key whatever the identity provider uses, so a
+   * provider on RS512 must not change what discovery advertises
+   * (ADR:2026-11-12-openmetadata-signs-its-own-tokens-with-rs256).
+   */
+  @Test
+  void openIdDiscoveryAdvertisesTheAlgorithmOfTheTokensTheServerIssues() throws Exception {
+    initializeJwtTokenGenerator(AuthenticationConfiguration.TokenValidationAlgorithm.RS_512);
+    String issued =
+        JWTTokenGenerator.getInstance()
+            .generateJWTToken(
+                USER_NAME,
+                Set.of(),
+                false,
+                "alice@example.com",
+                3600,
+                false,
+                ServiceTokenType.OM_USER,
+                List.of("openid"),
+                CLIENT_ID)
+            .getJWTToken();
+    AuthenticationConfiguration rs512Provider = mock(AuthenticationConfiguration.class);
+    when(rs512Provider.getTokenValidationAlgorithm())
+        .thenReturn(AuthenticationConfiguration.TokenValidationAlgorithm.RS_512);
+    when(rs512Provider.getPublicKeyUrls()).thenReturn(List.of());
+    when(rs512Provider.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
+    when(rs512Provider.getJwtPrincipalClaimsMapping()).thenReturn(List.of());
+    OAuthHttpStatelessServerTransportProvider transport =
+        transportWith(mock(UserSSOOAuthProvider.class));
+    putField(transport, "mcpEndpoint", "/mcp");
+    putField(transport, "objectMapper", new ObjectMapper());
+
+    try (MockedStatic<SecurityConfigurationManager> config =
+        mockStatic(SecurityConfigurationManager.class)) {
+      config.when(SecurityConfigurationManager::getCurrentAuthConfig).thenReturn(rs512Provider);
+      transport.onConfigurationChanged(
+          rs512Provider,
+          mock(AuthorizerConfiguration.class),
+          new MCPConfiguration().withBaseUrl("https://om.example"));
+    }
+
+    JsonNode advertised = discoveryDocument(transport).get("id_token_signing_alg_values_supported");
+    assertThat(advertised).hasSize(1);
+    assertThat(advertised.get(0).asText()).isEqualTo(JWT.decode(issued).getAlgorithm());
+  }
+
+  private static JsonNode discoveryDocument(OAuthHttpStatelessServerTransportProvider transport)
+      throws Exception {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getRequestURI()).thenReturn("/mcp/.well-known/openid-configuration");
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    ByteArrayOutputStream body = new ByteArrayOutputStream();
+    when(response.getOutputStream()).thenReturn(new CapturedOutput(body));
+
+    transport.doGet(request, response);
+
+    return new ObjectMapper().readTree(body.toByteArray());
+  }
+
+  private static final class CapturedOutput extends ServletOutputStream {
+    private final ByteArrayOutputStream body;
+
+    private CapturedOutput(ByteArrayOutputStream body) {
+      this.body = body;
+    }
+
+    @Override
+    public void write(int b) {
+      body.write(b);
+    }
+
+    @Override
+    public boolean isReady() {
+      return true;
+    }
+
+    @Override
+    public void setWriteListener(WriteListener listener) {}
   }
 
   private static String resourceFilePath(String resourceName) throws Exception {

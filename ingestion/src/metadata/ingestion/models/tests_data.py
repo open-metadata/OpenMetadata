@@ -21,6 +21,7 @@ from metadata.generated.schema.api.tests.createTestCaseResolutionStatus import (
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testCaseResolutionStatus import Severities
 
 
 class OMetaTestSuiteSample(BaseModel):
@@ -39,6 +40,7 @@ class OMetaTestCaseSample(BaseModel):
 class OMetaTestCaseResultsSample(BaseModel):
     test_case_results: TestCaseResult
     test_case_name: str
+    incident_severity: Severities | None = None
 
 
 class OMetaTestCaseResolutionStatus(BaseModel):

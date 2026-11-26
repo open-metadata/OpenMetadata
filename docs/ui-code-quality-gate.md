@@ -199,7 +199,7 @@ on `make ui-checkstyle-changed`.
 
 ## SonarCloud configuration (admin — must be done once)
 
-Project `open-metadata-ui`, organization `open-metadata`, scanned by `.github/workflows/yarn-coverage.yml`.
+Project `open-metadata-ui`, organization `open-metadata`, scanned by `.github/workflows/ui-sonarcloud-nightly.yml`.
 
 ### Quality profile
 
@@ -275,3 +275,15 @@ GET https://sonarcloud.io/api/measures/search_history
 
 Expectation: flat or falling on a growing `ncloc`. Two consecutive months climbing is the signal to
 schedule targeted cleanup — Clean as You Code only retires debt where people happen to edit.
+
+## Unit-test lint scope
+
+Unit tests keep type and correctness checks but exclude production accessibility,
+rendering-cost, architecture, design-token and complexity rules on their mock JSX
+and fixtures. Production files retain those checks. Jest rules match the runner's
+`src/**/*.test.{js,jsx,ts,tsx}` pattern; Playwright and the Vitest component library
+keep separate policies. Unused disable directives fail lint.
+
+See ADR:2026-11-23-unit-tests-enforce-runner-correctness for the measured rollout
+and rejected rule candidates. Warning removal through scope correction is reported
+separately from fixes to test logic and promotions from warning to error.

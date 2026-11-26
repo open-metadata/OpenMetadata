@@ -300,6 +300,8 @@ def test_connection_db_common(
     automation_workflow: AutomationWorkflow | None = None,
     queries: dict = None,  # noqa: RUF013
     timeout_seconds: int | None = THREE_MIN,
+    *,
+    additional_checks: dict[str, Callable[[], object]] | None = None,
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -322,7 +324,7 @@ def test_connection_db_common(
 
     queries = queries or {}
 
-    test_fn = {
+    test_fn: dict[str, Callable[[], object]] = {
         "CheckAccess": partial(test_connection_engine_step, engine),
         "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
         "GetTables": partial(execute_inspector_func, engine, "get_table_names"),
@@ -331,6 +333,9 @@ def test_connection_db_common(
 
     for key, query in queries.items():
         test_fn[key] = partial(test_query, statement=query, engine=engine)
+
+    if additional_checks:
+        test_fn.update(additional_checks)
 
     result = test_connection_steps(
         metadata=metadata,

@@ -65,7 +65,10 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DocumentRepository;
+import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
 import org.openmetadata.service.ontology.OntologyAiAvailability;
+import org.openmetadata.service.ontology.OntologyBindingGraphLinks;
+import org.openmetadata.service.ontology.OntologyConceptBindingService;
 import org.openmetadata.service.rdf.OntologyDocument;
 import org.openmetadata.service.rdf.RdfEntityDiffService;
 import org.openmetadata.service.rdf.RdfEntityTypeValidator;
@@ -111,6 +114,7 @@ public class RdfResource {
   private volatile SavedSparqlQueryStore savedSparqlQueryStore;
   private volatile InferenceRuleService inferenceRuleService;
   private volatile CustomOntologyRepository customOntologyRepository;
+  private volatile OntologyBindingGraphLinks bindingGraphLinks;
   private final Authorizer authorizer;
   private final Supplier<RdfRepository> repositorySupplier;
   private final Supplier<RdfProjectionState> projectionStateSupplier;
@@ -214,6 +218,20 @@ public class RdfResource {
 
   private RdfGraphService graphService() {
     return new RdfGraphService(requireRdfRepository());
+  }
+
+  private OntologyBindingGraphLinks bindingGraphLinks() {
+    if (bindingGraphLinks == null) {
+      bindingGraphLinks =
+          new OntologyBindingGraphLinks(
+              new OntologyConceptBindingService(
+                  new OntologyConceptBindingStore(
+                      Entity.getCollectionDAO(),
+                      OntologyConceptBindingStore.registeredAssetTables()),
+                  authorizer,
+                  Entity::getEntityRepository));
+    }
+    return bindingGraphLinks;
   }
 
   private RdfSparqlService sparqlService() {
@@ -1043,6 +1061,7 @@ public class RdfResource {
         @ApiResponse(responseCode = "503", description = "RDF service not enabled")
       })
   public Response exploreEntityGraph(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Entity ID", required = true) @QueryParam("entityId") UUID entityId,
       @Parameter(description = "Entity type", required = true) @QueryParam("entityType")
@@ -1070,7 +1089,12 @@ public class RdfResource {
               RdfGraphService.GraphRequest request =
                   RdfGraphService.GraphRequest.from(
                       entityId, entityType, depth, entityTypes, relationshipTypes);
-              return graphService().explore(request);
+              return bindingGraphLinks()
+                  .merge(
+                      graphService().explore(request),
+                      requireRdfRepository().getBaseUri(),
+                      request,
+                      new OntologyConceptBindingService.Access(uriInfo, securityContext));
             });
     return Response.ok(graph, MediaType.APPLICATION_JSON).build();
   }

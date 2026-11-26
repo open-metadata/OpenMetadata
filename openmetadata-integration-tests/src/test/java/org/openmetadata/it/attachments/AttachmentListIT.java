@@ -33,7 +33,9 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
@@ -255,6 +257,25 @@ class AttachmentListIT {
           response.getStatus() >= 400 && response.getStatus() < 500,
           "Expected 4xx for unknown sortBy, got " + response.getStatus());
     }
+  }
+
+  @Test
+  void testSoftDeleteMarksOnlyThatAttachmentDeleted(TestNamespace ns) {
+    Glossary glossary = createGlossary(RestClient.admin(), ns, "attach-soft-delete");
+    String link = entityLink(glossary);
+    Asset removed = uploadAttachment(link, "removed.txt", "removed");
+    Asset kept = uploadAttachment(link, "kept.txt", "kept");
+
+    try (Response response =
+        RestClient.admin().rawDelete(ATTACHMENTS_PATH + "/" + removed.getId())) {
+      assertEquals(200, response.getStatus(), response.readEntity(String.class));
+    }
+
+    Map<String, Boolean> deletedById =
+        listExternalAttachments(glossary.getFullyQualifiedName(), null).stream()
+            .collect(
+                Collectors.toMap(Asset::getId, asset -> Boolean.TRUE.equals(asset.getDeleted())));
+    assertEquals(Map.of(removed.getId(), true, kept.getId(), false), deletedById);
   }
 
   @Test

@@ -256,7 +256,9 @@ describe('GovernancePanel', () => {
 
     expect(mockSetHash).toHaveBeenCalledWith(
       'governance',
-      'glossary-relations/add'
+      'glossary-relations/add',
+      undefined,
+      { push: true }
     );
 
     unmount();

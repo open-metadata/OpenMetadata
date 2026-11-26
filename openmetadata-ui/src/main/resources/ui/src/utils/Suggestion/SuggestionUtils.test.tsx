@@ -24,7 +24,7 @@ import {
 } from './SuggestionUtils';
 
 describe('getSuggestionByType', () => {
-  it('should correctly group suggestions by createdBy name and type', () => {
+  it('should correctly group suggestions by createdBy id and type', () => {
     const suggestionMock: Suggestion[] = [
       {
         type: SuggestionType.SuggestTagLabel,
@@ -46,12 +46,13 @@ describe('getSuggestionByType', () => {
 
     const result = getSuggestionByType(suggestionMock);
 
-    // Check if all users are in the allUsersList
-    expect(result.allUsersList).toHaveLength(4);
+    expect(result.allUsersList).toEqual([
+      { id: '1', name: 'John Doe' },
+      { id: '2', name: 'Jane Smith' },
+    ]);
 
-    // Check if the suggestions are grouped correctly by createdBy name
-    const johnGroup = result.groupedSuggestions.get('John Doe');
-    const janeGroup = result.groupedSuggestions.get('Jane Smith');
+    const johnGroup = result.groupedSuggestions.get('1');
+    const janeGroup = result.groupedSuggestions.get('2');
 
     expect(johnGroup?.tags).toHaveLength(2); // John has 2 SuggestTagLabel
     expect(johnGroup?.description).toHaveLength(1); // John has 1 SuggestDescription
@@ -83,9 +84,34 @@ describe('getSuggestionByType', () => {
     expect(
       result.groupedSuggestions.get('Missing id')?.description
     ).toHaveLength(1);
-    expect(
-      result.groupedSuggestions.get('Jane Smith')?.combinedData
-    ).toHaveLength(1);
+    expect(result.groupedSuggestions.get('1')?.combinedData).toHaveLength(1);
+  });
+
+  it('should merge expanded and minimal refs of the same user into one avatar and group', () => {
+    const expandedRef = {
+      id: 'user-1',
+      type: 'user',
+      name: 'john_doe',
+      displayName: 'John Doe',
+      fullyQualifiedName: 'john_doe',
+    } as EntityReference;
+    const minimalRef = {
+      id: 'user-1',
+      type: 'user',
+      name: 'ingestion-bot',
+    } as EntityReference;
+
+    const result = getSuggestionByType([
+      { type: SuggestionType.SuggestTagLabel, createdBy: minimalRef },
+      { type: SuggestionType.SuggestDescription, createdBy: expandedRef },
+      { type: SuggestionType.SuggestTagLabel, createdBy: minimalRef },
+    ] as Suggestion[]);
+
+    expect(result.allUsersList).toEqual([expandedRef]);
+    expect([...result.groupedSuggestions.keys()]).toEqual(['user-1']);
+    expect(result.groupedSuggestions.get('user-1')?.combinedData).toHaveLength(
+      3
+    );
   });
 });
 

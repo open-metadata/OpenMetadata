@@ -36,6 +36,7 @@ import org.apache.jena.query.QueryExecution;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
@@ -71,6 +72,7 @@ import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 import org.openmetadata.service.rdf.storage.StorageFacts;
+import org.openmetadata.service.rdf.translator.ConceptBindingLookup;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 import org.openmetadata.service.rdf.translator.LiveTagLookup;
 import org.openmetadata.service.rdf.translator.ReferenceScope;
@@ -228,7 +230,12 @@ public class RdfRepository {
       this.storageService =
           servingChain(materializationStorageService, inferenceRuleRepository, assertedOnlyQueries);
       this.translator =
-          new JsonLdTranslator(JsonUtils.getObjectMapper(), config.getBaseUri().toString());
+          new JsonLdTranslator(
+              JsonUtils.getObjectMapper(),
+              config.getBaseUri().toString(),
+              LiveTagLookup.database(),
+              ConceptBindingLookup.database(),
+              ReferenceScope.LIVE);
       this.documentTranslator =
           new JsonLdTranslator(
               JsonUtils.getObjectMapper(),
@@ -587,11 +594,55 @@ public class RdfRepository {
       delete(new EntityReference().withType(entityType).withId(entityId));
       return;
     }
-    createOrUpdate(entity);
+    if (Entity.TABLE.equals(entityType) && isEnabled()) {
+      refreshTable(entity);
+    } else {
+      createOrUpdate(entity);
+    }
+  }
+
+  /**
+   * A column test can show its evidence only while its column resolves and its tags allow it
+   * (ADR:2026-11-18-the-rdf-graph-carries-the-latest-quality-evidence).
+   */
+  private void refreshTable(final EntityInterface<?> table) {
+    try {
+      final String tableUri = entityUri(Entity.TABLE, table.getId());
+      final Map<String, Set<RDFNode>> previousColumnTags =
+          RdfColumnTags.read(
+              storageService.executeSparqlQuery(
+                  RdfColumnTags.storedQuery(KNOWLEDGE_GRAPH, tableUri),
+                  RdfColumnTags.RESULTS_FORMAT));
+      final Model projection = translator.toRdf(table);
+      if (!previousColumnTags.equals(RdfColumnTags.of(projection, tableUri))) {
+        // A failed requeue must leave the previous projection for the retry to compare.
+        projectionLoaders.testCaseRequeue().requeueTestCasesOf(table.getFullyQualifiedName());
+      }
+      storeProjection(table, projection);
+    } catch (RuntimeException failure) {
+      throw projectionFailure(table, failure);
+    }
   }
 
   public void refreshOntologyGraph(final UUID ontologyId) {
     projectionLoaders.ontologyGraphs().get().refresh(ontologyId, storageService);
+  }
+
+  /** Hands the assets bound to a concept of the ontology to {@code pageAction}, page by page. */
+  public void forEachBoundAssetPage(
+      final UUID ontologyId, final Consumer<List<EntityReference>> pageAction) {
+    String after = "";
+    List<EntityReference> page;
+    do {
+      page =
+          projectionLoaders
+              .boundAssets()
+              .page(ontologyId, after, RdfProjectionLoaders.BoundAssets.PAGE_SIZE);
+      if (!page.isEmpty()) {
+        pageAction.accept(page);
+        after = page.getLast().getId().toString();
+      }
+    } while (page.size() == RdfProjectionLoaders.BoundAssets.PAGE_SIZE);
   }
 
   public void rebuildOntologyGraphs() {
@@ -614,27 +665,57 @@ public class RdfRepository {
   }
 
   /**
-   * Replays an added relationship. The graph holds the live catalog only, so an edge one of whose
-   * ends was soft-deleted or removed after the add was queued is left out; the delete already
-   * removed every edge of that end.
+   * Replays an added relationship against current SQL state. The graph holds the live catalog only,
+   * so an edge whose SQL row was deleted or one of whose ends was soft-deleted after the add was
+   * queued removes it instead of resurrecting it.
    */
   public void refreshRelationship(final EntityRelationship relationship) {
+    if (!isEnabled() || relationship == null || relationship.getRelationshipType() == null) {
+      return;
+    }
     if (relationship.getRelationshipType() == Relationship.UPSTREAM) {
       refreshLineage(relationship);
-    } else if (hasLiveEnds(relationship)) {
+    } else if (!projectionLoaders.relationshipExists(relationship) || !hasLiveEnds(relationship)) {
+      removeRelationship(relationship);
+    } else {
       addRelationship(relationship);
     }
   }
 
-  /** Replays an added typed glossary relation, leaving it out unless both terms are live. */
+  /**
+   * Replays an added typed glossary relation against current SQL state. The graph holds the live
+   * catalog only, so an edge whose SQL row was deleted or one of whose terms was soft-deleted after
+   * the add was queued removes its stale triples instead of resurrecting them.
+   */
   public void refreshGlossaryTermRelation(
       final UUID fromTermId, final UUID toTermId, final String relationType) {
+    if (!isEnabled() || fromTermId == null || toTermId == null) {
+      return;
+    }
+    final Optional<RelationshipType> resolvedType = findGlossaryRelationType(relationType);
+    if (resolvedType.isEmpty()) {
+      return;
+    }
+    final RelationshipType type = resolvedType.get();
+    final Optional<RelationshipType> inverse =
+        relationshipTypeResolver().inverseOf(type, Include.ALL);
     final RdfEntityLiveness.Endpoint from =
         new RdfEntityLiveness.Endpoint(Entity.GLOSSARY_TERM, fromTermId);
     final RdfEntityLiveness.Endpoint to =
         new RdfEntityLiveness.Endpoint(Entity.GLOSSARY_TERM, toTermId);
-    if (projectionLoaders.liveness().areLive(from, to)) {
-      addGlossaryTermRelation(fromTermId, toTermId, relationType);
+    final boolean exists =
+        !Boolean.TRUE.equals(type.getDeleted())
+            && projectionLoaders.liveness().areLive(from, to)
+            && RdfProjectionLoaders.hasGlossaryTermRelation(
+                projectionLoaders.glossaryTermRelationRows().load(fromTermId, toTermId),
+                fromTermId,
+                toTermId,
+                type.getName(),
+                inverse.map(RelationshipType::getName).orElse(null));
+    if (exists) {
+      addGlossaryTermRelation(fromTermId, toTermId, type.getName());
+    } else {
+      removeDirectedGlossaryTermRelation(fromTermId, toTermId, type, inverse.orElse(null));
     }
   }
 
@@ -661,34 +742,40 @@ public class RdfRepository {
   }
 
   public void createOrUpdate(EntityInterface<?> entity) {
-    if (!isEnabled()) {
-      return;
+    if (isEnabled()) {
+      try {
+        storeProjection(entity, translator.toRdf(entity));
+      } catch (RuntimeException failure) {
+        throw projectionFailure(entity, failure);
+      }
     }
+  }
 
-    try {
-      String entityType = entity.getEntityReference().getType();
-      LOG.debug(
-          "Storing entity in RDF - Type: {}, FQN: {}, Name: {}, ID: {}",
-          entityType,
-          entity.getFullyQualifiedName(),
-          entity.getName(),
-          entity.getId());
-      Model rdfModel = translator.toRdf(entity);
-      storageService.storeEntity(entityType, entity.getId(), rdfModel);
-      LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
-    } catch (RdfStorageMaintenanceException heldBack) {
-      recordFailure(heldBack);
-      throw heldBack;
-    } catch (Exception e) {
-      recordFailure(e);
-      LOG.error(
-          "Failed to create/update entity {} in RDF - Type: {}, FQN: {}",
-          entity.getId(),
-          entity.getEntityReference().getType(),
-          entity.getFullyQualifiedName(),
-          e);
-      throw new RuntimeException("Failed to create/update entity in RDF", e);
+  private void storeProjection(final EntityInterface<?> entity, final Model projection) {
+    final String entityType = entity.getEntityReference().getType();
+    LOG.debug(
+        "Storing entity in RDF - Type: {}, FQN: {}, Name: {}, ID: {}",
+        entityType,
+        entity.getFullyQualifiedName(),
+        entity.getName(),
+        entity.getId());
+    storageService.storeEntity(entityType, entity.getId(), projection);
+    LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
+  }
+
+  private RuntimeException projectionFailure(
+      final EntityInterface<?> entity, final RuntimeException failure) {
+    recordFailure(failure);
+    if (failure instanceof RdfStorageMaintenanceException) {
+      return failure;
     }
+    LOG.error(
+        "Failed to create/update entity {} in RDF - Type: {}, FQN: {}",
+        entity.getId(),
+        entity.getEntityReference().getType(),
+        entity.getFullyQualifiedName(),
+        failure);
+    return new RuntimeException("Failed to create/update entity in RDF", failure);
   }
 
   /**
@@ -1071,20 +1158,22 @@ public class RdfRepository {
   }
 
   /**
-   * Builds one update that removes an entity's incoming and outgoing triples, its owned resources
-   * and the lineage details of its edges.
+   * Builds one update that removes an entity's incoming and outgoing triples, its owned resources,
+   * the concept binding edges into its columns and the lineage details of its edges.
    */
   public static String buildEntityDeleteUpdate(String entityUri) {
     return String.format(
         "DELETE { GRAPH <%1$s> { ?subject ?p ?o } } WHERE { GRAPH <%1$s> { "
             + "VALUES ?entity { <%2$s> } "
             + "{ ?entity ?p ?o . BIND(?entity AS ?subject) } UNION "
-            + "{ ?subject ?p ?entity . BIND(?entity AS ?o) } UNION { %3$s } UNION { %4$s } } }",
+            + "{ ?subject ?p ?entity . BIND(?entity AS ?o) } UNION { %3$s } UNION { %4$s } "
+            + "UNION { %5$s } } }",
         KNOWLEDGE_GRAPH,
         entityUri,
         RdfOwnedResources.ownedTriplesPattern(),
         RdfLineage.incidentDetailsTriplesPattern(
-            entityUri.substring(entityUri.lastIndexOf('/') + 1)));
+            entityUri.substring(entityUri.lastIndexOf('/') + 1)),
+        RdfOwnedResources.incomingBindingTriplesPattern());
   }
 
   private static String buildIriValues(Collection<String> iris) {
@@ -1750,11 +1839,7 @@ public class RdfRepository {
     }
 
     try {
-      // Get entity to convert to JSON-LD directly
-      EntityInterface<?> entity = Entity.getEntity(entityType, entityId, "*", null);
-
-      // Convert directly to JSON-LD without going through RDF model
-      return translator.toJsonLdString(entity, true);
+      return translator.toJsonLdString(loadEntityDocument(entityType, entityId), true);
 
     } catch (EntityNotFoundException e) {
       throw e;
@@ -1770,9 +1855,7 @@ public class RdfRepository {
     }
 
     try {
-      // Get the entity and convert to RDF
-      EntityInterface<?> entity = Entity.getEntity(entityType, entityId, "*", null);
-      Model rdfModel = documentTranslator.toRdf(entity);
+      Model rdfModel = documentTranslator.toRdf(loadEntityDocument(entityType, entityId));
 
       // Convert model to requested format
       java.io.StringWriter writer = new java.io.StringWriter();
@@ -1793,6 +1876,18 @@ public class RdfRepository {
       LOG.error("Failed to get entity {} as RDF", entityId, e);
       throw new RuntimeException("Failed to get entity as RDF", e);
     }
+  }
+
+  private EntityInterface<?> loadEntityDocument(final String entityType, final UUID entityId) {
+    final boolean isTestCase = Entity.TEST_CASE.equals(entityType);
+    final String fields =
+        isTestCase ? String.join(",", RdfIndexingFields.forEntityType(entityType)) : "*";
+    final EntityInterface<?> entity =
+        Entity.getEntity(entityType, entityId, fields, Include.NON_DELETED);
+    if (isTestCase) {
+      RdfQualityEvidence.database().attach(entityType, List.of(entity));
+    }
+    return entity;
   }
 
   public String executeSparqlQuery(String query, String format) {
@@ -4122,10 +4217,75 @@ public class RdfRepository {
         resolver.requireIgnoreCase(relationType == null ? "relatedTo" : relationType);
     final Set<String> predicateUris = new LinkedHashSet<>();
     predicateUris.add(type.getRdfPredicate().toString());
-    if (type.getInverse() != null && !type.getName().equals(type.getInverse().getName())) {
-      predicateUris.add(resolver.require(type.getInverse().getName()).getRdfPredicate().toString());
-    }
+    resolver
+        .inverseOf(type, Include.ALL)
+        .ifPresent(inverse -> predicateUris.add(inverse.getRdfPredicate().toString()));
     return predicateUris;
+  }
+
+  private Optional<RelationshipType> findGlossaryRelationType(final String relationType) {
+    final String requested =
+        relationType == null || relationType.isBlank() ? "relatedTo" : relationType;
+    final RelationshipTypeResolver resolver = relationshipTypeResolver();
+    for (final RelationshipType active : resolver.list()) {
+      if (active.getName() != null && active.getName().equalsIgnoreCase(requested)) {
+        return Optional.of(active);
+      }
+    }
+    return resolver.findReferenced(new EntityReference().withName(requested), Include.ALL);
+  }
+
+  private void removeDirectedGlossaryTermRelation(
+      final UUID fromTermId,
+      final UUID toTermId,
+      final RelationshipType type,
+      final RelationshipType inverse) {
+    if (type.getRdfPredicate() == null) {
+      return;
+    }
+    try {
+      final String fromUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + fromTermId;
+      final String toUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + toTermId;
+      final String predicateUri = type.getRdfPredicate().toString();
+      final String inversePredicateUri =
+          inverse != null && inverse.getRdfPredicate() != null
+              ? inverse.getRdfPredicate().toString()
+              : null;
+      storageService.executeSparqlUpdate(
+          buildDirectedGlossaryTermRelationDeleteUpdate(
+              fromUri, toUri, predicateUri, inversePredicateUri));
+      LOG.debug(
+          "Removed stale glossary term relation {} -> {} ({})",
+          fromTermId,
+          toTermId,
+          type.getName());
+    } catch (RuntimeException e) {
+      recordFailure(e);
+      LOG.error(
+          "Failed to remove glossary term relation {} -> {} ({})",
+          fromTermId,
+          toTermId,
+          type.getName(),
+          e);
+      throw new IllegalStateException("Failed to remove glossary term relation from RDF", e);
+    }
+  }
+
+  /**
+   * Removes only the directed semantic pair ({@code from -> pred -> to} and its paired inverse
+   * {@code to -> inversePred -> from}) so replaying a stale add after the user flipped an
+   * asymmetric relation's direction cannot erase the live reversed edge.
+   */
+  static String buildDirectedGlossaryTermRelationDeleteUpdate(
+      final String fromUri,
+      final String toUri,
+      final String predicateUri,
+      final String inversePredicateUri) {
+    final String reversePredicate =
+        inversePredicateUri != null ? inversePredicateUri : predicateUri;
+    return String.format(
+        "DELETE DATA { GRAPH <%s> { <%s> <%s> <%s> . <%s> <%s> <%s> . } }",
+        KNOWLEDGE_GRAPH, fromUri, predicateUri, toUri, toUri, reversePredicate, fromUri);
   }
 
   static String buildGlossaryTermRelationDeleteUpdate(

@@ -1,7 +1,7 @@
 # A field the schema marks `mask: true` never appears in a stored change event or entity version
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial)
+- **Revisions:** v1 2026-10-26 (initial) · v2 2026-11-18 (which classes the change event check reads)
 - **Deciders:** Adrià Manero
 - **Guard:** `SecretFieldsAreMaskedTest`, `VersionHistoryArchitectureTest`, `ChangeEventMaskingTest`, `MaskedFieldsTest`, `UserSecretsIT`
 - **Related:** [PR #36251](https://github.com/open-metadata/OpenMetadata/pull/36251), [PR #36344](https://github.com/open-metadata/OpenMetadata/pull/36344); `secrets.masker.MaskedFields`, `events.ChangeEventMasking`, `ChangeEventDAO.insert`, `EntityRepository.storeVersions`
@@ -47,3 +47,19 @@ Java type (`oneOf`, `anyOf`, maps), whose values are kept as plain maps.
 Change events and versions can no longer show that a credential changed, so an audit of credential
 changes needs its own record. Revisit if an alert or the activity feed ever needs a masked field's
 value.
+
+## Amendment: which classes the change event check reads (v2, 2026-11-18)
+
+The check in `ChangeEventDAO.insert` skipped every class outside `org.openmetadata.schema.`, so it
+did nothing for an entity Collate generates, whatever its schema marked
+([#38135](https://github.com/open-metadata/OpenMetadata/issues/38135)).
+
+- `MaskedFields.anyIn` reads classes under `org.openmetadata.schema.`, `io.collate.` and
+  `io.getcollate.`. Collate generates into several packages under the last two, so the roots are
+  named, not one package.
+- A class generated anywhere else is not masked by that check. Its writers must mask the entity
+  themselves, or the prefix is added here.
+- Version history is not affected: `MaskedFields.wholeFieldsOf` never looked at the package.
+
+Guard: `MaskedFieldsTest#aCollateEntityIsReadTheSameWay`,
+`ChangeEventMaskingTest#aMaskedFieldLeavesAnEventAboutACollateEntity`.

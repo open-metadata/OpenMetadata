@@ -80,6 +80,8 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
 
   {
     supportsImportExport = true;
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsBatchImport = true;
     supportsRecursiveImport = true; // Database supports recursive import with nested schemas/tables

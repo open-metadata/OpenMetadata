@@ -33,7 +33,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -216,7 +215,7 @@ class TagLabelUtilTest {
   }
 
   @Test
-  void onlyApprovedOrUnstagedGlossaryTermsPass() {
+  void onlyTermsThatAreNotApprovedOrUnstagedAreUnapproved() {
     GlossaryTerm approved = term("Glossary.Approved", EntityStatus.APPROVED);
     GlossaryTerm unstaged = term("Glossary.Legacy", null);
     GlossaryTerm inReview = term("Glossary.Pending", EntityStatus.IN_REVIEW);
@@ -226,19 +225,12 @@ class TagLabelUtilTest {
               () ->
                   Entity.getEntityByNames(
                       eq(Entity.GLOSSARY_TERM), anyList(), eq(""), eq(Include.NON_DELETED)))
-          .thenReturn(List.of(approved, unstaged))
-          .thenReturn(List.of(approved, inReview));
+          .thenReturn(List.of(approved, unstaged, inReview));
 
-      assertDoesNotThrow(
-          () -> TagLabelUtil.checkGlossaryTermsApproved(Set.of("Glossary.Approved")));
-      IllegalArgumentException rejected =
-          assertThrows(
-              IllegalArgumentException.class,
-              () -> TagLabelUtil.checkGlossaryTermsApproved(Set.of("Glossary.Pending")));
       assertEquals(
-          CatalogExceptionMessage.glossaryTermNotApproved(
-              "Glossary.Pending", EntityStatus.IN_REVIEW),
-          rejected.getMessage());
+          List.of(inReview),
+          TagLabelUtil.unapprovedGlossaryTerms(
+              Set.of("Glossary.Approved", "Glossary.Legacy", "Glossary.Pending")));
     }
   }
 
@@ -249,7 +241,7 @@ class TagLabelUtilTest {
           .when(() -> Entity.getEntityByNames(any(), anyList(), any(), any()))
           .thenThrow(new AssertionError("No terms to check, so none may be looked up"));
 
-      assertDoesNotThrow(() -> TagLabelUtil.checkGlossaryTermsApproved(Set.of()));
+      assertEquals(List.of(), TagLabelUtil.unapprovedGlossaryTerms(Set.of()));
     }
   }
 

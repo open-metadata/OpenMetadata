@@ -3281,6 +3281,42 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertEquals(200, basicLogin(user.getEmail(), password).statusCode());
   }
 
+  /**
+   * A login writes the row directly, so a read cached before the login must not hide it, and a
+   * second login inside the entity-update session window must still record its own time.
+   */
+  @Test
+  void test_login_recordsLoginAndActivityTimes(TestNamespace ns) throws Exception {
+    String userName = ns.shortPrefix("logintimes");
+    String password = "Keep!Passw0rd" + ns.uniqueShortId();
+    User user =
+        createEntity(
+            new CreateUser()
+                .withName(userName)
+                .withEmail(userName + "@example.com")
+                .withPassword(password)
+                .withConfirmPassword(password)
+                .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
+                .withIsBot(false));
+    String userId = user.getId().toString();
+    assertNull(Users.get(userId, "lastLoginTime,lastActivityTime").getLastLoginTime());
+
+    long beforeFirstLogin = System.currentTimeMillis();
+    assertEquals(200, basicLogin(user.getEmail(), password).statusCode());
+    User afterFirst = Users.get(userId, "lastLoginTime,lastActivityTime");
+    assertNotNull(afterFirst.getLastLoginTime());
+    assertTrue(afterFirst.getLastLoginTime() >= beforeFirstLogin);
+    assertEquals(afterFirst.getLastLoginTime(), afterFirst.getLastActivityTime());
+
+    long firstLoginTime = afterFirst.getLastLoginTime();
+    Awaitility.await().until(() -> System.currentTimeMillis() > firstLoginTime);
+    assertEquals(200, basicLogin(user.getEmail(), password).statusCode());
+    User afterSecond = Users.get(userId, "lastLoginTime,lastActivityTime,version");
+    assertTrue(afterSecond.getLastLoginTime() > firstLoginTime);
+    assertEquals(afterSecond.getLastLoginTime(), afterSecond.getLastActivityTime());
+    assertEquals(user.getVersion(), afterSecond.getVersion());
+  }
+
   /** A user created by an admin with a password, so its stored record carries the hash. */
   private User createPasswordUser(TestNamespace ns, String base) {
     String userName = ns.shortPrefix(base);

@@ -110,6 +110,7 @@ VERSIONS = {
 }
 
 COMMONS = {
+    "nats": {"nats-py[nkeys]>=2.7.0,<3.0.0"},
     "storage-archive": {
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
@@ -208,7 +209,7 @@ base_requirements = {
     "Jinja2>=3.1.6",  # 3.1.5/3.1.6 close sandbox escapes; the Rule Library relies on the sandbox
     "idna>=3.15",  # CVE-2026-45409 idna.encode() bypass of CVE-2024-3651 fix
     "jsonpatch<2.0, >=1.24",
-    "kubernetes>=21.0.0,<36",  # 36.0.0 regressed in-cluster auth (https://github.com/kubernetes-client/python/issues/2582)
+    "kubernetes>=36.0.3,<37",  # 35.0.0 ignores NO_PROXY; 36.0.0 broke in-cluster auth (fixed 36.0.1); 37 rewrites the client
     "lxml>=6.1.0",  # CVE-2026-41066 iterparse/ETCompatXMLParser XXE
     "Mako>=1.3.12",  # CVE-2026-44307 TemplateLookup path traversal
     "memory-profiler",
@@ -400,14 +401,14 @@ plugins: dict[str, set[str]] = {
     "kafka": {*COMMONS["kafka"]},
     "kafkaconnect": {VERSIONS["kafka-connect"]},
     "kinesis": {VERSIONS["boto3"]},
-    "nats": {"nats-py[nkeys]>=2.7.0,<3.0.0"},
+    "nats": {*COMMONS["nats"]},
     "pubsub": {VERSIONS["google-cloud-pubsub"]},
     "looker": {
         VERSIONS["looker-sdk"],
         VERSIONS["lkml"],
         "gitpython>=3.2.1",  # CVE-2026-114145: submodule clone path validation before filesystem writes
         VERSIONS["giturlparse"],
-        "python-liquid",
+        "python-liquid~=2.3",  # 3.x removed Template(source); Looker renders sql_table_name with it
     },
     # >=3.13.0 closes CVE-2026-2635 (default creds) + CVE-2026-8147 (missing authz);
     # retains the CVE-2026-4137 (insecure tmp dir) fix from the prior >=3.11.1 floor.
@@ -434,7 +435,7 @@ plugins: dict[str, set[str]] = {
     },
     "neo4j": {VERSIONS["neo4j"]},
     "nifi": {},  # uses requests
-    "openlineage": {*COMMONS["kafka"]},
+    "openlineage": {*COMMONS["kafka"], *COMMONS["nats"]},
     "oracle": {"oracledb>=3.4.2,<4", DATA_DIFF["oracle"]},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=5.0"},
@@ -612,7 +613,7 @@ test = {
     *plugins["sftp"],
     VERSIONS["validators"],
     VERSIONS["pyathena"],
-    "python-liquid",
+    "python-liquid~=2.3",  # 3.x removed Template(source); Looker renders sql_table_name with it
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!

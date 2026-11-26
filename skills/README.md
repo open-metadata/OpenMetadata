@@ -118,7 +118,7 @@ The `/test-enforcement` skill enforces these targets:
 | Java service (`openmetadata-service`) | 90% line coverage | JaCoCo |
 | API endpoints | 100% of changed endpoints have integration tests | `openmetadata-integration-tests` |
 | React components | 90% line coverage | Jest |
-| UI features | Playwright E2E for all user-facing changes | Playwright |
+| UI features | Browser tests for page behaviour; Playwright E2E for cross-feature journeys | Vitest browser mode + Playwright |
 | Python ingestion | 90% line coverage | pytest --cov |
 
 ## Standards

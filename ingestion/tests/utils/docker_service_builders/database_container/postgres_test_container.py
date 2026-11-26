@@ -14,12 +14,14 @@ import json
 
 from testcontainers.postgres import PostgresContainer
 
+from _openmetadata_testutils.helpers.database_images import postgres_source_image
+
 from .database_test_container import DataBaseTestContainer  # noqa: TID252
 
 
 class PostgresTestContainer(DataBaseTestContainer):
     def __init__(self):
-        self.postgres_container = PostgresContainer("postgres:latest")
+        self.postgres_container = PostgresContainer(postgres_source_image())
         self.postgres_container.with_env("TC_POOLING_INTERVAL", "3")
         self.start()
         self.connection_url = self.postgres_container.get_connection_url()

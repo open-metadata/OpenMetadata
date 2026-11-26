@@ -54,6 +54,12 @@ export enum Severities {
  */
 export interface Resolved {
     /**
+     * Assignee of the incident at resolution.
+     *
+     * User working on failure resolution.
+     */
+    assignee?: EntityReference;
+    /**
      * User who resolved the test case failure.
      */
     resolvedBy?: EntityReference;
@@ -65,19 +71,17 @@ export interface Resolved {
      * Reason of Test Case resolution.
      */
     testCaseFailureReason?: TestCaseFailureReasonType;
-    /**
-     * User working on failure resolution.
-     */
-    assignee?: EntityReference;
 }
 
 /**
- * User who resolved the test case failure.
+ * Assignee of the incident at resolution.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * User who resolved the test case failure.
  *
  * User working on failure resolution.
  */

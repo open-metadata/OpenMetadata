@@ -12,8 +12,9 @@
     },
     "jobType": {
       "type": "string",
-      "enum": ["CUSTOM_PROPERTY_ENUM_CLEANUP", "DELETE_ENTITY", "DELETE_TOKEN", "CSV_IMPORT", "CSV_EXPORT", "AUDIT_EXPORT", "ONTOLOGY_BULK", "ONTOLOGY_PACK_INSTALL", "CONTEXT_MEMORY_EXTRACTION", "MEMORY_GLOSSARY_DERIVATION", "ADMIN_OPS_REINDEX", "ADMIN_OPS_DEPLOY_PIPELINES", "ADMIN_OPS_SSO_CONFIG", "ADMIN_OPS_AUTHORIZER_CONFIG", "ADMIN_OPS_LIMITS_CONFIG", "ADMIN_OPS_APP_CONFIG"],
-      "description": "Type of the job."
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Type of the job. An open set: OpenMetadata's own types are constants in BackgroundJobTypes, and a distribution can add its own without changing this schema. The worker runs a job with the handler named by methodName."
     },
     "methodName": {
       "type": "string",

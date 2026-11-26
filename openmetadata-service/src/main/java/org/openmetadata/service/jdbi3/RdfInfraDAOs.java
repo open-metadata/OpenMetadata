@@ -235,6 +235,9 @@ public interface RdfInfraDAOs {
 
     @SqlQuery("SELECT json FROM relationship_type_entity WHERE deleted = FALSE ORDER BY name")
     List<String> listActive();
+
+    @SqlQuery("SELECT json FROM relationship_type_entity ORDER BY name")
+    List<String> listIncludingDeleted();
   }
 
   interface OntologyAxiomDAO extends OntologyMemberDAO<OntologyAxiom> {

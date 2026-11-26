@@ -6781,9 +6781,10 @@ wheels = [
 
 [[package]]
 name = "kubernetes"
-version = "35.0.0"
+version = "36.0.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "aiohttp" },
     { name = "certifi" },
     { name = "durationpy" },
     { name = "python-dateutil" },
@@ -6794,9 +6795,9 @@ dependencies = [
     { name = "urllib3" },
     { name = "websocket-client" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2c/8f/85bf51ad4150f64e8c665daf0d9dfe9787ae92005efb9a4d1cba592bd79d/kubernetes-35.0.0.tar.gz", hash = "sha256:3d00d344944239821458b9efd484d6df9f011da367ecb155dadf9513f05f09ee", size = 1094642, upload-time = "2026-01-16T01:05:27.76Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ca/57/b07b96353f902aa1bdbe00e878e3a12a137977d03a962479785576aa8ec9/kubernetes-36.0.3.tar.gz", hash = "sha256:36993ed25ce59b789c9341473a228fcf268504a2fec7c2b2b1531d73072e5ce7", size = 2337528, upload-time = "2026-07-13T20:38:12.128Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/70/05b685ea2dffcb2adbf3cdcea5d8865b7bc66f67249084cf845012a0ff13/kubernetes-35.0.0-py2.py3-none-any.whl", hash = "sha256:39e2b33b46e5834ef6c3985ebfe2047ab39135d41de51ce7641a7ca5b372a13d", size = 2017602, upload-time = "2026-01-16T01:05:25.991Z" },
+    { url = "https://files.pythonhosted.org/packages/5b/30/a96d47df739689ac0001ade0afefc16e3b477fc2fb426b568515fdc8afce/kubernetes-36.0.3-py2.py3-none-any.whl", hash = "sha256:8fde9241c4b298e6374a069dcf728359b4e72c2fb29489a975ba4e1c047cf10f", size = 4618066, upload-time = "2026-07-13T20:38:10.172Z" },
 ]
 
 [[package]]
@@ -9488,6 +9489,7 @@ openlineage = [
     { name = "fastavro", version = "1.12.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "fastavro", version = "1.13.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "grpcio-tools" },
+    { name = "nats-py", extra = ["nkeys"] },
     { name = "protobuf" },
 ]
 opensearch = [
@@ -9998,7 +10000,6 @@ vertica = [
 bootstrap = [
     { name = "pip" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
-    { name = "uv" },
 ]
 classification-models = [
     { name = "en-core-web-md" },
@@ -10010,7 +10011,6 @@ coverage = [
     { name = "coverage", extra = ["toml"] },
     { name = "pip" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
-    { name = "uv" },
 ]
 dev = [
     { name = "basedpyright" },
@@ -10033,7 +10033,6 @@ dev = [
     { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "twine" },
     { name = "types-requests" },
-    { name = "uv" },
     { name = "uvloop" },
 ]
 dialect-compat = [
@@ -10048,45 +10047,43 @@ generation = [
     { name = "pip" },
     { name = "ruff" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
-    { name = "uv" },
     { name = "uvloop" },
+]
+hooks = [
+    { name = "pip" },
+    { name = "pre-commit", version = "4.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pre-commit", version = "4.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
+]
+imports = [
+    { name = "import-linter" },
+    { name = "pip" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
 nox = [
     { name = "nox" },
     { name = "pip" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
-    { name = "uv" },
 ]
 style = [
     { name = "pip" },
     { name = "ruff" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
-    { name = "uv" },
 ]
 test = [
     { name = "basedpyright" },
-    { name = "boto3-stubs" },
-    { name = "build" },
     { name = "coverage", extra = ["toml"] },
-    { name = "datamodel-code-generator" },
     { name = "dirty-equals" },
     { name = "exasol-integration-test-docker-environment" },
     { name = "factory-boy" },
     { name = "faker" },
     { name = "freezegun" },
-    { name = "google-api-python-client-stubs" },
-    { name = "google-auth-stubs" },
-    { name = "import-linter" },
     { name = "kafka-python" },
     { name = "locust" },
     { name = "luigi" },
     { name = "minio" },
-    { name = "mypy-boto3-glue" },
     { name = "nox" },
-    { name = "pandas-stubs" },
     { name = "pip" },
-    { name = "pre-commit", version = "4.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "pre-commit", version = "4.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-order" },
@@ -10094,18 +10091,25 @@ test = [
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
     { name = "ruff" },
-    { name = "scipy-stubs", version = "1.15.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "scipy-stubs", version = "1.17.1.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
-    { name = "scipy-stubs", version = "1.18.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "skops" },
     { name = "socksio" },
     { name = "sqlalchemy-ibmi" },
     { name = "testcontainers" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
-    { name = "twine" },
+]
+typing = [
+    { name = "basedpyright" },
+    { name = "boto3-stubs" },
+    { name = "google-api-python-client-stubs" },
+    { name = "google-auth-stubs" },
+    { name = "mypy-boto3-glue" },
+    { name = "pandas-stubs" },
+    { name = "pip" },
+    { name = "scipy-stubs", version = "1.15.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy-stubs", version = "1.17.1.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "scipy-stubs", version = "1.18.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "types-requests" },
-    { name = "uv" },
-    { name = "uvloop" },
 ]
 
 [package.metadata]
@@ -10586,10 +10590,10 @@ requires-dist = [
     { name = "kafka-connect-py", marker = "extra == 'slim'", specifier = "==0.10.11" },
     { name = "kafka-connect-py", marker = "extra == 'test'", specifier = "==0.10.11" },
     { name = "kafka-python", marker = "extra == 'test'", specifier = "==2.3.2" },
-    { name = "kubernetes", specifier = ">=21.0.0,<36" },
-    { name = "kubernetes", marker = "extra == 'all'", specifier = ">=21.0.0,<36" },
-    { name = "kubernetes", marker = "extra == 'all-dev-env'", specifier = ">=21.0.0,<36" },
-    { name = "kubernetes", marker = "extra == 'slim'", specifier = ">=21.0.0,<36" },
+    { name = "kubernetes", specifier = ">=36.0.3,<37" },
+    { name = "kubernetes", marker = "extra == 'all'", specifier = ">=36.0.3,<37" },
+    { name = "kubernetes", marker = "extra == 'all-dev-env'", specifier = ">=36.0.3,<37" },
+    { name = "kubernetes", marker = "extra == 'slim'", specifier = ">=36.0.3,<37" },
     { name = "lkml", marker = "extra == 'all'", specifier = "~=1.3" },
     { name = "lkml", marker = "extra == 'all-dev-env'", specifier = "~=1.3" },
     { name = "lkml", marker = "extra == 'looker'", specifier = "~=1.3" },
@@ -10642,6 +10646,7 @@ requires-dist = [
     { name = "nats-py", extras = ["nkeys"], marker = "extra == 'all'", specifier = ">=2.7.0,<3.0.0" },
     { name = "nats-py", extras = ["nkeys"], marker = "extra == 'all-dev-env'", specifier = ">=2.7.0,<3.0.0" },
     { name = "nats-py", extras = ["nkeys"], marker = "extra == 'nats'", specifier = ">=2.7.0,<3.0.0" },
+    { name = "nats-py", extras = ["nkeys"], marker = "extra == 'openlineage'", specifier = ">=2.7.0,<3.0.0" },
     { name = "nats-py", extras = ["nkeys"], marker = "extra == 'slim'", specifier = ">=2.7.0,<3.0.0" },
     { name = "ndg-httpsclient", marker = "extra == 'all'", specifier = "~=0.5.1" },
     { name = "ndg-httpsclient", marker = "extra == 'all-dev-env'", specifier = "~=0.5.1" },
@@ -10897,11 +10902,11 @@ requires-dist = [
     { name = "python-dotenv", marker = "extra == 'all'", specifier = ">=0.19.0" },
     { name = "python-dotenv", marker = "extra == 'all-dev-env'", specifier = ">=0.19.0" },
     { name = "python-dotenv", marker = "extra == 'slim'", specifier = ">=0.19.0" },
-    { name = "python-liquid", marker = "extra == 'all'" },
-    { name = "python-liquid", marker = "extra == 'all-dev-env'" },
-    { name = "python-liquid", marker = "extra == 'looker'" },
-    { name = "python-liquid", marker = "extra == 'slim'" },
-    { name = "python-liquid", marker = "extra == 'test'" },
+    { name = "python-liquid", marker = "extra == 'all'", specifier = "~=2.3" },
+    { name = "python-liquid", marker = "extra == 'all-dev-env'", specifier = "~=2.3" },
+    { name = "python-liquid", marker = "extra == 'looker'", specifier = "~=2.3" },
+    { name = "python-liquid", marker = "extra == 'slim'", specifier = "~=2.3" },
+    { name = "python-liquid", marker = "extra == 'test'", specifier = "~=2.3" },
     { name = "python-multipart", marker = "extra == 'airflow'", specifier = ">=0.0.31" },
     { name = "python-multipart", marker = "extra == 'playwright'", specifier = ">=0.0.31" },
     { name = "pyyaml", specifier = "~=6.0" },
@@ -11101,7 +11106,6 @@ provides-extras = ["dev", "test", "test-unit", "e2e-test", "exasol-test", "data-
 bootstrap = [
     { name = "pip" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
-    { name = "uv", specifier = "==0.13.4" },
 ]
 classification-models = [
     { name = "en-core-web-md", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl" },
@@ -11113,7 +11117,6 @@ coverage = [
     { name = "coverage", extras = ["toml"] },
     { name = "pip" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
-    { name = "uv", specifier = "==0.13.4" },
 ]
 dev = [
     { name = "basedpyright", specifier = "==1.39.3" },
@@ -11133,7 +11136,6 @@ dev = [
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
     { name = "twine" },
     { name = "types-requests" },
-    { name = "uv", specifier = "==0.13.4" },
     { name = "uvloop", specifier = "==0.21.0" },
 ]
 dialect-compat = [{ name = "sqlalchemy-ibmi", specifier = "==0.9.3" }]
@@ -11146,44 +11148,42 @@ generation = [
     { name = "pip" },
     { name = "ruff", specifier = "~=0.15.12" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
-    { name = "uv", specifier = "==0.13.4" },
     { name = "uvloop", specifier = "==0.21.0" },
+]
+hooks = [
+    { name = "pip" },
+    { name = "pre-commit" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
+]
+imports = [
+    { name = "import-linter", specifier = "~=2.13" },
+    { name = "pip" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
 ]
 nox = [
     { name = "nox" },
     { name = "pip" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
-    { name = "uv", specifier = "==0.13.4" },
 ]
 style = [
     { name = "pip" },
     { name = "ruff", specifier = "~=0.15.12" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
-    { name = "uv", specifier = "==0.13.4" },
 ]
 test = [
-    { name = "basedpyright", specifier = "==1.39.3" },
-    { name = "boto3-stubs" },
-    { name = "build" },
+    { name = "basedpyright" },
     { name = "coverage", extras = ["toml"] },
-    { name = "datamodel-code-generator", specifier = "==0.83.0" },
     { name = "dirty-equals" },
     { name = "exasol-integration-test-docker-environment", specifier = ">=6.0.0,<7" },
     { name = "factory-boy", specifier = "~=3.3.3" },
     { name = "faker", specifier = "==37.1.0" },
     { name = "freezegun" },
-    { name = "google-api-python-client-stubs" },
-    { name = "google-auth-stubs" },
-    { name = "import-linter", specifier = "~=2.13" },
     { name = "kafka-python", specifier = "==2.3.2" },
     { name = "locust", specifier = "~=2.32.0" },
     { name = "luigi", specifier = ">=2.8.4,<=3.6.0" },
     { name = "minio", specifier = "==7.2.5" },
-    { name = "mypy-boto3-glue" },
     { name = "nox" },
-    { name = "pandas-stubs", specifier = "~=2.2" },
     { name = "pip" },
-    { name = "pre-commit" },
     { name = "pytest", specifier = "==9.0.3" },
     { name = "pytest-cov" },
     { name = "pytest-order" },
@@ -11191,16 +11191,23 @@ test = [
     { name = "pytest-timeout", specifier = "~=2.4" },
     { name = "pytest-xdist", specifier = "~=3.5" },
     { name = "ruff", specifier = "~=0.15.12" },
-    { name = "scipy-stubs" },
     { name = "skops" },
     { name = "socksio", specifier = "==1.*" },
     { name = "sqlalchemy-ibmi", specifier = "==0.9.3" },
     { name = "testcontainers", specifier = "~=4.8.0" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
-    { name = "twine" },
+]
+typing = [
+    { name = "basedpyright", specifier = "==1.39.3" },
+    { name = "boto3-stubs" },
+    { name = "google-api-python-client-stubs" },
+    { name = "google-auth-stubs" },
+    { name = "mypy-boto3-glue" },
+    { name = "pandas-stubs", specifier = "~=2.2" },
+    { name = "pip" },
+    { name = "scipy-stubs" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
     { name = "types-requests" },
-    { name = "uv", specifier = "==0.13.4" },
-    { name = "uvloop", specifier = "==0.21.0" },
 ]
 
 [[package]]
@@ -16682,32 +16689,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ca/b7/4c0f736ca824b3a25b15e8213d1bcfc15f8ac2ae48d1b445b310892dc4da/uuid6-2025.0.1.tar.gz", hash = "sha256:cd0af94fa428675a44e32c5319ec5a3485225ba2179eefcf4c3f205ae30a81bd", size = 13932, upload-time = "2025-07-04T18:30:35.186Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3d/b2/93faaab7962e2aa8d6e174afb6f76be2ca0ce89fde14d3af835acebcaa59/uuid6-2025.0.1-py3-none-any.whl", hash = "sha256:80530ce4d02a93cdf82e7122ca0da3ebbbc269790ec1cb902481fa3e9cc9ff99", size = 6979, upload-time = "2025-07-04T18:30:34.001Z" },
-]
-
-[[package]]
-name = "uv"
-version = "0.13.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/79/55/609455d21e87430c11fe734abfced50a3bdf177b2f49d41fbb19c199cbc3/uv-0.13.4.tar.gz", hash = "sha256:b0bff5b9a5061f7a35b1d0c1a94c19af134222c48eb7aadc42f85a038be1b248", size = 7482486, upload-time = "2026-10-20T15:12:06.801Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2c/bd/4349da5356b17a1c0e36c8552c809925f86f6292de9b1f599f01e8e8093d/uv-0.13.4-py3-none-linux_armv6l.whl", hash = "sha256:205a4f93e568fb24f45a2f3834f1c0a8f1adb5f396bf473c71030ed707dce048", size = 18272390, upload-time = "2026-10-20T15:11:02.468Z" },
-    { url = "https://files.pythonhosted.org/packages/21/f2/0cb77a1ae43959772f8f7873eb1f4061907fbb1694ce55c79b231f639b1d/uv-0.13.4-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:b4bbacea78c9db136cd2ec3147cbfd9ed910b4db5e1877109bd74d0e73bb2eaf", size = 17384113, upload-time = "2026-10-20T15:11:07.172Z" },
-    { url = "https://files.pythonhosted.org/packages/26/44/5a8733dd1b2e8d6f9cffd1ff6428a3e11dcc7e146a7657e32cfb8d9fb4a4/uv-0.13.4-py3-none-macosx_11_0_arm64.whl", hash = "sha256:95f4eb2b991b53b50ec2b18ab612fca8ba1e7a75a47af0331fb8bcd21da3eb03", size = 14433723, upload-time = "2026-10-20T15:11:10.185Z" },
-    { url = "https://files.pythonhosted.org/packages/f8/39/be14f051bf34a1822d634819890a2d0cba3b69101e633fb7b9f54d7b4020/uv-0.13.4-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.musllinux_1_1_aarch64.whl", hash = "sha256:e90ab42825587821096cb0d071e387468da38cfa22818c91f9c0b3c0453048e8", size = 17816443, upload-time = "2026-10-20T15:11:13.674Z" },
-    { url = "https://files.pythonhosted.org/packages/97/a0/5df0f8bc6367dd37b98432a7c462e2918554f6db2a71211574852b8f0727/uv-0.13.4-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.musllinux_1_1_armv7l.whl", hash = "sha256:3a9dcb6762c3ba249d8c084315ba03839082af3ece3536cc4164ec735c351d68", size = 17828025, upload-time = "2026-10-20T15:11:16.806Z" },
-    { url = "https://files.pythonhosted.org/packages/8b/9c/2fed5357700b7c304b94214979e4efe680c3bc6e337a97eedaa372fe0947/uv-0.13.4-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:8ae6ff2b07892379dc767c9064c2b8bbfac88e767edac7ce28e1b0f15d86abb4", size = 17843737, upload-time = "2026-10-20T15:11:20.043Z" },
-    { url = "https://files.pythonhosted.org/packages/4c/2e/ee026284f096236dc3e1abed0316f9edab65c0ea176ea0072c064e62478d/uv-0.13.4-py3-none-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:25cc14ff4fd8335d3be2cc493a621a003fdafcb0fb1c953c905daabe4def5ab8", size = 18576350, upload-time = "2026-10-20T15:11:24.035Z" },
-    { url = "https://files.pythonhosted.org/packages/6d/f1/67fbdb649c8c5d0cb38ea74829080479b77c8631cda5d77fc1b28f027ca7/uv-0.13.4-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:77062b02856c74697f48328d8a6583ab07e6da0a993e86c2db46f3d1da27c637", size = 19831234, upload-time = "2026-10-20T15:11:27.627Z" },
-    { url = "https://files.pythonhosted.org/packages/bd/00/7d49e3a1a3e98e5244fa38e0c964dc8de568bf3bb101257a63dc2602efed/uv-0.13.4-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:fb0e2028d9a8929884344afb7d91d0f65d9783f640d28aede89fca3602bedde9", size = 19702886, upload-time = "2026-10-20T15:11:31.128Z" },
-    { url = "https://files.pythonhosted.org/packages/4b/a1/de02c0913726728eca56ee258875cbba9c7b0572c63f494fd9f55c7852e3/uv-0.13.4-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:05e4332791b4d55b6dde8695b7fa6079b26991519f44760887c5dfbd5ca4fe53", size = 17181168, upload-time = "2026-10-20T15:11:34.583Z" },
-    { url = "https://files.pythonhosted.org/packages/a8/cd/f4a3c7377674366798c56aabd0f9a1f05687c3939f5ba857a3ea6093ff84/uv-0.13.4-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:7b3cdf868e5415631fe797b648c0d6945d38d388f23367bdd0b6332e80a1fcb0", size = 16502020, upload-time = "2026-10-20T15:11:37.88Z" },
-    { url = "https://files.pythonhosted.org/packages/f9/f4/ce79657c5a0f51b602db9a663529baafff03b9fe8cc41e09ad3f7246b88a/uv-0.13.4-py3-none-manylinux_2_31_riscv64.musllinux_1_1_riscv64.whl", hash = "sha256:4e6b08578c920b86910897f36bb6da7229c8e7e0187976570e2a538cb28b777e", size = 18000980, upload-time = "2026-10-20T15:11:41.59Z" },
-    { url = "https://files.pythonhosted.org/packages/21/e6/7d77022d5661f8e01578bc5423bf02af408220e7e7ac5ee15eb94742c7cb/uv-0.13.4-py3-none-manylinux_2_31_riscv64.whl", hash = "sha256:d86a5dec8ab30c70519c71ca5085c8aaf28664836cbc600951cedaa3fc678cbf", size = 18179083, upload-time = "2026-10-20T15:11:45.191Z" },
-    { url = "https://files.pythonhosted.org/packages/f4/40/1bf0324800d38009774ba087a6fbffddc76a3e5bf42c081b9298b1236fb5/uv-0.13.4-py3-none-musllinux_1_1_i686.whl", hash = "sha256:5d89d1028c2e22977d9215cbb79cfe12559cb0c8a507a12e2f3a7e47930cf1bf", size = 18010389, upload-time = "2026-10-20T15:11:48.963Z" },
-    { url = "https://files.pythonhosted.org/packages/1e/ec/f352ca2cc3b4b6191bb4ec8cdf4bc190eed0ba8bda4c33b7fd66c5d33cec/uv-0.13.4-py3-none-musllinux_1_1_x86_64.whl", hash = "sha256:52b5c753a7c2d5f8323a70bb4c93118988356331d0758afa6446c81f974e7196", size = 19004998, upload-time = "2026-10-20T15:11:52.628Z" },
-    { url = "https://files.pythonhosted.org/packages/9e/4f/fc05ff4292edfe785b47874ec86d3d83ca2bf735cff8a9d2170ffb66ad83/uv-0.13.4-py3-none-win32.whl", hash = "sha256:d333f01852b817ba05612de31474739da1af7e5463d119b30a9c4331eba1f408", size = 16190502, upload-time = "2026-10-20T15:11:56.657Z" },
-    { url = "https://files.pythonhosted.org/packages/2f/b9/b526eab6c72eacc705a58378f6850fde046b28c86fed01bd42da61367c6b/uv-0.13.4-py3-none-win_amd64.whl", hash = "sha256:b2ff80397273fff0e02c20eacae6882834c811827d6fc08f658db156fe754386", size = 15331833, upload-time = "2026-10-20T15:11:59.733Z" },
-    { url = "https://files.pythonhosted.org/packages/7c/f7/4d5fa89d3d10ff6a84e547ef6e02c45b2f2d50e66682da778acf60db63f1/uv-0.13.4-py3-none-win_arm64.whl", hash = "sha256:deffa5a4afdb48f3e44fb26e80377d256b330ddcad0373daff4b54f6162b43a4", size = 15690151, upload-time = "2026-10-20T15:12:02.74Z" },
 ]
 
 [[package]]

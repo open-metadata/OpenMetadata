@@ -34,6 +34,18 @@ describe('getCanvasColumnAssets', () => {
     expect(assets.map(({ id }) => id)).toEqual(['t1', 'dm']);
   });
 
+  it('offers metrics, each its own single column endpoint', () => {
+    const assets = getCanvasColumnAssets(
+      [
+        canvasNode({ id: 'self', entityType: 'table' }),
+        canvasNode({ id: 'm', entityType: 'metric' }),
+      ],
+      'self'
+    );
+
+    expect(assets.map(({ id }) => id)).toEqual(['m']);
+  });
+
   it('returns nothing when there is no canvas', () => {
     expect(getCanvasColumnAssets(undefined, 'self')).toEqual([]);
   });

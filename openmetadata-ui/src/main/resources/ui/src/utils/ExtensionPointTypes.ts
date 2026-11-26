@@ -75,6 +75,10 @@ export interface PluginEntityDetailsContext {
    * title, actions) without needing a separate route. Only provided by
    * ProfilePage when it maps contributed tabs; other consumers leave it absent.
    * Pass `null` to clear the override and restore the default header.
+   * The first breadcrumb is replaced by the sidebar group label
+   * (ADR:2026-11-16-settings-breadcrumb-root-is-the-sidebar-group).
+   * On a team tab's sub-page (Members) the team header keeps its own trail:
+   * only `title`, `description` and `actions` are used.
    */
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
   /**

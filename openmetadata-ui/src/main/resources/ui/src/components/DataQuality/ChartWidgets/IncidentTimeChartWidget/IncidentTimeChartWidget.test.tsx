@@ -51,7 +51,7 @@ const defaultProps: IncidentTimeChartWidgetProps = {
   incidentMetricType: IncidentTimeMetricsType.TIME_TO_RESOLUTION,
   name: 'Incident Type',
   title: 'Incident time Area Chart Widget',
-  description: 'Average resolution time across days with activity',
+  description: 'Average resolution time with daily activity',
 };
 
 describe('IncidentTimeChartWidget', () => {

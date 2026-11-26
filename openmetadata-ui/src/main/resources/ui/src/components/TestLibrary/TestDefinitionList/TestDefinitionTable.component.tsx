@@ -13,6 +13,7 @@
 
 import {
   Box,
+  Button,
   ButtonUtility,
   Skeleton,
   Table,
@@ -57,6 +58,7 @@ const TestDefinitionTable = ({
   onSortChange,
   onEnableToggle,
   onEdit,
+  onView,
   onDelete,
   hasActiveFilters = false,
   onClearFilters,
@@ -230,9 +232,14 @@ const TestDefinitionTable = ({
   const renderRow = (record: TestDefinition) => (
     <Table.Row id={record.id ?? record.name} key={record.id ?? record.name}>
       <Table.Cell>
-        <Typography className="tw:text-primary" data-testid={record.name}>
+        <Button
+          className="tw:max-w-full"
+          color="link-color"
+          data-testid={record.name}
+          size="sm"
+          onPress={() => onView(record)}>
           {getEntityName(record)}
-        </Typography>
+        </Button>
       </Table.Cell>
       <Table.Cell>
         <RichTextEditorPreviewerNew markdown={record.description ?? ''} />
