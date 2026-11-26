@@ -139,7 +139,7 @@ public class SecurityServiceRepository
   public String exportToCsv(
       String name, String user, boolean recursive, CsvExportProgressCallback callback)
       throws IOException {
-    SecurityService securityService = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
+    SecurityService securityService = getByName(null, name, getFields("owners,tags,domains"));
     return new SecurityServiceCsv(securityService, user)
         .exportCsv(List.of(securityService), callback);
   }
@@ -238,6 +238,7 @@ public class SecurityServiceRepository
       addField(
           recordList,
           entity.getDomains() == null
+                  || entity.getDomains().isEmpty()
                   || Boolean.TRUE.equals(entity.getDomains().get(0).getInherited())
               ? ""
               : entity.getDomains().get(0).getFullyQualifiedName());

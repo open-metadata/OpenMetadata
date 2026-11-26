@@ -39,7 +39,7 @@ import {
   highlightSearchText,
   renderHighlightedText,
 } from './EntitySearchUtils';
-import { getColumnSorter } from './EntitySortUtils';
+import { columnSorter } from './EntitySortUtils';
 import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
 import {
@@ -77,7 +77,9 @@ export const getServiceMainTabColumns = (
     dataIndex: TABLE_COLUMNS_KEYS.NAME,
     key: TABLE_COLUMNS_KEYS.NAME,
     width: 280,
-    sorter: getColumnSorter<ServicePageData, 'name'>('name'),
+    // Sort by the label a user reads: displayName, falling back to name.
+    // For connectors such as Power BI, name is a source ID (a GUID).
+    sorter: columnSorter,
     render: (_, record: ServicePageData) => (
       <DisplayName
         displayName={renderHighlightedText(

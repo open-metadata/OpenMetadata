@@ -50,6 +50,7 @@ import {
 } from '../../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
+import AlertStatusBadge from '../../Alerts/AlertStatusBadge/AlertStatusBadge';
 import FeaturesPlaceholder from '../../common/EmptyPlaceholder/FeaturesPlaceholder';
 import ObservabilityAlertAiActions from './ObservabilityAlertAiActions.component';
 
@@ -232,6 +233,12 @@ function ObservabilityAlertsAiTable({
               {alertName}
             </Link>
           )}
+        </Table.Cell>
+        <Table.Cell
+          className={getAlertTableCellLayoutClassName(
+            ALERT_TABLE_COLUMN_IDS.STATUS
+          )}>
+          <AlertStatusBadge enabled={record.enabled} />
         </Table.Cell>
         <Table.Cell
           className={getAlertTableCellLayoutClassName(

@@ -35,6 +35,7 @@ import org.openmetadata.schema.api.lineage.openlineage.OpenLineageInputDataset;
 import org.openmetadata.schema.api.lineage.openlineage.OpenLineageOutputDataset;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -123,6 +124,17 @@ public class OpenLineageEntityResolver {
       LOG.debug("Table not found: {}", tableFqn);
       return null;
     }
+  }
+
+  /** Field names are only matched on tables: other datasets keep the field as the event sent it. */
+  public List<Column> storedColumns(EntityReference dataset) {
+    List<Column> columns = List.of();
+    if (Entity.TABLE.equals(dataset.getType())) {
+      Table table =
+          Entity.getEntity(Entity.TABLE, dataset.getId(), Entity.FIELD_COLUMNS, NON_DELETED);
+      columns = table.getColumns();
+    }
+    return columns;
   }
 
   public OpenLineageResolution resolveDataset(OpenLineageInputDataset dataset, String updatedBy) {

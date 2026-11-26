@@ -133,7 +133,7 @@ gh api repos/$REPO/contents/<path/to/test_file>?ref=$HEAD --jq '.content' | base
 | `openmetadata-ui/src/main/resources/ui/playwright/**` | `.claude/rules/frontend-playwright.md` |
 | `ingestion/src/**/*.py` | `.claude/rules/python-ingestion.md` (+ the `connector-standards` skill for connector PRs) |
 | `openmetadata-spec/**` or any `generated/**` | `.claude/rules/schema-first.md` |
-| `bootstrap/sql/**` | `.claude/rules/migrations.md` |
+| `bootstrap/sql/**` or `.../service/migration/**` | `.claude/rules/migrations.md` |
 
 The high-signal checks, distilled — use these to decide *which* rule to open, not as a replacement for it:
 
@@ -203,7 +203,7 @@ You don't need to check out the branch — reason about whether each assertion w
 **Telling an integration test from a mocked one in this repo:**
 - Java integration test → lives in `openmetadata-integration-tests/`, class ends `*IT`, extends `BaseEntityIT`, uses `SdkClients`/`TestNamespace`, or extends `OpenMetadataApplicationTest`. A `*Test` in `openmetadata-service/` full of `Mockito.mock(...)` + `thenCallRealMethod()` is a unit test, often mock-wiring.
 - Python integration test → lives in `ingestion/tests/integration/`, uses `testcontainers` (a real DB/engine spun up), real `OpenMetadata` client calls. A test in `ingestion/tests/unit/` built from `MagicMock`/`patch` with the source object faked is a unit test — fine for pure parsing logic, insufficient for topology/lineage/connection behavior.
-- UI → a Jest test that mocks the component's whole data layer proves rendering, not behavior. User-facing changes want a Playwright spec under `openmetadata-ui/src/main/resources/ui/playwright/`; note that some libraries (RAQB, for one) are fully mocked in Jest, so their logic is *only* testable in Playwright.
+- UI → a Jest test that mocks the component's whole data layer proves rendering, not behavior. A page or feature with its real children wants a Vitest browser test (`*.browser.test.tsx`) — even RAQB (fully mocked in Jest) renders there; journeys across features against a real server want a Playwright spec under `openmetadata-ui/src/main/resources/ui/playwright/` — see `.claude/rules/frontend-browser-tests.md` for the split.
 
 Common failing patterns seen in the wild: `unittest.TestCase` + `MagicMock` source object with the real method rebound onto it; a `test_x` that builds hand-crafted mock rows and asserts the parser's own branching rather than feeding real SQL through `LineageParser`; a connector test asserting the connector's own (wrong) return types so it stays green while the real topology path is broken; `assertEqual(null, ...)` instead of `assertNull`.
 
@@ -238,7 +238,7 @@ Repo-specific gates worth knowing:
 | `ui-checkstyle` | ESLint + Prettier + the Apache-2.0 UI header |
 | `Java checkstyle` | spotless |
 | `generate-types` | schema ↔ generated model drift |
-| `maven-collate-ci` | the private Collate build against this OSS commit. A `cannot find symbol` on an `org.openmetadata.*` class means the branch is behind main, not that the PR broke Collate |
+| `Collate CI` | the private Collate build against this OSS commit. A `cannot find symbol` on an `org.openmetadata.*` class means the branch is behind main, not that the PR broke Collate |
 | `harness-integrity` | warnings only — never a blocker |
 
 ## Duplicate detection

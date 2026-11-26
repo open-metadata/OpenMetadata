@@ -14,12 +14,14 @@
 import importlib.metadata
 import os
 import re
+import runpy
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
+UV_VERSION = runpy.run_path(str(ROOT / "scripts/python_tools.py"))["required_version"]()
 
 
 def prepare_locked_tooling(root, monkeypatch):
@@ -27,6 +29,7 @@ def prepare_locked_tooling(root, monkeypatch):
     for name in [
         "OM_PYTHON_ENVIRONMENT",
         "OM_VENV_DIR",
+        "OM_UV_EXECUTABLE",
         "UV_PROJECT_ENVIRONMENT",
         "ARGS",
         "MAKEFLAGS",
@@ -35,10 +38,20 @@ def prepare_locked_tooling(root, monkeypatch):
         "MAKELEVEL",
     ]:
         monkeypatch.delenv(name, raising=False)
+    selected_uv = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/python_tools.py"), "uv-path"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert selected_uv.returncode == 0, selected_uv.stdout + selected_uv.stderr
+    monkeypatch.setenv("PATH", str(Path(selected_uv.stdout.strip()).parent) + os.pathsep + os.environ["PATH"])
     project = root / "ingestion"
     config = project / "pyproject.toml"
     sections = re.split(r"(?m)(?=^\[)", config.read_text())
-    tools = "".join(s for s in sections if s.startswith(("[tool.pytest", "[tool.coverage", "[tool.ruff")))
+    tools = "".join(
+        s for s in sections if s.startswith(("[tool.pytest", "[tool.coverage", "[tool.ruff", "[tool.basedpyright"))
+    )
     environment_policy = "".join(s for s in sections if s.startswith("[tool.openmetadata.python-environments]"))
     requirements = {
         name: f"{name}=={importlib.metadata.version(name)}"
@@ -51,10 +64,11 @@ def prepare_locked_tooling(root, monkeypatch):
             "coverage",
             "ruff",
             "pip",
+            "basedpyright",
         ]
     }
     config.write_text(
-        '''[build-system]
+        """[build-system]
 requires = ["setuptools==83.0.0"]
 build-backend = "setuptools.build_meta"
 [project]
@@ -65,14 +79,19 @@ requires-python = ">=3.10"
 [tool.setuptools.packages.find]
 where = ["src"]
 [tool.uv]
-required-version = "==0.13.4"
+required-version = "=="""
+        + UV_VERSION
+        + '''"
 default-groups = []
 [dependency-groups]
-bootstrap = ["pip", "uv==0.13.4", "tomli>=2; python_version < '3.11'"]
+bootstrap = ["pip", "tomli>=2; python_version < '3.11'"]
 nox = [{include-group = "bootstrap"}, "nox"]
 generation = [{include-group = "bootstrap"}]
 style = [{include-group = "bootstrap"}, "'''
         + requirements["ruff"]
+        + '''"]
+typing = [{include-group = "bootstrap"}, "'''
+        + requirements["basedpyright"]
         + '''"]
 coverage = [{include-group = "bootstrap"}, "'''
         + requirements["coverage"]
@@ -86,11 +105,11 @@ test = [{include-group = "dev"}, {include-group = "coverage"}, """
         + environment_policy
         + "\n".join(
             f'''[tool.openmetadata.python-environments.profiles.{name}]
-groups = ["{"bootstrap" if name == "runtime" else "test" if name == "test-classification" else name}"]
+groups = ["{"bootstrap" if name == "runtime" else "test" if name == "test-classification" else "typing" if name == "types" else name}"]
 extras = []
-install-project = {str(name in ("runtime", "dev", "test", "test-classification")).lower()}
+install-project = {str(name in ("runtime", "dev", "test", "test-classification", "types")).lower()}
 '''
-            for name in ["runtime", "style", "generation", "coverage", "dev", "test", "test-classification"]
+            for name in ["runtime", "style", "generation", "coverage", "dev", "test", "test-classification", "types"]
         )
         + tools
     )
@@ -99,6 +118,7 @@ install-project = {str(name in ("runtime", "dev", "test", "test-classification")
         "scripts/generate_ingestion_models.py",
         "scripts/datamodel_generation.py",
         "scripts/prepare_classification_models.py",
+        "scripts/python_tools.py",
         "openmetadata-spec/scripts/prepare_model_schemas.py",
     ]:
         target = root / name
@@ -107,6 +127,10 @@ install-project = {str(name in ("runtime", "dev", "test", "test-classification")
     generated = project / "src/metadata/generated"
     generated.mkdir(parents=True, exist_ok=True)
     (generated / "__init__.py").touch()
+    baseline = project / ".basedpyright/baseline.json"
+    baseline.parent.mkdir()
+    baseline.write_text('{"files": {}}\n')
+    (project / "stubs").mkdir()
     environment = os.environ.copy()
     for name in ["UV_PROJECT_ENVIRONMENT", "OM_PYTHON_ENVIRONMENT"]:
         environment.pop(name, None)

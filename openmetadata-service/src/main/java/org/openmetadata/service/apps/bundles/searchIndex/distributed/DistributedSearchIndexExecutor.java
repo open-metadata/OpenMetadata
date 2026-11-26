@@ -50,6 +50,7 @@ import org.openmetadata.service.search.DefaultRecreateHandler;
 import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.ReindexContext;
+import org.openmetadata.service.search.vector.VectorIndexService;
 
 /**
  * Executor for distributed search index jobs.
@@ -1392,6 +1393,7 @@ public class DistributedSearchIndexExecutor {
       LOG.debug("No staged index for entity '{}', skipping promotion", entityType);
       return true;
     }
+    entityContext.setStagedChunkDeleteUnrecorded(lostAStagedChunkDelete(entityType));
 
     boolean promoted = false;
     try {
@@ -1412,6 +1414,25 @@ public class DistributedSearchIndexExecutor {
       LOG.error("Failed to promote index for entity '{}'", entityType, e);
     }
     return promoted;
+  }
+
+  /**
+   * Whether a node failed a partition of {@code entityType} because it missed a delete from the
+   * run's staged chunk generation and could not record it on the cluster. That partition fails
+   * for good without a retry, and nothing rewrites a FAILED row, so its error stays readable here
+   * whatever the type's other partitions did.
+   */
+  private boolean lostAStagedChunkDelete(String entityType) {
+    SearchIndexJob job = currentJob;
+    return job != null
+        && coordinator.getPartitions(job.getId(), PartitionStatus.FAILED).stream()
+            .anyMatch(
+                partition ->
+                    entityType.equals(partition.getEntityType())
+                        && partition.getLastError() != null
+                        && partition
+                            .getLastError()
+                            .startsWith(VectorIndexService.UNRECORDED_STAGED_DELETE));
   }
 
   /**
