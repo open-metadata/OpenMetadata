@@ -24,6 +24,16 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+class WorkflowNotFound:
+    """Sentinel returned by `execute` when the workflow no longer exists."""
+
+    def __repr__(self) -> str:
+        return "WORKFLOW_NOT_FOUND"
+
+
+WORKFLOW_NOT_FOUND = WorkflowNotFound()
+
+
 @singledispatch
 def run_workflow(request: Any, *_, **__) -> Any:
     """
@@ -35,7 +45,11 @@ def run_workflow(request: Any, *_, **__) -> Any:
 def execute(encrypted_automation_workflow: AutomationWorkflow) -> Any:
     """
     Execute the automation workflow.
-    The implementation depends on the request body type
+    The implementation depends on the request body type.
+
+    Returns `WORKFLOW_NOT_FOUND` when the workflow was hard-deleted before the
+    runner fetched it. The live handler's own return value (often `None`) is
+    passed through unchanged, so callers can tell "gone" from "done".
     """
     # Import all the functions defined for run_workflow
     import metadata.automations.extended_runner  # pylint: disable=import-outside-toplevel
@@ -55,7 +69,7 @@ def execute(encrypted_automation_workflow: AutomationWorkflow) -> Any:
             f"Automation workflow [{encrypted_automation_workflow.name.root}] no longer "
             "exists. Skipping execution (it may have been deleted before the runner started)."
         )
-        return None
+        return WORKFLOW_NOT_FOUND
 
     ingestion_runner = getattr(automation_workflow.request, "ingestionRunner", None)
     if ingestion_runner:
