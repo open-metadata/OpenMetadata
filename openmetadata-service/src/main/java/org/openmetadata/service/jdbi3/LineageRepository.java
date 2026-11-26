@@ -1596,7 +1596,29 @@ public class LineageRepository {
       EntityReference from = resolveRefForCacheInvalidation(obj.getFromEntity(), obj.getFromId());
       EntityReference to = resolveRefForCacheInvalidation(obj.getToEntity(), obj.getToId());
       deleteLineageFromSearch(from, to, lineageDetails);
+      releaseDataProductLineage(from, to);
       emitLineageChangeEvent(EventType.ENTITY_LINEAGE_DELETED, from, to, lineageDetails, deletedBy);
+    }
+  }
+
+  // A delete by source runs before an override run adds the edges back, which adds one again.
+  private void releaseDataProductLineage(EntityReference from, EntityReference to) {
+    boolean holdsDataProducts =
+        from.getType() != null
+            && to.getType() != null
+            && hasField(from, FIELD_DATA_PRODUCTS)
+            && hasField(to, FIELD_DATA_PRODUCTS);
+    EntityInterface<?> fromEntity =
+        holdsDataProducts
+            ? Entity.getEntityOrNull(from.getType(), from.getId(), FIELD_DATA_PRODUCTS, Include.ALL)
+            : null;
+    EntityInterface<?> toEntity =
+        fromEntity != null
+            ? Entity.getEntityOrNull(to.getType(), to.getId(), FIELD_DATA_PRODUCTS, Include.ALL)
+            : null;
+    if (toEntity != null) {
+      cleanUpLineageForDataProducts(
+          fromEntity, toEntity, FIELD_DATA_PRODUCTS, EntityInterface<?>::getDataProducts);
     }
   }
 

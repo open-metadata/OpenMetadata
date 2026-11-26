@@ -294,6 +294,31 @@ public class DataProductLineageRollupIT {
     assertEquals(1, assetEdges(moved, dp2), "m1 keeps the product that moved");
   }
 
+  /** An override run deletes its lineage by source and adds it back: the edge counts once. */
+  @Test
+  void anOverrideRunCountsItsEdgeOnce(TestNamespace ns) throws Exception {
+    Domain d1 = domain(ns, "d1");
+    Domain d2 = domain(ns, "d2");
+    DataProduct dp1 = dataProduct(ns, "dp1", d1);
+    DataProduct dp2 = dataProduct(ns, "dp2", d2);
+    Metric m1 = metric(ns, "m1", d1, dp1);
+    Metric m2 = metric(ns, "m2", d2, dp2);
+    LineageDetails dbt = new LineageDetails().withSource(LineageDetails.Source.DBT_LINEAGE);
+    putEdge(m1, m2, dbt);
+    assertEquals(1, assetEdges(dp1, dp2));
+
+    client()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/lineage/" + Entity.METRIC + "/" + m2.getId() + "/type/" + dbt.getSource().value(),
+            null);
+
+    assertEdgeAbsent(dp1, dp2);
+    putEdge(m1, m2, new LineageDetails().withSource(LineageDetails.Source.DBT_LINEAGE));
+    assertEquals(1, assetEdges(dp1, dp2), "the edge added back is counted once");
+  }
+
   private static Domain domain(TestNamespace ns, String name) {
     return ns.trackRoot(
         Entity.DOMAIN,

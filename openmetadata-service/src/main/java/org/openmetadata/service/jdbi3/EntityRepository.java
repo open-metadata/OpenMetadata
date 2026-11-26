@@ -12589,21 +12589,22 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     private void updateDataProducts() {
-      if (!supportsDataProducts) {
-        return;
+      if (supportsDataProducts) {
+        validateDataProducts(listOrEmpty(updated.getDataProducts()));
+        if (operation.isPut() && !nullOrEmpty(original.getDataProducts()) && updatedByBot()) {
+          // Revert change to non-empty DataProduct if it is being updated by a bot
+          // This is to prevent bots from overwriting the DataProduct. DataProduct need to be
+          // updated with a PATCH request
+          updated.setDataProducts(original.getDataProducts());
+        } else {
+          storeDataProductChange();
+        }
       }
+    }
+
+    private void storeDataProductChange() {
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
-      validateDataProducts(updatedDataProducts);
-
-      if (operation.isPut() && !nullOrEmpty(original.getDataProducts()) && updatedByBot()) {
-        // Revert change to non-empty DataProduct if it is being updated by a bot
-        // This is to prevent bots from overwriting the DataProduct. DataProduct need to be
-        // updated with a PATCH request
-        updated.setDataProducts(original.getDataProducts());
-        return;
-      }
-
       if (!nullOrEmpty(updatedDataProducts) && belongsToNoDomain(updated)) {
         throw new IllegalArgumentException(
             "Domain cannot be empty when data products are provided.");

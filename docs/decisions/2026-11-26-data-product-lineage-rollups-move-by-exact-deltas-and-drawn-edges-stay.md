@@ -40,7 +40,8 @@ changed asset's own lineage to compute.
 
 A change costs the changed asset's lineage, not the product's. A count that goes wrong stays wrong
 until a recount of that pair: a write path that changes asset edges or products without applying its
-delta drifts the counts. Deleting lineage by source, deleting a pipeline and hard-deleting an asset
-do not apply theirs yet; each should call `adjustDataProductLineage`. Concurrent writes to one pair
+delta drifts the counts. Deleting lineage by source applies its delta, which an override ingestion
+run relies on: it deletes its edges by source and adds them back. Deleting a pipeline and
+hard-deleting an asset do not apply theirs yet; each should call `adjustDataProductLineage`. Concurrent writes to one pair
 can still lose an update, as they could before. Domain rollups do not follow this rule yet; a change
 that makes them follow it should cite this record.
