@@ -83,7 +83,7 @@ describe('useKnowledgeGraphData', () => {
           label: '',
           name: 'Account',
           type: 'glossaryTerm',
-        } as GraphData['nodes'][number],
+        },
       ],
     });
     const { wrapper } = withClient();
@@ -95,6 +95,21 @@ describe('useKnowledgeGraphData', () => {
     expect(
       result.current.unfiltered?.nodes.find((node) => node.id === 'term')?.label
     ).toBe('Account');
+  });
+
+  it('uses the node ID as its label when the response omits all node text', async () => {
+    fetchGraph.mockResolvedValue({
+      ...graph,
+      nodes: [{ id: 'unnamed', type: 'table' }],
+    });
+    const { wrapper } = withClient();
+    const { result } = renderHook(() => useKnowledgeGraphData(query, 0), {
+      wrapper,
+    });
+
+    await waitFor(() =>
+      expect(result.current.data?.nodes[0].label).toBe('unnamed')
+    );
   });
 
   it('ignores a stale response even when the transport does not honor cancellation', async () => {
