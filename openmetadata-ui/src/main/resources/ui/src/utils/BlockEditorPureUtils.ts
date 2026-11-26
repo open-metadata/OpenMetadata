@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { nameToEmoji } from 'gemoji';
 import { findLastIndex, isEmpty, sumBy } from 'lodash';
 import { Marked, Renderer } from 'marked';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
-import { MARKDOWN_EMOJIS } from '../constants/MarkdownEmojis.constants';
 import {
   getEntityDetail,
   getHashTagList,
@@ -229,12 +229,23 @@ const markdownConverter = new Marked({
           return undefined;
         }
 
-        // Only own entries are shortcodes; names such as constructor stay ordinary text.
+        const [, shortcode] = match;
+
+        // This legacy shortcode is an image and has no Unicode equivalent.
+        if (shortcode === 'octocat') {
+          return {
+            type: 'emoji',
+            raw: match[0],
+            html: '<img alt=":octocat:" height="20" width="20" align="absmiddle" src="https://assets-cdn.github.com/images/icons/emoji/octocat.png">',
+          };
+        }
+
+        // Only own entries are shortcodes; inherited properties stay as text.
         const html = Object.prototype.hasOwnProperty.call(
-          MARKDOWN_EMOJIS,
-          match[1]
+          nameToEmoji,
+          shortcode
         )
-          ? MARKDOWN_EMOJIS[match[1]]
+          ? nameToEmoji[shortcode]
           : undefined;
 
         // Unknown shortcodes can contain URL schemes; leave them to Marked's autolinker.
