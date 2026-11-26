@@ -1,0 +1,268 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Reusable Java integration-test lane runner called by Backend CI
+# (.github/workflows/openmetadata-service-unit-tests.yml). All DB/search profiles
+# share the single pre-built `java-it-build-<run_id>` reactor artifact instead of
+# compiling OpenMetadata separately per profile.
+name: Java Integration Test Lanes (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      profile_label:
+        description: Human-readable profile label (e.g. mysql-elasticsearch)
+        required: true
+        type: string
+      maven_profile:
+        description: Maven profile passed to -P (e.g. mysql-elasticsearch, postgres-opensearch, cache-tests)
+        required: true
+        type: string
+      artifact_name:
+        description: Pre-built integration-test runtime artifact name from integration-test-build
+        required: true
+        type: string
+      lanes_json:
+        description: JSON array of lane names to execute in parallel
+        required: true
+        type: string
+      store_database_version:
+        description: Metadata store database version (shipped or oldest)
+        required: false
+        type: string
+        default: shipped
+
+permissions:
+  contents: read
+  checks: write
+  packages: read
+
+jobs:
+  integration-test-lanes:
+    name: Integration Test Lane (${{ inputs.profile_label }}, ${{ matrix.lane }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: ${{ fromJSON(inputs.lanes_json) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # The hosted runner starts with ~86 GB free and a lane adds ~6 GB, so the ~3 minute
+      # SDK purge only runs when the script finds less space than Docker needs.
+      - name: Check Docker storage
+        id: docker-storage
+        continue-on-error: true
+        run: bash .github/scripts/configure_docker_storage.sh
+      - name: Free Disk Space (Ubuntu)
+        if: ${{ steps.docker-storage.outcome == 'failure' }}
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+      - name: Check Docker storage after freeing disk space
+        if: ${{ steps.docker-storage.outcome == 'failure' }}
+        run: bash .github/scripts/configure_docker_storage.sh
+      - name: Hydrate Maven dependencies
+        uses: ./.github/actions/hydrate-maven-cache
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Download Integration Test Runtime
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ runner.temp }}/java-it-build
+
+      - name: Restore Integration Test Runtime
+        run: |
+          bundle="$RUNNER_TEMP/java-it-build"
+          (
+            cd "$bundle"
+            sha256sum --check reactor-repository.sha256
+          )
+
+          project_version="$(<"$bundle/project-version.txt")"
+          source_sha="$(<"$bundle/source-sha.txt")"
+          if [[ ! "$project_version" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]]; then
+            echo "Invalid Maven project version: $project_version"
+            exit 1
+          fi
+          if [[ "$(git rev-parse HEAD)" != "$source_sha" ]]; then
+            echo "The build artifact does not match the checked-out commit."
+            exit 1
+          fi
+
+          project_repository="$HOME/.m2/repository/org/open-metadata"
+          if [[ -d "$project_repository" ]]; then
+            find "$project_repository" -mindepth 2 -maxdepth 2 -type d \
+              -name "$project_version" -prune -exec rm -rf -- {} +
+          fi
+          mkdir -p "$HOME/.m2/repository"
+          tar -C "$HOME/.m2/repository" -xzf "$bundle/reactor-repository.tar.gz"
+
+          test -s "$project_repository/platform/$project_version/platform-$project_version.pom"
+          test -s "$project_repository/openmetadata-service/$project_version/openmetadata-service-$project_version.jar"
+
+      - name: Run Integration Tests (${{ inputs.profile_label }})
+        id: integration-tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IT_LANE: ${{ matrix.lane }}
+          IT_PROFILE_LABEL: ${{ inputs.profile_label }}
+          IT_MAVEN_PROFILE: ${{ inputs.maven_profile }}
+          IT_PARALLELISM: '4'
+          STORE_DATABASE_VERSION: ${{ inputs.store_database_version }}
+          IT_MAX_POOL_SIZE: '16'
+        run: |
+          {
+            echo "### Java integration configuration"
+            echo "- Profile: ${IT_PROFILE_LABEL} (-P${IT_MAVEN_PROFILE})"
+            echo "- Lane: ${IT_LANE}"
+            echo "- Store database version: ${STORE_DATABASE_VERSION}"
+            echo "- Parallel workers: ${IT_PARALLELISM}"
+            echo "- Compensation-thread ceiling: ${IT_MAX_POOL_SIZE}"
+            echo "- Runner processors: $(nproc)"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+          diagnostics="openmetadata-integration-tests/target/ci-diagnostics"
+          mkdir -p "$diagnostics"
+          maven_log="$diagnostics/maven.log"
+          set +e
+          timeout --signal=TERM --kill-after=60s 65m \
+            mvn --no-snapshot-updates verify -pl :openmetadata-integration-tests "-P${IT_MAVEN_PROFILE}" \
+              -DintegrationTests.lane="${IT_LANE}" \
+              -DintegrationTests.parallelStrategy=fixed \
+              -DintegrationTests.parallelism="${IT_PARALLELISM}" \
+              -DintegrationTests.maxPoolSize="${IT_MAX_POOL_SIZE}" \
+            2>&1 | tee "$maven_log"
+          pipeline_status=("${PIPESTATUS[@]}")
+          exit_code="${pipeline_status[0]}"
+          if (( exit_code == 0 && pipeline_status[1] != 0 )); then
+            exit_code="${pipeline_status[1]}"
+          fi
+          set -e
+
+          max_log_bytes=20971520
+          log_bytes="$(stat --format=%s "$maven_log")"
+          if (( log_bytes > max_log_bytes )); then
+            tail -c "$max_log_bytes" "$maven_log" > "${maven_log}.tail"
+            mv "${maven_log}.tail" "$maven_log"
+          fi
+          echo "exit_code=${exit_code}" >> "$GITHUB_OUTPUT"
+          exit "$exit_code"
+
+      - name: Capture Integration Test Diagnostics
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          TEST_STEP_OUTCOME: ${{ steps.integration-tests.outcome }}
+        run: |
+          diagnostics="openmetadata-integration-tests/target/ci-diagnostics"
+          mkdir -p "$diagnostics"
+          {
+            date -u
+            uname -a
+            java -version
+            echo "processors=$(nproc)"
+            df -h
+            free -h
+            docker system df
+            docker ps -a --no-trunc
+          } > "$diagnostics/environment.txt" 2>&1
+
+          capture_container_logs=false
+          if [ "$TEST_STEP_OUTCOME" != "success" ]; then
+            capture_container_logs=true
+          elif ! find openmetadata-integration-tests/target/failsafe-reports \
+            -name 'TEST-*.xml' -print -quit 2>/dev/null | grep -q .; then
+            capture_container_logs=true
+          fi
+
+          if [ "$capture_container_logs" = "true" ]; then
+            while IFS= read -r container; do
+              [[ -n "$container" ]] || continue
+              name=$(docker inspect --format '{{.Name}}' "$container" | tr -cd '[:alnum:]_.-')
+              docker logs --timestamps --since 30m --tail 10000 "$container" 2>&1 \
+                | tail -c 10485760 > "$diagnostics/docker-${name}.log" || true
+            done < <(docker ps -aq)
+          fi
+
+      - name: Classify Integration Test Outcome
+        if: ${{ always() }}
+        env:
+          TEST_STEP_OUTCOME: ${{ steps.integration-tests.outcome }}
+          TEST_EXIT_CODE: ${{ steps.integration-tests.outputs.exit_code }}
+          TEST_PROFILE: ${{ inputs.profile_label }}
+          TEST_LANE: ${{ matrix.lane }}
+        run: |
+          python3 .github/scripts/classify_test_outcome.py \
+            --step-outcome "$TEST_STEP_OUTCOME" \
+            --exit-code "$TEST_EXIT_CODE" \
+            --report-glob 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml' \
+            --diagnostic-glob 'openmetadata-integration-tests/target/ci-diagnostics/**/*' \
+            --diagnostic-glob 'openmetadata-integration-tests/target/failsafe-reports/*.dump*' \
+            --diagnostic-glob 'openmetadata-integration-tests/target/failsafe-reports/*.txt' \
+            --output openmetadata-integration-tests/target/ci-diagnostics/outcome.json
+
+      - name: Upload Integration Test Diagnostics
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: java-it-${{ inputs.profile_label }}-${{ matrix.lane }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            openmetadata-integration-tests/target/ci-diagnostics
+            openmetadata-integration-tests/target/failsafe-reports/*.dump*
+            openmetadata-integration-tests/target/failsafe-reports/*.txt
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload Integration Test Reports
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: java-it-reports-${{ inputs.profile_label }}-${{ matrix.lane }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Clean Up
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          cd ./docker/development
+          docker compose down --remove-orphans
+          sudo rm -rf "${PWD}/docker-volume"
+
+      - name: Publish Test Report
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: ScalableCapital/action-surefire-report@v2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          check_name: Integration Test Report (${{ inputs.profile_label }}, ${{ matrix.lane }})
+          fail_on_test_failures: false
+          fail_if_no_tests: false
+          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'

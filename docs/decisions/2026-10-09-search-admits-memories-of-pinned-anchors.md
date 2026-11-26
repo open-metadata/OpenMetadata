@@ -1,8 +1,9 @@
 # Search admits an anchored memory when the query pins its anchor and the caller can read it
 
-- **Status:** Accepted for general and vector search; Context Center listings superseded by ADR:2026-11-12-context-center-authorizes-memory-anchors-before-paging
+- **Status:** Accepted for mixed-index, hybrid and vector search; Context Center listings and memory-only searches superseded by ADR:2026-11-12-context-center-authorizes-memory-anchors-before-paging
 - **Revisions:** v1 2026-10-09 (initial); v2 2026-10-10 (resolve vector anchors once per request);
-  v3 2026-11-12 (Context Center listings evaluate matching anchors)
+  v3 2026-11-12 (Context Center listings evaluate matching anchors); v4 2026-11-25 (memory-only
+  searches evaluate matching anchors)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemorySearchVisibilityTest`, `VectorSearchQueryBuilderTest`,
   `ContextMemoryAnchorPinsTest`, `ContextMemoryVisibilityTest` (the pinned-anchor cases), and the
@@ -88,3 +89,12 @@ ADR:2026-11-12-context-center-authorizes-memory-anchors-before-paging supersedes
 requirement and 20-anchor total cap for Context Center listings and their text search only. Listings
 page through anchors of matching non-pending Entity/Public memories before counting and paginating
 visible results. General, hybrid and vector search retain this record's pinned-anchor rule and cap.
+
+## Amendment — 2026-11-25: memory-only searches evaluate matching anchors
+
+A keyword search of the memory index alone (`/v1/search/query` and its NLQ variant,
+`/v1/search/entityTypeCounts` on that index, MCP `search_metadata(entityType='contextMemory')`) now
+evaluates the anchors of its matching memories the way Context Center listings do
+(ADR:2026-11-12-context-center-authorizes-memory-anchors-before-paging, v3). A search or count over
+several indexes (`all`, or a comma-separated list), and hybrid, vector, direct-query and
+aggregation searches, keep this record's pinned-anchor rule and cap.
