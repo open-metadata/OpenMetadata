@@ -25,15 +25,20 @@ failed with a default SAS Viya 4 configuration because:
 """
 # pylint: disable=protected-access
 
+import json
+import uuid
+from functools import partial
 from unittest.mock import MagicMock, patch
 
 import pytest
 from requests.exceptions import HTTPError
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.source.database.sas.client import SASClient
 from metadata.ingestion.source.database.sas.metadata import (
     SASResourceContext,
@@ -324,6 +329,55 @@ class TestSinkFailureGuard:
         # returned early.
         sas_source.metadata.client.patch.assert_not_called()
         sas_source.metadata.client.put.assert_not_called()
+
+
+class TestCustomPropertiesSetOutsideSas:
+    """A re-run must update the SAS-sourced custom properties without
+    deleting the ones set in the UI, by another connector or through the API."""
+
+    def test_custom_property_set_outside_sas_survives_a_run(self, sas_source):
+        stored = Table(
+            id=uuid.uuid4(),
+            name="LAS_TRAIN",
+            fullyQualifiedName="local_sas.cas.PUBLIC.LAS_TRAIN",
+            columns=[],
+            sourceUrl="http://sas/catalog/OLD",
+            extension={"Department": ["Finance"], "CASLIB": "OLD"},
+        )
+        sas_source.sas_client = MagicMock()
+        sas_source.sas_client.get_information_catalog_link.return_value = "http://sas/catalog/LAS_TRAIN"
+        sas_source.metadata = MagicMock()
+        sas_source.metadata.get_by_name.return_value = stored
+        sas_source.metadata.get_by_id.return_value = stored
+        sas_source.metadata.patch_custom_properties = partial(
+            OMetaPatchMixin.patch_custom_properties, sas_source.metadata
+        )
+
+        with (
+            patch.object(
+                SasSource,
+                "get_entities_using_view",
+                return_value=(LAS_TRAIN_VIEW["entities"], LAS_TRAIN_VIEW["entities"][0]),
+            ),
+            patch.object(
+                SasSource,
+                "create_database_schema",
+                return_value=MagicMock(fullyQualifiedName="cas.49736234.PUBLIC"),
+            ),
+            patch.object(SasSource, "create_lineage_table_source", return_value=iter([])),
+        ):
+            results = list(sas_source.create_table_entity(LAS_TRAIN_SEARCH_HIT))
+
+        assert not [r for r in results if r.left is not None]
+        extension_ops = [
+            op
+            for call in sas_source.metadata.client.patch.call_args_list
+            for op in json.loads(call.kwargs["data"])
+            if op["path"] == "/extension"
+        ]
+        assert len(extension_ops) == 1
+        assert extension_ops[0]["value"]["Department"] == ["Finance"]
+        assert extension_ops[0]["value"]["CASLIB"] == "PUBLIC"
 
 
 class TestExceptionHandlerSafety:

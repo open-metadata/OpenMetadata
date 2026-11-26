@@ -636,17 +636,8 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
 
                 # update the custom properties
                 logger.debug(f"Updating custom properties for {table_entity.id.root} with {extension_attributes}")
-                self.metadata.client.patch(
-                    path=f"/tables/{table_entity.id.root}",
-                    data=json.dumps(
-                        [
-                            {
-                                "op": "add",
-                                "path": "/extension",
-                                "value": extension_attributes,
-                            }
-                        ]
-                    ),
+                self.metadata.patch_custom_properties(
+                    entity=Table, entity_id=table_entity.id, custom_properties=extension_attributes
                 )
 
                 # quit updating table profile if table doesn't exist
