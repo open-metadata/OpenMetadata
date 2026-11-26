@@ -61,3 +61,13 @@ def test_reports_invalid_file_and_exits_unsuccessfully(repository, files, invali
     result = validate(repository)
     assert result.returncode != 0
     assert invalid in result.stderr
+
+
+def test_reports_invalid_json_after_the_first_batch(repository):
+    files = {f"valid_{index:03}.json": "{}" for index in range(128)}
+    files["z_invalid.json"] = "{"
+    write_tracked(repository, files)
+
+    result = validate(repository)
+    assert result.returncode != 0
+    assert "z_invalid.json" in result.stderr

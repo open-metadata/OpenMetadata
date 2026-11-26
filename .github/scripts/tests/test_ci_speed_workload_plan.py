@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+from glob import iglob
 from pathlib import Path
 
 import pytest
@@ -32,6 +33,20 @@ def run_plan(tmp_path, entrypoint, event, payload, matches):
         timeout=30,
     )
     return result, outputs
+
+
+def selected_workloads(tmp_path, entrypoint, event, payload, matches):
+    result, outputs = run_plan(
+        tmp_path, entrypoint, event, payload, json.dumps(matches)
+    )
+    assert result.returncode == 0, result.stderr
+    return {
+        name
+        for name, value in (
+            line.split("=", 1) for line in outputs.read_text().splitlines()
+        )
+        if json.loads(value)
+    }
 
 
 @pytest.mark.parametrize(
@@ -139,19 +154,106 @@ def run_plan(tmp_path, entrypoint, event, payload, matches):
 def test_workloads_selected_for_event(
     tmp_path, entrypoint, event, payload, matches, expected
 ):
-    result, outputs = run_plan(
-        tmp_path, entrypoint, event, payload, json.dumps(matches)
-    )
+    assert selected_workloads(tmp_path, entrypoint, event, payload, matches) == expected
 
-    assert result.returncode == 0, result.stderr
-    selected = {
+
+@pytest.fixture(scope="module")
+def path_filters():
+    planner = yaml.safe_load((WORKFLOWS / "reusable-ci-plan.yml").read_text())
+    [filter_step] = [
+        step
+        for step in planner["jobs"]["select"]["steps"]
+        if step.get("uses", "").startswith("dorny/paths-filter@")
+    ]
+    return yaml.safe_load((ROOT / filter_step["with"]["filters"]).read_text())
+
+
+@pytest.mark.parametrize(
+    ("path", "pr_jobs", "queue_jobs"),
+    [
+        (
+            "openmetadata-ui/pom.xml",
+            {"checkstyle"},
+            {"checkstyle", "json-yaml"},
+        ),
+        (
+            "docker/development/Dockerfile.dockerignore",
+            {"docker-smoke"},
+            {"docker-smoke", "python", "static", "json-yaml"},
+        ),
+        (
+            "openmetadata-spec/src/main/resources/json/schema/governance/workflows/workflowDefinition.json",
+            {"checkstyle", "java-unit", "python", "static", "json-yaml"},
+            {
+                "checkstyle",
+                "java-unit",
+                "java-it",
+                "java-it-redis",
+                "python",
+                "static",
+                "json-yaml",
+                "dar",
+            },
+        ),
+        (
+            ".github/scripts/configure_docker_storage.sh",
+            {"json-yaml"},
+            {"java-it", "java-it-redis", "python", "static", "json-yaml"},
+        ),
+        (
+            "docker/docker-compose-quickstart/docker-compose.yml",
+            {"json-yaml", "quickstart-compose"},
+            {"json-yaml"},
+        ),
+        (
+            ".github/workflows/ci-pr.yml",
+            {
+                "checkstyle",
+                "java-unit",
+                "docker-smoke",
+                "python",
+                "static",
+                "json-yaml",
+            },
+            {
+                "checkstyle",
+                "java-unit",
+                "docker-smoke",
+                "java-it",
+                "java-it-redis",
+                "python",
+                "static",
+                "json-yaml",
+            },
+        ),
+    ],
+)
+def test_changed_paths_select_expected_workloads(
+    tmp_path, path_filters, path, pr_jobs, queue_jobs
+):
+    tree = tmp_path / "changed"
+    changed_file = tree / path
+    changed_file.parent.mkdir(parents=True)
+    changed_file.touch()
+    # These fixture paths exercise ordinary globs shared by Python and paths-filter.
+    matches = [
         name
-        for name, value in (
-            line.split("=", 1) for line in outputs.read_text().splitlines()
+        for name, patterns in path_filters.items()
+        if any(
+            path in iglob(pattern, root_dir=tree, recursive=True, include_hidden=True)
+            for pattern in patterns
         )
-        if json.loads(value)
-    }
-    assert selected == expected
+    ]
+    pr = tmp_path / "pr"
+    queue = tmp_path / "queue"
+    pr.mkdir()
+    queue.mkdir()
+    payload = {"action": "synchronize", "pull_request": {"draft": False}}
+    assert selected_workloads(pr, "pr", "pull_request", payload, matches) == pr_jobs
+    assert (
+        selected_workloads(queue, "merge-queue", "merge_group", {}, matches)
+        == queue_jobs
+    )
 
 
 def test_missing_path_detection_result_fails_planning(tmp_path):
@@ -188,6 +290,7 @@ def test_one_nightly_schedule_runs_java_without_waiting_for_python():
 def test_backend_gate_rejects_failed_planner_when_nothing_runs(workflow):
     jobs = yaml.safe_load((WORKFLOWS / workflow).read_text())["jobs"]
     gate = jobs["backend-checks-status"]["steps"][0]
+    assert gate["env"]["CHANGES_RESULT"] == "${{ needs.plan.result }}"
     env = dict.fromkeys(gate["env"], "false")
     env["CHANGES_RESULT"] = "failure"
 

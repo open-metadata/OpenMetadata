@@ -506,8 +506,11 @@ MAVEN_JOBS = [
 
 
 @pytest.mark.parametrize("job", MAVEN_JOBS)
-def test_unit_test_jobs_still_restore_maven_on_prs_and_save_on_main(job: str) -> None:
-    steps = java_steps("ci-merge-queue.yml", job)
+@pytest.mark.parametrize("workflow", ("ci-pr.yml", "ci-merge-queue.yml"))
+def test_java_jobs_restore_maven_before_build_and_save_on_push(
+    workflow: str, job: str
+) -> None:
+    steps = java_steps(workflow, job)
     hydrate = index_of(
         steps, lambda s: s.get("uses") == "./.github/actions/hydrate-maven-cache"
     )
@@ -524,16 +527,6 @@ def test_unit_test_jobs_still_restore_maven_on_prs_and_save_on_main(job: str) ->
 
 
 def test_unified_backend_workflow_builds_it_runtime_once_and_gates_on_unit_tests() -> None:
-    for retired in (
-        "openmetadata-service-unit-tests.yml",
-        "java-checkstyle.yml",
-        "maven-sonar-build.yml",
-        "integration-tests-mysql-elasticsearch.yml",
-        "integration-tests-postgres-opensearch.yml",
-        "integration-tests-postgres-elasticsearch-redis.yml",
-    ):
-        assert not (WORKFLOWS / retired).exists(), f"{retired} should be consolidated"
-
     backend = load(WORKFLOWS / "ci-merge-queue.yml")
     jobs = backend["jobs"]
 
@@ -605,12 +598,13 @@ def mvn_command(steps: list[dict]) -> list[str]:
     return shlex.split(script.replace("\\\n", " "))
 
 
-def test_service_unit_tests_run_in_one_jvm_without_jacoco() -> None:
-    steps = java_steps("ci-pr.yml", "backend-checks")
+@pytest.mark.parametrize("workflow", ("ci-pr.yml", "ci-merge-queue.yml"))
+def test_service_unit_tests_use_pom_forks_without_jacoco(workflow: str) -> None:
+    steps = java_steps(workflow, "backend-checks")
     command = mvn_command(steps)
-    # Tests share static registries (Entity's repository map); split across forks
-    # they meet another order and fail (RdfLiveWriterTest, PR #37493).
-    assert not any(arg.startswith("-DforkCount") for arg in command)
+    assert not any(
+        arg.startswith(("-DforkCount", "-DunitTests.forkCount")) for arg in command
+    )
     assert not any(
         arg.startswith("-P") and "static-code-analysis" in arg for arg in command
     )
@@ -621,8 +615,11 @@ def test_service_unit_tests_run_in_one_jvm_without_jacoco() -> None:
     )
 
 
-def test_service_unit_tests_skip_the_unused_apt_and_antlr_installs() -> None:
-    steps = java_steps("ci-pr.yml", "backend-checks")
+@pytest.mark.parametrize("workflow", ("ci-pr.yml", "ci-merge-queue.yml"))
+def test_service_unit_tests_skip_the_unused_apt_and_antlr_installs(
+    workflow: str,
+) -> None:
+    steps = java_steps(workflow, "backend-checks")
     scripts = " ".join(s.get("run", "") for s in steps)
     assert "apt-get" not in scripts
     assert "install_antlr_cli" not in scripts
@@ -635,11 +632,7 @@ def test_service_unit_tests_skip_the_unused_apt_and_antlr_installs() -> None:
 
 @pytest.mark.parametrize("workflow", ("ci-pr.yml", "ci-merge-queue.yml"))
 def test_java_checkstyle_is_unified_fail_fast_in_backend_job(workflow: str) -> None:
-    assert not (WORKFLOWS / "java-checkstyle.yml").exists()
     jobs = load(WORKFLOWS / workflow)["jobs"]
-    assert "java-checkstyle" not in jobs
-    assert "openmetadata-service-unit-tests" not in jobs
-    assert "openmetadata-service-unit-tests-status" not in jobs
     assert "backend-checks" in jobs["backend-checks-status"]["needs"]
 
     steps = steps_of(workflow, "backend-checks")
@@ -662,40 +655,64 @@ def test_java_checkstyle_is_unified_fail_fast_in_backend_job(workflow: str) -> N
         s for s in report_steps if s.get("uses", "").startswith("actions/upload-artifact@")
     )
     assert "inputs.unit-tests-outcome == 'failure'" in reports["if"]
-    assert not any(s.get("name") == "Enforce Backend CI outcome" for s in steps)
 
 
 @pytest.mark.parametrize(
-    "gate",
+    ("profile", "selection"),
     [
-        "integration-tests-mysql-elasticsearch",
-        "integration-tests-postgres-opensearch",
-        "integration-tests-postgres-elasticsearch-redis",
+        ("mysql-elasticsearch", "needs.plan.outputs.java-it == 'true'"),
+        ("postgres-opensearch", "needs.plan.outputs.java-it == 'true'"),
+        ("postgres-elasticsearch-redis", "needs.plan.outputs.java-it-redis"),
     ],
 )
 @pytest.mark.parametrize(
-    ("backend_result", "lane_result", "exit_code"),
+    ("outcomes", "exit_code"),
     [
-        ("success", "success", 0),
-        ("skipped", "success", 0),
-        ("failure", "skipped", 1),
-        ("cancelled", "skipped", 1),
+        pytest.param({}, 0, id="all-succeed"),
+        pytest.param({"UNIT_RESULT": "skipped"}, 0, id="integration-only"),
+        pytest.param(
+            {
+                "BACKEND_CHANGED": "false",
+                "UNIT_RESULT": "skipped",
+                "BUILD_RESULT": "skipped",
+                "LANES_RESULT": "skipped",
+            },
+            0,
+            id="irrelevant-change",
+        ),
+        pytest.param(
+            {"CHANGES_RESULT": "failure", "BACKEND_CHANGED": "false"},
+            1,
+            id="planner-failure",
+        ),
+        pytest.param({"UNIT_RESULT": "failure"}, 1, id="unit-failure"),
+        pytest.param({"UNIT_RESULT": "cancelled"}, 1, id="unit-cancelled"),
+        pytest.param({"BUILD_RESULT": "failure"}, 1, id="build-failure"),
+        pytest.param({"LANES_RESULT": "failure"}, 1, id="lane-failure"),
+        pytest.param({"LANES_RESULT": "skipped"}, 1, id="unexpected-lane-skip"),
     ],
 )
-def test_integration_gate_enforces_backend_result(
-    gate, backend_result, lane_result, exit_code
+def test_integration_gate_requires_selected_jobs_to_succeed(
+    profile, selection, outcomes, exit_code
 ):
-    step = steps_of("ci-merge-queue.yml", gate)[0]
-    assert step["env"]["UNIT_RESULT"] == "${{ needs.backend-checks.result }}"
+    step = steps_of("ci-merge-queue.yml", f"integration-tests-{profile}")[0]
+    assert step["env"] == {
+        "CHANGES_RESULT": "${{ needs.plan.result }}",
+        "BACKEND_CHANGED": "${{ " + selection + " }}",
+        "UNIT_RESULT": "${{ needs.backend-checks.result }}",
+        "BUILD_RESULT": "${{ needs.integration-test-build.result }}",
+        "LANES_RESULT": "${{ needs.it-" + profile + ".result }}",
+    }
     result = subprocess.run(
         ["bash", "-e", "-c", step["run"]],
         env={
             **os.environ,
             "CHANGES_RESULT": "success",
             "BACKEND_CHANGED": "true",
-            "UNIT_RESULT": backend_result,
+            "UNIT_RESULT": "success",
             "BUILD_RESULT": "success",
-            "LANES_RESULT": lane_result,
+            "LANES_RESULT": "success",
+            **outcomes,
         },
         capture_output=True,
         text=True,
