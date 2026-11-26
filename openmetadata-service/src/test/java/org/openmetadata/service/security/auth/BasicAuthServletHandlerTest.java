@@ -77,6 +77,16 @@ class BasicAuthServletHandlerTest {
   }
 
   @Test
+  void handleCallback_returnsNotFoundSoTheAppFinishesSignIn() throws Exception {
+    // The 404 error page serves the app. A 200 here would show raw JSON to a public-client
+    // Test Login popup instead of letting the app complete it.
+    handler.handleCallback(request, response);
+
+    verify(response).sendError(eq(HttpServletResponse.SC_NOT_FOUND), any());
+    verify(response, never()).setStatus(HttpServletResponse.SC_OK);
+  }
+
+  @Test
   void handleLogin_missingProvisionedUser_returnsUnauthorizedAndDeletesRefreshToken()
       throws Exception {
     when(request.getMethod()).thenReturn("POST");

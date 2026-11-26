@@ -301,8 +301,9 @@ describe('TestCaseDetail', () => {
   it('should render the breadcrumb, title row, details row, tabs and active tab body', () => {
     render(<TestCaseDetail />);
 
-    expect(screen.getByTestId('observability-page-shell')).toBeInTheDocument();
-    expect(screen.getByTestId('test-case-detail-page')).toBeInTheDocument();
+    expect(screen.getByTestId('test-case-detail-page')).toHaveClass(
+      'tw:isolate'
+    );
     expect(screen.getByTestId(HEADER_BREADCRUMB_TEST_ID)).toHaveAttribute(
       'data-first-item-icon',
       'true'

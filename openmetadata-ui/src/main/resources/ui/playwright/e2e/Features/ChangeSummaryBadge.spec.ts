@@ -53,7 +53,7 @@ test.describe(
     let table: TableClass;
 
     test.beforeAll('Setup test entities', async ({ browser }) => {
-      test.slow();
+      test.setTimeout(test.info().timeout * 3);
       table = new TableClass();
       const { apiContext, afterAction } = await performAdminLogin(browser);
 

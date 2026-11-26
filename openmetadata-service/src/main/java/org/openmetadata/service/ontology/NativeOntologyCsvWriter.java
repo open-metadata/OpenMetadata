@@ -189,6 +189,10 @@ final class NativeOntologyCsvWriter {
         row,
         Column.DISJOINT_WITH,
         sortedJoin(listOrEmpty(property.getDisjointWith()), URI::toString));
+    put(
+        row,
+        Column.SUPER_PROPERTIES,
+        sortedJoin(listOrEmpty(property.getSuperProperties()), URI::toString));
     put(row, Column.DEPRECATED, Boolean.TRUE.equals(property.getDeprecated()) ? "true" : null);
     put(
         row,

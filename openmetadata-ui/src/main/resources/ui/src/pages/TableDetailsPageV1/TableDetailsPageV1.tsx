@@ -43,7 +43,6 @@ import { useEntityExportModalProvider } from '../../components/Entity/EntityExpo
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { ClientErrors } from '../../enums/Axios.enum';
 import {
@@ -128,7 +127,6 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import TableLinkedConcepts from './TableLinkedConcepts';
 // The incidents API 403s without ViewTests/ViewAll, so skip it and report no incidents.
 const fetchOpenIncidents = (tableFqn: string, canViewTests: boolean) =>
   canViewTests
@@ -294,16 +292,16 @@ const TableDetailsPageV1: React.FC = () => {
       viewQueryResourcePermission && viewQueriesPermission
     );
 
-  // Forbidden → redirect, preserving the prior behavior. Run as an effect rather than during
-  // render so the navigate call doesn't fire during the same commit that returns the query
-  // result. Only redirects on a fresh 403; if the user has stale cached data and the server
-  // later 403s on background refetch, we don't yank them off the page.
-  useEffect(() => {
-    const status = (tableError as AxiosError | undefined)?.response?.status;
-    if (status === ClientErrors.FORBIDDEN) {
-      navigate(ROUTES.FORBIDDEN, { replace: true });
-    }
-  }, [tableError, navigate]);
+  // A 403 on the fetch (e.g. another domain's table) shows the no-view placeholder in place,
+  // unless cached data is already on screen.
+  const showPermissionPlaceholder = useMemo(
+    () =>
+      !viewBasicPermission ||
+      (!tableDetails &&
+        (tableError as AxiosError | undefined)?.response?.status ===
+          ClientErrors.FORBIDDEN),
+    [viewBasicPermission, tableDetails, tableError]
+  );
 
   // Side effect that used to live in the fetch callback — populate "recently viewed" on a
   // successful fetch. Decoupled from the fetch so it fires when the cache resolves the data,
@@ -981,7 +979,7 @@ const TableDetailsPageV1: React.FC = () => {
     return <EntityDetailsPageSkeleton />;
   }
 
-  if (!viewBasicPermission) {
+  if (showPermissionPlaceholder) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <PermissionPlaceholder
@@ -1092,10 +1090,6 @@ const TableDetailsPageV1: React.FC = () => {
               onVersionClick={versionHandler}
             />
           </div>
-          <TableLinkedConcepts
-            columnFqn={columnFqn}
-            tableId={tableDetails.id}
-          />
           {/* Entity Tabs */}
           <div className="entity-details-page-tabs">{renderTabs()}</div>
           <LimitWrapper resource="table">

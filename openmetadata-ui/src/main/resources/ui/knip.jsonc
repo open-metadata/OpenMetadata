@@ -20,15 +20,17 @@
     "**/*.test.{ts,tsx}",
     "**/mocks/**",
     "**/__mocks__/**",
+    // Sibling mock fixtures (X.mock.ts) are test inputs; test files are
+    // knip-ignored, so a fixture used only by tests always false-positives.
+    "**/*.mock.{ts,tsx}",
     // Compatibility forwards for openmetadata-collate (see each file's docstring);
     // delete the file and its entry here once Collate repoints its imports.
     "src/rest/index.ts",
     "src/styles/index.ts",
     // Unused here but consumed by openmetadata-collate via the generated
     // openmetadata-ui mirror — verify downstream before deleting:
-    // NodeSuggestions: collate ERDiagramProvider; DataInsightProvider: collate
-    // DashboardChart/DashboardDetails; useLogStream: collate useAutomationLogs.test.
-    "src/components/Entity/EntityLineage/NodeSuggestions.component.tsx",
+    // DataInsightProvider: collate DashboardChart/DashboardDetails; useLogStream:
+    // collate useAutomationLogs.test.
     "src/pages/DataInsightPage/DataInsightProvider.tsx",
     "src/components/common/LogViewerModal/useLogStream.ts",
     // Type-only compat forward: collate CustomizeMyDataPageClassCollate imports

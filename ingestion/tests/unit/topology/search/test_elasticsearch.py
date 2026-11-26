@@ -171,8 +171,7 @@ EXPECTED_RESULT = CreateSearchIndexRequest(
 
 class ElasticSearchUnitTest(TestCase):
     @patch("metadata.ingestion.source.search.search_service.SearchServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_es_config)
         self.es_source = ElasticsearchSource.create(

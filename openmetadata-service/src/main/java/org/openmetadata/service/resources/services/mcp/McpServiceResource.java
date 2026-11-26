@@ -92,7 +92,7 @@ public class McpServiceResource
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
+    return super.getEntitySpecificOperations();
   }
 
   public McpServiceResource(Authorizer authorizer, Limits limits) {

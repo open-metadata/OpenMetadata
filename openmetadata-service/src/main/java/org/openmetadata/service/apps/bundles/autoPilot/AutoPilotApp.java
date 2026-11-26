@@ -1,32 +1,42 @@
 package org.openmetadata.service.apps.bundles.autoPilot;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
+import jakarta.ws.rs.BadRequestException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.internal.AutoPilotAppConfig;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.AppTrigger;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Slf4j
 public class AutoPilotApp extends AbstractNativeApplication {
@@ -67,31 +77,66 @@ public class AutoPilotApp extends AbstractNativeApplication {
 
   @Override
   public void triggerOnDemand(Map<String, Object> config) {
-    // Trigger the application with the provided configuration payload
-    Map<String, Object> appConfig = JsonUtils.getMap(getApp().getAppConfiguration());
-    if (config != null) {
-      appConfig.putAll(config);
-    }
-    validateConfig(appConfig);
+    prepareTrigger(config).run();
+  }
 
+  @Override
+  public Set<String> getRuntimeTriggerParameters() {
+    return Set.of("entityLink");
+  }
+
+  @Override
+  public AppTrigger prepareTrigger(Map<String, Object> overrides) {
     AutoPilotAppConfig runtimeConfig =
-        JsonUtils.readOrConvertValue(appConfig, AutoPilotAppConfig.class);
-
-    if (runtimeConfig.getActive()) {
-      Map<String, Object> variables = new HashMap<>();
-      variables.put(
-          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
-          runtimeConfig.getEntityLink());
-
-      WorkflowHandler.getInstance()
-          .triggerByKey(
-              getTriggerWorkflowId(WORKFLOW_NAME), UUID.randomUUID().toString(), variables);
-    } else {
-      LOG.info(
-          "{} is not active. Won't be triggered for {}",
-          WORKFLOW_NAME,
-          runtimeConfig.getEntityLink());
+        JsonUtils.readOrConvertValue(
+            getRuntimeConfig(getApp(), overrides), AutoPilotAppConfig.class);
+    if (runtimeConfig.getActive() == null) {
+      throw new BadRequestException("AutoPilot active must be a boolean");
     }
+    if (!runtimeConfig.getActive()) {
+      return new AppTrigger(
+          List.of(),
+          () ->
+              LOG.info(
+                  "{} is not active. Won't be triggered for {}",
+                  WORKFLOW_NAME,
+                  runtimeConfig.getEntityLink()));
+    }
+    EntityLink entityLink = getServiceLink(runtimeConfig);
+    ServiceEntityInterface service = Entity.getEntity(entityLink, "", Include.NON_DELETED);
+    AuthRequest request =
+        new AuthRequest(
+            new OperationContext(entityLink.getEntityType(), MetadataOperation.TRIGGER),
+            new ResourceContext<>(entityLink.getEntityType(), service.getId(), null));
+    return new AppTrigger(List.of(request), () -> triggerWorkflow(entityLink));
+  }
+
+  private EntityLink getServiceLink(AutoPilotAppConfig runtimeConfig) {
+    if (nullOrEmpty(runtimeConfig.getEntityLink())) {
+      throw new BadRequestException("AutoPilot requires a service entity link");
+    }
+    EntityLink entityLink = EntityLink.parse(runtimeConfig.getEntityLink());
+    if (!Entity.getServiceEntityTypes().contains(entityLink.getEntityType())) {
+      throw new BadRequestException("AutoPilot requires a service entity link");
+    }
+    return entityLink;
+  }
+
+  private void triggerWorkflow(EntityLink entityLink) {
+    Map<String, Object> variables = new HashMap<>();
+    variables.put(
+        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+        entityLink.getLinkString());
+    WorkflowHandler.getInstance()
+        .triggerByKey(getTriggerWorkflowId(WORKFLOW_NAME), UUID.randomUUID().toString(), variables);
+  }
+
+  public static Map<String, Object> getRuntimeConfig(App app, Map<String, Object> overrides) {
+    Map<String, Object> appConfig = JsonUtils.getMap(app.getAppConfiguration());
+    if (overrides != null) {
+      appConfig.putAll(overrides);
+    }
+    return appConfig;
   }
 
   private String readResource(String resourceFile) {

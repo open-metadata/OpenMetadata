@@ -255,7 +255,11 @@ public class OntologyConceptResource
       @Context final SecurityContext securityContext,
       @Valid final CreateOntologyConcept request) {
     final OntologyConcept entity = mapper.createToEntity(request, user(securityContext));
-    return create(uriInfo, securityContext, entity);
+    return OntologyResourceAccess.createOrRecreate(
+        repository,
+        entity,
+        () -> create(uriInfo, securityContext, entity),
+        () -> createOrUpdate(uriInfo, securityContext, entity));
   }
 
   @PUT
@@ -336,7 +340,12 @@ public class OntologyConceptResource
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
       @Valid final RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return OntologyResourceAccess.restoreOrKeepLive(
+        authorizer,
+        securityContext,
+        repository,
+        restore.getId(),
+        () -> restoreEntity(uriInfo, securityContext, restore.getId()));
   }
 
   private static String user(final SecurityContext securityContext) {

@@ -32,6 +32,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
+import org.awaitility.Awaitility;
+import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -51,6 +53,7 @@ import org.openmetadata.service.rdf.rebuild.RdfLiveWritePause;
 import org.openmetadata.service.rdf.rebuild.RdfMutation;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
 import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
+import org.openmetadata.service.rdf.rebuild.ReleaseGraphs;
 import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
@@ -66,10 +69,16 @@ import org.testcontainers.containers.GenericContainer;
 @EnabledIfSystemProperty(named = "enableRdf", matches = "true")
 @Execution(ExecutionMode.SAME_THREAD)
 public class RdfStorageMaintenanceIT {
+  private static final ReleaseGraphs NO_RELEASES =
+      release -> {
+        throw new IllegalStateException("No ontology release is journaled here");
+      };
   private static final String BASE = "https://open-metadata.org/";
   private static final String GRAPH = BASE + "graph/knowledge";
   private static final String NAME = BASE + "ontology/name";
   private static final String DATASET = "openmetadata";
+  private static final String ACTIVE_ROW_LOCK =
+      "SELECT datasetName FROM rdf_active_dataset WHERE id = 'active' FOR UPDATE";
   // Stands in for the RDF request timeout, the longest a writer waits for a pause.
   private static final Duration WRITER_WAIT = Duration.ofSeconds(10);
   private static final Map<RdfTestDatabase.Backend, RdfTestDatabase> DATABASES =
@@ -147,6 +156,38 @@ public class RdfStorageMaintenanceIT {
       assertEquals(0, fixture.raw.getTripleCount(GRAPH), "nothing reaches Fuseki during a pause");
 
       held.release();
+      assertDoesNotThrow(() -> write.get(30, TimeUnit.SECONDS));
+      assertEquals(1, fixture.raw.getTripleCount(GRAPH));
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aPauseStartingAfterAWriterCheckedForOneStillMakesItWait(
+      final RdfTestDatabase.Backend backend) throws Exception {
+    try (Fixture fixture = new Fixture(backend);
+        Handle rowLock = fixture.database.jdbi().open()) {
+      rowLock.begin();
+      rowLock.createQuery(ACTIVE_ROW_LOCK).mapTo(String.class).one();
+      final RdfStorageInterface serving = fixture.manager.routedStorage(RdfWriteDelivery.DIRECT);
+      final CompletableFuture<Void> write =
+          CompletableFuture.runAsync(() -> serving.executeSparqlUpdate(sparql(4)));
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(30))
+          .until(() -> fixture.lockWaiters(backend) > 0);
+
+      final long now = fixture.clock.millis();
+      fixture.locks.tryAcquireLock(
+          RdfLiveWritePause.LOCK_KEY,
+          UUID.randomUUID().toString(),
+          "server-b",
+          now,
+          now + TimeUnit.MINUTES.toMillis(5));
+      rowLock.commit();
+
+      assertThrows(TimeoutException.class, () -> write.get(2, TimeUnit.SECONDS));
+      assertEquals(0, fixture.raw.getTripleCount(GRAPH), "nothing reaches Fuseki during a pause");
+      fixture.locks.delete(RdfLiveWritePause.LOCK_KEY);
       assertDoesNotThrow(() -> write.get(30, TimeUnit.SECONDS));
       assertEquals(1, fixture.raw.getTripleCount(GRAPH));
     }
@@ -280,7 +321,8 @@ public class RdfStorageMaintenanceIT {
               new RdfRebuildStore(database.jdbi(), clock, RdfRebuildStore.DEFAULT_LIMITS),
               clock,
               dataset -> raw,
-              WRITER_WAIT);
+              WRITER_WAIT,
+              NO_RELEASES);
       pause = new RdfLiveWritePause(locks, manager, "server-a");
     }
 
@@ -323,13 +365,13 @@ public class RdfStorageMaintenanceIT {
 
     void applyServing(final String payload) {
       JsonUtils.readValue(payload, RdfMutation.class)
-          .apply(manager.routedStorage(RdfWriteDelivery.DIRECT));
+          .apply(manager.routedStorage(RdfWriteDelivery.DIRECT), NO_RELEASES);
     }
 
     /** As the live writer applies a queue row: held back at once while paused, never waiting. */
     void applyQueued(final String payload) {
       JsonUtils.readValue(payload, RdfMutation.class)
-          .apply(manager.routedStorage(RdfWriteDelivery.QUEUED));
+          .apply(manager.routedStorage(RdfWriteDelivery.QUEUED), NO_RELEASES);
     }
 
     int headAttempts() {
@@ -341,6 +383,18 @@ public class RdfStorageMaintenanceIT {
                       .createQuery("SELECT attempts FROM rdf_live_write_queue ORDER BY id LIMIT 1")
                       .mapTo(Integer.class)
                       .one());
+    }
+
+    /** Transactions blocked on a row lock, here the serving-dataset row a writer waits for. */
+    long lockWaiters(final RdfTestDatabase.Backend backend) {
+      final String query =
+          switch (backend) {
+            case POSTGRES -> "SELECT COUNT(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'";
+            case MYSQL -> "SELECT COUNT(*) FROM information_schema.innodb_trx WHERE trx_state = 'LOCK WAIT'";
+          };
+      return database
+          .jdbi()
+          .withHandle(handle -> handle.createQuery(query).mapTo(Long.class).one());
     }
 
     long deadLetters() {

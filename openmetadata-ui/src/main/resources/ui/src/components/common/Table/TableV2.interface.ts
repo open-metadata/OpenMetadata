@@ -29,6 +29,8 @@ export interface AriaSortDescriptor {
 }
 
 export interface TableV2ExtensionProps<T> {
+  /** Disable when a custom empty placeholder supplies its own vertical spacing. */
+  paddedEmptyState?: boolean;
   /** Accessible name of the grid; defaults to "data-table". */
   'aria-label'?: string;
   /**

@@ -39,6 +39,7 @@ import {
   saveAlertAndVerifyResponse,
   verifyAlertDetails,
   visitAlertDetailsPage,
+  visitEditAlertPage,
 } from '../../utils/alert';
 import { deleteFixtureEntity, settleAll } from '../../utils/apiResponse';
 import {
@@ -264,7 +265,10 @@ test('Pipeline Alert', async ({ page }) => {
     await diagnosticInfoResponse;
     await waitForAllLoadersToDisappear(page);
 
-    const diagnosticHelp = page.getByRole('button', { name: /latest offset/i });
+    // The Status row comes first, so its help icon is the first stop after the tab.
+    const diagnosticHelp = page.getByRole('button', {
+      name: /whether the alert is enabled/i,
+    });
     await diagnosticTab.focus();
     await page.keyboard.press('Tab');
     await expect(diagnosticHelp).toBeFocused();
@@ -283,7 +287,7 @@ test('Pipeline Alert', async ({ page }) => {
       )
       .toBe(true);
     await expect(
-      page.getByRole('tooltip', { name: /latest offset/i })
+      page.getByRole('tooltip', { name: /whether the alert is enabled/i })
     ).toBeVisible();
     await page.keyboard.press('Escape');
   });
@@ -324,6 +328,45 @@ test('Pipeline Alert', async ({ page }) => {
       // Verify the edited alert changes
       await verifyAlertDetails({ page, alertDetails: data.alertDetails });
     });
+  });
+
+  await test.step('Switch the alert off and back on from its form', async () => {
+    const saveAlert = async () => {
+      const update = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.url().includes('/api/v1/events/subscriptions') &&
+          response.request().method() === 'PATCH',
+        200
+      );
+      await page.click('[data-testid="save-button"]');
+
+      return (await update).json();
+    };
+
+    await visitEditAlertPage(page, data.alertDetails, false);
+    const enabledSwitch = page.getByRole('switch', { name: 'Enabled' });
+    const enabledDescription = page.getByTestId('alert-enabled-description');
+    await expect(enabledSwitch).toBeChecked();
+    await expect(page.locator('#displayName')).toBeEnabled();
+    await expect(enabledDescription).toContainText('sends notifications');
+
+    await enabledSwitch.press('Space');
+    await expect(enabledSwitch).not.toBeChecked();
+    await expect(page.locator('#displayName')).toBeDisabled();
+    await expect(enabledDescription).toContainText('It sends nothing');
+    await expect(page.getByTestId('save-button')).toBeEnabled();
+    expect((await saveAlert()).enabled).toBe(false);
+
+    await visitEditAlertPage(page, data.alertDetails, false);
+    await expect(enabledSwitch).not.toBeChecked();
+    await expect(page.locator('#displayName')).toBeDisabled();
+
+    await enabledSwitch.press('Space');
+    await expect(enabledSwitch).toBeChecked();
+    await expect(page.locator('#displayName')).toBeEnabled();
+    await expect(enabledDescription).toContainText('sends notifications');
+    expect((await saveAlert()).enabled).toBe(true);
   });
 
   await test.step('Delete alert', async () => {

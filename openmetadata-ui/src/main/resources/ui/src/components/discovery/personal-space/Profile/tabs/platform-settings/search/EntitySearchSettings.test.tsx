@@ -588,11 +588,11 @@ describe('EntitySearchSettings', () => {
     );
 
     await waitFor(() =>
-      expect(onNavigate).toHaveBeenCalledWith({
-        type: 'page',
-        page: 'search',
-        isEditing: false,
-      })
+      // A redirect replaces, so Back does not land on the stale link again.
+      expect(onNavigate).toHaveBeenCalledWith(
+        { type: 'page', page: 'search', isEditing: false },
+        { replace: true }
+      )
     );
 
     expect(getSettingsByType).not.toHaveBeenCalled();

@@ -338,6 +338,42 @@ public class DatabaseServiceResourceIT
   }
 
   @Test
+  void post_mysqlServiceWithUnknownSslConfigField_400(TestNamespace ns) {
+    MysqlConnection conn =
+        new MysqlConnection()
+            .withHostPort("localhost:3306")
+            .withUsername("test_user")
+            .withSslConfig(Map.of("sslMode", "require"));
+    CreateDatabaseService request =
+        new CreateDatabaseService()
+            .withName(ns.prefix("mysql_bad_ssl"))
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(new DatabaseConnection().withConfig(conn));
+
+    OpenMetadataException e =
+        assertThrows(OpenMetadataException.class, () -> createEntity(request));
+    assertEquals(400, e.getStatusCode());
+    assertTrue(e.getMessage().contains("unrecognized field 'sslMode'"), e.getMessage());
+  }
+
+  @Test
+  void post_mysqlServiceWithValidSslConfig_200_OK(TestNamespace ns) {
+    MysqlConnection conn =
+        new MysqlConnection()
+            .withHostPort("localhost:3306")
+            .withUsername("test_user")
+            .withSslConfig(Map.of("caCertificate", "ca-pem"));
+
+    DatabaseService service =
+        createEntity(
+            new CreateDatabaseService()
+                .withName(ns.prefix("mysql_ssl"))
+                .withServiceType(DatabaseServiceType.Mysql)
+                .withConnection(new DatabaseConnection().withConfig(conn)));
+    assertNotNull(service.getConnection());
+  }
+
+  @Test
   void put_databaseServiceDescription_200_OK(TestNamespace ns) {
     CreateDatabaseService request = createMinimalRequest(ns);
     request.setName(ns.prefix("service_update_desc"));

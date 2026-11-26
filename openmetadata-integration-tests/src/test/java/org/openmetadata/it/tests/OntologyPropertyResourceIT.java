@@ -153,6 +153,20 @@ public class OntologyPropertyResourceIT
   }
 
   @Test
+  void dateDataPropertiesRangeOverTheOwl2DateDatatype(TestNamespace ns) {
+    final CreateOntologyProperty request =
+        createMinimalRequest(ns)
+            .withKind(OntologyPropertyKind.DATA)
+            .withRange(List.of(URI.create("http://www.w3.org/2001/XMLSchema#date")));
+    assertEquals(
+        400,
+        assertThrows(OpenMetadataException.class, () -> createEntity(request)).getStatusCode());
+    final URI date = URI.create("https://open-metadata.org/ontology/date");
+    final OntologyProperty created = createEntity(request.withRange(List.of(date)));
+    assertEquals(List.of(date), getEntity(created.getId().toString()).getRange());
+  }
+
+  @Test
   void propertySetsRejectDuplicateIrisButChainsAllowRepetition(TestNamespace ns) {
     URI iri = URI.create("https://example.org/Customer");
     List<URI> duplicates = List.of(iri, iri);

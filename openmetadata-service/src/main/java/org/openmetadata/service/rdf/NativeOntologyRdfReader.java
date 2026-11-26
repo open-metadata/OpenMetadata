@@ -105,6 +105,7 @@ final class NativeOntologyRdfReader {
       individuals();
       final List<OntologyConcept> concepts = concepts();
       final List<OntologyProperty> properties = properties();
+      dateDefinition();
       final List<OntologyAxiom> axioms = axioms(properties);
       references();
       skipRemaining();
@@ -364,6 +365,7 @@ final class NativeOntologyRdfReader {
                 kind == OntologyPropertyKind.ANNOTATION
                     ? List.of()
                     : iris(subject, OWL2.propertyDisjointWith))
+            .withSuperProperties(superProperties(subject))
             .withUnit(text(subject, OntologyRdfVocabulary.UNIT))
             .withDeprecated(flag(subject, OWL2.deprecated))
             .withReplacedBy(annotationIri(subject, DCTerms.isReplacedBy));
@@ -392,6 +394,21 @@ final class NativeOntologyRdfReader {
   /** Several {@code rdfs:domain} statements are an intersection, which is also how the list reads back. */
   private List<URI> domain(final Resource subject) {
     return iris(subject, RDFS.domain);
+  }
+
+  /**
+   * Named superproperties are kept whether or not the source declares them; the importer drops a
+   * link to a property its target cannot resolve. A property is trivially its own subproperty, so
+   * that statement is skipped rather than stored.
+   */
+  private List<URI> superProperties(final Resource subject) {
+    final List<URI> supers = new ArrayList<>(iris(subject, RDFS.subPropertyOf));
+    if (supers.remove(URI.create(subject.getURI()))) {
+      ledger.skip(
+          NativeOntologyImportSkipReason.UNSUPPORTED_STRUCTURE,
+          model.createStatement(subject, RDFS.subPropertyOf, subject));
+    }
+    return List.copyOf(supers);
   }
 
   /** Several chains are separate axioms; the lexicographically first usable one is kept. */
@@ -684,6 +701,18 @@ final class NativeOntologyRdfReader {
                 || model.contains(node.asResource(), RDF.type, SKOS.Concept)
                 || OwlEntityDeclarations.vocabularyKind(node.asResource().getURI())
                     == OwlEntityDeclarations.EntityKind.CLASS));
+  }
+
+  /**
+   * The definition every export writes for {@link OwlDatatypeSupport#DATE}. It is part of the
+   * datatype, not an authored axiom, so it is taken before axioms are read.
+   */
+  private void dateDefinition() {
+    remaining.remove(
+        model.createStatement(
+            model.createResource(OwlDatatypeSupport.DATE.toString()),
+            OWL2.equivalentClass,
+            XSD.dateTime));
   }
 
   private void references() {

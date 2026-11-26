@@ -31,7 +31,9 @@ const getIcon = (type: BannerProps['type']) => {
     case 'success':
       return <CheckCircle className="tw:text-utility-success-700" size={25} />;
     case 'error':
-      return <Alert02 className="tw:text-utility-error-500" />;
+      return (
+        <Alert02 className="tw:shrink-0 tw:text-utility-error-500" size={20} />
+      );
     case 'info':
       return <InfoCircle aria-hidden className="info-icon" size={16} />;
     default:

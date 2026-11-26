@@ -27,6 +27,25 @@ from metadata.utils.operation_metrics import (
 from metadata.utils.singleton import Singleton
 
 
+@pytest.fixture(autouse=True)
+def wait_for_thread_start(monkeypatch):
+    # Avoid filelock's Python <3.12 tracing race: https://github.com/tox-dev/filelock/pull/747.
+    class ReadyThread(threading.Thread):
+        def start(self):
+            ready = threading.Event()
+            run = self.run
+
+            def run_when_ready():
+                ready.set()
+                run()
+
+            self.run = run_when_ready
+            super().start()
+            assert ready.wait(timeout=10), f"Thread {self.name} did not initialize"
+
+    monkeypatch.setattr(threading, "Thread", ReadyThread)
+
+
 class TestRunningStatistics:
     """Tests for the RunningStatistics class (Welford's algorithm)"""
 
@@ -271,7 +290,7 @@ class TestOperationMetricsState:
 
     def test_thread_isolation_before_merge(self) -> None:
         metrics = OperationMetricsState()
-        barrier = threading.Barrier(2)
+        barrier = threading.Barrier(2, timeout=10)
         results = {"thread1_count": 0, "thread2_count": 0}  # noqa: F841
 
         def thread1_work():
@@ -423,8 +442,10 @@ class TestMultiThreadedOperations:
         metrics = OperationMetricsState()
         num_threads = 10
         ops_per_thread = 100
+        barrier = threading.Barrier(num_threads, timeout=10)
 
         def record_operations():
+            barrier.wait()
             for i in range(ops_per_thread):
                 metrics.record_operation("db_queries", "SELECT", float(i))
             metrics.merge_thread_metrics()
@@ -438,6 +459,61 @@ class TestMultiThreadedOperations:
         summary = metrics.get_summary()
         total_ops = summary["db_queries"]["SELECT"]["_default"]["count"]
         assert total_ops == num_threads * ops_per_thread
+
+    def test_summary_waits_for_the_item_the_worker_is_recording(self) -> None:
+        metrics = OperationMetricsState()
+        taken = threading.Event()
+        release = threading.Event()
+        record = metrics._record_sync
+
+        def slow_record(*args) -> None:
+            taken.set()
+            release.wait(timeout=5)
+            record(*args)
+
+        class ReleaseOnWait(threading.Condition):
+            # The worker is let go only once the summary is waiting for it
+            def wait(self, timeout=None):
+                release.set()
+                return super().wait(timeout)
+
+        queue = metrics._async_queue
+        queue.all_tasks_done = ReleaseOnWait(queue.mutex)
+        metrics._record_sync = slow_record
+        metrics.record_operation("db_queries", "SELECT", 1.0)
+        # The queue is now empty while the worker still holds the item
+        assert taken.wait(timeout=5)
+
+        summary = metrics.get_summary()
+
+        assert summary["db_queries"]["SELECT"]["_default"]["count"] == 1
+
+    def test_new_run_drops_the_item_the_worker_is_recording(self) -> None:
+        metrics = OperationMetricsState()
+        metrics.set_run_context(run_id="run-1")
+        taken = threading.Event()
+        release = threading.Event()
+        record = metrics._record_sync
+
+        def slow_record(*args) -> None:
+            taken.set()
+            release.wait(timeout=5)
+            record(*args)
+
+        metrics._record_sync = slow_record
+        metrics.record_operation("db_queries", "SELECT", 1.0)
+        # The queue is now empty while the worker still holds the run-1 item
+        assert taken.wait(timeout=5)
+
+        metrics.set_run_context(run_id="run-2")
+        # Only now, after the new run has started, does the worker record the run-1 item
+        release.set()
+        metrics.record_operation("db_queries", "INSERT", 2.0)
+
+        summary = metrics.get_summary()
+
+        assert "SELECT" not in summary["db_queries"]
+        assert summary["db_queries"]["INSERT"]["_default"]["count"] == 1
 
     def test_multiple_operations_per_thread(self) -> None:
         metrics = OperationMetricsState()

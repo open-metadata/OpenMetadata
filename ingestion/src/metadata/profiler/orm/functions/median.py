@@ -138,6 +138,7 @@ def _(elements, compiler, **kwargs):
 
 
 @compiles(MedianFn, Dialects.Impala)
+@compiles(MedianFn, Dialects.Impala4)
 def _(elements, compiler, **kwargs):
     """Median computation for Impala
     Median compution for Impala uses the appx_median function.

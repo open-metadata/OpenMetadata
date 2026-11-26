@@ -62,6 +62,10 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../test/unit/enUsTranslation';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import {
@@ -512,10 +516,17 @@ jest.mock('../../components/common/TestConnection/TestConnection', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ serviceCategory, extraInfo }: TestConnectionProps) => (
+      ({
+        serviceCategory,
+        extraInfo,
+        isTestingDisabled,
+      }: TestConnectionProps) => (
         <div data-testid="test-connection">
           <span data-testid="test-connection-category">{serviceCategory}</span>
           <span data-testid="test-connection-extra-info">{extraInfo}</span>
+          <span data-testid="test-connection-disabled">
+            {String(isTestingDisabled)}
+          </span>
         </div>
       )
     )
@@ -828,7 +839,7 @@ describe('ServiceDetailsPage', () => {
       });
     });
 
-    it('should navigate to forbidden page when access is denied', async () => {
+    it('should render the permission placeholder when access is denied', async () => {
       const mockNavigate = jest.fn();
       (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
 
@@ -841,10 +852,59 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith(ROUTES.FORBIDDEN, {
-          replace: true,
-        });
+        expect(
+          screen.getByTestId('permission-error-placeholder')
+        ).toBeInTheDocument();
       });
+
+      expect(
+        screen.queryByTestId('no-data-placeholder')
+      ).not.toBeInTheDocument();
+      expect(mockNavigate).not.toHaveBeenCalledWith(ROUTES.FORBIDDEN, {
+        replace: true,
+      });
+    });
+  });
+
+  describe('Permission message', () => {
+    it('names the requested service, not the one viewed before', async () => {
+      const error = new Error('Forbidden') as AxiosError;
+      error.response = { status: ClientErrors.FORBIDDEN } as AxiosResponse;
+      const page = () => (
+        <MemoryRouter>
+          <ServiceDetailsPage />
+        </MemoryRouter>
+      );
+      useEnUsTranslations();
+      try {
+        const view = render(page());
+        await act(async () => undefined);
+
+        (useFqn as jest.Mock).mockImplementation(() => ({
+          fqn: 'other-service',
+        }));
+        (getServiceByFQN as jest.Mock).mockImplementationOnce(() =>
+          Promise.reject(error)
+        );
+        await act(async () => {
+          view.rerender(page());
+        });
+
+        const placeholder = await screen.findByTestId(
+          'permission-error-placeholder'
+        );
+
+        expect(placeholder).toHaveTextContent('other-service');
+        expect(placeholder).not.toHaveTextContent('Test Service');
+      } finally {
+        useKeyEchoTranslations();
+        (useFqn as jest.Mock).mockImplementation(() => ({
+          fqn: 'test-service',
+        }));
+        (getServiceByFQN as jest.Mock)
+          .mockReset()
+          .mockImplementation(() => Promise.resolve(mockServiceDetails));
+      }
     });
   });
 
@@ -1686,6 +1746,45 @@ describe('ServiceDetailsPage', () => {
         expect(
           screen.getByTestId('test-connection-extra-info')
         ).toHaveTextContent(ingestionRunnerName);
+      });
+    });
+
+    it('should pass the ingestion runner when extra info loads after the service', async () => {
+      const ingestionRunnerName = 'IngestionRunner1';
+      let isExtraInfoLoaded = false;
+      let finishExtraInfo: () => void = noop;
+      (mockServiceUtil.getExtraInfo as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finishExtraInfo = () => {
+              isExtraInfoLoaded = true;
+              resolve();
+            };
+          })
+      );
+      (mockServiceUtil.getServiceExtraInfo as jest.Mock).mockImplementation(
+        () => (isExtraInfoLoaded ? { name: ingestionRunnerName } : null)
+      );
+      (useRequiredParams as jest.Mock).mockImplementation(() => ({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        tab: EntityTabs.CONNECTION,
+      }));
+
+      await renderComponent();
+
+      expect(screen.getByTestId('test-connection-disabled')).toHaveTextContent(
+        'true'
+      );
+
+      await act(async () => finishExtraInfo());
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('test-connection-extra-info')
+        ).toHaveTextContent(ingestionRunnerName);
+        expect(
+          screen.getByTestId('test-connection-disabled')
+        ).toHaveTextContent('false');
       });
     });
   });

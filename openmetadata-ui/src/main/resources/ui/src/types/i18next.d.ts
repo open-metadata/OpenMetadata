@@ -19,6 +19,9 @@ declare module 'i18next' {
     returnEmptyString: false;
     returnObjects: false;
     defaultNS: 'translation';
+    // Keys are untyped (no `resources`), so v27's default check only makes
+    // `TFunction` unassignable to the `(key, options?) => string` helpers.
+    strictInterpolationChecks: false;
   }
 }
 

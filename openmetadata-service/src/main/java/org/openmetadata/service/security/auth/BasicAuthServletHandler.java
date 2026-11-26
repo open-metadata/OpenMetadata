@@ -27,6 +27,7 @@ import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthServeletHandler;
+import org.openmetadata.service.security.NoopAuthServeletHandler;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
@@ -116,14 +117,10 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
 
   @Override
   public void handleCallback(HttpServletRequest req, HttpServletResponse resp) {
-    // For Basic auth, the callback is handled by the frontend
-    // The login already redirects with the token
-    try {
-      resp.setStatus(HttpServletResponse.SC_OK);
-      writeMessageResponse(resp, HttpServletResponse.SC_OK, "Callback handled by frontend");
-    } catch (IOException e) {
-      LOG.error("Error handling callback", e);
-    }
+    // Basic sign-in never redirects here. A browser that does arrive (a public-client SSO Test
+    // Login popup, or a login landing before this server switched provider) needs the app, which
+    // the 404 error page serves, to finish the sign-in.
+    NoopAuthServeletHandler.getInstance().handleCallback(req, resp);
   }
 
   @Override

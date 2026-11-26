@@ -695,6 +695,18 @@ class AdvancedSearchClassBase {
       label: t('label.file-extension'),
       type: 'text',
       mainWidgetProps: this.mainWidgetProps,
+      // The text type's own list includes operators the Elasticsearch writer has no query for (`starts_with`,
+      // `ends_with`, `proximity`) or writes an invalid `exists` for (`is_empty`, `is_not_empty`).
+      operators: [
+        'equal',
+        'not_equal',
+        'like',
+        'not_like',
+        'is_null',
+        'is_not_null',
+        'match_phrase',
+        'not_match_phrase',
+      ],
     },
     [EntityFields.FILE_TYPE]: {
       label: t('label.file-type'),

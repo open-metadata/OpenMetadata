@@ -169,12 +169,20 @@ class OntologySparqlWorkerTest {
       assertTrue(process.waitFor(60, TimeUnit.SECONDS));
       assertEquals(3, process.exitValue());
       final var failure = OntologySparqlWorker.memoryLimitFailure(temporaryDirectory);
+      assertInstanceOf(SparqlQueryLimits.OntologyTooLargeException.class, failure);
       assertTrue(failure.getMessage().contains("ontology"), failure.getMessage());
       assertTrue(failure.getMessage().contains("loading"), failure.getMessage());
     } finally {
       process.destroyForcibly();
       assertTrue(process.waitFor(10, TimeUnit.SECONDS));
     }
+  }
+
+  @Test
+  void aQueryThatExhaustsMemoryAfterLoadingIsNotAnOversizedOntology() {
+    final var failure = OntologySparqlWorker.memoryLimitFailure(temporaryDirectory);
+
+    assertEquals(SparqlQueryLimits.QueryLimitExceededException.class, failure.getClass());
   }
 
   private void writeWorkerRequest(final Model model) throws IOException {

@@ -29,6 +29,8 @@ public final class OntologyService extends EntityServiceBase<Ontology> {
       final JsonNode original, final JsonNode updated, final Ontology entity) {
     removeField(original, "publicationStatus");
     removeField(updated, "publicationStatus");
+    removeField(original, "installedPacks");
+    removeField(updated, "installedPacks");
   }
 
   public Ontology create(final CreateOntology request) {

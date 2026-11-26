@@ -86,6 +86,7 @@ const WorkflowsPage = () => {
     GRID_PAGE_SIZE_OPTIONS
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [workflowDisplayName, setWorkflowDisplayName] = useState('');
   const [workflowName, setWorkflowName] = useState('');
   const [description, setDescription] = useState('');
   const [nameError, setNameError] = useState('');
@@ -146,6 +147,7 @@ const WorkflowsPage = () => {
   );
 
   const resetForm = useCallback(() => {
+    setWorkflowDisplayName('');
     setWorkflowName('');
     setDescription('');
     setNameError('');
@@ -237,7 +239,7 @@ const WorkflowsPage = () => {
     try {
       const workflowData = {
         description: description || '',
-        displayName: workflowName,
+        displayName: workflowDisplayName.trim() || workflowName,
         edges: [],
         name: workflowName,
         nodes: [],
@@ -273,6 +275,7 @@ const WorkflowsPage = () => {
   }, [
     isSubmitting,
     workflowName,
+    workflowDisplayName,
     description,
     validateWorkflowName,
     resetForm,
@@ -454,52 +457,41 @@ const WorkflowsPage = () => {
             </SlideoutMenu.Header>
             <SlideoutMenu.Content>
               <div className="tw:flex tw:flex-col tw:gap-5">
-                <div>
-                  <div className="tw:flex tw:items-center tw:gap-0.5 tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
-                    <Typography as="span">
-                      {t('label.workflow-name')}
-                    </Typography>
-                    <Typography as="span" className="tw:text-error-primary">
-                      *
-                    </Typography>
-                  </div>
-                  <Input
-                    data-testid="workflow-name"
-                    isDisabled={isSubmitting}
-                    isInvalid={!!nameError}
-                    placeholder={t('label.workflow-name-placeholder')}
-                    value={workflowName}
-                    onChange={(value) => {
-                      setWorkflowName(value);
-                      if (nameError) {
-                        setNameError('');
-                      }
-                    }}
-                  />
-                  {nameError && (
-                    <Typography
-                      as="p"
-                      className="tw:m-0 tw:mt-1 tw:text-error-primary"
-                      size="text-xs">
-                      {nameError}
-                    </Typography>
-                  )}
-                </div>
-                <div>
-                  <Typography
-                    as="p"
-                    className="tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
-                    {t('label.description')}
-                  </Typography>
-                  <TextArea
-                    data-testid="workflow-description"
-                    isDisabled={isSubmitting}
-                    placeholder={t('label.description')}
-                    rows={4}
-                    value={description}
-                    onChange={setDescription}
-                  />
-                </div>
+                <Input
+                  isRequired
+                  autoComplete="off"
+                  data-testid="workflow-name"
+                  hint={nameError || undefined}
+                  isDisabled={isSubmitting}
+                  isInvalid={!!nameError}
+                  label={t('label.workflow-name')}
+                  placeholder={t('label.workflow-name-placeholder')}
+                  value={workflowName}
+                  onChange={(value) => {
+                    setWorkflowName(value);
+                    if (nameError) {
+                      setNameError('');
+                    }
+                  }}
+                />
+                <Input
+                  autoComplete="off"
+                  data-testid="workflow-display-name"
+                  isDisabled={isSubmitting}
+                  label={t('label.display-name')}
+                  placeholder={t('message.enter-display-name')}
+                  value={workflowDisplayName}
+                  onChange={setWorkflowDisplayName}
+                />
+                <TextArea
+                  data-testid="workflow-description"
+                  isDisabled={isSubmitting}
+                  label={t('label.description')}
+                  placeholder={t('label.description')}
+                  rows={4}
+                  value={description}
+                  onChange={setDescription}
+                />
               </div>
             </SlideoutMenu.Content>
             <SlideoutMenu.Footer className="tw:shadow-none tw:p-0">

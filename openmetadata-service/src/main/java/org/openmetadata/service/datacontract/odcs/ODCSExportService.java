@@ -14,46 +14,15 @@
 package org.openmetadata.service.datacontract.odcs;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.networknt.schema.Schema;
-import com.networknt.schema.SchemaLocation;
-import com.networknt.schema.SchemaRegistry;
-import com.networknt.schema.SpecificationVersion;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 
 /** Selects an explicit export profile and validates the complete merged wire document. */
 public final class ODCSExportService {
   public static final String DEFAULT_VERSION = "v3.1.0";
-  private static final Map<String, ODCSVersionAdapter> ADAPTERS =
-      Map.of(
-          DEFAULT_VERSION,
-          new ODCSV31Mapper(),
-          "v3.0.2",
-          new ODCSV30Mapper("v3.0.2"),
-          "v3.0.1",
-          new ODCSV30Mapper("v3.0.1"),
-          "v3.0.0",
-          new ODCSV30Mapper("v3.0.0"),
-          "v2.2.2",
-          new ODCSV22Mapper("v2.2.2"),
-          "v2.2.1",
-          new ODCSV22Mapper("v2.2.1"));
-  // Generated POJOs cannot enforce every conditional ODCS constraint, and preserved metadata is
-  // merged as raw JSON after serialization. Validate the complete export against the pinned schema
-  // for its target version; these bundled validators are loaded once and reused.
-  private static final Map<String, Schema> SCHEMAS =
-      ADAPTERS.entrySet().stream()
-          .collect(
-              Collectors.toUnmodifiableMap(
-                  Map.Entry::getKey,
-                  entry ->
-                      SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2019_09)
-                          .getSchema(SchemaLocation.of(entry.getValue().schemaLocation()))));
   private final Function<DataContract, List<ODCSQualityRule>> qualityRules;
 
   public record Result(String version, JsonNode document, List<String> issues) {
@@ -78,18 +47,18 @@ public final class ODCSExportService {
   }
 
   public Result export(DataContract contract, String version) {
-    ODCSVersionAdapter adapter = adapter(version);
+    ODCSVersionAdapter adapter = ODCSProfiles.adapter(version);
     JsonNode nativeDocument = adapter.write(contract, qualityRules.apply(contract));
     JsonNode restored =
-        ODCSMetadataOverlay.apply(contract, adapter.preservationView(nativeDocument), Set.of());
-    JsonNode document = adapter.materialize(restored, contract);
-    List<String> issues =
-        SCHEMAS.get(version).validate(document).stream().map(Object::toString).toList();
+        ODCSMetadataOverlay.applyVersioned(contract, adapter.preservationView(nativeDocument));
+    JsonNode document =
+        ODCSVersionMetadata.materialize(adapter.materialize(restored, contract), version);
+    List<String> issues = ODCSProfiles.validate(version, document);
     return new Result(version, document, issues);
   }
 
   public static JsonNode nativeDocument(DataContract contract, List<ODCSQualityRule> rules) {
-    return adapter(DEFAULT_VERSION).write(contract, rules);
+    return ODCSProfiles.adapter(DEFAULT_VERSION).write(contract, rules);
   }
 
   /** The compatibility reader uses v3.1; its baseline must precede target entity resolution. */
@@ -100,16 +69,5 @@ public final class ODCSExportService {
   public static JsonNode document(
       DataContract contract, List<ODCSQualityRule> rules, Set<String> managedNames) {
     return ODCSMetadataOverlay.apply(contract, nativeDocument(contract, rules), managedNames);
-  }
-
-  private static ODCSVersionAdapter adapter(String version) {
-    ODCSVersionAdapter adapter = ADAPTERS.get(version);
-    if (adapter == null)
-      throw new IllegalArgumentException(
-          "Unsupported ODCS export version `"
-              + version
-              + "`. Supported versions: "
-              + ADAPTERS.keySet());
-    return adapter;
   }
 }

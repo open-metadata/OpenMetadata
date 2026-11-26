@@ -479,6 +479,9 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
 
 test.describe('Context Center - Archive Page Lazy Loading', () => {
   test.beforeAll(async ({ browser }) => {
+    // Each upload waits up to 90s for context extraction before it can be
+    // archived, and 18 queued at once outrun the default 60s hook timeout.
+    test.setTimeout(3 * 60 * 1000);
     const namePrefix = `archive-lazy-load-${uuid()}`;
     const { apiContext, afterAction } = await createNewPage(browser);
 

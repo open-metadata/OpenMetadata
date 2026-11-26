@@ -37,7 +37,8 @@ class DataCloudPipelineDetails(ABC):
 
     @abstractmethod
     def get_tags(self) -> list[str]:
-        pass
+        """What the object is (its type or origin). Its status changes from run to run,
+        so it is not a tag."""
 
     @abstractmethod
     def get_metadata_type(self) -> str:
@@ -169,7 +170,7 @@ class DataStreamDetails(BaseModel, DataCloudPipelineDetails):
         return self.status
 
     def get_tags(self) -> list[str]:
-        return [tag for tag in (self.status, self.dataStreamType) if tag]
+        return [self.dataStreamType] if self.dataStreamType else []
 
     def get_metadata_type(self) -> str:
         return MetadataTypesConstant.DATASTREAM
@@ -235,7 +236,7 @@ class CalculatedInsightDetails(BaseModel, DataCloudPipelineDetails):
         return self.calculatedInsightStatus
 
     def get_tags(self) -> list[str]:
-        return [tag for tag in (self.calculatedInsightStatus, self.definitionType, self.creationType) if tag]
+        return [tag for tag in (self.definitionType, self.creationType) if tag]
 
     def get_metadata_type(self) -> str:
         return MetadataTypesConstant.CALCULATED_INSIGHT
@@ -320,7 +321,7 @@ class DataTransformDetails(BaseModel, DataCloudPipelineDetails):
         return self.status
 
     def get_tags(self) -> list[str]:
-        return [tag for tag in (self.status, self.creationType, self.type) if tag]
+        return [tag for tag in (self.creationType, self.type) if tag]
 
     def get_metadata_type(self) -> str:
         return MetadataTypesConstant.DATATRANSFORM

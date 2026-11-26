@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -67,6 +68,7 @@ public class ODCSConverter {
   private static final ObjectMapper MAPPER =
       new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
   private static final String OWNER_ROLE = "owner";
+  private static final String REVIEWER_ROLE = "reviewer";
 
   private ODCSConverter() {}
 
@@ -195,7 +197,7 @@ public class ODCSConverter {
     }
 
     if (odcs.getTeam() != null && !nullOrEmpty(odcs.getTeam().getMembers())) {
-      contract.setOwners(convertTeamToOwners(odcs.getTeam().getMembers(), issues));
+      applyTeamMembers(contract, odcs.getTeam().getMembers(), issues);
     }
 
     if (odcs.getRoles() != null && !odcs.getRoles().isEmpty()) {
@@ -206,12 +208,12 @@ public class ODCSConverter {
       contract.setSla(ODCSSlaMapper.toContractSla(odcs.getSlaProperties(), issues));
     }
 
-    List<ODCSQualityRule> allQualityRules = collectAllQualityRules(odcs);
+    String importedObject = importedSchemaObjectName(odcs, entityRef, objectName).orElse(null);
+    List<ODCSQualityRule> allQualityRules = collectAllQualityRules(odcs, importedObject);
     if (!allQualityRules.isEmpty()) {
       contract.setOdcsQualityRules(allQualityRules);
     }
 
-    String importedObject = importedSchemaObjectName(odcs, entityRef, objectName).orElse(null);
     contract.setOdcsPreservedFields(
         ODCSPreservedFields.capture(
             original, captureBaseline(contract, importedObject), importedObject));
@@ -368,6 +370,12 @@ public class ODCSConverter {
     column.setDataType(
         mapLogicalTypeToDataType(element.getLogicalType(), element.getPhysicalType()));
 
+    if (column.getDataType() == ColumnDataType.ARRAY && element.getItems() != null) {
+      column.setArrayDataType(
+          mapLogicalTypeToDataType(
+              element.getItems().getLogicalType(), element.getItems().getPhysicalType()));
+    }
+
     if (Boolean.TRUE.equals(element.getPrimaryKey())) {
       column.setConstraint(ColumnConstraint.PRIMARY_KEY);
     } else if (Boolean.TRUE.equals(element.getUnique())) {
@@ -418,39 +426,54 @@ public class ODCSConverter {
     };
   }
 
-  private static List<EntityReference> convertTeamToOwners(
-      List<ODCSTeamMember> members, ODCSImportIssues issues) {
+  private static void applyTeamMembers(
+      DataContract contract, List<ODCSTeamMember> members, ODCSImportIssues issues) {
     List<EntityReference> owners = new ArrayList<>();
+    List<EntityReference> reviewers = new ArrayList<>();
     for (int index = 0; index < members.size(); index++) {
       ODCSTeamMember member = members.get(index);
       String path = "team.members[" + index + "]";
-      if (!OWNER_ROLE.equalsIgnoreCase(member.getRole())) {
+      if (OWNER_ROLE.equalsIgnoreCase(member.getRole())) {
+        addResolvedMember(owners, member, "Owner", path, issues);
+      } else if (REVIEWER_ROLE.equalsIgnoreCase(member.getRole())) {
+        addResolvedMember(reviewers, member, "Reviewer", path, issues);
+      } else {
         issues.warning(
             ODCSImportIssueCategory.TEAM,
             "role",
             path + ".role",
-            "Team members whose role is not `owner` are not imported; OpenMetadata keeps the contract's owners.");
-      } else {
-        addOwner(owners, member, path, issues);
+            "Team members whose role is not `owner` or `reviewer` are not imported; OpenMetadata keeps the contract's owners and reviewers.");
       }
     }
-    return owners;
+    contract.setOwners(owners);
+    if (!reviewers.isEmpty()) {
+      contract.setReviewers(reviewers);
+    }
   }
 
-  private static void addOwner(
-      List<EntityReference> owners, ODCSTeamMember member, String path, ODCSImportIssues issues) {
+  private static void addResolvedMember(
+      List<EntityReference> target,
+      ODCSTeamMember member,
+      String roleLabel,
+      String path,
+      ODCSImportIssues issues) {
     EntityReference ref = resolveTeamMemberToEntity(member);
     if (ref == null) {
+      String identifier = member.getUsername() != null ? member.getUsername() : member.getName();
       issues.warning(
           ODCSImportIssueCategory.TEAM,
           "username",
           path,
           String.format(
-              "Owner `%s` is not an OpenMetadata user or team, so the contract does not get this owner.",
-              member.getUsername() != null ? member.getUsername() : member.getName()));
-    } else {
-      owners.add(ref);
+              "%s `%s` is not an OpenMetadata user or team, so the contract does not get this %s.",
+              roleLabel, identifier, roleLabel.toLowerCase(Locale.ROOT)));
+    } else if (!containsEntityId(target, ref.getId())) {
+      target.add(ref);
     }
+  }
+
+  private static boolean containsEntityId(List<EntityReference> references, UUID id) {
+    return id != null && references.stream().anyMatch(existing -> id.equals(existing.getId()));
   }
 
   private static EntityReference resolveTeamMemberToEntity(ODCSTeamMember member) {
@@ -539,7 +562,8 @@ public class ODCSConverter {
     }
   }
 
-  private static List<ODCSQualityRule> collectAllQualityRules(ODCSDataContract odcs) {
+  private static List<ODCSQualityRule> collectAllQualityRules(
+      ODCSDataContract odcs, String selectedObject) {
     List<ODCSQualityRule> allRules = new ArrayList<>();
 
     if (odcs.getQuality() != null && !odcs.getQuality().isEmpty()) {
@@ -548,6 +572,7 @@ public class ODCSConverter {
 
     if (odcs.getSchema() != null) {
       for (ODCSSchemaElement schemaObject : odcs.getSchema()) {
+        if (selectedObject != null && !selectedObject.equals(schemaObject.getName())) continue;
         boolean table =
             schemaObject.getLogicalType() == ODCSSchemaElement.LogicalType.OBJECT
                 || !nullOrEmpty(schemaObject.getProperties());
@@ -736,7 +761,10 @@ public class ODCSConverter {
             ? imported.getOwners()
             : existing.getOwners());
 
-    merged.setReviewers(existing.getReviewers());
+    merged.setReviewers(
+        imported.getReviewers() != null && !imported.getReviewers().isEmpty()
+            ? imported.getReviewers()
+            : existing.getReviewers());
 
     merged.setTermsOfUse(
         imported.getTermsOfUse() != null ? imported.getTermsOfUse() : existing.getTermsOfUse());

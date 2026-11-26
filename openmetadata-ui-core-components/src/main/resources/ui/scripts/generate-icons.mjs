@@ -138,14 +138,21 @@ async function eslintFix(code, filePath) {
   return result.output ?? code;
 }
 
-/** SVGO plugins shared by both pipelines. */
-const sharedPlugins = [
+/** SVGO plugins shared by both pipelines. IDs are prefixed with the icon
+ *  name: every icon minifies its ids to `a`, `b`, …, and `url(#a)` resolves
+ *  to the first `#a` in the document, so two icons on one page clip, mask or
+ *  fill through each other's definitions (or vanish). */
+const sharedPlugins = (iconBaseName) => [
   normalizeToGrid,
   {
     name: 'preset-default',
     params: { overrides: { removeViewBox: false } },
   },
   { name: 'cleanupIds', params: { minify: true, remove: true } },
+  {
+    name: 'prefixIds',
+    params: { prefix: iconBaseName, delim: '_', prefixClassNames: false },
+  },
   // Remove the root <svg>'s width/height — SVGR's svgProps re-injects them
   // dynamically as size props. Root-only by design, so inner shapes (e.g. a
   // <rect> that legitimately carries width/height as geometry) keep theirs.
@@ -171,10 +178,10 @@ const removeLinecapLinejoin = {
 };
 
 /** SVGO config for regular icons — also replaces hardcoded hex colors with currentColor. */
-const svgoRegularConfig = {
+const svgoRegularConfig = (iconBaseName) => ({
   multipass: true,
   plugins: [
-    ...sharedPlugins,
+    ...sharedPlugins(iconBaseName),
     removeLinecapLinejoin,
     // Replace hardcoded hex colors so icons are fully themeable via the color prop.
     // fill="none", fill="white", and fill="url(...)" are preserved as-is.
@@ -206,25 +213,20 @@ const svgoRegularConfig = {
       }),
     },
   ],
-};
+});
 
-/** SVGO config for custom icons — same as regular but skips color replacement.
- *  IDs are also prefixed with the icon name to prevent gradient/mask conflicts
- *  when multiple custom icons render on the same page. */
+/** SVGO config for custom icons — same as regular but skips color replacement. */
 const svgoCustomConfig = (iconBaseName) => ({
   multipass: true,
-  plugins: [
-    ...sharedPlugins,
-    {
-      name: 'prefixIds',
-      params: { prefix: iconBaseName, delim: '_' },
-    },
-  ],
+  plugins: sharedPlugins(iconBaseName),
 });
 
 /** SVGR config, parameterized by pipeline.
- *  Regular icons: outline-style — forced to a single themeable stroke via the
- *  color prop, with fill/linecap/linejoin normalized.
+ *  Regular icons: hex colors become currentColor (see replaceHardcodedColors)
+ *  and the color prop is set as the root's CSS `color`, so it themes every
+ *  stroke and fill; fill/linecap/linejoin are normalized. The root carries no
+ *  stroke: a shape without its own (e.g. a glyph Figma outlined into a fill)
+ *  would inherit it and render bolder than designed.
  *  Custom icons: full-color/gradient/brand art — only size control is
  *  injected; stroke/fill/linecap/linejoin are left exactly as authored
  *  (post-SVGO) so hardcoded brand colors survive. */
@@ -245,7 +247,7 @@ function buildSvgrConfig(isCustom) {
       : {
           width: '{size}',
           height: '{size}',
-          stroke: '{color}',
+          color: '{color}',
           fill: 'none',
           strokeLinecap: 'round',
           strokeLinejoin: 'round',
@@ -271,7 +273,7 @@ async function processFolder(dir, isCustom, generatedNames) {
     const rawSvg = readFileSync(inputPath, 'utf8');
 
     const { data: optimizedSvg } = optimize(rawSvg, {
-      ...(isCustom ? svgoCustomConfig(baseName) : svgoRegularConfig),
+      ...(isCustom ? svgoCustomConfig : svgoRegularConfig)(baseName),
       path: inputPath,
     });
 

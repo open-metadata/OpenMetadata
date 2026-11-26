@@ -17,27 +17,22 @@ on:
   # required status check (report) always completes. Path filtering is handled
   # inside the workflow via dorny/paths-filter so PRs without UI changes skip
   # the expensive jobs while still reporting a passing status.
-  pull_request_target:
-    # main only. Release branches carry their own ui-checkstyle.yml and must be
-    # validated by it: this workflow assumes tooling (eslint-pr-report,
-    # tw-audit, tw-deprecation-guard, core-components check-i18n-all) that older
-    # branches do not have, so running it against them fails on MODULE_NOT_FOUND
-    # before the PR's code is ever examined.
-    branches:
-      - main
+  # pull_request reads the workflow from the PR's merge commit, so release-branch
+  # PRs run their own branch's ui-checkstyle.yml, which matches their tooling.
+  pull_request:
     types:
       - opened
       - synchronize
       - reopened
       - ready_for_review
-      - labeled
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
-  group: ui-checkstyle-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  group: ui-checkstyle-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 env:
   UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
@@ -67,35 +62,10 @@ jobs:
               - '.github/workflows/ui-checkstyle.yml'
               - 'openmetadata-ui-core-components/src/main/resources/ui/**'
 
-  authorize:
-    needs: check-changes
-    if: |
-      needs.check-changes.outputs.ui-changed == 'true' &&
-      (github.event_name != 'pull_request_target' ||
-       (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
-    runs-on: ubuntu-latest
-    steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.9.1
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true
-
   checkstyle:
-    needs: authorize
-    runs-on: ubuntu-24.04
+    needs: check-changes
+    if: needs.check-changes.outputs.ui-changed == 'true'
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
@@ -117,6 +87,8 @@ jobs:
       tw_audit_changed_files: ${{ steps.tw_audit.outputs.changed_files }}
       tw_guard_result: ${{ steps.tw_guard.outcome }}
       tw_guard_changed_files: ${{ steps.tw_guard.outputs.changed_files }}
+      knip_result: ${{ steps.knip.outcome }}
+      knip_changed_files: ${{ steps.knip.outputs.changed_files }}
       bundle_build_result: ${{ steps.bundle_build.outcome }}
       bundle_build_changed_files: ${{ steps.bundle_build.outputs.changed_files }}
       bundle_budget_result: ${{ steps.bundle_budget.outcome }}
@@ -130,7 +102,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          allow-unsafe-pr-checkout: true
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
@@ -196,12 +167,6 @@ jobs:
           # Report findings BEFORE --fix, so the PR comment reflects what the
           # contributor actually wrote. Reporting only; the gate is the git-diff
           # check at the end of this step.
-          #
-          # Deliberately part of this step rather than its own: every `run:`
-          # executing PR-authored code in this pull_request_target job is a
-          # CodeQL "poisonable step" (there are already 5 in this file, and 22
-          # repo-wide). Adding a separate step would add a sixth for no gain in
-          # isolation — it would run the same command with the same privileges.
           if [ -n "$TS_FILES" ]; then
             yarn lint:base -f json $TS_FILES > /tmp/eslint.json 2>/dev/null || true
             node scripts/eslint-pr-report.js /tmp/eslint.json >> "$GITHUB_OUTPUT"
@@ -253,8 +218,11 @@ jobs:
             exit 1
           fi
 
+      # sync-i18n takes ~2 min of CPU and only reads the locale files, so an
+      # unchanged locale set cannot have drifted unless the tool itself moved.
       - name: I18n Sync
         id: i18n
+        if: contains(steps.changed-ui-files.outputs.all_changed_files, 'src/locale/languages/') || contains(steps.changed-ui-files.outputs.all_changed_files, 'yarn.lock')
         continue-on-error: true
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
@@ -605,6 +573,23 @@ jobs:
           fi
           cat /tmp/bundle-runtime.out
 
+      # Zero-backlog gate: unused files reachable from no entry point. The
+      # backlog was cleared in #37253; this keeps it at zero. Deliberate keeps
+      # (Collate compat forwards/consumers) are documented in knip.jsonc.
+      - name: Unused files (knip)
+        id: knip
+        continue-on-error: true
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          if ! yarn --silent knip:files > /tmp/knip.out 2>&1; then
+            cat /tmp/knip.out
+            OUT=$(grep -E '^src/' /tmp/knip.out | head -30 | sed 's/^/  - `/; s/[[:space:]]*$/`/')
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$OUT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
       - name: Antd + Less Deprecation Guard (no new debt)
         id: tw_guard
         if: steps.changed-ui-files.outputs.any_changed == 'true'
@@ -622,25 +607,15 @@ jobs:
           fi
 
   ui-checkstyle:
-    needs: [authorize, checkstyle]
+    needs: [checkstyle]
     if: always()
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write
+      contents: read
     steps:
-      - name: Find existing summary comment
-        uses: peter-evans/find-comment@v4
-        id: fc
-        if: ${{ github.event_name == 'pull_request_target' }}
-        continue-on-error: true
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: github-actions[bot]
-          body-includes: '<!-- check:ui-checkstyle-summary -->'
-
-      - name: Post or update summary comment
+      - name: Write checkstyle summary
         uses: actions/github-script@v9
-        if: ${{ github.event_name == 'pull_request_target' && steps.fc.outcome == 'success' }}
+        if: ${{ github.event_name == 'pull_request' }}
         continue-on-error: true
         with:
           script: |
@@ -717,10 +692,15 @@ jobs:
                 result:  '${{ needs.checkstyle.outputs.tw_guard_result }}',
                 files:   ${{ toJSON(needs.checkstyle.outputs.tw_guard_changed_files) }} || '',
               },
+              {
+                name:    'Unused files (knip)',
+                reason:  'A src file is reachable from no entry point (zero-backlog gate; deliberate keeps are documented in knip.jsonc). Delete the file or document the keep.',
+                result:  '${{ needs.checkstyle.outputs.knip_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.knip_changed_files) }} || '',
+              },
             ];
 
             const failures = checks.filter(c => c.result === 'failure');
-            const commentId = '${{ steps.fc.outputs.comment-id }}';
 
             const eslintFindings = ${{ toJSON(needs.checkstyle.outputs.eslint_has_findings) }} === 'true';
             const eslintSummary  = ${{ toJSON(needs.checkstyle.outputs.eslint_summary) }} || '';
@@ -728,23 +708,14 @@ jobs:
 
             // The checkstyle job can die before its outputs are evaluated — a step output too
             // large for the job-output expression limit does exactly that. Every entry above is
-            // then blank, so without this branch the PR gets a red required check and no comment.
+            // then blank, so without this branch the PR gets a red required check and no summary.
             const jobResult = '${{ needs.checkstyle.result }}';
             // Only a genuine failure. `cancelled` is the concurrency group superseding this run,
             // and `skipped` is a PR with no UI changes — neither is worth a red comment.
             const jobFailed = jobResult === 'failure';
             const unexplained = jobFailed && failures.length === 0;
 
-            // Warnings do not fail the build, so a comment posted only on
-            // failure would hide them entirely — which defeats the warn tier.
             if (failures.length === 0 && !eslintFindings && !jobFailed) {
-              if (commentId) {
-                await github.rest.issues.deleteComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  comment_id: parseInt(commentId, 10),
-                });
-              }
               return;
             }
 
@@ -800,21 +771,7 @@ jobs:
               '```',
             ].join('\n');
 
-            if (commentId) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: parseInt(commentId, 10),
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
+            await core.summary.addRaw(body).write();
 
       - name: Check final results
         if: always()
@@ -833,6 +790,7 @@ jobs:
              [ "${{ needs.checkstyle.outputs.lint_core_components_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.tw_audit_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.tw_guard_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.knip_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.bundle_build_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.bundle_budget_result }}" = 'failure' ]; then
             echo "One or more checks failed."

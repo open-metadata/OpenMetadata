@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportSummary",
   "definitions": {
     "skipReason": {
-      "description": "Why an RDF statement was left out. NON_PREFERRED_LANGUAGE: another language of a text the import keeps in its preferred language (untagged, then `en`, then the lexicographically first tag). EXTRA_VALUE: a further value of a single-valued field; the import keeps the lexicographically first. UNSUPPORTED_ANNOTATION: an annotation the native model has no field for. UNSUPPORTED_STRUCTURE: a construct the native model cannot represent faithfully, such as a union domain or a SHACL shape. INDIVIDUAL: a statement about a named individual that is not a class or concept. IMPORTS: an `owl:imports` statement; the importer never fetches other documents.",
+      "description": "Why an RDF statement was left out. NON_PREFERRED_LANGUAGE: another language of a text the import keeps in its preferred language (untagged, then `en`, then the lexicographically first tag). EXTRA_VALUE: a further value of a single-valued field; the import keeps the lexicographically first. UNSUPPORTED_ANNOTATION: an annotation the native model has no field for. UNSUPPORTED_STRUCTURE: a construct the native model cannot represent faithfully, such as a union domain or a SHACL shape. INDIVIDUAL: a statement about a named individual that is not a class or concept. IMPORTS: an `owl:imports` statement; the importer never fetches other documents. UNDECLARED_REFERENCE: a link, such as `rdfs:subPropertyOf`, to a property that neither the source nor the target ontology declares; the definition is kept without the link.",
       "type": "string",
       "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportSkipReason",
       "enum": [
@@ -16,7 +16,8 @@
         "UNSUPPORTED_ANNOTATION",
         "UNSUPPORTED_STRUCTURE",
         "INDIVIDUAL",
-        "IMPORTS"
+        "IMPORTS",
+        "UNDECLARED_REFERENCE"
       ]
     },
     "skipGroup": {
@@ -149,12 +150,18 @@
       "$ref": "#/definitions/skippedStatements"
     },
     "items": {
-      "description": "Every parsed definition in the order the source lists them, each with the status applying it would give. On a preview against a target each NEW or UPDATE item names its change set operation; a preview against a new ontology has no operations yet.",
+      "description": "The parsed definitions in the order the source lists them, each with the status applying it would give, at most 5,000 of them. Past that budget ALREADY_EXISTS items are left out first, since nothing can be done with them; `counts` still covers every definition. On a preview against a target each NEW or UPDATE item names its change set operation; a preview against a new ontology has no operations yet.",
       "type": "array",
       "items": {
         "$ref": "nativeOntologyImportItem.json"
       },
       "default": []
+    },
+    "omittedItems": {
+      "description": "Parsed definitions beyond the listed items.",
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
     }
   },
   "required": ["detectedFormat", "counts"],

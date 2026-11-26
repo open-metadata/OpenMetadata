@@ -19,10 +19,13 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
@@ -49,8 +52,85 @@ final class MemoryConflictDecision {
       "These memories changed after they were compared; compare them again before deciding";
   static final String REJECTED_IN_REVIEW = "Rejected in conflict review";
   static final String SUPERSEDED_IN_REVIEW = "Superseded in conflict review by '%s'";
+  static final String REPLACED_SINCE_DETECTION =
+      "Another decision replaced a memory this review disputes; the review now disputes the memory"
+          + " that replaced it, so compare them again before deciding";
+  static final String REPLACED_OUT_OF_SIGHT =
+      "Another decision replaced a memory this review disputes with one this review cannot name;"
+          + " requeue this memory so it is reviewed again";
+  static final String REPLACED_TOO_OFTEN =
+      "A memory this review disputes was replaced more times than a decision follows; requeue this"
+          + " memory so it is reviewed again";
+
+  /** How many replacements a disputed claim is followed through to the value holding it now. */
+  private static final int MAX_REPLACEMENTS = 10;
 
   private MemoryConflictDecision() {}
+
+  /**
+   * The Approved memory now holding each disputed claim another decision replaced, by disputed id:
+   * a review that approved a second value of the fact superseded the one this review disputes, so
+   * approving this one must weigh that value instead, or both would end Approved.
+   * ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory
+   */
+  static Map<UUID, ContextMemory> laterValues(
+      ContextMemory reviewed,
+      Map<UUID, ContextMemory> disputedById,
+      Function<UUID, Optional<ContextMemory>> stored) {
+    Map<UUID, ContextMemory> later = new HashMap<>();
+    disputedById.forEach(
+        (disputedId, disputed) ->
+            valueReplacing(disputed, reviewed.getId(), stored)
+                .ifPresent(value -> later.put(disputedId, value)));
+    return later;
+  }
+
+  /**
+   * The reviewed memory replacing it is this decision retried, not a later value. A chain still
+   * replaced after the last replacement followed is refused rather than read as ending there.
+   */
+  private static Optional<ContextMemory> valueReplacing(
+      ContextMemory disputed, UUID reviewedId, Function<UUID, Optional<ContextMemory>> stored) {
+    Optional<ContextMemory> current = Optional.of(disputed);
+    for (int replacements = 0;
+        replacements < MAX_REPLACEMENTS
+            && current.filter(MemoryConflictDecision::isReplaced).isPresent();
+        replacements++) {
+      UUID successorId = current.get().getSupersededBy().getId();
+      current = successorId.equals(reviewedId) ? Optional.empty() : stored.apply(successorId);
+    }
+    if (current.filter(MemoryConflictDecision::isReplaced).isPresent()) {
+      throw new PreconditionFailedException(REPLACED_TOO_OFTEN);
+    }
+    return current.filter(value -> value != disputed && isApproved(value));
+  }
+
+  private static boolean isReplaced(ContextMemory memory) {
+    return memory.getSupersededBy() != null
+        && (memory.getEntityStatus() == ContextMemoryStatus.SUPERSEDED
+            || memory.getEntityStatus() == ContextMemoryStatus.DEPRECATED);
+  }
+
+  /**
+   * The disputes with each replaced claim swapped for the value holding it now, detected now: the
+   * conflict is the same, so its reason carries over.
+   */
+  static List<MemoryDispute> repointed(
+      List<MemoryDispute> disputes, Map<UUID, ContextMemory> later, long detectedAt) {
+    Map<UUID, MemoryDispute> byMemory = new LinkedHashMap<>();
+    for (MemoryDispute dispute : listOrEmpty(disputes)) {
+      ContextMemory value = later.get(dispute.getMemory().getId());
+      MemoryDispute kept =
+          value == null
+              ? dispute
+              : new MemoryDispute()
+                  .withMemory(referenceTo(value))
+                  .withReason(dispute.getReason())
+                  .withDetectedAt(detectedAt);
+      byMemory.putIfAbsent(kept.getMemory().getId(), kept);
+    }
+    return List.copyOf(byMemory.values());
+  }
 
   /**
    * The reviewed memory is approved first: an approval interrupted before it supersedes everything
@@ -138,7 +218,6 @@ final class MemoryConflictDecision {
   }
 
   /** A memory saved before stages existed has none, and was in use: it counts as Approved. */
-  /** A memory saved before stages existed has none and counts as Approved. */
   static boolean isApproved(ContextMemory memory) {
     return memory != null
         && (memory.getEntityStatus() == null

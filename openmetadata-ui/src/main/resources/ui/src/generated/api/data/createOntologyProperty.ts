@@ -34,13 +34,14 @@ export interface CreateOntologyProperty {
     /**
      * Fully qualified name of the owning ontology.
      */
-    ontology:       string;
-    owners?:        EntityReference[];
-    propertyChain?: string[];
-    provider?:      ProviderType;
-    range?:         string[];
-    replacedBy?:    string;
-    unit?:          string;
+    ontology:         string;
+    owners?:          EntityReference[];
+    propertyChain?:   string[];
+    provider?:        ProviderType;
+    range?:           string[];
+    replacedBy?:      string;
+    superProperties?: string[];
+    unit?:            string;
 }
 
 export enum Characteristic {

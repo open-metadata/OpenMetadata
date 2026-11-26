@@ -55,6 +55,7 @@ export const RuleQueryBuilderField = ({
   const [enrichedFields, setEnrichedFields] = useState<
     Config['fields'] | undefined
   >();
+  const [builderComplete, setBuilderComplete] = useState(true);
   // getAllCustomProperties returns data for ALL entity types regardless of which entityType is currently selected —
   // fetch once on mount and cache it in state.
   const [customProps, setCustomProps] = useState<Awaited<
@@ -99,28 +100,30 @@ export const RuleQueryBuilderField = ({
     setEnrichedFields(nextFields);
   }, [entityType, customProps]);
 
+  const userEditedRef = useRef(false);
   const tree = useMemo(
     () => getRuleFilterTree(filterJsonTree, queryFilter),
     [filterJsonTree, queryFilter]
   );
   // A saved filter the builder shows only in part (or not at all) loses the
   // hidden conditions on the first builder edit, so the editor warns first.
-  const isUnrendered = !isRuleFilterFullyRendered(filterJsonTree, queryFilter);
+  const isUnrendered =
+    !isRuleFilterFullyRendered(filterJsonTree, queryFilter) ||
+    Boolean(queryFilter && !builderComplete && !userEditedRef.current);
   const onReconstructionStatusChangeRef = useRef(onReconstructionStatusChange);
   onReconstructionStatusChangeRef.current = onReconstructionStatusChange;
   useEffect(() => {
     onReconstructionStatusChangeRef.current?.(!isUnrendered);
   }, [isUnrendered]);
-  // RAQB can emit a change on mount. For a partly shown filter that swaps the saved
-  // DSL for the visible part before the user touches anything, and any save (even
-  // of another field) then persists the narrowed rule. Forward only user edits.
-  const userEditedRef = useRef(false);
+  // A server-valid filter can use fields RAQB cannot display. Its mount-time
+  // sanitization must not replace the saved DSL or block an unrelated edit.
+  // Forward value and validity changes only after the user edits the filter.
   const markUserEdited = useCallback(() => {
     userEditedRef.current = true;
   }, []);
   const handleChange = useCallback(
     (value: string, updatedTree?: JsonTree) => {
-      if (isUnrendered && !userEditedRef.current) {
+      if (queryFilter && !userEditedRef.current) {
         return;
       }
       onChange(
@@ -128,7 +131,16 @@ export const RuleQueryBuilderField = ({
         updatedTree ? JSON.stringify(updatedTree) : filterJsonTree
       );
     },
-    [filterJsonTree, isUnrendered, onChange]
+    [filterJsonTree, queryFilter, onChange]
+  );
+  const handleValidityChange = useCallback(
+    (isValid: boolean) => {
+      setBuilderComplete(isValid);
+      if (!queryFilter || userEditedRef.current) {
+        onValidityChange?.(isValid);
+      }
+    },
+    [onValidityChange, queryFilter]
   );
 
   return (
@@ -149,7 +161,7 @@ export const RuleQueryBuilderField = ({
           tree={tree}
           value={queryFilter ?? ''}
           onChange={handleChange}
-          onValidityChange={onValidityChange}
+          onValidityChange={handleValidityChange}
         />
       ) : (
         <Loader size="small" />

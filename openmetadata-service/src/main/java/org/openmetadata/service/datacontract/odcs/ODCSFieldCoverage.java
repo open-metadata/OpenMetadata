@@ -269,6 +269,8 @@ public final class ODCSFieldCoverage {
         Map.of(
             LOGICAL_TYPE,
             FieldRule.mapped(),
+            "physicalType",
+            FieldRule.mapped(),
             PROPERTIES,
             FieldRule.nested(Section.PROPERTY),
             "quality",
@@ -407,7 +409,7 @@ public final class ODCSFieldCoverage {
         "members",
         FieldRule.nested(Section.TEAM_MEMBER),
         NAME,
-        FieldRule.dropped("Only the members who are owners are imported."),
+        FieldRule.dropped("Only the members who are owners or reviewers are imported."),
         "description",
         FieldRule.dropped(NO_CONTRACT_EQUIVALENT),
         "tags",
@@ -421,19 +423,20 @@ public final class ODCSFieldCoverage {
   }
 
   private static Map<String, FieldRule> teamMemberFields() {
-    String ownersOnly = "OpenMetadata keeps the owners of the contract, not the rest of the team.";
+    String ownersAndReviewersOnly =
+        "OpenMetadata keeps the owners and reviewers of the contract, not the rest of the team.";
     return Map.ofEntries(
         entry("username", FieldRule.mapped()),
         entry(NAME, FieldRule.mapped()),
         entry("role", FieldRule.mapped()),
-        entry("description", FieldRule.dropped(ownersOnly)),
-        entry("dateIn", FieldRule.dropped(ownersOnly)),
-        entry("dateOut", FieldRule.dropped(ownersOnly)),
-        entry("replacedByUsername", FieldRule.dropped(ownersOnly)),
-        entry("tags", FieldRule.dropped(ownersOnly)),
-        entry("customProperties", FieldRule.dropped(ownersOnly)),
-        entry("authoritativeDefinitions", FieldRule.dropped(ownersOnly)),
-        entry("id", FieldRule.dropped(ownersOnly)));
+        entry("description", FieldRule.dropped(ownersAndReviewersOnly)),
+        entry("dateIn", FieldRule.dropped(ownersAndReviewersOnly)),
+        entry("dateOut", FieldRule.dropped(ownersAndReviewersOnly)),
+        entry("replacedByUsername", FieldRule.dropped(ownersAndReviewersOnly)),
+        entry("tags", FieldRule.dropped(ownersAndReviewersOnly)),
+        entry("customProperties", FieldRule.dropped(ownersAndReviewersOnly)),
+        entry("authoritativeDefinitions", FieldRule.dropped(ownersAndReviewersOnly)),
+        entry("id", FieldRule.dropped(ownersAndReviewersOnly)));
   }
 
   private static Map<String, FieldRule> roleFields() {

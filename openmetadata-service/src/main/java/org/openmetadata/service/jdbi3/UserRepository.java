@@ -296,6 +296,7 @@ public class UserRepository extends EntityRepository<User> {
     }
     validateRoles(user.getRoles());
     validateDefaultDomain(user);
+    validateDefaultPersona(user);
   }
 
   /**
@@ -330,6 +331,20 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
+  /**
+   * A default persona selection must resolve to a real persona. The request body only requires id
+   * + type, so hydrate the reference here; otherwise the recorded ChangeDescription holds a sparse
+   * reference that governance rules (CheckChangeDescription) cannot match. Mirrors {@link
+   * #validateDefaultDomain}.
+   */
+  private void validateDefaultPersona(User user) {
+    if (user.getDefaultPersona() != null) {
+      user.setDefaultPersona(
+          Entity.getEntityReferenceById(
+              Entity.PERSONA, user.getDefaultPersona().getId(), NON_DELETED));
+    }
+  }
+
   @Override
   public void restorePatchAttributes(User original, User updated) {
     // Patch can't make changes to following fields. Ignore the changes
@@ -358,7 +373,7 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   protected User createNewEntity(User user) {
-    user.setProfile(ProfileWebhookSecrets.ofANewEntity(holderOf(user), user.getProfile()));
+    user.setProfile(ProfileWebhookSecrets.ofANewEntity(user.getProfile()));
     return super.createNewEntity(user);
   }
 
@@ -401,12 +416,7 @@ public class UserRepository extends EntityRepository<User> {
 
   private static User withNewProfileEncrypted(User user) {
     User stored = JsonUtils.deepCopy(user, User.class);
-    return stored.withProfile(
-        ProfileWebhookSecrets.ofANewEntity(holderOf(stored), stored.getProfile()));
-  }
-
-  private static ProfileWebhookSecrets.Holder holderOf(User user) {
-    return new ProfileWebhookSecrets.Holder(Entity.USER, user.getId());
+    return stored.withProfile(ProfileWebhookSecrets.ofANewEntity(stored.getProfile()));
   }
 
   @Override
@@ -414,12 +424,21 @@ public class UserRepository extends EntityRepository<User> {
     return ProfileWebhookSecrets.masked(entity);
   }
 
+  /**
+   * Records a login with a single-row JSON update rather than an entity patch. A patch inside the
+   * EntityUpdater session window consolidates changes by reloading the user with every field,
+   * including {@code owns}, which costs one lookup per asset the user's teams own. The direct write
+   * emits no change event and does not reindex the user; see
+   * ADR:2026-10-30-user-writes-keep-login-and-activity-times.
+   */
+  @Transaction
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
-    User updatedUser = JsonUtils.deepCopy(orginalUser, User.class);
-    JsonPatch patch =
-        JsonUtils.getJsonPatch(orginalUser, updatedUser.withLastLoginTime(lastLoginTime));
-    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
-    userRepository.patch(null, orginalUser.getId(), orginalUser.getUpdatedBy(), patch);
+    String fqn = quoteName(canonicalUserName(orginalUser.getName()));
+    LOG.debug("Updating lastLoginTime for user: {} to: {}", orginalUser.getName(), lastLoginTime);
+    // @BindFQN hashes the fqn, so it is passed unhashed
+    daoCollection.userDAO().updateLastLoginTime(fqn, lastLoginTime);
+    // The row changed under the entity cache: drop the cached copy so reads see the new value
+    invalidateCacheForEntity(USER, orginalUser.getId(), orginalUser.getFullyQualifiedName());
 
     // Update lastActivityTime immediately on login for metrics visibility
     // This ensures user metrics show activity right after login
@@ -524,16 +543,13 @@ public class UserRepository extends EntityRepository<User> {
   public EntityRepository<User>.EntityUpdater getUpdater(
       User original, User updated, Operation operation, ChangeSource changeSource) {
     // Before the diff, so the change description and the stored row carry ciphertext only.
-    updated.setProfile(
-        ProfileWebhookSecrets.updated(
-            holderOf(original), original.getProfile(), updated.getProfile()));
+    updated.setProfile(ProfileWebhookSecrets.updated(original.getProfile(), updated.getProfile()));
     return new UserUpdater(original, updated, operation);
   }
 
   @Override
   protected void validatePatch(User original, User updated, JsonPatch patch) {
-    ProfileWebhookSecrets.validatePatch(
-        holderOf(original), original.getProfile(), updated.getProfile(), patch);
+    ProfileWebhookSecrets.validatePatch(original.getProfile(), updated.getProfile(), patch);
   }
 
   @Override
@@ -658,17 +674,25 @@ public class UserRepository extends EntityRepository<User> {
         .deleteAllForUser(entityInterface.getId());
   }
 
-  /* Validate if the user is already part of the given team */
-  public void validateTeamAddition(UUID userId, UUID teamId) {
-    User user = find(userId, NON_DELETED);
-    List<EntityReference> teams = getTeams(user);
-    Optional<EntityReference> team =
-        teams.stream().filter(t -> t.getId().equals(teamId)).findFirst();
-    if (team.isPresent()) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.userAlreadyPartOfTeam(
-              user.getName(), team.get().getDisplayName()));
+  /** Refuses a team list that names a team twice, as adding a team the user is in does. */
+  public void validateTeamsListedOnce(User user, List<UUID> teamIds) {
+    Set<UUID> seen = new HashSet<>();
+    for (UUID teamId : teamIds) {
+      if (!seen.add(teamId)) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.userAlreadyPartOfTeam(
+                user.getName(), teamDisplayName(user, teamId)));
+      }
     }
+  }
+
+  private static String teamDisplayName(User user, UUID teamId) {
+    EntityReference team =
+        listOrEmpty(user.getTeams()).stream()
+            .filter(stored -> stored.getId().equals(teamId))
+            .findFirst()
+            .orElseGet(() -> Entity.getEntityReferenceById(Entity.TEAM, teamId, ALL));
+    return nullOrEmpty(team.getDisplayName()) ? team.getName() : team.getDisplayName();
   }
 
   public boolean checkEmailAlreadyExists(String emailId) {

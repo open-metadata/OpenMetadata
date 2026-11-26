@@ -48,13 +48,6 @@ public class QueryBuilder {
   }
 
   /**
-   * Set custom extension data.
-   */
-  public QueryBuilder extension(Object extension) {
-    return this;
-  }
-
-  /**
    * Build the CreateQuery request without executing it.
    */
   public CreateQuery build() {

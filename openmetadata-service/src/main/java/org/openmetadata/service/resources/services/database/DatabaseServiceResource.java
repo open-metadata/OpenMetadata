@@ -95,7 +95,7 @@ public class DatabaseServiceResource
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
+    return super.getEntitySpecificOperations();
   }
 
   public DatabaseServiceResource(Authorizer authorizer, Limits limits) {

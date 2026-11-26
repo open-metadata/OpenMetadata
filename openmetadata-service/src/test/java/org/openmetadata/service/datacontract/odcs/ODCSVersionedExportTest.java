@@ -114,6 +114,76 @@ class ODCSVersionedExportTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1"})
+  void scalarColumnsWithChildrenRetainTheirDeclaredType(String version) {
+    for (ColumnDataType type :
+        List.of(ColumnDataType.VARCHAR, ColumnDataType.INT, ColumnDataType.BOOLEAN)) {
+      Column scalar =
+          new Column()
+              .withName("scalar")
+              .withDataType(type)
+              .withDataLength(255)
+              .withChildren(
+                  List.of(new Column().withName("child").withDataType(ColumnDataType.INT)));
+      DataContract contract = contract().withSchema(List.of(scalar));
+      JsonNode document = exporter.export(contract, version).requireValid();
+      assertEquals(
+          1,
+          document
+              .at(version.startsWith("v2") ? "/dataset/0/columns" : "/schema/0/properties")
+              .size());
+      JsonNode property =
+          version.startsWith("v2")
+              ? document.at("/dataset/0/columns/0")
+              : document.at("/schema/0/properties/0");
+      assertEquals(type.toString(), property.path("physicalType").asText());
+      assertEquals(
+          switch (type) {
+            case INT -> "integer";
+            case BOOLEAN -> "boolean";
+            default -> "string";
+          },
+          property.path("logicalType").asText());
+      assertFalse(property.has("properties"));
+      assertFalse(property.has("items"));
+      assertEquals(1, scalar.getChildren().size());
+      assertEquals(type, scalar.getDataType());
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0"})
+  void structuredColumnsRetainChildrenAndOmitScalarGrandchildren(String version) {
+    for (ColumnDataType type :
+        List.of(
+            ColumnDataType.STRUCT, ColumnDataType.MAP, ColumnDataType.JSON, ColumnDataType.ARRAY)) {
+      Column scalar =
+          new Column()
+              .withName("scalar")
+              .withDataType(ColumnDataType.VARCHAR)
+              .withChildren(
+                  List.of(new Column().withName("child").withDataType(ColumnDataType.INT)));
+      Column parent =
+          new Column().withName("parent").withDataType(type).withChildren(List.of(scalar));
+      JsonNode document =
+          exporter.export(contract().withSchema(List.of(parent)), version).requireValid();
+      JsonNode property = document.at("/schema/0/properties/0");
+      assertEquals(type.toString(), property.path("physicalType").asText());
+      assertEquals(
+          type == ColumnDataType.ARRAY ? "array" : "object", property.path("logicalType").asText());
+      JsonNode children =
+          type == ColumnDataType.ARRAY
+              ? property.at("/items/properties")
+              : property.path("properties");
+      assertEquals(1, children.size());
+      assertEquals("scalar", children.get(0).path("name").asText());
+      assertEquals("string", children.get(0).path("logicalType").asText());
+      assertFalse(children.get(0).has("properties"));
+      assertEquals(1, scalar.getChildren().size());
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1"})
   void simpleLibraryRulesPreserveTheirAssertionInTheTargetRepresentation(String version) {
     DataContract contract =
         contract()
@@ -390,6 +460,25 @@ class ODCSVersionedExportTest {
     assertEquals(1, doc.at(table + "/quality").size());
     assertEquals("customers", contract.getOdcsQualityRules().getFirst().getColumn());
     assertTrue(contract.getOdcsPreservedFields().path("document").asText().contains("rowCount"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"v3.0.2", "v3.0.1", "v3.0.0"})
+  void preservedOnlyLegacyRowCountRulesBecomeMetricsAfterMetadataRestoration(String sourceVersion) {
+    DataContract contract = contract();
+    ObjectNode source =
+        (ObjectNode)
+            exporter
+                .export(contract.withOdcsQualityRules(List.of(rowCountRule())), sourceVersion)
+                .requireValid();
+    contract.setOdcsQualityRules(null);
+    ObjectNode baseline = (ObjectNode) ODCSExportService.nativeDocument(contract, List.of());
+    contract.setOdcsPreservedFields(
+        ODCSPreservedFields.capture(
+            ODCSProfiles.adapter(sourceVersion).preservationView(source), baseline, "customers"));
+    JsonNode exported = exporter.export(contract, "v3.1.0").requireValid();
+    assertEquals("rowCount", exported.at("/schema/0/quality/0/metric").asText());
+    assertEquals(1, exported.at("/schema/0/quality/0/mustBeGreaterOrEqualTo").asInt());
   }
 
   @ParameterizedTest

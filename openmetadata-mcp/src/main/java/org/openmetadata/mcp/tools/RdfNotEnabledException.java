@@ -21,7 +21,7 @@ package org.openmetadata.mcp.tools;
  * McpResponseTrim#summarizeFailure} told the caller the backend was faulty and a narrower request
  * might help - both untrue. The distinct type gives the category table something to match.
  */
-class RdfNotEnabledException extends IllegalStateException {
+public class RdfNotEnabledException extends IllegalStateException {
 
   private static final String MESSAGE =
       "The RDF knowledge graph is not enabled on this OpenMetadata server, so knowledge-graph "
@@ -29,7 +29,7 @@ class RdfNotEnabledException extends IllegalStateException {
           + "(RDF_ENABLED) and pointing rdf.remoteEndpoint at a running triplestore. Use "
           + "search_metadata or get_entity_lineage for catalog questions instead.";
 
-  RdfNotEnabledException() {
+  public RdfNotEnabledException() {
     super(MESSAGE);
   }
 }

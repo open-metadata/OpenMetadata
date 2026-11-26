@@ -51,10 +51,13 @@ from metadata.generated.schema.type.basic import (
     SqlQuery,
 )
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.ingestion.api.delete import SourceListing
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.ssrs.models import SsrsReport
@@ -133,18 +136,25 @@ class SsrsSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata)
         self.folder_path_map: dict[str, str] = {}
-        self._current_rdl: tuple[str, SsrsReportDefinition] | None = None
+        self._current_rdl: tuple[str, SsrsReportDefinition | SourceConnectionException] | None = None
 
     def prepare(self):
         self.folder_path_map = {folder.path: folder.name for folder in self.client.get_folders()}
         return super().prepare()
 
     def get_dashboards_list(self) -> Iterable[SsrsReport]:
-        for report in self.client.get_reports():
-            if report.hidden:
-                self.status.filter(report.name, "Hidden report")
-                continue
-            yield report
+        try:
+            for report in self.client.get_reports():
+                if report.hidden:
+                    self.status.filter(report.name, "Hidden report")
+                    continue
+                yield report
+        except SourceConnectionException:
+            # A page that failed mid-listing hides every report after it, along with their charts
+            # and data models. The producer records the failure.
+            self.dashboard_listing.mark_failed()
+            self.datamodel_listing.mark_failed()
+            raise
 
     def get_dashboard_name(self, dashboard: SsrsReport) -> str:
         return dashboard.name
@@ -159,15 +169,25 @@ class SsrsSource(DashboardServiceSource):
         O(1) across the ingestion run — the previous report's RDL is released
         the moment a new report is requested.
 
-        ``SourceConnectionException`` propagates so that mark-deleted flows do
-        not drop entities during a transient SSRS outage. ``ValueError`` from a
-        malformed RDL is treated as a per-report problem and skipped."""
+        ``SourceConnectionException`` (endpoint unavailable) is caught by the callers,
+        which mark the data model listing failed so the run deletes no stale data model.
+        ``ValueError`` from a malformed RDL is a per-report skip: that report's data models
+        are deleted as stale, see
+        ADR:2026-11-25-an-ssrs-run-that-could-not-read-every-report-deletes-nothing-stale."""
         if self._current_rdl and self._current_rdl[0] == dashboard.id:
-            return self._current_rdl[1]
+            cached = self._current_rdl[1]
+            if isinstance(cached, SourceConnectionException):
+                raise cached
+            return cached
         self._current_rdl = None
         if dashboard.has_data_sources is False:
             return None
-        rdl_bytes = self.client.get_report_definition(dashboard.id)
+        try:
+            rdl_bytes = self.client.get_report_definition(dashboard.id)
+        except SourceConnectionException as exc:
+            # The lineage stage asks for the same report next; replaying the failure spares a second round of retries.
+            self._current_rdl = (dashboard.id, exc)
+            raise
         if not rdl_bytes:
             return None
         try:
@@ -289,7 +309,18 @@ class SsrsSource(DashboardServiceSource):
     def yield_datamodel(self, dashboard_details: SsrsReport) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         if not self.source_config.includeDataModels:
             return
-        rdl = self._get_report_definition(dashboard_details)
+        try:
+            rdl = self._get_report_definition(dashboard_details)
+        except SourceConnectionException as exc:
+            self.datamodel_listing.mark_failed()
+            yield Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name=dashboard_details.name,
+                    error=(f"Error fetching report definition for data models [{dashboard_details.name}]: {exc}"),
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+            return
         if not rdl:
             return
         for dataset in rdl.data_sets:
@@ -356,7 +387,18 @@ class SsrsSource(DashboardServiceSource):
         dashboard_details: SsrsReport,
         db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
-        rdl = self._get_report_definition(dashboard_details)
+        try:
+            rdl = self._get_report_definition(dashboard_details)
+        except SourceConnectionException as exc:
+            self.datamodel_listing.mark_failed()
+            yield Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name=dashboard_details.name,
+                    error=(f"Error fetching report definition for lineage [{dashboard_details.name}]: {exc}"),
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+            return
         if not rdl:
             return
 
@@ -524,6 +566,31 @@ class SsrsSource(DashboardServiceSource):
         lineage = self._get_add_lineage_request(to_entity=to_entity, from_entity=table_entity, sql=command_text)
         if lineage is not None:
             yield lineage
+
+    def mark_dashboards_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        if not self._keep_stale(self.source_config.markDeletedDashboards, self.dashboard_listing, "dashboards"):
+            yield from super().mark_dashboards_as_deleted()
+
+    def mark_charts_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        # Charts are one per report, so the report listing is what confirms them.
+        if not self._keep_stale(self.source_config.markDeletedCharts, self.dashboard_listing, "charts"):
+            yield from super().mark_charts_as_deleted()
+
+    def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        if not self._keep_stale(self.source_config.markDeletedDataModels, self.datamodel_listing, "data models"):
+            yield from super().mark_datamodels_as_deleted()
+
+    @staticmethod
+    def _keep_stale(mark_deleted: bool | None, listing: SourceListing, entities: str) -> bool:
+        """
+        The seen-set of a partial run lacks entities that still exist, and the server deletes
+        whatever a non-empty seen-set leaves out, so a partial run deletes nothing.
+        See ADR:2026-11-25-an-ssrs-run-that-could-not-read-every-report-deletes-nothing-stale.
+        """
+        keep = bool(mark_deleted) and listing.has_failed
+        if keep:
+            logger.warning("Skipping the deletion of stale %s: this run could not read every SSRS report", entities)
+        return keep
 
     def close(self):
         self.client.close()

@@ -23,8 +23,9 @@ import '../chart-widgets.less';
 import { EMPTY_CHART_DATA } from '../ChartWidgets.constants';
 
 const IncidentTypeAreaChartWidget = ({
-  incidentStatusType,
+  incidentStatusTypes,
   title,
+  description,
   name,
   chartFilter,
   redirectPath,
@@ -35,12 +36,12 @@ const IncidentTypeAreaChartWidget = ({
       queryKey: [
         'dq-dashboard',
         'incident-status-count',
-        incidentStatusType,
+        incidentStatusTypes,
         chartFilter,
       ],
       queryFn: async () => {
         const { data } = await fetchCountOfIncidentStatusTypeByDays(
-          incidentStatusType,
+          incidentStatusTypes,
           chartFilter
         );
 
@@ -52,6 +53,8 @@ const IncidentTypeAreaChartWidget = ({
     });
 
   const bodyElement = useMemo(() => {
+    // The headline is the latest daily bucket, not a total.
+    // ADR:2026-11-16-incident-cards-describe-their-counts-as-daily-activity
     const latestValue = last(chartData)?.count ?? 0;
 
     return (
@@ -75,9 +78,18 @@ const IncidentTypeAreaChartWidget = ({
           height={height}
           name={name}
         />
+        <div className="tw:mt-4">
+          <Typography
+            as="p"
+            color="secondary"
+            data-testid="widget-description"
+            size="text-xs">
+            {description}
+          </Typography>
+        </div>
       </>
     );
-  }, [title, chartData, name, height]);
+  }, [title, description, chartData, name, height]);
 
   if (isChartLoading) {
     return (
@@ -85,7 +97,7 @@ const IncidentTypeAreaChartWidget = ({
         className={classNames('custom-chart-background', {
           'chart-widget-link-no-underline': !isUndefined(redirectPath),
         })}
-        data-testid={`incident-${incidentStatusType}-type-area-chart-widget-container`}>
+        data-testid={`incident-${incidentStatusTypes[0]}-type-area-chart-widget-container`}>
         <Skeleton height={120} width="100%" />
       </Card>
     );
@@ -96,7 +108,7 @@ const IncidentTypeAreaChartWidget = ({
       className={classNames('custom-chart-background', {
         'chart-widget-link-no-underline': !isUndefined(redirectPath),
       })}
-      data-testid={`incident-${incidentStatusType}-type-area-chart-widget-container`}>
+      data-testid={`incident-${incidentStatusTypes[0]}-type-area-chart-widget-container`}>
       {redirectPath ? (
         <Link to={redirectPath}>{bodyElement}</Link>
       ) : (

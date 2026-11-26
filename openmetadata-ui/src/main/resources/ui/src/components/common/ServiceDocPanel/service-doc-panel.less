@@ -122,28 +122,6 @@
           display: none;
         }
       }
-
-      .code-copy-button {
-        position: absolute;
-        top: 6px;
-        right: 6px;
-        opacity: 0;
-        transition: opacity var(--om-duration-200);
-        background: @markdown-bg-color;
-        border-radius: var(--om-radius-sm);
-
-        &[data-copied='true'] {
-          opacity: 0.4;
-        }
-      }
-
-      &:hover .code-copy-button {
-        opacity: 0.6;
-
-        &:hover {
-          opacity: 1;
-        }
-      }
     }
 
     blockquote {

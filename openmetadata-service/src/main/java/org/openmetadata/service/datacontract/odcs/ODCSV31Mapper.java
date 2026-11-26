@@ -93,6 +93,23 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
     return result;
   }
 
+  @Override
+  public ODCSNormalizationResult normalizeLegacy(JsonNode source) {
+    return ODCSImportCompatibility.projectQualityForValidation(
+        ODCSImportCompatibility.normalizeObjectSchema(source));
+  }
+
+  @Override
+  public JsonNode materialize(JsonNode view, DataContract contract) {
+    ObjectNode document = view.deepCopy();
+    // The metadata overlay can restore source-version rule names after native serialization.
+    ODCSImportQuality.normalize(document, false);
+    ODCSImportCompatibility.finalizeQuality(document);
+    if (contract.getOdcsPreservedFields() != null)
+      ODCSImportCompatibility.embedImportedRules(document);
+    return document;
+  }
+
   private static OdcsContract document(DataContract contract) {
     OdcsContract document =
         new OdcsContract()
@@ -115,7 +132,9 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
         document.setDomain(parts.length >= 2 ? parts[0] + "." + parts[1] : parts[0]);
       }
     }
-    if (!nullOrEmpty(contract.getOwners())) document.setTeam(team(contract.getOwners()));
+    if (!nullOrEmpty(contract.getOwners()) || !nullOrEmpty(contract.getReviewers())) {
+      document.setTeam(team(contract.getOwners(), contract.getReviewers()));
+    }
     if (contract.getSecurity() != null) document.setRoles(roles(contract));
     if (contract.getSla() != null) {
       document.setSlaProperties(
@@ -189,7 +208,9 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
       property.setLogicalTypeOptions(
           new LogicalTypeOptions().withMaxLength(column.getDataLength()));
     }
-    if (!nullOrEmpty(column.getChildren())) {
+    if (!nullOrEmpty(column.getChildren())
+        && (property.getLogicalType() == SchemaProperty.LogicalType.OBJECT
+            || property.getLogicalType() == SchemaProperty.LogicalType.ARRAY)) {
       List<SchemaProperty> children =
           column.getChildren().stream().map(ODCSV31Mapper::column).toList();
       if (property.getLogicalType() == SchemaProperty.LogicalType.ARRAY) {
@@ -241,20 +262,18 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
     return null;
   }
 
-  private static Team team(List<EntityReference> owners) {
-    return new Team()
-        .withMembers(
-            owners.stream()
-                .map(
-                    owner ->
-                        new TeamMember()
-                            .withUsername(owner.getName())
-                            .withName(
-                                owner.getDisplayName() == null
-                                    ? owner.getName()
-                                    : owner.getDisplayName())
-                            .withRole("owner"))
-                .toList());
+  private static Team team(List<EntityReference> owners, List<EntityReference> reviewers) {
+    List<TeamMember> members = new ArrayList<>();
+    listOrEmpty(owners).forEach(owner -> members.add(teamMember(owner, "owner")));
+    listOrEmpty(reviewers).forEach(reviewer -> members.add(teamMember(reviewer, "reviewer")));
+    return new Team().withMembers(members);
+  }
+
+  private static TeamMember teamMember(EntityReference ref, String role) {
+    return new TeamMember()
+        .withUsername(ref.getName())
+        .withName(ref.getDisplayName() == null ? ref.getName() : ref.getDisplayName())
+        .withRole(role);
   }
 
   private static List<Role> roles(DataContract contract) {
@@ -280,7 +299,8 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
 
   private static void placeRule(
       SchemaObject table, ODCSQualityRule source, List<RuleMetadata> metadata) {
-    DataQuality rule = JSON.convertValue(source, DataQuality.class);
+    ObjectNode wireRule = ODCSImportCompatibility.qualityRule(JSON.valueToTree(source), false);
+    DataQuality rule = JSON.convertValue(wireRule, DataQuality.class);
     collapseEqualBounds(source, rule);
     List<String> scope =
         nullOrEmpty(source.getColumn()) || source.getColumn().equals(table.getName())
@@ -297,7 +317,7 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
       if (property.getQuality() == null) property.setQuality(new ArrayList<>());
       target = property.getQuality();
     }
-    ObjectNode original = JSON.valueToTree(source);
+    ObjectNode original = wireRule;
     original.remove("column");
     if (equalBounds(source.getMustBeBetween())) {
       original.remove("mustBeBetween");

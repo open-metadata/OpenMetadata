@@ -47,6 +47,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    Badge: ({ children }: { children: React.ReactNode }) => (
+      <span data-testid="badge">{children}</span>
+    ),
     Box: ({
       children,
       ...props
@@ -86,6 +89,15 @@ describe('GovernanceLanding', () => {
     expect(
       screen.getByTestId('governance-card-intake-forms')
     ).toBeInTheDocument();
+  });
+
+  it('marks only the intake forms card as deprecated', () => {
+    expect(
+      screen.getByTestId('governance-card-intake-forms')
+    ).toHaveTextContent('label.deprecated');
+    expect(
+      screen.getByTestId('governance-card-glossary-relations')
+    ).not.toHaveTextContent('label.deprecated');
   });
 
   it('calls onNavigate with glossary-list when the glossary card is clicked', () => {

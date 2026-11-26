@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { PageProcessingStatus } from '../../../generated/entity/data/page';
+import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 
 export interface ArticleStatusBadgeProps {
-  error?: string;
-  status?: PageProcessingStatus;
+  page: Pick<
+    KnowledgePage,
+    'neverExtracted' | 'processingError' | 'processingStatus'
+  >;
 }

@@ -25,12 +25,15 @@ import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.junit.jupiter.api.AfterEach;
@@ -83,6 +86,35 @@ class ContextMemoryVisibilityTest {
   @AfterEach
   void tearDown() {
     entityStaticMock.close();
+  }
+
+  @Test
+  void aListingEvaluatesReadableAnchorsBeyondTheFirstPage() {
+    List<EntityReference> anchors =
+        IntStream.range(0, 101)
+            .mapToObj(
+                index ->
+                    new EntityReference().withId(new UUID(0, index + 1)).withType(Entity.TABLE))
+            .toList();
+    List<Integer> batchSizes = new ArrayList<>();
+    Set<UUID> readable = Set.of(anchors.getFirst().getId(), anchors.getLast().getId());
+    Set<String> selected =
+        ContextMemoryVisibility.readableListingAnchorIds(
+            BOB,
+            anchors.stream().map(anchor -> anchor.getId().toString()).toList(),
+            candidates -> {
+              batchSizes.add(candidates.size());
+              return anchors.stream()
+                  .filter(anchor -> candidates.contains(anchor.getId()))
+                  .toList();
+            },
+            (userName, anchor) -> {
+              assertEquals(BOB, userName);
+              return readable.contains(anchor.getId());
+            });
+
+    assertEquals(readable.stream().map(UUID::toString).collect(Collectors.toSet()), selected);
+    assertEquals(List.of(100, 1), batchSizes);
   }
 
   @Test
@@ -369,11 +401,13 @@ class ContextMemoryVisibilityTest {
           lookups.incrementAndGet();
           return BOB.equals(userName);
         };
+    ContextMemoryVisibility.LinkedDocuments linked =
+        ids -> Map.of(pill.getId(), List.of(document), note.getId(), List.of(document));
 
     assertEquals(
         List.of(pill),
         ContextMemoryVisibility.filterListed(
-                List.of(pill, note, pill), BOB, false, (u, a) -> true, bobOwnsIt)
+                List.of(pill, note, pill), BOB, false, (u, a) -> true, bobOwnsIt, linked)
             .stream()
             .distinct()
             .toList(),
@@ -381,7 +415,7 @@ class ContextMemoryVisibilityTest {
     assertEquals(1, lookups.get(), "each document is asked about once per page");
     assertTrue(
         ContextMemoryVisibility.filterListed(
-                List.of(pill), "charlie", false, (u, a) -> true, bobOwnsIt)
+                List.of(pill), "charlie", false, (u, a) -> true, bobOwnsIt, linked)
             .isEmpty(),
         "another reader of the document");
     assertFalse(ContextMemoryVisibility.isPending(new ContextMemory()), "no stage is not pending");
@@ -400,6 +434,13 @@ class ContextMemoryVisibilityTest {
     entityStaticMock
         .when(() -> Entity.getEntity(document, Entity.FIELD_OWNERS, Include.NON_DELETED))
         .thenReturn(new Table().withName("handbook").withOwners(List.of(team)));
+    ContextMemoryRepository repository = Mockito.mock(ContextMemoryRepository.class);
+    Mockito.when(repository.listExtractedSources(List.of(pill.getId())))
+        .thenReturn(Map.of(pill.getId(), List.of(document)));
+    entityStaticMock.when(() -> Entity.hasEntityRepository(Entity.CONTEXT_MEMORY)).thenReturn(true);
+    entityStaticMock
+        .when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY))
+        .thenReturn(repository);
     SecurityContext bob = securityContextFor(BOB);
     SecurityContext charlie = securityContextFor("charlie");
     try (MockedStatic<SubjectContext> subjects = Mockito.mockStatic(SubjectContext.class)) {
@@ -423,10 +464,55 @@ class ContextMemoryVisibilityTest {
     }
   }
 
+  /**
+   * One memory, one review: a pill another document reused lists to the owners of every document
+   * it is linked to, whichever of them the listing reads as its source.
+   */
+  @Test
+  void anOwnerOfAnyLinkedDocumentSeesAWaitingMemory() {
+    EntityReference original = ref(Entity.CONTEXT_FILE, "a-handbook", "a-handbook");
+    EntityReference copy = ref(Entity.CONTEXT_FILE, "b-handbook", "b-handbook");
+    ContextMemory waiting =
+        memoryOwnedBy("admin", MemoryVisibility.ENTITY)
+            .withPrimaryEntity(original)
+            .withSourceEntity(original)
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+    ContextMemoryVisibility.SourceOwnership ownership =
+        (userName, document) ->
+            (BOB.equals(userName) && copy.getId().equals(document.getId()))
+                || (ALICE.equals(userName) && original.getId().equals(document.getId()));
+    List<List<UUID>> reads = new ArrayList<>();
+    ContextMemoryVisibility.LinkedDocuments linked =
+        ids -> {
+          reads.add(ids);
+          return Map.of(waiting.getId(), List.of(original, copy));
+        };
+
+    assertEquals(List.of(waiting), listedTo(waiting, BOB, ownership, linked), "the copy's owner");
+    assertEquals(
+        List.of(waiting), listedTo(waiting, ALICE, ownership, linked), "the original's owner");
+    assertTrue(listedTo(waiting, "charlie", ownership, linked).isEmpty(), "another reader");
+    assertTrue(listedTo(waiting, null, ownership, linked).isEmpty(), "an anonymous caller");
+    assertEquals(
+        List.of(List.of(waiting.getId())),
+        reads.subList(0, 1),
+        "one read per page, for its pending pills only");
+  }
+
+  private static List<ContextMemory> listedTo(
+      ContextMemory memory,
+      String userName,
+      ContextMemoryVisibility.SourceOwnership ownership,
+      ContextMemoryVisibility.LinkedDocuments linked) {
+    return ContextMemoryVisibility.filterListed(
+        List.of(memory), userName, false, (u, anchor) -> true, ownership, linked);
+  }
+
   private static List<ContextMemory> listed(
       List<ContextMemory> memories, String userName, boolean isAdmin) {
     return ContextMemoryVisibility.filterListed(
-        memories, userName, isAdmin, (u, anchor) -> true, (u, source) -> false);
+        memories, userName, isAdmin, (u, anchor) -> true, (u, source) -> false, ids -> Map.of());
   }
 
   @Test

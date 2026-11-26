@@ -17,16 +17,23 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import java.lang.reflect.Constructor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -106,6 +113,36 @@ class BotTokenRegeneratorTest {
     configure(keyB, "kid-a");
 
     assertFalse(regenerator.isCurrent(token));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = AuthenticationConfiguration.TokenValidationAlgorithm.class,
+      names = {"RS_256", "RS_384", "RS_512"})
+  void aLegacyRsaTokenRemainsCurrent(AuthenticationConfiguration.TokenValidationAlgorithm algorithm)
+      throws Exception {
+    configure(keyA, "kid-a");
+    String token =
+        JWT.create()
+            .withKeyId("kid-a")
+            .withExpiresAt(Instant.now().plusSeconds(ONE_HOUR))
+            .sign(
+                JWTTokenGenerator.getAlgorithm(
+                    algorithm, (RSAPublicKey) keyA.getPublic(), (RSAPrivateKey) keyA.getPrivate()));
+
+    assertTrue(regenerator.isCurrent(token));
+  }
+
+  @Test
+  void unsupportedAlgorithmsAreNotCurrent() throws Exception {
+    configure(keyA, "kid-a");
+
+    assertFalse(regenerator.isCurrent(JWT.create().withKeyId("kid-a").sign(Algorithm.none())));
+    assertFalse(
+        regenerator.isCurrent(
+            JWT.create()
+                .withKeyId("kid-a")
+                .sign(Algorithm.HMAC256(keyA.getPublic().getEncoded()))));
   }
 
   @Test

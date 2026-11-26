@@ -1,9 +1,9 @@
 # A final reviewer with EditAll may approve and publish in one Studio action, as two separate writes
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial)
+- **Revisions:** v1 2026-10-26 (initial) · v2 2026-11-15 (UI guards moved to Collate)
 - **Deciders:** Harsha
-- **Guard:** `OntologyTaskDetail.test.tsx`, `OntologyTasksDrawer.test.tsx`, `OntologyReviewTasks.spec.ts`
+- **Guard:** `OntologyTaskDetail.test.tsx`, `OntologyTasksDrawer.test.tsx` *(openmetadata-collate)*, `OntologyReviewTasks.spec.ts` *(openmetadata-collate)*
 - **Related:** ADR:2026-10-14-ontology-reviews-bind-workflow-tasks-to-revisions, PR #36188
 
 ## Context
@@ -35,3 +35,7 @@ An activation conflict, such as another release activated first, never loses a r
 Rollback and activation by reviewers without `EditAll` stay out of scope. Letting an ontology
 reviewer publish a release they approved would widen the publish right, so it needs a new record
 that supersedes this one.
+
+## Amendment
+
+v2 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.

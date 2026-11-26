@@ -12,12 +12,10 @@
  */
 
 import { type Page } from '@playwright/test';
-import { SidebarItem } from '../../../constant/sidebar';
 import { expect, test as base } from '../../../support/fixtures/base';
 import { performAdminLogin } from '../../../utils/admin';
-import { clickOutside, redirectToHomePage, uuid } from '../../../utils/common';
+import { uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { sidebarClick } from '../../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 const test = base.extend<{ page: Page }>({
@@ -32,27 +30,14 @@ const test = base.extend<{ page: Page }>({
 
 let workflowName: string;
 
-async function navigateToWorkflowsListPage(page: Page) {
-  const listResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/governance/workflowDefinitions') &&
-      response.request().method() === 'GET'
-  );
-
-  await sidebarClick(page, SidebarItem.WORKFLOWS);
-  await listResponse;
-  await waitForAllLoadersToDisappear(page);
-}
-
+// Opened by URL, not from the list: the list shows 12 cards per page and the
+// seeded workflows already fill page 1, so the test workflow lands on page 2.
 async function navigateToWorkflowDetailPage(page: Page, name: string) {
-  await navigateToWorkflowsListPage(page);
-  await clickOutside(page);
-
   const detailResponse = page.waitForResponse(
     '/api/v1/governance/workflowDefinitions/name/*'
   );
 
-  await page.click(`[data-testid="${name}"]`);
+  await page.goto(`/workflows/${encodeURIComponent(name)}/workflow`);
   await detailResponse;
   await waitForAllLoadersToDisappear(page);
 }
@@ -202,7 +187,6 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
       test('editing a form field and saving node config then workflow fires PUT API with updated data', async ({
         page,
       }) => {
-        await redirectToHomePage(page);
         await navigateToWorkflowDetailPage(page, workflowName);
 
         const sidebar = await openTaskNodeSidebar(page);
@@ -239,7 +223,6 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
       }) => {
         const newDescription = `OSS description edited by Playwright ${uuid()}`;
 
-        await redirectToHomePage(page);
         await navigateToWorkflowDetailPage(page, workflowName);
 
         const sidebar = await openStartNodeSidebar(page);
@@ -299,7 +282,6 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
       test('save-workflow-button fires PUT API and returns to view mode', async ({
         page,
       }) => {
-        await redirectToHomePage(page);
         await navigateToWorkflowDetailPage(page, workflowName);
         await enterEditMode(page);
 
@@ -326,8 +308,6 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
       test('execution history tab loads and API call succeeds', async ({
         page,
       }) => {
-        await redirectToHomePage(page);
-
         // Trigger fires on table Created, so pin the payload to stay deterministic.
         await page.route(
           '**/api/v1/governance/workflowInstances**',

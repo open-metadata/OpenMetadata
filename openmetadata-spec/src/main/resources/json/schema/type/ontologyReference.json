@@ -29,6 +29,7 @@
         "MAPPING_TARGET",
         "MAPPING_SCHEME",
         "SUPER_CLASS",
+        "SUPER_PROPERTY",
         "REPLACED_BY"
       ]
     },

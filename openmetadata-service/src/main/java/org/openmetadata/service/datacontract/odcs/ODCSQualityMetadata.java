@@ -67,6 +67,17 @@ final class ODCSQualityMetadata {
   private static ObjectNode restoreObject(
       JsonNode source, JsonNode applied, JsonNode current, boolean qualityRule) {
     ObjectNode result = current.deepCopy();
+    boolean transformed = qualityRule && !source.path("type").equals(applied.path("type"));
+    boolean executionUnchanged = executionUnchanged(applied, current);
+    if (transformed && executionUnchanged) {
+      applied
+          .fieldNames()
+          .forEachRemaining(
+              key -> {
+                if (!source.has(key) && equivalent(applied.path(key), current.path(key)))
+                  result.remove(key);
+              });
+    }
     source
         .fields()
         .forEachRemaining(
@@ -74,6 +85,7 @@ final class ODCSQualityMetadata {
               String key = field.getKey();
               JsonNode before = applied.path(key);
               JsonNode after = current.path(key);
+              if (transformed && !executionUnchanged && executionField(key)) return;
               if (qualityRule && operatorReplaced(key, applied, current)) return;
               if (equivalent(before, after)) result.set(key, field.getValue().deepCopy());
               else if (field.getValue().isObject() && before.isObject() && after.isObject())
@@ -85,7 +97,55 @@ final class ODCSQualityMetadata {
             && applied.has(operator)
             && equivalent(applied.path(operator), current.path(operator))) result.remove(operator);
     }
+    if (transformed && executionUnchanged) synchronizeEmbeddedMetadata(result, applied, current);
     return result;
+  }
+
+  private static void synchronizeEmbeddedMetadata(
+      ObjectNode result, JsonNode applied, JsonNode current) {
+    JsonNode implementation = result.path("implementation");
+    try {
+      JsonNode parsed =
+          implementation.isTextual()
+              ? ODCSExportModelWriter.JSON.readTree(implementation.asText())
+              : implementation.deepCopy();
+      if (parsed == null || !(parsed.path("odcsRule") instanceof ObjectNode source)) return;
+      Set<String> keys = new HashSet<>();
+      applied.fieldNames().forEachRemaining(keys::add);
+      current.fieldNames().forEachRemaining(keys::add);
+      // The next import decodes this declaration; its metadata must reflect native edits/deletions.
+      keys.stream()
+          .filter(key -> !executionField(key) && !equivalent(applied.path(key), current.path(key)))
+          .forEach(
+              key -> {
+                if (current.has(key)) source.set(key, current.path(key).deepCopy());
+                else source.remove(key);
+              });
+      result.set(
+          "implementation",
+          implementation.isTextual()
+              ? ODCSExportModelWriter.JSON.getNodeFactory().textNode(parsed.toString())
+              : parsed);
+    } catch (IOException exception) {
+      // Vendor implementations can be non-JSON text and have no compatibility metadata to update.
+      return;
+    }
+  }
+
+  private static boolean executionUnchanged(JsonNode applied, JsonNode current) {
+    Set<String> keys = new HashSet<>();
+    applied.fieldNames().forEachRemaining(keys::add);
+    current.fieldNames().forEachRemaining(keys::add);
+    return keys.stream()
+        .filter(ODCSQualityMetadata::executionField)
+        .allMatch(key -> equivalent(applied.path(key), current.path(key)));
+  }
+
+  private static boolean executionField(String key) {
+    return OPERATORS.contains(key)
+        || Set.of(
+                "type", "unit", "engine", "implementation", "query", "metric", "rule", "arguments")
+            .contains(key);
   }
 
   private static Set<String> operators() {
@@ -142,6 +202,9 @@ final class ODCSQualityMetadata {
   }
 
   private static boolean sameIdentity(JsonNode left, JsonNode right) {
+    if (!left.isObject() || !right.isObject()) return left.equals(right);
+    left = ODCSImportQuality.embeddedDeclaration((ObjectNode) left);
+    right = ODCSImportQuality.embeddedDeclaration((ObjectNode) right);
     for (String key : new String[] {"id", "name"}) {
       if (left.hasNonNull(key) && right.hasNonNull(key))
         return left.get(key).equals(right.get(key));

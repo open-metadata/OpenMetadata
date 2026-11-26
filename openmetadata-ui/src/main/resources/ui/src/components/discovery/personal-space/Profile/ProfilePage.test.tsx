@@ -12,7 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 
 let mockHashState: { tab: string | null; subPath: string; params: object } = {
   tab: null,
@@ -154,10 +154,22 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     <div data-testid="empty-placeholder">{title}</div>
   ),
   FeaturedIcon: () => <span data-testid="featured-icon" />,
-  Breadcrumbs: ({ items }: { items?: { id: string; label: ReactNode }[] }) => (
+  Breadcrumbs: ({
+    items,
+    onAction,
+  }: {
+    items?: { id: string; label: ReactNode; isDisabled?: boolean }[];
+    onAction?: (id: string) => void;
+  }) => (
     <nav>
       {items?.map((i) => (
-        <span key={i.id}>{i.label}</span>
+        <button
+          data-disabled={String(Boolean(i.isDisabled))}
+          data-testid={`crumb-${i.id}`}
+          key={i.id}
+          onClick={() => onAction?.(i.id)}>
+          {i.label}
+        </button>
       ))}
     </nav>
   ),
@@ -167,6 +179,7 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
+import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import ProfilePage from './ProfilePage';
 
 describe('ProfilePage', () => {
@@ -183,6 +196,8 @@ describe('ProfilePage', () => {
       contributionsReady: true,
     };
   });
+
+  afterEach(() => usePersonalSpaceStore.setState({ exitGuard: null }));
 
   it('renders the built-in and contributed nav items with the default profile content', async () => {
     await act(async () => {
@@ -259,6 +274,91 @@ describe('ProfilePage', () => {
 
     expect(mockGetLoggedInUser).toHaveBeenCalledTimes(1);
     expect(mockGetUserByName).not.toHaveBeenCalled();
+  });
+
+  it('roots a panel breadcrumb at its sidebar group, not navigable', async () => {
+    const WorkspacePanel = ({
+      onHeaderChange,
+    }: {
+      onHeaderChange: (override: object) => void;
+    }) => {
+      useEffect(() => {
+        onHeaderChange({
+          breadcrumbs: [
+            { id: 'settings', label: 'label.setting-plural' },
+            { id: 'my-connections', label: 'label.my-connection-plural' },
+          ],
+        });
+      }, [onHeaderChange]);
+
+      return <div data-testid="content-my-connections" />;
+    };
+    mockGetContributions.mockReturnValue([
+      {
+        ...myConnectionsContribution,
+        group: 'workspace',
+        component: WorkspacePanel,
+      },
+    ]);
+    mockHashState = { tab: 'my-connections', subPath: '', params: {} };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(screen.getByTestId('crumb-root')).toHaveTextContent(
+      'label.workspace'
+    );
+    expect(screen.getByTestId('crumb-root')).toHaveAttribute(
+      'data-disabled',
+      'true'
+    );
+    expect(screen.queryByTestId('crumb-settings')).not.toBeInTheDocument();
+    expect(screen.getByTestId('crumb-my-connections')).toBeInTheDocument();
+  });
+
+  it('asks before a crumb leaves a dirty editor, but not for a crumb back into it', async () => {
+    const onBreadcrumbAction = jest.fn();
+    const exitGuard = jest.fn().mockReturnValue(true);
+    const SubPagePanel = ({
+      onHeaderChange,
+    }: {
+      onHeaderChange: (override: object) => void;
+    }) => {
+      useEffect(() => {
+        onHeaderChange({
+          breadcrumbs: [
+            { id: 'settings', label: 'label.setting-plural' },
+            { id: 'my-connections', label: 'label.my-connection-plural' },
+            { id: 'form', label: 'Form' },
+            { id: 'current', label: 'Sub page' },
+          ],
+          inEditorBreadcrumbIds: ['form'],
+          onBreadcrumbAction,
+        });
+      }, [onHeaderChange]);
+
+      return <div data-testid="content-my-connections" />;
+    };
+    mockGetContributions.mockReturnValue([
+      { ...myConnectionsContribution, component: SubPagePanel },
+    ]);
+    mockHashState = { tab: 'my-connections', subPath: '', params: {} };
+    usePersonalSpaceStore.setState({ exitGuard });
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    fireEvent.click(screen.getByTestId('crumb-form'));
+
+    expect(onBreadcrumbAction).toHaveBeenCalledWith('form');
+    expect(exitGuard).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('crumb-my-connections'));
+
+    expect(exitGuard).toHaveBeenCalledTimes(1);
+    expect(onBreadcrumbAction).toHaveBeenCalledTimes(1);
   });
 
   it('passes the username and logged-in flag to contributed tabs', async () => {

@@ -20,6 +20,7 @@ import {
   StepSummary,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { IngestionPipelineLogByIdInterface } from '../../../interface/IngestionPipelineLogs.interface';
+import { ALL_AGENT_PERMISSIONS, canRunAgent } from './agents.utils';
 import {
   getAgentTypeFromPipelineType,
   getAgentUnitVerb,
@@ -133,6 +134,10 @@ describe('agentsDataMapper', () => {
     it('should map Pending to queued', () => {
       expect(toUiAgentStatus(AgentStatus.Pending)).toBe('queued');
     });
+
+    it('should map Stopped to stopped', () => {
+      expect(toUiAgentStatus(AgentStatus.Stopped)).toBe('stopped');
+    });
   });
 
   describe('toRunStatus', () => {
@@ -185,6 +190,16 @@ describe('agentsDataMapper', () => {
       const agent = mapPipelineToAgent({ ...basePipeline, enabled: false });
 
       expect(agent.enabled).toBe(false);
+    });
+
+    it('should show a stopped run as stopped and let it run again', () => {
+      const agent = mapPipelineToAgent({
+        ...basePipeline,
+        pipelineStatuses: [{ pipelineState: PipelineState.Stopped }],
+      });
+
+      expect(agent.status).toBe('stopped');
+      expect(canRunAgent(agent, ALL_AGENT_PERMISSIONS)).toBe(true);
     });
 
     it('should leave enabled undefined when the pipeline does not define it', () => {
@@ -648,7 +663,7 @@ describe('agentsDataMapper', () => {
         warnings: 1,
         errors: 1,
       });
-      expect(run.duration).toBe(1.5);
+      expect(run.durationMs).toBe(90_000);
       expect(run.steps).toHaveLength(2);
       expect(run.steps[1].attention).toEqual({
         severity: 'error',
@@ -667,7 +682,7 @@ describe('agentsDataMapper', () => {
       const run = mapPipelineStatusToRun(status);
 
       expect(run.id).toBe('1700000000000');
-      expect(run.duration).toBe(0);
+      expect(run.durationMs).toBeUndefined();
       expect(run.steps).toEqual([]);
     });
   });

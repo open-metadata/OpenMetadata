@@ -163,10 +163,16 @@ public class ApplicationHandler {
       SearchRepository searchRepository,
       Map<String, Object> configPayload,
       String triggeredBy) {
+    initializeApplicationForTrigger(app, daoCollection, searchRepository, triggeredBy)
+        .triggerOnDemand(configPayload);
+  }
+
+  public AbstractNativeApplication initializeApplicationForTrigger(
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository, String triggeredBy) {
     try {
       AbstractNativeApplication application = runAppInit(app, daoCollection, searchRepository);
       application.setTriggeredBy(triggeredBy);
-      application.triggerOnDemand(configPayload);
+      return application;
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException

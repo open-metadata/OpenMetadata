@@ -51,11 +51,12 @@ import {
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { CUSTOM_PROPERTY_ENUM_CLEANUP_JOB_TYPE } from '../../constants/Navbar.constants';
 import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
-import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
+import { BackgroundJob } from '../../generated/jobs/backgroundJob';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -253,7 +254,7 @@ const NavBar = () => {
 
         const { jobArgs, status, jobType } = backgroundJobData;
 
-        if (jobType === JobType.CustomPropertyEnumCleanup) {
+        if (jobType === CUSTOM_PROPERTY_ENUM_CLEANUP_JOB_TYPE) {
           const enumCleanupArgs = jobArgs;
           if (!enumCleanupArgs.entityType) {
             showErrorToast(
@@ -616,10 +617,9 @@ const NavBar = () => {
               </Dropdown.Popover>
             </Dropdown.Root>
             <PopoverTrigger onOpenChange={handleBellClick}>
-              <Button
+              <ButtonUtility
                 aria-label={t('label.notification-plural')}
-                color="tertiary"
-                iconLeading={
+                icon={
                   <span className="tw:relative tw:inline-flex tw:items-center">
                     <Bell01 data-testid="task-notifications" size={20} />
                     {(hasTaskNotification || hasMentionNotification) && (
@@ -632,7 +632,7 @@ const NavBar = () => {
                     )}
                   </span>
                 }
-                size="sm"
+                size="lg"
               />
               <Popover className="tw:w-106" placement="bottom end">
                 <NotificationBox
@@ -660,7 +660,10 @@ const NavBar = () => {
                   items={getHelpDropdownItems(version)}
                   selectionMode="none">
                   {(item) => (
-                    <Dropdown.Item id={item.key} textValue={item.key}>
+                    <Dropdown.Item
+                      id={item.key}
+                      textValue={item.key}
+                      onAction={item.onAction}>
                       {item.label}
                     </Dropdown.Item>
                   )}

@@ -37,6 +37,9 @@
         },
         {
           "$ref": "../../../../security/credentials/accessTokenAuth.json"
+        },
+        {
+          "$ref": "../../../../security/credentials/tableauConnectedAppAuth.json"
         }
       ]
     },

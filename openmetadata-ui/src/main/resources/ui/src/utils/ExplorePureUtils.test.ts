@@ -23,6 +23,7 @@ import {
   buildTreeCountQueryFilter,
   findActiveSearchIndex,
   findTreeNodeKeyByBrowsePath,
+  getBrowsePathAncestorKeys,
   getBrowsePathQueryFilter,
   getCanonicalEntityType,
   getDisabledExploreTreeKeys,
@@ -33,10 +34,17 @@ import {
   isEntityTypeBucketSelected,
   isSelectionWithinBrowsePath,
   parseBrowsePathFields,
+  parseExploreQueryFilterParam,
   reconcilePresentRoots,
   refreshRootCounts,
   truncateBrowsePath,
 } from './ExplorePureUtils';
+
+const field = (key: string, value: string): ExploreQuickFilterField => ({
+  key,
+  label: key,
+  value: [{ key: value, label: value }],
+});
 
 const DATABASE_KEY = 'database_root';
 const DASHBOARD_KEY = 'dashboard_root';
@@ -147,6 +155,64 @@ describe('getExploreClearQueryFilterSearchParams', () => {
     expect(searchParams.get('search')).toBe('orders');
     expect(searchParams.get('showDeleted')).toBe('true');
     expect(searchParams.has('queryFilter')).toBe(false);
+  });
+
+  it('writes the advanced search as its Elasticsearch filter', () => {
+    const queryFilter = {
+      query: {
+        bool: {
+          must: [{ bool: { should: [{ term: { 'tier.tagFQN': 'Tier1' } }] } }],
+        },
+      },
+    };
+    const search = getExploreClearQueryFilterSearchParams(
+      { currentPage: '3', search: 'orders' },
+      queryFilter
+    );
+    const searchParams = new URLSearchParams(search);
+
+    expect(JSON.parse(searchParams.get('queryFilter') ?? '')).toEqual(
+      queryFilter
+    );
+    expect(searchParams.get('currentPage')).toBe('1');
+    expect(searchParams.get('search')).toBe('orders');
+  });
+
+  it('writes no advanced search for a filter with no conditions', () => {
+    const search = getExploreClearQueryFilterSearchParams(
+      { queryFilter: '{"query":{}}' },
+      { query: undefined }
+    );
+
+    expect(new URLSearchParams(search).has('queryFilter')).toBe(false);
+  });
+});
+
+describe('parseExploreQueryFilterParam', () => {
+  it('reads the Elasticsearch filter Explore writes', () => {
+    const queryFilter = { query: { bool: { must: [{ term: { a: 'b' } }] } } };
+
+    expect(parseExploreQueryFilterParam(JSON.stringify(queryFilter))).toEqual({
+      queryFilter,
+    });
+  });
+
+  it('reads the builder tree older links carry', () => {
+    const tree = { id: 'root', type: 'group', children1: {} };
+
+    expect(parseExploreQueryFilterParam(JSON.stringify(tree))).toEqual({
+      tree,
+    });
+  });
+
+  it.each([
+    ['no value', undefined],
+    ['a value that is not JSON', '{not json'],
+    ['JSON that is neither', '{"some":"value"}'],
+    ['a filter with no query', '{"query":null}'],
+    ['a list of values', ['{"query":{}}']],
+  ])('reads nothing from %s', (_name, value) => {
+    expect(parseExploreQueryFilterParam(value)).toEqual({});
   });
 });
 
@@ -696,6 +762,91 @@ describe('findTreeNodeKeyByBrowsePath', () => {
   });
 });
 
+describe('getBrowsePathAncestorKeys', () => {
+  const serviceType = field('serviceType', 'postgres');
+  const service = field('service.displayName.keyword', 'mns_db');
+  const database = field('database.displayName', 'postgres');
+  const schema = field('databaseSchema.displayName', 'ppg');
+  const nodes = [
+    {
+      key: 'db_root',
+      title: 'Databases',
+      data: { isRoot: true, childEntities: [EntityType.TABLE] },
+      children: [
+        {
+          key: 'svc_type',
+          data: { filterField: [serviceType] },
+          children: [
+            {
+              key: 'svc',
+              data: { filterField: [serviceType, service] },
+              children: [
+                {
+                  key: 'db',
+                  data: { filterField: [serviceType, service, database] },
+                },
+              ],
+            },
+            {
+              key: 'other_svc',
+              data: {
+                filterField: [
+                  serviceType,
+                  field('service.displayName.keyword', 'other'),
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    },
+  ] as unknown as ExploreTreeNode[];
+
+  it('returns the loaded ancestors of the browsed node, not the node itself', () => {
+    expect(
+      getBrowsePathAncestorKeys(nodes, [serviceType, service, database])
+    ).toEqual(['svc_type', 'svc']);
+  });
+
+  it('includes only the category roots that hold matches for the path', () => {
+    const roots = [
+      { key: 'db_root', totalCount: 0, data: { isRoot: true } },
+      { key: 'dashboard_root', totalCount: 4, data: { isRoot: true } },
+      { key: 'pipeline_root', data: { isRoot: true } },
+    ] as unknown as ExploreTreeNode[];
+
+    expect(
+      getBrowsePathAncestorKeys(roots, [field('serviceType', 'superset')], {
+        rootCountsMatchPath: true,
+      })
+    ).toEqual(['dashboard_root']);
+  });
+
+  it('ignores category roots while their counts belong to an earlier path', () => {
+    const roots = [
+      { key: 'db_root', totalCount: 9, data: { isRoot: true } },
+      { key: 'dashboard_root', totalCount: 4, data: { isRoot: true } },
+    ] as unknown as ExploreTreeNode[];
+
+    expect(
+      getBrowsePathAncestorKeys(roots, [field('serviceType', 'superset')])
+    ).toEqual([]);
+  });
+
+  it('returns only the loaded levels of a deeper path', () => {
+    expect(
+      getBrowsePathAncestorKeys(nodes, [serviceType, service, database, schema])
+    ).toEqual(['svc_type', 'svc', 'db']);
+  });
+
+  it('returns nothing for an empty or category path', () => {
+    expect(getBrowsePathAncestorKeys(nodes, [])).toEqual([]);
+    expect(
+      getBrowsePathAncestorKeys(nodes, [field('entityType', 'table')])
+    ).toEqual([]);
+  });
+});
+
 describe('refreshRootCounts', () => {
   const serviceField: ExploreQuickFilterField = {
     key: 'serviceType',
@@ -900,11 +1051,6 @@ describe('findActiveSearchIndex', () => {
 });
 
 describe('isSelectionWithinBrowsePath', () => {
-  const field = (key: string, value: string): ExploreQuickFilterField => ({
-    key,
-    label: key,
-    value: [{ key: value, label: value }],
-  });
   const serviceType = field('serviceType', 'BigQuery');
   const service = field('service.name.keyword', 'bigquery');
   const database = field('database.displayName.keyword', 'modified-leaf');

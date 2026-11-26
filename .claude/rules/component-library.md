@@ -21,6 +21,8 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   Modal, Table, Tabs, Pagination, Badge, Avatar, Checkbox, Dropdown, Form, Card, Tooltip, Toggle,
   Slider, Textarea, Tags, and more. When building layout/color, invoke the `ui-core-components` skill
   before reaching for a raw `<div>` + Tailwind.
+- **Planning UI work? Invoke `planning` first** — its component map ties each screen piece to an
+  existing component before any code. Layout and colour reference: the `ui-core-components` skill.
 - **Building or restructuring a component? Invoke these first** — they do not fire on their own:
   `react-best-practices` (waterfalls, re-renders, barrel imports, bundle) and `composition-patterns`
   (prop proliferation, compound components). When the component is done, invoke
@@ -40,11 +42,41 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   | raw `<button>`, `<input>`, `<select>`, `<textarea>` in `src/components/**` | `Button`, `Input`, `Select`, `Textarea` |
   | `onKeyDown` handling `ArrowDown`/`ArrowUp` | `Select` / `Dropdown` / `Tabs` (keyboard nav is built in) |
   | `createPortal` overlays | `Modal`, `Popover`, `SlideoutMenu` |
+  | `<h1>`–`<h6>`, `<p>`, a `<span>` with `tw:text-*`/`tw:font-*` | `Typography as="h2" size weight color` |
+  | `<div className="tw:flex …">` / `tw:grid` | `Box` (`direction`/`align`/`gap`/`wrap`) / `Grid` |
+  | `Box` with `tw:bg-*`/border (a surface) | `Card` — `Box` is layout only |
+  | `Typography className="tw:text-tertiary"` (and the other text colours) | the `color` prop (`secondary` renders `text-tertiary`) |
 
-  This table is guidance, not a gate — no linter knows the design system. What CI *does* enforce is
-  that a hand-rolled widget must at least be accessible: `jsx-a11y` blocks an invalid `role`, missing
-  required ARIA props, and unusable tab order. Using the library component is how you satisfy that
-  without writing the ARIA yourself.
+  No linter knows the design system; `jsx-a11y` only enforces that a hand-rolled widget is accessible.
+- **Layout is `Box` and `Grid`, never a styled `div`.** Flex rows/columns → `Box` (`direction`,
+  `align`, `justify`, `gap`, `wrap`, `inline`); grids → `Grid` (`gap`/`rowGap`/`colGap`, `Grid.Item`
+  `span`) — not `<div className="tw:flex|tw:grid …">` or arbitrary `grid-cols-[…]`. `Box`/`Grid`
+  are layout only: no background, border or radius; a bordered or coloured panel is `Card`.
+- **Colour tokens: semantic only, and the right surface** (full list: `frontend-styling.md`). Card on
+  the page → `Card` or `tw:bg-surface`; a card inside a `bg-surface` panel, modal or drawer →
+  `Card variant="muted"`/`"tile"` (ADR:2026-11-05-nested-cards-sit-one-step-off-their-panel). Never `tw:bg-primary` (the page colour
+  in dark: the card disappears). Modal/drawer → `tw:bg-overlay-surface`; popover/menu → `tw:bg-floating`;
+  raw palette and hex do not flip → `utility-*` or a semantic token; icons → `tw:text-fg-*`;
+  `Typography` colour → its `color` prop. Check every new surface in both themes.
+- **Every new component, hook or util with a branch ships its own test in the same change**
+  (`X.test.tsx` beside it). Assert the rendered outcome or returned value for each branch (empty,
+  error, read-only/permission, each variant), against the real core components — not a mock of
+  them, and not only `toHaveBeenCalled`.
+- **Core first, every time — the UI looks the same only if every feature uses the same components.**
+  Before writing any new component file, read the core export list
+  (`openmetadata-ui-core-components/src/main/resources/ui/src/components/index.ts`) and
+  `src/components/common/`, and use what is there as-is, with its own `variant`/`size`/`color` props.
+  A new file that is mostly one core component plus classes or forwarded props is not a new component:
+  use the core one at the call site (no `FooHeader` around `PageLayout.PageHeader`, no `FooToggle`
+  around `Toggle`, no `FooSegmentedControl` around `ButtonGroup`).
+- **Core missing something is a core fix, not a local variant.** If the call site needs a prop core
+  lacks (a tooltip, a size, a slot), add it to `openmetadata-ui-core-components` (its own PR, with a
+  story and test) and use it directly. Never build a parallel feature-local component to get it.
+- **Icon-only actions are `ButtonUtility`**, never a children-less `Button`, a raw `<button>`, or an
+  icon or `div` with `onClick`. Use `tertiary` by default, `secondary` when bordered, and `primary` for
+  send/confirm. Size follows the role. Exceptions (feed comment/reply, split-button chevron,
+  colour swatches, drag handles) and the reasons for each are in
+  ADR:2026-10-14-icon-only-actions-are-tertiary-button-utility-with-one-edit-icon.
 - **Modals: always `<Dialog dividers="scroll">`.** Dividers show only when the modal scrolls: no
   line under the title, and the footer line appears only while `Dialog.Content` overflows. Do not
   draw your own `border-t`/`border-b` or `<Divider>` around a dialog's header or footer. The
@@ -57,6 +89,10 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   The host must be `tw:relative` (the placeholder is absolutely positioned). Keep the default icon
   (no `assets/svg` icons) and never wrap `title`/`description` in a `Tooltip`: its trigger is
   `w-max`, so the copy stops wrapping.
+- **Clear a controlled prop with `null`, never `undefined`.** `selectedKey={x ?? undefined}` flips a React
+  Aria component to uncontrolled and can loop until "Maximum update depth exceeded". Enforced by
+  `openmetadata-ui-patterns/no-undefined-controlled-prop`
+  (ADR:2026-11-13-react-aria-controlled-props-are-cleared-with-null-not-undefined).
 - **Legacy**: Ant Design components remain in existing code but should be replaced with
   `openmetadata-ui-core-components` equivalents when refactoring. For forms, do not use the legacy
   Ant Design `getField`/`generateFormFields` (see `frontend-react.md` → Forms).

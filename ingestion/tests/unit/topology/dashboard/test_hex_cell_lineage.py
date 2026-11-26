@@ -1286,6 +1286,46 @@ cells:
             ("c3", "Pacing", None, "pacing", "SELECT * FROM base_opptys"),
         ]
 
+    def test_export_labels_stay_as_written(self, client):
+        """YAML 1.1 reads `no` as a bool and `2024` as an int, which used to drop the whole project"""
+        client.client.post.return_value = {
+            "content": """
+cells:
+  - {cellId: c1, cellType: SQL, cellLabel: no, config: {source: SELECT 1}}
+  - {cellId: c2, cellType: SQL, cellLabel: false, config: {source: SELECT 2}}
+  - {cellId: c3, cellType: SQL, cellLabel: 2024, config: {source: SELECT 3}}
+  - {cellId: c4, cellType: SQL, cellLabel: null, config: {dataConnectionId: null, source: SELECT 4}}
+"""
+        }
+
+        cells = client.get_project_cells("proj_1")
+
+        assert [(c.id, c.label, c.dataConnectionId) for c in cells] == [
+            ("c1", "no", None),
+            ("c2", "false", None),
+            ("c3", "2024", None),
+            ("c4", None, None),
+        ]
+
+    def test_a_tab_inside_a_text_cell_does_not_drop_the_project(self, client):
+        client.client.post.return_value = {
+            "content": (
+                "cells:\n"
+                "  - cellId: t1\n"
+                "    cellType: TEXT\n"
+                "    config:\n"
+                "      richText:\n"
+                "        - text: id\temail\n"
+                "  - cellId: c1\n"
+                "    cellType: SQL\n"
+                "    config: {resultVariableName: emails, source: SELECT id FROM customers}\n"
+            )
+        }
+
+        cells = client.get_project_cells("proj_1")
+
+        assert [(c.id, c.resultVariableName, c.sql) for c in cells] == [("c1", "emails", "SELECT id FROM customers")]
+
     def test_cells_api_is_the_fallback_when_export_is_not_allowed(self, client):
         client.client.post.side_effect = HTTPError(response=SimpleNamespace(status_code=403))
         client.client.get.return_value = {

@@ -13,6 +13,7 @@
 
 import {
   EMPTY_THEME_CONFIG,
+  isHardToSeeOnDark,
   isValidUrl,
   toThemeConfig,
   toThemeFormValues,
@@ -23,7 +24,9 @@ describe('ThemeSettings.utils', () => {
     const stored = {
       customLogoConfig: {
         customLogoUrlPath: 'https://cdn.example.com/logo.svg',
+        customLogoDarkUrlPath: 'https://cdn.example.com/logo-dark.svg',
         customMonogramUrlPath: '',
+        customMonogramDarkUrlPath: '',
         customFaviconUrlPath: '',
       },
       customTheme: {
@@ -44,11 +47,33 @@ describe('ThemeSettings.utils', () => {
   it('saves unset values as empty strings, which is also what Reset sends', () => {
     expect(EMPTY_THEME_CONFIG.customTheme.primaryColor).toBe('');
     expect(EMPTY_THEME_CONFIG.customLogoConfig.customLogoUrlPath).toBe('');
+    expect(EMPTY_THEME_CONFIG.customLogoConfig.customLogoDarkUrlPath).toBe('');
+    expect(EMPTY_THEME_CONFIG.customLogoConfig.customMonogramDarkUrlPath).toBe(
+      ''
+    );
     expect(Object.keys(EMPTY_THEME_CONFIG.customTheme)).toHaveLength(8);
   });
 
   it('accepts absolute URLs only', () => {
     expect(isValidUrl('https://cdn.example.com/logo.svg')).toBe(true);
     expect(isValidUrl('logo.svg')).toBe(false);
+    expect(isValidUrl('javascript:alert(1)')).toBe(false);
+  });
+
+  describe('isHardToSeeOnDark', () => {
+    const pixels = (...rgba: number[][]) => new Uint8ClampedArray(rgba.flat());
+
+    it('flags dark logos and passes light ones', () => {
+      expect(isHardToSeeOnDark(pixels([17, 24, 39, 255]))).toBe(true);
+      expect(isHardToSeeOnDark(pixels([255, 255, 255, 255]))).toBe(false);
+      expect(isHardToSeeOnDark(pixels([247, 144, 9, 255]))).toBe(false);
+    });
+
+    it('ignores transparent pixels', () => {
+      expect(
+        isHardToSeeOnDark(pixels([0, 0, 0, 0], [255, 255, 255, 255]))
+      ).toBe(false);
+      expect(isHardToSeeOnDark(pixels([0, 0, 0, 0]))).toBe(false);
+    });
   });
 });

@@ -19,12 +19,11 @@ import {
 import { ArrowRight, XClose } from '@openmetadata/ui-core-components/icons';
 import { split } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { ROUTES } from '../../../constants/constants';
 import { useTheme } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../hooks/useAppMode';
+import { useProductTourStore } from '../../../hooks/useProductTourStore';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
@@ -40,7 +39,6 @@ interface WelcomeScreenProps {
 
 const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { theme } = useTheme();
   // Optional call: a downstream brand class may not define it yet, and then
   // the theme colours apply.
@@ -65,7 +63,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
 
   const handleTour = () => {
     onClose();
-    navigate(ROUTES.TOUR);
+    useProductTourStore.getState().open();
   };
 
   return (

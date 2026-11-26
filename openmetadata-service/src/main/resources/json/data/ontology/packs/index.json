@@ -1,0 +1,20 @@
+{
+  "packs": [
+    "brick",
+    "dcat",
+    "dpv",
+    "epcis",
+    "fhir",
+    "fibo",
+    "foaf",
+    "gs1",
+    "hr-open",
+    "iof",
+    "isa-95",
+    "odrl",
+    "org",
+    "owl-time",
+    "prov-o",
+    "sosa-ssn"
+  ]
+}

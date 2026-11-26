@@ -15,6 +15,7 @@ package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
@@ -35,6 +36,20 @@ class SavedSparqlQueryServiceTest {
     assertNotSame(requested, normalized);
     assertNotSame(original, normalized.getQueries().getFirst());
     assertEquals("My query", normalized.getQueries().getFirst().getName());
+  }
+
+  @Test
+  void keepsTheOntologyAQueryWasSavedIn() {
+    UUID ontologyId = UUID.randomUUID();
+    SavedSparqlQuery scoped = query(UUID.randomUUID(), "Scoped").withOntologyId(ontologyId);
+    SavedSparqlQuery unscoped = query(UUID.randomUUID(), "Unscoped");
+
+    SavedSparqlQueries normalized =
+        SavedSparqlQueryService.normalize(
+            new SavedSparqlQueries().withQueries(List.of(scoped, unscoped)));
+
+    assertEquals(ontologyId, normalized.getQueries().getFirst().getOntologyId());
+    assertNull(normalized.getQueries().getLast().getOntologyId());
   }
 
   @Test

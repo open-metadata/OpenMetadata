@@ -32,6 +32,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -216,6 +217,28 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
         Exception.class,
         () -> deleteEntity(dataConsumer.getId().toString()),
         "Deleting system role DataConsumer should not be allowed");
+  }
+
+  @Test
+  void test_roleNamedAdminIsRejected(TestNamespace ns) {
+    for (String reservedName : List.of("Admin", "admin")) {
+      CreateRole request = createRequest(reservedName, ns);
+
+      InvalidRequestException postError =
+          assertThrows(InvalidRequestException.class, () -> createEntity(request));
+      assertEquals(400, postError.getStatusCode());
+      assertTrue(postError.getMessage().contains("is reserved"), postError.getMessage());
+
+      InvalidRequestException putError =
+          assertThrows(
+              InvalidRequestException.class,
+              () ->
+                  SdkClients.adminClient()
+                      .getHttpClient()
+                      .execute(HttpMethod.PUT, "/v1/roles", request, Role.class));
+      assertEquals(400, putError.getStatusCode());
+      assertTrue(putError.getMessage().contains("is reserved"), putError.getMessage());
+    }
   }
 
   @Test

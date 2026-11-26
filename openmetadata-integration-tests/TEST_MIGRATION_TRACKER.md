@@ -173,10 +173,10 @@ cascade with their root. CI runs the same test under the MySQL and PostgreSQL pr
 
 | Profile | Database | Search Engine |
 |---------|----------|---------------|
-| `mysql-elasticsearch` (default) | MySQL 8.3.0 | Elasticsearch 8.11.4 |
+| `mysql-elasticsearch` (default) | MySQL 8.4.13 | Elasticsearch 8.11.4 |
 | `postgres-opensearch` | PostgreSQL 15 | OpenSearch 2.19.0 |
 | `postgres-elasticsearch` | PostgreSQL 15 | Elasticsearch 8.11.4 |
-| `mysql-opensearch` | MySQL 8.3.0 | OpenSearch 2.19.0 |
+| `mysql-opensearch` | MySQL 8.4.13 | OpenSearch 2.19.0 |
 
 ### Running Tests
 
@@ -231,7 +231,7 @@ GitHub workflows run on every PR:
 - `integration-tests-mysql-elasticsearch.yml` - MySQL + Elasticsearch
 - `integration-tests-postgres-opensearch.yml` - PostgreSQL + OpenSearch
 
-Tests require the "safe to test" label on PRs (uses `pull_request_target`).
+They run in the merge queue; on a PR they only report their required check names (as skipped).
 
 ---
 
