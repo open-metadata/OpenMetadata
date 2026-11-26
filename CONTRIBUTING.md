@@ -55,7 +55,7 @@ in the PR template for you. You will check the CI and bot items below on the PR 
    maintainer will help.
 3. **Get the PR checks green.** Which checks run depends on the paths you touched:
    - **Backend:** `backend-checks` (spotless formatting and the Java unit tests).
-   - **Python:** `py-checkstyle` (ruff) and `py-tests-status` (unit tests and static checks).
+   - **Python:** `py-checkstyle` (ruff and basedpyright) and `py-tests-status` (unit tests and static checks).
    - **UI:** `ui-checkstyle` (ESLint, Prettier, organize-imports), `browser tests + coverage`, and
      `ui-coverage` (Jest).
    - **Other:** `validate-json-yaml`, `generate-types` (regenerate after any schema change), and
