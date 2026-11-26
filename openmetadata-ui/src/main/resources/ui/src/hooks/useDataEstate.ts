@@ -40,16 +40,24 @@ export const DATA_ESTATE_CONNECTORS_QUERY_KEY = [
 export const DATA_ESTATE_TTL_MS = 5 * 60 * 1000;
 
 const SERVICE_TYPE_FIELD = 'serviceType';
+// By id: service names are unique only within a service category.
+const SERVICE_ID_FIELD = 'service.id';
+const SERVICE_LABEL_SOURCES = [
+  SERVICE_TYPE_FIELD,
+  'service.displayName',
+  'service.name',
+];
+// Prefixed so a custom slice's key can never equal a serviceType or OTHER_CONNECTORS_KEY.
+const CUSTOM_SERVICE_KEY_PREFIX = 'service:';
 
 /**
  * Columns share the data-asset alias and carry their table's `serviceType`, so
  * counting them would size every connector by its column count. Data Insights
  * and the "Total data assets" card do not count columns as assets either.
  */
+const EXCLUDE_COLUMNS = [{ term: { entityType: EntityType.TABLE_COLUMN } }];
 const EXCLUDE_COLUMNS_QUERY = JSON.stringify({
-  query: {
-    bool: { must_not: [{ term: { entityType: EntityType.TABLE_COLUMN } }] },
-  },
+  query: { bool: { must_not: EXCLUDE_COLUMNS } },
 });
 
 /**
@@ -62,7 +70,10 @@ export const MAX_NAMED_CONNECTORS = 6;
 export const OTHER_CONNECTORS_KEY = '__other__';
 
 export interface ConnectorCount {
-  /** The raw `serviceType`, e.g. `BigQuery` — stable across locales. */
+  /**
+   * The raw `serviceType`, e.g. `BigQuery` — stable across locales. For a
+   * custom connector, `service:<service id>` instead.
+   */
   key: string;
   /** What the legend shows, e.g. `Big Query`. */
   name: string;
@@ -182,6 +193,92 @@ const coverageSeries = (
     });
 };
 
+/** `CustomDashboard`, `CustomDatabase`, ...: the types a custom connector registers under. */
+export const isCustomServiceType = (serviceType: string): boolean =>
+  serviceType.toLowerCase().startsWith('custom');
+
+type TopHitsBucket = Bucket & {
+  'top_hits#top'?: {
+    hits?: {
+      hits?: Array<{
+        _source?: {
+          serviceType?: string;
+          service?: { displayName?: string; name?: string };
+        };
+      }>;
+    };
+  };
+};
+
+const sumCounts = (connectors: ConnectorCount[]): number =>
+  connectors.reduce((total, connector) => total + connector.count, 0);
+
+/**
+ * Every custom connector shares one `serviceType`, so its slice would read
+ * "Custom Dashboard" whatever the tool behind it. Split those slices by
+ * service and name each after the service's `displayName`, then its name.
+ * Each type is checked on its own: a type whose split fails or comes back
+ * short keeps its unsplit slice, so the bar still adds up, without holding
+ * back the types that did split.
+ */
+const splitCustomConnectors = async (
+  custom: ConnectorCount[]
+): Promise<ConnectorCount[]> => {
+  if (custom.length === 0) {
+    return [];
+  }
+  try {
+    const response = await postAggregateFieldOptions({
+      deleted: false,
+      fieldName: SERVICE_ID_FIELD,
+      index: SearchIndex.DATA_ASSET,
+      // Same column exclusion as the breakdown, or a custom database's
+      // columns inflate its services past the slice they split.
+      query: JSON.stringify({
+        query: {
+          bool: {
+            filter: [
+              { terms: { [SERVICE_TYPE_FIELD]: custom.map((c) => c.key) } },
+            ],
+            must_not: EXCLUDE_COLUMNS,
+          },
+        },
+      }),
+      size: AGGREGATE_PAGE_SIZE_LARGE,
+      sourceFields: SERVICE_LABEL_SOURCES,
+      topHits: { size: 1 },
+    });
+    const buckets: TopHitsBucket[] =
+      getAggregations(response.data.aggregations ?? {})[SERVICE_ID_FIELD]
+        ?.buckets ?? [];
+
+    // The `serviceType` keyword is lower-cased by its normalizer, so the
+    // breakdown's keys (`customdashboard`) differ from `_source`
+    // (`CustomDashboard`); compare both sides lower-cased.
+    const servicesByType = new Map<string, ConnectorCount[]>();
+    buckets.forEach((bucket) => {
+      const source = bucket['top_hits#top']?.hits?.hits?.[0]?._source;
+      const type = source?.serviceType?.toLowerCase() ?? '';
+      const services = servicesByType.get(type) ?? [];
+      services.push({
+        count: bucket.doc_count,
+        key: `${CUSTOM_SERVICE_KEY_PREFIX}${bucket.key}`,
+        name:
+          source?.service?.displayName || source?.service?.name || bucket.key,
+      });
+      servicesByType.set(type, services);
+    });
+
+    return custom.flatMap((slice) => {
+      const services = servicesByType.get(slice.key.toLowerCase()) ?? [];
+
+      return sumCounts(services) === slice.count ? services : [slice];
+    });
+  } catch {
+    return custom;
+  }
+};
+
 /**
  * The estate's split by connector — Snowflake, Redshift, BigQuery — from a
  * `serviceType` terms aggregation over the data-asset index.
@@ -208,13 +305,17 @@ const fetchConnectorBreakdown = async (): Promise<ConnectorCount[]> => {
     getAggregations(response.data.aggregations ?? {})[SERVICE_TYPE_FIELD]
       ?.buckets ?? [];
 
-  return buckets
-    .map((bucket) => ({
-      count: bucket.doc_count,
-      key: bucket.key,
-      name: getFormattedDataAssetServiceType(bucket.key),
-    }))
-    .sort((a, b) => b.count - a.count);
+  const connectors = buckets.map((bucket) => ({
+    count: bucket.doc_count,
+    key: bucket.key,
+    name: getFormattedDataAssetServiceType(bucket.key),
+  }));
+  const custom = connectors.filter((c) => isCustomServiceType(c.key));
+  const named = connectors.filter((c) => !isCustomServiceType(c.key));
+
+  return [...named, ...(await splitCustomConnectors(custom))].sort(
+    (a, b) => b.count - a.count
+  );
 };
 
 /** Names the largest connectors and folds the tail into one "Other" entry. */
