@@ -951,7 +951,7 @@ class ElasticSearchVectorServiceTest {
     promoteEveryEntityIndex(staged);
 
     assertEquals(0, sentCount("POST", "/_aliases"), "the live chunks stay");
-    assertTrue(logged(Level.WARN, "holds no chunks while the live index does"));
+    assertTrue(logged(Level.WARN, "holds no chunks while the live index serves some"));
   }
 
   @Test
@@ -1008,6 +1008,42 @@ class ElasticSearchVectorServiceTest {
   }
 
   @Test
+  void anEmptyGenerationReplacesALiveChunkIndexThatCannotHoldTheModel() throws Exception {
+    String live = vectorService.getChunkIndexName();
+    VectorFieldHealth health = new VectorFieldHealth(readAgain::add);
+    answerByEndpointContaining(
+        rules(
+            "/_aliases",
+            response(200, "{}"),
+            "/_alias",
+            response(200, "{\"" + live + "\":{\"aliases\":{}}}"),
+            "/" + live + "/_count",
+            response(200, "{\"count\":5}"),
+            "/_count",
+            response(200, "{\"count\":0}")));
+
+    try (MockedStatic<Entity> ignored = withChunkIndexThatCannotHoldTheModel(health)) {
+      String staged = vectorService.beginStagedChunkRecreate();
+      promoteEveryEntityIndex(staged);
+    }
+
+    assertEquals(1, sentCount("POST", "/_aliases"), "the live chunks serve no vector search");
+  }
+
+  @Test
+  void aParticipantDeletesFromItsRunsGenerationNotOneADeadRunLeftOnThisNode() throws Exception {
+    answerByEndpointContaining(freshInstallRules());
+    String dead = vectorService.beginStagedChunkRecreate();
+    String current = vectorService.getChunkIndexName() + "_g9";
+    vectorService.latchParticipantStagedTarget(current);
+
+    vectorService.deleteEntityChunks(orders().getId().toString());
+
+    assertTrue(sentTo("/" + current + "/_doc/") > 0, "the run's generation gets the delete");
+    assertEquals(0, sentTo("/" + dead + "/_doc/"), "the dead run's generation does not");
+  }
+
+  @Test
   void aLatchedStagedGenerationIsCheckedAgainstTheModelBeforeAnyWrite() {
     VectorFieldHealth health = new VectorFieldHealth(readAgain::add);
     String staged = vectorService.getChunkIndexName() + "_g2";
@@ -1046,6 +1082,14 @@ class ElasticSearchVectorServiceTest {
 
   private static Response chunkHeader() throws Exception {
     return response(200, "{\"found\":true,\"_source\":{\"fingerprint\":\"fp\",\"chunkCount\":1}}");
+  }
+
+  private long sentTo(String endpointPrefix) throws Exception {
+    ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+    verify(mockRestClient, atLeastOnce()).performRequest(sent.capture());
+    return sent.getAllValues().stream()
+        .filter(request -> request.getEndpoint().startsWith(endpointPrefix))
+        .count();
   }
 
   private long sentCount(String method, String endpoint) throws Exception {

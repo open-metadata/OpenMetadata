@@ -977,6 +977,7 @@ class DistributedIndexingStrategyTest {
       assertEquals(ExecutionResult.Status.FAILED, result.status());
       verify(bulkSink).close();
       assertNull(getField("searchIndexSink"));
+      verify(indexPromotionHandler).abandonReindex(stagedIndexContext);
     }
   }
 

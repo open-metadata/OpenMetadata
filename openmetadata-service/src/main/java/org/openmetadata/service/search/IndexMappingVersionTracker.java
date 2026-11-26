@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -44,28 +45,29 @@ public class IndexMappingVersionTracker {
   private final String updatedBy;
   private final String version;
   private final CollectionDAO daoCollection;
-  private final Supplier<Set<String>> cannotHoldVectors;
+  private final Supplier<Map<String, Set<String>>> vectorIndexRebuilds;
 
   public IndexMappingVersionTracker(CollectionDAO daoCollection, String version, String updatedBy) {
-    this(daoCollection, version, updatedBy, Set::of);
+    this(daoCollection, version, updatedBy, Map::of);
   }
 
   /**
-   * @param cannotHoldVectors the entity types whose live index cannot hold the vectors of the
-   *     configured embedding model, read when the drift is computed: a mapping hash cannot tell,
-   *     and only a rebuild gives such an index a field for the model
+   * @param vectorIndexRebuilds each index that cannot hold the vectors of the configured embedding
+   *     model, with the entity types a reindex rebuilds to replace it, read when the drift is
+   *     computed: a mapping hash cannot tell, and only a rebuild gives such an index a field for
+   *     the model
    *     (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model)
    */
   public IndexMappingVersionTracker(
       CollectionDAO daoCollection,
       String version,
       String updatedBy,
-      Supplier<Set<String>> cannotHoldVectors) {
+      Supplier<Map<String, Set<String>>> vectorIndexRebuilds) {
     this.daoCollection = daoCollection;
     this.indexMappingVersionDAO = daoCollection.indexMappingVersionDAO();
     this.version = version;
     this.updatedBy = updatedBy;
-    this.cannotHoldVectors = cannotHoldVectors;
+    this.vectorIndexRebuilds = vectorIndexRebuilds;
   }
 
   public static IndexMappingVersionTracker create(CollectionDAO daoCollection) {
@@ -74,9 +76,9 @@ public class IndexMappingVersionTracker {
 
   /** As {@link #create(CollectionDAO)}, also reporting the indexes that cannot hold vectors. */
   public static IndexMappingVersionTracker create(
-      CollectionDAO daoCollection, Supplier<Set<String>> cannotHoldVectors) {
+      CollectionDAO daoCollection, Supplier<Map<String, Set<String>>> vectorIndexRebuilds) {
     return new IndexMappingVersionTracker(
-        daoCollection, SERVER_VERSION, SYSTEM_UPDATED_BY, cannotHoldVectors);
+        daoCollection, SERVER_VERSION, SYSTEM_UPDATED_BY, vectorIndexRebuilds);
   }
 
   private static String currentServerVersion() {
@@ -96,13 +98,21 @@ public class IndexMappingVersionTracker {
    * yet, or it cannot hold the vectors of the configured embedding model.
    */
   public List<String> getChangedMappings() throws IOException {
+    Map<String, Set<String>> rebuilds = vectorIndexRebuilds.get();
     List<String> changedMappings = new ArrayList<>();
-    for (Map.Entry<String, MappingDriftState> entry : computeDrift().entrySet()) {
+    for (Map.Entry<String, MappingDriftState> entry : computeDrift(rebuilds).entrySet()) {
       if (entry.getValue() != MappingDriftState.CURRENT) {
         changedMappings.add(entry.getKey());
-        logReindexReason(entry.getKey(), entry.getValue());
+        logMappingChange(entry.getKey(), entry.getValue());
       }
     }
+    rebuilds.forEach(
+        (index, entityTypes) ->
+            LOG.info(
+                "Index {} cannot hold the embedding model's vectors; rebuilding entity types {} "
+                    + "to replace it",
+                index,
+                entityTypes));
 
     if (changedMappings.isEmpty()) {
       LOG.info("No changes detected in index mappings");
@@ -113,23 +123,28 @@ public class IndexMappingVersionTracker {
     return changedMappings;
   }
 
-  private static void logReindexReason(String entityType, MappingDriftState state) {
-    if (state == MappingDriftState.CANNOT_HOLD_VECTORS) {
-      LOG.info("Index of entity {} cannot hold the embedding model's vectors", entityType);
-    } else {
+  // The entity types rebuilt for an index that cannot hold the vectors are logged with that index.
+  private static void logMappingChange(String entityType, MappingDriftState state) {
+    if (state != MappingDriftState.CANNOT_HOLD_VECTORS) {
       LOG.info("Index mapping changed for entity: {}", entityType);
     }
   }
 
   /**
-   * Each entity type's state: {@link MappingDriftState#CANNOT_HOLD_VECTORS} when its live index
-   * cannot hold the vectors of the configured embedding model, and otherwise whether its index was
-   * built from the current mapping.
+   * Each entity type's state: {@link MappingDriftState#CANNOT_HOLD_VECTORS} when a reindex of it
+   * rebuilds an index that cannot hold the vectors of the configured embedding model, and otherwise
+   * whether its index was built from the current mapping.
    */
   public Map<String, MappingDriftState> computeDrift() throws IOException {
+    return computeDrift(vectorIndexRebuilds.get());
+  }
+
+  private Map<String, MappingDriftState> computeDrift(Map<String, Set<String>> rebuilds)
+      throws IOException {
     Map<String, String> storedHashes = getStoredMappingHashes();
     Map<String, MappingEntry> currentMappings = computeCurrentMappings();
-    Set<String> withoutVectorSupport = cannotHoldVectors.get();
+    Set<String> withoutVectorSupport = new HashSet<>();
+    rebuilds.values().forEach(withoutVectorSupport::addAll);
     Map<String, MappingDriftState> drift = new HashMap<>();
     for (Map.Entry<String, MappingEntry> entry : currentMappings.entrySet()) {
       String storedHash = storedHashes.get(entry.getKey());

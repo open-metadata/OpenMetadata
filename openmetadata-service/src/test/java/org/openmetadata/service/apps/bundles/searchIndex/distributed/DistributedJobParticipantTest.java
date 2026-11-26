@@ -1138,7 +1138,12 @@ class DistributedJobParticipantTest {
             .jobConfiguration(config)
             .stagedIndexMapping(
                 Map.of(
-                    "table", "table_staged", ReindexContext.STAGED_CHUNK_KEY, "chunk_staged_gen"))
+                    "table",
+                    "table_staged",
+                    ReindexContext.STAGED_CHUNK_KEY,
+                    "chunk_staged_gen",
+                    ReindexContext.STAGED_ONTOLOGY_CHUNK_KEY,
+                    "ontology_chunk_staged_gen"))
             .build();
 
     CollectionDAO.SearchIndexFailureDAO failureDao =
@@ -1177,6 +1182,7 @@ class DistributedJobParticipantTest {
       // The run-scoped chunk generation is latched before streaming so live edits handled on this
       // (non-coordinator) JVM mirror into this run's generation instead of relying on discovery.
       verify(vectorServiceMock).latchParticipantStagedTarget("chunk_staged_gen");
+      verify(vectorServiceMock).latchParticipantStagedOntologyTarget("ontology_chunk_staged_gen");
       // ...and cleared once the run finishes so a later run cannot mirror into a finished run's
       // generation (promoted or abandoned).
       verify(vectorServiceMock).clearParticipantStagedTarget();

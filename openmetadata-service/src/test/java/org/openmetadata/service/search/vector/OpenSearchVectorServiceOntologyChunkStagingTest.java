@@ -52,7 +52,9 @@ class OpenSearchVectorServiceOntologyChunkStagingTest {
   private static final String LIVE = "ontology_embeddings_chunks";
   private static final String STAGED_TERM_INDEX = "ontology_concept_search_index_rebuild_1";
 
-  private final VectorFieldHealth health = new VectorFieldHealth(name -> {});
+  private final List<String> readAgain = new ArrayList<>();
+  private final VectorFieldHealth health = new VectorFieldHealth(readAgain::add);
+  private long stagedChunkCount = 2;
   private final List<Request> sent = new ArrayList<>();
   private final EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
   private OpenSearchVectorService service;
@@ -150,6 +152,32 @@ class OpenSearchVectorServiceOntologyChunkStagingTest {
   }
 
   @Test
+  void theSwapReadsTheLiveIndexAgainSoThisNodeLetsTermVectorsBackIn() {
+    liveIndexHoldsAnotherModel();
+    String generation = service.beginStagedOntologyChunkRecreate();
+    service.markEntityTypeReindexed(Entity.ONTOLOGY_CONCEPT, true, generation);
+    readAgain.clear();
+
+    service.markEntityTypeReindexed(Entity.ONTOLOGY_PROPERTY, true, generation);
+
+    assertEquals(List.of(LIVE), readAgain);
+  }
+
+  @Test
+  void anEmptyGenerationReplacesALiveIndexThatCannotHoldTheModel() {
+    liveIndexHoldsAnotherModel();
+    stagedChunkCount = 0;
+    String generation = service.beginStagedOntologyChunkRecreate();
+
+    service.markEntityTypeReindexed(Entity.ONTOLOGY_CONCEPT, true, generation);
+    service.markEntityTypeReindexed(Entity.ONTOLOGY_PROPERTY, true, generation);
+
+    assertTrue(
+        endpoints().contains("POST /_aliases"),
+        "the live index serves no term vectors, so nothing is lost: " + endpoints());
+  }
+
+  @Test
   void aTermTypeThatKeptItsLiveIndexKeepsTheLiveOntologyChunks() {
     liveIndexHoldsAnotherModel();
     String generation = service.beginStagedOntologyChunkRecreate();
@@ -193,6 +221,22 @@ class OpenSearchVectorServiceOntologyChunkStagingTest {
 
     service.clearParticipantStagedTarget();
     assertTrue(service.stagedOntologyChunkTarget().isEmpty());
+  }
+
+  @Test
+  void theGenerationOfTheRunThisNodeTakesPartInWinsOverOneADeadRunLeftHere() throws Exception {
+    liveIndexHoldsAnotherModel();
+    String dead = service.beginStagedOntologyChunkRecreate();
+    String current = LIVE + "_g9";
+    service.latchParticipantStagedOntologyTarget(current);
+    sent.clear();
+
+    writeTermEmbeddings(STAGED_TERM_INDEX);
+
+    assertEquals(Optional.of(current), service.stagedOntologyChunkTarget());
+    String bulk = bodyOf("POST", "/_bulk");
+    assertTrue(bulk.contains("\"_index\":\"" + current + "\""), bulk);
+    assertFalse(bulk.contains("\"_index\":\"" + dead + "\""), bulk);
   }
 
   @Test
@@ -243,8 +287,10 @@ class OpenSearchVectorServiceOntologyChunkStagingTest {
     String body = "{}";
     if (endpoint.equals("/" + LIVE + "/_alias")) {
       body = "{\"" + LIVE + "\":{\"aliases\":{}}}";
-    } else if (endpoint.endsWith("/_count")) {
+    } else if (endpoint.equals("/" + LIVE + "/_count")) {
       body = "{\"count\":2}";
+    } else if (endpoint.endsWith("/_count")) {
+      body = "{\"count\":" + stagedChunkCount + "}";
     }
     Response response = mock(Response.class);
     when(response.getStatus()).thenReturn(200);

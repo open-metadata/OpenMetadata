@@ -22,4 +22,10 @@ public interface RecreateIndexHandler {
       EntityReindexContext entityReindexContext, boolean reindexSuccess) {
     return true;
   }
+
+  /**
+   * Releases what {@link #reCreateIndexes} set up for a run that failed before it finalized, so
+   * nothing of that run outlives it on this JVM.
+   */
+  default void abandonReindex(ReindexContext context) {}
 }

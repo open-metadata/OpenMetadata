@@ -1656,8 +1656,8 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   /**
-   * @param cannotHoldVectors entity types whose live index cannot hold the vectors of the
-   *     configured embedding model, which the smart reindex rebuilds as it rebuilds stale ones
+   * @param cannotHoldVectors entity types the smart reindex rebuilds, as it rebuilds stale ones,
+   *     because an index they write vectors to cannot hold those of the configured embedding model
    */
   public record ReindexStatus(
       List<String> stalePending, List<String> cannotHoldVectors, int untrackedCount) {}
@@ -1665,6 +1665,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
   public record SearchReindexStatus(
       List<String> stalePending,
       List<String> cannotHoldVectors,
+      List<String> indexesThatCannotHoldVectors,
       int untrackedCount,
       List<String> missingIndexes,
       List<String> orphanIndexes,
@@ -1727,10 +1728,15 @@ public class SystemRepository implements DeploymentSettingPreparer {
               status.stalePending().size(), status.stalePending()));
     }
     if (!status.cannotHoldVectors().isEmpty()) {
+      List<String> indexes = status.indexesThatCannotHoldVectors();
       message.append(
           String.format(
-              " %d index(es) cannot hold the vectors of the configured embedding model: %s.",
-              status.cannotHoldVectors().size(), status.cannotHoldVectors()));
+              " %s cannot hold the vectors of the configured embedding model; the reindex "
+                  + "rebuilds %d entity type(s) to replace %s: %s.",
+              indexes.size() == 1 ? "Index " + indexes.getFirst() : "Indexes " + indexes,
+              status.cannotHoldVectors().size(),
+              indexes.size() == 1 ? "it" : "them",
+              status.cannotHoldVectors()));
     }
     if (!status.missingIndexes().isEmpty()) {
       message.append(
@@ -1883,6 +1889,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
     return new SearchReindexStatus(
         drift.status().stalePending(),
         drift.status().cannotHoldVectors(),
+        drift.indexesThatCannotHoldVectors(),
         drift.status().untrackedCount(),
         missingIndexes,
         orphanIndexes,
@@ -1890,23 +1897,26 @@ public class SystemRepository implements DeploymentSettingPreparer {
         drift.computed());
   }
 
-  private record DriftResult(ReindexStatus status, boolean computed) {}
+  private record DriftResult(
+      ReindexStatus status, List<String> indexesThatCannotHoldVectors, boolean computed) {}
 
   private DriftResult computeMappingDrift(
       SearchRepository searchRepository, List<String> missingIndexes) {
     ReindexStatus status = new ReindexStatus(List.of(), List.of(), 0);
+    List<String> indexesThatCannotHoldVectors = List.of();
     boolean computed = false;
     try {
+      Map<String, Set<String>> vectorIndexRebuilds = searchRepository.vectorIndexRebuilds();
       IndexMappingVersionTracker tracker =
-          IndexMappingVersionTracker.create(
-              Entity.getCollectionDAO(), searchRepository::entityTypesThatCannotHoldVectors);
+          IndexMappingVersionTracker.create(Entity.getCollectionDAO(), () -> vectorIndexRebuilds);
       Set<String> existingIndexes = existingTrackedIndexes(searchRepository, missingIndexes);
       status = classifyReindexStatus(tracker.computeDrift(), existingIndexes);
+      indexesThatCannotHoldVectors = List.copyOf(vectorIndexRebuilds.keySet());
       computed = true;
     } catch (Exception e) {
       LOG.warn("Failed to compute search mapping drift: {}", e.getMessage());
     }
-    return new DriftResult(status, computed);
+    return new DriftResult(status, indexesThatCannotHoldVectors, computed);
   }
 
   @VisibleForTesting

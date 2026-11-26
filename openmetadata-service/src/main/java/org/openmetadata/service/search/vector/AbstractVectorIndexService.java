@@ -989,15 +989,19 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     } else if (stagedDeleteMissed || isStagedGenerationIncomplete(generation)) {
       reason = "a delete of a removed entity's chunks failed";
     } else if (!stagedCanReplaceLive(generation, liveTarget)) {
-      reason = "it holds no chunks while the live index does, or a count could not be read";
+      reason = "it holds no chunks while the live index serves some, or a count could not be read";
     }
     return Optional.ofNullable(reason);
   }
 
-  /** An empty generation replaces only an empty live index; an unknown count keeps the live one. */
+  /**
+   * An empty generation replaces only a live index that serves no chunks: an empty one, or one that
+   * cannot hold the model's vectors. An unknown count keeps the live one.
+   */
   private boolean stagedCanReplaceLive(String generation, String liveTarget) {
     long staged = chunkDocCount(generation);
-    long live = liveTarget == null ? 0 : chunkDocCount(liveTarget);
+    boolean liveServesChunks = liveTarget != null && canHoldVectors(liveTarget);
+    long live = liveServesChunks ? chunkDocCount(liveTarget) : 0;
     return staged > 0 || (staged == 0 && live == 0);
   }
 
@@ -1098,7 +1102,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    */
   @Override
   public void requireStagedChunkFailuresRecorded() {
-    String generation = stagedChunkIndex != null ? stagedChunkIndex : participantStagedTarget;
+    String generation = runStagedChunkIndex();
     if (generation != null && unflaggedGenerations.contains(generation)) {
       saveMissedDeleteFlagOnce(generation);
       if (unflaggedGenerations.contains(generation)) {
@@ -1116,14 +1120,15 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * and delete ({@link #deleteEntityChunks}) paths. Resolution order:
    *
    * <ol>
+   *   <li>{@link #participantStagedTarget}: the generation of the run this node is taking part in,
+   *       latched from its {@code ReindexContext} by {@link #latchParticipantStagedTarget}.
+   *       Authoritative for the run, so mirroring and deletes never depend on best-effort
+   *       discovery, the gap that lost live edits when discovery cached a stale {@code null} on a
+   *       participant JVM (see fd054753fa). A server never joins a job it coordinates, so it wins
+   *       over coordinator state a dead run of this node may have left.
    *   <li>{@link #stagedChunkIndex} — the coordinator's own run-scoped generation, set by {@link
    *       #beginStagedChunkRecreate}. Coordinator-only; also gates promotion in {@link
    *       #markEntityTypeReindexed}, so it must never be set on a participant.
-   *   <li>{@link #participantStagedTarget} — a non-coordinator participant's run-scoped
-   *       generation, latched from its {@code ReindexContext} by {@link
-   *       #latchParticipantStagedTarget}. Authoritative for the run, so mirroring and deletes
-   *       never depend on best-effort discovery — the gap that lost live edits when discovery
-   *       cached a stale {@code null} on a participant JVM (see fd054753fa).
    *   <li>Best-effort cluster-state probe ({@link #findActiveStagedGeneration}) with a short
    *       JVM-local cache that may hold {@code null} (no un-promoted {@code *_g*} index exists
    *       yet, or a transient probe failure). Reached only before a participant latches (startup
@@ -1135,10 +1140,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * helper: they receive the run-scoped target explicitly via {@code ReindexContext}.
    */
   private String resolveChunkSinkTarget() {
-    String target = stagedChunkIndex; // coordinator-only fast path (also gates promotion)
-    if (target == null) {
-      target = participantStagedTarget; // participant latch from ReindexContext
-    }
+    String target = runStagedChunkIndex();
     if (target == null) {
       long now = System.currentTimeMillis();
       if (now - cachedSinkTargetAt > SINK_TARGET_CACHE_MS) {
@@ -1148,6 +1150,12 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       target = cachedSinkTarget;
     }
     return target;
+  }
+
+  // The latch of the run this node takes part in wins over leftover coordinator state.
+  private String runStagedChunkIndex() {
+    String latched = participantStagedTarget;
+    return latched != null ? latched : stagedChunkIndex;
   }
 
   /**
@@ -1242,8 +1250,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   @Override
   public Optional<String> stagedOntologyChunkTarget() {
-    String staged = stagedOntologyChunks;
-    return Optional.ofNullable(staged != null ? staged : participantOntologyChunks);
+    String latched = participantOntologyChunks;
+    return Optional.ofNullable(latched != null ? latched : stagedOntologyChunks);
   }
 
   @Override
@@ -1318,7 +1326,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
               + new TreeSet<>(ontologyKeptLiveTypes)
               + " kept their live index";
     } else if (!stagedCanReplaceLive(generation, liveTarget)) {
-      reason = "it holds no chunks while the live index does, or a count could not be read";
+      reason = "it holds no chunks while the live index serves some, or a count could not be read";
     }
     return Optional.ofNullable(reason);
   }

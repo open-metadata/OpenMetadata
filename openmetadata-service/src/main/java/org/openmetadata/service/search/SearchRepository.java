@@ -160,6 +160,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkRetryPolicy;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.EntityReindexContextMapper;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
@@ -689,28 +690,8 @@ public class SearchRepository {
     if (context != null) {
       for (String entityType : context.getEntities()) {
         try {
-          String originalIndex = context.getOriginalIndex(entityType).orElse(null);
-          String canonicalIndex = context.getCanonicalIndex(entityType).orElse(null);
-          String activeIndex = context.getOriginalIndex(entityType).orElse(null);
-          String stagedIndex = context.getStagedIndex(entityType).orElse(null);
-          String canonicalAlias = context.getCanonicalAlias(entityType).orElse(null);
-          Set<String> existingAliases = context.getExistingAliases(entityType);
-          Set<String> parentAliases =
-              new HashSet<>(listOrEmpty(context.getParentAliases(entityType)));
-
           EntityReindexContext entityReindexContext =
-              EntityReindexContext.builder()
-                  .entityType(entityType)
-                  .originalIndex(originalIndex)
-                  .canonicalIndex(canonicalIndex)
-                  .activeIndex(activeIndex)
-                  .stagedIndex(stagedIndex)
-                  .stagedChunkIndex(context.getStagedChunkIndex().orElse(null))
-                  .stagedOntologyChunkIndex(context.getStagedOntologyChunkIndex().orElse(null))
-                  .canonicalAliases(canonicalAlias)
-                  .existingAliases(existingAliases)
-                  .parentAliases(parentAliases)
-                  .build();
+              EntityReindexContextMapper.fromStagedContext(context, entityType);
           recreateIndexHandler.finalizeReindex(entityReindexContext, true);
         } catch (Exception ex) {
           LOG.error("Failed to recreate index for entity {}", entityType, ex);
@@ -1064,32 +1045,39 @@ public class SearchRepository {
   }
 
   /**
-   * The entity types to rebuild so that every index {@link #vectorFieldHealth} records as unable
-   * to hold the embedding model's vectors gets a field for the model: the type of each such entity
-   * index, every data-asset type for the data-asset chunk index, and both ontology term types for
-   * the ontology chunk index, since only a recreate of all the types writing to a chunk index
-   * rebuilds it. The indexes recorded so are read again first, so one a finished rebuild replaced
-   * no longer counts
+   * Each index {@link #vectorFieldHealth} records as unable to hold the embedding model's vectors,
+   * with the entity types a reindex rebuilds to give it a field for the model: the type of an
+   * entity index, every data-asset type for the data-asset chunk index, and both ontology term
+   * types for the ontology chunk index, since only a recreate of all the types writing to a chunk
+   * index rebuilds it. The indexes recorded so are read again first, so one a finished rebuild
+   * replaced no longer counts
    * (ADR:2026-11-26-the-server-reconciles-live-vector-fields-with-the-embedding-model).
    */
-  public Set<String> entityTypesThatCannotHoldVectors() {
+  public Map<String, Set<String>> vectorIndexRebuilds() {
     vectorFieldHealth.recheckAll();
-    Set<String> unable =
-        vectorFieldHealth.mismatches().stream()
-            .map(VectorFieldHealth.Mismatch::name)
-            .collect(Collectors.toSet());
+    Map<String, Set<String>> rebuilds = new TreeMap<>();
+    for (VectorFieldHealth.Mismatch mismatch : vectorFieldHealth.mismatches()) {
+      Set<String> entityTypes = entityTypesRebuilding(mismatch.name());
+      if (!entityTypes.isEmpty()) {
+        rebuilds.put(mismatch.name(), entityTypes);
+      }
+    }
+    return rebuilds;
+  }
+
+  private Set<String> entityTypesRebuilding(String index) {
     Set<String> entityTypes = new TreeSet<>();
     managedIndexMappings()
         .forEach(
             (entityType, indexMapping) -> {
-              if (unable.contains(indexMapping.getIndexName(clusterAlias))) {
+              if (index.equals(indexMapping.getIndexName(clusterAlias))) {
                 entityTypes.add(entityType);
               }
             });
-    if (vectorIndexService != null && unable.contains(vectorIndexService.getChunkIndexName())) {
+    if (vectorIndexService != null && index.equals(vectorIndexService.getChunkIndexName())) {
       entityTypes.addAll(EmbeddedEntityTypes.DATA_ASSETS);
     }
-    if (unable.contains(OntologyChunkIndex.name(clusterAlias))) {
+    if (index.equals(OntologyChunkIndex.name(clusterAlias))) {
       entityTypes.addAll(OntologyTermSearch.TERM_TYPES);
     }
     return entityTypes;

@@ -87,8 +87,9 @@ vector field, and on OpenSearch no `index.knn`, so they could never get one.
    patch releases included, it then rebuilds those indexes besides the changed ones: an entity
    index's own type, every data-asset type for the data-asset chunk index, and both ontology term
    types for the ontology chunk index, since only a recreate of every type that writes to a chunk
-   index replaces it. The status page's reindex step lists the same indexes. There is no migration
-   and no rebuild started by the server. A finished rebuild leaves an index that holds the model's
+   index replaces it. The status page's reindex step and the command's log name each such index
+   with the types rebuilt to replace it. There is no migration and no rebuild started by the
+   server. A finished rebuild leaves an index that holds the model's
    vectors, so both read current again.
 8. **A recreate of both ontology term types rebuilds an ontology chunk index that cannot hold the
    model's vectors.** Every ontology reindex writes `ontology_embeddings_chunks` in place
@@ -99,8 +100,11 @@ vector field, and on OpenSearch no `index.knn`, so they could never get one.
    there. Once both term types are promoted, one atomic `_aliases` call points
    `ontology_embeddings_chunks` at the generation and removes the previous index; until then
    ontology searches read the previous index. A term type that kept its live index, or a generation
-   without chunks while the previous index has some, keeps the previous index, and the next staged
-   recreate sweeps the generation. An index that can hold the model's vectors is still written in
+   without chunks while the previous index serves some, keeps the previous index, and the next
+   staged recreate sweeps the generation. A previous index that cannot hold the model's vectors
+   serves none, so an empty generation replaces it rather than leave a rebuild that every smart
+   `reindex` plans again. A run that fails forgets its generation, and a node taking part in a run
+   writes to that run's generation even where a dead run of its own left another. An index that can hold the model's vectors is still written in
    place, so a normal reindex embeds no term again. Elasticsearch keeps no ontology chunks: a term's
    vector lives on its term document, so rebuilding its type is the whole fix.
 
