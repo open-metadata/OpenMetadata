@@ -58,7 +58,7 @@ keys select the tests whose code names them.
 
 Everything runs when the map is missing, or when a change touches test setup,
 the Vitest/Vite config or dependencies. Changed code that no browser test
-executes is listed in the PR comment, along with how many of the changed lines
+executes is listed in the job summary of the `UI Browser Tests` run, along with how many of the changed lines
 the tests that ran executed. Main runs every test file every 6 hours when the UI
 changed since the last full run (and by hand from the Actions tab), which refreshes the map and surfaces anything a
 selection missed. This is the only full run. To

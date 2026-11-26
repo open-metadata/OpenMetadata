@@ -185,17 +185,12 @@ jobs:
             ${{ env.UI_DIR }}/selection.json
             ${{ github.event_name == 'merge_group' && format('{0}/impact-map.json', env.UI_DIR) || '' }}
           retention-days: 1
-      # When nothing runs, the report job is skipped; leave a comment saying
-      # why, so an earlier push's results are not left standing.
+      # When nothing runs, the report job is skipped; say why in the summary.
       - name: Report that no browser test ran
         if: github.event_name == 'pull_request' && steps.plan.outputs.mode == 'none'
         working-directory: ${{ env.UI_DIR }}
-        env:
-          PR: ${{ github.event.pull_request.number }}
         run: |
-          mkdir -p "$RUNNER_TEMP/browser-tests-comment"
           {
-            echo '<!-- ui-browser-tests -->'
             echo '### UI browser tests'
             echo
             echo "**Ran:** none ($(jq -r .reason selection.json))"
@@ -208,15 +203,7 @@ jobs:
               echo
               echo '</details>'
             fi
-          } > "$RUNNER_TEMP/browser-tests-comment/comment.md"
-          echo "$PR" > "$RUNNER_TEMP/browser-tests-comment/pr-number"
-          cat "$RUNNER_TEMP/browser-tests-comment/comment.md" >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v7
-        if: github.event_name == 'pull_request' && steps.plan.outputs.mode == 'none'
-        with:
-          name: browser-tests-comment
-          path: ${{ runner.temp }}/browser-tests-comment/
-          retention-days: 3
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # Core components' own tests, run whenever core changes. A core change
   # selects no browser tests, so this is its gate.
@@ -314,9 +301,9 @@ jobs:
         if: always() && steps.tests.outcome == 'failure'
         run: exit 1
 
-  # Merges the shards into one result. A pull request gets one report (posted
-  # as a comment by ui-browser-tests-comment.yml): what ran and why, the
-  # result, and the changed code the tests executed. A passing run publishes
+  # Merges the shards into one result. A pull request gets one report in the
+  # job summary (PR jobs post no comments, ADR:2026-11-10-pr-jobs-never-receive-credentials):
+  # what ran and why, the result, and the changed code the tests executed. A passing run publishes
   # the impact map.
   browser-tests-report:
     name: browser tests + coverage
@@ -359,24 +346,7 @@ jobs:
         run: |
           node scripts/browser-tests-report.mjs --base HEAD^1 --selection selection.json \
             --junit src/test/browser/junit.xml \
-            --coverage src/test/browser/coverage/coverage-final.json > "$RUNNER_TEMP/comment.md"
-          cat "$RUNNER_TEMP/comment.md" >> "$GITHUB_STEP_SUMMARY"
-      # Pull-request jobs are read-only, so the comment is posted by
-      # ui-browser-tests-comment.yml from this artifact once the run ends.
-      - name: Save the report for the comment
-        if: always() && needs.select.result == 'success' && github.event_name == 'pull_request'
-        env:
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          mkdir -p "$RUNNER_TEMP/browser-tests-comment"
-          cp "$RUNNER_TEMP/comment.md" "$RUNNER_TEMP/browser-tests-comment/comment.md"
-          echo "$PR" > "$RUNNER_TEMP/browser-tests-comment/pr-number"
-      - uses: actions/upload-artifact@v7
-        if: always() && needs.select.result == 'success' && github.event_name == 'pull_request'
-        with:
-          name: browser-tests-comment
-          path: ${{ runner.temp }}/browser-tests-comment/
-          retention-days: 3
+            --coverage src/test/browser/coverage/coverage-final.json >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/download-artifact@v8
         if: github.event_name != 'pull_request'
         with:

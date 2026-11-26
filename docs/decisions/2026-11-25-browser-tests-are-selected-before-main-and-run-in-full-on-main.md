@@ -45,7 +45,8 @@ costs a full run per merge.
   check would pass with no tests run.
 
 ## Consequences
-UI pull requests run a fraction of the suite. A selection miss, including a core change that breaks the
+UI pull requests run a fraction of the suite. What ran, why, the result and the changed code no test executes
+are in the run's job summary; PR jobs post no comments (ADR:2026-11-10-pr-jobs-never-receive-credentials). A selection miss, including a core change that breaks the
 app, passes the pull request and the merge queue, lands on main, and fails the next scheduled full run (up
 to 6 hours later), which posts to #pw-health.
 
