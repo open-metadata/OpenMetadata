@@ -21,6 +21,7 @@ import {
   openApplicationDetails,
 } from '../../utils/applications';
 import {
+  chooseSelectOption,
   clickOutside,
   getApiContext,
   redirectToHomePage,
@@ -362,13 +363,15 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await clickOutside(page);
       await expect(page.locator('[role="listbox"]:visible')).toHaveCount(0);
 
-      await page
+      const languageTrigger = page
         .getByTestId('select-widget-root/searchIndexMappingLanguage')
-        .click();
+        .getByRole('button');
 
-      await expect(page.getByTestId('select-option-JP')).toBeVisible();
-
-      await page.getByTestId('select-option-JP').click();
+      await chooseSelectOption(
+        languageTrigger,
+        page.getByTestId('select-option-JP'),
+        languageTrigger.filter({ hasText: 'JP' })
+      );
 
       const responseAfterSubmit = page.waitForResponse(
         (response) =>
