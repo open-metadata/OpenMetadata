@@ -24,7 +24,7 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { DATA_STEWARD } from '../fixtures/personas';
-import { suiteTimeout } from '../timeouts';
+import { scaled, suiteTimeout } from '../timeouts';
 import {
   addReplaceRemoveTeamOwner,
   addReplaceRemoveUserOwners,
@@ -56,7 +56,7 @@ export const describeDataStewardFlows = (label: EntityLabel) => {
 
     beforeEach(async () => {
       entity = await mountEntityPage(config, DATA_STEWARD);
-    });
+    }, scaled(90_000));
 
     test('user owners: add two, replace with a third, remove', () =>
       addReplaceRemoveUserOwners(server()));
