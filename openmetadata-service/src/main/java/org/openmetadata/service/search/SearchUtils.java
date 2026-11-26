@@ -141,6 +141,77 @@ public final class SearchUtils {
   }
 
   /**
+   * Every Lucene regexp metacharacter that has special meaning in the terms-aggregation {@code
+   * include} regexp (the engine Elasticsearch/OpenSearch use for {@code terms.include.regexp}).
+   * Mirrors the set escaped by {@code ColumnAggregator.toCaseInsensitiveRegex} so the two
+   * include-regex builders stay in sync. {@code $} is not a Lucene regexp anchor but is escaped
+   * for parity and because escaping it is a no-op match-wise.
+   */
+  private static final String LUCENE_REGEXP_METACHARACTERS = ".+*?|[](){}^$\\~@&#<>\"";
+
+  /**
+   * Escapes every Lucene regexp metacharacter in {@code value} so the result matches {@code value}
+   * literally as a terms-aggregation {@code include} regexp. Use this for caller-supplied terms
+   * that are data (tag FQNs, owner names, service names) rather than regexp fragments, so a value
+   * like {@code Pii.Phone (mobile)} or {@code C++} cannot be interpreted as operators and either
+   * fail to compile or over/under-match. Returns {@code null} for {@code null} and the empty
+   * string for the empty string.
+   */
+  public static String escapeLuceneRegexp(String value) {
+    if (value == null || value.isEmpty()) {
+      return value;
+    }
+    StringBuilder sb = new StringBuilder(value.length() * 2);
+    for (char c : value.toCharArray()) {
+      if (LUCENE_REGEXP_METACHARACTERS.indexOf(c) >= 0) {
+        sb.append('\\');
+      }
+      sb.append(c);
+    }
+    return sb.toString();
+  }
+
+  /** The three terms-aggregation {@code include} regexps the best-match strategy builds. */
+  public record BestMatchPatterns(String exact, String prefix, String contains) {}
+
+  /**
+   * Builds the exact, prefix, and contains {@code include} regexps for the best-match aggregation
+   * strategy from the caller's {@code fieldValue}/{@code value}.
+   *
+   * <p>Two caller shapes are supported so the public {@code /v1/search/aggregate} endpoint is safe
+   * for literal data without breaking the pre-built-regexp caller:
+   *
+   * <ul>
+   *   <li><b>Literal quick-filter</b> — the value wrapped in {@code .*….*} (e.g. {@code
+   *       .*pii.phone (mobile).*}). The inner term is run through {@link #escapeLuceneRegexp} so
+   *       Lucene regexp metacharacters the caller typed are matched literally; the {@code .*}
+   *       wildcards are re-attached to the prefix and contains patterns so the three buckets still
+   *       rank exact → starts-with → contains. Before this, only {@code .} was escaped, so values
+   *       like {@code R&D Team} or trailing {@code \} either silently mis-matched or rejected the
+   *       whole {@code _search} request.
+   *   <li><b>Pre-built regexp</b> — a caller-constructed Lucene regexp without the {@code .*….*}
+   *       wrapper (e.g. the tag-FQN alternation {@code (pii\.a|pii\.b)} built by the UI's
+   *       {@code buildTagFqnIncludeRegex}). Passed through verbatim; escaping the operators would
+   *       turn the alternation into a literal and break the include filter.
+   * </ul>
+   *
+   * <p>The two shapes are told apart by the {@code .*} wrapper the literal path always adds —
+   * {@code isBestMatchSearchPattern} already guarantees {@code containsPattern} is non-empty and
+   * not the bare {@code .*} match-all. For the pre-built regexp shape all three sub-aggregations
+   * use the caller's pattern verbatim: appending {@code .*} for the prefix sub-agg would let child
+   * tags (e.g. {@code pii.a.child}) displace requested tags (e.g. {@code pii.b}) under the
+   * best-match merge limit, producing false-zero bucket counts.
+   */
+  public static BestMatchPatterns buildBestMatchIncludePatterns(String containsPattern) {
+    boolean isLiteralWildcard = containsPattern.startsWith(".*") && containsPattern.endsWith(".*");
+    if (isLiteralWildcard) {
+      String escapedRaw = escapeLuceneRegexp(extractRawSearchValue(containsPattern));
+      return new BestMatchPatterns(escapedRaw, escapedRaw + ".*", ".*" + escapedRaw + ".*");
+    }
+    return new BestMatchPatterns(containsPattern, containsPattern, containsPattern);
+  }
+
+  /**
    * Merges three ranked aggregation buckets — exact, prefix, contains — from a response produced
    * by {@link #exactAggKey}, {@link #prefixAggKey}, {@link #containsAggKey} sub-aggregations into
    * a single {@code sterms#fieldName} bucket list ordered exact → prefix → contains, deduped, and

@@ -38,7 +38,7 @@ Glossary Term pages embed.
   Collate picks up through the submodule, so it must not break the Collate imports.
 - Collate CI builds against OSS `main`, so the Collate copy lands before OSS deletes its own.
 - The OSS `Ontology RDF` Playwright project stays, empty, until the `rdf` lane in
-  `playwright-e2e-reusable.yml` stops listing it; `Knowledge Graph` keeps that lane.
+  `reusable-playwright-e2e.yml` stops listing it; `Knowledge Graph` keeps that lane.
 
 ## Amendment
 

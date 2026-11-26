@@ -43,11 +43,16 @@ import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextC
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ContextCenterMemoriesPage from './ContextCenterMemoriesPage';
 
-// Resource-level permission (getResourcePermission(CONTEXT_MEMORY)) — no prior
-// test coverage. This suite covers the flagged raw `permissions.EditAll` read
-// (now `canEditAll`, wired to MemoriesView/CreateMemoryModal's `canEdit` prop).
-
 const mockGetResourcePermission = jest.fn();
+
+jest.mock(
+  '../../../hooks/discovery/context-center/useMemoryActionPermissions',
+  () => ({
+    useMemoryActionPermissions: () => ({
+      getMemoryActions: () => ({ canEdit: false, canDelete: false }),
+    }),
+  })
+);
 
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({
@@ -126,23 +131,17 @@ jest.mock(
   '../../../components/ContextCenter/MemoriesView/MemoriesView.component',
   () => ({
     __esModule: true,
-    default: jest
-      .fn()
-      .mockImplementation(({ canEdit, canDelete, data, onDeleteMemory }) => (
-        <div
-          data-can-delete={String(Boolean(canDelete))}
-          data-can-edit={String(Boolean(canEdit))}
-          data-memory-count={data.length}
-          data-testid="memories-view">
-          <button
-            aria-label="delete"
-            data-testid="mock-delete-memory"
-            onClick={() =>
-              onDeleteMemory?.({ id: 'memory-1', title: 'Test Memory' })
-            }
-          />
-        </div>
-      )),
+    default: jest.fn().mockImplementation(({ data, onDeleteMemory }) => (
+      <div data-memory-count={data.length} data-testid="memories-view">
+        <button
+          aria-label="delete"
+          data-testid="mock-delete-memory"
+          onClick={() =>
+            onDeleteMemory?.({ id: 'memory-1', title: 'Test Memory' })
+          }
+        />
+      </div>
+    )),
   })
 );
 
@@ -186,7 +185,6 @@ jest.mock(
       .fn()
       .mockImplementation(
         ({
-          canEdit,
           isOpen,
           memoryToEdit,
           onClose,
@@ -195,7 +193,6 @@ jest.mock(
           viewOnly,
         }: CreateMemoryModalProps) => (
           <div
-            data-can-edit={String(Boolean(canEdit))}
             data-open={String(isOpen)}
             data-testid={
               viewOnly ? 'view-memory-modal' : 'create-memory-modal'
@@ -258,51 +255,6 @@ const renderPage = (route = '/') =>
 describe('ContextCenterMemoriesPage — permissions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  it('wires EditAll (via canEditAll) into MemoriesView/CreateMemoryModal canEdit when granted', async () => {
-    mockGetResourcePermission.mockResolvedValue({
-      Create: true,
-      Delete: true,
-      EditAll: true,
-    });
-
-    renderPage();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('memories-view')).toHaveAttribute(
-        'data-can-edit',
-        'true'
-      );
-    });
-
-    expect(screen.getByTestId('create-memory-modal')).toHaveAttribute(
-      'data-can-edit',
-      'true'
-    );
-  });
-
-  it('wires EditAll (via canEditAll) into MemoriesView/CreateMemoryModal canEdit when denied', async () => {
-    mockGetResourcePermission.mockResolvedValue({
-      Create: true,
-      Delete: true,
-      EditAll: false,
-    });
-
-    renderPage();
-
-    await waitFor(() => {
-      expect(mockGetResourcePermission).toHaveBeenCalled();
-    });
-
-    expect(screen.getByTestId('memories-view')).toHaveAttribute(
-      'data-can-edit',
-      'false'
-    );
-    expect(screen.getByTestId('create-memory-modal')).toHaveAttribute(
-      'data-can-edit',
-      'false'
-    );
   });
 
   it.each([
