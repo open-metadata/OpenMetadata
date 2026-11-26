@@ -320,7 +320,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: calc(var(--tw-spacing) * 8);
+    // Tall enough for the wordmark at the classic sidebar's 40px.
+    height: calc(var(--tw-spacing) * 10);
     flex-shrink: 0;
     gap: 8px;
   }
@@ -338,7 +339,7 @@
     // Height-constrain the wordmark; width follows its own aspect (works for
     // any brand logo) and is capped so a very wide mark can't overflow.
     svg {
-      height: calc(var(--tw-spacing) * 6);
+      height: calc(var(--tw-spacing) * 10);
       width: auto;
       max-width: 100%;
     }

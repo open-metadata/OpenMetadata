@@ -209,10 +209,8 @@ public class GenericBackgroundWorker implements Managed {
   }
 
   private boolean isMemoryJob(BackgroundJob job) {
-    // Collate can load an older generated JobType enum while running this worker.
-    return job.getJobType() == BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION
-        || (job.getJobType() != null
-            && JobDAO.MEMORY_GLOSSARY_DERIVATION_JOB_TYPE.equals(job.getJobType().name()));
+    return BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION.equals(job.getJobType())
+        || BackgroundJobTypes.MEMORY_GLOSSARY_DERIVATION.equals(job.getJobType());
   }
 
   private void processJob(BackgroundJob job) {
@@ -250,7 +248,7 @@ public class GenericBackgroundWorker implements Managed {
   // requeue. Other types are still marked FAILED, which Collate's admin-ops jobs depend on.
   // ADR:2026-11-09-a-server-stop-leaves-memory-extraction-for-recovery
   static boolean isLeftForRecovery(BackgroundJob job, Throwable failure) {
-    return job.getJobType() == BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION
+    return BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION.equals(job.getJobType())
         && Interruptions.isStopInterruption(failure);
   }
 

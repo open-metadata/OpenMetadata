@@ -62,10 +62,31 @@ Once an approach is approved, break it into ordered tasks:
 
 For Python changes, use the locked Nox sessions through Make from the checkout root:
 `make unit_ingestion ARGS="-n 0 tests/unit/PATH"`.
-Include lock validation with the pinned `ingestion/.nox/bootstrap/bin/uv lock --check --project ingestion`.
+Include lock validation with the pinned `"$(python3 scripts/python_tools.py uv-path)" lock --check --project ingestion`.
 When generation inputs change, include `make generate ARGS=--python-only` and
 `python3 scripts/check_generated_models.py --check`. Preserve public aliases and
 intentional test exclusions when migrating command callers.
+
+**UI work: include a component map in the plan.** Before any UI task, map every piece of
+the screen to the existing component it will use, from `@openmetadata/ui-core-components`
+or `openmetadata-ui/src/main/resources/ui/src/components/common/`.
+Use the concept table in `.claude/rules/single-source.md` and the reuse table in
+`.claude/rules/component-library.md`:
+
+```markdown
+| Screen piece | Component (and props) | New? |
+|---|---|---|
+| Page title, breadcrumb, actions | `PageLayout.PageHeader` + `HeaderBreadcrumb` | no |
+| Off / Warn / Block choice | `ButtonGroup` | no |
+| Read-only switch with explanation | `Toggle` + core `tooltip` prop | core change (own PR) |
+| Section inside a drawer or settings modal | `Card variant="muted"` + `Typography` + `Box` (ADR:2026-11-05-nested-cards-sit-one-step-off-their-panel) | no |
+| Editor with a different preview source | existing editor + `onPreview` callback prop | prop on the original |
+```
+
+Every row marked new names what was checked and why it does not fit. A new row may not be a
+wrapper that only forwards props to a core component, or a copy of an existing component with
+one call changed: those become a prop on the original component (or a core change). Each new
+component file also lists its `X.test.tsx` in the tasks. The user approves the map with the plan.
 
 **OpenMetadata task ordering pattern:**
 ```
@@ -94,3 +115,5 @@ intentional test exclusions when migrating command callers.
 - **No placeholder code.** Every step in the plan must describe real, complete changes.
 - **Schema-first.** If the feature touches data models, start with JSON Schema changes in `openmetadata-spec/`.
 - **User approves before code.** Don't write code until the plan is approved.
+- **No UI plan without a component map.** A UI change whose plan does not map each screen piece
+  to an existing component is not ready for approval.

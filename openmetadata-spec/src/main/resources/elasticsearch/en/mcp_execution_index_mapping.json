@@ -240,6 +240,10 @@
           },
           "errorMessage": {
             "type": "text"
+          },
+          "parameters": {
+            "type": "object",
+            "enabled": false
           }
         }
       },
@@ -271,6 +275,10 @@
           },
           "tokensGenerated": {
             "type": "integer"
+          },
+          "arguments": {
+            "type": "object",
+            "enabled": false
           }
         }
       },
@@ -353,6 +361,10 @@
       },
       "deleted": {
         "type": "boolean"
+      },
+      "metadata": {
+        "type": "object",
+        "enabled": false
       }
     }
   }

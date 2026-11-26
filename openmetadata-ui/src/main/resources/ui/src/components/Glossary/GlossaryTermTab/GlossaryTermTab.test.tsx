@@ -24,6 +24,7 @@ import { omit } from 'lodash';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   EntityStatus,
   ProviderType,
@@ -32,7 +33,10 @@ import {
   mockedGlossaryTerms,
   MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
-import { findExpandableKeysForArray } from '../../../utils/GlossaryPureUtils';
+import {
+  findExpandableKeysForArray,
+  getGlossaryEntityLink,
+} from '../../../utils/GlossaryPureUtils';
 import GlossaryTermTab from './GlossaryTermTab.component';
 import { ModifiedGlossaryTerm } from './GlossaryTermTab.interface';
 const mockOnAddGlossaryTerm = jest.fn();
@@ -1020,6 +1024,125 @@ describe('Test GlossaryTermTab component', () => {
             fields: 'about,assignees,createdBy',
           })
         );
+      });
+    });
+  });
+
+  describe('Task Pagination (more than one page of open approval tasks)', () => {
+    it('follows the response cursor to load every open approval task', async () => {
+      const firstPage = Array.from({ length: PAGE_SIZE_LARGE }, (_, i) => ({
+        id: `task-${i}`,
+        about: {
+          type: EntityType.GLOSSARY_TERM,
+          fullyQualifiedName: `Business Glossary.Term${i}`,
+        },
+      }));
+      const secondPage = [
+        {
+          id: `task-${PAGE_SIZE_LARGE}`,
+          about: {
+            type: EntityType.GLOSSARY_TERM,
+            fullyQualifiedName: 'Business Glossary.OldestPending',
+          },
+        },
+      ];
+      mockListTasks
+        .mockResolvedValueOnce({
+          data: firstPage,
+          paging: { after: 'cursor-2' },
+        })
+        .mockResolvedValueOnce({ data: secondPage, paging: { after: null } });
+
+      render(<GlossaryTermTab isGlossary />, { wrapper: MemoryRouter });
+
+      await waitFor(() => expect(mockListTasks).toHaveBeenCalledTimes(2));
+
+      expect(mockListTasks.mock.calls[0][0]).toEqual(
+        expect.objectContaining({ after: undefined })
+      );
+      expect(mockListTasks.mock.calls[1][0]).toEqual(
+        expect.objectContaining({ after: 'cursor-2' })
+      );
+    });
+
+    it('stops paging once the cursor is exhausted', async () => {
+      mockListTasks.mockResolvedValueOnce({
+        data: [
+          {
+            id: 'only-task',
+            about: {
+              type: EntityType.GLOSSARY_TERM,
+              fullyQualifiedName: 'Business Glossary.Only',
+            },
+          },
+        ],
+        paging: { after: undefined },
+      });
+
+      render(<GlossaryTermTab isGlossary />, { wrapper: MemoryRouter });
+
+      await waitFor(() => expect(mockListTasks).toHaveBeenCalledTimes(1));
+    });
+
+    it('keeps the oldest pending proposal decidable when its task lands on a later page', async () => {
+      const oldestFqn = 'Business Glossary.OldestPending';
+      const term = {
+        ...mockedGlossaryTerms[0],
+        name: 'OldestPending',
+        displayName: 'OldestPending',
+        fullyQualifiedName: oldestFqn,
+        entityStatus: EntityStatus.InReview,
+        childrenCount: 0,
+        children: undefined,
+      };
+      mockUseGlossaryStore.glossaryChildTerms = [term as ModifiedGlossaryTerm];
+
+      mockListTasks
+        .mockResolvedValueOnce({
+          data: Array.from({ length: PAGE_SIZE_LARGE }, (_, i) => ({
+            id: `newer-task-${i}`,
+            about: {
+              type: EntityType.GLOSSARY_TERM,
+              fullyQualifiedName: `Business Glossary.Newer${i}`,
+            },
+          })),
+          paging: { after: 'cursor-2' },
+        })
+        .mockResolvedValueOnce({
+          data: [
+            {
+              id: 'task-50',
+              about: {
+                type: EntityType.GLOSSARY_TERM,
+                fullyQualifiedName: oldestFqn,
+              },
+              assignees: [{ id: 'user-1' }],
+            },
+          ],
+          paging: { after: null },
+        });
+
+      mockPermissionForApproveOrReject.mockImplementation(
+        (record, _user, threads) => {
+          const entityLink = getGlossaryEntityLink(
+            record.fullyQualifiedName ?? ''
+          );
+          const task = threads[entityLink]?.[0];
+
+          return { permission: Boolean(task), taskId: task?.id ?? '' };
+        }
+      );
+
+      render(<GlossaryTermTab isGlossary={false} />, { wrapper: MemoryRouter });
+
+      await waitFor(() => expect(mockListTasks).toHaveBeenCalledTimes(2));
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('OldestPending-approve-btn')
+        ).toBeInTheDocument();
+        expect(
+          screen.getByTestId('OldestPending-reject-btn')
+        ).toBeInTheDocument();
       });
     });
   });

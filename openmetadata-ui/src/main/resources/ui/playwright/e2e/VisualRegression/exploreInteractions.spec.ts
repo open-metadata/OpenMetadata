@@ -196,7 +196,11 @@ for (const theme of VISUAL_THEMES) {
         } else if (scene === 'sort-menu') {
           await page.getByTestId('sorting-dropdown-label').click();
           target = page.getByRole('menu');
-          await expect(target.getByRole('menuitemradio')).not.toHaveCount(0);
+          await expect(
+            target
+              .getByRole('group', { name: 'Popularity' })
+              .getByRole('menuitemradio', { name: 'Most votes first' })
+          ).toHaveAttribute('aria-checked', 'true');
         } else if (scene.startsWith('export-')) {
           await openTools(page);
           await page.getByRole('menuitemradio', { name: /^Export$/i }).click();

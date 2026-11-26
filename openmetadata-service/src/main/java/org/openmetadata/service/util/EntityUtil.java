@@ -41,6 +41,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -161,9 +162,7 @@ public final class EntityUtil {
       (constraint1, constraint2) ->
           constraint1.getConstraintType() == constraint2.getConstraintType()
               && constraint1.getColumns().equals(constraint2.getColumns())
-              && ((constraint1.getReferredColumns() == null
-                      && constraint2.getReferredColumns() == null)
-                  || (constraint1.getReferredColumns().equals(constraint2.getReferredColumns())));
+              && Objects.equals(constraint1.getReferredColumns(), constraint2.getReferredColumns());
 
   /**
    * Sort a constraint's column and referredColumn lists together as pairs keyed by the local

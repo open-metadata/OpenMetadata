@@ -35,10 +35,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 class FqnKeyedRowCleanupTest {
   private static final String FQN = "svc";
   private static final String HASH = FullyQualifiedName.buildHash(FQN);
-  private static final List<EntityTable> TABLES =
-      List.of(
-          new EntityTable("table_entity", "fqnHash"),
-          new EntityTable("database_service_entity", "nameHash"));
 
   private final List<String> preparedSql = new ArrayList<>();
   private final List<Object> boundValues = new ArrayList<>();
@@ -107,14 +103,16 @@ class FqnKeyedRowCleanupTest {
     bindings.put("hash1", "h1");
 
     tagUsage(database)
-        .listEntityFqnHashes(FqnKeyedRowCleanup.inProbes(TABLES, bindings.keySet()), bindings);
+        .listEntityFqnHashes(
+            FqnKeyedRowCleanup.inProbes(tables(database), bindings.keySet()), bindings);
 
     assertEquals(
         List.of(
-            "SELECT probe.hash FROM ("
-                + "(SELECT fqnHash AS hash FROM table_entity WHERE fqnHash IN (?, ?)) UNION ALL "
-                + "(SELECT nameHash AS hash FROM database_service_entity WHERE nameHash IN (?, ?))"
-                + ") probe"),
+            "SELECT probe.hash FROM ((SELECT "
+                + selected(database, "fqnHash")
+                + " AS hash FROM table_entity WHERE fqnHash IN (?, ?)) UNION ALL (SELECT "
+                + selected(database, "nameHash")
+                + " AS hash FROM database_service_entity WHERE nameHash IN (?, ?))) probe"),
         preparedSql);
     assertEquals(List.of("h0", "h1", "h0", "h1"), boundValues);
   }
@@ -125,7 +123,7 @@ class FqnKeyedRowCleanupTest {
     Map<String, String> prefixes = new LinkedHashMap<>();
     prefixes.put("under0", "a.%");
     prefixes.put("under1", "b.%");
-    List<EntityTable> table = TABLES.subList(0, 1);
+    List<EntityTable> table = tables(database).subList(0, 1);
 
     tagUsage(database)
         .listEntityFqnHashes(FqnKeyedRowCleanup.anyUnderProbes(table, prefixes.keySet()), prefixes);
@@ -136,10 +134,12 @@ class FqnKeyedRowCleanupTest {
 
     assertEquals(
         List.of(
-            "SELECT probe.hash FROM ((SELECT fqnHash AS hash FROM table_entity"
-                + " WHERE (fqnHash LIKE ? OR fqnHash LIKE ?) LIMIT 1)) probe",
-            "SELECT probe.hash FROM ((SELECT fqnHash AS hash FROM table_entity"
-                + " WHERE fqnHash LIKE ? LIMIT 101)) probe"),
+            "SELECT probe.hash FROM ((SELECT "
+                + selected(database, "fqnHash")
+                + " AS hash FROM table_entity WHERE (fqnHash LIKE ? OR fqnHash LIKE ?) LIMIT 1)) probe",
+            "SELECT probe.hash FROM ((SELECT "
+                + selected(database, "fqnHash")
+                + " AS hash FROM table_entity WHERE fqnHash LIKE ? LIMIT 101)) probe"),
         preparedSql);
     assertEquals(List.of("a.%", "b.%", "a.%"), boundValues);
   }
@@ -175,6 +175,19 @@ class FqnKeyedRowCleanupTest {
     assertEquals(
         List.of(HASH + ".%", "k", "k.%", HASH + ".%", "k", "k.%", Entity.TYPE, Entity.TYPE),
         boundValues);
+  }
+
+  private static List<EntityTable> tables(ConnectionType database) {
+    boolean onMySql = database == ConnectionType.MYSQL;
+    return List.of(
+        new EntityTable("table_entity", "fqnHash", onMySql),
+        new EntityTable("database_service_entity", "nameHash", onMySql));
+  }
+
+  private static String selected(ConnectionType database, String hashColumn) {
+    return database == ConnectionType.MYSQL
+        ? "CONVERT(" + hashColumn + " USING utf8mb4) COLLATE utf8mb4_bin"
+        : hashColumn;
   }
 
   private ClassificationTagDAOs.TagUsageDAO tagUsage(ConnectionType database) {

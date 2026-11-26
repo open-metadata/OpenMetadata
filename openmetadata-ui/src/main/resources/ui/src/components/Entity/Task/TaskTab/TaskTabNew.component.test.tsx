@@ -1238,6 +1238,41 @@ describe('TaskTabNew Component', () => {
     expect(screen.getByTestId('comments-input-field')).toBeInTheDocument();
   });
 
+  it('leads an assigned incident with Resolve, not its return to New', async () => {
+    const { useAuth } = require('../../../../hooks/authHooks');
+    useAuth.mockReturnValue({ isAdminUser: true });
+    const transition = (id: string, label: string, targetStageId: string) => ({
+      id,
+      label,
+      targetStageId,
+      targetTaskStatus: TaskEntityStatus.InProgress,
+    });
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          entityType={EntityType.TEST_CASE}
+          task={{
+            ...MOCK_INCIDENT_TASK,
+            workflowStageId: 'assigned',
+            availableTransitions: [
+              transition('new', 'New', 'new'),
+              transition('ack', 'Acknowledge', 'ack'),
+              transition('reassign', 'Reassign', 'assigned'),
+              transition('resolve', 'Resolve', 'resolved'),
+            ],
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(
+      screen.getByTestId('workflow-task-action-primary')
+    ).toHaveTextContent('Resolve');
+  });
+
   const buildAssignees = (count: number) =>
     Array.from({ length: count }, (_, index) => ({
       id: `assignee-${index}`,

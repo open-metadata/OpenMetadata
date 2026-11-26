@@ -37,6 +37,7 @@ from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_high
 
 READ_DAGS = [("can_read", "DAGs")]
 EDIT_DAGS = [("can_edit", "DAGs")]
+CREATE_DAGS = [("can_create", "DAGs")]
 READ_AND_DELETE_DAGS = [("can_read", "DAGs"), ("can_delete", "DAGs")]
 
 
@@ -145,6 +146,7 @@ def app(monkeypatch):
 
     add_route("/read", READ_DAGS)
     add_route("/edit", EDIT_DAGS)
+    add_route("/create", CREATE_DAGS)
     add_route("/read-and-delete", READ_AND_DELETE_DAGS)
     return application
 
@@ -332,6 +334,60 @@ class TestBasicCredentialsAgainstFabUserStore:
         assert app.probe_calls == []
 
 
+class FabRoleUser(AuthenticatedUser):
+    """A FAB user carrying its role's (action, resource) pairs, as FAB stores them on `perms`."""
+
+    def __init__(self, user_id: str, perms: set[tuple[str, str]]):
+        super().__init__(user_id)
+        self.perms = perms
+
+
+class FabRoleUserStore:
+    def __init__(self, accounts: dict[str, tuple[str, set[tuple[str, str]]]]):
+        self.accounts = accounts
+
+    def auth_user_db(self, username, password):
+        stored_password, perms = self.accounts.get(username, (None, set()))
+        if stored_password == password:
+            return FabRoleUser(username, perms)
+        return None
+
+
+class TestBasicCredentialsAgainstFabAuthManager:
+    """
+    Authorization through the real FabAuthManager, the auth manager the Airflow Helm chart
+    configures. FAB's DAGs resource only carries can_read/can_edit/can_delete, so a route
+    declaring can_create on DAGs (health-auth, deploy) must still admit a user holding the
+    full DAG permission set, as the chart's Admin does.
+    """
+
+    @pytest.fixture
+    def manager(self, use_auth_manager):
+        fab = pytest.importorskip("airflow.providers.fab.auth_manager.fab_auth_manager")
+        from airflow.providers.fab.www.security.permissions import DAG_ACTIONS
+
+        manager = fab.FabAuthManager()
+        manager.security_manager = FabRoleUserStore(
+            {
+                "admin": ("adminpass", {(action, "DAGs") for action in DAG_ACTIONS}),
+                "viewer": ("viewerpass", {("can_read", "DAGs")}),
+            }
+        )
+        return use_auth_manager(manager)
+
+    def test_admin_dispatches_on_create_route(self, app, manager):
+        response = app.test_client().get("/create", headers=_basic("admin", "adminpass"))
+
+        assert response.status_code == 200
+        assert app.probe_calls == ["/create"]
+
+    def test_viewer_is_forbidden_on_create_route(self, app, manager):
+        response = app.test_client().get("/create", headers=_basic("viewer", "viewerpass"))
+
+        assert response.status_code == 403
+        assert app.probe_calls == []
+
+
 def _dict_users_simple_auth_manager(simple):
     """
     The static API as Airflow 3.0 and 3.1 ship it: `get_users()` returns dicts and
@@ -395,6 +451,12 @@ class TestBasicCredentialsAgainstSimpleAuthManager:
         response = app.test_client().get("/read", headers=_basic("admin", "nope"))
 
         assert response.status_code == 401
+        assert app.probe_calls == []
+
+    def test_viewer_credentials_are_forbidden_on_create_route(self, app, manager):
+        response = app.test_client().get("/create", headers=_basic("viewer", "viewerpass"))
+
+        assert response.status_code == 403
         assert app.probe_calls == []
 
     def test_user_missing_from_configuration_is_rejected(self, app, manager):

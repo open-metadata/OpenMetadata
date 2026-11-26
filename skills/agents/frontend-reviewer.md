@@ -20,7 +20,7 @@ OpenMetadata frontend uses:
 - **Tailwind CSS v4** with `tw:` prefix for all utility classes
 - **CSS custom properties** for design tokens (colors, spacing, shadows, radius)
 - **react-i18next** for internationalization — no string literals in UI
-- **Jest** for unit tests, **Playwright** for E2E tests
+- **Jest** for unit tests, **Vitest browser mode** for page-behaviour tests (`*.browser.test.tsx`), **Playwright** for cross-feature E2E journeys
 - **ESLint** (flat config, eslint.config.mjs) + **Prettier** for code formatting
 - **Zustand** for global state, `useState` for component state
 
@@ -265,7 +265,7 @@ any newly added file.
 - Test what the user sees (`screen.getByText`, `screen.getByRole`), not implementation
 - Use `it()` consistently (not `test()`)
 - Blank lines around `describe`, `it`, `beforeEach` blocks
-- Playwright E2E tests for new user-facing features (follow PLAYWRIGHT_DEVELOPER_HANDBOOK.md)
+- Vitest browser tests for new UI page behaviour (`*.browser.test.tsx`); Playwright E2E for cross-feature journeys (`.claude/rules/frontend-browser-tests.md`; `PLAYWRIGHT_DEVELOPER_HANDBOOK.md` for journeys)
 
 ## Pre-Submit Checklist
 
@@ -306,7 +306,7 @@ yarn test src/path/to/changed/component
 3. **i18n**: Any string literals in JSX instead of `t('label.xxx')`?
 4. **Component patterns**: Correct hooks usage, proper loading/error states?
 5. **Styling**: `tw:` prefix, CSS custom properties, no hardcoded values?
-6. **Testing**: Jest tests for components, Playwright for user-facing features?
+6. **Testing**: Jest for components, browser tests for page behaviour, Playwright for cross-feature journeys?
 
 ## Output Format
 

@@ -163,3 +163,42 @@ answers it with HTTP 400 "Only cube is supported to get SQL view".
 - **A Live Intelligent Cube** keeps no copy of its data, and its SQL view answers "Live Intelligent
   Cubes cannot be published". Its SQL too exists only once it queries the warehouse, so it is not
   read either: no lineage, and one warning that says why.
+
+## Amendment: v8 2026-11-21, schema cube metrics get column edges
+
+Supersedes the v6 rule that a schema cube metric gets no column edge. Two sources tell which
+warehouse columns a metric reads; neither maps generated `WJXBFSn` aliases by position.
+
+- **The alias the SQL gives it.** The SQL generator names a metric's projection after the
+  `columnNameAlias` set on the metric, else, on a server set to derive aliases from names, after its
+  name: `Revenue Rank` is `REVENUERANK`. The metric is linked to the warehouse columns the
+  projections of that alias read, in every SELECT of every pass; a projection over a derived table
+  reads none. Names are compared normalized (`normalized`). Every object of the dataset first claims
+  the name it is projected under (a metric its column alias, else its name; an attribute its name),
+  and an alias is a metric's only when no other object, by id, claims it. A metric whose definition
+  cannot be read claims its name, so it blocks a projection that may be its own without taking it. A display name alone is
+  never trusted: a metric named `Revenue` and aliased `NETAMOUNT` does not take the `REVENUE`
+  projection of a metric aliased `REVENUE`. The metrics a definition references are matched the same
+  way, on their own column alias, whether or not the dataset holds them: `% Revenue` never takes
+  `Revenue`'s `REVENUE`.
+  - The column alias comes from the metric's definition, so it needs Architect privileges. Without
+    them no metric gets a column edge: a name alone cannot tell a metric's projection from one a
+    column alias set on another metric names, and a missing edge is better than a wrong one.
+  - A metric outside the dataset, referenced by none of its metrics' definitions, can still project
+    under a dataset metric's name; the claims cover only what the dataset and those definitions
+    reach.
+- **Its definition, otherwise.** `GET /model/metrics/{id}?showExpressionAs=tokens` (Architect
+  privileges) resolves every object the metric's expression names. Tokens, not the tree: a metric
+  built in Workstation wraps `Sum(Quantity)` in an embedded aggregation that no endpoint serves, and
+  only the tokens resolve the fact inside it. Every metric referenced is followed, up to
+  `MAX_METRIC_PARTS` per metric, except one the SQL already names, which takes that alias's columns.
+  Every fact reached is read with `GET /model/facts/{id}`; its expressions map columns to logical
+  tables as attribute forms do, and the metric is linked to those the cube SQL reads.
+- A metric with no schema definition (one derived in a dossier) or one that cannot be read gets no
+  column edge, and one warning per run says so; a 403 stops all modeling calls as for attributes.
+- Metric definitions (column alias and references) and fact columns are cached per id
+  (`CACHE_SIZE` LRU). Every metric of a schema cube costs one modeling call per run, for its column
+  alias; one the SQL does not name costs one more per metric and fact it is built from.
+- An attribute form or fact expression maps every column it names, at any depth: a form like
+  `ApplySimple("#0 || #1", first_name, last_name)` links both columns, where v6 read only a bare
+  column.

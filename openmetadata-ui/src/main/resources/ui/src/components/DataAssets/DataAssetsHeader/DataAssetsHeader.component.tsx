@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 import {
-  Box,
   Button,
   ButtonUtility,
   ClassificationTag,
-  Divider,
   FeaturedIcon,
   Owner,
   Tooltip,
@@ -87,6 +85,7 @@ import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
 import {
+  ExtraInfoLabel,
   getDataAssetsHeaderInfo,
   HeaderDotSeparator,
   isRecordedLifeCycleTimestamp,
@@ -822,20 +821,13 @@ export const DataAssetsHeader = ({
 
     return (
       <>
-        <Box align="center" gap={2}>
-          <Typography as="span" color="secondary" size="text-sm">
-            {t('label.updated-at-source')}
-          </Typography>
-          <Typography
-            as="span"
-            data-testid="source-updated-at"
-            size="text-sm"
-            tooltip={formatDateTime(sourceUpdatedAt)}
-            weight="medium">
-            {getRelativeTime(sourceUpdatedAt)}
-          </Typography>
-        </Box>
-        <Divider className="tw:h-5" orientation="vertical" />
+        <HeaderDotSeparator />
+        <ExtraInfoLabel
+          dataTestId="source-updated-at"
+          label={t('label.updated-at-source')}
+          tooltip={formatDateTime(sourceUpdatedAt)}
+          value={getRelativeTime(sourceUpdatedAt)}
+        />
       </>
     );
   };
@@ -845,7 +837,6 @@ export const DataAssetsHeader = ({
 
     return (
       <div className="tw:flex tw:items-center tw:gap-4">
-        {renderSourceUpdatedAt()}
         {canShowFollowStat && onFollowClick && (
           <StatItem
             iconNode={<FollowStarIcon selected={isFollowing} />}
@@ -1270,6 +1261,7 @@ export const DataAssetsHeader = ({
           {renderRetentionAndMetricSection()}
 
           {extraInfo}
+          {renderSourceUpdatedAt()}
         </div>
       </div>
 

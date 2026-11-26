@@ -13,7 +13,9 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,6 +24,8 @@ import java.lang.reflect.Method;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,20 +34,31 @@ import org.jdbi.v3.core.statement.StatementContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabelMetadata;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class EntityRepositoryCertificationTest {
+
+  private static final long APPLIED_AT = 1_700_000_000_000L;
+  private static final long STORED_EXPIRY = 1_600_000_000_000L;
+  private static final long NINETY_DAYS = Duration.ofDays(90).toMillis();
+  private static final String PIPELINE_FQN = "service.my-pipeline";
 
   private CollectionDAO daoCollection;
   private TagUsageDAO tagUsageDAO;
@@ -442,7 +457,7 @@ class EntityRepositoryCertificationTest {
   void applyCertificationSkipsWhenSameCertAlreadyExists() {
     TagLabel tagLabel = new TagLabel().withTagFQN("Certification.Gold");
     AssetCertification incoming =
-        new AssetCertification().withTagLabel(tagLabel).withExpiryDate(null);
+        new AssetCertification().withTagLabel(tagLabel).withExpiryDate(STORED_EXPIRY);
 
     Pipeline entity =
         new Pipeline()
@@ -457,6 +472,7 @@ class EntityRepositoryCertificationTest {
     existingEntry.setSource(TagLabel.TagSource.CLASSIFICATION.ordinal());
     existingEntry.setLabelType(TagLabel.LabelType.AUTOMATED.ordinal());
     existingEntry.setState(TagLabel.State.CONFIRMED.ordinal());
+    existingEntry.setMetadata(new TagLabelMetadata().withExpiryDate(STORED_EXPIRY));
 
     when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
         .thenReturn(List.of(existingEntry));
@@ -884,5 +900,155 @@ class EntityRepositoryCertificationTest {
     assertEquals(TagLabel.LabelType.AUTOMATED, label.getLabelType());
     assertEquals(TagLabel.State.CONFIRMED, label.getState());
     assertEquals(12345L, label.getMetadata().getExpiryDate());
+  }
+
+  /** A validity period no hard-coded default matches, so a derivation that ignores it fails. */
+  private static MockedStatic<SettingsCache> certificationSettings(String validityPeriod) {
+    MockedStatic<SettingsCache> settings = mockStatic(SettingsCache.class, CALLS_REAL_METHODS);
+    settings
+        .when(
+            () ->
+                SettingsCache.getSettingOrDefault(
+                    eq(SettingsType.ASSET_CERTIFICATION_SETTINGS),
+                    any(),
+                    eq(AssetCertificationSettings.class)))
+        .thenReturn(
+            new AssetCertificationSettings()
+                .withAllowedClassification("Certification")
+                .withValidityPeriod(validityPeriod));
+    return settings;
+  }
+
+  private static CollectionDAO.TagUsageDAO.TagLabelWithFQNHash certRow(
+      String tagFqn, Date appliedAt, TagLabelMetadata metadata) {
+    CollectionDAO.TagUsageDAO.TagLabelWithFQNHash row =
+        new CollectionDAO.TagUsageDAO.TagLabelWithFQNHash();
+    row.setTagFQN(tagFqn);
+    row.setTargetFQNHash(FullyQualifiedName.buildHash(PIPELINE_FQN));
+    row.setSource(TagLabel.TagSource.CLASSIFICATION.ordinal());
+    row.setLabelType(TagLabel.LabelType.AUTOMATED.ordinal());
+    row.setState(TagLabel.State.CONFIRMED.ordinal());
+    row.setAppliedAt(appliedAt);
+    row.setMetadata(metadata);
+    return row;
+  }
+
+  private void storedCertRows(CollectionDAO.TagUsageDAO.TagLabelWithFQNHash row) {
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
+        .thenReturn(List.of(row));
+  }
+
+  private static Pipeline pipeline() {
+    return new Pipeline()
+        .withId(UUID.randomUUID())
+        .withName("my-pipeline")
+        .withFullyQualifiedName(PIPELINE_FQN);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void getCertificationDerivesMissingExpiryFromConfiguredValidityPeriod(boolean emptyMetadata) {
+    storedCertRows(
+        certRow(
+            "Certification.Gold",
+            new Date(APPLIED_AT),
+            emptyMetadata ? new TagLabelMetadata() : null));
+
+    try (MockedStatic<SettingsCache> ignored = certificationSettings("P90D")) {
+      AssetCertification certification = repo.getCertification(pipeline());
+
+      assertEquals(APPLIED_AT, certification.getAppliedDate());
+      assertEquals(APPLIED_AT + NINETY_DAYS, certification.getExpiryDate());
+    }
+  }
+
+  @Test
+  void getCertificationKeepsStoredExpiry() {
+    storedCertRows(
+        certRow(
+            "Certification.Gold",
+            new Date(APPLIED_AT),
+            new TagLabelMetadata().withExpiryDate(STORED_EXPIRY)));
+
+    try (MockedStatic<SettingsCache> ignored = certificationSettings("P90D")) {
+      assertEquals(STORED_EXPIRY, repo.getCertification(pipeline()).getExpiryDate());
+    }
+  }
+
+  @Test
+  void getCertificationWithoutAppliedAtReadsAsAppliedAtEpoch() {
+    storedCertRows(certRow("Certification.Gold", null, null));
+
+    try (MockedStatic<SettingsCache> ignored = certificationSettings("P90D")) {
+      AssetCertification certification = repo.getCertification(pipeline());
+
+      assertEquals(0L, certification.getAppliedDate());
+      assertEquals(NINETY_DAYS, certification.getExpiryDate());
+    }
+  }
+
+  @Test
+  void expiryForAddsTheCalendarPeriodInUtc() {
+    long januaryThirtyFirst = Instant.parse("2024-01-31T00:00:00Z").toEpochMilli();
+
+    assertEquals(
+        Instant.parse("2024-02-29T00:00:00Z").toEpochMilli(),
+        EntityRepository.expiryFor(januaryThirtyFirst, "P1M"));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"PT720H"})
+  void derivedExpiryFallsBackToDefaultPeriodWhenSettingIsNotAPeriod(String validityPeriod) {
+    long expected = EntityRepository.expiryFor(APPLIED_AT, "P30D");
+
+    assertEquals(expected, EntityRepository.derivedExpiry(APPLIED_AT, validityPeriod));
+  }
+
+  @Test
+  void fetchAndSetFieldsDerivesMissingExpiryWhenCertificationRequested() {
+    Pipeline entity = pipeline();
+    storedCertRows(certRow("Certification.Gold", new Date(APPLIED_AT), null));
+
+    try (MockedStatic<SettingsCache> ignored = certificationSettings("P90D")) {
+      repo.fetchAndSetFields(List.of(entity), new Fields(Set.of("certification")));
+    }
+
+    assertEquals(APPLIED_AT, entity.getCertification().getAppliedDate());
+    assertEquals(APPLIED_AT + NINETY_DAYS, entity.getCertification().getExpiryDate());
+  }
+
+  @Test
+  void fetchAndSetFieldsWithTagsOnlyReplacesStaleInlineCertification() {
+    // As deserialized from an entity row that a raw write left a certification copy in.
+    Pipeline entity =
+        pipeline()
+            .withCertification(
+                new AssetCertification()
+                    .withTagLabel(new TagLabel().withTagFQN("Certification.Gold")));
+    storedCertRows(
+        certRow(
+            "Certification.Silver",
+            new Date(APPLIED_AT),
+            new TagLabelMetadata().withExpiryDate(STORED_EXPIRY)));
+
+    repo.fetchAndSetFields(List.of(entity), new Fields(Set.of("tags")));
+
+    assertEquals("Certification.Silver", entity.getCertification().getTagLabel().getTagFQN());
+    assertEquals(STORED_EXPIRY, entity.getCertification().getExpiryDate());
+  }
+
+  @Test
+  void fetchAndSetFieldsWithoutTagsOrCertificationClearsInlineCertification() {
+    Pipeline entity =
+        pipeline()
+            .withCertification(
+                new AssetCertification()
+                    .withTagLabel(new TagLabel().withTagFQN("Certification.Gold")));
+
+    repo.fetchAndSetFields(List.of(entity), new Fields(Set.of("owners")));
+
+    assertNull(entity.getCertification());
+    verify(tagUsageDAO, never()).getCertTagsInternalBatch(anyInt(), anyList(), anyString());
   }
 }
