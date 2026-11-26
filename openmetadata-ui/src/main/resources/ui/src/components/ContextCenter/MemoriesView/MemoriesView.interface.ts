@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import { MemoryActionPermissions } from '../../../hooks/discovery/context-center/useMemoryActionPermissions';
 
 export type MemoryFilterTab =
   | ''
@@ -24,10 +25,8 @@ export type MemorySortBy = 'updated' | 'created' | 'usage' | 'updatedBy';
 export interface MemoriesViewProps {
   data: ContextMemory[];
   isLoading: boolean;
-  currentUserName?: string;
-  isAdminUser?: boolean;
-  canEdit?: boolean;
-  canDelete?: boolean;
+  /** Edit and Delete a row offers; a row without them offers neither. */
+  getMemoryActions?: (memory: ContextMemory) => MemoryActionPermissions;
   onDeleteMemory?: (memory: ContextMemory) => void;
   onEditMemory?: (memory: ContextMemory) => void;
   onTogglePin?: (memory: ContextMemory) => void;

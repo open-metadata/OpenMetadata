@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Set up Python 3.10
-        uses: actions/setup-python@v6
+        uses: ./.github/actions/setup-python
         with:
           python-version: '3.10'
       - name: Install Ubuntu related dependencies
@@ -35,10 +35,9 @@ jobs:
           TWINE_USERNAME: '${{ secrets.TWINE_OPENMETADATA_INGESTION_USERNAME }}'
           TWINE_PASSWORD: '${{ secrets.TWINE_OPENMETADATA_INGESTION_PASSWORD }}'
         run: |
-          python3 -m venv env
-          source env/bin/activate
           sudo make install_antlr_cli
-          make install_dev generate
+          make install_dev
+          source env/bin/activate
           cd ingestion; \
             python -m build; \
             twine check dist/*; \
@@ -48,9 +47,8 @@ jobs:
           TWINE_USERNAME: '${{ secrets.TWINE_OPENMETADATA_AIRFLOW_MANAGED_APIS_USERNAME }}'
           TWINE_PASSWORD: '${{ secrets.TWINE_OPENMETADATA_AIRFLOW_MANAGED_APIS_PASSWORD }}'
         run: |
-          python3 -m venv env
           source env/bin/activate
-          make install_dev install_apis
+          make install_apis
           cd openmetadata-airflow-apis; \
             python -m build; \
             twine check dist/*; \
