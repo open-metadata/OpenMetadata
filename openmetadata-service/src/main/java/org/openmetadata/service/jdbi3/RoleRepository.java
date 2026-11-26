@@ -286,12 +286,21 @@ public class RoleRepository extends EntityRepository<Role> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      restrictSystemProviderChange(updated::setProvider);
+      keepAllowDeleteOnPut();
       compareAndUpdate(
           "policies",
           () -> {
             updatePolicies(listOrEmpty(original.getPolicies()), listOrEmpty(updated.getPolicies()));
             SubjectCache.invalidateAll();
           });
+    }
+
+    /** No create request carries allowDelete, so a PUT that omits it must not clear it. */
+    private void keepAllowDeleteOnPut() {
+      if (operation.isPut()) {
+        updated.setAllowDelete(original.getAllowDelete());
+      }
     }
 
     private void updatePolicies(
