@@ -45,7 +45,7 @@ def select(
         and "airflow-apis" in matched
     )
     java_it = queue and (manual_java or "java-integration" in matched)
-    validate = event == "merge_group" or manual_all
+    validate_changed_paths = event == "merge_group" or pr_update
 
     return {
         "checkstyle": java_unit or (not draft and "java-checkstyle" in matched),
@@ -59,8 +59,8 @@ def select(
         "static": python
         or airflow
         or (not draft and "python-static" in matched),
-        "json-yaml": validate or (pr_update and "json-yaml" in matched),
-        "ci-rules": validate or (pr_update and "ci-rules" in matched),
+        "json-yaml": manual_all or (validate_changed_paths and "json-yaml" in matched),
+        "ci-rules": manual_all or (validate_changed_paths and "ci-rules" in matched),
         "quickstart-compose": not queue
         and (
             manual == "quickstart-compose" or (pr_update and "quickstart-compose" in matched)

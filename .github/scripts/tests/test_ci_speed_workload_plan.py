@@ -71,8 +71,6 @@ def selected_workloads(tmp_path, entrypoint, event, payload, matches):
                 "java-it-redis",
                 "python",
                 "static",
-                "json-yaml",
-                "ci-rules",
             },
         ),
         (
@@ -80,7 +78,7 @@ def selected_workloads(tmp_path, entrypoint, event, payload, matches):
             "merge_group",
             {},
             ["dar"],
-            {"dar", "json-yaml", "ci-rules"},
+            {"dar"},
         ),
         (
             "pr",
@@ -108,7 +106,7 @@ def selected_workloads(tmp_path, entrypoint, event, payload, matches):
             "merge_group",
             {},
             [],
-            {"json-yaml", "ci-rules"},
+            set(),
         ),
         (
             "pr",
@@ -193,20 +191,21 @@ def path_filters():
 @pytest.mark.parametrize(
     ("path", "pr_jobs", "queue_jobs"),
     [
+        ("README.md", set(), set()),
         (
             "openmetadata-ui/pom.xml",
             {"checkstyle"},
-            {"checkstyle", "json-yaml", "ci-rules"},
+            {"checkstyle"},
         ),
         (
             "openmetadata-ui/src/main/resources/ui/package.json",
             {"json-yaml"},
-            {"json-yaml", "ci-rules"},
+            {"json-yaml"},
         ),
         (
             ".github/scripts/validate_ci_rules.sh",
             {"ci-rules"},
-            {"json-yaml", "ci-rules"},
+            {"ci-rules"},
         ),
         (
             "scripts/validate_json_yaml.py",
@@ -216,17 +215,17 @@ def path_filters():
         (
             "docker/development/Dockerfile.dockerignore",
             {"docker-smoke"},
-            {"docker-smoke", "python", "static", "json-yaml", "ci-rules"},
+            {"docker-smoke", "python", "static"},
         ),
         (
             "docker/rdf-store/kubernetes/fuseki-deployment.yaml",
             {"json-yaml"},
-            {"json-yaml", "ci-rules"},
+            {"json-yaml"},
         ),
         (
             "openmetadata-integration-tests/src/test/java/org/openmetadata/it/bootstrap/FusekiTestImage.java",
             {"checkstyle"},
-            {"checkstyle", "java-it", "java-it-redis", "json-yaml", "ci-rules"},
+            {"checkstyle", "java-it", "java-it-redis"},
         ),
         (
             "openmetadata-spec/src/main/resources/json/schema/governance/workflows/workflowDefinition.json",
@@ -239,19 +238,18 @@ def path_filters():
                 "python",
                 "static",
                 "json-yaml",
-                "ci-rules",
                 "dar",
             },
         ),
         (
             ".github/scripts/configure_docker_storage.sh",
             {"ci-rules"},
-            {"java-it", "java-it-redis", "python", "static", "json-yaml", "ci-rules"},
+            {"java-it", "java-it-redis", "python", "static", "ci-rules"},
         ),
         (
             "docker/docker-compose-quickstart/docker-compose.yml",
             {"json-yaml", "quickstart-compose"},
-            {"json-yaml", "ci-rules"},
+            {"json-yaml"},
         ),
         (
             ".github/workflows/ci-pr.yml",
@@ -371,3 +369,51 @@ def test_backend_gate_rejects_failed_planner_when_nothing_runs(workflow):
 
     assert result.returncode != 0
     assert "CI planning did not succeed" in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("outcomes", "expected_error"),
+    [
+        ({}, None),
+        ({"IT_BUILD_RESULT": "failure"}, "integration-test-build"),
+        ({"MYSQL_ES_RESULT": "skipped"}, "it-mysql-elasticsearch"),
+        ({"POSTGRES_OS_RESULT": "cancelled"}, "it-postgres-opensearch"),
+        ({"POSTGRES_REDIS_RESULT": "failure"}, "it-postgres-elasticsearch-redis"),
+        ({"REDIS_IT_CHANGED": "false", "POSTGRES_REDIS_RESULT": "skipped"}, None),
+    ],
+)
+def test_merge_queue_backend_gate_verifies_selected_integration_jobs(
+    outcomes, expected_error
+):
+    jobs = yaml.safe_load((WORKFLOWS / "ci-merge-queue.yml").read_text())["jobs"]
+    gate = jobs["backend-checks-status"]["steps"][0]
+    env = {
+        "CHANGES_RESULT": "success",
+        "CHECKSTYLE_CHANGED": "false",
+        "JAVA_CHANGED": "false",
+        "K8S_CHANGED": "false",
+        "DOCKER_CHANGED": "false",
+        "SERVICE_RESULT": "skipped",
+        "K8S_RESULT": "skipped",
+        "DOCKER_RESULT": "skipped",
+        "JAVA_IT_CHANGED": "true",
+        "REDIS_IT_CHANGED": "true",
+        "IT_BUILD_RESULT": "success",
+        "MYSQL_ES_RESULT": "success",
+        "POSTGRES_OS_RESULT": "success",
+        "POSTGRES_REDIS_RESULT": "success",
+        **outcomes,
+    }
+    result = subprocess.run(
+        ["bash", "-eu", "-c", gate["run"]],
+        env={**os.environ, **env},
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    if expected_error:
+        assert result.returncode == 1, result.stderr
+        assert f"::error::{expected_error} did not succeed" in result.stdout
+    else:
+        assert result.returncode == 0, result.stdout + result.stderr

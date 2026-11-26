@@ -1,7 +1,7 @@
 # Backend checks report failures at the stage that failed
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-25 (initial)
+- **Revisions:** v1 2026-11-25 (initial) · v2 2026-11-26 (Java rollup cutover)
 - **Deciders:** Sriharsha Chintalapani
 - **Guard:** `test_java_checkstyle_is_unified_fail_fast_in_backend_job`, `test_integration_gate_enforces_backend_result`, and `test_summary_leads_with_stage_results`
 - **Related:** ADR:2026-11-24-backend-ci-gates-integration-lanes-behind-unit-tests-and-builds-once
@@ -40,3 +40,16 @@ and refresh affected PRs so they report the new name. Do not remove the old requ
 the replacement check exists. If a ruleset requires the old `openmetadata-service-unit-tests-status`
 rollup, rename that requirement to `backend-checks-status` as well. The source change alone does
 not update GitHub settings or historical runs.
+
+## Amendment: Java rollup cutover (2026-11-26)
+
+`backend-checks-status` verifies the Java integration build and all selected Java integration
+profiles in `ci-merge-queue`, along with checkstyle, service unit tests, operator tests, and Docker
+smoke. The PR version verifies the Java workloads selected on PRs.
+
+Deploy the expanded rollup with the three profile status jobs and their PR placeholders still
+reporting. Once the expanded rollup is live on `main` and verified on a merge group, replace the
+three required `integration-tests-*` contexts with `backend-checks-status` in `merge-rules`.
+Keep `backend-checks` required for early failures. After the cutover, remove the three legacy
+status jobs and PR placeholders. Requiring the rollup also makes operator tests and Docker smoke
+merge-blocking when selected.

@@ -254,21 +254,35 @@ jobs:
 
   backend-checks-status:
     name: backend-checks-status
-    needs: [plan, backend-checks, k8s_operator-unit-tests, docker-image-smoke-test]
+    needs:
+      - plan
+      - backend-checks
+      - k8s_operator-unit-tests
+      - docker-image-smoke-test
+      - integration-test-build
+      - it-mysql-elasticsearch
+      - it-postgres-opensearch
+      - it-postgres-elasticsearch-redis
     runs-on: ubuntu-slim
     timeout-minutes: 5
-    if: &report-java-status ${{ always() && (github.event_name == 'merge_group' || inputs.workload == 'all' || inputs.workload == 'java') }}
+    if: ${{ always() && (github.event_name == 'merge_group' || inputs.workload == 'all' || inputs.workload == 'java') }}
     steps:
-      - name: Verify backend checks, operator tests, and Docker smoke test
+      - name: Verify selected Java backend workloads
         env:
           CHANGES_RESULT: ${{ needs.plan.result }}
           CHECKSTYLE_CHANGED: ${{ needs.plan.outputs.checkstyle }}
           JAVA_CHANGED: ${{ needs.plan.outputs.java-unit }}
           K8S_CHANGED: ${{ needs.plan.outputs.java-operator }}
           DOCKER_CHANGED: ${{ needs.plan.outputs.docker-smoke }}
+          JAVA_IT_CHANGED: ${{ needs.plan.outputs.java-it }}
+          REDIS_IT_CHANGED: ${{ needs.plan.outputs.java-it-redis }}
           SERVICE_RESULT: ${{ needs.backend-checks.result }}
           K8S_RESULT: ${{ needs.k8s_operator-unit-tests.result }}
           DOCKER_RESULT: ${{ needs.docker-image-smoke-test.result }}
+          IT_BUILD_RESULT: ${{ needs.integration-test-build.result }}
+          MYSQL_ES_RESULT: ${{ needs.it-mysql-elasticsearch.result }}
+          POSTGRES_OS_RESULT: ${{ needs.it-postgres-opensearch.result }}
+          POSTGRES_REDIS_RESULT: ${{ needs.it-postgres-elasticsearch-redis.result }}
         run: |
           if [[ "$CHANGES_RESULT" != "success" ]]; then
             echo "::error::CI planning did not succeed: ${CHANGES_RESULT}"
@@ -296,6 +310,10 @@ jobs:
           check "backend-checks" "$backend_changed" "$SERVICE_RESULT"
           check "k8s_operator-unit-tests"         "$K8S_CHANGED"     "$K8S_RESULT"
           check "docker-image-smoke-test"         "$DOCKER_CHANGED"  "$DOCKER_RESULT"
+          check "integration-test-build" "$JAVA_IT_CHANGED" "$IT_BUILD_RESULT"
+          check "it-mysql-elasticsearch" "$JAVA_IT_CHANGED" "$MYSQL_ES_RESULT"
+          check "it-postgres-opensearch" "$JAVA_IT_CHANGED" "$POSTGRES_OS_RESULT"
+          check "it-postgres-elasticsearch-redis" "$REDIS_IT_CHANGED" "$POSTGRES_REDIS_RESULT"
           exit $fail
 
   integration-test-build:
@@ -371,12 +389,13 @@ jobs:
       artifact_name: java-it-build-${{ github.run_id }}
       lanes_json: '["parallel","global-state","multi-node","retry-queue"]'
 
+  # Keep these required check names reporting until merge-rules requires backend-checks-status.
   integration-tests-mysql-elasticsearch:
     name: integration-tests-mysql-elasticsearch
     needs: [plan, backend-checks, integration-test-build, it-mysql-elasticsearch]
     runs-on: ubuntu-slim
     timeout-minutes: 5
-    if: *report-java-status
+    if: &report-legacy-integration-status ${{ always() && github.event_name == 'merge_group' }}
     steps:
       - name: Verify MySQL + Elasticsearch Integration Test Lanes
         env:
@@ -401,7 +420,7 @@ jobs:
     needs: [plan, backend-checks, integration-test-build, it-postgres-opensearch]
     runs-on: ubuntu-slim
     timeout-minutes: 5
-    if: *report-java-status
+    if: *report-legacy-integration-status
     steps:
       - name: Verify PostgreSQL + OpenSearch Integration Test Lanes
         env:
@@ -417,7 +436,7 @@ jobs:
     needs: [plan, backend-checks, integration-test-build, it-postgres-elasticsearch-redis]
     runs-on: ubuntu-slim
     timeout-minutes: 5
-    if: *report-java-status
+    if: *report-legacy-integration-status
     steps:
       - name: Verify PostgreSQL + Elasticsearch + Redis Integration Test Lanes
         env:
