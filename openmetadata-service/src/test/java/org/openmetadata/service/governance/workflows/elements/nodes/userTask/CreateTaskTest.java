@@ -43,6 +43,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.changeRequest.ReviewPolicy;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
@@ -1258,6 +1259,29 @@ class CreateTaskTest {
             null);
 
     assertEquals(List.of(older.getId(), newer.getId()), priors.stream().map(Task::getId).toList());
+  }
+
+  // The preview reads the entity's history when the task is written. A read that fails (the entity
+  // deleted meanwhile, an unreadable version, the database) leaves the payload as it was, so the
+  // approval task is still created instead of the run failing.
+  @Test
+  void testAnApprovalWhoseHistoryCannotBeReadKeepsItsPayload() {
+    Map<String, Object> payload = Map.of("feedback", "keep me");
+
+    Object result =
+        CreateTask.approvalPayload(
+            TaskEntityType.GlossaryApproval,
+            new GlossaryTerm().withName("term").withFullyQualifiedName("glossary.term"),
+            payload,
+            null,
+            () ->
+                new CreateTask.PreviewChanges(
+                    null,
+                    () -> {
+                      throw EntityNotFoundException.byMessage("glossaryTerm was deleted");
+                    }));
+
+    assertEquals(payload, result);
   }
 
   private static Task openApproval(UUID workflowDefinitionId, long createdAt) {

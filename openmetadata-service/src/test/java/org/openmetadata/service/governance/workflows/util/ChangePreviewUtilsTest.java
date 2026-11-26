@@ -18,18 +18,25 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalDouble;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
+import org.jdbi.v3.core.ConnectionException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.CyclePreview;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.FieldDiff;
 
@@ -68,8 +75,7 @@ class ChangePreviewUtilsTest {
     final String original = JsonUtils.pojoToJson(connectionEdit);
 
     final Object payload =
-        ChangePreviewUtils.withCyclePreview(
-            new McpServer(), null, new CyclePreview(0.1, List.of(connectionEdit)));
+        ChangePreviewUtils.withCyclePreview(new McpServer(), null, cycle(0.1, connectionEdit));
 
     assertFalse(JsonUtils.pojoToJson(payload).contains("-secret"));
     assertEquals(original, JsonUtils.pojoToJson(connectionEdit));
@@ -650,7 +656,7 @@ class ChangePreviewUtilsTest {
 
     Object result =
         ChangePreviewUtils.withCyclePreview(
-            TERM, carried, new CyclePreview(0.3, List.of(descriptionEdit("old", "new"))));
+            TERM, carried, cycle(0.3, descriptionEdit("old", "new")));
 
     assertEquals("keep me", ((Map<?, ?>) result).get("feedback"));
     assertEquals(
@@ -661,8 +667,7 @@ class ChangePreviewUtilsTest {
   @Test
   void withCyclePreview_writesTheBaseVersion() {
     Object result =
-        ChangePreviewUtils.withCyclePreview(
-            TERM, null, new CyclePreview(0.3, List.of(descriptionEdit("old", "new"))));
+        ChangePreviewUtils.withCyclePreview(TERM, null, cycle(0.3, descriptionEdit("old", "new")));
 
     assertEquals(OptionalDouble.of(0.3), ChangePreviewUtils.cycleBaseOf(result));
   }
@@ -676,17 +681,45 @@ class ChangePreviewUtilsTest {
         Map.of("tags", Map.of("added", List.of("PII.Sensitive"), "removed", List.of())));
 
     Object result =
-        ChangePreviewUtils.withCyclePreview(
-            TERM, carried, new CyclePreview(0.0, List.of(updated(statusChange()))));
+        ChangePreviewUtils.withCyclePreview(TERM, carried, cycle(0.0, updated(statusChange())));
 
     assertFalse(((Map<?, ?>) result).containsKey("proposedChanges"));
     assertEquals(OptionalDouble.of(0.0), ChangePreviewUtils.cycleBaseOf(result));
+  }
+
+  // A history that cannot be read keeps the payload the task had, so the task is still created.
+  @ParameterizedTest
+  @MethodSource("historyReadFailures")
+  void withCyclePreview_aHistoryReadThatFailsKeepsTheExistingPayload(RuntimeException failure) {
+    Map<String, Object> carried = new LinkedHashMap<>();
+    carried.put("feedback", "keep me");
+
+    Object result =
+        ChangePreviewUtils.withCyclePreview(
+            TERM,
+            carried,
+            () -> {
+              throw failure;
+            });
+
+    assertEquals(carried, result);
+  }
+
+  static Stream<RuntimeException> historyReadFailures() {
+    return Stream.of(
+        EntityNotFoundException.byId("glossaryTerm"),
+        new IllegalArgumentException("Entity class does not declare getEntityStatus"),
+        new ConnectionException(new SQLException("connection refused")));
   }
 
   @Test
   void cycleBaseOf_aPayloadWithoutABaseHasNone() {
     assertEquals(OptionalDouble.empty(), ChangePreviewUtils.cycleBaseOf(null));
     assertEquals(OptionalDouble.empty(), ChangePreviewUtils.cycleBaseOf(Map.of("k", "v")));
+  }
+
+  private static Supplier<CyclePreview> cycle(double base, ChangeDescription... changes) {
+    return () -> new CyclePreview(base, List.of(changes));
   }
 
   private static ChangeDescription tagsAdded(String tagFqn) {

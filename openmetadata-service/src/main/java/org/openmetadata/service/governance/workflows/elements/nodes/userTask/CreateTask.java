@@ -1313,9 +1313,11 @@ public class CreateTask implements TaskListener {
    * for any other run, every change the entity's history holds since the approval cycle began. It
    * is read again at every task write, so an edit that started no run (a bot's, or one the trigger
    * filter skipped) still reaches the next task, and a preview stored on a superseded task is never
-   * carried forward. ADR:2026-11-26-an-approval-preview-lists-the-change-since-its-cycle-began
+   * carried forward. The history is read only when the preview is applied, inside the guard that
+   * keeps the task's payload when the preview cannot be built, so a failed read never stops the
+   * task from opening. ADR:2026-11-26-an-approval-preview-lists-the-change-since-its-cycle-began
    */
-  record PreviewChanges(ChangeDescription pending, CyclePreview cycle) {
+  record PreviewChanges(ChangeDescription pending, Supplier<CyclePreview> cycle) {
     static final PreviewChanges NONE = new PreviewChanges(null, null);
 
     Object applyTo(EntityInterface<?> entity, Object payload) {
@@ -1330,11 +1332,11 @@ public class CreateTask implements TaskListener {
       EntityInterface<?> entity,
       List<Object> carriedPayloads,
       ToDoubleBiFunction<ApprovalCycleHistory, EntityInterface<?>> unknownBase) {
+    final Object triggeringVersion = triggeringVersion(delegateTask);
     return reviewsChangeRequest(delegateTask)
         ? new PreviewChanges(pendingChange(delegateTask), null)
         : new PreviewChanges(
-            null,
-            cyclePreview(triggeringVersion(delegateTask), entity, carriedPayloads, unknownBase));
+            null, () -> cyclePreview(triggeringVersion, entity, carriedPayloads, unknownBase));
   }
 
   // The history is read fresh, so a cache another node filled before the cycle's latest edit

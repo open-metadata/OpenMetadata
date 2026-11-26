@@ -86,7 +86,7 @@ class CreateTaskLifecycleMoveTest {
 
   private static CreateTask.PreviewChanges cycleOf(Domain domain) {
     return new CreateTask.PreviewChanges(
-        null, new CyclePreview(0.1, List.of(domain.getChangeDescription())));
+        null, () -> new CyclePreview(0.1, List.of(domain.getChangeDescription())));
   }
 
   private static Domain stageChangedDomain() {

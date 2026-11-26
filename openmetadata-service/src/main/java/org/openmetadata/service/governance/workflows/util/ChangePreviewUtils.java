@@ -28,6 +28,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.exception.JsonParsingException;
@@ -35,6 +36,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.secrets.masker.McpServerMasker;
 
 /**
@@ -244,19 +246,21 @@ public final class ChangePreviewUtils {
   /**
    * The payload of a task in an approval cycle: its preview is the fold of every change since the
    * cycle began, replacing whatever preview the payload carried, and the payload records where the
-   * cycle began so the task that supersedes it continues from there.
+   * cycle began so the task that supersedes it continues from there. The cycle is read here, inside
+   * the guard, so a history that cannot be read leaves the payload as it was.
    */
   public static Object withCyclePreview(
-      EntityInterface<?> entity, Object existingPayload, CyclePreview cycle) {
+      EntityInterface<?> entity, Object existingPayload, Supplier<CyclePreview> cycle) {
     return previewOrUnchanged(
-        entity,
-        existingPayload,
-        () -> {
-          Map<String, Object> updated =
-              withPreview(entity, existingPayload, foldChanges(entity, cycle.changes()));
-          updated.put(PROPOSED_CHANGES_BASE_VERSION_KEY, cycle.baseVersion());
-          return updated;
-        });
+        entity, existingPayload, () -> withCycle(entity, existingPayload, cycle.get()));
+  }
+
+  private static Map<String, Object> withCycle(
+      EntityInterface<?> entity, Object existingPayload, CyclePreview cycle) {
+    Map<String, Object> updated =
+        withPreview(entity, existingPayload, foldChanges(entity, cycle.changes()));
+    updated.put(PROPOSED_CHANGES_BASE_VERSION_KEY, cycle.baseVersion());
+    return updated;
   }
 
   /**
@@ -298,17 +302,23 @@ public final class ChangePreviewUtils {
     return masked;
   }
 
-  // A preview the task cannot show must not keep the approval task from being created.
+  // A preview the task cannot show must not keep the approval task from being created. Reading the
+  // history behind it can fail on an entity deleted meanwhile, an entity type the status adapter
+  // cannot read, an unreadable stored version, or the database itself.
   private static Object previewOrUnchanged(
       EntityInterface<?> entity, Object existingPayload, Supplier<Object> build) {
     Object payload = existingPayload;
     try {
       payload = build.get();
-    } catch (JsonParsingException e) {
+    } catch (JsonParsingException
+        | EntityNotFoundException
+        | IllegalArgumentException
+        | JdbiException unreadable) {
       LOG.warn(
-          "Failed to build proposed-changes payload for approval task on {}",
+          "Failed to build proposed-changes payload for approval task on {}; the task keeps its"
+              + " existing payload",
           entity.getFullyQualifiedName(),
-          e);
+          unreadable);
     }
     return payload;
   }
