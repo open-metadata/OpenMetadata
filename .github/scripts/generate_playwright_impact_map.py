@@ -104,7 +104,7 @@ TESTID_MAX_OWNERS = 3
 # Delegated spec globs are managed by the hand-authored map already — they
 # run outside spec-impact selection (Auth → playwright-sso-login-nightly.yml;
 # Features/KnowledgeGraph.spec.ts and VisualRegression/** → the path-gated `rdf` and `visual` lanes of
-# playwright-e2e-reusable.yml). Regenerating them here would emit source→spec
+# reusable-playwright-e2e.yml). Regenerating them here would emit source→spec
 # entries that select_playwright_tests would then strip via its
 # `remove_delegated_specs` pass — pointless noise in the file and misleading
 # to a reviewer skimming it.

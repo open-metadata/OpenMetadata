@@ -1,19 +1,33 @@
 package org.openmetadata.service.search.vector;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventHandler;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
+  private static final Set<String> LIFECYCLE_TYPES =
+      AvailableEntityTypes.LIST.stream()
+          .filter(type -> !OntologyTermSearch.isTerm(type))
+          .collect(Collectors.toUnmodifiableSet());
   private final VectorIndexService vectorService;
+
+  @Override
+  public Set<String> getSupportedEntityTypes() {
+    return LIFECYCLE_TYPES;
+  }
 
   public VectorEmbeddingHandler(VectorIndexService vectorService) {
     this.vectorService = vectorService;
@@ -125,6 +139,22 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
   private boolean isSupported(EntityInterface<?> entity) {
     String entityType = extractEntityType(entity);
     return entityType != null && isSupportedEntityType(entityType);
+  }
+
+  public void refreshOntologyEmbedding(EntityReference reference) {
+    final var index = resolveEntityIndexName(reference.getType());
+    if (index != null) {
+      refreshOntologyEmbedding(
+          reference, Entity.getSearchRepository().getWriteFanoutTargets(index));
+    }
+  }
+
+  public void refreshOntologyEmbedding(EntityReference reference, List<String> targets) {
+    final var active = OntologyTermSearch.activeIndex(reference);
+    if (active != null) {
+      final var body = active.embeddingBody();
+      targets.forEach(target -> vectorService.updateEntityEmbeddings(active.term(), target, body));
+    }
   }
 
   public void updateEmbedding(EntityInterface<?> entity) {
