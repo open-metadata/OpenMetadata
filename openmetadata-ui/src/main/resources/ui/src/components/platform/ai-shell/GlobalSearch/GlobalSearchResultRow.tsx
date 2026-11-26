@@ -71,6 +71,9 @@ const GlobalSearchResultRow = ({
       role="option"
       tabIndex={-1}
       onClick={onSelect}
+      // Keep focus in the search input: the arrows, Enter and Esc are handled
+      // there, so picking a row (e.g. to preview it) must not take focus away.
+      onMouseDown={(event) => event.preventDefault()}
       onMouseMove={onHover}>
       {row.icon}
       <Box className="tw:min-w-0 tw:flex-1" direction="col">

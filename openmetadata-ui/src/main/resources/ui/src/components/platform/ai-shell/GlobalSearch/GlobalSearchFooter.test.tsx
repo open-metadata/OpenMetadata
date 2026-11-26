@@ -18,12 +18,7 @@ import GlobalSearchFooter, {
 
 const renderFooter = (props: Partial<GlobalSearchFooterProps> = {}) =>
   render(
-    <GlobalSearchFooter
-      hasQuery={false}
-      showActionHint={false}
-      showTabHint={false}
-      {...props}
-    />
+    <GlobalSearchFooter showActionHint={false} showTabHint={false} {...props} />
   );
 
 describe('GlobalSearchFooter', () => {
@@ -51,7 +46,6 @@ describe('GlobalSearchFooter', () => {
     renderFooter({
       actionHint: 'Ask AI',
       enterLabel: 'label.open',
-      hasQuery: true,
       showActionHint: true,
       showTabHint: true,
     });
@@ -61,7 +55,8 @@ describe('GlobalSearchFooter', () => {
     expect(screen.getByText(KEY_HINT.mod)).toBeInTheDocument();
     expect(screen.getAllByText('↵')).toHaveLength(2);
     expect(screen.getByText('label.filter-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.clear')).toBeInTheDocument();
-    expect(screen.queryByText('label.close')).not.toBeInTheDocument();
+    // Esc always closes search, with or without a query.
+    expect(screen.getByText('label.close')).toBeInTheDocument();
+    expect(screen.queryByText('label.clear')).not.toBeInTheDocument();
   });
 });

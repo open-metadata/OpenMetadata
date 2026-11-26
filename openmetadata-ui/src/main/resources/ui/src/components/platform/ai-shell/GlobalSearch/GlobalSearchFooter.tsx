@@ -30,7 +30,6 @@ export interface GlobalSearchFooterProps {
   actionHint?: string;
   showActionHint: boolean;
   showTabHint: boolean;
-  hasQuery: boolean;
 }
 
 // The key-hint strip is not a control, so it is a plain pill-shaped box; the
@@ -63,7 +62,6 @@ const GlobalSearchFooter = ({
   actionHint,
   showActionHint,
   showTabHint,
-  hasQuery,
 }: GlobalSearchFooterProps) => {
   const { t } = useTranslation();
 
@@ -100,10 +98,7 @@ const GlobalSearchFooter = ({
         {showTabHint ? (
           <Hint keys={[KEY_HINT.tab]} label={t('label.filter-plural')} />
         ) : null}
-        <Hint
-          keys={[KEY_HINT.esc]}
-          label={t(hasQuery ? 'label.clear' : 'label.close')}
-        />
+        <Hint keys={[KEY_HINT.esc]} label={t('label.close')} />
       </Box>
     </Box>
   );

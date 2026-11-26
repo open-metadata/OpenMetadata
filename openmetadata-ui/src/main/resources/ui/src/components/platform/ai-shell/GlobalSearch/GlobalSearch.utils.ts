@@ -159,7 +159,6 @@ export type GlobalSearchKeyAction =
   | 'next-tab'
   | 'previous-tab'
   | 'show-all'
-  | 'clear'
   | 'close';
 
 export interface GlobalSearchKeyContext {
@@ -214,7 +213,7 @@ const KEY_ACTIONS: Record<
   Enter: getEnterAction,
   Tab: getTabAction,
   Backspace: (_event, context) => getBackspaceAction(context),
-  Escape: (_event, context) => (context.query ? 'clear' : 'close'),
+  Escape: () => 'close',
 };
 
 /** What a key press in the search input does; `undefined` leaves it to the input. */

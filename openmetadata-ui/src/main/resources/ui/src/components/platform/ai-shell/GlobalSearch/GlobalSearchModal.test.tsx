@@ -313,7 +313,7 @@ describe('GlobalSearchModal', () => {
     );
   });
 
-  it('handles Esc when focus has left the input', async () => {
+  it('closes on Esc when focus has left the input', async () => {
     useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
     renderModal();
     await type('customer');
@@ -321,12 +321,6 @@ describe('GlobalSearchModal', () => {
     screen.getByTestId('global-search-close').focus();
 
     fireEvent.keyDown(document.activeElement as Element, { key: 'Escape' });
-
-    expect(screen.getByTestId('global-search-input')).toHaveValue('');
-    expect(screen.getByTestId('global-search-input')).toHaveFocus();
-
-    (document.activeElement as HTMLElement).blur();
-    fireEvent.keyDown(document.body, { key: 'Escape' });
 
     expect(useGlobalSearchStore.getState().isOpen).toBe(false);
   });
@@ -447,20 +441,44 @@ describe('GlobalSearchModal', () => {
     expect(useGlobalSearchStore.getState().isOpen).toBe(false);
   });
 
-  it('clears the query on the first Escape and closes on the second', async () => {
+  it('closes on Escape even with a query typed', async () => {
     useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
     renderModal();
     await type('customer');
-    const input = screen.getByTestId('global-search-input');
-
-    press('Escape');
-
-    expect(input).toHaveValue('');
-    expect(useGlobalSearchStore.getState().isOpen).toBe(true);
 
     press('Escape');
 
     expect(useGlobalSearchStore.getState().isOpen).toBe(false);
+  });
+
+  it('keeps the arrows working after a row is clicked to preview it', async () => {
+    useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
+    renderModal();
+    await type('customer');
+    press('Tab');
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+    });
+    const input = screen.getByTestId('global-search-input');
+    const first = screen.getByTestId('global-search-row-a1');
+
+    // Pressing a row must not move focus off the input.
+    expect(fireEvent.mouseDown(first)).toBe(false);
+
+    fireEvent.click(first);
+
+    expect(screen.getByTestId('global-search-summary')).toBeInTheDocument();
+
+    press('ArrowDown');
+
+    expect(screen.getByTestId('global-search-row-a2')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+
+    fireEvent.click(screen.getByTestId('global-search-summary-close'));
+
+    expect(input).toHaveFocus();
   });
 
   it('switches tabs with a click and keeps focus in the input', async () => {

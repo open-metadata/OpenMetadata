@@ -282,7 +282,7 @@ describe('getKeyAction', () => {
     ['Shift+Tab', key('Tab', { shiftKey: true }), typed, 'previous-tab'],
     ['Tab before typing', key('Tab'), { ...typed, query: '' }, undefined],
     ['Tab with a single tab', key('Tab'), { ...typed, tabCount: 1 }, undefined],
-    ['Escape with text', key('Escape'), typed, 'clear'],
+    ['Escape with text', key('Escape'), typed, 'close'],
     ['Escape when empty', key('Escape'), { ...typed, query: '' }, 'close'],
     ['a letter', key('a'), typed, undefined],
   ])('%s', (_name, event, context, expected) => {

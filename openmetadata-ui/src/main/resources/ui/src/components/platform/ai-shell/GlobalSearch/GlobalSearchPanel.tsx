@@ -392,18 +392,12 @@ const GlobalSearchPanel = () => {
     'previous-tab': () =>
       changeFilter(getAdjacentFilter(view.tabOrder, filter, true)),
     'show-all': () => changeFilter('all'),
-    clear: resetSearch,
     close,
   };
 
-  // Esc must work wherever focus is in the dialog (a filter trigger, the sort
-  // menu button, or nowhere after a recent search is removed), not only in the
-  // input. An open popover handles its own Esc first and marks it handled.
-  const escapeRef = useRef(() => undefined as void);
-  escapeRef.current = () => {
-    keyActions[query ? 'clear' : 'close']();
-    inputRef.current?.focus();
-  };
+  // Esc closes search wherever focus is in the dialog (a filter trigger, the
+  // sort menu button, or nowhere after a recent search is removed), not only in
+  // the input. An open popover handles its own Esc first and marks it handled.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (
@@ -414,12 +408,12 @@ const GlobalSearchPanel = () => {
         return;
       }
       event.preventDefault();
-      escapeRef.current();
+      close();
     };
     window.addEventListener('keydown', onKeyDown);
 
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [close]);
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     // Enter and Esc confirm or cancel an IME composition (Japanese, Chinese,
@@ -554,14 +548,17 @@ const GlobalSearchPanel = () => {
             })}
             actionHint={t(labelKeys.actionHint)}
             enterLabel={activeRow?.enterLabel}
-            hasQuery={Boolean(query)}
             showActionHint={view.showQueryAction}
             showTabHint={view.showTabHint}
           />
         </Box>
         <AssetSummaryPanel
           row={previewRow}
-          onClose={() => setPreviewId(undefined)}
+          onClose={() => {
+            setPreviewId(undefined);
+            // The close button took focus; the arrows and Enter live on the input.
+            inputRef.current?.focus();
+          }}
           onOpen={openRow}
         />
       </Box>
