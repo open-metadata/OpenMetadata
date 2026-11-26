@@ -13,7 +13,7 @@ allowed-tools:
 # UI Checkstyle / ESLint + Prettier + organize-imports
 
 The `ui-checkstyle` composite action (`.github/actions/ui-checkstyle/action.yml`,
-run by the `ui-lint` job of `ci-pr.yml` and `ci-merge-queue.yml`
+run by the `lint` job of `ui-ci.yml`, the `ui` job of `ci-pr.yml` and `ci-merge-queue.yml`
 when the UI changed) runs steps that gate, among others, these **six** checks,
 each on only the files the PR changed:
 

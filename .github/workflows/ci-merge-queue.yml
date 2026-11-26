@@ -195,60 +195,26 @@ jobs:
           '
         shell: bash
 
-  # UI: the same composite actions as ci-pr.yml's ui job, as separate jobs (Jest
-  # sharded, browser tests through their reusable workflow) that run in parallel
-  # so a queue entry reports every failure at once.
-  ui-lint:
-    name: ui-lint
-    needs: plan
-    if: ${{ needs.plan.outputs.ui == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ needs.plan.outputs.ref }}
-          persist-credentials: false
-          # Changed-file detection diffs against the queue base.
-          fetch-depth: 0
-          filter: blob:none
-      - uses: ./.github/actions/setup-ui
-      - uses: ./.github/actions/ui-checkstyle
-
-  ui-unit:
-    name: ui-unit (shard ${{ matrix.shard }})
-    needs: plan
-    if: ${{ needs.plan.outputs.ui-unit == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ needs.plan.outputs.ref }}
-          persist-credentials: false
-          fetch-depth: 1
-      - uses: ./.github/actions/setup-ui
-      - uses: ./.github/actions/ui-unit
-        with:
-          shard: ${{ matrix.shard }}/4
-
-  ui-browser:
-    name: ui browser tests
+  # UI runs as one job, like python: ui-ci.yml runs checkstyle and then fans
+  # Jest and the browser tests out to parallel shards.
+  ui:
+    name: ui
     needs: plan
     if: ${{ needs.plan.outputs.ui == 'true' }}
     permissions:
       contents: read
-      # Downloads the impact map from earlier runs.
+      # The browser tests download the impact map from earlier runs.
       actions: read
-    uses: ./.github/workflows/ui-browser-tests.yml
+    uses: ./.github/workflows/ui-ci.yml
+    with:
+      ref: ${{ needs.plan.outputs.ref }}
+      unit: ${{ needs.plan.outputs.ui-unit == 'true' }}
 
+  # Required check for the UI. It runs even when ui is skipped, so the check is
+  # always reported.
   ui-tests-status:
     name: ui-tests-status
-    needs: [plan, ui-lint, ui-unit, ui-browser]
+    needs: [plan, ui]
     if: ${{ always() }}
     runs-on: ubuntu-slim
     timeout-minutes: 2
@@ -263,9 +229,7 @@ jobs:
           expected: |
             {
               "plan": "success",
-              "ui-lint": "${{ needs.plan.outputs.ui == 'true' && 'success' || 'skipped' }}",
-              "ui-unit": "${{ needs.plan.outputs.ui-unit == 'true' && 'success' || 'skipped' }}",
-              "ui-browser": "${{ needs.plan.outputs.ui == 'true' && 'success' || 'skipped' }}"
+              "ui": "${{ needs.plan.outputs.ui == 'true' && 'success' || 'skipped' }}"
             }
 
   # TEMPORARY: the merge-rules ruleset still requires these two names. Remove

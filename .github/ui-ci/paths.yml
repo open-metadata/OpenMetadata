@@ -11,6 +11,7 @@ ui:
   - .github/actions/ui-*/**
   - .github/workflows/ci-pr.yml
   - .github/workflows/ci-merge-queue.yml
+  - .github/workflows/ui-ci.yml
   - .github/workflows/ui-browser-tests.yml
 ui-unit:
   - openmetadata-ui/src/main/resources/ui/src/**
@@ -30,3 +31,4 @@ ui-unit:
   - .github/workflows/ci-merge-queue.yml
   - .github/actions/setup-ui/**
   - .github/actions/ui-unit/**
+  - .github/workflows/ui-ci.yml

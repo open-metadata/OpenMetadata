@@ -193,61 +193,26 @@ jobs:
           '
         shell: bash
 
-  # UI: checkstyle first, on one runner. Jest and the browser tests fan out to
-  # parallel shards only once it passes, so a lint failure costs one runner and
-  # the slowest path stays checkstyle plus the slowest shard.
-  ui-lint:
-    name: ui-lint
+  # UI runs as one job, like python: ui-ci.yml runs checkstyle and then fans
+  # Jest and the browser tests out to parallel shards.
+  ui:
+    name: ui
     needs: plan
     if: ${{ needs.plan.outputs.ui == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ needs.plan.outputs.ref }}
-          persist-credentials: false
-          # Changed-file detection diffs against the PR base.
-          fetch-depth: 0
-          filter: blob:none
-      - uses: ./.github/actions/setup-ui
-      - uses: ./.github/actions/ui-checkstyle
-
-  ui-unit:
-    name: ui-unit (shard ${{ matrix.shard }})
-    needs: [plan, ui-lint]
-    if: ${{ needs.plan.outputs.ui-unit == 'true' && needs.ui-lint.result == 'success' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      matrix:
-        shard: [1, 2, 3, 4]
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ needs.plan.outputs.ref }}
-          persist-credentials: false
-          fetch-depth: 1
-      - uses: ./.github/actions/setup-ui
-      - uses: ./.github/actions/ui-unit
-        with:
-          shard: ${{ matrix.shard }}/4
-
-  ui-browser:
-    name: ui-browser
-    needs: [plan, ui-lint]
-    if: ${{ needs.plan.outputs.ui == 'true' && needs.ui-lint.result == 'success' }}
     permissions:
       contents: read
-      # Downloads the impact map from earlier runs.
+      # The browser tests download the impact map from earlier runs.
       actions: read
-    uses: ./.github/workflows/ui-browser-tests.yml
+    uses: ./.github/workflows/ui-ci.yml
+    with:
+      ref: ${{ needs.plan.outputs.ref }}
+      unit: ${{ needs.plan.outputs.ui-unit == 'true' }}
 
   # Required check for the UI. Like py-tests-status it must run on every
   # non-draft PR: a job skipped by `if` reports success.
   ui-tests-status:
     name: ui-tests-status
-    needs: [plan, ui-lint, ui-unit, ui-browser]
+    needs: [plan, ui]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-slim
     timeout-minutes: 2
@@ -262,9 +227,7 @@ jobs:
           expected: |
             {
               "plan": "success",
-              "ui-lint": "${{ needs.plan.outputs.ui == 'true' && 'success' || 'skipped' }}",
-              "ui-unit": "${{ needs.plan.outputs.ui-unit == 'true' && 'success' || 'skipped' }}",
-              "ui-browser": "${{ needs.plan.outputs.ui == 'true' && 'success' || 'skipped' }}"
+              "ui": "${{ needs.plan.outputs.ui == 'true' && 'success' || 'skipped' }}"
             }
 
   # TEMPORARY: the merge-rules ruleset still requires these two names. Remove

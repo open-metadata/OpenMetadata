@@ -166,9 +166,12 @@ def test_gate_rejects_unexpected_results_and_dependencies(gate):
     assert gate({"a": {"result": "success"}, "omitted-job": {"result": "failure"}}, {"a": "success"}).returncode != 0
 
 
-@pytest.mark.parametrize("name", ["ci-pr.yml", "ci-merge-queue.yml"])
-def test_ui_status_expects_a_result_for_every_dependency(name):
-    job = workflow(name)["jobs"]["ui-tests-status"]
+@pytest.mark.parametrize(
+    ("name", "job_id"),
+    [("ci-pr.yml", "ui-tests-status"), ("ci-merge-queue.yml", "ui-tests-status"), ("ui-ci.yml", "status")],
+)
+def test_ui_status_expects_a_result_for_every_dependency(name, job_id):
+    job = workflow(name)["jobs"][job_id]
     step = next(step for step in job["steps"] if step.get("uses") == "./.github/actions/ci-status-gate")
     assert step["with"]["needs"] == "${{ toJSON(needs) }}"
     expected = re.sub(r"\$\{\{.*?\}\}", "success", step["with"]["expected"])
