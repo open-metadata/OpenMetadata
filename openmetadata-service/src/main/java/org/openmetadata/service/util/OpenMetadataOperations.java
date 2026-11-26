@@ -3148,19 +3148,29 @@ public class OpenMetadataOperations implements Callable<Integer> {
                       + "older key leaves the servers.")
           boolean everyTable) {
     try {
-      parseConfig();
-      KeyRing keys = KeyRing.current();
+      OpenMetadataApplicationConfig appConfig = loadApplicationConfig();
+      KeyRing keys = FernetKeyRotation.parseKeys(appConfig.getFernetConfiguration());
       FernetKeyRotation.Options options =
           FernetKeyRotation.Options.of(
               apply, everyTable, () -> skipPrompt || confirmRotation(keys));
-      String driverClass = config.getDataSourceFactory().getDriverClass();
+      DataSourceFactory dataSourceFactory = appConfig.getDataSourceFactory();
+      if (dataSourceFactory == null) {
+        LOG.error("No database in config file");
+        return 1;
+      }
+      String driverClass = dataSourceFactory.getDriverClass();
       ConnectionType dialect = ConnectionType.from(driverClass);
       if (dialect == null) {
         LOG.error("rotate-fernet-key does not support driver class '{}'", driverClass);
         return 1;
       }
       FernetKeyRotation.Report report =
-          FernetKeyRotation.run(options, keys, jdbi, dialect, config.getCacheConfig());
+          FernetKeyRotation.run(
+              options,
+              keys,
+              () -> openRotationJdbi(dataSourceFactory),
+              dialect,
+              appConfig.getCacheConfig());
       report.print(System.out, OpenMetadataOperations::printToAsciiTable);
       return report.exitCode();
     } catch (FernetKeyRotation.Refused refused) {
@@ -3672,7 +3682,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
-  public void parseConfig() throws Exception {
+  private OpenMetadataApplicationConfig loadApplicationConfig() throws Exception {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     objectMapper.registerSubtypes(
         AuditExcludeFilterFactory.class,
@@ -3683,21 +3693,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
         new YamlConfigurationFactory<>(
             OpenMetadataApplicationConfig.class, validator, objectMapper, "dw");
-    config =
-        factory.build(
-            new SubstitutingSourceProvider(
-                new RawConfigCapture(
-                    new FileConfigurationSourceProvider(), ConfigTemplateKind.SERVER),
-                new EnvironmentVariableSubstitutor(false, true)),
-            configFilePath);
-    IndexMappingLoader.init(config.getElasticSearchConfiguration());
-    Fernet.getInstance().setFernetKey(config);
-    LlmConfigHolder.initialize(config.getLlmConfiguration());
-    DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
-    if (dataSourceFactory == null) {
-      throw new IllegalArgumentException("No database in config file");
-    }
-    // Check for db auth providers.
+    return factory.build(
+        new SubstitutingSourceProvider(
+            new RawConfigCapture(new FileConfigurationSourceProvider(), ConfigTemplateKind.SERVER),
+            new EnvironmentVariableSubstitutor(false, true)),
+        configFilePath);
+  }
+
+  private static Jdbi openRotationJdbi(DataSourceFactory dataSourceFactory) {
     DatabaseAuthenticationProviderFactory.get(dataSourceFactory.getUrl())
         .ifPresent(
             databaseAuthenticationProvider -> {
@@ -3708,11 +3711,22 @@ public class OpenMetadataOperations implements Callable<Integer> {
                       dataSourceFactory.getPassword());
               dataSourceFactory.setPassword(token);
             });
+    return JdbiUtils.createAndSetupJDBI(dataSourceFactory);
+  }
 
+  public void parseConfig() throws Exception {
+    config = loadApplicationConfig();
+    IndexMappingLoader.init(config.getElasticSearchConfiguration());
+    Fernet.getInstance().setFernetKey(config);
+    LlmConfigHolder.initialize(config.getLlmConfiguration());
+    DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
+    if (dataSourceFactory == null) {
+      throw new IllegalArgumentException("No database in config file");
+    }
     nativeSQLScriptRootPath = config.getMigrationConfiguration().getNativePath();
     extensionSQLScriptRootPath = config.getMigrationConfiguration().getExtensionPath();
 
-    jdbi = JdbiUtils.createAndSetupJDBI(dataSourceFactory);
+    jdbi = openRotationJdbi(dataSourceFactory);
 
     // Initialize the MigrationValidationClient, used in the Settings Repository
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), config);

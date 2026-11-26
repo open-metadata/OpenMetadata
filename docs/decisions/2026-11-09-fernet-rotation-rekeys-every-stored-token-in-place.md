@@ -36,8 +36,13 @@ values back from copies they hold in memory.
   and whether each column holds `fernet:`, so one statement reads at most 1000 rows however rare
   the tokens are. The flagged cells are then fetched 100 rows at a time, because one cell can hold
   a whole entity document. A table without a primary key is read in one statement and written with
-  a compare-and-set matching the whole column value read (`WHERE column = read`), rewriting every
-  identical row to the same new value. Entity versions
+  a compare-and-set matching its indexed scalar columns (when present, so updates on tables such as
+  `apps_extension_time_series` use their indexes) and the whole column value read
+  (`WHERE indexed_cols = read AND column = read`), rewriting every identical row to the same new
+  value. On PostgreSQL, attached child partitions (`pg_class.relispartition`) are excluded from
+  separate catalog discovery so partitioned tables such as `activity_stream` are read once through
+  their parent (or skipped with it in the default scope), while detached partitions are still read.
+  Entity versions
   are read for 500 entity ids per statement, a copy of the 2.1 migration's batch for the same read.
   Redis keys, and the fields and members of hashes, sets and sorted sets, are scanned with
   `COUNT 1000`, which Redis takes as a hint, escaping Redis glob metacharacters in each literal

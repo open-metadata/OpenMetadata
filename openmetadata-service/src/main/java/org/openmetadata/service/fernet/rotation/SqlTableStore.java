@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.fernet.rotation;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -43,8 +45,9 @@ import org.openmetadata.service.fernet.rotation.SqlCatalog.SqlTable;
  * and one "holds {@code fernet:}" flag per eligible column, so each statement does bounded work
  * however rare tokens are; the text of flagged cells is then fetched by key, {@value #FETCH_BATCH}
  * rows at a time. A write is {@code UPDATE t SET c = v WHERE key AND c still equals what was read}.
- * A table without a primary key is read in one statement and written where the column still equals
- * the whole value read, rewriting any identical rows to the same new value.
+ * A table without a primary key is read in one statement and written where its indexed scalar
+ * columns (when any exist) and the column itself still equal what was read, rewriting any identical
+ * rows to the same new value.
  */
 final class SqlTableStore implements TokenStore {
   static final int PAGE_SIZE = 1000;
@@ -59,6 +62,7 @@ final class SqlTableStore implements TokenStore {
   private final SqlTable table;
   private final String from;
   private final String keyColumns;
+  private final String narrowingSelect;
 
   SqlTableStore(Handle handle, Dialect dialect, SqlTable table) {
     this.handle = handle;
@@ -67,6 +71,13 @@ final class SqlTableStore implements TokenStore {
     this.from = " FROM " + dialect.quote(table.name());
     this.keyColumns =
         table.primaryKey().stream().map(dialect::quote).collect(Collectors.joining(", "));
+    this.narrowingSelect =
+        table.narrowingColumns().isEmpty()
+            ? ""
+            : table.narrowingColumns().stream()
+                    .map(dialect::quote)
+                    .collect(Collectors.joining(", "))
+                + ", ";
   }
 
   /** The last key of a page and how many rows the page had. */
@@ -116,10 +127,10 @@ final class SqlTableStore implements TokenStore {
     Optional<SqlColumn> column = table.column(read.at().container());
     boolean written = false;
     if (column.isPresent()) {
-      Update update = compareAndSetUpdate(column.get());
-      if (table.hasPrimaryKey()) {
-        bindKey(update, read.at().keyValues());
-      }
+      List<String> matchColumns =
+          table.hasPrimaryKey() ? table.primaryKey() : read.at().keyColumns();
+      Update update = compareAndSetUpdate(column.get(), matchColumns);
+      bindKey(update, read.at().keyValues());
       bindText(update, VALUE, replacement, column.get().type());
       bindText(update, READ, read.text(), column.get().type());
       int updated = update.execute();
@@ -128,11 +139,12 @@ final class SqlTableStore implements TokenStore {
     return written;
   }
 
-  private Update compareAndSetUpdate(SqlColumn column) {
+  private Update compareAndSetUpdate(SqlColumn column, List<String> matchColumns) {
+    String match = equalsClause(matchColumns);
     String where =
-        table.hasPrimaryKey()
-            ? keyEquals() + " AND " + dialect.sameAs(column, READ)
-            : dialect.sameAs(column, READ);
+        match.isEmpty()
+            ? dialect.sameAs(column, READ)
+            : match + " AND " + dialect.sameAs(column, READ);
     return handle.createUpdate(
         "UPDATE "
             + dialect.quote(table.name())
@@ -164,7 +176,7 @@ final class SqlTableStore implements TokenStore {
 
   private Stream<StoredText> unkeyedCandidates() {
     return handle
-        .createQuery("SELECT " + cellColumns() + from + " WHERE " + anyFlag())
+        .createQuery("SELECT " + narrowingSelect + cellColumns() + from + " WHERE " + anyFlag())
         .map((rs, ctx) -> unkeyedCells(rs))
         .stream()
         .flatMap(List::stream);
@@ -188,7 +200,7 @@ final class SqlTableStore implements TokenStore {
                 + keyColumns
                 + " LIMIT "
                 + PAGE_SIZE);
-    IntStream.range(0, after.size()).forEach(i -> query.bind(AFTER + i, after.get(i)));
+    IntStream.range(0, after.size()).forEach(i -> bindValue(query, AFTER + i, after.get(i)));
     List<PageRow> rows = query.map((rs, ctx) -> pageRow(rs)).list();
     List<Object> last = rows.isEmpty() ? List.of() : List.copyOf(rows.getLast().key());
     for (PageRow row : rows) {
@@ -225,7 +237,8 @@ final class SqlTableStore implements TokenStore {
                 .forEach(
                     row ->
                         IntStream.range(0, table.primaryKey().size())
-                            .forEach(i -> query.bind(KEY + row + "_" + i, keys.get(row).get(i)))));
+                            .forEach(
+                                i -> bindValue(query, KEY + row + "_" + i, keys.get(row).get(i)))));
   }
 
   private String rowParams(int row, boolean composite) {
@@ -254,15 +267,25 @@ final class SqlTableStore implements TokenStore {
   }
 
   private List<StoredText> unkeyedCells(ResultSet rs) throws SQLException {
+    int narrowingCount = table.narrowingColumns().size();
+    List<String> matchColumns = new ArrayList<>();
+    List<Object> matchValues = new ArrayList<>();
+    for (int i = 0; i < narrowingCount; i++) {
+      Object value = rs.getObject(i + 1);
+      if (value != null) {
+        matchColumns.add(table.narrowingColumns().get(i));
+        matchValues.add(value);
+      }
+    }
     List<StoredText> cells = new ArrayList<>();
     for (int i = 0; i < table.columns().size(); i++) {
       SqlColumn column = table.columns().get(i);
-      cell(rs, i + 1, column)
+      cell(rs, narrowingCount + 1 + i, column)
           .ifPresent(
               text ->
                   cells.add(
                       StoredText.writable(
-                          new Location(table.name(), column.name(), List.of(), List.of()),
+                          new Location(table.name(), column.name(), matchColumns, matchValues),
                           text,
                           column.type().encoding())));
     }
@@ -303,13 +326,26 @@ final class SqlTableStore implements TokenStore {
   }
 
   private String keyEquals() {
-    return IntStream.range(0, table.primaryKey().size())
-        .mapToObj(i -> dialect.quote(table.primaryKey().get(i)) + " = :" + KEY + i)
+    return equalsClause(table.primaryKey());
+  }
+
+  private String equalsClause(List<String> columns) {
+    return IntStream.range(0, columns.size())
+        .mapToObj(i -> dialect.quote(columns.get(i)) + " = :" + KEY + i)
         .collect(Collectors.joining(" AND "));
   }
 
   private static void bindKey(SqlStatement<?> statement, List<Object> key) {
-    IntStream.range(0, key.size()).forEach(i -> statement.bind(KEY + i, key.get(i)));
+    IntStream.range(0, key.size()).forEach(i -> bindValue(statement, KEY + i, key.get(i)));
+  }
+
+  // MySQL BIGINT UNSIGNED columns arrive as BigInteger, which JDBI has no built-in binder for.
+  private static void bindValue(SqlStatement<?> statement, String name, Object value) {
+    if (value instanceof BigInteger big) {
+      statement.bind(name, new BigDecimal(big));
+    } else {
+      statement.bind(name, value);
+    }
   }
 
   private static void bindText(Update update, String name, String text, ColumnType type) {

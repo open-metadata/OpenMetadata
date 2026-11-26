@@ -31,9 +31,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -508,6 +510,18 @@ class FernetRotationStoresIT {
                   .bind("json", rowJson)
                   .execute());
 
+      Table seen =
+          RotationStoresTestSupport.catalogTable(jdbi, type, "apps_extension_time_series")
+              .orElseThrow();
+      assertEquals(List.of(), seen.primaryKey());
+      Set<String> narrowingLower =
+          seen.narrowingColumns().stream()
+              .map(col -> col.toLowerCase(Locale.ROOT))
+              .collect(Collectors.toSet());
+      assertTrue(
+          narrowingLower.containsAll(Set.of("appid", "extension", "timestamp")),
+          "unkeyed CAS narrows on indexed columns: " + seen.narrowingColumns());
+
       List<Value> defaultCandidates = RotationStoresTestSupport.defaultReadCandidates(jdbi, type);
       assertTrue(
           defaultCandidates.stream().anyMatch(value -> value.text().contains(appId)),
@@ -543,6 +557,76 @@ class FernetRotationStoresIT {
                   .createUpdate("DELETE FROM apps_extension_time_series WHERE appId = :appId")
                   .bind("appId", appId)
                   .execute());
+    }
+  }
+
+  @Test
+  void attachedPostgresPartitionsAreReadOnceThroughTheirParentAndNotDiscoveredSeparately() {
+    assumeTrue(type == ConnectionType.POSTGRES, "declarative partitioning test is PostgreSQL-only");
+    String tag = suffix();
+    String parent = "fernet_it_part_" + tag;
+    String attached = parent + "_p1";
+    String detached = parent + "_p2";
+    try {
+      jdbi.useHandle(
+          handle -> {
+            handle.execute(
+                "CREATE TABLE "
+                    + parent
+                    + " (id varchar(36) NOT NULL, part_key int NOT NULL, note text,"
+                    + " PRIMARY KEY (id, part_key)) PARTITION BY RANGE (part_key)");
+            handle.execute(
+                "CREATE TABLE "
+                    + attached
+                    + " PARTITION OF "
+                    + parent
+                    + " FOR VALUES FROM (0) TO (100)");
+            handle.execute(
+                "CREATE TABLE "
+                    + detached
+                    + " PARTITION OF "
+                    + parent
+                    + " FOR VALUES FROM (100) TO (200)");
+            handle
+                .createUpdate(
+                    "INSERT INTO " + parent + " (id, part_key, note) VALUES (:id, 10, :note)")
+                .bind("id", UUID.randomUUID().toString())
+                .bind("note", OLD.seal("attached-secret"))
+                .execute();
+            handle
+                .createUpdate(
+                    "INSERT INTO " + parent + " (id, part_key, note) VALUES (:id, 150, :note)")
+                .bind("id", UUID.randomUUID().toString())
+                .bind("note", OLD.seal("detached-secret"))
+                .execute();
+            handle.execute("ALTER TABLE " + parent + " DETACH PARTITION " + detached);
+          });
+
+      assertTrue(
+          RotationStoresTestSupport.catalogTable(jdbi, type, parent).isPresent(),
+          "partitioned parent is discovered");
+      assertTrue(
+          RotationStoresTestSupport.catalogTable(jdbi, type, attached).isEmpty(),
+          "attached child partition is excluded from separate discovery");
+      assertTrue(
+          RotationStoresTestSupport.catalogTable(jdbi, type, detached).isPresent(),
+          "detached partition is discovered as a standalone table");
+      assertTrue(
+          RotationStoresTestSupport.catalogTable(jdbi, type, "activity_stream_default").isEmpty(),
+          "attached activity_stream partition is excluded from catalog discovery");
+
+      Pass rewrite = RotationStoresTestSupport.rewrite(jdbi, type, parent, RING);
+      Pass check = RotationStoresTestSupport.check(jdbi, type, parent, RING);
+      assertEquals(1, rewrite.count("REKEYED"));
+      assertEquals(1, check.count("PRIMARY"));
+      assertEquals(0, check.count("OLDER_KEY"));
+      assertEquals(new Opening.Primary("attached-secret"), NEW.open(readText(attached, "note")));
+    } finally {
+      jdbi.useHandle(
+          handle -> {
+            handle.execute("DROP TABLE IF EXISTS " + detached);
+            handle.execute("DROP TABLE IF EXISTS " + parent);
+          });
     }
   }
 

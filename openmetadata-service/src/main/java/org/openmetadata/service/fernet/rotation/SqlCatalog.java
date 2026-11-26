@@ -15,10 +15,12 @@ package org.openmetadata.service.fernet.rotation;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.jdbi.v3.core.Handle;
 
 /**
@@ -27,9 +29,26 @@ import org.jdbi.v3.core.Handle;
  * anyone listing it. A column is eligible by type (JSON, text, character, binary), when it is not
  * generated (the database recomputes those from the column that is rewritten) and when its declared
  * maximum is at least {@value #MIN_LENGTH} characters: the shortest token the server writes is 107.
+ * On PostgreSQL, attached child partitions are excluded so partitioned tables are read once via
+ * their parent and skipped when the parent is in {@link LargeTables}.
  */
 final class SqlCatalog {
   static final int MIN_LENGTH = 100;
+  private static final Set<String> UNSUITABLE_NARROWING_TYPES =
+      Set.of(
+          "json",
+          "jsonb",
+          "bytea",
+          "binary",
+          "varbinary",
+          "tinyblob",
+          "blob",
+          "mediumblob",
+          "longblob",
+          "text",
+          "tinytext",
+          "mediumtext",
+          "longtext");
 
   enum ColumnType {
     JSON,
@@ -48,10 +67,23 @@ final class SqlCatalog {
 
   record SqlColumn(String name, ColumnType type) {}
 
-  /** A base table with at least one eligible column; {@code primaryKey} is in ordinal order. */
-  record SqlTable(String name, List<String> primaryKey, List<SqlColumn> columns) {
+  /**
+   * A base table with at least one eligible column; {@code primaryKey} is in ordinal order, and
+   * {@code narrowingColumns} holds indexed scalar columns used to narrow compare-and-set updates on
+   * tables without a primary key.
+   */
+  record SqlTable(
+      String name,
+      List<String> primaryKey,
+      List<String> narrowingColumns,
+      List<SqlColumn> columns) {
+    SqlTable(String name, List<String> primaryKey, List<SqlColumn> columns) {
+      this(name, primaryKey, List.of(), columns);
+    }
+
     SqlTable {
       primaryKey = List.copyOf(primaryKey);
+      narrowingColumns = List.copyOf(narrowingColumns);
       columns = List.copyOf(columns);
     }
 
@@ -83,8 +115,13 @@ final class SqlCatalog {
 
   static List<SqlTable> read(Handle handle, Dialect dialect) {
     Map<String, List<String>> keys = primaryKeys(handle, dialect);
+    Map<String, LinkedHashSet<String>> indexed = indexedColumns(handle, dialect);
+    Map<String, Map<String, String>> rawTypes = new LinkedHashMap<>();
     Map<String, List<SqlColumn>> columns = new LinkedHashMap<>();
     for (RawColumn raw : columns(handle, dialect)) {
+      rawTypes
+          .computeIfAbsent(raw.table(), table -> new LinkedHashMap<>())
+          .put(raw.column(), raw.dataType().toLowerCase(Locale.ROOT));
       eligible(raw, dialect)
           .ifPresent(
               type ->
@@ -94,9 +131,28 @@ final class SqlCatalog {
     }
     return columns.entrySet().stream()
         .map(
-            entry ->
-                new SqlTable(
-                    entry.getKey(), keys.getOrDefault(entry.getKey(), List.of()), entry.getValue()))
+            entry -> {
+              String table = entry.getKey();
+              List<String> primaryKey = keys.getOrDefault(table, List.of());
+              List<String> narrowing =
+                  primaryKey.isEmpty()
+                      ? narrowingColumnsOf(
+                          indexed.getOrDefault(table, new LinkedHashSet<>()),
+                          rawTypes.getOrDefault(table, Map.of()))
+                      : List.of();
+              return new SqlTable(table, primaryKey, narrowing, entry.getValue());
+            })
+        .toList();
+  }
+
+  private static List<String> narrowingColumnsOf(
+      Set<String> indexed, Map<String, String> columnDataTypes) {
+    return indexed.stream()
+        .filter(
+            col -> {
+              String type = columnDataTypes.get(col);
+              return type != null && !UNSUITABLE_NARROWING_TYPES.contains(type);
+            })
         .toList();
   }
 
@@ -119,6 +175,7 @@ final class SqlCatalog {
                 + " WHERE c.table_schema = "
                 + dialect.currentSchema()
                 + " AND t.table_type = 'BASE TABLE'"
+                + dialect.tableFilter()
                 + " ORDER BY c.table_name, c.ordinal_position")
         .map(
             (rs, ctx) ->
@@ -141,5 +198,18 @@ final class SqlCatalog {
                 keys.computeIfAbsent(row.getFirst(), table -> new ArrayList<>())
                     .add(row.getLast()));
     return keys;
+  }
+
+  private static Map<String, LinkedHashSet<String>> indexedColumns(Handle handle, Dialect dialect) {
+    Map<String, LinkedHashSet<String>> indexed = new LinkedHashMap<>();
+    handle
+        .createQuery(dialect.indexedColumnsSql())
+        .map((rs, ctx) -> List.of(rs.getString(1), rs.getString(2)))
+        .forEach(
+            row ->
+                indexed
+                    .computeIfAbsent(row.getFirst(), table -> new LinkedHashSet<>())
+                    .add(row.getLast()));
+    return indexed;
   }
 }

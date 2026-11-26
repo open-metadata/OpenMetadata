@@ -18,7 +18,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.macasaet.fernet.Key;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
+import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.fernet.KeyRing;
 import org.openmetadata.service.fernet.rotation.FernetKeyRotation.Options;
@@ -36,6 +39,10 @@ class FernetKeyRotationTest {
   private static final BooleanSupplier NEVER_ASKED =
       () -> {
         throw new AssertionError("the operator was asked to confirm a run that is refused");
+      };
+  private static final Supplier<Jdbi> NEVER_OPENED =
+      () -> {
+        throw new AssertionError("the database was opened for a run that is refused");
       };
 
   @Test
@@ -92,7 +99,7 @@ class FernetKeyRotationTest {
                 FernetKeyRotation.run(
                     Options.of(false, false, NEVER_ASKED),
                     KeyRing.NONE,
-                    null,
+                    NEVER_OPENED,
                     ConnectionType.MYSQL,
                     null));
 
@@ -103,7 +110,36 @@ class FernetKeyRotationTest {
         refused.getMessage());
   }
 
+  @Test
+  void parseKeysRefusesMissingBlankDisabledAndMalformedKeys() {
+    assertThrows(Refused.class, () -> FernetKeyRotation.parseKeys(null));
+    assertThrows(
+        Refused.class,
+        () -> FernetKeyRotation.parseKeys(new FernetConfiguration().withFernetKey("")));
+    assertThrows(
+        Refused.class,
+        () -> FernetKeyRotation.parseKeys(new FernetConfiguration().withFernetKey("   ")));
+    assertThrows(
+        Refused.class,
+        () ->
+            FernetKeyRotation.parseKeys(
+                new FernetConfiguration().withFernetKey(Fernet.FERNET_NO_ENCRYPTION)));
+    assertThrows(
+        Refused.class,
+        () -> FernetKeyRotation.parseKeys(new FernetConfiguration().withFernetKey("," + NEW)));
+    assertThrows(
+        Refused.class,
+        () ->
+            FernetKeyRotation.parseKeys(
+                new FernetConfiguration().withFernetKey(NEW + ",not-a-key")));
+    assertEquals(
+        KeyRing.parse(NEW + "," + OLD).fingerprints(),
+        FernetKeyRotation.parseKeys(new FernetConfiguration().withFernetKey(NEW + "," + OLD))
+            .fingerprints());
+  }
+
   private static FernetKeyRotation.Report run(Options options, String keys) {
-    return FernetKeyRotation.run(options, KeyRing.parse(keys), null, ConnectionType.MYSQL, null);
+    return FernetKeyRotation.run(
+        options, KeyRing.parse(keys), NEVER_OPENED, ConnectionType.MYSQL, null);
   }
 }

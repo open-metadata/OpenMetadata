@@ -18,12 +18,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.StatementExceptions;
+import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheKeys;
 import org.openmetadata.service.cache.RedisCacheProvider;
@@ -90,6 +92,27 @@ public final class FernetKeyRotation {
   private FernetKeyRotation() {}
 
   /**
+   * Parses the configured Fernet key list for a rotation run, turning missing or malformed keys
+   * into {@link Refused} so the CLI exits 2 before opening the database.
+   */
+  public static KeyRing parseKeys(FernetConfiguration fernetConfiguration) {
+    String configured = fernetConfiguration == null ? null : fernetConfiguration.getFernetKey();
+    if (configured == null
+        || configured.isBlank()
+        || Fernet.FERNET_NO_ENCRYPTION.equals(configured)) {
+      throw new Refused(
+          "No Fernet key is configured ("
+              + Fernet.FERNET_NO_ENCRYPTION
+              + "), so there is nothing to rotate.");
+    }
+    try {
+      return KeyRing.parse(configured);
+    } catch (IllegalArgumentException e) {
+      throw new Refused(e.getMessage());
+    }
+  }
+
+  /**
    * Opens a {@link RedisCacheProvider} when {@code cache.provider} is {@code redis} and closes it
    * before returning.
    *
@@ -97,6 +120,22 @@ public final class FernetKeyRotation {
    */
   public static Report run(
       Options options, KeyRing keys, Jdbi jdbi, ConnectionType dialect, CacheConfig cache) {
+    return run(options, keys, () -> jdbi, dialect, cache);
+  }
+
+  /**
+   * Opens a {@link RedisCacheProvider} when {@code cache.provider} is {@code redis}, invokes {@code
+   * jdbiSupplier} only after all key, Redis, and confirmation checks pass, and closes Redis before
+   * returning.
+   *
+   * @throws Refused when the run cannot proceed; nothing was read or written
+   */
+  public static Report run(
+      Options options,
+      KeyRing keys,
+      Supplier<Jdbi> jdbiSupplier,
+      ConnectionType dialect,
+      CacheConfig cache) {
     refuseUnlessRunnable(options, keys);
     Optional<RedisCacheProvider> redis = openRedis(cache);
     try {
@@ -108,8 +147,9 @@ public final class FernetKeyRotation {
               provider ->
                   new RedisTokenStore(
                       provider.getSyncCommands(), redisPrefixes(cache.redis.keyspace)));
-      return jdbi.withHandle(
-          handle -> sweep(options, keys, handle, Dialect.of(dialect), redisStore));
+      return jdbiSupplier
+          .get()
+          .withHandle(handle -> sweep(options, keys, handle, Dialect.of(dialect), redisStore));
     } finally {
       redis.ifPresent(RedisCacheProvider::close);
     }

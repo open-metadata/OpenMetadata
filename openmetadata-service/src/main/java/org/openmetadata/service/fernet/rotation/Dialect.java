@@ -30,9 +30,13 @@ enum Dialect {
       "DATABASE()",
       '`',
       "c.extra",
+      "",
       "SELECT table_name, column_name FROM information_schema.key_column_usage"
           + " WHERE table_schema = DATABASE() AND constraint_name = 'PRIMARY'"
           + " ORDER BY table_name, ordinal_position",
+      "SELECT table_name, column_name FROM information_schema.statistics"
+          + " WHERE table_schema = DATABASE() AND column_name IS NOT NULL AND sub_part IS NULL"
+          + " ORDER BY table_name, index_name, seq_in_index",
       Map.ofEntries(
           Map.entry("json", ColumnType.JSON),
           Map.entry("char", ColumnType.TEXT),
@@ -108,12 +112,23 @@ enum Dialect {
       "current_schema()",
       '"',
       "c.is_generated",
+      " AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class pc"
+          + " JOIN pg_catalog.pg_namespace pn ON pn.oid = pc.relnamespace"
+          + " WHERE pn.nspname = c.table_schema AND pc.relname = c.table_name"
+          + " AND pc.relispartition)",
       "SELECT tc.table_name, kcu.column_name FROM information_schema.table_constraints tc"
           + " JOIN information_schema.key_column_usage kcu"
           + " ON kcu.constraint_schema = tc.constraint_schema"
           + " AND kcu.constraint_name = tc.constraint_name AND kcu.table_name = tc.table_name"
           + " WHERE tc.table_schema = current_schema() AND tc.constraint_type = 'PRIMARY KEY'"
           + " ORDER BY tc.table_name, kcu.ordinal_position",
+      "SELECT c.relname, a.attname FROM pg_catalog.pg_index i"
+          + " JOIN pg_catalog.pg_class c ON c.oid = i.indrelid"
+          + " JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace"
+          + " JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(i.indkey)"
+          + " WHERE n.nspname = current_schema() AND NOT i.indisprimary"
+          + " AND a.attnum > 0 AND NOT a.attisdropped"
+          + " ORDER BY c.relname, i.indexrelid, array_position(i.indkey, a.attnum)",
       Map.of(
           "json", ColumnType.JSON,
           "jsonb", ColumnType.JSONB,
@@ -177,19 +192,25 @@ enum Dialect {
   private final String currentSchema;
   private final char quoteChar;
   private final String generatedColumn;
+  private final String tableFilter;
   private final String primaryKeysSql;
+  private final String indexedColumnsSql;
   private final Map<String, ColumnType> columnTypes;
 
   Dialect(
       String currentSchema,
       char quoteChar,
       String generatedColumn,
+      String tableFilter,
       String primaryKeysSql,
+      String indexedColumnsSql,
       Map<String, ColumnType> columnTypes) {
     this.currentSchema = currentSchema;
     this.quoteChar = quoteChar;
     this.generatedColumn = generatedColumn;
+    this.tableFilter = tableFilter;
     this.primaryKeysSql = primaryKeysSql;
+    this.indexedColumnsSql = indexedColumnsSql;
     this.columnTypes = columnTypes;
   }
 
@@ -210,9 +231,19 @@ enum Dialect {
     return generatedColumn;
   }
 
+  /** Additional {@code WHERE} predicate filtering base tables in {@code information_schema}. */
+  String tableFilter() {
+    return tableFilter;
+  }
+
   /** The query returning {@code (table_name, column_name)} pairs for all primary keys in order. */
   String primaryKeysSql() {
     return primaryKeysSql;
+  }
+
+  /** The query returning {@code (table_name, column_name)} pairs for indexed columns in order. */
+  String indexedColumnsSql() {
+    return indexedColumnsSql;
   }
 
   /** Whether the non-null {@link #generatedColumn()} marker denotes a generated column. */

@@ -32,10 +32,12 @@ public final class RotationStoresTestSupport {
   /** A column as the catalog sees it; {@code kind} is JSON, JSONB, TEXT or BYTES. */
   public record Column(String name, String kind) {}
 
-  public record Table(String name, List<String> primaryKey, List<Column> columns) {}
+  public record Table(
+      String name, List<String> primaryKey, List<String> narrowingColumns, List<Column> columns) {}
 
   /** A stored value as a store returned it. */
-  public record Value(String location, String column, List<Object> key, String text) {}
+  public record Value(
+      String location, String column, List<String> keyColumns, List<Object> key, String text) {}
 
   /** One pass over stores: values holding tokens, token counts by outcome name, problem lines. */
   public record Pass(
@@ -166,7 +168,7 @@ public final class RotationStoresTestSupport {
 
   private static StoredText stored(Value value, SqlTable table) {
     return StoredText.writable(
-        new Location(table.name(), value.column(), table.primaryKey(), value.key()),
+        new Location(table.name(), value.column(), value.keyColumns(), value.key()),
         value.text(),
         table.column(value.column()).orElseThrow().type().encoding());
   }
@@ -175,12 +177,17 @@ public final class RotationStoresTestSupport {
     return new Table(
         table.name(),
         table.primaryKey(),
+        table.narrowingColumns(),
         table.columns().stream().map(c -> new Column(c.name(), c.type().name())).toList());
   }
 
   private static Value view(StoredText value) {
     return new Value(
-        value.at().printable(), value.at().container(), value.at().keyValues(), value.text());
+        value.at().printable(),
+        value.at().container(),
+        value.at().keyColumns(),
+        value.at().keyValues(),
+        value.text());
   }
 
   private static Pass view(FernetSweep.Result result) {

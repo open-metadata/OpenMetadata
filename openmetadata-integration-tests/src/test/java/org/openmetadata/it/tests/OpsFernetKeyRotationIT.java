@@ -457,6 +457,42 @@ class OpsFernetKeyRotationIT {
   }
 
   @Test
+  void blankOrMalformedKeyRefusesWithExitTwoAndExternalSecretsConfigDoesNotBlockRotation() {
+    String suiteKey = suiteFernetKey();
+
+    Outcome blank = rotate("");
+    assertEquals(
+        2, blank.exitCode(), "blank FERNET_KEY refuses with exit 2, " + tail(blank.output()));
+
+    Outcome leadingComma = rotate("," + suiteKey);
+    assertEquals(
+        2,
+        leadingComma.exitCode(),
+        "leading comma FERNET_KEY refuses with exit 2, " + tail(leadingComma.output()));
+
+    Outcome malformed = rotate(suiteKey + ",not-a-key");
+    assertEquals(
+        2,
+        malformed.exitCode(),
+        "malformed FERNET_KEY refuses with exit 2, " + tail(malformed.output()));
+
+    Outcome withExternalSecretsAndUnreachableSearch =
+        ForkedOperations.runCapturing(
+            config -> {
+              ((ObjectNode) config.path("fernetConfiguration")).put("fernetKey", suiteKey);
+              ObjectNode secrets = config.putObject("secretsManagerConfiguration");
+              secrets.put("secretsManager", "kubernetes");
+              ((ObjectNode) config.path("elasticsearch")).put("host", "127.0.0.1").put("port", 1);
+            },
+            CLI);
+    assertEquals(
+        0,
+        withExternalSecretsAndUnreachableSearch.exitCode(),
+        "DB+Redis-only ops host succeeds even with external secrets manager and unreachable search, "
+            + tail(withExternalSecretsAndUnreachableSearch.output()));
+  }
+
+  @Test
   void theSuiteKeyAloneIsCleanAndAnUnrelatedKeyAloneNeverExitsZero() {
     String suiteKey = suiteFernetKey();
     String unrelatedKey = Key.generateKey().serialise();

@@ -85,17 +85,26 @@ final class FernetStoreScan {
     return new Scan(List.copyOf(tokens));
   }
 
+  private static final String POSTGRES_EXCLUDE_PARTITIONS =
+      " AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_class pc"
+          + " JOIN pg_catalog.pg_namespace pn ON pn.oid = pc.relnamespace"
+          + " WHERE pn.nspname = t.table_schema AND pc.relname = t.table_name"
+          + " AND pc.relispartition)";
+
   static List<String> tables() {
     boolean mysql = TestSuiteBootstrap.getConnectionType() == ConnectionType.MYSQL;
     String schema = mysql ? "DATABASE()" : "current_schema()";
+    String partitionFilter = mysql ? "" : POSTGRES_EXCLUDE_PARTITIONS;
     return TestSuiteBootstrap.getJdbi()
         .withHandle(
             handle ->
                 handle
                     .createQuery(
-                        "SELECT table_name AS tbl FROM information_schema.tables WHERE table_schema = "
+                        "SELECT t.table_name AS tbl FROM information_schema.tables t"
+                            + " WHERE t.table_schema = "
                             + schema
-                            + " AND table_type = 'BASE TABLE'")
+                            + " AND t.table_type = 'BASE TABLE'"
+                            + partitionFilter)
                     .mapTo(String.class)
                     .list());
   }
@@ -103,6 +112,7 @@ final class FernetStoreScan {
   private static List<Column> columns(Handle handle, boolean mysql) {
     String schema = mysql ? "DATABASE()" : "current_schema()";
     String types = mysql ? MYSQL_TYPES : POSTGRES_TYPES;
+    String partitionFilter = mysql ? "" : POSTGRES_EXCLUDE_PARTITIONS;
     return handle
         .createQuery(
             "SELECT c.table_name AS tbl, c.column_name AS col, c.data_type AS typ"
@@ -110,7 +120,9 @@ final class FernetStoreScan {
                 + " ON t.table_schema = c.table_schema AND t.table_name = c.table_name"
                 + " WHERE c.table_schema = "
                 + schema
-                + " AND t.table_type = 'BASE TABLE' AND c.data_type IN ("
+                + " AND t.table_type = 'BASE TABLE'"
+                + partitionFilter
+                + " AND c.data_type IN ("
                 + types
                 + ") ORDER BY c.table_name, c.ordinal_position")
         .map(

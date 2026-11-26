@@ -118,7 +118,7 @@ a short digest of their key, because some keys, such as session ids, are credent
 |---|---|
 | 0 | Every token the command read opens with the primary key. After a run with `--every-table`, older keys can be removed from the servers |
 | 1 | The command failed, for example because the database was unreachable. Values it already re-encrypted stay readable under the configured keys |
-| 2 | The command refused to start and changed nothing. Possible causes: no key is configured; `--apply` with a single key; `--apply` with the default key from `openmetadata.yaml` as primary; the prompt was not confirmed; `--apply` without a terminal and without `--yes`; Redis is configured but unreachable; the database has no OpenMetadata tables, for example because the ops host points at another database or schema |
+| 2 | The command refused to start and changed nothing. Possible causes: no key is configured or `FERNET_KEY` is blank or malformed; `--apply` with a single key or duplicate keys; `--apply` with the default key from `openmetadata.yaml` as primary; the prompt was not confirmed; `--apply` without a terminal and without `--yes`; Redis is configured but unreachable; the database has no OpenMetadata tables, for example because the ops host points at another database or schema |
 | 3 | Not safe to remove an older key. A token still needs one, or a value cannot be vouched for (not rewritable, contended, or a table that could not be read). Run `--apply` again, with `--every-table` if the run had it, or fix the places listed |
 | 4 | No token needs an older configured key, but some tokens open with no configured key. Those values were already unreadable before the rotation. Removing a key does not change that |
 
