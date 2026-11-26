@@ -64,6 +64,18 @@ class PromptTextTest {
   }
 
   @Test
+  void budgetedArticleReadsSkipImageOnlyLeadParagraphsAndKeepLiteralMarkup() {
+    String article =
+        "<p><img src=\"data:image/png;base64,AAAA\"></p>\n\n"
+            + "<p>&lt;img src=&quot;data:image/png;base64,AAAA&quot;&gt;</p>\n\n"
+            + "<p><code>&lt;p&gt;&lt;/p&gt;</code></p>\n\n<p>Use this element.</p>";
+
+    assertEquals(
+        "<p><code><p></p></code></p>\n\n<p>Use this element.</p>",
+        PromptText.forBudgetedArticleRead(article));
+  }
+
+  @Test
   void contentReadRemovesEncodedImagesAndReadsTextAsWritten() {
     assertEquals(
         "Before  after",

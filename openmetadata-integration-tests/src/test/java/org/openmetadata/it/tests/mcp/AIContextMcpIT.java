@@ -465,10 +465,10 @@ class AIContextMcpIT extends McpTestBase {
     Table linkedTable = createServiceDatabaseSchemaTable("aicontext_image_anchor_" + suffix);
     String base64Payload = "iVBORw0KGgoAAAANSUhEUg" + "A".repeat(4_000) + "ErkJggg==";
     String htmlBody =
-        "<p>Architecture summary for revenue reporting.</p>"
-            + "<p><img src=\"data:image/png;base64,"
+        "<p><img src=\"data:image/png;base64,"
             + base64Payload
-            + "\" alt=\"Architecture\"></p>"
+            + "\" alt=\"Architecture\"></p>\n\n"
+            + "<p>Architecture summary for revenue reporting.</p>"
             + "<p>Keep x &gt;&#61; 1 and label &#39;a&#39;.</p>";
     Map<String, Object> createPage =
         Map.of(
@@ -534,7 +534,8 @@ class AIContextMcpIT extends McpTestBase {
     assertThat(linkedArticle).isNotNull();
     assertThat(linkedArticle.path("contentTruncated").asBoolean()).isFalse();
     assertThat(linkedArticle.path("content").asText())
-        .contains("Architecture summary for revenue reporting.", "Keep x >= 1 and label 'a'.")
+        .startsWith("<p>Architecture summary for revenue reporting.</p>")
+        .contains("Keep x >= 1 and label 'a'.")
         .doesNotContain("base64", "<img", base64Payload);
   }
 

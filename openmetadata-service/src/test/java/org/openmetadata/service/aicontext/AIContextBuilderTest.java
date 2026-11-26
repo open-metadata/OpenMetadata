@@ -315,13 +315,22 @@ class AIContextBuilderTest {
     String lead = "Start with policy.";
     String answer = "Refunds are accepted within 30 days.";
     String diagram = "<img src=\"data:image/png;base64,AAAA\">";
-    // The labels and prose fill chunk 1, leaving the diagram by itself in chunk 2.
+    // The labels, opening diagram and prose fill chunk 1, leaving an image-only chunk 2.
     Page page =
         new Page()
             .withId(UUID.randomUUID())
             .withName("article")
             .withFullyQualifiedName("kb.article")
-            .withDescription(lead + "\n\n" + answer + " " + "detail ".repeat(368) + diagram);
+            .withDescription(
+                "<p>"
+                    + diagram
+                    + "</p>\n\n"
+                    + lead
+                    + "\n\n"
+                    + answer
+                    + " "
+                    + "detail ".repeat(366)
+                    + diagram);
     EntityReference reference = new EntityReference().withType(Entity.PAGE).withId(page.getId());
     Page indexedPage = spy(page);
     when(indexedPage.getEntityReference()).thenReturn(reference);
@@ -338,7 +347,7 @@ class AIContextBuilderTest {
             ? List.of(imageHit, (String) chunks.getFirst().get("textToLLMContext"))
             : List.of(imageHit);
     KnowledgeItem article =
-        knowledgeItem(page.getName(), PromptText.forArticleRead(page.getDescription()))
+        knowledgeItem(page.getName(), PromptText.forBudgetedArticleRead(page.getDescription()))
             .withId(page.getId());
 
     VectorIndexService vectorService = mock(VectorIndexService.class);

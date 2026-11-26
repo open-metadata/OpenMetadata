@@ -65,13 +65,17 @@ public final class PageBodyTextContributor implements VectorBodyTextContributor 
    * ADR:2026-11-26-mcp-article-passages-match-indexed-chunks
    */
   public static List<String> readableArticlePassages(Page page, List<String> passages) {
-    return matchedArticlePassages(page, passages).map(ArticlePassage::render).toList();
+    return matchedArticlePassages(page, passages)
+        .map(ArticlePassage::render)
+        .filter(Objects::nonNull)
+        .toList();
   }
 
   /** The first readable body in search order, suitable for a budgeted context excerpt. */
   public static String firstReadableArticleBody(Page page, List<String> passages) {
     return matchedArticlePassages(page, passages)
-        .map(ArticlePassage::body)
+        .map(passage -> PromptText.forBudgetedArticleRead(passage.body()))
+        .filter(body -> !body.isEmpty())
         .findFirst()
         .orElse(null);
   }
@@ -91,7 +95,8 @@ public final class PageBodyTextContributor implements VectorBodyTextContributor 
 
   private record ArticlePassage(String header, String body, String footer) {
     String render() {
-      return PromptText.forContentRead(header) + body + footer;
+      String readable = PromptText.forArticleRead(body);
+      return readable.isEmpty() ? null : PromptText.forContentRead(header) + readable + footer;
     }
   }
 
@@ -128,16 +133,11 @@ public final class PageBodyTextContributor implements VectorBodyTextContributor 
           String imageFree = chunks.imageFree().get(index);
           String body = imageFree.substring(Math.min(label.length(), imageFree.length()));
           String header = passage.substring(0, footer.start() - chunk.length()) + label;
-          match = readablePassage(header, body, passage.substring(footer.start()));
+          match = new ArticlePassage(header, body, passage.substring(footer.start()));
         }
       }
     }
     return match;
-  }
-
-  private static ArticlePassage readablePassage(String header, String body, String footer) {
-    String readable = PromptText.forArticleRead(body);
-    return readable.isEmpty() ? null : new ArticlePassage(header, readable, footer);
   }
 
   static String extractBodyText(EntityInterface<?> entity) {

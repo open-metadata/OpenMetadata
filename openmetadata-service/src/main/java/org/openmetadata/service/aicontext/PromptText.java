@@ -120,6 +120,8 @@ public final class PromptText {
       Pattern.compile("(?i)&(?:lt|#0*60|#x0*3c);img\\b|!\\[");
   private static final Pattern HTML_ENTITY =
       Pattern.compile("&(?:[a-zA-Z][a-zA-Z0-9]*+|#(?:[0-9]++|[xX][0-9a-fA-F]++));");
+  private static final Pattern LEADING_ARTICLE_PARAGRAPH =
+      Pattern.compile("[\\s\\p{Z}]*+<p>(.*?)</p>", Pattern.DOTALL);
 
   private PromptText() {}
 
@@ -147,7 +149,24 @@ public final class PromptText {
 
   /** Keeps the usual rich-text output when the article contains visible text. */
   public static String forArticleRead(String richText) {
+    return readArticleHtml(forPrompt(richText));
+  }
+
+  /** Skips leading paragraphs left empty by image removal so the budget reaches readable text. */
+  public static String forBudgetedArticleRead(String richText) {
     String html = forPrompt(richText);
+    int start = 0;
+    if (html != null) {
+      Matcher paragraph = LEADING_ARTICLE_PARAGRAPH.matcher(html);
+      while (paragraph.region(start, html.length()).lookingAt()
+          && readArticleHtml(paragraph.group(1)).isEmpty()) {
+        start = paragraph.end();
+      }
+    }
+    return readArticleHtml(start == 0 ? html : html.substring(start).stripLeading());
+  }
+
+  private static String readArticleHtml(String html) {
     String rendered = stripDecodedImages(StringEscapeUtils.unescapeHtml4(html));
     // Inspect the encoded markup so literal examples such as &lt;div&gt; count as text.
     String plain =

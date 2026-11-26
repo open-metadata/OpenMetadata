@@ -1174,7 +1174,7 @@ public class AIContextBuilder {
                 .withContent(
                     page.getPageType() == PageType.QUICK_LINK
                         ? unescapeRichText(page.getDescription())
-                        : PromptText.forArticleRead(page.getDescription()));
+                        : PromptText.forBudgetedArticleRead(page.getDescription()));
       }
     } catch (Exception e) {
       LOG.warn(

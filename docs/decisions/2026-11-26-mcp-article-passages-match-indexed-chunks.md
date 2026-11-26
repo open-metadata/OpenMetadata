@@ -30,10 +30,11 @@ instead of the article's text. Stored chunks can also lag behind edits to the pa
   yields no readable hits, `get_entity_details(include=["content"])` returns the cleaned full
   article. It returns empty content when that article consists entirely of images removed by the
   cleaner.
-- `AIContextBuilder` cleans linked articles before applying the knowledge budget. For a
-  query-relevant excerpt it requests up to three ranked hits in one lookup and excerpts the first
-  readable article body without its index framing. With no readable hit it uses the structural
-  preview of the cleaned article within the same budget.
+- `AIContextBuilder` cleans linked articles before applying the knowledge budget and skips
+  opening paragraphs left empty by image removal. For a query-relevant excerpt it requests up to
+  three ranked hits in one lookup and excerpts the first readable article body without its index
+  framing. With no readable hit it uses the structural preview of the cleaned article within the
+  same budget.
 
 ## Consequences
 
