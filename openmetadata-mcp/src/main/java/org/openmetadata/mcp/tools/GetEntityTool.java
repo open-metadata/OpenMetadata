@@ -15,11 +15,14 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.AIContext;
@@ -35,6 +38,7 @@ import org.openmetadata.service.aicontext.PromptText;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.lineage.LineagePermissionFilter;
+import org.openmetadata.service.search.vector.PageBodyTextContributor;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -431,8 +435,7 @@ public class GetEntityTool implements McpTool {
             : List.of();
     Object rendered;
     if (found.isEmpty()) {
-      String body = AIContextBuilder.fullContentOf(ctx.entity());
-      rendered = renderText(ctx, body == null ? "" : body);
+      rendered = renderText(ctx, fullKnowledgeText(ctx.entity()));
     } else {
       rendered =
           ctx.options().asJson()
@@ -440,6 +443,12 @@ public class GetEntityTool implements McpTool {
               : renderText(ctx, String.join("\n\n---\n\n", found));
     }
     return rendered;
+  }
+
+  private static String fullKnowledgeText(EntityInterface<?> entity) {
+    String body = AIContextBuilder.fullContentOf(entity);
+    boolean emptyArticle = entity instanceof Page page && isArticle(page) && !hasArticleText(body);
+    return body == null || emptyArticle ? "" : body;
   }
 
   private static boolean masksTestCaseContent(IncludeContext ctx) {
@@ -461,15 +470,39 @@ public class GetEntityTool implements McpTool {
                 query,
                 ctx.options().passages(),
                 getSubjectContext(ctx.securityContext()));
-    // PageBodyTextContributor includes the raw editor HTML in indexed page chunks.
-    return ctx.entity() instanceof Page ? readablePassages(found) : found;
+    return ctx.entity() instanceof Page page ? readablePassages(page, found) : found;
   }
 
-  private static List<String> readablePassages(List<String> passages) {
-    return passages.stream()
+  private static List<String> readablePassages(Page page, List<String> passages) {
+    List<String> readable =
+        isArticle(page)
+            ? PageBodyTextContributor.filterArticlePassages(
+                page, passages, body -> hasArticleText(PromptText.forContentRead(body)))
+            : passages;
+    return readable.stream()
         .map(PromptText::forContentRead)
         .filter(passage -> !nullOrEmpty(passage) && !passage.isBlank())
         .toList();
+  }
+
+  private static boolean isArticle(Page page) {
+    return page.getPageType() != PageType.QUICK_LINK;
+  }
+
+  private static boolean hasArticleText(String content) {
+    boolean readable =
+        !nullOrEmpty(content)
+            && content
+                .codePoints()
+                .anyMatch(c -> !Character.isWhitespace(c) && !Character.isSpaceChar(c));
+    if (readable && content.indexOf('<') >= 0) {
+      Element body = Jsoup.parseBodyFragment(content).body();
+      // Unknown tags can be literal type notation in the decoded article text.
+      readable =
+          !body.text().isBlank()
+              || body.getAllElements().stream().anyMatch(element -> !element.tag().isKnownTag());
+    }
+    return readable;
   }
 
   private static Object renderText(IncludeContext ctx, String text) {

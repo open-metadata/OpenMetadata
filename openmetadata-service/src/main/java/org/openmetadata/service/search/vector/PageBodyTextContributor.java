@@ -12,8 +12,13 @@
  */
 package org.openmetadata.service.search.vector;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Page;
@@ -22,6 +27,7 @@ import org.openmetadata.schema.entity.data.QuickLink;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
 import org.openmetadata.service.search.vector.VectorDocBuilder.BodyTextExtractor;
+import org.openmetadata.service.search.vector.utils.TextChunkManager;
 
 /**
  * Body text contributor for {@link Page}. The default description-only extractor would miss the
@@ -33,6 +39,10 @@ import org.openmetadata.service.search.vector.VectorDocBuilder.BodyTextExtractor
 public final class PageBodyTextContributor implements VectorBodyTextContributor {
 
   public static final PageBodyTextContributor INSTANCE = new PageBodyTextContributor();
+  private static final String DESCRIPTION = "description";
+  private static final String CONTEXT_SEPARATOR = " | ";
+  private static final Pattern CHUNK_FOOTER =
+      Pattern.compile(" \\| chunk ([1-9][0-9]{0,9})/([1-9][0-9]{0,9})\\z");
 
   private PageBodyTextContributor() {}
 
@@ -46,17 +56,64 @@ public final class PageBodyTextContributor implements VectorBodyTextContributor 
     return PageBodyTextContributor::extractBodyText;
   }
 
+  /**
+   * Tests the article body within each hit. Match the chunk suffix against the current page so
+   * pipes in the metadata or prose can't be mistaken for the start of the chunk.
+   */
+  public static List<String> filterArticlePassages(
+      Page page, List<String> passages, Predicate<String> includeBody) {
+    String description = page.getDescription();
+    List<String> matching = List.of();
+    if (!passages.isEmpty() && !nullOrEmpty(description) && !description.isBlank()) {
+      List<String> titleAndLabel = titleParts(page);
+      titleAndLabel.add(DESCRIPTION + ":");
+      List<String> labelChunks = TextChunkManager.chunk(String.join("; ", titleAndLabel));
+      List<String> pageChunks = TextChunkManager.chunk(extractBodyText(page));
+      matching =
+          passages.stream()
+              .filter(passage -> matchesBody(passage, pageChunks, labelChunks, includeBody))
+              .toList();
+    }
+    return matching;
+  }
+
+  private static boolean matchesBody(
+      String passage,
+      List<String> pageChunks,
+      List<String> labelChunks,
+      Predicate<String> includeBody) {
+    boolean included = false;
+    Matcher footer = CHUNK_FOOTER.matcher(passage);
+    if (footer.find() && Long.parseLong(footer.group(2)) == pageChunks.size()) {
+      long ordinal = Long.parseLong(footer.group(1));
+      if (ordinal >= labelChunks.size() && ordinal <= pageChunks.size()) {
+        String chunk = pageChunks.get((int) ordinal - 1);
+        String suffix = CONTEXT_SEPARATOR + chunk;
+        if (passage.regionMatches(footer.start() - suffix.length(), suffix, 0, suffix.length())) {
+          int labels = ordinal == labelChunks.size() ? labelChunks.getLast().length() : 0;
+          included = includeBody.test(chunk.substring(labels).stripLeading());
+        }
+      }
+    }
+    return included;
+  }
+
   static String extractBodyText(EntityInterface<?> entity) {
     if (!(entity instanceof Page page)) {
       return null;
     }
-    List<String> parts = new ArrayList<>();
-    appendIfPresent(parts, "title", titleOf(page));
-    appendIfPresent(parts, "description", page.getDescription());
+    List<String> parts = titleParts(page);
+    appendIfPresent(parts, DESCRIPTION, page.getDescription());
     if (page.getPageType() == PageType.QUICK_LINK) {
       appendIfPresent(parts, "url", extractQuickLinkUrl(page));
     }
     return parts.isEmpty() ? "" : String.join("; ", parts);
+  }
+
+  private static List<String> titleParts(Page page) {
+    List<String> parts = new ArrayList<>();
+    appendIfPresent(parts, "title", titleOf(page));
+    return parts;
   }
 
   private static String titleOf(Page page) {

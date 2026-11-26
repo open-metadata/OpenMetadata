@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -64,6 +65,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.PageBodyTextContributor;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.AuthorizationException;
@@ -221,17 +223,59 @@ class GetEntityToolTest {
   @ParameterizedTest
   @ValueSource(strings = {"markdown", "json"})
   void contentQueryPassagesStripInlineImagesAndDropImageOnlyChunks(String format) throws Exception {
-    String fqn = "Knowledge.DiagramGuide";
-    String diagram = "iVBORw0KGgoAAAANSUhEUg";
+    Page page = articleWithSeparateDiagram(4);
+    List<String> chunks = indexedArticleChunks(page);
+    Map<String, Object> content =
+        queryArticle(page, List.of(chunks.getLast(), chunks.getFirst()), format);
+    if ("json".equals(format)) {
+      @SuppressWarnings("unchecked")
+      List<String> passages = (List<String>) content.get("passages");
+      assertThat(passages).hasSize(1);
+      assertThat(passages.getFirst())
+          .contains("Matched passage: x >= 1. | Keep this note.")
+          .doesNotContain("base64")
+          .doesNotContain("<img");
+    } else {
+      String rendered = (String) content.get("content");
+      assertThat(rendered)
+          .contains("Matched passage: x >= 1. | Keep this note.")
+          .doesNotContain("base64")
+          .doesNotContain("<img")
+          .doesNotContain("---");
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"markdown, 4", "json, 4", "json, 4000"})
+  void contentQueryFallsBackToSanitizedBodyWhenAllPassagesWereImageOnly(
+      String format, int imageSize) throws Exception {
+    Page page = articleWithSeparateDiagram(imageSize);
+    String diagramChunk = indexedArticleChunks(page).getLast();
+    assertThat(diagramChunk).contains("<img", "chunk 2/2").doesNotContain("Matched passage");
+    Map<String, Object> content = queryArticle(page, List.of(diagramChunk), format);
+
+    assertThat(content).doesNotContainKey("passages");
+    assertThat((String) content.get("content"))
+        .contains("Matched passage: x >= 1. | Keep this note.")
+        .doesNotContain("base64", "<img", "chunk 2/2");
+  }
+
+  @Test
+  void contentQueryReturnsEmptyContentForImageOnlyArticle() throws Exception {
     Page page =
         new Page()
             .withId(UUID.randomUUID())
-            .withName("DiagramGuide")
-            .withFullyQualifiedName(fqn)
-            .withDescription(
-                "<p>Matched passage: x &gt;&#61; 1.</p><img src=\"data:image/png;base64,"
-                    + diagram
-                    + "\">");
+            .withName("DiagramOnly")
+            .withFullyQualifiedName("Knowledge.DiagramOnly")
+            .withDescription("<p><img src=\"data:image/png;base64,AAAA\"></p><p>&nbsp;</p>");
+
+    assertThat(queryArticle(page, indexedArticleChunks(page), "json"))
+        .containsExactlyEntriesOf(Map.of("content", ""));
+  }
+
+  private Map<String, Object> queryArticle(Page page, List<String> matches, String format)
+      throws Exception {
+    String fqn = page.getFullyQualifiedName();
     CatalogSecurityContext securityContext = securityContextFor("alice");
     SubjectContext alice = new SubjectContext(new User().withName("alice"), null, null);
     SearchRepository searchRepository = mock(SearchRepository.class);
@@ -239,10 +283,7 @@ class GetEntityToolTest {
     VectorIndexService vectorService = mock(VectorIndexService.class);
     when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
     when(vectorService.searchChunksByParent(page.getId().toString(), "diagram", 3, alice))
-        .thenReturn(
-            List.of(
-                PageBodyTextContributor.INSTANCE.extractor().extract(page),
-                "<img src=\"data:image/png;base64," + diagram + "\">"));
+        .thenReturn(matches);
     Map<String, Object> result;
 
     try (MockedStatic<Entity> entities = mockStatic(Entity.class);
@@ -271,74 +312,34 @@ class GetEntityToolTest {
                       format));
     }
 
-    Map<String, Object> contentMap = castMap(result.get("content"));
-    if ("json".equals(format)) {
-      @SuppressWarnings("unchecked")
-      List<String> passages = (List<String>) contentMap.get("passages");
-      assertThat(passages).hasSize(1);
-      assertThat(passages.getFirst())
-          .contains("Matched passage: x >= 1.")
-          .doesNotContain("base64")
-          .doesNotContain("<img");
-    } else {
-      String rendered = (String) contentMap.get("content");
-      assertThat(rendered)
-          .contains("Matched passage: x >= 1.")
-          .doesNotContain("base64")
-          .doesNotContain("<img")
-          .doesNotContain("---");
-    }
+    return castMap(result.get("content"));
   }
 
-  @Test
-  void contentQueryFallsBackToSanitizedBodyWhenAllPassagesWereImageOnly() throws Exception {
-    String fqn = "Knowledge.OnlyImageChunks";
-    Page page =
-        new Page()
-            .withId(UUID.randomUUID())
-            .withName("OnlyImageChunks")
-            .withFullyQualifiedName(fqn)
-            .withDescription(
-                "<p>Sanitized fallback body.</p><img src=\"data:image/png;base64,AAAA\">");
-    CatalogSecurityContext securityContext = securityContextFor("alice");
-    SubjectContext alice = new SubjectContext(new User().withName("alice"), null, null);
-    SearchRepository searchRepository = mock(SearchRepository.class);
-    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
-    VectorIndexService vectorService = mock(VectorIndexService.class);
-    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
-    when(vectorService.searchChunksByParent(page.getId().toString(), "diagram", 3, alice))
-        .thenReturn(List.of("<img src=\"data:image/png;base64,BBBB\">"));
-    Map<String, Object> result;
+  private static Page articleWithSeparateDiagram(int imageSize) {
+    // The title and prose fill the first chunk so the image is the entire second chunk.
+    String prose =
+        "<p>Matched passage: x &gt;&#61; 1. | Keep this note.</p> "
+            + "<img src=\"data:image/png;base64,AAAA\"> "
+            + "detail ".repeat(364);
+    return new Page()
+        .withId(UUID.randomUUID())
+        .withName("DiagramGuide")
+        .withDisplayName("Diagram | Guide")
+        .withFullyQualifiedName("Knowledge.DiagramGuide")
+        .withDescription(
+            prose + "<p><img src=\"data:image/png;base64," + "A".repeat(imageSize) + "\"></p>");
+  }
 
-    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
-        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
-      entities
-          .when(() -> Entity.getEntityByName(Entity.PAGE, fqn, "", Include.NON_DELETED))
-          .thenReturn(page);
-      entities.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      subjects.when(() -> DefaultAuthorizer.getSubjectContext(securityContext)).thenReturn(alice);
-
-      result =
-          new GetEntityTool()
-              .execute(
-                  mock(Authorizer.class),
-                  securityContext,
-                  Map.of(
-                      "entityType",
-                      Entity.PAGE,
-                      "fqn",
-                      fqn,
-                      "include",
-                      List.of("content"),
-                      "query",
-                      "diagram"));
-    }
-
-    String rendered = (String) castMap(result.get("content")).get("content");
-    assertThat(rendered)
-        .contains("Sanitized fallback body.")
-        .doesNotContain("base64")
-        .doesNotContain("<img");
+  private static List<String> indexedArticleChunks(Page page) {
+    Page indexed = spy(page);
+    EntityReference reference = new EntityReference().withId(page.getId()).withType(Entity.PAGE);
+    when(indexed.getEntityReference()).thenReturn(reference);
+    PageBodyTextContributor.INSTANCE.register();
+    return VectorDocBuilder.fromEntityReusingEmbeddings(
+            indexed, Map.of(0, new float[] {1}, 1, new float[] {1}))
+        .stream()
+        .map(doc -> (String) doc.get("textToLLMContext"))
+        .toList();
   }
 
   @Test

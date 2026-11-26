@@ -16,9 +16,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 import java.net.URI;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,7 @@ import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.QuickLink;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
 
 class PageBodyTextContributorTest {
@@ -146,6 +150,49 @@ class PageBodyTextContributorTest {
         VectorDocBuilder.buildBodyText(page, KnowledgePageRepository.KNOWLEDGE_PAGE_ENTITY);
 
     assertEquals("title: Hello; description: World", body);
+  }
+
+  @Test
+  void filterArticlePassagesUsesDescriptionAfterTitleSpanningMultipleChunks() {
+    Page page =
+        basePage()
+            .withDisplayName("Heading ".repeat(379) + "Revenue | Reporting")
+            .withExtension(Map.of("note", "metadata | ignored"))
+            .withDescription("Read this | This is part of the body.");
+    List<String> chunks = indexedPassages(page);
+
+    assertEquals(
+        List.of(chunks.getLast()),
+        PageBodyTextContributor.filterArticlePassages(
+            page, chunks, "Read this | This is part of the body."::equals));
+  }
+
+  @Test
+  void filterArticlePassagesRejectsStaleAndMalformedHits() {
+    Page page = basePage().withDescription("Before the edit");
+    String oldPassage = indexedPassages(page).getFirst();
+    page.withDescription("After the edit");
+    String currentPassage = indexedPassages(page).getFirst();
+    List<String> hits = List.of(oldPassage, "missing footer", currentPassage);
+
+    assertEquals(
+        List.of(currentPassage),
+        PageBodyTextContributor.filterArticlePassages(page, hits, body -> !body.isEmpty()));
+  }
+
+  private static List<String> indexedPassages(Page page) {
+    Page indexed = spy(page);
+    EntityReference reference =
+        new EntityReference()
+            .withId(page.getId())
+            .withType(PageBodyTextContributor.INSTANCE.entityType());
+    when(indexed.getEntityReference()).thenReturn(reference);
+    PageBodyTextContributor.INSTANCE.register();
+    return VectorDocBuilder.fromEntityReusingEmbeddings(
+            indexed, Map.of(0, new float[] {1}, 1, new float[] {1}))
+        .stream()
+        .map(doc -> (String) doc.get("textToLLMContext"))
+        .toList();
   }
 
   private Page basePage() {
