@@ -1,0 +1,60 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Builds the minimal `m2-cache` OCI data image published to GHCR
+# (ghcr.io/<owner>/ci-m2-cache:main; see .github/workflows/ci-builder-images.yml).
+# Holds /m2/repository for fast host hydration via `docker cp` without Docker-in-Docker
+# issues on Testcontainers/IT runners.
+#
+# Only third-party dependencies and CI plugins are kept; org/open-metadata reactor
+# SNAPSHOTs are stripped so downstream builds never resolve stale artifacts.
+
+FROM maven:3.9.9-eclipse-temurin-21 AS warmer
+
+WORKDIR /workspace
+
+COPY pom.xml ./
+COPY common/pom.xml ./common/
+COPY openmetadata-clients/pom.xml ./openmetadata-clients/
+COPY openmetadata-clients/openmetadata-java-client/pom.xml ./openmetadata-clients/openmetadata-java-client/
+COPY openmetadata-dist/pom.xml ./openmetadata-dist/
+COPY openmetadata-integration-tests/pom.xml ./openmetadata-integration-tests/
+COPY openmetadata-k8s-operator/pom.xml ./openmetadata-k8s-operator/
+COPY openmetadata-mcp/pom.xml ./openmetadata-mcp/
+COPY openmetadata-sdk/pom.xml ./openmetadata-sdk/
+COPY openmetadata-service/pom.xml ./openmetadata-service/
+COPY openmetadata-shaded-deps/pom.xml ./openmetadata-shaded-deps/
+COPY openmetadata-shaded-deps/elasticsearch-dep/pom.xml ./openmetadata-shaded-deps/elasticsearch-dep/
+COPY openmetadata-shaded-deps/opensearch-dep/pom.xml ./openmetadata-shaded-deps/opensearch-dep/
+COPY openmetadata-spec/pom.xml ./openmetadata-spec/
+COPY openmetadata-ui/pom.xml ./openmetadata-ui/
+COPY openmetadata-ui-core-components/pom.xml ./openmetadata-ui-core-components/
+
+# Resolve third-party dependencies and CI plugins. Reactor-internal SNAPSHOTs
+# (org.open-metadata:*) cannot resolve from Maven Central before a build, so
+# -DexcludeGroupIds=org.open-metadata skips them cleanly while fetching all external JARs.
+RUN mvn -B --no-transfer-progress -T 1C \
+      dependency:go-offline \
+      -DexcludeGroupIds=org.open-metadata \
+      -Dmaven.artifact.threads=10 || true && \
+    mvn -B --no-transfer-progress -N \
+      com.diffplug.spotless:spotless-maven-plugin:help \
+      org.apache.maven.plugins:maven-surefire-plugin:help \
+      org.apache.maven.plugins:maven-failsafe-plugin:help \
+      org.apache.maven.plugins:maven-compiler-plugin:help \
+      org.apache.maven.plugins:maven-assembly-plugin:help \
+      org.apache.maven.plugins:maven-shade-plugin:help || true && \
+    rm -rf /root/.m2/repository/org/open-metadata && \
+    find /root/.m2/repository -name '*.lastUpdated' -delete && \
+    find /root/.m2/repository -name '_remote.repositories' -delete
+
+FROM scratch AS m2-cache
+COPY --from=warmer /root/.m2/repository /m2/repository

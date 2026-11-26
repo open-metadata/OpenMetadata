@@ -325,7 +325,7 @@ merge cohort before interpreting y as validation reuse.
 
 ## AutoPilot and deployment recovery additions
 
-Fast ingestion shards now start a bounded, Docker-network-only MySQL 8.0.42
+Fast ingestion shards now start a bounded, Docker-network-only MySQL 8.4
 source before Airflow. Its read-only fixture user sees two schemas and three
 populated tables, preserving MySQL metadata/profiler/classification and the
 AutoPilot SSE assertions. Other MySQL connector specs retain their configured

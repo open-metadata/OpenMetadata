@@ -12,6 +12,7 @@
  */
 
 import { findLastIndex, isEmpty, sumBy } from 'lodash';
+import { Marked, Renderer } from 'marked';
 import Showdown from 'showdown';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import {
@@ -64,10 +65,8 @@ export const convertMarkdownFormatToHtmlString = (markdown: string) => {
   return updatedMessage;
 };
 
-// Lists and tables are structural markup the markdown converter cannot round
-// trip: Showdown hashes such markup as inline spans and its unhash pass gives
-// up after 10 levels of nesting, leaking `\u00a8C<n>C` placeholders into the
-// rendered output. Content carrying one is always treated as HTML.
+// Already-rendered lists and tables bypass markdown parsing so editor attributes
+// and nested HTML structure survive unchanged.
 const STRUCTURAL_HTML_SELECTOR = 'ul, ol, table';
 
 // A fenced block or a code span holds a literal example. `DOMParser` has no
@@ -181,17 +180,73 @@ export const isHTMLString = (content: string) => {
   }
 };
 
-const _convertMarkdownStringToHtmlString = new Showdown.Converter({
-  ghCodeBlocks: true,
-  encodeEmails: false,
-  ellipsis: false,
-  simplifiedAutoLink: true,
-  tables: true,
-  strikethrough: true,
-  simpleLineBreaks: true,
-  openLinksInNewWindow: true,
+// Keep the existing emoji vocabulary without adding a second emoji package.
+const emojiConverter = new Showdown.Converter({
   emoji: true,
-  underline: true,
+  literalMidWordUnderscores: true,
+});
+const defaultMarkdownRenderer = new Renderer();
+
+// CommonMark block parsing preserves each level of two-space-indented lists.
+const markdownConverter = new Marked({
+  gfm: true,
+  breaks: true,
+  tokenizer: {
+    del(source) {
+      // Single tildes are literal in existing descriptions; false delegates
+      // double tildes to Marked's built-in strikethrough rule.
+      return source.startsWith('~~') ? false : undefined;
+    },
+  },
+  renderer: {
+    // Preview truncation depends on the newline text following each break.
+    br: () => '<br>\n',
+    link(href, title, text) {
+      // Delegate URL/title escaping to marked before adding external-link attributes.
+      return defaultMarkdownRenderer
+        .link(href, title, text)
+        .replace(
+          /^<a ([^>]+)>/,
+          '<a $1 target="_blank" rel="noopener noreferrer">'
+        );
+    },
+  },
+  extensions: [
+    {
+      name: 'strong',
+      renderer(token) {
+        // Existing descriptions use double underscores for underline rather than bold.
+        const tag = token.raw.startsWith('__') ? 'u' : 'strong';
+
+        return `<${tag}>${this.parser.parseInline(
+          token.tokens ?? []
+        )}</${tag}>`;
+      },
+    },
+    {
+      name: 'emoji',
+      level: 'inline',
+      start: (source) => source.search(/:[a-zA-Z0-9_+-]+:/),
+      tokenizer(source) {
+        const match = /^:[a-zA-Z0-9_+-]+:/.exec(source);
+
+        if (!match) {
+          return undefined;
+        }
+
+        // A shortcode renders as one paragraph; only its inline content is needed.
+        const html = emojiConverter.makeHtml(match[0]).slice(3, -4);
+
+        // Unknown shortcodes can contain URL schemes; leave them to Marked's autolinker.
+        return html === match[0]
+          ? undefined
+          : { type: 'emoji', raw: match[0], html };
+      },
+      renderer(token) {
+        return token.html;
+      },
+    },
+  ],
 });
 
 /**
@@ -201,7 +256,7 @@ const _convertMarkdownStringToHtmlString = new Showdown.Converter({
 export const getHtmlStringFromMarkdownString = (content: string) => {
   return isHTMLString(content)
     ? content
-    : _convertMarkdownStringToHtmlString.makeHtml(content);
+    : markdownConverter.parser(markdownConverter.lexer(content)).trimEnd();
 };
 
 const MENTION_OR_HASHTAG_SELECTOR =

@@ -74,11 +74,11 @@ public class UserMetricsServlet extends HttpServlet {
 
   private Map<String, Object> collectUserMetrics() {
     Map<String, Object> metrics = new HashMap<>();
-    ListFilter filter = new ListFilter(null);
+    ListFilter filter = new ListFilter();
     int totalUsers = userRepository.getDao().listCount(filter);
     metrics.put("total_users", totalUsers);
 
-    ListFilter botFilter = new ListFilter(null);
+    ListFilter botFilter = new ListFilter();
     botFilter.addQueryParam("isBot", "true");
     int botUsers = userRepository.getDao().listCount(botFilter);
     metrics.put("bot_users", botUsers);
@@ -128,7 +128,7 @@ public class UserMetricsServlet extends HttpServlet {
   }
 
   private ListFilter createNonBotFilter() {
-    ListFilter filter = new ListFilter(null);
+    ListFilter filter = new ListFilter();
     filter.addQueryParam("isBot", "false");
     return filter;
   }

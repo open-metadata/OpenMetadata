@@ -89,6 +89,7 @@ import org.openmetadata.schema.services.connections.database.databricks.AzureADS
 import org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth;
 import org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
+import org.openmetadata.schema.services.connections.database.dremio.SoftwareAuth;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
@@ -156,6 +157,10 @@ public final class ClassConverterFactory {
               new NestedConfigClassConverter(
                   SupersetApiConnection.class,
                   Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
+          Map.entry(
+              SoftwareAuth.class,
+              new NestedConfigClassConverter(
+                  SoftwareAuth.class, Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
               AlationConnection.class,
               new NestedConfigClassConverter(

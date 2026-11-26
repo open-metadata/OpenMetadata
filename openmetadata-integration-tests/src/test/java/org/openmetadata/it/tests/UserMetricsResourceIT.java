@@ -41,6 +41,9 @@ import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -279,6 +282,86 @@ public class UserMetricsResourceIT {
     assertTrue((Integer) dauValue >= 0, "Daily active users should be non-negative");
 
     LOG.info("Daily active users implementation handles missing data by returning 0");
+  }
+
+  @Test
+  void testSoftDeletedUsersExcludedFromMetrics() throws Exception {
+    // The metrics endpoint reads GLOBAL counts, and this class runs in the isolated (global-state)
+    // lane, so no other UserMetricsResourceIT test mutates users concurrently. Other isolated
+    // suites in the same lane are serialized in this single forked process.
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    UserService usersApi = adminClient.users();
+    List<User> createdUsers = new ArrayList<>();
+
+    try {
+      String nonBotName = "ummetrics-softdelete-nonbot-" + System.nanoTime();
+      User nonBot =
+          usersApi.create(
+              new CreateUser()
+                  .withName(nonBotName)
+                  .withEmail(nonBotName + "@test.openmetadata.org")
+                  .withIsBot(false));
+      createdUsers.add(nonBot);
+      // A bot user must carry a JWT authentication mechanism, otherwise the server NPEs on
+      // authMechanism.getConfig() during create.
+      String botName = "ummetrics-softdelete-bot-" + System.nanoTime();
+      User bot =
+          usersApi.create(
+              new CreateUser()
+                  .withName(botName)
+                  .withEmail(botName + "@test.com")
+                  .withIsBot(true)
+                  .withAuthenticationMechanism(
+                      new AuthenticationMechanism()
+                          .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                          .withConfig(
+                              new JWTAuthMechanism()
+                                  .withJWTTokenExpiry(JWTTokenExpiry.Unlimited))));
+      createdUsers.add(bot);
+
+      // Capture counts right after creation so a concurrent test mutating a non-test user cannot
+      // perturb the delta between these two reads (the created users stay alive in between).
+      Map<String, Object> beforeSoftDelete = getUserMetrics();
+      int totalBefore = (Integer) beforeSoftDelete.get("total_users");
+      int botsBefore = (Integer) beforeSoftDelete.get("bot_users");
+
+      for (User u : createdUsers) {
+        usersApi.delete(u.getId().toString(), Map.of("hardDelete", "false"));
+      }
+
+      // After soft deletion, the non-deleted counts must drop by the number of users we just
+      // soft-deleted (one non-bot, one bot). With the bug (Include.ALL) the counts stay inflated.
+      Map<String, Object> afterSoftDelete = getUserMetrics();
+      int totalAfter = (Integer) afterSoftDelete.get("total_users");
+      int botsAfter = (Integer) afterSoftDelete.get("bot_users");
+
+      assertEquals(
+          totalBefore - 2,
+          totalAfter,
+          "total_users must exclude soft-deleted users (expected drop of 2 after soft-deleting "
+              + "one non-bot and one bot user): before="
+              + totalBefore
+              + ", after="
+              + totalAfter);
+      assertEquals(
+          botsBefore - 1,
+          botsAfter,
+          "bot_users must exclude soft-deleted bot users (expected drop of 1 after soft-deleting "
+              + "one bot user): before="
+              + botsBefore
+              + ", after="
+              + botsAfter);
+    } finally {
+      // Hard-delete to fully remove the soft-deleted rows so the global count is clean for the
+      // next test (soft-deleted rows survive hard-delete=false).
+      for (User u : createdUsers) {
+        try {
+          usersApi.delete(u.getId().toString(), Map.of("hardDelete", "true"));
+        } catch (Exception e) {
+          LOG.warn("Failed to hard-delete test user {}", u.getId(), e);
+        }
+      }
+    }
   }
 
   private Map<String, Object> getUserMetrics() throws Exception {
