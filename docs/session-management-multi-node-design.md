@@ -378,10 +378,13 @@ mode is enabled.
 
 ### 8.2 Socket Tracking
 
-`WebSocketManager` maintains two local maps per pod:
+`WebSocketManager` maintains these local maps per pod:
 
 - `activityFeedEndpoints`: `userId -> socketId -> SocketIoSocket`
 - `socketSessionIds`: `socketId -> sessionId`
+- `socketSessionValidatedAt`: `socketId -> last session recheck`
+- `socketTokenExpiries` (`SocketTokenExpiries`): `socketId -> exp` of the token a socket without a
+  session was accepted on
 
 On connection:
 
@@ -390,8 +393,12 @@ On connection:
    paths.
 3. Store the socket in the user's local socket map.
 4. Store the socket-to-session mapping when a session ID is available.
+5. Store the token expiry when the handshake stamped one (`TokenExpiresAt`, epoch milliseconds). The
+   handshake stamps it only when it accepted the socket without a session; a value the server cannot
+   read counts as expired. A client's own `TokenExpiresAt` header is always dropped.
 
-On disconnect, both maps are cleaned up.
+On every disconnect path, all per-socket maps are cleaned up, so they stay bounded by the live
+connections.
 
 The connection log records user and remote address only. It does not log initial headers, so bearer
 tokens are not written to logs.
@@ -413,6 +420,13 @@ tokens are not written to logs.
 This gives targeted disconnects. Logging out one browser session does not force-close other
 sessions for the same user.
 
+Deleting a user, soft or hard, ends all their sockets, including those opened with a token that
+carries no session, which session revocation cannot reach. `UserRepository.beginDeleteLifecycle`,
+which every delete path runs, hands `WebSocketManager.endAccessForUser(userId)` to
+`PostCommitActionQueue`, so inside a transaction scope it runs after the commit. It closes the
+user's sockets on the local pod and publishes a `"session"` message with the user id and no session
+ID, which peers answer with `disconnectAllForUser(userId)`.
+
 ### 8.4 Periodic WebSocket Validation
 
 `OpenMetadataApplication.WebSocketSessionValidator` runs every `60s` by default. Operators can tune
@@ -427,9 +441,19 @@ Each run calls `WebSocketManager.disconnectInactiveSessions(sessionService, inte
    socket's revalidation interval is due.
 3. Disconnects sockets whose session is missing, not `ACTIVE`, expired, issued by a provider other
    than the one the push-feed handshake filter validates under, or owned by a different user.
+4. Sends `tokenExpiredChannel` to each socket without a session whose token `exp` is before now, then
+   disconnects it. A socket whose token has no `exp` is not bounded by expiry.
+5. For each user holding a socket without a session, checks that the user still exists
+   (`PushFeedUserPresence`, a cached lookup) and disconnects all their sockets when not. A failed
+   lookup is not a deletion; the next pass tries again.
 
 This is the fallback when there is no cross-pod pub/sub. With JDBC and no pub/sub, a socket on a
-remote node is closed within the validator interval instead of immediately.
+remote node is closed within the validator interval instead of immediately; for a deleted user it
+is the interval plus the 30 s entity cache.
+
+The UI retries a server close only when `tokenExpiredChannel` came first: it reconnects with the
+token it holds now, which it renews before `exp`. Every other server close is final
+(ADR:2026-11-26-a-push-feed-socket-without-a-session-ends-when-its-token-expires-or-its-user-is-deleted).
 
 A security reload that changes the configured provider closes every socket on that server, with or
 without a session (`closeSocketsOnProviderSwitch`). A socket whose handshake was validated just
@@ -516,9 +540,14 @@ Websocket consistency has two layers:
 - event-driven disconnect through local revocation listeners and optional cache invalidation pub/sub
 - polling-based validation with a `60s` default interval and `15s` minimum
 
-The event path is immediate when revocation occurs on the same pod or pub/sub delivers the remote
-event. The polling path bounds staleness when pub/sub is unavailable, and each socket is fresh
-loaded at most once per validation interval.
+The event path is immediate when revocation or a user delete occurs on the same pod or pub/sub
+delivers the remote event. The polling path bounds staleness when pub/sub is unavailable, and each
+socket is fresh loaded at most once per validation interval.
+
+A socket without a session is bounded by its token: it closes at the first pass after `exp`, so at
+most one interval late. Its user's deletion closes it at once on the pod that ran the delete, on
+peers through pub/sub, and on peers without pub/sub at the next pass after the entity cache drops
+the user.
 
 ## 11. Operational Characteristics
 
@@ -530,7 +559,8 @@ loaded at most once per validation interval.
 | Refresh | load session, acquire CAS lease, complete CAS update |
 | Logout | fresh load session, CAS revoke, clear cookie |
 | WebSocket handshake | validate JWT, optionally fresh load cookie session |
-| WebSocket validator | throttled fresh load for each tracked socket with `sessionId` |
+| WebSocket validator | throttled fresh load for each tracked socket with `sessionId`; cached user lookup for each user holding a socket without one |
+| User delete | close the user's sockets on this pod, publish a `"session"` revoke without a session ID |
 
 Redis deployments should monitor Redis availability as auth-critical infrastructure. When Redis is
 configured for sessions, the service refuses to start without it.
