@@ -220,8 +220,9 @@ class BulkLkmlParser(metaclass=Singleton):
     def __apply_refinements(self):
         """
         Merge each refinement into the view it refines, in the order they were read,
-        so a later refinement overrides an earlier one. Refinements apply project-wide,
-        whichever model includes them: ADR:2026-10-17-looker-refinements-apply-project-wide-in-path-order
+        so a later refinement overrides an earlier one. Used as the project-wide
+        fallback when no model file is present:
+        ADR:2026-11-26-looker-refinements-scope-to-model-include-graph
         """
         for refinement in self._refinements:
             view_name = ViewName(refinement.name.removeprefix(REFINEMENT_PREFIX))
@@ -373,7 +374,10 @@ class BulkLkmlParser(metaclass=Singleton):
         return ordered
 
     def _get_model_views(self, model_name: str) -> dict[ViewName, LookMlView] | None:
-        """Build and cache the refined view map scoped to `<model_name>.model.lkml`."""
+        """
+        Build and cache the refined view map scoped to `<model_name>.model.lkml`:
+        ADR:2026-11-26-looker-refinements-scope-to-model-include-graph
+        """
         if model_name in self._model_views_cache:
             return self._model_views_cache[model_name]
 

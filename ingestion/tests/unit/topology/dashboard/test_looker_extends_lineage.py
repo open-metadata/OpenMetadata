@@ -274,6 +274,51 @@ class LookerExtendsLineageTest(TestCase):
         self.assertEqual(lineage_requests[0].edge.fromEntity.id.root, eu_parent.id.root)
         self.assertEqual(lineage_requests[0].edge.toEntity.id.root, eu_child.id.root)
 
+    def test_view_extends_does_not_fall_back_to_other_models_bare_view_cache(self):
+        """
+        When `eu_sales_orders_view` is missing from both `_views_cache` and OpenMetadata,
+        a child view in `eu_sales` extending `orders` must not link to `us_sales_orders_view`
+        stored under `_views_cache["orders"]`.
+        """
+        us_parent = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="us_sales_orders_view",
+            displayName="orders",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType=DataModelType.LookMlView,
+            columns=[],
+        )
+        eu_child = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="eu_sales_eu_orders_child_view",
+            displayName="eu_orders_child",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType=DataModelType.LookMlView,
+            columns=[],
+        )
+
+        self.looker._views_cache["us_sales_orders_view"] = us_parent
+        self.looker._views_cache["orders"] = us_parent
+        self.looker._view_data_model = eu_child
+
+        child_view = LookMlView(
+            name="eu_orders_child",
+            extends__all=[["orders"]],
+            measures=[],
+            dimensions=[],
+        )
+        mock_explore = Mock()
+        mock_explore.model_name = "eu_sales"
+        mock_explore.name = "eu_orders_child"
+
+        with patch.object(self.looker, "_build_data_model", return_value=None):
+            lineage_results = list(self.looker.add_view_lineage(child_view, mock_explore))
+
+        lineage_requests = [
+            result.right for result in lineage_results if result.right and isinstance(result.right, AddLineageRequest)
+        ]
+        self.assertEqual(lineage_requests, [])
+
 
 MOCK_LOOKER_CONFIG = {
     "source": {

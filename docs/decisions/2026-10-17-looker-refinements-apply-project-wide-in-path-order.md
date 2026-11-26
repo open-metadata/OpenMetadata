@@ -1,6 +1,6 @@
 # The Looker bulk parser applies view refinements project-wide, in file path order
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-26-looker-refinements-scope-to-model-include-graph
 - **Revisions:** v1 2026-10-17 (initial)
 - **Deciders:** Ingestion maintainers
 - **Guard:** `ingestion/tests/unit/topology/dashboard/test_looker_bulk_parser_refinements.py`

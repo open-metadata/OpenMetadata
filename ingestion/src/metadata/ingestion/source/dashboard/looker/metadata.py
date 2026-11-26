@@ -1097,7 +1097,7 @@ class LookerSource(DashboardServiceSource):
 
         cached = self._views_cache.get(extended_view_name)
         if cached is not None:
-            cached_name = cached.name.root if hasattr(cached.name, "root") else str(cached.name)
+            cached_name = model_str(cached.name)
             if not extended_datamodel_name or cached_name in (extended_view_name, extended_datamodel_name):
                 return cached
 
@@ -1113,7 +1113,7 @@ class LookerSource(DashboardServiceSource):
                     extended_view_name,
                 )
 
-        return cached
+        return None
 
     def _process_view(
         self, view_name: ViewName, explore: LookmlModelExplore
