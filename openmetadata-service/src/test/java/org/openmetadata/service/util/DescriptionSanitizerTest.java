@@ -280,19 +280,19 @@ class DescriptionSanitizerTest {
 
   @Test
   void pureMarkdownBackticksAreNotEncoded() {
-    String input = "**Source:** `deal_option_attrs`";
+    final String input = "**Source:** `deal_option_attrs`";
     assertEquals(input, DescriptionSanitizer.sanitize(input));
   }
 
   @Test
   void pureMarkdownApostrophesAreNotEncoded() {
-    String input = "It's a test with 'single quotes'";
+    final String input = "It's a test with 'single quotes'";
     assertEquals(input, DescriptionSanitizer.sanitize(input));
   }
 
   @Test
   void entityLinkWithSurroundingMarkdownIsPreserved() {
-    String input = "See `table` via <#E::table::db.schema.t1>";
+    final String input = "See `table` via <#E::table::db.schema.t1>";
     assertEquals(input, DescriptionSanitizer.sanitize(input));
   }
 

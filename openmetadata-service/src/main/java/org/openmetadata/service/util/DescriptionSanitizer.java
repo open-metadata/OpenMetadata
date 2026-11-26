@@ -148,6 +148,8 @@ public final class DescriptionSanitizer {
 
   private static final Pattern ENTITY_LINK_PATTERN = Pattern.compile("<#E::[^<>]+>");
 
+  private static final String HTML_TAG_START = "<";
+
   private static final String ENTITY_LINK_PLACEHOLDER_PREFIX = "__OM_ENTITY_LINK_";
 
   private DescriptionSanitizer() {}
@@ -177,8 +179,8 @@ public final class DescriptionSanitizer {
     }
     matcher.appendTail(replaced);
 
-    String toSanitize = replaced.toString();
-    String sanitized = toSanitize.contains("<") ? MARKDOWN_POLICY.sanitize(toSanitize) : toSanitize;
+    final String toSanitize = replaced.toString();
+    String sanitized = toSanitize.contains(HTML_TAG_START) ? MARKDOWN_POLICY.sanitize(toSanitize) : toSanitize;
 
     for (int i = 0; i < entityLinks.size(); i++) {
       sanitized =
