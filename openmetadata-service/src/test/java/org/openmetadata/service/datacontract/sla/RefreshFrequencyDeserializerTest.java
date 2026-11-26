@@ -14,12 +14,14 @@
 package org.openmetadata.service.datacontract.sla;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import jakarta.json.Json;
+import jakarta.json.JsonValue;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -47,7 +49,6 @@ class RefreshFrequencyDeserializerTest {
         "15.5",
         "15.000000000000000001",
         "2147483648",
-        "null",
         "\"15\"",
         "NaN",
         "Infinity",
@@ -65,6 +66,64 @@ class RefreshFrequencyDeserializerTest {
           "sla:\n  refreshFrequency: {interval: %s, unit: %s}".formatted(interval, unit);
       assertThrows(
           JsonMappingException.class, () -> yaml.readValue(yamlRequest, CreateDataContract.class));
+    }
+  }
+
+  @Test
+  void minuteRejectsMissingOrNullIntervalAcrossReadersAndPatch() {
+    for (String jsonBody :
+        List.of(
+            "{\"sla\":{\"refreshFrequency\":{\"unit\":\"minute\",\"interval\":null}}}",
+            "{\"sla\":{\"refreshFrequency\":{\"unit\":\"minute\"}}}")) {
+      assertThrows(
+          JsonMappingException.class, () -> json.readValue(jsonBody, CreateDataContract.class));
+    }
+    for (String yamlBody :
+        List.of(
+            "sla:\n  refreshFrequency: {interval: null, unit: minute}",
+            "sla:\n  refreshFrequency: {unit: minute}")) {
+      assertThrows(
+          JsonMappingException.class, () -> yaml.readValue(yamlBody, CreateDataContract.class));
+    }
+
+    DataContract stored =
+        new DataContract()
+            .withSla(
+                new ContractSLA()
+                    .withRefreshFrequency(
+                        new RefreshFrequency()
+                            .withUnit(RefreshFrequency.Unit.MINUTE)
+                            .withInterval(15)));
+    var removePatch = Json.createPatchBuilder().remove("/sla/refreshFrequency/interval").build();
+    var nullPatch =
+        Json.createPatchBuilder().replace("/sla/refreshFrequency/interval", JsonValue.NULL).build();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> JsonUtils.applyPatch(stored, removePatch, DataContract.class));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> JsonUtils.applyPatch(stored, nullPatch, DataContract.class));
+  }
+
+  @Test
+  void legacyUnitsAllowMissingOrNullIntervalOnReadAndUnrelatedPatch() {
+    for (String legacyJson :
+        List.of(
+            "{\"sla\":{\"refreshFrequency\":{\"unit\":\"hour\"}}}",
+            "{\"sla\":{\"refreshFrequency\":{\"unit\":\"hour\",\"interval\":null}}}")) {
+      DataContract stored = JsonUtils.readValue(legacyJson, DataContract.class);
+
+      assertEquals(RefreshFrequency.Unit.HOUR, stored.getSla().getRefreshFrequency().getUnit());
+      assertNull(stored.getSla().getRefreshFrequency().getInterval());
+
+      var descriptionPatch =
+          Json.createPatchBuilder().add("/description", "Updated description").build();
+      DataContract patched = JsonUtils.applyPatch(stored, descriptionPatch, DataContract.class);
+
+      assertEquals("Updated description", patched.getDescription());
+      assertEquals(RefreshFrequency.Unit.HOUR, patched.getSla().getRefreshFrequency().getUnit());
+      assertNull(patched.getSla().getRefreshFrequency().getInterval());
     }
   }
 

@@ -3089,7 +3089,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     Table table = createTestTable(ns);
     OpenMetadataClient client = SdkClients.adminClient();
     String name = ns.prefix("invalid_refresh");
-    for (String unit : List.of("minute", "hour")) {
+    List<String> units = "null".equals(interval) ? List.of("minute") : List.of("minute", "hour");
+    for (String unit : units) {
       String request =
           """
           {
@@ -3099,7 +3100,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
           }
           """
               .formatted(name, table.getId(), unit, interval);
-      assertInvalidMinuteRequest(
+      assertInvalidRefreshRequest(
           client, HttpMethod.POST, "/v1/dataContracts", request, "application/json");
       String yaml =
           """
@@ -3111,7 +3112,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
               unit: %s
           """
               .formatted(name, table.getId(), interval, unit);
-      assertInvalidMinuteRequest(
+      assertInvalidRefreshRequest(
           client, HttpMethod.PUT, "/v1/dataContracts", yaml, "application/yaml");
     }
 
@@ -3127,18 +3128,20 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         [{"op": "replace", "path": "/sla/refreshFrequency/interval", "value": %s}]
         """
             .formatted(interval);
-    assertInvalidMinuteRequest(
+    assertInvalidRefreshRequest(
         client, HttpMethod.PATCH, path, minutePatch, "application/json-patch+json");
-    String hourPatch =
-        """
-        [
-          {"op": "replace", "path": "/sla/refreshFrequency/unit", "value": "hour"},
-          {"op": "replace", "path": "/sla/refreshFrequency/interval", "value": %s}
-        ]
-        """
-            .formatted(interval);
-    assertInvalidMinuteRequest(
-        client, HttpMethod.PATCH, path, hourPatch, "application/json-patch+json");
+    if (!"null".equals(interval)) {
+      String hourPatch =
+          """
+          [
+            {"op": "replace", "path": "/sla/refreshFrequency/unit", "value": "hour"},
+            {"op": "replace", "path": "/sla/refreshFrequency/interval", "value": %s}
+          ]
+          """
+              .formatted(interval);
+      assertInvalidRefreshRequest(
+          client, HttpMethod.PATCH, path, hourPatch, "application/json-patch+json");
+    }
 
     assertEquals(
         minuteFrequency(15),
@@ -3149,7 +3152,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             .getRefreshFrequency());
   }
 
-  private static void assertInvalidMinuteRequest(
+  private static void assertInvalidRefreshRequest(
       OpenMetadataClient client, HttpMethod method, String path, String body, String contentType) {
     RequestOptions options = RequestOptions.builder().header("Content-Type", contentType).build();
     OpenMetadataException error =

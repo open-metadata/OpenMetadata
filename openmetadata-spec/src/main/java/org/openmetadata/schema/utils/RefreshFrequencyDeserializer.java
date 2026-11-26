@@ -29,6 +29,7 @@ import org.openmetadata.schema.api.data.RefreshFrequency;
 /** Keeps refresh frequency intervals exact at Jackson's input boundary before integer coercion. */
 public final class RefreshFrequencyDeserializer extends DelegatingDeserializer {
   private static final String INTERVAL = "interval";
+  private static final String UNIT = "unit";
 
   private RefreshFrequencyDeserializer(JsonDeserializer<?> delegate) {
     super(delegate);
@@ -73,19 +74,24 @@ public final class RefreshFrequencyDeserializer extends DelegatingDeserializer {
 
   private static void readAndValidate(
       JsonParser parser, DeserializationContext context, TokenBuffer buffer) throws IOException {
+    boolean isMinute = false;
+    boolean hasInterval = false;
     boolean hasExactInterval = false;
     buffer.copyCurrentEvent(parser);
     while (parser.nextToken() == JsonToken.FIELD_NAME) {
       String field = parser.currentName();
       buffer.copyCurrentEvent(parser);
       parser.nextToken();
-      if (INTERVAL.equals(field)) {
+      if (UNIT.equals(field)) {
+        isMinute = RefreshFrequency.Unit.MINUTE.value().equals(parser.getValueAsString());
+      } else if (INTERVAL.equals(field)) {
+        hasInterval = parser.currentToken() != JsonToken.VALUE_NULL;
         hasExactInterval = isExactInteger(parser);
       }
       buffer.copyCurrentStructure(parser);
     }
     buffer.copyCurrentEvent(parser);
-    if (!hasExactInterval) {
+    if ((isMinute || hasInterval) && !hasExactInterval) {
       context.reportInputMismatch(
           RefreshFrequency.class,
           "The refresh frequency interval must be a whole number in the 32-bit integer range.");
