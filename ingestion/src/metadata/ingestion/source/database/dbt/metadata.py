@@ -1153,21 +1153,19 @@ class DbtSource(DbtServiceSource):
                         and get_table_binding_resolution(
                             self.metadata, self.config.serviceName
                         ).supports_wildcard_tables
+                        and (
+                            wildcard_fqn := self._build_table_fqn(
+                                get_corrected_name(parent_database),
+                                get_corrected_name(parent_schema),
+                                table_name,
+                                literal_table_name=True,
+                            )
+                        )
                     ):
                         # A wildcard table reads every table it matches, and no table is named with a `*`;
                         # create_dbt_lineage expands it into one edge per match.
                         # ADR:2026-11-03-bigquery-daily-shards-use-stable-logical-tables
-                        upstream_nodes.append(
-                            build_upstream_node(
-                                parent_node,
-                                self._build_table_fqn(
-                                    get_corrected_name(parent_database),
-                                    get_corrected_name(parent_schema),
-                                    table_name,
-                                    literal_table_name=True,
-                                ),
-                            )
-                        )
+                        upstream_nodes.append(build_upstream_node(parent_node, wildcard_fqn))
                     else:
                         parent_fqn = self._build_table_fqn(
                             database_name=get_corrected_name(parent_database),
@@ -1365,7 +1363,7 @@ class DbtSource(DbtServiceSource):
         Whether this run may replace a model's dbt lineage. Not while a wildcard upstream's match is
         incomplete: replacing would delete the edges it could not confirm, so the run only adds edges.
         """
-        return self.source_config.overrideLineage and all(
+        return bool(self.source_config.overrideLineage) and all(
             self._wildcard_upstream_tables(upstream) is not None
             for upstream in self._wildcard_upstreams(data_model_link)
         )
@@ -1403,7 +1401,9 @@ class DbtSource(DbtServiceSource):
         service_name, database, schema, table_name = parts
         database = None if database == "*" else database
         mapped_database = self.catalog_mapping.get(database.casefold()) if database else None
-        lookups = [(service_name, mapped_database), ("*", mapped_database)] if mapped_database else []
+        lookups: list[tuple[str, str | None]] = (
+            [(service_name, mapped_database), ("*", mapped_database)] if mapped_database else []
+        )
         lookups.append((service_name, database))
         if self.source_config.searchAcrossDatabases:
             lookups.append(("*", database))
