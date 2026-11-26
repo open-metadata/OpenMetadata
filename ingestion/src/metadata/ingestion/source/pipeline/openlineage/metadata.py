@@ -579,13 +579,20 @@ class OpenlineageSource(PipelineServiceSource):
         return result
 
     @staticmethod
-    def _match_column_name(table, field_name: str) -> str | None:
-        """Resolve an OpenLineage field name to the real stored column name, case-insensitively."""
+    def _match_column_fqn(table, table_fqn: str, field_name: str) -> str | None:
+        """
+        Resolve an OpenLineage field name to the FQN of the real stored column, case-insensitively.
+
+        The stored FQN cannot be rebuilt from the column name: a fetched name has its reserved
+        characters decoded (`a>b` is stored as `a__reserved__arrow__b`), and a dot in it is quoted
+        in the FQN (`"c.d"`). The server silently drops an entry that matches no real column.
+        A sharded table has no column to fall back to, so an unmatched field resolves to None.
+        """
         lower = field_name.lower()
         for column in getattr(table, "columns", None) or []:
             if column.name.root.lower() == lower:
-                return column.name.root
-        return None if table and table.tableType == TableType.Sharded else lower
+                return model_str(column.fullyQualifiedName)
+        return None if table and table.tableType == TableType.Sharded else f"{table_fqn}.{lower}"
 
     def _build_db_service_type_map(self):
         """Build a map of {service_name: DatabaseServiceType} filtered to configured dbServiceNames."""
@@ -911,16 +918,18 @@ class OpenlineageSource(PipelineServiceSource):
                     if not input_table_fqn:
                         continue
                     input_table_entity = self._get_by_name_cached(Table, input_table_fqn, fields=["columns"])
-                    output_column = self._match_column_name(output_table_entity, field_name)
-                    input_column = self._match_column_name(input_table_entity, input_field.get("field", ""))
+                    output_column = self._match_column_fqn(output_table_entity, output_table_fqn, field_name)
+                    input_column = self._match_column_fqn(
+                        input_table_entity, input_table_fqn, input_field.get("field", "")
+                    )
                     if not output_column or not input_column:
                         continue
                     _result.append(  # output table, input table, output column, input column
                         (
                             output_table_fqn,
                             input_table_fqn,
-                            f"{output_table_fqn}.{output_column}",
-                            f"{input_table_fqn}.{input_column}",
+                            output_column,
+                            input_column,
                         )
                     )
 

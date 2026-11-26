@@ -1,13 +1,13 @@
 ---
 name: test-enforcement
-description: Use after implementing any feature or fix to ensure comprehensive test coverage. Enforces 90% line coverage in openmetadata-service, integration tests for all API endpoints in openmetadata-integration-tests, and Playwright E2E tests for UI changes.
+description: Use after implementing any feature or fix to ensure comprehensive test coverage. Enforces 90% line coverage in openmetadata-service, integration tests for all API endpoints in openmetadata-integration-tests, and browser tests for UI page behaviour + Playwright E2E for cross-feature journeys.
 user-invocable: true
 argument-hint: "[PR number, branch name, or file paths]"
 ---
 
 # Test Enforcement for OpenMetadata
 
-Ensure every code change has comprehensive tests — 90% line coverage for service code, integration tests for APIs, and Playwright E2E tests for UI changes.
+Ensure every code change has comprehensive tests — 90% line coverage for service code, integration tests for APIs, and browser tests for UI page behaviour + Playwright E2E for cross-feature journeys.
 
 ## When to Use
 
@@ -317,7 +317,8 @@ Produce a summary for the PR:
 |-------|--------|--------|----------------|
 | openmetadata-service | Line coverage | 90% | JaCoCo with `-P static-code-analysis` |
 | openmetadata-integration-tests | API endpoint coverage | 100% of changed endpoints | Manual check against resource classes |
-| Playwright | Feature coverage | All new/changed user-facing flows | Spec file existence + test pass |
+| Browser tests (UI page behaviour) | Page behaviour coverage | New/changed page behaviour | `yarn test:ui:coverage` |
+| Playwright | Feature coverage | New/changed cross-feature UI journeys | Spec file existence + test pass |
 | Jest | Component coverage | 90% lines | `yarn test --coverage` |
 | Python ingestion | Line coverage | 90% | `pytest --cov` |
 

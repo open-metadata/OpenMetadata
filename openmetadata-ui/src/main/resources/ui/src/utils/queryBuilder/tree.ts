@@ -17,16 +17,19 @@ import type {
   OldJsonTree,
 } from '@react-awesome-query-builder/ui';
 import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
-import { isEmpty } from 'lodash';
+import { isEmpty, isEqual } from 'lodash';
 import { SearchOutputType } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   EntityFields,
   EntityReferenceFields,
 } from '../../enums/AdvancedSearch.enum';
 import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
+import { elasticSearchFormat } from '../QueryBuilderElasticsearchFormatUtils';
 import {
+  getExploreJsonTreeFromQueryFilter,
   getJsonTreeFromQueryFilter,
   migrateJsonLogic,
+  withoutSingleClauseMust,
 } from '../QueryBuilderPureUtils';
 import { generateUUID } from '../StringUtils';
 import { collapseColumnTagsVar } from './jsonLogicColumnTags';
@@ -258,4 +261,30 @@ export const loadQueryBuilderTree = ({
   } catch {
     return emptyTree();
   }
+};
+
+/**
+ * The Advanced Search tree for a filter read from Explore's URL, and whether it shows all of that filter. Explore
+ * searches with the URL's filter as written, never with what the tree writes back: that may differ in shape (a second,
+ * redundant search), or drop clauses the reader does not recognise (a hand-edited link, a property deleted since) and
+ * return more than the link states.
+ */
+export const loadExploreQueryFilter = (
+  queryFilter: QueryFilterInterface,
+  config: Config
+): { tree: ImmutableTree; isComplete: boolean } => {
+  const jsonTree = getExploreJsonTreeFromQueryFilter(
+    queryFilter,
+    config.fields
+  );
+  const tree = QbUtils.checkTree(
+    QbUtils.loadTree(isEmpty(jsonTree) ? getEmptyJsonTree() : jsonTree),
+    config
+  );
+  const isComplete = isEqual(
+    withoutSingleClauseMust(elasticSearchFormat(tree, config)),
+    withoutSingleClauseMust(queryFilter.query)
+  );
+
+  return { tree, isComplete };
 };

@@ -106,7 +106,6 @@ class ServiceUtilClassBase {
     PipelineServiceType.Snowplow,
     DriveServiceType.SharePoint,
     DatabaseServiceType.ServiceNow,
-    DatabaseServiceType.Dremio,
     MetadataServiceType.Collibra,
     PipelineServiceType.Mulesoft,
     DatabaseServiceType.MicrosoftFabric,

@@ -1305,7 +1305,9 @@ public class ContainerRepository extends EntityRepository<Container> {
 
       daoCollection.containerDAO().updateFqn(oldFqn, newFqn);
 
-      daoCollection.tagUsageDAO().deleteTagsByTarget(oldFqn);
+      // The container's pending labels move with it; its shown labels are written again below.
+      daoCollection.tagUsageDAO().deleteShownTagsByTarget(oldFqn);
+      daoCollection.tagUsageDAO().updateTargetFQNHash(oldFqn, newFqn);
       List<TagLabel> updatedTags = listOrEmpty(updated.getTags());
       if (!updatedTags.isEmpty()) {
         updatedTags = new ArrayList<>(updatedTags);

@@ -1273,9 +1273,17 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return new MemorySourceLifecycle(this).hasOtherSources(memoryId, source);
   }
 
-  /** Releases {@code source}'s link to a memory, as {@link MemorySourceLifecycle} decides. */
+  /**
+   * Releases {@code source}'s link to a memory, as {@link MemorySourceLifecycle} decides. Throws
+   * when a decision overtook the release (the memory a person decided is no longer the engine's to
+   * release), so the reconciler's release logs and leaves the link, as its other conditional
+   * writes do.
+   */
   public void releaseExtractedMemory(UUID memoryId, EntityReference source) {
-    new MemorySourceLifecycle(this).releaseExtractedMemory(memoryId, source);
+    if (!new MemorySourceLifecycle(this).releaseExtractedMemory(memoryId, source)) {
+      throw new PreconditionFailedException(
+          "Memory " + memoryId + " changed while its source was re-extracted; link left");
+    }
   }
 
   /** A memory hierarchy does not make another document's live claims children of its archive. */

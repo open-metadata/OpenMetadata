@@ -21,6 +21,15 @@ record BulkAttempt<T>(
     return new BulkAttempt<>(operations, executionId, attemptNumber + 1, deadlineMillis);
   }
 
+  /**
+   * The next send of this same bulk, carrying only {@code remaining}. Used when the cluster wrote
+   * part of a bulk and turned the rest away for want of capacity: the deadline is the one fixed at
+   * flush, so re-sending a subset cannot keep the bulk alive any longer than sending all of it.
+   */
+  BulkAttempt<T> nextWith(List<T> remaining) {
+    return new BulkAttempt<>(remaining, executionId, attemptNumber + 1, deadlineMillis);
+  }
+
   int size() {
     return operations.size();
   }

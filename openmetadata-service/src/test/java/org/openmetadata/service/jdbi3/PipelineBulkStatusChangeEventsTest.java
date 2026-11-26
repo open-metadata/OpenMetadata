@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -19,6 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.LongStream;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.mockito.invocation.InvocationOnMock;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -98,7 +98,13 @@ class PipelineBulkStatusChangeEventsTest {
    * many events had been built when each insert ran.
    */
   private static final class EventFixture implements AutoCloseable {
-    private final MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS);
+    private static final String REGISTER_ENTITY = "registerEntity";
+    // The repository's constructor registers itself in Entity's process-wide repository map.
+    // Stubbing registerEntity with when(...) runs the real method once with null matchers, which
+    // leaves a null repository in that map for every later test in the fork, so the default
+    // answer skips registration instead.
+    private final MockedStatic<Entity> entities =
+        mockStatic(Entity.class, EventFixture::skipRegistration);
     private final List<List<String>> chunks = new ArrayList<>();
     private final List<Integer> builtAtEachInsert = new ArrayList<>();
     private final AtomicInteger built = new AtomicInteger();
@@ -117,9 +123,6 @@ class PipelineBulkStatusChangeEventsTest {
           .when(changeEventDAO)
           .insertBatch(anyList());
       entities.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
-      entities
-          .when(() -> Entity.registerEntity(any(), any(), any(PipelineRepository.class)))
-          .thenAnswer(call -> null);
       repository = spy(new PipelineRepository());
       doAnswer(
               call -> {
@@ -128,6 +131,10 @@ class PipelineBulkStatusChangeEventsTest {
               })
           .when(repository)
           .buildChangeEventJsonForBulkOperation(any(), any(), any());
+    }
+
+    private static Object skipRegistration(InvocationOnMock call) throws Throwable {
+      return REGISTER_ENTITY.equals(call.getMethod().getName()) ? null : call.callRealMethod();
     }
 
     List<Integer> chunkSizes() {

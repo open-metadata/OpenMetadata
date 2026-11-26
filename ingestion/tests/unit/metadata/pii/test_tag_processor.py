@@ -19,6 +19,9 @@ import pytest
 from dirty_equals import Contains, HasAttributes, IsFloat, IsInstance, IsUUID
 from presidio_analyzer.nlp_engine import NlpEngine
 
+from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.classification import (
+    ClassificationFactory,
+)
 from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.tag import (
     TagFactory,
 )
@@ -272,6 +275,51 @@ class TestTagProcessor:
         # Should return empty list because PII tag exists
         result = processor.create_column_tag_labels(column, sample_data)
         assert result == []
+
+    @pytest.mark.parametrize(
+        "classification_fqn, applied_fqn, source, candidate_name, has_reference, allowed",
+        [
+            ("PII", "PII.Sensitive.Email", TagSource.Classification, "Personal", True, False),
+            ("PII", "PII.Personal", TagSource.Classification, "Sensitive.Email", True, False),
+            ("PII", "PII.Personal", TagSource.Classification, "Sensitive.Email", False, False),
+            ('"My.PII"', '"My.PII".Sensitive.Email', TagSource.Classification, "Personal", True, False),
+            ("PII", "PII.Customer.Email", TagSource.Glossary, "Personal", True, True),
+        ],
+    )
+    def test_nested_tags_respect_classification_exclusivity(
+        self,
+        workflow_config: OpenMetadataWorkflowConfig,
+        mock_metadata: OpenMetadata,
+        classification_fqn: str,
+        applied_fqn: str,
+        source: TagSource,
+        candidate_name: str,
+        has_reference: bool,
+        allowed: bool,
+    ) -> None:
+        classification = ClassificationFactory.create(
+            fqn=classification_fqn, mutuallyExclusive=True, autoClassificationConfig__enabled=True
+        )
+        candidate = TagFactory.create(tag_name=candidate_name, tag_classification=classification)
+        if not has_reference:
+            candidate.classification = None
+        processor = TagProcessor(
+            config=workflow_config,
+            metadata=mock_metadata,
+            classification_manager=FakeClassificationManager((classification, [])),
+            score_tags_for_column=lambda *_: [],
+        )
+        column = Column(
+            name=ColumnName(root="customer_col"),
+            dataType=DataType.VARCHAR,
+            tags=[
+                TagLabel(
+                    tagFQN=TagFQN(root=applied_fqn), state=State.Confirmed, labelType=LabelType.Manual, source=source
+                )
+            ],
+        )
+
+        assert processor.filter_tags_to_analyze(column, [candidate]) == ([candidate] if allowed else [])
 
     def test_classify_email_column(self, processor: TagProcessor, email_tag: Tag) -> None:
         """Test classifying an email column"""

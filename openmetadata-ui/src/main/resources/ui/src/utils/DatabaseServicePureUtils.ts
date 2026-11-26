@@ -48,6 +48,8 @@ const databaseSchemaLoaders: Partial<
     loadConnectionSchema('connections/database/db2Connection.json'),
   [DatabaseServiceType.Doris]: () =>
     loadConnectionSchema('connections/database/dorisConnection.json'),
+  [DatabaseServiceType.Dremio]: () =>
+    loadConnectionSchema('connections/database/dremioConnection.json'),
   [DatabaseServiceType.StarRocks]: () =>
     loadConnectionSchema('connections/database/starrocksConnection.json'),
   [DatabaseServiceType.Druid]: () =>

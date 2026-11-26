@@ -460,25 +460,32 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public BulkOperationResult bulkAddInputPorts(
       String dataProductName, BulkAssets request, ChangeActor actor) {
-    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, true, actor);
+    return executeInTransaction(
+        () -> bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, true, actor));
   }
 
   public BulkOperationResult bulkRemoveInputPorts(
       String dataProductName, BulkAssets request, ChangeActor actor) {
-    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, false, actor);
+    return executeInTransaction(
+        () -> bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, false, actor));
   }
 
   public BulkOperationResult bulkAddOutputPorts(
       String dataProductName, BulkAssets request, ChangeActor actor) {
-    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, true, actor);
+    return executeInTransaction(
+        () -> bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, true, actor));
   }
 
   public BulkOperationResult bulkRemoveOutputPorts(
       String dataProductName, BulkAssets request, ChangeActor actor) {
-    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, false, actor);
+    return executeInTransaction(
+        () -> bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, false, actor));
   }
 
-  @Transaction
+  // Repositories are instantiated directly rather than as JDBI SQL-object proxies, so a
+  // @Transaction annotation here would not create a transaction. The public bulk-port entry
+  // points open the real boundary with executeInTransaction, so relationship rows, the
+  // change-event insert, and the entity store commit or roll back together.
   private BulkOperationResult bulkPortsOperation(
       String dataProductNameOrId,
       BulkAssets request,

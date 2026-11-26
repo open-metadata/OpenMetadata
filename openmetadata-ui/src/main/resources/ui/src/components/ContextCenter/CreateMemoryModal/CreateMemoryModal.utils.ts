@@ -207,7 +207,7 @@ export const submitMemoryUpdate = async ({
   onUpdated?.();
 };
 
-// Builds a URL-safe `name` from the title (falling back to the memory text)
+// Builds a stable `name` from the title (falling back to the memory text)
 // and omits optional fields the API defaults sensibly without.
 export const submitMemoryCreate = async ({
   title,
@@ -220,10 +220,15 @@ export const submitMemoryCreate = async ({
   t,
   onCreated,
 }: SubmitMemoryCreateParams): Promise<void> => {
-  const name = (title.trim() || memory.trim())
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .slice(0, 64);
+  // Use a RegExp constructor for Unicode property escapes with the ES6 TS target.
+  const nonNameCharacters = new RegExp('[^\\p{L}\\p{N}\\p{M}]+', 'gu');
+  const name = Array.from(
+    (title.trim() || memory.trim())
+      .toLowerCase()
+      .replace(nonNameCharacters, '-')
+  )
+    .slice(0, 64)
+    .join('');
 
   await createContextMemory({
     name,

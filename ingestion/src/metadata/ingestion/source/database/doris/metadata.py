@@ -24,6 +24,7 @@ from sqlalchemy.sql.compiler import IdentifierPreparer
 
 from metadata.generated.schema.entity.data.table import (
     Column,
+    ConstraintType,
     DataType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
@@ -50,6 +51,7 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.doris.queries import (
     DORIS_GET_MATERIALIZED_VIEW_NAMES,
     DORIS_GET_PARTITIONS,
+    DORIS_GET_TABLE_KEY_MODELS,
     DORIS_SHOW_CREATE_MATERIALIZED_VIEW,
     DORIS_SHOW_CREATE_TABLE,
     DORIS_SHOW_FULL_COLUMNS,
@@ -64,6 +66,11 @@ MySQLTableDefinitionParser._parse_column = (  # pylint: disable=protected-access
 
 # Engine of an OLAP table in information_schema.tables. SHOW CREATE TABLE refuses a materialized view.
 OLAP_ENGINE = "Doris"
+
+# TABLE_MODEL values (KeysType.toMetadata in Doris) whose key identifies a row: UNIQUE KEY,
+# AGGREGATE KEY, whose rows are merged by key, and the legacy PRIMARY KEY model. The key of a
+# DUPLICATE KEY table ("DUP") is only a sort key and can repeat; other tables report "".
+PRIMARY_KEY_TABLE_MODELS = {"UNI", "AGG", "PRI"}
 
 # A RANGE partition column is an integer, a DATE or a DATETIME
 TIME_PARTITION_DATA_TYPES = {DataType.DATE.value, DataType.DATETIME.value}
@@ -175,6 +182,7 @@ class DorisSource(CommonDbSourceService):
         super().__init__(config, metadata)
         # One entry per schema in progress: each of the `threads` workers ingests its own schema
         self.partitions_cache: LRUCache[dict[str, Row]] = LRUCache(capacity=self.source_config.threads or 1)
+        self.table_model_keys_cache: LRUCache[dict[str, str]] = LRUCache(capacity=self.source_config.threads or 1)
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
@@ -241,7 +249,6 @@ class DorisSource(CommonDbSourceService):
         """
 
         table_columns = []
-        primary_columns = []
         preparer = self.engine.dialect.identifier_preparer
         qualified_table_name = _qualified_identifier(preparer, schema, table_name)
         # row schema: Field, Type, Collation, Null, Key, Default, Extra, Privileges, Comment
@@ -249,10 +256,45 @@ class DorisSource(CommonDbSourceService):
             self.connection.execute(sql.text(DORIS_SHOW_FULL_COLUMNS.format(table_name=qualified_table_name)))
         ):
             table_columns.append(_get_column(i, row[0], row[1], row[3], row[5], row[8]))
-            if row[4] == "YES":
-                primary_columns.append(row[0])
 
-        return table_columns, primary_columns
+        return table_columns
+
+    def _get_primary_key_columns(self, schema_name: str, table_name: str, column_names: Iterable[str]) -> list[str]:
+        """Match the table model's key against the full column names in schema order."""
+        try:
+            # Read once rather than checking for membership first: an eviction by another
+            # worker thread between the two calls would raise here
+            model_keys = self.table_model_keys_cache.get(schema_name)
+        except KeyError:
+            try:
+                model_keys = {
+                    row.TABLE_NAME: row.TABLE_MODEL_KEY
+                    for row in self.connection.execute(sql.text(DORIS_GET_TABLE_KEY_MODELS), {"schema": schema_name})
+                    if row.TABLE_MODEL in PRIMARY_KEY_TABLE_MODELS
+                }
+            except Exception as exc:
+                # Ingest the schema's tables without primary keys rather than fail each of them
+                logger.debug(traceback.format_exc())
+                logger.warning("Could not read the table models of schema [%s]: %s", schema_name, exc)
+                self._rollback_failed_statement()
+                model_keys = {}
+            self.table_model_keys_cache.put(schema_name, model_keys)
+
+        model_key = model_keys.get(table_name)
+        if not model_key:
+            return []
+
+        # Doris requires model key columns to come first in the schema. Match full names
+        # in that order because TABLE_MODEL_KEY joins them with unescaped commas.
+        key_columns = []
+        offset = 0
+        for name in column_names:
+            key_columns.append(name)
+            prefix = f"{name},"
+            if not model_key.startswith(prefix, offset):
+                return key_columns if model_key[offset:] == name else []
+            offset += len(prefix)
+        return []
 
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
         self,
@@ -271,7 +313,14 @@ class DorisSource(CommonDbSourceService):
         """
         table_constraints = []
         table_columns = []
-        columns, primary_columns = self._get_columns(table_name, schema_name)
+        columns = self._get_columns(table_name, schema_name)
+        primary_columns = self._get_primary_key_columns(schema_name, table_name, (column["name"] for column in columns))
+        if len(primary_columns) > 1:
+            table_constraints.append(
+                TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=primary_columns)
+            )
+        # A single key column is marked PRIMARY_KEY; the columns of a composite key keep NULL / NOT NULL
+        column_primary_key = primary_columns if len(primary_columns) == 1 else []
         for column in columns:
             try:
                 children = None
@@ -279,7 +328,7 @@ class DorisSource(CommonDbSourceService):
                     children = [column_from_parsed(ordinal, child) for ordinal, child in enumerate(column["children"])]
                 self.process_additional_table_constraints(column=column, table_constraints=table_constraints)
 
-                col_constraint = self._get_column_constraints(column, primary_columns, [])
+                col_constraint = self._get_column_constraints(column, column_primary_key, [])
                 col_data_length = self._check_col_length(column["system_data_type"], column["data_type"])
                 if col_data_length is None:
                     col_data_length = 1
@@ -306,7 +355,7 @@ class DorisSource(CommonDbSourceService):
                 logger.warning(f"Unexpected exception processing column [{column}]: {exc}")
                 continue
             table_columns.append(om_column)
-        return table_columns, [], []
+        return table_columns, table_constraints, []
 
     def _get_schema_partitions(self, schema_name: str) -> dict[str, Row]:
         """Partition method and columns of every table and view of the schema, read once per schema"""
@@ -397,7 +446,7 @@ class DorisSource(CommonDbSourceService):
                     for column_name in column_names
                 ]
             )
-        columns, _ = self._get_columns(table_name, schema_name)
+        columns = self._get_columns(table_name, schema_name)
         column_types = {column["name"]: column["system_data_type"] for column in columns}
         return True, TablePartition(
             columns=[
