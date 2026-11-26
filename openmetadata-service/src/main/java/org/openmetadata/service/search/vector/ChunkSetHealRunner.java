@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.vector;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,8 @@ public final class ChunkSetHealRunner implements Runnable {
   private final VectorIndexService service;
   private final Lease lease;
   private final Pause pause;
+  private boolean warned;
+  private boolean warnedAtTheCap;
 
   public ChunkSetHealRunner(VectorIndexService service, Lease lease) {
     this(service, lease, duration -> Thread.sleep(duration));
@@ -48,7 +51,7 @@ public final class ChunkSetHealRunner implements Runnable {
     Duration wait = FIRST_RETRY;
     boolean done = false;
     for (int attempt = 1; !done && !Thread.currentThread().isInterrupted(); attempt++) {
-      done = attempt(attempt);
+      done = attempt(attempt, wait);
       if (!done) {
         pauseFor(wait);
         wait = doubled(wait);
@@ -61,31 +64,47 @@ public final class ChunkSetHealRunner implements Runnable {
     return next.compareTo(LONGEST_RETRY) > 0 ? LONGEST_RETRY : next;
   }
 
-  private boolean attempt(int attempt) {
+  private boolean attempt(int attempt, Duration wait) {
     boolean done = false;
     try {
       if (lease.tryAcquire()) {
-        done = healHoldingTheLease(attempt);
+        done = healHoldingTheLease(attempt, wait);
       } else {
         LOG.debug("Another server holds the chunk heal lease; trying again later");
       }
     } catch (RuntimeException e) {
-      logFailure(attempt, e);
+      logFailure(attempt, wait, e);
     }
     return done;
   }
 
-  private boolean healHoldingTheLease(int attempt) {
+  private boolean healHoldingTheLease(int attempt, Duration wait) {
+    boolean done;
+    try {
+      done = heal(attempt, wait);
+    } finally {
+      releaseTheLease();
+    }
+    return done;
+  }
+
+  private boolean heal(int attempt, Duration wait) {
     boolean done = false;
     try {
       logOutcome(service.removeChunksNoHeaderCounts(), attempt);
       done = true;
-    } catch (Exception e) {
-      logFailure(attempt, e);
-    } finally {
-      lease.release();
+    } catch (IOException | RuntimeException e) {
+      logFailure(attempt, wait, e);
     }
     return done;
+  }
+
+  private void releaseTheLease() {
+    try {
+      lease.release();
+    } catch (RuntimeException e) {
+      LOG.info("Could not release the chunk heal lease; it expires on its own: {}", e.getMessage());
+    }
   }
 
   private static void logOutcome(Optional<ChunkSetsBounded> healed, int attempts) {
@@ -101,11 +120,16 @@ public final class ChunkSetHealRunner implements Runnable {
         () -> LOG.debug("The chunk index already holds no chunk its header does not count"));
   }
 
-  private static void logFailure(int attempt, Exception e) {
+  /** Warns on this server's first failure and once more when the wait reaches its cap. */
+  private void logFailure(int attempt, Duration wait, Exception e) {
     String message =
         "Could not remove the chunks no header counts (attempt {}); trying again, at most every {}"
             + " minutes: {}";
-    if (attempt == 1) {
+    boolean atTheCap = wait.equals(LONGEST_RETRY);
+    boolean warn = !warned || (atTheCap && !warnedAtTheCap);
+    warned = true;
+    warnedAtTheCap = atTheCap;
+    if (warn) {
       LOG.warn(message, attempt, LONGEST_RETRY.toMinutes(), e.getMessage());
     } else {
       LOG.debug(message, attempt, LONGEST_RETRY.toMinutes(), e.getMessage());
