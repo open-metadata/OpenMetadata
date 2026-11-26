@@ -23,7 +23,7 @@ claude plugin list
 
 Check that `openmetadata-skills@openmetadata-skills` is enabled. Start a new Claude Code session to use the plugin. For example, `/openmetadata-skills:connector-audit` runs the connector audit skill. The plugin loads the OpenMetadata workflow on session start.
 
-When adding a top-level skill, include its directory in [the plugin manifest](.claude-plugin/plugin.json). Each skill supplies its own slash command.
+When adding a top-level skill, include its directory in [the plugin manifest](.claude-plugin/plugin.json). Each skill supplies its own slash command. See [the plugin packaging decision](../docs/decisions/2026-11-26-claude-plugin-loads-canonical-skills-from-the-checkout.md).
 
 ### Claude Code (In-Repo, Zero Setup)
 

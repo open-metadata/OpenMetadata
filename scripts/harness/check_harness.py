@@ -27,7 +27,7 @@ run with ``--strict``:
                             fails standalone and as a pre-commit hook)
  10. ontology-packs       — a bundled ontology library pack payload, manifest, README or
                             NOTICE block that no longer matches scripts/ontology-packs/sources.json
- 11. skill-discovery      — a skill directory missing from the installed Claude Code plugin
+ 11. skill-discovery      — a missing or stale skill directory in the Claude Code plugin manifest
 
 Run locally with ``make harness-check`` or ``python3 scripts/harness/check_harness.py``.
 Stdlib only; deterministic; safe to run anywhere in the tree.
@@ -473,14 +473,17 @@ def check_skill_symlinks():
 
 def check_plugin_skills():
     manifest = "skills/.claude-plugin/plugin.json"
-    declared = json.loads(read(manifest)).get("skills", [])
+    declared = set(json.loads(read(manifest)).get("skills", []))
     root = pathlib.Path(rp("skills"))
     # Top-level skills are listed individually. One directory entry loads all vendored skills.
     required = {f"./{path.parent.name}" for path in root.glob("*/SKILL.md")}
     if any((root / "vendor").glob("*/SKILL.md")):
         required.add("./vendor")
-    return [Warn("skill-discovery", manifest, 1, f"add {path} so the installed plugin exposes its skills")
-            for path in sorted(required.difference(declared))]
+    warnings = [Warn("skill-discovery", manifest, 1, f"add {path} so the installed plugin exposes its skills")
+                for path in sorted(required - declared)]
+    for path in sorted(declared - required):
+        warnings.append(Warn("skill-discovery", manifest, 1, f"remove stale skill directory {path}"))
+    return warnings
 
 
 # ------------------------------------------------------------------------- check 4
