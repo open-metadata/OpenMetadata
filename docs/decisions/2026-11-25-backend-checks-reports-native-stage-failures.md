@@ -1,0 +1,42 @@
+# Backend checks report failures at the stage that failed
+
+- **Status:** Accepted
+- **Revisions:** v1 2026-11-25 (initial)
+- **Deciders:** Sriharsha Chintalapani
+- **Guard:** `test_java_checkstyle_is_unified_fail_fast_in_backend_job`, `test_integration_gate_enforces_backend_result`, and `test_summary_leads_with_stage_results`
+- **Related:** ADR:2026-11-24-backend-ci-gates-integration-lanes-behind-unit-tests-and-builds-once
+
+## Context
+
+The combined Java job still appeared as `openmetadata-service-unit-tests`, alongside a skipped
+`java-checkstyle` compatibility job. Its `continue-on-error` steps showed green even when tests
+failed, and the final enforcement step was the only red step. This obscured which checks ran
+and where the failure occurred.
+
+## Decision
+
+The combined Java job is `backend-checks`, with numbered checkstyle and service unit-test steps.
+Remove the `java-checkstyle` placeholder. Let both validation steps fail natively so GitHub
+shows the failing stage in red; checkstyle failure still prevents service tests from running.
+Run the summary with `always()` and upload failed-test reports with `failure()`. The summary
+leads with the stage outcomes, followed by counts, file names, and failing test methods.
+
+Integration-test lanes and their result gates depend on `backend-checks`. The distinct rollup
+for backend checks, operator tests, and the Docker smoke test becomes `backend-checks-status`;
+it still catches failures or unexpected skips in those independent jobs. No validation is
+moved into a privileged workflow or given additional token permissions.
+
+## Consequences
+
+The workflow filename stays `openmetadata-service-unit-tests.yml` so path filters and callers
+remain stable. Stage gating and integration-test scheduling keep the contract in the related ADR.
+Merge-queue diagnosis recognizes the renamed rollup and reports the actual failed check.
+
+The GitHub `merge-rules` ruleset (ID `6520078`) is external to the repository. Coordinate its
+cutover with deployment: once the rollout PR reports `backend-checks`, replace the required
+`java-checkstyle` and `openmetadata-service-unit-tests` contexts with `backend-checks`, keeping
+GitHub Actions integration ID `15368` and all unrelated rules unchanged. Then land the workflow
+and refresh affected PRs so they report the new name. Do not remove the old requirements before
+the replacement check exists. If a ruleset requires the old `openmetadata-service-unit-tests-status`
+rollup, rename that requirement to `backend-checks-status` as well. The source change alone does
+not update GitHub settings or historical runs.
