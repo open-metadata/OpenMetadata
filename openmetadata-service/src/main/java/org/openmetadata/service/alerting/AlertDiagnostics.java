@@ -50,6 +50,7 @@ public final class AlertDiagnostics {
     AlertProgress.Counts counts = progress.counts();
     PendingCount pending = pendingCount(alert, progress);
     return new EventsRecord()
+        .withEnabled(isEnabled(alert))
         .withTotalEventsCount(counts.handled() + pending.count())
         .withFailedEventsCount(counts.failed())
         .withPendingEventsCount(pending.count())
@@ -65,6 +66,7 @@ public final class AlertDiagnostics {
     PendingCount pending = pendingCount(alert, progress);
     AlertProgress.UnreadPage page = unreadPage(progress, limit, paginationOffset, listCountOnly);
     return new EventSubscriptionDiagnosticInfo()
+        .withEnabled(isEnabled(alert))
         .withLatestOffset(progress.latestOffset())
         .withCurrentOffset(progress.currentOffset())
         .withStartingOffset(progress.startingOffset())
@@ -76,6 +78,10 @@ public final class AlertDiagnostics {
         .withRelevantUnprocessedEventsCountIsLowerBound(pending.lowerBound())
         .withRelevantUnprocessedEventsList(page.relevant())
         .withTotalUnprocessedEventsList(page.all());
+  }
+
+  private static boolean isEnabled(EventSubscription alert) {
+    return !Boolean.FALSE.equals(alert.getEnabled());
   }
 
   // Shared by every request for the alert at its position, and run at most a few at a time.

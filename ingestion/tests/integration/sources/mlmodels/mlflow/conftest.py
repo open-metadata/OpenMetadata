@@ -87,7 +87,7 @@ def mlflow_environment():
 
     s3_container = get_s3_container(config.s3_configs)
     mysql_container = get_mysql_container(config.mysql_configs)
-    # mlflow 3.8.1+ creates a trigger at backend init; with binlog on (mysql:8
+    # mlflow 3.8.1+ creates a trigger at backend init; with binlog on (MySQL 8
     # default) this needs SUPER unless log_bin_trust_function_creators=1.
     mysql_container.with_command("mysqld --log-bin-trust-function-creators=1")
     mlflow_container = build_and_get_mlflow_container(config.mlflow_configs, config.s3_configs, unique_id)

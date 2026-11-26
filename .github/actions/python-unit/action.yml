@@ -1,0 +1,61 @@
+name: Run Python unit tests
+description: Prepare the classification test profile, run the ingestion unit suite, and report its results.
+inputs:
+  python-version:
+    description: Python interpreter for the unit suite.
+    required: true
+  collect-coverage:
+    description: Collect and upload unit coverage for nightly Sonar.
+    default: 'false'
+  prepare-models:
+    description: Prepare classification models on this runner instead of consuming the shared artifact.
+    default: 'false'
+  run-tooling-tests:
+    description: Run CI tooling and offline E2E framework tests before the unit suite.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Prepare Python environment
+      uses: ./.github/actions/prepare-python-environment
+      env:
+        PYTHON_VERSIONS: ${{ inputs.python-version }}
+      with:
+        python-version: ${{ inputs.python-version }}
+        profile: test-classification
+        prepare-models: ${{ inputs.prepare-models }}
+    - name: Test CI and Python tooling
+      if: inputs.run-tooling-tests == 'true'
+      env:
+        PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      run: |
+        env/bin/python -m pytest -q --noconftest \
+          .github/scripts/tests/test_python_ci.py \
+          .github/scripts/test_classify_test_outcome.py \
+          ingestion/tests/tooling
+      shell: bash
+    - name: Run offline E2E framework tests
+      if: inputs.run-tooling-tests == 'true'
+      run: |
+        source env/bin/activate
+        cd ingestion
+        env -u OM_JWT_TOKEN OM_SERVER_URL=http://127.0.0.1:1/api \
+          python -m pytest tests/cli_e2e_v2/meta -q
+      shell: bash
+    - name: Run unit tests
+      id: tests
+      uses: ./.github/actions/python-suite
+      env:
+        PYTHON_VERSIONS: ${{ inputs.python-version }}
+      with:
+        suite: unit
+        collect-coverage: ${{ inputs.collect-coverage }}
+        coverage-name: coverage-unit-${{ inputs.python-version }}
+    - name: Report test results
+      if: ${{ always() }}
+      uses: ./.github/actions/report-test-results
+      with:
+        step-outcome: ${{ steps.tests.outcome }}
+        exit-code-file: ingestion/unit-test-exit-code.txt
+        test-profile: python-unit
+        artifact-name: py-unit-test-results-${{ inputs.python-version }}

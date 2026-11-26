@@ -701,91 +701,106 @@ public class DistributedSearchIndexCoordinator {
   }
 
   /**
-   * Mark a partition as failed.
+   * Mark a partition as failed. It is queued for a retry until it has used its retries.
    *
    * @param partitionId The partition ID
    * @param errorMessage Error message describing the failure
    */
   public void failPartition(UUID partitionId, String errorMessage) {
-    SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
+    recordPartitionFailure(partitionId, errorMessage, true);
+  }
 
-    SearchIndexPartitionRecord record = partitionDAO.findById(partitionId.toString());
+  /**
+   * Mark a partition as failed for good, without a retry: for a failure no retry on any node can
+   * repair, whose FAILED row and {@code errorMessage} must stay as they are for the rest of the job.
+   */
+  public void failPartitionWithoutRetry(UUID partitionId, String errorMessage) {
+    recordPartitionFailure(partitionId, errorMessage, false);
+  }
+
+  private void recordPartitionFailure(UUID partitionId, String errorMessage, boolean retryable) {
+    SearchIndexPartitionRecord record =
+        collectionDAO.searchIndexPartitionDAO().findById(partitionId.toString());
     if (record == null) {
       LOG.warn("Partition not found for failure: {}", partitionId);
-      return;
+    } else if (retryable && record.retryCount() < MAX_PARTITION_RETRIES) {
+      requeuePartition(record, errorMessage);
+    } else {
+      failPartitionForGood(record, errorMessage);
     }
+  }
 
-    long now = System.currentTimeMillis();
-
-    // Status-guarded write — if requestStop already moved this row to CANCELLED,
-    // updateIfProcessing returns 0 and we leave the cancellation authoritative
-    // instead of resurrecting the row to PENDING (retry) or FAILED (terminal).
-    if (record.retryCount() < MAX_PARTITION_RETRIES) {
-      int updated =
-          partitionDAO.updateIfProcessing(
-              partitionId.toString(),
-              PartitionStatus.PENDING.name(),
-              record.cursor(),
-              record.processedCount(),
-              record.successCount(),
-              record.failedCount(),
-              null,
-              null,
-              null,
-              null,
-              now,
-              errorMessage,
-              record.retryCount() + 1);
-      if (updated == 0) {
-        LOG.info(
-            "Skipped retry-requeue of partition {} (entity {}) — row no longer PROCESSING "
-                + "(likely cancelled by Stop); leaving authoritative state intact.",
-            partitionId,
-            record.entityType());
-        return;
-      }
+  // Status-guarded write: if requestStop already moved this row to CANCELLED, updateIfProcessing
+  // returns 0 and the cancellation stays authoritative instead of the row being resurrected.
+  private void requeuePartition(SearchIndexPartitionRecord record, String errorMessage) {
+    int updated =
+        collectionDAO
+            .searchIndexPartitionDAO()
+            .updateIfProcessing(
+                record.id(),
+                PartitionStatus.PENDING.name(),
+                record.cursor(),
+                record.processedCount(),
+                record.successCount(),
+                record.failedCount(),
+                null,
+                null,
+                null,
+                null,
+                System.currentTimeMillis(),
+                errorMessage,
+                record.retryCount() + 1);
+    if (updated == 0) {
+      LOG.info(
+          "Skipped retry-requeue of partition {} (entity {}) — row no longer PROCESSING "
+              + "(likely cancelled by Stop); leaving authoritative state intact.",
+          record.id(),
+          record.entityType());
+    } else {
       LOG.warn(
           "Partition {} failed, queued for retry ({}/{}): {}",
-          partitionId,
+          record.id(),
           record.retryCount() + 1,
           MAX_PARTITION_RETRIES,
           errorMessage);
-    } else {
-      int updated =
-          partitionDAO.updateIfProcessing(
-              partitionId.toString(),
-              PartitionStatus.FAILED.name(),
-              record.cursor(),
-              record.processedCount(),
-              record.successCount(),
-              record.failedCount(),
-              record.assignedServer(),
-              record.claimedAt(),
-              record.startedAt(),
-              now,
-              now,
-              errorMessage,
-              record.retryCount());
-      if (updated == 0) {
-        LOG.info(
-            "Skipped terminal-failure of partition {} (entity {}) — row no longer PROCESSING "
-                + "(likely cancelled by Stop); leaving authoritative state intact.",
-            partitionId,
-            record.entityType());
-        return;
-      }
+    }
+  }
 
+  private void failPartitionForGood(SearchIndexPartitionRecord record, String errorMessage) {
+    long now = System.currentTimeMillis();
+    int updated =
+        collectionDAO
+            .searchIndexPartitionDAO()
+            .updateIfProcessing(
+                record.id(),
+                PartitionStatus.FAILED.name(),
+                record.cursor(),
+                record.processedCount(),
+                record.successCount(),
+                record.failedCount(),
+                record.assignedServer(),
+                record.claimedAt(),
+                record.startedAt(),
+                now,
+                now,
+                errorMessage,
+                record.retryCount());
+    if (updated == 0) {
+      LOG.info(
+          "Skipped terminal-failure of partition {} (entity {}) — row no longer PROCESSING "
+              + "(likely cancelled by Stop); leaving authoritative state intact.",
+          record.id(),
+          record.entityType());
+    } else {
       LOG.error(
           "Partition {} permanently failed after {} retries: {}",
-          partitionId,
-          MAX_PARTITION_RETRIES,
+          record.id(),
+          record.retryCount(),
           errorMessage);
-
       // Record partition completion (with failure) for per-entity index promotion
       if (entityTracker != null) {
         entityTracker.recordPartitionComplete(record.entityType(), true);
       }
-
       checkAndUpdateJobCompletion(UUID.fromString(record.jobId()));
     }
   }
