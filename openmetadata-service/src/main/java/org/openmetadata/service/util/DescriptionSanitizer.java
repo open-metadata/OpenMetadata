@@ -180,7 +180,8 @@ public final class DescriptionSanitizer {
     matcher.appendTail(replaced);
 
     final String toSanitize = replaced.toString();
-    String sanitized = toSanitize.contains(HTML_TAG_START) ? MARKDOWN_POLICY.sanitize(toSanitize) : toSanitize;
+    String sanitized =
+        toSanitize.contains(HTML_TAG_START) ? MARKDOWN_POLICY.sanitize(toSanitize) : toSanitize;
 
     for (int i = 0; i < entityLinks.size(); i++) {
       sanitized =
