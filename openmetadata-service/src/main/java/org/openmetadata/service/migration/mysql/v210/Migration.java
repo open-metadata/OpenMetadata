@@ -57,7 +57,6 @@ import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigrat
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
-import org.openmetadata.service.migration.utils.v210.DomainLineageRebuild;
 import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.IncidentWorkflowTransitionMigration;
@@ -285,12 +284,5 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ServiceVersionSecretsMasking.STEP_NAME,
         () -> ServiceVersionSecretsMasking.maskPlainTextSecrets(handle, MYSQL));
-    // Domain lineage was never moved when an asset's domains changed after its lineage existed, so
-    // it is recounted from the edges. The step logs the reindex the lineage views need.
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        DomainLineageRebuild.STEP_NAME,
-        () -> DomainLineageRebuild.rebuild(collectionDAO));
   }
 }

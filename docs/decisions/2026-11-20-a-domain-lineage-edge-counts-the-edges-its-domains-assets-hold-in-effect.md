@@ -4,10 +4,11 @@
 - **Revisions:** v1 2026-11-20 (initial); v2 2026-11-20 (a container's domain change moves its
   inheritors in the write's transaction); v3 2026-11-25 (review: lineage ends are every
   domain-bearing type, discovery counts distinct ids under a cap, a rollup write invalidates the
-  lineage caches, and a manual row keeps its source when its last asset edge leaves)
+  lineage caches, and a manual row keeps its source when its last asset edge leaves); v4 2026-11-26
+  (the repair and the Postgres prefix indexes move to the unreleased 2.1.2)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `DomainLineageRefcountIT`, `DomainLineageInheritanceIT`, `DomainLineageRebuildIT`,
-  `LineageDomainRollupsTest`, `LineageDomainInheritorsTest`, `IngestionPipelineMigrationEntryPointTest`
+  `LineageDomainRollupsTest`, `LineageDomainInheritorsTest`, `MigrationArchitectureTest`
 - **Related:** #33961
 
 ## Context
@@ -128,8 +129,8 @@ rollup divergence, needs the same change in `LineageRepository`.
   `reindex --force --entities=domain,dataProduct` follows. `--force` is needed: a reindex without it
   skips the mappings it finds unchanged, and the domain view would keep the old counts.
 - **Postgres prefix indexes.** Discovery's `fqnHash LIKE 'hash.%'` needs a `text_pattern_ops`
-  index under a non-C collation (as in 1.13.0); 2.1.0 adds the seven that discovery's tables
-  lacked: `stored_procedure_entity`, `pipeline_entity`, `llm_model_entity`, `mcp_server_entity`,
+  index under a non-C collation (as in 1.13.0); 2.1.2 adds the seven that discovery's tables
+  lacked (amendment v4): `stored_procedure_entity`, `pipeline_entity`, `llm_model_entity`, `mcp_server_entity`,
   `test_suite` (one basic suite per table, scanned on every table, schema, database and database
   service domain write), `tag` (a classification's write) and `ai_framework_control_entity` (an AI
   governance framework's write). MySQL's `fqnHash` btree serves a constant prefix as it is.
@@ -138,3 +139,20 @@ rollup divergence, needs the same change in `LineageRepository`.
   (the update rewrites its CONTAINS row and keeps its FQN, so it and its files inherit from a parent
   whose prefix they are not under); inheritance that does not follow the FQN (a query's domains
   come from its tables). The rebuild command restores them.
+
+## Amendment — 2026-11-26: the repair runs in 2.1.2
+
+- **The repair is a 2.1.2 data migration step.** 2.1.0 and 2.1.1 had shipped, so a database at
+  2.1.1 never runs a step added to 2.1.0: the workflow reprocesses only the newest version of a
+  release train it has applied. `DomainLineageRebuild` lives in `migration/utils/v212` and runs
+  once, recorded as `data-migration-step:2.1.2:rebuildDomainLineage`, from both engines' v212
+  `Migration`. `DomainLineageRebuildIT#anUpgradeFrom211RunsTheRebuild` sets the migration log back
+  to 2.1.1 and runs the migration workflow over the real native folders.
+- **It is a named exception to ADR:2026-11-11-a-data-migration-carries-its-own-logic.** The
+  recount reads domains in effect through the running server's inheritance, the same resolution
+  the live delta that follows it uses, and it has to run in the upgrade that ships that delta. It
+  and the v212 `Migration` classes are listed in `MigrationArchitectureTest` with that reason.
+- **The Postgres prefix indexes are built by the 2.1.2 Java step**
+  (`DomainLineageDiscoveryIndexes`), which checks `pg_index.indisvalid` first and rebuilds an
+  invalid one, per ADR:2026-10-22-guarded-index-ddl-runs-from-a-java-data-migration. Discovery
+  runs only on a server that has run 2.1.2, so the index exists before any query uses it.

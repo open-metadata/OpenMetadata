@@ -18,6 +18,7 @@ import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v212.DomainLineageRebuild;
 import org.openmetadata.service.migration.utils.v212.LogicalTestSuitePipelineMigration;
 
 public class Migration extends MigrationProcessImpl {
@@ -33,5 +34,13 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         LogicalTestSuitePipelineMigration.STEP_NAME,
         () -> LogicalTestSuitePipelineMigration.migrate(handle, MYSQL));
+    // Domain lineage was never moved when an asset's domains changed after its lineage existed, so
+    // it is recounted from the edges before the live delta runs over it. The step logs the reindex
+    // the lineage views need.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        DomainLineageRebuild.STEP_NAME,
+        () -> DomainLineageRebuild.rebuild(collectionDAO));
   }
 }

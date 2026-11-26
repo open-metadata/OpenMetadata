@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.tests.DomainLineageSteps.assertEdgeAbsent;
 import static org.openmetadata.it.tests.DomainLineageSteps.assetEdges;
 import static org.openmetadata.it.tests.DomainLineageSteps.awaitPlatformLineage;
@@ -15,14 +16,17 @@ import static org.openmetadata.it.tests.DomainLineageSteps.setTableDomains;
 import static org.openmetadata.it.tests.DomainLineageSteps.table;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.ForkedOperations;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.TestNamespace;
@@ -34,25 +38,40 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.migration.utils.v210.DomainLineageRebuild;
-import org.openmetadata.service.migration.utils.v210.DomainLineageRebuild.Change;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.MigrationConfiguration;
+import org.openmetadata.service.migration.api.MigrationWorkflow;
+import org.openmetadata.service.migration.utils.v212.DomainLineageRebuild;
+import org.openmetadata.service.migration.utils.v212.DomainLineageRebuild.Change;
 
 /**
- * Covers the 2.1.0 repair that recounts domain lineage from the asset edges, and the ops command
+ * Covers the 2.1.2 repair that recounts domain lineage from the asset edges, and the ops command
  * that runs it. Before #33961 was fixed, domains given to services after their tables' lineage
  * existed were never counted, and re-sending an edge created the domain edge at one asset edge. A
  * server with the fix keeps the count, so these tests delete the domain edge a container's domain
  * change wrote, which leaves the store as an older server did.
  */
 @Isolated(
-    "invokes the v210 repair, which recounts and rewrites domain edges across the whole"
+    "invokes the v212 repair, which recounts and rewrites domain edges across the whole"
         + " entity_relationship table, not just this class's own domains")
 @ExtendWith(TestNamespaceExtension.class)
 @Execution(ExecutionMode.SAME_THREAD)
 public class DomainLineageRebuildIT {
 
   private static final int UPSTREAM = Relationship.UPSTREAM.ordinal();
+  private static final String UNRELEASED_VERSION = "2.1.2";
+  private static final String LAST_RELEASED_VERSION = "2.1.1";
+  private static final List<String> DISCOVERY_INDEXES =
+      List.of(
+          "idx_stored_procedure_entity_fqnhash_pattern",
+          "idx_pipeline_entity_fqnhash_pattern",
+          "idx_llm_model_entity_fqnhash_pattern",
+          "idx_mcp_server_entity_fqnhash_pattern",
+          "idx_test_suite_fqnhash_pattern",
+          "idx_tag_fqnhash_pattern",
+          "idx_ai_framework_control_entity_fqnhash_pattern");
 
   @Test
   void rebuildCreatesTheDomainEdgeTheServicesDomainsNeverGot(TestNamespace ns) {
@@ -64,6 +83,33 @@ public class DomainLineageRebuildIT {
     LineageDetails rebuilt = edge(issue.d1(), issue.d2());
     assertEquals(3, rebuilt.getAssetEdges());
     assertEquals(LineageDetails.Source.CHILD_ASSETS, rebuilt.getSource());
+  }
+
+  /**
+   * 2.1.0 and 2.1.1 have shipped, so a database upgraded to 2.1.1 never reads their folders again.
+   * The migration log is set back to that state (2.1.1 the last version applied, nothing of 2.1.2
+   * recorded) and the migration workflow, with the real native migration folders, recounts the
+   * domain edge such a database is missing.
+   */
+  @Test
+  void anUpgradeFrom211RunsTheRebuild(TestNamespace ns) {
+    IssueTopology issue = IssueTopology.create(ns);
+    assertEdgeAbsent(issue.d1(), issue.d2());
+    Jdbi jdbi = TestSuiteBootstrap.getJdbi();
+    forgetVersion(jdbi, UNRELEASED_VERSION);
+    assertEquals(LAST_RELEASED_VERSION, lastAppliedVersion(jdbi));
+
+    upgrade(jdbi);
+
+    assertEquals(3, assetEdges(issue.d1(), issue.d2()));
+    assertEquals(UNRELEASED_VERSION, lastAppliedVersion(jdbi));
+    assertTrue(
+        isRecorded(jdbi, "data-migration-step:2.1.2:" + DomainLineageRebuild.STEP_NAME),
+        "the rebuild step is recorded under 2.1.2");
+    if (TestSuiteBootstrap.getConnectionType() == ConnectionType.POSTGRES) {
+      DISCOVERY_INDEXES.forEach(
+          index -> assertTrue(isValidIndex(jdbi, index), index + " is built and valid"));
+    }
   }
 
   /** {@code openmetadata-ops.sh rebuild-domain-lineage}, run in its own JVM as an operator would. */
@@ -260,6 +306,71 @@ public class DomainLineageRebuildIT {
         dao().relationshipDAO().getRecord(from.getId(), to.getId(), UPSTREAM);
     assertNotNull(row, "a stored domain edge is expected");
     return row.getJson();
+  }
+
+  private static void forgetVersion(Jdbi jdbi, String version) {
+    jdbi.useHandle(
+        handle -> {
+          handle
+              .createUpdate("DELETE FROM SERVER_MIGRATION_SQL_LOGS WHERE version = :version")
+              .bind("version", version)
+              .execute();
+          handle
+              .createUpdate("DELETE FROM SERVER_CHANGE_LOG WHERE version = :version")
+              .bind("version", version)
+              .execute();
+        });
+  }
+
+  // The 2.x versions sort as strings the same way they sort as versions.
+  private static String lastAppliedVersion(Jdbi jdbi) {
+    return jdbi.withHandle(
+        handle ->
+            handle
+                .createQuery("SELECT MAX(version) FROM SERVER_CHANGE_LOG WHERE version LIKE '2.%'")
+                .mapTo(String.class)
+                .one());
+  }
+
+  private static void upgrade(Jdbi jdbi) {
+    OpenMetadataApplicationConfig config = TestSuiteBootstrap.createApplicationConfigCopy();
+    MigrationConfiguration paths = config.getMigrationConfiguration();
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi,
+            paths.getNativePath(),
+            TestSuiteBootstrap.getConnectionType(),
+            "",
+            paths.getFlywayPath(),
+            config,
+            false);
+    workflow.loadMigrations();
+    workflow.runMigrationWorkflows(false);
+  }
+
+  private static boolean isRecorded(Jdbi jdbi, String checksum) {
+    return jdbi.withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT COUNT(*) FROM SERVER_MIGRATION_SQL_LOGS WHERE checksum = :checksum")
+                    .bind("checksum", checksum)
+                    .mapTo(Integer.class)
+                    .one())
+        == 1;
+  }
+
+  private static boolean isValidIndex(Jdbi jdbi, String name) {
+    return jdbi.withHandle(
+        handle ->
+            handle
+                    .createQuery(
+                        "SELECT COUNT(*) FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid"
+                            + " WHERE c.relname = :name AND i.indisvalid")
+                    .bind("name", name)
+                    .mapTo(Integer.class)
+                    .one()
+                == 1);
   }
 
   private static CollectionDAO dao() {

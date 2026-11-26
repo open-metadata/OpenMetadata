@@ -1,6 +1,5 @@
 package org.openmetadata.service.migration;
 
-import static com.tngtech.archunit.base.DescribedPredicate.alwaysFalse;
 import static com.tngtech.archunit.base.DescribedPredicate.not;
 import static com.tngtech.archunit.core.domain.JavaCall.Predicates.target;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.assignableTo;
@@ -17,6 +16,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+import java.util.regex.Pattern;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
@@ -28,6 +28,7 @@ import org.openmetadata.service.migration.utils.DataMigrationStep;
 import org.openmetadata.service.migration.utils.IdBatches;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.MigrationTableUtil;
+import org.openmetadata.service.migration.utils.v212.DomainLineageRebuild;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -62,8 +63,22 @@ class MigrationArchitectureTest {
   /**
    * Steps that may use more than the allowed classes. Each entry says what it uses and why the work
    * cannot be done with rows and SQL instead.
+   *
+   * <ul>
+   *   <li>{@link DomainLineageRebuild} recounts domain lineage rollups through {@code
+   *       LineageDomainRollups} and the entity repositories: an asset's domains in effect come from
+   *       the inheritance the running server resolves, and the live delta that follows the recount
+   *       moves the counts by that same resolution, so a frozen copy would recount under rules the
+   *       live writes do not use. It must run in the upgrade that ships the delta, which over
+   *       drifted counts deletes rollups that edges still stand for
+   *       (ADR:2026-11-20-a-domain-lineage-edge-counts-the-edges-its-domains-assets-hold-in-effect).
+   *       A lineage row whose details do not parse fails the step instead of being skipped.
+   *   <li>The 2.1.2 {@code Migration} classes run that step.
+   * </ul>
    */
-  private static final DescribedPredicate<JavaClass> EXCEPTIONS = alwaysFalse();
+  private static final DescribedPredicate<JavaClass> EXCEPTIONS =
+      belongToAnyOf(DomainLineageRebuild.class)
+          .or(nameMatching(Pattern.quote(MIGRATION) + "\\.(mysql|postgres)\\.v212\\.Migration"));
 
   private static final DescribedPredicate<JavaClass> CHECKED_STEPS =
       VERSIONED_MIGRATIONS.and(not(WRITTEN_BEFORE_THE_RULE)).and(not(EXCEPTIONS));

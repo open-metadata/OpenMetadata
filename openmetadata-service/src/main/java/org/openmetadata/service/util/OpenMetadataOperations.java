@@ -134,7 +134,7 @@ import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
-import org.openmetadata.service.migration.utils.v210.DomainLineageRebuild;
+import org.openmetadata.service.migration.utils.v212.DomainLineageRebuild;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.apps.AppMapper;
 import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
@@ -1624,7 +1624,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   @Command(
       name = "rebuild-domain-lineage",
       description =
-          "Recounts every domain lineage edge from the asset lineage it stands for, as the 2.1.0"
+          "Recounts every domain lineage edge from the asset lineage it stands for, as the 2.1.2"
               + " migration does. It overwrites the counts, so pause lineage and domain writes"
               + " (ingestion, the lineage API, domain and data product edits, CSV imports) or stop"
               + " the server while it runs; it scans all of entity_relationship, so its run time"

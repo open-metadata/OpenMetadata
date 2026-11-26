@@ -1,0 +1,3 @@
+-- The Postgres prefix indexes domain lineage discovery needs are built by the 2.1.2 Java data
+-- migration (DomainLineageDiscoveryIndexes), which checks each one first, per
+-- ADR:2026-10-22-guarded-index-ddl-runs-from-a-java-data-migration.
