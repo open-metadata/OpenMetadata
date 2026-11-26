@@ -24,6 +24,7 @@
  *  limitations under the License.
  */
 
+import { JsonSchemaObject } from '../rest/taskFormSchemasAPI';
 import {
   buildDesignerSchema,
   buildStageMappings,
@@ -33,31 +34,43 @@ import {
   parseSchemaToDesignerFields,
   parseStageMappings,
   parseTransitionForms,
+  withFieldType,
 } from './TaskFormDesignerUtils';
 
 describe('TaskFormDesignerUtils', () => {
+  const reloadField = (property: JsonSchemaObject) =>
+    parseSchemaToDesignerFields({
+      type: 'object',
+      properties: { payload: property },
+    })[0];
+
   it.each([
-    ['a new field', createEmptyDesignerField()],
+    ['a new field', createEmptyDesignerField(), 'object'],
+    ['a reloaded text field', reloadField({ type: 'string' }), 'object'],
     [
-      'a reloaded text field',
-      parseSchemaToDesignerFields({
-        type: 'object',
-        properties: { payload: { type: 'string' } },
-      })[0],
+      'a reloaded multi-select',
+      reloadField({ type: 'array', items: { type: 'string', enum: ['a'] } }),
+      'array',
     ],
   ])(
-    'saves %s switched to JSON as an object and reloads it as JSON',
-    (_, field) => {
-      const { formSchema, uiSchema } = buildDesignerSchema([
-        { ...field, name: 'payload', type: 'json' },
-      ]);
+    'saves %s switched to JSON and reloads it as JSON',
+    (_, field, expectedType) => {
+      const jsonField = withFieldType({ ...field, name: 'payload' }, 'json');
+      const { formSchema, uiSchema } = buildDesignerSchema([jsonField]);
+      const saved = (formSchema.properties as Record<string, unknown>).payload;
 
-      expect(formSchema.properties).toEqual({
-        payload: expect.objectContaining({
-          type: 'object',
-          additionalProperties: true,
-        }),
-      });
+      expect(jsonField.schemaType).toBe(expectedType);
+      expect(saved).toEqual(
+        expectedType === 'array'
+          ? expect.objectContaining({
+              type: 'array',
+              items: { type: 'string' },
+            })
+          : expect.objectContaining({
+              type: 'object',
+              additionalProperties: true,
+            })
+      );
       expect(parseSchemaToDesignerFields(formSchema, uiSchema)[0].type).toBe(
         'json'
       );

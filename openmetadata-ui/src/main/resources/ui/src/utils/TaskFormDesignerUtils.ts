@@ -24,7 +24,7 @@
  *  limitations under the License.
  */
 
-import { cloneDeep } from 'lodash';
+import { cloneDeep, omit } from 'lodash';
 import { JsonSchemaObject, TaskFormSchema } from '../rest/taskFormSchemasAPI';
 
 export type TaskFormDesignerFieldType =
@@ -190,9 +190,11 @@ const FIELD_PROPERTY_BUILDERS: Partial<
     delete property.enum;
 
     if (property.type === 'array') {
-      property.items = (property.items as JsonSchemaObject | undefined) ?? {
-        type: 'string',
-      };
+      // A leftover items.enum would make the field reload as a multi-select.
+      property.items = omit(
+        (property.items as JsonSchemaObject | undefined) ?? { type: 'string' },
+        'enum'
+      );
     } else if (
       property.type === 'object' &&
       !Object.prototype.hasOwnProperty.call(property, 'properties') &&
@@ -290,6 +292,19 @@ const buildUiSchema = (
 
 export const stringifyDesignerJson = (value: unknown) =>
   JSON.stringify(value ?? {}, null, 2);
+
+/** Switching field type keeps options only for selects and defaults JSON to an object. */
+export const withFieldType = (
+  field: TaskFormDesignerField,
+  type: TaskFormDesignerField['type']
+): TaskFormDesignerField => ({
+  ...field,
+  type,
+  schemaType:
+    type === 'json' ? toJsonSchemaType(field.schemaType) : field.schemaType,
+  options:
+    type === 'singleSelect' || type === 'multiSelect' ? field.options : [],
+});
 
 export const createEmptyDesignerField = (): TaskFormDesignerField => ({
   key: createDesignerKey('field'),
