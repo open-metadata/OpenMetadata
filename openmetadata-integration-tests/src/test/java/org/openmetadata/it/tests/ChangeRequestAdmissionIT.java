@@ -15,6 +15,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -208,38 +209,47 @@ class ChangeRequestAdmissionIT {
   }
 
   @Test
-  void approvedChangeABotStagedForAHumanIsPublishedNamingTheBot(TestNamespace ns) throws Exception {
-    Glossary glossary = gated(ns);
-    User botUser = createBotUser(ns, "crpub");
+  void approvedMixedEditsLeaveBotAttributionUnset(TestNamespace ns) throws Exception {
+    final Glossary glossary = gated(ns);
+    final User botUser = createBotUser(ns, "crpub");
     createBot(ns.prefix("crpub_bot"), botUser, true);
-    User human = SharedEntities.get().USER2;
-    long since = System.currentTimeMillis();
+    final User human = SdkClients.adminClient().users().getByName("admin");
+    final long since = System.currentTimeMillis();
+    patchAs(
+        SdkClients.adminClient(),
+        glossary.getId(),
+        """
+        [
+          {"op":"replace","path":"/description","value":"human description"},
+          {"op":"replace","path":"/displayName","value":"human display name"}
+        ]
+        """);
+    final UUID firstTaskId = awaitOpenApprovalTask(glossary.getFullyQualifiedName()).getId();
     patchAs(
         impersonationClient(generateBotToken(botUser), human.getName()),
         glossary.getId(),
         "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"impersonated\"}]");
+    final ChangeRequest staged = onlyPendingRequest(glossary.getId());
+    assertEquals(botUser.getName(), staged.getImpersonatedBy());
 
     resolveAs(
         SdkClients.user1Client(),
-        awaitOpenApprovalTask(glossary.getFullyQualifiedName()),
+        awaitNewOpenApprovalTask(glossary.getFullyQualifiedName(), firstTaskId),
         "approve",
         TaskResolutionType.Approved,
-        null);
+        staged.getActiveRevisionNumber());
     Awaitility.await("approved description published")
         .atMost(Duration.ofSeconds(120))
         .pollInterval(Duration.ofSeconds(2))
         .until(() -> "impersonated".equals(descriptionOf(glossary.getId())));
 
-    Glossary published = SdkClients.adminClient().glossaries().get(glossary.getId().toString());
+    final Glossary published = fetch(glossary.getId());
+    assertEquals("human display name", published.getDisplayName());
     assertEquals(human.getName(), published.getUpdatedBy());
+    assertNull(published.getImpersonatedBy());
     assertEquals(
-        botUser.getName(),
-        published.getImpersonatedBy(),
-        "The published version must name the bot that staged the change for the human");
-    assertEquals(
-        new EventAuthor(human.getName(), botUser.getName()),
-        ChangeEventLog.awaitUpdateAuthor(Entity.GLOSSARY, glossary.getId(), "description", since),
-        "The change event of the published version must name the bot that staged it");
+        new EventAuthor(human.getName(), null),
+        ChangeEventLog.awaitUpdateAuthor(Entity.GLOSSARY, glossary.getId(), "description", since));
   }
 
   @Test

@@ -462,40 +462,39 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public BulkOperationResult bulkAddInputPorts(
       String dataProductName, BulkAssets request, ChangeActor actor) {
-    return executeInTransaction(
-        () -> bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, true, actor));
+    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, true, actor);
   }
 
   public BulkOperationResult bulkRemoveInputPorts(
       String dataProductName, BulkAssets request, ChangeActor actor) {
-    return executeInTransaction(
-        () -> bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, false, actor));
+    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, false, actor);
   }
 
   public BulkOperationResult bulkAddOutputPorts(
       String dataProductName, BulkAssets request, ChangeActor actor) {
-    return executeInTransaction(
-        () -> bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, true, actor));
+    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, true, actor);
   }
 
   public BulkOperationResult bulkRemoveOutputPorts(
       String dataProductName, BulkAssets request, ChangeActor actor) {
-    return executeInTransaction(
-        () -> bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, false, actor));
+    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, false, actor);
   }
 
-  // Repositories are instantiated directly rather than as JDBI SQL-object proxies, so a
-  // @Transaction annotation here would not create a transaction. The public bulk-port entry
-  // points open the real boundary with executeInTransaction, so relationship rows, the
-  // change-event insert, and the entity store commit or roll back together.
   private BulkOperationResult bulkPortsOperation(
-      String dataProductNameOrId,
-      BulkAssets request,
-      Relationship relationship,
-      boolean isAdd,
-      ChangeActor actor) {
-    DataProduct dataProduct = resolveDataProduct(dataProductNameOrId);
-    return executeBulkPortsOperation(dataProduct, request, relationship, isAdd, actor);
+      final String dataProductNameOrId,
+      final BulkAssets request,
+      final Relationship relationship,
+      final boolean isAdd,
+      final ChangeActor actor) {
+    final UUID dataProductId = resolveDataProduct(dataProductNameOrId).getId();
+    return executeInTransaction(
+        () -> {
+          // Lock before the first consistent read so the snapshot includes the prior port edit.
+          if (dao.findJsonByIdForUpdate(dataProductId, NON_DELETED) == null) {
+            throw EntityNotFoundException.byId(dataProductId.toString());
+          }
+          return executeBulkPortsOperation(dataProductId, request, relationship, isAdd, actor);
+        });
   }
 
   private DataProduct resolveDataProduct(String nameOrId) {
@@ -510,22 +509,20 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   // Every eligible port of the request is held, as one change request, when an approval workflow
   // gates the data product's ports for this user; otherwise they are written at once.
   private BulkOperationResult executeBulkPortsOperation(
-      final DataProduct dataProduct,
+      final UUID dataProductId,
       final BulkAssets request,
       final Relationship relationship,
       final boolean isAdd,
       final ChangeActor actor) {
     final List<EntityReference> assets = new ArrayList<>(listOrEmpty(request.getAssets()));
     EntityUtil.populateEntityReferences(assets);
-    final List<PortRow> rows = checkPorts(dataProduct.getId(), assets, relationship, isAdd);
+    final List<PortRow> rows = checkPorts(dataProductId, assets, relationship, isAdd);
     final List<EntityReference> eligible =
         rows.stream().filter(PortRow::eligible).map(PortRow::ref).toList();
     final String held =
-        eligible.isEmpty()
-            ? null
-            : holdPorts(dataProduct.getId(), eligible, relationship, isAdd, actor);
+        eligible.isEmpty() ? null : holdPorts(dataProductId, eligible, relationship, isAdd, actor);
     if (held == null && !eligible.isEmpty()) {
-      writePorts(dataProduct, eligible, relationship, isAdd, actor);
+      writePorts(dataProductId, eligible, relationship, isAdd, actor);
     }
     return portsResult(rows, held);
   }
@@ -671,15 +668,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   private void writePorts(
-      final DataProduct dataProduct,
+      final UUID dataProductId,
       final List<EntityReference> ports,
       final Relationship relationship,
       final boolean isAdd,
       final ChangeActor actor) {
-    final List<EntityReference> changed =
-        changedPorts(dataProduct.getId(), ports, relationship, isAdd);
+    final List<EntityReference> changed = changedPorts(dataProductId, ports, relationship, isAdd);
     if (!changed.isEmpty()) {
-      final DataProduct stored = get(null, dataProduct.getId(), getPutFields(), NON_DELETED, false);
+      final DataProduct stored = get(null, dataProductId, getPutFields(), NON_DELETED, false);
       linkPorts(stored, changed, relationship, isAdd);
       recordPortChange(
           stored,
@@ -741,10 +737,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return combined;
   }
 
-  /**
-   * Who a port change is recorded for. An approval publishes a staged change as its requester, with
-   * the bot that staged it, not the reviewer's request.
-   */
   private record PortWriter(String updatedBy, String impersonatedBy) {}
 
   private void recordPortChange(
@@ -898,7 +890,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       final UUID entityId,
       final List<MutationOp> ops,
       final String requestedBy,
-      final String impersonatedBy,
       final boolean withFieldChanges) {
     validateStagedRelations(entityId, ops);
     final DataProduct dataProduct = get(null, entityId, getPutFields(), NON_DELETED, false);
@@ -908,7 +899,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     recordPortChange(
         dataProduct,
         portChangeDescription(dataProduct.getVersion(), changes),
-        new PortWriter(requestedBy, impersonatedBy),
+        new PortWriter(requestedBy, null),
         withFieldChanges);
   }
 

@@ -5553,7 +5553,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /**
    * Publishes an approved change request revision as its requester, in the caller's transaction.
    * The gate re-verifies the request is Approved for this revision inside the same transaction, so
-   * no caller-supplied flag can bypass admission.
+   * no caller-supplied flag can bypass admission. Bot attribution requires actor-specific pending
+   * requests (#37892).
    */
   public final PatchResponse<T> applyApprovedChange(ApprovedApplication approval, JsonPatch patch) {
     T original = get(null, approval.entityId(), patchFields, NON_DELETED, false);
@@ -5562,7 +5563,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             original,
             patch,
             JsonUtils.extractPatchedFields(patch),
-            ChangeActor.recorded(approval.requestedBy(), approval.impersonatedBy()),
+            ChangeActor.recorded(approval.requestedBy(), null),
             null,
             null,
             false,
@@ -7079,7 +7080,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       final UUID entityId,
       final List<MutationOp> ops,
       final String requestedBy,
-      final String impersonatedBy,
       final boolean withFieldChanges) {
     throw new IllegalArgumentException(
         "%s has no relations an approval can hold".formatted(entityType));

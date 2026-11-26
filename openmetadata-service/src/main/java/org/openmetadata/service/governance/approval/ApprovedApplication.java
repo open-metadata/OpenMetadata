@@ -21,8 +21,4 @@ import java.util.UUID;
  * exactly this revision and entity.
  */
 public record ApprovedApplication(
-    UUID changeRequestId,
-    UUID revisionId,
-    UUID entityId,
-    String requestedBy,
-    String impersonatedBy) {}
+    UUID changeRequestId, UUID revisionId, UUID entityId, String requestedBy) {}

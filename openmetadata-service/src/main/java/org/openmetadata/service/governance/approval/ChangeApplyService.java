@@ -455,22 +455,14 @@ public final class ChangeApplyService {
               currentTree.toString(), MutationPlanner.applyTo(currentTree, fieldOps).toString());
       final ApprovedApplication approval =
           new ApprovedApplication(
-              request.getId(),
-              revision.getId(),
-              request.getEntityId(),
-              request.getRequestedBy(),
-              request.getImpersonatedBy());
+              request.getId(), revision.getId(), request.getEntityId(), request.getRequestedBy());
       wroteFieldVersion =
           repository.applyApprovedChange(approval, patch).entity().getVersion()
               > currentTree.path("version").asDouble();
     }
     if (!relationOps.isEmpty()) {
       repository.applyStagedRelations(
-          request.getEntityId(),
-          relationOps,
-          request.getRequestedBy(),
-          request.getImpersonatedBy(),
-          wroteFieldVersion);
+          request.getEntityId(), relationOps, request.getRequestedBy(), wroteFieldVersion);
     }
     final EntityInterface published =
         readCurrent(repository, request.getEntityId(), split.applicable());
