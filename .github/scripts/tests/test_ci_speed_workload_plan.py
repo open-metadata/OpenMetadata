@@ -72,6 +72,7 @@ def selected_workloads(tmp_path, entrypoint, event, payload, matches):
                 "python",
                 "static",
                 "json-yaml",
+                "ci-rules",
             },
         ),
         (
@@ -79,7 +80,7 @@ def selected_workloads(tmp_path, entrypoint, event, payload, matches):
             "merge_group",
             {},
             ["rdf"],
-            {"java-it", "json-yaml"},
+            {"java-it", "json-yaml", "ci-rules"},
         ),
         (
             "merge-queue",
@@ -90,6 +91,8 @@ def selected_workloads(tmp_path, entrypoint, event, payload, matches):
                 "java-integration",
                 "python",
                 "airflow-apis",
+                "json-yaml",
+                "ci-rules",
                 "dar",
             ],
             {
@@ -104,14 +107,21 @@ def selected_workloads(tmp_path, entrypoint, event, payload, matches):
             "pr",
             "pull_request",
             {"action": "opened", "pull_request": {"draft": True}},
-            ["java-unit", "python", "airflow-apis", "json-yaml", "quickstart-compose"],
-            {"json-yaml", "quickstart-compose"},
+            [
+                "java-unit",
+                "python",
+                "airflow-apis",
+                "json-yaml",
+                "ci-rules",
+                "quickstart-compose",
+            ],
+            {"json-yaml", "ci-rules", "quickstart-compose"},
         ),
         (
             "pr",
             "pull_request",
             {"action": "ready_for_review", "pull_request": {"draft": False}},
-            ["airflow-apis", "json-yaml", "quickstart-compose"],
+            ["airflow-apis", "json-yaml", "ci-rules", "quickstart-compose"],
             {"airflow-apis", "static"},
         ),
         (
@@ -119,7 +129,7 @@ def selected_workloads(tmp_path, entrypoint, event, payload, matches):
             "merge_group",
             {},
             [],
-            {"json-yaml"},
+            {"json-yaml", "ci-rules"},
         ),
         (
             "pr",
@@ -174,12 +184,27 @@ def path_filters():
         (
             "openmetadata-ui/pom.xml",
             {"checkstyle"},
-            {"checkstyle", "json-yaml"},
+            {"checkstyle", "json-yaml", "ci-rules"},
+        ),
+        (
+            "openmetadata-ui/src/main/resources/ui/package.json",
+            {"json-yaml"},
+            {"json-yaml", "ci-rules"},
+        ),
+        (
+            ".github/scripts/validate_ci_rules.sh",
+            {"ci-rules"},
+            {"json-yaml", "ci-rules"},
+        ),
+        (
+            "scripts/validate_json_yaml.py",
+            {"json-yaml", "ci-rules"},
+            {"json-yaml", "ci-rules"},
         ),
         (
             "docker/development/Dockerfile.dockerignore",
             {"docker-smoke"},
-            {"docker-smoke", "python", "static", "json-yaml"},
+            {"docker-smoke", "python", "static", "json-yaml", "ci-rules"},
         ),
         (
             "openmetadata-spec/src/main/resources/json/schema/governance/workflows/workflowDefinition.json",
@@ -192,18 +217,19 @@ def path_filters():
                 "python",
                 "static",
                 "json-yaml",
+                "ci-rules",
                 "dar",
             },
         ),
         (
             ".github/scripts/configure_docker_storage.sh",
-            {"json-yaml"},
-            {"java-it", "java-it-redis", "python", "static", "json-yaml"},
+            {"ci-rules"},
+            {"java-it", "java-it-redis", "python", "static", "json-yaml", "ci-rules"},
         ),
         (
             "docker/docker-compose-quickstart/docker-compose.yml",
             {"json-yaml", "quickstart-compose"},
-            {"json-yaml"},
+            {"json-yaml", "ci-rules"},
         ),
         (
             ".github/workflows/ci-pr.yml",
@@ -214,6 +240,7 @@ def path_filters():
                 "python",
                 "static",
                 "json-yaml",
+                "ci-rules",
             },
             {
                 "checkstyle",
@@ -224,6 +251,7 @@ def path_filters():
                 "python",
                 "static",
                 "json-yaml",
+                "ci-rules",
             },
         ),
     ],
@@ -261,6 +289,22 @@ def test_missing_path_detection_result_fails_planning(tmp_path):
 
     assert result.returncode != 0
     assert not outputs.exists()
+
+
+@pytest.mark.parametrize("workflow", ["ci-pr.yml", "ci-merge-queue.yml"])
+def test_validation_actions_run_only_for_their_selected_workload(workflow):
+    job = yaml.safe_load((WORKFLOWS / workflow).read_text())["jobs"]["validate-json-yaml"]
+    assert job["if"] == (
+        "${{ needs.plan.outputs.json-yaml == 'true' || "
+        "needs.plan.outputs.ci-rules == 'true' }}"
+    )
+    actions = {step.get("uses"): step for step in job["steps"]}
+    for workload, action in (
+        ("ci-rules", "validate-ci-rules"),
+        ("json-yaml", "validate-json-yaml"),
+    ):
+        step = actions[f"./.github/actions/{action}"]
+        assert step["if"] == "${{ needs.plan.outputs." + workload + " == 'true' }}"
 
 
 def test_one_nightly_schedule_runs_java_without_waiting_for_python():

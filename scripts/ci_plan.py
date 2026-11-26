@@ -28,6 +28,7 @@ def select(
     )
     queue = entrypoint == "merge-queue"
     draft = event == "pull_request" and payload["pull_request"]["draft"]
+    pr_update = event == "pull_request" and payload["action"] != "ready_for_review"
     java_unit = not draft and (manual == "java" or "java-unit" in matched)
     python = not draft and (
         manual == "python"
@@ -54,20 +55,11 @@ def select(
         "static": python
         or airflow
         or (not draft and event != "push" and "python-static" in matched),
-        "json-yaml": event == "merge_group"
-        or (
-            event == "pull_request"
-            and payload["action"] != "ready_for_review"
-            and "json-yaml" in matched
-        ),
+        "json-yaml": event == "merge_group" or (pr_update and "json-yaml" in matched),
+        "ci-rules": event == "merge_group" or (pr_update and "ci-rules" in matched),
         "quickstart-compose": not queue
         and (
-            manual == "quickstart-compose"
-            or (
-                event == "pull_request"
-                and payload["action"] != "ready_for_review"
-                and "quickstart-compose" in matched
-            )
+            manual == "quickstart-compose" or (pr_update and "quickstart-compose" in matched)
         ),
         "dar": queue and event in {"merge_group", "push"} and "dar" in matched,
     }

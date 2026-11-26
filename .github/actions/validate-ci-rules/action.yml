@@ -1,0 +1,11 @@
+name: Validate CI rules
+description: Check workflow contracts and run CI regression tests using the job's Python setup.
+runs:
+  using: composite
+  steps:
+    - name: Validate CI rules
+      shell: bash
+      run: >-
+        "$OM_UV_EXECUTABLE" run --no-project --isolated --python "$(command -v python)"
+        --with pyyaml==6.0.3 --with pytest==9.1.1
+        bash .github/scripts/validate_ci_rules.sh

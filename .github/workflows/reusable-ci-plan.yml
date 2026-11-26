@@ -45,6 +45,8 @@ on:
         value: ${{ jobs.select.outputs.static }}
       json-yaml:
         value: ${{ jobs.select.outputs.json-yaml }}
+      ci-rules:
+        value: ${{ jobs.select.outputs.ci-rules }}
       quickstart-compose:
         value: ${{ jobs.select.outputs.quickstart-compose }}
       dar:
@@ -73,6 +75,7 @@ jobs:
       airflow-apis: ${{ steps.workloads.outputs.airflow-apis }}
       static: ${{ steps.workloads.outputs.static }}
       json-yaml: ${{ steps.workloads.outputs.json-yaml }}
+      ci-rules: ${{ steps.workloads.outputs.ci-rules }}
       quickstart-compose: ${{ steps.workloads.outputs.quickstart-compose }}
       dar: ${{ steps.workloads.outputs.dar }}
     steps:

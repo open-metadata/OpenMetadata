@@ -463,7 +463,7 @@ jobs:
 
   validate-json-yaml:
     needs: plan
-    if: ${{ needs.plan.outputs.json-yaml == 'true' }}
+    if: ${{ needs.plan.outputs.json-yaml == 'true' || needs.plan.outputs.ci-rules == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -471,7 +471,13 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
-      - uses: ./.github/actions/validate-json-yaml-and-ci-rules
+      - uses: ./.github/actions/setup-python
+        with:
+          python-version: '3.12'
+      - uses: ./.github/actions/validate-json-yaml
+        if: ${{ needs.plan.outputs.json-yaml == 'true' }}
+      - uses: ./.github/actions/validate-ci-rules
+        if: ${{ needs.plan.outputs.ci-rules == 'true' }}
 
   data-access-request-e2e:
     needs: plan

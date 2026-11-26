@@ -1,0 +1,11 @@
+name: Validate JSON and YAML
+description: Check tracked JSON and YAML syntax using the job's Python setup.
+runs:
+  using: composite
+  steps:
+    - name: Validate JSON and YAML
+      shell: bash
+      run: >-
+        "$OM_UV_EXECUTABLE" run --no-project --isolated --python "$(command -v python)"
+        --with pyyaml==6.0.3
+        bash scripts/validate_json_yaml.sh
