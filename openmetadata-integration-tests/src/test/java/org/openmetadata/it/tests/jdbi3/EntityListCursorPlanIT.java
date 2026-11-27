@@ -1,9 +1,9 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.repositoryRoot;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.repositoryRoot;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -14,6 +14,8 @@ import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.core.statement.TemplateEngine;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.it.util.ScratchDatabase;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
@@ -22,9 +24,10 @@ import org.openmetadata.service.migration.utils.MigrationFile;
  * AND id > ?)}, so a page walks the name index from the first row. Each POSTGRES list query that
  * takes a row-value cursor must start its index scan at the cursor: the cursor name appears in the
  * index condition, whichever name index the planner picks
- * (ADR:2026-11-03-entity-list-cursors-are-row-values-on-postgres-only).
+ * (ADR:2026-11-03-entity-list-cursors-are-row-values-on-postgres-only). Runs in the PostgreSQL lane
+ * only; the MySQL variants keep the expanded OR.
  */
-class EntityListCursorPlanTest {
+class EntityListCursorPlanIT {
   private static final String TABLE = "table_entity";
   private static final String NOT_DELETED = "WHERE table_entity.deleted = FALSE";
   private static final String CURSOR_NAME = "tbl_2500";
@@ -37,8 +40,8 @@ class EntityListCursorPlanTest {
 
   @Test
   void everyPostgresListQueryStartsTheIndexScanAtTheCursor() {
-    withDatabase(
-        ConnectionType.POSTGRES,
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.POSTGRES, "PostgreSQL only");
+    ScratchDatabase.withDatabase(
         handle -> {
           createTableEntity(handle);
           seedTables(handle);

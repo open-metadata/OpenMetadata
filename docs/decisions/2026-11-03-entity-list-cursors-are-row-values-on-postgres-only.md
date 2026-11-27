@@ -3,8 +3,8 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-03 (initial)
 - **Deciders:** Sergei Glotov (proposed); OpenMetadata maintainers (review)
-- **Guard:** `EntityListCursorPlanTest` (each PostgreSQL row-value query starts its index scan at
-  the cursor); `PaginationIT.testTablePaginationWithSameNameInSeveralSchemas` and
+- **Guard:** `EntityListCursorPlanIT`, PostgreSQL lane (each PostgreSQL row-value query starts its
+  index scan at the cursor); `PaginationIT.testTablePaginationWithSameNameInSeveralSchemas` and
   `PaginationIT.testSchemaPaginationWithSameNameInSeveralDatabases` (order and completeness under
   name ties, on both databases)
 - **Related:** #36977; `EntityDAO.listBefore` / `listAfter`; #28888
