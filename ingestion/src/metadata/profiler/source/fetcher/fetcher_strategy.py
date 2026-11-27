@@ -15,6 +15,7 @@ Entity Fetcher Strategy
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
+from datetime import datetime, timezone
 from typing import Any, cast
 
 from pydantic import BaseModel
@@ -345,6 +346,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
 
     def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
         """Fetch database entity"""
+        run_started_at = datetime.now(timezone.utc)
         for database in self._get_database_entities():
             db_fqn = getattr(database.fullyQualifiedName, "root", None) or str(database.name.root)
             self._seed_table_total(database, db_fqn)
@@ -357,6 +359,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                     self.metadata,
                     self.global_profiler_config,
                 )
+                profiler_source.run_started_at = run_started_at
 
                 for batch in self._batched(self._get_table_entities(database)):
                     registered_batch = TABLE_BATCH_WINDOW.register(

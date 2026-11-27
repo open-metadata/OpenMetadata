@@ -14,12 +14,15 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from collections.abc import Iterable
-from copy import deepcopy
-from typing import Any, cast
+from __future__ import annotations
 
+from copy import deepcopy
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any, cast
+
+from google.cloud.bigquery.dataset import DatasetReference
+from google.cloud.bigquery.table import TableReference
 from sqlalchemy import Column, inspect
-from sqlalchemy.sql.type_api import TypeEngine
 
 from metadata.generated.schema.entity.data.table import SystemProfile, TableType
 from metadata.generated.schema.security.credentials.gcpValues import SingleProjectId
@@ -27,19 +30,26 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
-from metadata.profiler.metrics.system.bigquery.system import (
-    BigQuerySystemMetricsComputer,
-)
-from metadata.profiler.metrics.system.system import System
-from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.ssl_manager import get_ssl_connection
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+
+    from sqlalchemy.orm import Session
+    from sqlalchemy.sql.type_api import TypeEngine
+
+    from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import BigQueryConnection
+    from metadata.profiler.metrics.system.system import System, SystemMetricsComputer
+    from metadata.profiler.processor.runner import QueryRunner
 
 logger = profiler_interface_registry_logger()
 
 
 class BigQueryProfilerInterface(SQAProfilerInterface):
     """BigQuery profiler interface"""
+
+    run_started_at: datetime | None = None
 
     def create_session(self):
         connection_config = deepcopy(self.service_connection_config)
@@ -53,6 +63,7 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
         self,
         metrics: type[System],
         runner: QueryRunner,
+        session: Session,
         *args,
         **kwargs,
     ) -> list[SystemProfile]:
@@ -63,14 +74,20 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
             )
             return []
         logger.debug("Computing %s metric for %s", metrics.name(), runner.table_name)
-        self.system_metrics_class = cast(type[BigQuerySystemMetricsComputer], self.system_metrics_class)  # noqa: TC006
-        instance = self.system_metrics_class(
-            session=self.session,
-            runner=runner,
-            usage_location=self.service_connection_config.usageLocation,
-            billing_project_id=self.service_connection_config.billingProjectId,
+        project = self.table_entity.database
+        dataset = self.table_entity.databaseSchema
+        if not project or not project.name or not dataset or not dataset.name:
+            raise ValueError("BigQuery system metrics require the table's project and dataset references")
+        destination = TableReference(
+            DatasetReference(model_str(project.name), model_str(dataset.name)), runner.table_name
         )
-        return instance.get_system_metrics()
+        computer = cast(
+            "Callable[[Session, TableReference, BigQueryConnection, datetime], SystemMetricsComputer]",
+            self.system_metrics_class,
+        )
+        connection = cast("BigQueryConnection", self.service_connection_config)
+        run_started_at = self.run_started_at or datetime.now(timezone.utc)
+        return computer(session, destination, connection, run_started_at).get_system_metrics()
 
     def _get_struct_columns(
         self,

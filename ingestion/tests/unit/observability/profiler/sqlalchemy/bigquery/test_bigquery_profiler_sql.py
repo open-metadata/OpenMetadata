@@ -13,8 +13,12 @@ Validate the SQL the profiler emits for BigQuery against the real BigQuery diale
 """
 
 import re
+from contextlib import nullcontext
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
+from unittest.mock import Mock
 
+import pytest
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
@@ -22,6 +26,8 @@ from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy_bigquery import STRUCT
 from sqlalchemy_bigquery.base import BigQueryDialect
 
+from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import BigQueryConnection
 from metadata.profiler.interface.sqlalchemy.bigquery.profiler_interface import (
     BigQueryProfilerInterface,
 )
@@ -30,6 +36,7 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.unique_count import UniqueCount
+from metadata.profiler.metrics.system.bigquery.system import BigQuerySystemMetricsComputer
 
 TABLE_NAME = "users"
 # Mirrors BigQueryProfilerInterface._get_struct_columns, which names a STRUCT subfield
@@ -40,6 +47,8 @@ FLAT_COLUMN = "email"
 # `pyformat` is the paramstyle the BigQuery DBAPI actually uses; it is the only one that
 # renders the `%(name:TYPE)s` bind annotations we assert on below.
 DIALECT = BigQueryDialect(paramstyle="pyformat")
+RUN_STARTED = datetime(2026, 1, 2, 0, 15, tzinfo=timezone(timedelta(hours=1)))
+WINDOW_END = datetime(2026, 1, 2, tzinfo=timezone.utc)
 
 
 class _BigQuerySession(Session):
@@ -231,3 +240,125 @@ def test_unique_count_runs_on_the_metric_threads_session():
     )
 
     assert runner.query.session is thread_session
+
+
+def _system_metrics_interface(location, config, table_type=TableType.Regular):
+    connection = BigQueryConnection.model_validate(
+        {
+            "credentials": {"gcpConfig": {"type": "gcp_adc"}},
+            "usageLocation": location,
+            **config,
+        }
+    )
+    return SimpleNamespace(
+        service_connection_config=connection,
+        system_metrics_class=BigQuerySystemMetricsComputer,
+        table_entity=SimpleNamespace(
+            tableType=table_type,
+            database=SimpleNamespace(name="table-project"),
+            databaseSchema=SimpleNamespace(name="table_dataset"),
+            fullyQualifiedName="bigquery.table-project.table_dataset.orders",
+        ),
+        session=Mock(spec=Session),
+        status=Mock(),
+        run_started_at=RUN_STARTED,
+    )
+
+
+@pytest.mark.parametrize(
+    ("location", "config", "projects", "lookback_days"),
+    [
+        ("US", {}, ["table-project"], 2),
+        ("EU", {"billingProjectId": "billing-project", "systemMetricsJobProjectIds": []}, ["billing-project"], 2),
+        (
+            "europe-west4",
+            {
+                "billingProjectId": "billing-project",
+                "systemMetricsJobProjectIds": [
+                    "billing-project",
+                    "example.org:extra_project",
+                    "extra-project",
+                    "example.org:extra_project",
+                ],
+                "systemMetricsLookbackDays": 7,
+            },
+            ["billing-project", "example.org:extra_project", "extra-project"],
+            7,
+        ),
+    ],
+)
+def test_system_metrics_query_is_scoped_to_the_exact_table_on_the_worker_session(
+    location, config, projects, lookback_days
+):
+    interface = _system_metrics_interface(location, config)
+    worker = Mock(spec=Session)
+    worker.execute.return_value = nullcontext(SimpleNamespace(mappings=list))
+    runner = SimpleNamespace(table_name="orders_2026", schema_name="other_dataset", session=worker)
+
+    profiles = BigQueryProfilerInterface._compute_system_metrics(
+        interface, metrics=Metrics.system.value, runner=runner, session=worker
+    )
+
+    assert profiles == []
+    interface.session.execute.assert_not_called()
+    assert worker.execute.call_count == 1
+    statement, parameters = worker.execute.call_args.args
+    branches = _compile(statement, literal_binds=False).split(" UNION ALL ")
+    assert len(branches) == len(projects)
+    for branch, project in zip(branches, projects, strict=True):
+        assert f"`{project}`.`region-{location.lower()}`.INFORMATION_SCHEMA.JOBS" in branch
+        for predicate in (
+            "destination_table.project_id = %(project_id:STRING)s",
+            "destination_table.dataset_id = %(dataset_id:STRING)s",
+            "destination_table.table_id = %(table_id:STRING)s",
+            "job_type = 'QUERY'",
+            "state = 'DONE'",
+            "error_result IS NULL",
+            "statement_type IN ('INSERT', 'UPDATE', 'DELETE', 'MERGE')",
+            "creation_time >= %(creation_lower_bound:TIMESTAMP)s",
+            "start_time >= %(window_start:TIMESTAMP)s",
+            "start_time < %(window_end:TIMESTAMP)s",
+        ):
+            assert predicate in branch
+    assert branches[-1].endswith("LIMIT 50001")
+    assert parameters == {
+        "project_id": "table-project",
+        "dataset_id": "table_dataset",
+        "table_id": "orders_2026",
+        "creation_lower_bound": WINDOW_END - timedelta(days=lookback_days + 2),
+        "window_start": WINDOW_END - timedelta(days=lookback_days),
+        "window_end": WINDOW_END,
+    }
+
+
+@pytest.mark.parametrize(
+    ("location", "config", "message"),
+    [
+        ("US west", {}, "Invalid BigQuery jobs location"),
+        ("US", {"systemMetricsJobProjectIds": ["extra project"]}, "Invalid BigQuery jobs project ID"),
+    ],
+)
+def test_system_metrics_rejects_invalid_jobs_view_identifiers(location, config, message):
+    interface = _system_metrics_interface(location, config)
+    worker = Mock(spec=Session)
+    runner = SimpleNamespace(table_name="orders")
+
+    with pytest.raises(RuntimeError, match=message):
+        BigQueryProfilerInterface._compute_system_metrics(
+            interface, metrics=Metrics.system.value, runner=runner, session=worker
+        )
+
+    worker.execute.assert_not_called()
+
+
+def test_system_metrics_skip_sharded_tables():
+    interface = _system_metrics_interface("US", {}, TableType.Sharded)
+    worker = Mock(spec=Session)
+
+    assert (
+        BigQueryProfilerInterface._compute_system_metrics(
+            interface, metrics=Metrics.system.value, runner=SimpleNamespace(), session=worker
+        )
+        == []
+    )
+    worker.execute.assert_not_called()

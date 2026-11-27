@@ -14,6 +14,7 @@ Class defining the interface for the profiler source
 """
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
@@ -25,9 +26,14 @@ from metadata.generated.schema.metadataIngestion.engine.nativeEngineConfig impor
 )
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 
+if TYPE_CHECKING:
+    from datetime import datetime
+
 
 class ProfilerSourceInterface(ABC):
     """Abstract class defining the interface for the profiler source"""
+
+    run_started_at: "datetime | None" = None
 
     @property
     @abstractmethod

@@ -12,14 +12,21 @@
 SQL Queries used during ingestion
 """
 
+from __future__ import annotations
+
+import re
 import textwrap
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, TypeAdapter
-from sqlalchemy import text
-from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from sqlalchemy import TIMESTAMP, String, bindparam, text
 
-from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from google.cloud.bigquery.table import TableReference
+    from sqlalchemy.orm import Session
 
 BIGQUERY_STATEMENT = textwrap.dedent(
     """
@@ -233,66 +240,83 @@ BIGQUERY_GET_TABLE_DDLS_BY_REGION = textwrap.dedent(
 )
 
 
+MAX_SYSTEM_METRICS_JOBS = 50_000
+_PROJECT_ID = re.compile(r"(?:[A-Za-z0-9][A-Za-z0-9.-]*:)?[A-Za-z0-9][A-Za-z0-9_-]*")
+_LOCATION = re.compile(r"[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*")
+
+
+def _jobs_view(project: str, location: str) -> str:
+    if not _PROJECT_ID.fullmatch(project):
+        raise ValueError(f"Invalid BigQuery jobs project ID: {project!r}")
+    return f"`{project}`.`region-{location}`.INFORMATION_SCHEMA.JOBS"
+
+
 class BigQueryQueryResult(BaseModel):
-    project_id: str
-    dataset_id: str
-    table_name: str
+    job_project: str
+    job_id: str
+    start_time: datetime
     inserted_row_count: int | None = None
     deleted_row_count: int | None = None
     updated_row_count: int | None = None
-    start_time: datetime
-    statement_type: str
 
-    @staticmethod
+    @classmethod
     def get_for_table(
+        cls,
         session: Session,
-        usage_location: str,
-        dataset_id: str,
-        project_id: str,
-        billing_project_id: str | None = None,
-    ):
-        # Use billing project for the INFORMATION_SCHEMA query if provided
-        query_project_id = billing_project_id or project_id
+        destination: TableReference,
+        job_projects: tuple[str, ...],
+        location: str,
+        window_start: datetime,
+        window_end: datetime,
+    ) -> Generator[BigQueryQueryResult, None, None]:
+        """Stream completed DML for one destination across all configured jobs views."""
+        if not _LOCATION.fullmatch(location):
+            raise ValueError(f"Invalid BigQuery jobs location: {location!r}")
 
-        rows = session.execute(
-            text(
-                JOBS.format(
-                    usage_location=usage_location,
-                    dataset_id=dataset_id,
-                    project_id=project_id,
-                    query_project_id=query_project_id,
-                    insert=DatabaseDMLOperations.INSERT.value,
-                    update=DatabaseDMLOperations.UPDATE.value,
-                    delete=DatabaseDMLOperations.DELETE.value,
-                    merge=DatabaseDMLOperations.MERGE.value,
-                )
-            )
+        union = "\nUNION ALL\n".join(
+            JOBS.format(jobs_view=_jobs_view(project, location.lower())) for project in job_projects
         )
-
-        return TypeAdapter(list[BigQueryQueryResult]).validate_python([r._asdict() for r in rows])
+        statement = text(f"{union}\nLIMIT {MAX_SYSTEM_METRICS_JOBS + 1}").bindparams(
+            bindparam("project_id", type_=String()),
+            bindparam("dataset_id", type_=String()),
+            bindparam("table_id", type_=String()),
+            bindparam("creation_lower_bound", type_=TIMESTAMP(timezone=True)),
+            bindparam("window_start", type_=TIMESTAMP(timezone=True)),
+            bindparam("window_end", type_=TIMESTAMP(timezone=True)),
+        )
+        parameters = {
+            "project_id": destination.project,
+            "dataset_id": destination.dataset_id,
+            "table_id": destination.table_id,
+            # A query can wait up to 48 hours before its start_time becomes eligible.
+            "creation_lower_bound": window_start - timedelta(hours=48),
+            "window_start": window_start,
+            "window_end": window_end,
+        }
+        with session.execute(statement, parameters) as rows:
+            yield from (cls.model_validate(row) for row in rows.mappings())
 
 
 JOBS = """
     SELECT
-        statement_type,
+        project_id AS job_project,
+        job_id,
         start_time,
-        destination_table.project_id as project_id,
-        destination_table.dataset_id as dataset_id,
-        destination_table.table_id as table_name,
-        dml_statistics.inserted_row_count as inserted_row_count,
-        dml_statistics.deleted_row_count as deleted_row_count,
-        dml_statistics.updated_row_count as updated_row_count
+        dml_statistics.inserted_row_count AS inserted_row_count,
+        dml_statistics.deleted_row_count AS deleted_row_count,
+        dml_statistics.updated_row_count AS updated_row_count
     FROM
-        `{query_project_id}`.`region-{usage_location}`.INFORMATION_SCHEMA.JOBS
+        {jobs_view}
     WHERE
-        DATE(creation_time) >= CURRENT_DATE() - 1 AND
-        destination_table.dataset_id = '{dataset_id}' AND
-        destination_table.project_id = '{project_id}' AND
-        statement_type IN (
-            '{insert}',
-            '{update}',
-            '{delete}',
-            '{merge}'
-        )
-    ORDER BY creation_time DESC;
+        creation_time >= :creation_lower_bound
+        AND creation_time < :window_end
+        AND start_time >= :window_start
+        AND start_time < :window_end
+        AND destination_table.project_id = :project_id
+        AND destination_table.dataset_id = :dataset_id
+        AND destination_table.table_id = :table_id
+        AND job_type = 'QUERY'
+        AND state = 'DONE'
+        AND error_result IS NULL
+        AND statement_type IN ('INSERT', 'UPDATE', 'DELETE', 'MERGE')
 """

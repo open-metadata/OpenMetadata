@@ -252,12 +252,15 @@ def fresh_bigquery_source(project: BigQueryProject, location: str) -> Iterator[B
         source._closed = True
 
 
-def wait_for_jobs_visible(project: BigQueryProject, location: str, job_ids: list[str], *, timeout: float = 300) -> None:
-    """Block until INFORMATION_SCHEMA.JOBS lists every job, so system metrics cannot read a stale view."""
+def wait_for_dml_jobs_visible(
+    project: BigQueryProject, location: str, job_ids: list[str], *, timeout: float = 300
+) -> None:
+    """Wait for successful DML job statistics to reach the regional jobs view."""
     region = f"region-{location.lower()}"
     query = (
         f"SELECT job_id FROM `{project.project_id}`.`{region}`.INFORMATION_SCHEMA.JOBS "
-        "WHERE creation_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 DAY) AND job_id IN UNNEST(@ids)"
+        "WHERE creation_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 DAY) "
+        "AND job_id IN UNNEST(@ids) AND state = 'DONE' AND error_result IS NULL AND dml_statistics IS NOT NULL"
     )
     config = bigquery.QueryJobConfig(query_parameters=[bigquery.ArrayQueryParameter("ids", "STRING", job_ids)])
     wanted = set(job_ids)

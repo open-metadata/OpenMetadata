@@ -1,143 +1,115 @@
 """BigQuery system metric source"""
 
-from pydantic import TypeAdapter
-from sqlalchemy.orm import Session
+from __future__ import annotations
+
+from contextlib import closing
+from datetime import datetime, time, timedelta, timezone
+from typing import TYPE_CHECKING
 
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
-from metadata.ingestion.source.database.bigquery.queries import BigQueryQueryResult
-from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
+from metadata.generated.schema.type.basic import Timestamp
+from metadata.ingestion.source.database.bigquery.queries import (
+    MAX_SYSTEM_METRICS_JOBS,
+    BigQueryQueryResult,
+)
 from metadata.profiler.metrics.system.system import (
-    CacheProvider,
     SystemMetricsComputer,
     register_system_metrics,
 )
 from metadata.profiler.orm.registry import PythonDialects
-from metadata.profiler.processor.runner import QueryRunner
-from metadata.utils.logger import profiler_logger
 from metadata.utils.time_utils import datetime_to_timestamp
 
-logger = profiler_logger()
+if TYPE_CHECKING:
+    from google.cloud.bigquery.table import TableReference
+    from sqlalchemy.orm import Session
+
+    from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import BigQueryConnection
+
+MAX_SYSTEM_PROFILE_BINS = 10_000
+# The backend deserializes rowsAffected as a signed Java Integer.
+MIN_ROWS_AFFECTED = -(2**31)
+MAX_ROWS_AFFECTED = 2**31 - 1
 
 
 @register_system_metrics(PythonDialects.BigQuery)
-class BigQuerySystemMetricsComputer(SystemMetricsComputer, CacheProvider):
-    """BigQuery system metrics source class"""
+class BigQuerySystemMetricsComputer(SystemMetricsComputer):
+    """Collect DML row effects for a physical BigQuery table."""
 
     def __init__(
         self,
         session: Session,
-        runner: QueryRunner,
-        usage_location: str,
-        billing_project_id: str | None = None,
+        destination: TableReference,
+        connection: BigQueryConnection,
+        run_started_at: datetime,
     ):
         self.session = session
-        self.table = runner.table_name
-        self.project_id = runner.session.get_bind().url.host
-        self.dataset_id = runner.schema_name
-        self.usage_location = usage_location
-        self.billing_project_id = billing_project_id or self.project_id
-
-    def get_deletes(self) -> list[SystemProfile]:
-        return self.get_system_profile(
-            self.project_id,
-            self.dataset_id,
-            self.table,
-            list(
-                self.get_queries_by_operation(
-                    self.usage_location,
-                    self.project_id,
-                    self.dataset_id,
-                    [
-                        DatabaseDMLOperations.DELETE,
-                    ],
-                )
-            ),
-            "deleted_row_count",
-            DmlOperationType.DELETE,
+        self.destination = destination
+        self.location = connection.usageLocation or "us"
+        self.job_projects = tuple(
+            dict.fromkeys(
+                (connection.billingProjectId or destination.project, *(connection.systemMetricsJobProjectIds or ()))
+            )
         )
+        utc_date = run_started_at.astimezone(timezone.utc).date()
+        self.window_end = datetime.combine(utc_date + timedelta(days=1), time.min, tzinfo=timezone.utc)
+        self.window_start = self.window_end - timedelta(days=connection.systemMetricsLookbackDays or 2)
 
-    def get_updates(self) -> list[SystemProfile]:
-        return self.get_system_profile(
-            self.project_id,
-            self.dataset_id,
-            self.table,
-            self.get_queries_by_operation(
-                self.usage_location,
-                self.project_id,
-                self.dataset_id,
-                [
-                    DatabaseDMLOperations.UPDATE,
-                    DatabaseDMLOperations.MERGE,
-                ],
-            ),
-            "updated_row_count",
-            DmlOperationType.UPDATE,
-        )
+    def get_system_metrics(self) -> list[SystemProfile]:
+        """Publish bins only after the complete, bounded jobs scan succeeds."""
+        try:
+            bins = self._collect_bins()
+        except Exception as exc:
+            projects = ", ".join(self.job_projects)
+            raise RuntimeError(
+                f"BigQuery system metrics for {self.destination} in {self.location} across {projects} failed: {exc}"
+            ) from exc
 
-    def get_inserts(self) -> list[SystemProfile]:
-        return self.get_system_profile(
-            self.project_id,
-            self.dataset_id,
-            self.table,
-            self.get_queries_by_operation(
-                self.usage_location,
-                self.project_id,
-                self.dataset_id,
-                [
-                    DatabaseDMLOperations.INSERT,
-                    DatabaseDMLOperations.MERGE,
-                ],
-            ),
-            "inserted_row_count",
-            DmlOperationType.INSERT,
-        )
+        return [
+            SystemProfile(timestamp=Timestamp(timestamp), operation=DmlOperationType(operation), rowsAffected=count)
+            for (timestamp, operation), count in sorted(bins.items())
+        ]
 
-    def get_queries_by_operation(
-        self,
-        usage_location: str,
-        project_id: str,
-        dataset_id: str,
-        operations: list[DatabaseDMLOperations],
-    ) -> list[BigQueryQueryResult]:
-        ops = {op.value for op in operations}
-        yield from (
-            query for query in self.get_queries(usage_location, project_id, dataset_id) if query.statement_type in ops
-        )
-
-    def get_queries(self, usage_location: str, project_id: str, dataset_id: str) -> list[BigQueryQueryResult]:
-        return self.get_or_update_cache(
-            f"{project_id}.{dataset_id}",
-            BigQueryQueryResult.get_for_table,
-            session=self.session,
-            usage_location=usage_location,
-            project_id=project_id,
-            dataset_id=dataset_id,
-            billing_project_id=self.billing_project_id,
-        )
+    def _collect_bins(self) -> dict[tuple[int, str], int]:
+        seen_jobs: dict[tuple[str, str, str], BigQueryQueryResult] = {}
+        bins: dict[tuple[int, str], int] = {}
+        with closing(
+            BigQueryQueryResult.get_for_table(
+                self.session, self.destination, self.job_projects, self.location, self.window_start, self.window_end
+            )
+        ) as rows:
+            for row_number, job in enumerate(rows, 1):
+                if row_number > MAX_SYSTEM_METRICS_JOBS:
+                    raise ValueError(f"More than {MAX_SYSTEM_METRICS_JOBS:,} BigQuery DML jobs match this table")
+                identity = (self.location, job.job_project, job.job_id)
+                if identity in seen_jobs:
+                    if seen_jobs[identity] != job:
+                        raise ValueError(f"Conflicting records for BigQuery job {job.job_project}:{job.job_id}")
+                    continue
+                seen_jobs[identity] = job
+                self._add_row_effects(job, bins)
+                if len(bins) > MAX_SYSTEM_PROFILE_BINS:
+                    raise ValueError(
+                        f"More than {MAX_SYSTEM_PROFILE_BINS:,} BigQuery system profile bins match this table"
+                    )
+        return bins
 
     @staticmethod
-    def get_system_profile(
-        project_id: str,
-        dataset_id: str,
-        table: str,
-        query_results: list[BigQueryQueryResult],
-        rows_affected_field: str,
-        operation: DmlOperationType,
-    ) -> list[SystemProfile]:
-        if not BigQueryQueryResult.model_fields.get(rows_affected_field):
-            raise ValueError(
-                f"rows_affected_field [{rows_affected_field}] is not a valid field in BigQueryQueryResult."
-            )
-        return TypeAdapter(list[SystemProfile]).validate_python(
-            [
-                {
-                    "timestamp": datetime_to_timestamp(q.start_time, milliseconds=True),
-                    "operation": operation,
-                    "rowsAffected": getattr(q, rows_affected_field),
-                }
-                for q in query_results
-                # JOBS is queried per dataset, so every sibling table's DML is in query_results.
-                if (getattr(q, rows_affected_field) or 0) > 0
-                and (q.project_id, q.dataset_id, q.table_name) == (project_id, dataset_id, table)
-            ]
+    def _add_row_effects(job: BigQueryQueryResult, bins: dict[tuple[int, str], int]) -> None:
+        timestamp = datetime_to_timestamp(job.start_time, milliseconds=True)
+        effects = (
+            (DmlOperationType.INSERT, job.inserted_row_count),
+            (DmlOperationType.UPDATE, job.updated_row_count),
+            (DmlOperationType.DELETE, job.deleted_row_count),
         )
+        for operation, count in effects:
+            if count is None:
+                continue
+            if not MIN_ROWS_AFFECTED <= count <= MAX_ROWS_AFFECTED:
+                raise ValueError(f"BigQuery {operation.value} row count {count} is outside the rowsAffected range")
+            if count > 0:
+                # The profile API replaces rows with the same timestamp and operation.
+                key = (timestamp, operation.value)
+                total = bins.get(key, 0) + count
+                if total > MAX_ROWS_AFFECTED:
+                    raise ValueError(f"BigQuery {operation.value} row total {total} exceeds the rowsAffected range")
+                bins[key] = total
