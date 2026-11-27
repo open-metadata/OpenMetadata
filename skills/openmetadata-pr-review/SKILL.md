@@ -235,7 +235,7 @@ Repo-specific gates worth knowing:
 | `Validate PR Metadata` | a linked issue (`Fixes #NNNN`) **and** its Shipping-project fields. Does not re-run on issue edits — needs a push or manual re-run. Skipped entirely when the PR has the `skip-pr-checks` label (test fixes, which need no issue) |
 | `py-tests-status` | Required aggregate check for the selected Python workloads, including on fork PRs. Open the `python` job in `ci-pr` to identify the failing step. |
 | `py-checkstyle` | Separate static-check report for same-repository PRs. Covers Ruff lint and formatting, plus basedpyright when the `python` path filter matches. `ingestion/.basedpyright/baseline.json` grandfathers existing type errors. New type errors in checked files fail the run. |
-| `ui-checkstyle` | ESLint + Prettier + the Apache-2.0 UI header |
+| `ui-tests-status` | Required aggregate check for the selected UI workloads (lint, Jest, browser). Open the `ui` job in `ci-pr` to identify the failing step. (`ui-checkstyle` and `ui-coverage` are temporary aliases for this check.) |
 | `Java checkstyle` | spotless |
 | `generate-types` | schema ↔ generated model drift |
 | `Collate CI` | the private Collate build against this OSS commit. A `cannot find symbol` on an `org.openmetadata.*` class means the branch is behind main, not that the PR broke Collate |
