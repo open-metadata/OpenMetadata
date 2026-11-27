@@ -66,7 +66,10 @@ import {
   DataContract,
 } from '../../../generated/entity/data/dataContract';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
-import { Table } from '../../../generated/entity/data/table';
+import {
+  DatabaseServiceType,
+  Table,
+} from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { LifeCycle } from '../../../generated/type/lifeCycle';
@@ -819,13 +822,32 @@ export const DataAssetsHeader = ({
       return null;
     }
 
+    const isBigQueryTable =
+      entityType === EntityType.TABLE &&
+      dataAsset.serviceType === DatabaseServiceType.BigQuery;
+    const absoluteTime = formatDateTime(sourceUpdatedAt);
+
     return (
       <>
         <HeaderDotSeparator />
         <ExtraInfoLabel
           dataTestId="source-updated-at"
-          label={t('label.updated-at-source')}
-          tooltip={formatDateTime(sourceUpdatedAt)}
+          label={
+            isBigQueryTable
+              ? t('label.bigquery-table-last-modified')
+              : t('label.updated-at-source')
+          }
+          tooltip={
+            isBigQueryTable ? (
+              <>
+                {absoluteTime}
+                <br />
+                {t('message.bigquery-table-last-modified-description')}
+              </>
+            ) : (
+              absoluteTime
+            )
+          }
           value={getRelativeTime(sourceUpdatedAt)}
         />
       </>

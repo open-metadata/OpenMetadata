@@ -35,7 +35,7 @@ import { AssetCertification } from '../../../generated/type/assetCertification';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
-import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
+import { MOCK_TABLE, MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { getActiveAnnouncements } from '../../../rest/announcementsAPI';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getContractByEntityId } from '../../../rest/contractAPI';
@@ -447,6 +447,82 @@ describe('DataAssetsHeader component', () => {
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
       formatDateTime(twoHoursAgo)
     );
+    expect(screen.getByRole('tooltip')).not.toHaveTextContent(
+      'message.bigquery-table-last-modified-description'
+    );
+  });
+
+  it('explains the recorded BigQuery modification time for a metadata-only table', async () => {
+    const timestamp = Date.now() - 2 * 60 * 60 * 1000;
+
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...MOCK_TABLE,
+          serviceType: DatabaseServiceType.BigQuery,
+          lifeCycle: { updated: { timestamp } },
+          profile: undefined,
+        }}
+        entityType={EntityType.TABLE}
+      />
+    );
+
+    expect(
+      screen.getByText('label.bigquery-table-last-modified')
+    ).toBeInTheDocument();
+
+    const sourceUpdated = screen.getByTestId('source-updated-at');
+
+    expect(sourceUpdated).toHaveTextContent('2 hours ago');
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    fireEvent.mouseMove(document);
+    await user.hover(sourceUpdated);
+
+    const tooltip = await screen.findByRole('tooltip');
+
+    expect(tooltip).toHaveTextContent(formatDateTime(timestamp));
+    expect(tooltip).toHaveTextContent(
+      'message.bigquery-table-last-modified-description'
+    );
+  });
+
+  it('keeps the generic source update label on a Snowflake table', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...MOCK_TABLE,
+          serviceType: DatabaseServiceType.Snowflake,
+          lifeCycle: { updated: { timestamp: Date.UTC(2026, 10, 24, 15) } },
+        }}
+        entityType={EntityType.TABLE}
+      />
+    );
+
+    expect(screen.getByText('label.updated-at-source')).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.bigquery-table-last-modified')
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not substitute a profiler run for a missing BigQuery modification time', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...MOCK_TABLE,
+          serviceType: DatabaseServiceType.BigQuery,
+          lifeCycle: undefined,
+          profile: { timestamp: Date.UTC(2026, 10, 25, 17) },
+        }}
+        entityType={EntityType.TABLE}
+      />
+    );
+
+    expect(screen.getByTestId('data-asset-header-metadata')).toBeVisible();
+    expect(screen.queryByTestId('source-updated-at')).not.toBeInTheDocument();
   });
 
   it('hides the source update time when the source never reported one', () => {

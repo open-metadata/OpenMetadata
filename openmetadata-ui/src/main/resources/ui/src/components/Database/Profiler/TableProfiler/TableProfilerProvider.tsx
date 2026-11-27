@@ -200,7 +200,7 @@ export const TableProfilerProvider = ({
               .toLocaleString(DateTime.DATE_MED)
           : '--',
         extra: profile?.timestamp
-          ? `${t('label.last-updated')}: ${DateTime.fromJSDate(
+          ? `${t('label.profiler-last-run')}: ${DateTime.fromJSDate(
               new Date(profile?.timestamp)
             ).toLocaleString(DateTime.DATETIME_MED)}`
           : undefined,
